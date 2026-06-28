@@ -12,6 +12,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
     "check": "pnpm lint && pnpm typecheck && pnpm format",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev"
