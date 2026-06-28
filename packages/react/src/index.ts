@@ -1,7 +1,7 @@
 import { Root } from "./components/root";
 import { Viewport } from "./components/viewport";
 import { Slide } from "./components/slide";
-import { Thumbnails } from "./components/thumbnails";
+import { ThumbnailList, ThumbnailItem, ThumbnailItemCanvas } from "./components/thumbnails";
 import { Loading } from "./components/loading";
 import { PresentationError as Error } from "./components/error";
 
@@ -9,7 +9,9 @@ export const Presentation = {
   Root,
   Viewport,
   Slide,
-  Thumbnails,
+  ThumbnailList,
+  ThumbnailItem,
+  ThumbnailItemCanvas,
   Loading,
   Error,
 } as const;
@@ -27,6 +29,14 @@ export type { RenderProp, ComponentRenderFn } from "./utils/render";
 // Component state types
 export type { ViewportState, ViewportProps } from "./components/viewport";
 export type { SlideState, SlideProps } from "./components/slide";
-export type { ThumbnailsState, ThumbnailsProps } from "./components/thumbnails";
+export type {
+  ThumbnailListState,
+  ThumbnailListRenderState,
+  ThumbnailListProps,
+  ThumbnailItemState,
+  ThumbnailItemProps,
+  ThumbnailItemCanvasState,
+  ThumbnailItemCanvasProps,
+} from "./components/thumbnails";
 export type { LoadingState, LoadingProps } from "./components/loading";
 export type { ErrorState, PresentationErrorProps } from "./components/error";

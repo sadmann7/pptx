@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import type { PresentationData, SlideData } from "@pptx/parser";
 import type { PresentationState } from "./store";
 import { PresentationStore } from "./store";
@@ -14,11 +14,15 @@ function usePresentationStore(): PresentationStore {
 const SERVER_SNAPSHOT: PresentationState = {
   status: "idle",
   presentation: null,
-  currentIndex: 0,
+  currentSlideId: null,
   zoom: 1,
   progress: 0,
   error: null,
 };
+
+// ---------------------------------------------------------------------------
+// usePresentation
+// ---------------------------------------------------------------------------
 
 export interface UsePresentationResult {
   presentation: PresentationData | null;
@@ -42,51 +46,79 @@ export function usePresentation(): UsePresentationResult {
   };
 }
 
+// ---------------------------------------------------------------------------
+// useSlide
+// ---------------------------------------------------------------------------
+
 export interface UseSlideResult {
   slide: SlideData | null;
+  /**
+   * Stable identity of the active slide (`SlideData.slidePath`).
+   * Use this — not `index` — as the source of truth for navigation,
+   * keys, and any future editing operations.
+   */
+  slideId: string | null;
+  /**
+   * Current display position (0-based). Derived from `slideId` via
+   * `findIndex` — safe to use for display but do NOT store it as identity.
+   */
   index: number;
   total: number;
   isFirst: boolean;
   isLast: boolean;
-  goTo: (index: number) => void;
+  /** Navigate by stable slide ID. */
+  goTo: (slideId: string) => void;
+  /** Navigate by current position. Clamps to valid range. */
+  goToIndex: (index: number) => void;
   next: () => void;
   prev: () => void;
 }
 
 export function useSlide(): UseSlideResult {
   const store = usePresentationStore();
-  const currentIndex = React.useSyncExternalStore(
+
+  // Subscribe to primitives / stable references only.
+  // useSyncExternalStore compares via Object.is — returning a new object
+  // literal on every call would cause an infinite re-render loop.
+
+  // currentSlideId: string | null — primitive, safe to compare directly.
+  const slideId = React.useSyncExternalStore(
     store.subscribe.bind(store),
-    () => store.getState().currentIndex,
-    () => 0,
-  );
-  const total = React.useSyncExternalStore(
-    store.subscribe.bind(store),
-    () => store.getState().presentation?.slides.length ?? 0,
-    () => 0,
-  );
-  const slide = React.useSyncExternalStore(
-    store.subscribe.bind(store),
-    () => {
-      const { presentation, currentIndex: idx } = store.getState();
-      return presentation?.slides[idx] ?? null;
-    },
+    () => store.getState().currentSlideId,
     () => null,
   );
-  const goTo = React.useCallback((i: number) => store.goTo(i), [store]);
-  const next = React.useCallback(() => store.next(), [store]);
-  const prev = React.useCallback(() => store.prev(), [store]);
+
+  // presentation: object reference — only changes when a new file is loaded,
+  // not on slide navigation (the store spreads state but keeps the same ref).
+  const presentation = React.useSyncExternalStore(
+    store.subscribe.bind(store),
+    () => store.getState().presentation,
+    () => null,
+  );
+
+  // Derive the rest synchronously from the two stable subscribed values.
+  const index =
+    presentation && slideId ? presentation.slides.findIndex((s) => s.slidePath === slideId) : -1;
+  const slide = index >= 0 ? (presentation?.slides[index] ?? null) : null;
+  const total = presentation?.slides.length ?? 0;
+
   return {
     slide,
-    index: currentIndex,
+    slideId,
+    index,
     total,
-    isFirst: currentIndex === 0,
-    isLast: total > 0 && currentIndex === total - 1,
-    goTo,
-    next,
-    prev,
+    isFirst: index === 0,
+    isLast: total > 0 && index === total - 1,
+    goTo: React.useCallback((id: string) => store.goTo(id), [store]),
+    goToIndex: React.useCallback((i: number) => store.goToIndex(i), [store]),
+    next: React.useCallback(() => store.next(), [store]),
+    prev: React.useCallback(() => store.prev(), [store]),
   };
 }
+
+// ---------------------------------------------------------------------------
+// useZoom
+// ---------------------------------------------------------------------------
 
 export interface UseZoomResult {
   zoom: number;

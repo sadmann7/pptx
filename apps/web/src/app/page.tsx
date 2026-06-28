@@ -23,7 +23,22 @@ export default function IndexPage() {
       <Presentation.Root file={file} onError={(e) => console.error("[pptx] parse error:", e)}>
         <PresentationDebug />
         <div className="flex flex-1 overflow-hidden">
-          <Presentation.Thumbnails className="border-r border-border" style={{ width: 160 }} />
+          <Presentation.ThumbnailList
+            className="border-r border-border"
+            thumbWidth={160}
+            style={{ width: 160 }}
+          >
+            {({ slides }) =>
+              slides.map((slide, i) => (
+                <Presentation.ThumbnailItem key={slide.slidePath} slideId={slide.slidePath}>
+                  <Presentation.ThumbnailItemCanvas />
+                  <div className="absolute right-1.5 bottom-1 font-mono text-[9px] text-muted-foreground">
+                    {i + 1}
+                  </div>
+                </Presentation.ThumbnailItem>
+              ))
+            }
+          </Presentation.ThumbnailList>
           <div className="relative flex flex-1 flex-col overflow-hidden">
             <Presentation.Loading className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
               {(progress) => <span>Loading… {progress}%</span>}

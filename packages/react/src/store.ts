@@ -7,7 +7,15 @@ export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 export interface PresentationState {
   status: PresentationStatus;
   presentation: PresentationData | null;
-  currentIndex: number;
+  /**
+   * Stable identity of the active slide — `SlideData.slidePath`
+   * (e.g. `"ppt/slides/slide3.xml"`). Null when no presentation is loaded.
+   *
+   * Using slidePath instead of a positional index means reordering,
+   * inserting, or deleting slides never silently redirects the viewer
+   * to the wrong slide.
+   */
+  currentSlideId: string | null;
   zoom: number;
   progress: number;
   error: Error | null;
@@ -16,7 +24,7 @@ export interface PresentationState {
 const INITIAL_STATE: PresentationState = {
   status: "idle",
   presentation: null,
-  currentIndex: 0,
+  currentSlideId: null,
   zoom: 1,
   progress: 0,
   error: null,
@@ -69,7 +77,7 @@ export class PresentationStore {
       this.setState({
         status: "ready",
         presentation,
-        currentIndex: 0,
+        currentSlideId: presentation.slides[0]?.slidePath ?? null,
         zoom: 1,
         progress: 100,
         error: null,
@@ -84,18 +92,36 @@ export class PresentationStore {
     }
   }
 
-  goTo(index: number): void {
-    if (!this.state.presentation) return;
-    const clamped = Math.max(0, Math.min(this.state.presentation.slides.length - 1, index));
-    if (clamped === this.state.currentIndex) return;
-    this.setState({ ...this.state, currentIndex: clamped });
+  /** Navigate to a slide by its stable ID (`SlideData.slidePath`). */
+  goTo(slideId: string): void {
+    const { presentation, currentSlideId } = this.state;
+    if (!presentation || currentSlideId === slideId) return;
+    const exists = presentation.slides.some((s) => s.slidePath === slideId);
+    if (!exists) return;
+    this.setState({ ...this.state, currentSlideId: slideId });
+  }
+
+  /** Navigate to a slide by its current position. Clamps to valid range. */
+  goToIndex(index: number): void {
+    const { presentation } = this.state;
+    if (!presentation) return;
+    const clamped = Math.max(0, Math.min(presentation.slides.length - 1, index));
+    const slideId = presentation.slides[clamped]?.slidePath;
+    if (slideId) this.goTo(slideId);
   }
 
   next(): void {
-    this.goTo(this.state.currentIndex + 1);
+    const { presentation, currentSlideId } = this.state;
+    if (!presentation || !currentSlideId) return;
+    const idx = presentation.slides.findIndex((s) => s.slidePath === currentSlideId);
+    this.goToIndex(idx + 1);
   }
+
   prev(): void {
-    this.goTo(this.state.currentIndex - 1);
+    const { presentation, currentSlideId } = this.state;
+    if (!presentation || !currentSlideId) return;
+    const idx = presentation.slides.findIndex((s) => s.slidePath === currentSlideId);
+    this.goToIndex(idx - 1);
   }
 
   setZoom(zoom: number): void {
