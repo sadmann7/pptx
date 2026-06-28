@@ -22,8 +22,13 @@ export interface ShapePathProps {
 /**
  * Returns the SVG path/primitive descriptor for a given preset shape type.
  * Falls back to `rect` for unknown shape types.
+ *
+ * @param shapeType  OOXML preset name, e.g. "roundRect"
+ * @param w          Rendered width  in pt  (required for correct corner radii)
+ * @param h          Rendered height in pt  (required for correct corner radii)
+ * @param adjs       Parsed adjustment values from <a:avLst> (OOXML 0–100000 units)
  */
-export function getShapePath(shapeType: string): ShapePathProps {
+export function getShapePath(shapeType: string, w = 100, h = 100, adjs?: number[]): ShapePathProps {
   switch (shapeType) {
     // ── Basic shapes ──────────────────────────────────────────────────────
     case "rect":
@@ -34,11 +39,23 @@ export function getShapePath(shapeType: string): ShapePathProps {
     case "oval":
       return ellipse();
 
-    case "roundRect":
-      return { element: "rect", attrs: { x: 0, y: 0, width: 100, height: 100 }, rx: 8, ry: 8 };
+    case "roundRect": {
+      // OOXML adj: corner radius = adj/100000 * min(w,h). Default = 16667 (1/6).
+      // rx and ry are in the 100×100 viewBox coordinate space; because the viewBox
+      // is non-square we must scale each axis independently to get a circular arc.
+      const adj = adjs?.[0] ?? 16667;
+      const r = (adj / 100000) * Math.min(w, h);
+      const rx = (r / w) * 100;
+      const ry = (r / h) * 100;
+      return { element: "rect", attrs: { x: 0, y: 0, width: 100, height: 100 }, rx, ry };
+    }
 
-    case "round1Rect":
-      return { element: "rect", attrs: { x: 0, y: 0, width: 100, height: 100 }, rx: 8, ry: 0 };
+    case "round1Rect": {
+      const adj = adjs?.[0] ?? 16667;
+      const r = (adj / 100000) * Math.min(w, h);
+      const rx = (r / w) * 100;
+      return { element: "rect", attrs: { x: 0, y: 0, width: 100, height: 100 }, rx, ry: 0 };
+    }
 
     case "snip1Rect":
       return { element: "path", attrs: { d: "M 15 0 L 100 0 L 100 100 L 0 100 L 0 0 Z" } };

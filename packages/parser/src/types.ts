@@ -302,6 +302,11 @@ export interface GeometricShape extends BaseElement {
    * 'rightArrow', 'star5', etc.  'custom' for custom geometry.
    */
   shapeType: string;
+  /**
+   * Parsed adjustment values from <a:avLst>. Each entry corresponds to a
+   * named guide value (adj, adj2, …). Values are in OOXML units (0–100000).
+   */
+  adjustments?: number[];
   fill?: Fill;
   stroke?: Stroke;
   effects?: Effect[];

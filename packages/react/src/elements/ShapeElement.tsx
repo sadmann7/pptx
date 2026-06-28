@@ -12,7 +12,12 @@ interface ShapeElementProps {
 }
 
 export function ShapeElement({ element, theme }: ShapeElementProps) {
-  const shape = getShapePath(element.shapeType);
+  const shape = getShapePath(
+    element.shapeType,
+    element.size.width,
+    element.size.height,
+    element.adjustments,
+  );
   const fill = fillToSVG(element.fill, theme);
   const strokeAttrs = strokeToSVGAttrs(element.stroke, theme);
 

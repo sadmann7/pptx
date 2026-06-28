@@ -21,6 +21,25 @@ import { readMediaAsUrl, readString } from "../zip";
 import { attr, attrBool, attrNum, get, toArray } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
 
+// ─── Adjustments ─────────────────────────────────────────────────────────────
+
+/**
+ * Parse <a:avLst> adjustment values. Each <a:gd fmla="val N"/> contributes
+ * one number, in document order (adj → index 0, adj2 → index 1, …).
+ */
+function parseAdjustments(avLstNode: unknown): number[] {
+  if (!avLstNode || typeof avLstNode !== "object") return [];
+  const guides = toArray((avLstNode as Record<string, unknown>)["a:gd"]);
+  const result: number[] = [];
+  for (const gd of guides) {
+    if (!gd || typeof gd !== "object") continue;
+    const fmla = attr(gd as Record<string, unknown>, "fmla") ?? "";
+    const m = fmla.match(/^val\s+(-?\d+)/);
+    if (m?.[1]) result.push(parseInt(m[1], 10));
+  }
+  return result;
+}
+
 // ─── Placeholder ─────────────────────────────────────────────────────────────
 
 /**
@@ -137,6 +156,9 @@ function parseSp(
 
   const shapeType = prstGeom ? (attr(prstGeom, "prst") ?? "rect") : "custom";
 
+  // Parse adjustment values from <a:avLst><a:gd name="adj" fmla="val N"/>…
+  const adjustments = parseAdjustments(get(prstGeom, "a:avLst"));
+
   let body: GeometricShape["body"] | undefined;
   if (hasText) {
     const { paragraphs, properties } = parseTextBody(txBody);
@@ -153,6 +175,7 @@ function parseSp(
     hidden,
     placeholder,
     shapeType,
+    ...(adjustments.length ? { adjustments } : {}),
     fill,
     stroke,
     effects,
