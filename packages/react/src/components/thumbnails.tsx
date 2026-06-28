@@ -35,7 +35,6 @@ interface ThumbnailRovingCtxValue {
   currentTabStopId: string | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onItemFocus: (slideId: string) => void;
-  onItemShiftTab: () => void;
 }
 
 const ThumbnailRovingCtx = React.createContext<ThumbnailRovingCtxValue | null>(null);
@@ -114,14 +113,8 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const store = usePresentationStoreRef();
     const containerRef = React.useRef<HTMLDivElement>(null);
 
-    // Which slide's button currently owns tabIndex=0. Initialise from the store
-    // so a pre-selected slide gets the tab stop on first render.
-    const [currentTabStopId, setCurrentTabStopId] = React.useState<string | null>(
-      () => store.getState().currentSlideId,
-    );
-    // True while the user is Shift+Tabbing out so the container steps out of
-    // the tab order and the next Shift+Tab escapes the list entirely.
-    const [isTabbingBackOut, setIsTabbingBackOut] = React.useState(false);
+    // Which slide's button currently owns tabIndex=0.
+    const [currentTabStopId, setCurrentTabStopId] = React.useState<string | null>(null);
     // Distinguishes mouse-click focus from keyboard focus so the entry-focus
     // redirect only fires for keyboard (matching Radix roving-focus behaviour).
     const isClickFocusRef = React.useRef(false);
@@ -132,6 +125,17 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       () => null,
     );
 
+    // Auto-focus the active (or first) thumbnail whenever a new presentation
+    // loads. This lets arrow-key navigation work immediately without requiring
+    // the user to Tab into the list first.
+    React.useEffect(() => {
+      if (!presentation || !containerRef.current) return;
+      const btn =
+        containerRef.current.querySelector<HTMLButtonElement>("[data-active]") ??
+        containerRef.current.querySelector<HTMLButtonElement>("button");
+      btn?.focus({ preventScroll: true });
+    }, [presentation]);
+
     if (status !== "ready" || !presentation) return null;
 
     const total = presentation.slides.length;
@@ -140,6 +144,10 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       : -1;
 
     const state: ThumbnailListState = { total, currentSlideId, currentIndex };
+
+    // Fallback to the store's selected slide so its button gets tabIndex=0
+    // before any keyboard interaction sets currentTabStopId explicitly.
+    const effectiveTabStopId = currentTabStopId ?? currentSlideId;
 
     let resolvedChildren: React.ReactNode;
     if (typeof children === "function") {
@@ -161,10 +169,9 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     return (
       <ThumbnailRovingCtx.Provider
         value={{
-          currentTabStopId,
+          currentTabStopId: effectiveTabStopId,
           containerRef,
           onItemFocus: setCurrentTabStopId,
-          onItemShiftTab: () => setIsTabbingBackOut(true),
         }}
       >
         {renderElement(
@@ -176,53 +183,32 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
             role: "listbox",
             "aria-label": elementProps["aria-label"] ?? "Slide thumbnails",
             "aria-orientation": "vertical",
-            // Step out of the tab order while Shift+Tabbing out so the browser
-            // doesn't cycle back into the list. Re-enters via the item that owns
-            // tabIndex=0 or via the container when no tab stop is established yet.
-            tabIndex: isTabbingBackOut ? -1 : 0,
+            // When a button owns tabIndex=0 the container steps out of the tab
+            // order — the list has exactly ONE external tab stop (the active
+            // button). Shift+Tab from the button then skips the container and
+            // exits the list in a single key press.
+            // When no button has a tab stop yet (e.g. before auto-focus fires),
+            // the container acts as the entry point and redirects focus.
+            tabIndex: effectiveTabStopId ? -1 : 0,
             className,
             style: { overflowY: "auto", outline: "none", ...style },
             onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
               elementProps.onMouseDown?.(e);
-              // Only set the flag when the container itself is clicked, not when
-              // a child button click bubbles up — otherwise the flag never resets
-              // and the next keyboard Tab entry skips the focus redirect.
-              if (e.target === e.currentTarget) {
-                console.log("[ThumbnailList] onMouseDown on container itself");
-                isClickFocusRef.current = true;
-              } else {
-                console.log("[ThumbnailList] onMouseDown bubbled from child", e.target);
-              }
+              if (e.target === e.currentTarget) isClickFocusRef.current = true;
             },
             onFocus: (e: React.FocusEvent<HTMLDivElement>) => {
               elementProps.onFocus?.(e);
-              const isOnContainer = e.target === e.currentTarget;
-              console.log("[ThumbnailList] onFocus", {
-                isOnContainer,
-                isClickFocus: isClickFocusRef.current,
-                currentTabStopId,
-              });
-              if (!isOnContainer) return;
+              // Container only receives keyboard focus when effectiveTabStopId
+              // is null (no button owns tabIndex=0 yet). Redirect to first button.
+              if (e.target !== e.currentTarget) return;
               if (isClickFocusRef.current) {
                 isClickFocusRef.current = false;
                 return;
               }
               const el = containerRef.current;
               if (!el) return;
-              const activeBtn = el.querySelector<HTMLButtonElement>("[data-active]");
-              const stopBtn = currentTabStopId
-                ? el.querySelector<HTMLButtonElement>(`[data-slide-id="${currentTabStopId}"]`)
-                : null;
               const allBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("button"));
-              const candidates = [activeBtn, stopBtn, ...allBtns].filter(
-                (b): b is HTMLButtonElement => b != null,
-              );
-              console.log("[ThumbnailList] entry focus redirect → candidates", candidates.length);
-              focusFirst(candidates, true);
-            },
-            onBlur: (e: React.FocusEvent<HTMLDivElement>) => {
-              elementProps.onBlur?.(e);
-              setIsTabbingBackOut(false);
+              focusFirst(allBtns, true);
             },
             children: resolvedChildren,
           },
@@ -330,7 +316,6 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
             onClick: () => store.goTo(slideId),
             onFocus: (e: React.FocusEvent<HTMLButtonElement>) => {
               elementProps.onFocus?.(e);
-              console.log("[ThumbnailItem] onFocus", { slideId, hasRovingCtx: !!rovingCtx });
               rovingCtx?.onItemFocus(slideId);
               store.goTo(slideId);
             },
@@ -340,16 +325,6 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
             },
             onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
               elementProps.onKeyDown?.(e);
-              console.log("[ThumbnailItem] onKeyDown", {
-                key: e.key,
-                hasRovingCtx: !!rovingCtx,
-                hasContainer: !!rovingCtx?.containerRef.current,
-              });
-
-              if (e.key === "Tab" && e.shiftKey) {
-                rovingCtx?.onItemShiftTab();
-                return;
-              }
 
               if (e.target !== e.currentTarget) return;
 
@@ -361,12 +336,6 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
               if (!container) return;
 
               let candidates = Array.from(container.querySelectorAll<HTMLButtonElement>("button"));
-              console.log(
-                "[ThumbnailItem] candidates before slice",
-                candidates.length,
-                "intent",
-                focusIntent,
-              );
 
               if (focusIntent === "last") {
                 candidates = candidates.reverse();
@@ -376,7 +345,6 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
                 candidates = candidates.slice(idx + 1);
               }
 
-              console.log("[ThumbnailItem] candidates after slice", candidates.length);
               setTimeout(() => focusFirst(candidates));
             },
             children: children ?? (
