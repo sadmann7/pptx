@@ -1,15 +1,14 @@
 "use client";
 
-import { Presentation as Primitive } from "@diceui/pptx";
 import type {
-  ThumbnailListProps,
-  ThumbnailListRenderState,
-  ThumbnailItemProps,
-  ThumbnailItemPreviewProps,
-  ThumbnailItemNumberProps,
   LoadingProps,
   PresentationErrorProps,
+  ThumbnailItemNumberProps,
+  ThumbnailItemPreviewProps,
+  ThumbnailItemProps,
+  ThumbnailListProps,
 } from "@diceui/pptx";
+import { Presentation as Primitive } from "@diceui/pptx";
 
 import { cn } from "@/lib/utils";
 
@@ -87,7 +86,8 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
         "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-all duration-100",
         "hover:bg-accent hover:ring-border",
         "focus-visible:ring-ring",
-        "data-active:bg-accent data-active:ring-primary",
+        "data-active:bg-accent data-active:ring-border",
+        "group-focus-within/thumbs:data-active:ring-ring",
         className,
       )}
       {...props}
@@ -102,30 +102,29 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
   );
 }
 
-const defaultThumbnailChildren = ({ slides }: ThumbnailListRenderState) =>
-  slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />);
-
 function PresentationThumbnailList({ className, style, children, ...props }: ThumbnailListProps) {
   return (
     <Primitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("flex w-40 shrink-0 flex-col overflow-y-auto p-4", className)}
+      className={cn("group/thumbs flex w-40 shrink-0 flex-col overflow-y-auto p-4", className)}
       style={style}
       {...props}
     >
-      {children ?? defaultThumbnailChildren}
+      {children ??
+        (({ slides }) =>
+          slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
     </Primitive.ThumbnailList>
   );
 }
 
 export {
   Presentation,
-  PresentationViewport,
-  PresentationSlide,
-  PresentationLoading,
   PresentationError,
-  PresentationThumbnailList,
+  PresentationLoading,
+  PresentationSlide,
   PresentationThumbnailItem,
-  PresentationThumbnailItemPreview,
   PresentationThumbnailItemNumber,
+  PresentationThumbnailItemPreview,
+  PresentationThumbnailList,
+  PresentationViewport,
 };
