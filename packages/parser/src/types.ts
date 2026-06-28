@@ -229,6 +229,17 @@ export interface NoFill {
 
 export type Fill = SolidFill | GradientFill | PatternFill | NoFill;
 
+export type ArrowEndType = "none" | "triangle" | "stealth" | "diamond" | "oval" | "arrow";
+export type ArrowEndSize = "sm" | "med" | "lg";
+
+export interface ArrowEnd {
+  type: ArrowEndType;
+  /** Width of the arrowhead relative to the line width */
+  width?: ArrowEndSize;
+  /** Length of the arrowhead */
+  length?: ArrowEndSize;
+}
+
 export interface Stroke {
   fill: Fill;
   /** Width in points */
@@ -236,6 +247,10 @@ export interface Stroke {
   dashStyle?: "solid" | "dot" | "dash" | "dashDot" | "lgDash" | "lgDashDot" | string;
   joinStyle?: "round" | "bevel" | "miter";
   capStyle?: "flat" | "sq" | "rnd";
+  /** Arrowhead at the start of the line */
+  headEnd?: ArrowEnd;
+  /** Arrowhead at the end of the line */
+  tailEnd?: ArrowEnd;
 }
 
 // ─── Transform ───────────────────────────────────────────────────────────────

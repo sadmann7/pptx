@@ -167,13 +167,96 @@ export function getShapePath(shapeType: string): ShapePathProps {
         },
       };
 
+    case "chevron":
+      return {
+        element: "polygon",
+        attrs: { points: "0,0 75,0 100,50 75,100 0,100 25,50" },
+      };
+
+    case "notchedRightArrow":
+      return {
+        element: "polygon",
+        attrs: { points: "0,25 70,25 70,5 100,50 70,95 70,75 0,75 15,50" },
+      };
+
+    case "homePlate":
+      return {
+        element: "polygon",
+        attrs: { points: "0,0 75,0 100,50 75,100 0,100" },
+      };
+
+    case "funnel":
+      return {
+        element: "path",
+        attrs: { d: "M 0 0 L 100 0 L 65 60 L 65 100 L 35 100 L 35 60 Z" },
+      };
+
+    case "gear6":
+    case "gear9":
+      return ellipse();
+
+    // ── Clouds ────────────────────────────────────────────────────────────
+    case "cloud":
+      return {
+        element: "path",
+        attrs: {
+          d: [
+            "M 27,80",
+            "A 14,14 0 0,1 13,66",
+            "A 18,18 0 0,1 18,38",
+            "A 22,22 0 0,1 42,22",
+            "A 18,18 0 0,1 62,20",
+            "A 20,20 0 0,1 82,32",
+            "A 16,16 0 0,1 88,56",
+            "A 14,14 0 0,1 76,70",
+            "A 16,16 0 0,1 60,80",
+            "Z",
+          ].join(" "),
+        },
+      };
+
     // ── Callouts ──────────────────────────────────────────────────────────
     case "cloudCallout":
+      return {
+        element: "path",
+        attrs: {
+          d: [
+            "M 27,72",
+            "A 14,14 0 0,1 13,58",
+            "A 18,18 0 0,1 18,32",
+            "A 22,22 0 0,1 42,17",
+            "A 18,18 0 0,1 62,15",
+            "A 20,20 0 0,1 82,27",
+            "A 16,16 0 0,1 88,50",
+            "A 14,14 0 0,1 76,63",
+            "A 16,16 0 0,1 60,72",
+            "Z",
+            "M 45,72 L 30,100 L 55,72",
+          ].join(" "),
+        },
+      };
+
     case "wedgeRectCallout":
       return {
         element: "path",
         attrs: {
           d: "M 0 0 L 100 0 L 100 80 L 60 80 L 40 100 L 50 80 L 0 80 Z",
+        },
+      };
+
+    case "wedgeEllipseCallout":
+      return {
+        element: "path",
+        attrs: {
+          d: "M 50 0 A 50 40 0 1 1 49 0 Z M 50 80 L 35 100 L 55 80",
+        },
+      };
+
+    case "wedgeRoundRectCallout":
+      return {
+        element: "path",
+        attrs: {
+          d: "M 10 0 Q 0 0 0 10 L 0 70 Q 0 80 10 80 L 35 80 L 25 100 L 50 80 L 90 80 Q 100 80 100 70 L 100 10 Q 100 0 90 0 Z",
         },
       };
 
@@ -215,6 +298,35 @@ export function getShapePath(shapeType: string): ShapePathProps {
         attrs: {
           points: "35,0 65,0 65,35 100,35 100,65 65,65 65,100 35,100 35,65 0,65 0,35 35,35",
         },
+      };
+
+    // ── Arc / open curves ────────────────────────────────────────────────
+    case "arc":
+      // Approximate arc as a quarter-circle open path (fill:none is applied by renderer)
+      return {
+        element: "path",
+        attrs: { d: "M 100 50 A 50 50 0 0 0 50 0", fill: "none" },
+      };
+
+    case "halfFrame":
+      return {
+        element: "path",
+        attrs: { d: "M 0 0 L 100 0 L 100 20 L 20 20 L 20 100 L 0 100 Z" },
+      };
+
+    case "frame":
+      return {
+        element: "path",
+        attrs: {
+          d: "M 0 0 L 100 0 L 100 100 L 0 100 Z M 10 10 L 10 90 L 90 90 L 90 10 Z",
+          fillRule: "evenodd",
+        },
+      };
+
+    case "corner":
+      return {
+        element: "path",
+        attrs: { d: "M 0 0 L 30 0 L 30 70 L 100 70 L 100 100 L 0 100 Z" },
       };
 
     // ── Lines / connectors ────────────────────────────────────────────────

@@ -12,17 +12,21 @@ interface ShapeElementProps {
 }
 
 export function ShapeElement({ element, theme }: ShapeElementProps) {
-  const outer: React.CSSProperties = {
-    ...elementStyle(element),
-    position: "absolute",
-  };
-
   const shape = getShapePath(element.shapeType);
   const fill = fillToSVG(element.fill, theme);
   const strokeAttrs = strokeToSVGAttrs(element.stroke, theme);
 
-  // Shapes that are just lines / connectors have no fill
-  const isLine = element.shapeType === "line" || element.shapeType.includes("Connector");
+  // Shapes that are just lines / connectors have no fill and may be near-zero height.
+  const isLine =
+    element.shapeType === "line" ||
+    element.shapeType === "arc" ||
+    element.shapeType.toLowerCase().includes("connector");
+
+  const outer: React.CSSProperties = {
+    ...elementStyle(element),
+    position: "absolute",
+    ...(isLine ? { overflow: "visible", minHeight: "1pt" } : {}),
+  };
 
   const svgStyle: React.CSSProperties = {
     position: "absolute",
@@ -62,9 +66,9 @@ export function ShapeElement({ element, theme }: ShapeElementProps) {
   );
 }
 
-function renderShapeElement(
+export function renderShapeElement(
   shape: ReturnType<typeof getShapePath>,
-  sharedProps: Record<string, string>,
+  sharedProps: Record<string, string | number | undefined>,
 ): React.ReactElement {
   const allProps = { ...shape.attrs, ...sharedProps };
 

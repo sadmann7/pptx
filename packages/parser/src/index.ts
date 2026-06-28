@@ -53,6 +53,9 @@ export type {
   PatternFill,
   NoFill,
   Stroke,
+  ArrowEnd,
+  ArrowEndType,
+  ArrowEndSize,
 
   // Color
   Color,

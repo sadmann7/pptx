@@ -1,4 +1,4 @@
-import type { Fill, Stroke } from "../types";
+import type { ArrowEnd, ArrowEndSize, ArrowEndType, Fill, Stroke } from "../types";
 import { parseColor, parseGradientStops } from "../color";
 import { attr, attrNum, get } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
@@ -65,12 +65,28 @@ export function parseStroke(lnNode: unknown): Stroke | undefined {
         : undefined;
   const capNode = attr(n, "cap");
 
+  const headEnd = parseArrowEnd(get(n, "a:headEnd"));
+  const tailEnd = parseArrowEnd(get(n, "a:tailEnd"));
+
   return {
     fill: fill ?? { type: "none" },
     width,
     dashStyle: dashStyle as Stroke["dashStyle"],
     joinStyle: joinNode as Stroke["joinStyle"],
     capStyle: capNode as Stroke["capStyle"],
+    ...(headEnd ? { headEnd } : {}),
+    ...(tailEnd ? { tailEnd } : {}),
+  };
+}
+
+function parseArrowEnd(node: unknown): ArrowEnd | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const type = (attr(node, "type") ?? "none") as ArrowEndType;
+  if (type === "none") return undefined;
+  return {
+    type,
+    width: (attr(node, "w") ?? "med") as ArrowEndSize,
+    length: (attr(node, "len") ?? "med") as ArrowEndSize,
   };
 }
 

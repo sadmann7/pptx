@@ -3,7 +3,40 @@
 import { Presentation, usePresentation, useSlide } from "@pptx/react";
 import * as React from "react";
 
-function DebugBar() {
+export default function IndexPage() {
+  const [file, setFile] = React.useState<File | null>(null);
+
+  return (
+    <div className="flex h-full flex-col bg-background text-foreground">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+        <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
+        <input
+          type="file"
+          accept=".pptx"
+          className="text-sm"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setFile(f);
+          }}
+        />
+      </div>
+      <Presentation.Root file={file} onError={(e) => console.error("[pptx] parse error:", e)}>
+        <PresentationDebug />
+        <div className="flex flex-1 overflow-hidden">
+          <Presentation.Thumbnails className="border-r border-border" style={{ width: 160 }} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <Presentation.Viewport className="flex-1" autoFit autoFitPadding={32}>
+              <Presentation.Slide />
+            </Presentation.Viewport>
+          </div>
+        </div>
+      </Presentation.Root>
+    </div>
+  );
+}
+
+function PresentationDebug() {
   const { status, progress, error, presentation } = usePresentation();
   const { slide } = useSlide();
 
@@ -33,46 +66,6 @@ function DebugBar() {
         </>
       )}
       {error && <span className="text-destructive">{error.message}</span>}
-    </div>
-  );
-}
-
-export default function IndexPage() {
-  const [file, setFile] = React.useState<File | null>(null);
-
-  return (
-    <div className="flex h-full flex-col bg-background text-foreground">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-        <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
-        <input
-          type="file"
-          accept=".pptx"
-          className="text-sm"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) setFile(f);
-          }}
-        />
-      </div>
-
-      <Presentation.Root file={file} onError={(e) => console.error("[pptx] parse error:", e)}>
-        <DebugBar />
-
-        <div className="flex flex-1 overflow-hidden">
-          {/* Thumbnail rail */}
-          <Presentation.Thumbnails className="border-r border-border" style={{ width: 160 }} />
-
-          {/* Main column */}
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Presentation.Viewport className="flex-1" autoFit autoFitPadding={32}>
-              <Presentation.Slide />
-            </Presentation.Viewport>
-
-            <Presentation.Notes className="border-t border-border" style={{ height: 120 }} />
-          </div>
-        </div>
-      </Presentation.Root>
     </div>
   );
 }

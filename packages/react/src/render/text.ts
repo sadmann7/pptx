@@ -53,7 +53,10 @@ export function bodyStyle(
 
 export function paragraphStyle(style: ParagraphStyle, _theme: ThemeColors): React.CSSProperties {
   const css: React.CSSProperties = {
-    margin: 0,
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
     padding: 0,
     lineHeight: "inherit",
   };
