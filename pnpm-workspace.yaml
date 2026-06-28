@@ -1,6 +1,13 @@
 packages:
   - apps/*
   - packages/*
+
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - fumadocs-core
+  - fumadocs-mdx
+  - fumadocs-ui
+
 allowBuilds:
   esbuild: true
   msw: true
