@@ -66,6 +66,8 @@ export interface Theme {
   name: string;
   colors: ThemeColors;
   fonts: ThemeFonts;
+  /** Effect style list from the theme's fmtScheme. Index 0-based. */
+  effectStyles?: Effect[][];
 }
 
 // ─── Text ────────────────────────────────────────────────────────────────────
@@ -265,7 +267,7 @@ export interface Transform {
 // ─── Shadow & Effects ────────────────────────────────────────────────────────
 
 export interface OuterShadow {
-  type: "outer";
+  type: "outerShadow";
   color: Color;
   /** In points */
   blurRadius?: number;
@@ -336,6 +338,7 @@ export interface TextShape extends BaseElement {
   properties: BodyProperties;
   fill?: Fill;
   stroke?: Stroke;
+  effects?: Effect[];
 }
 
 /** Table (graphicFrame > tbl) */

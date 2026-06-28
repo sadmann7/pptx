@@ -1,4 +1,4 @@
-import type { Color, Fill, Stroke, ThemeColors } from "@pptx/parser";
+import type { Color, Effect, Fill, Stroke, ThemeColors } from "@pptx/parser";
 import { resolveColor } from "@pptx/parser";
 
 export function toCSS(color: Color | undefined, theme: ThemeColors): string {
@@ -33,6 +33,54 @@ export function fillToSVG(fill: Fill | undefined, theme: ThemeColors): string {
   }
   if (fill.type === "pattern" && fill.fgColor) return toCSS(fill.fgColor, theme);
   return "none";
+}
+
+const PT_TO_PX = 96 / 72;
+
+/**
+ * Convert an array of element effects to a CSS `box-shadow` value.
+ * Outer shadows → `box-shadow: dx dy blur color`.
+ */
+export function effectsToBoxShadow(
+  effects: Effect[] | undefined,
+  theme: ThemeColors,
+): string | undefined {
+  if (!effects?.length) return undefined;
+  const parts: string[] = [];
+  for (const e of effects) {
+    if (e.type !== "outerShadow") continue;
+    const color = toCSS(e.color, theme);
+    const dist = (e.distance ?? 0) * PT_TO_PX;
+    const rad = ((e.direction ?? 0) * Math.PI) / 180;
+    const dx = (dist * Math.cos(rad)).toFixed(1);
+    const dy = (dist * Math.sin(rad)).toFixed(1);
+    const blur = ((e.blurRadius ?? 0) * PT_TO_PX).toFixed(1);
+    parts.push(`${dx}px ${dy}px ${blur}px ${color}`);
+  }
+  return parts.length ? parts.join(", ") : undefined;
+}
+
+/**
+ * Convert an array of element effects to a CSS `filter: drop-shadow()` string.
+ * Useful for non-rectangular shapes where box-shadow won't follow the outline.
+ */
+export function effectsToFilter(
+  effects: Effect[] | undefined,
+  theme: ThemeColors,
+): string | undefined {
+  if (!effects?.length) return undefined;
+  const parts: string[] = [];
+  for (const e of effects) {
+    if (e.type !== "outerShadow") continue;
+    const color = toCSS(e.color, theme);
+    const dist = (e.distance ?? 0) * PT_TO_PX;
+    const rad = ((e.direction ?? 0) * Math.PI) / 180;
+    const dx = (dist * Math.cos(rad)).toFixed(1);
+    const dy = (dist * Math.sin(rad)).toFixed(1);
+    const blur = ((e.blurRadius ?? 0) * PT_TO_PX).toFixed(1);
+    parts.push(`drop-shadow(${dx}px ${dy}px ${blur}px ${color})`);
+  }
+  return parts.length ? parts.join(" ") : undefined;
 }
 
 /** SVG stroke attributes */

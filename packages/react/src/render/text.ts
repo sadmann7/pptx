@@ -9,10 +9,13 @@ export function bodyStyle(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _theme: ThemeColors,
 ): React.CSSProperties {
+  // spAutoFit: let the shape grow to fit content — don't clip or fix height.
+  // noAutofit (or default): clip to the fixed bounding box.
+  const autofit = props.autofit;
   const css: React.CSSProperties = {
-    overflow: "hidden",
+    overflow: autofit === "spAutoFit" ? "visible" : "hidden",
     width: "100%",
-    height: "100%",
+    height: autofit === "spAutoFit" ? "auto" : "100%",
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",

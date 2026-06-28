@@ -1,6 +1,7 @@
 import type {
   ChartShape,
   ConnectorShape,
+  Effect,
   GeometricShape,
   GroupShape,
   ImageShape,
@@ -12,7 +13,7 @@ import type {
   TextShape,
   Transform,
 } from "../types";
-import { parseFill, parseStroke } from "./fill";
+import { parseFill, parseEffects, parseStroke } from "./fill";
 import { parseTable } from "./table";
 import { parseTextBody } from "./text";
 import type { PptxZip, Relationship } from "../zip";
@@ -76,7 +77,10 @@ function parseXfrm(xfrmNode: unknown): { position: Position; size: Size; transfo
 
 // ─── Shape (sp) ──────────────────────────────────────────────────────────────
 
-function parseSp(spNode: Record<string, unknown>): GeometricShape | TextShape {
+function parseSp(
+  spNode: Record<string, unknown>,
+  themeEffectStyles?: Effect[][],
+): GeometricShape | TextShape {
   const nvSpPr = get(spNode, "p:nvSpPr") as Record<string, unknown> | undefined;
   const cNvPr = get(nvSpPr, "p:cNvPr") as Record<string, unknown> | undefined;
   const id = attr(cNvPr, "id") ?? "";
@@ -90,6 +94,20 @@ function parseSp(spNode: Record<string, unknown>): GeometricShape | TextShape {
 
   const fill = parseFill(spPr);
   const stroke = parseStroke(get(spPr, "a:ln"));
+
+  // Effects: inline effectLst takes priority; fall back to theme effectRef.
+  let rawEffects = parseEffects(get(spPr, "a:effectLst"));
+  if (!rawEffects.length && themeEffectStyles) {
+    const styleNode = get(spNode, "p:style") as Record<string, unknown> | undefined;
+    const effectRef = get(styleNode, "a:effectRef");
+    if (effectRef) {
+      const idx = attrNum(effectRef, "idx");
+      if (idx !== undefined && idx > 0 && idx <= themeEffectStyles.length) {
+        rawEffects = themeEffectStyles[idx - 1] ?? [];
+      }
+    }
+  }
+  const effects = rawEffects.length ? rawEffects : undefined;
 
   const prstGeom = get(spPr, "a:prstGeom");
   const custGeom = get(spPr, "a:custGeom");
@@ -113,6 +131,7 @@ function parseSp(spNode: Record<string, unknown>): GeometricShape | TextShape {
       properties,
       fill,
       stroke,
+      effects,
     } satisfies TextShape;
   }
 
@@ -136,6 +155,7 @@ function parseSp(spNode: Record<string, unknown>): GeometricShape | TextShape {
     shapeType,
     fill,
     stroke,
+    effects,
     body,
   } satisfies GeometricShape;
 }
@@ -275,6 +295,7 @@ function parseCxnSp(cxnNode: Record<string, unknown>): ConnectorShape {
   const cNvPr = get(nvCxnSpPr, "p:cNvPr") as Record<string, unknown> | undefined;
   const id = attr(cNvPr, "id") ?? "";
   const name = attr(cNvPr, "name") ?? "";
+  const hidden = attrBool(cNvPr, "hidden") ?? false;
   const placeholder = readPlaceholder(get(nvCxnSpPr, "p:nvPr"));
 
   const spPr = get(cxnNode, "p:spPr") as Record<string, unknown> | undefined;
@@ -294,6 +315,7 @@ function parseCxnSp(cxnNode: Record<string, unknown>): ConnectorShape {
     position,
     size,
     transform,
+    hidden,
     placeholder,
     shapeType,
     fill,
@@ -340,12 +362,13 @@ export async function parseSpTree(
   zip: PptxZip,
   slidePath: string,
   skipImages: boolean,
+  themeEffectStyles?: Effect[][],
 ): Promise<SlideElement[]> {
   const elements: SlideElement[] = [];
 
   const spNodes = toArray(treeNode["p:sp"] as unknown[]);
   for (const sp of spNodes) {
-    elements.push(parseSp(sp as Record<string, unknown>));
+    elements.push(parseSp(sp as Record<string, unknown>, themeEffectStyles));
   }
 
   const picNodes = toArray(treeNode["p:pic"] as unknown[]);

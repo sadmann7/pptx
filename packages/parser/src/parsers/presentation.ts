@@ -50,8 +50,10 @@ export async function parsePresentation(
       const rel = presRels.get(rId);
       const slidePath = rel?.target ?? `ppt/slides/slide${index + 1}.xml`;
 
-      // Parse raw slide
-      const rawSlide = await parseSlide(zip, slidePath, index, rId, skipImages, skipNotes);
+      // Parse raw slide (pass theme effect styles so effectRef can be resolved)
+      const rawSlide = await parseSlide(
+        zip, slidePath, index, rId, skipImages, skipNotes, theme.effectStyles,
+      );
 
       // Load layout + master for this slide and resolve inheritance
       const slideRels = await loadRels(zip, slidePath);

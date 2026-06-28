@@ -1,6 +1,11 @@
 import React from "react";
 import type { GeometricShape, ThemeColors } from "@pptx/parser";
-import { fillToSVG, strokeToSVGAttrs } from "../render/color";
+import {
+  effectsToBoxShadow,
+  effectsToFilter,
+  fillToSVG,
+  strokeToSVGAttrs,
+} from "../render/color";
 import { bodyStyle } from "../render/text";
 import { getShapePath } from "../render/shapes";
 import { elementStyle } from "../render/transform";
@@ -22,10 +27,21 @@ export function ShapeElement({ element, theme }: ShapeElementProps) {
     element.shapeType === "arc" ||
     element.shapeType.toLowerCase().includes("connector");
 
+  // box-shadow works well for rect/roundRect; filter: drop-shadow for complex shapes.
+  const isBoxShadowShape =
+    element.shapeType === "rect" || element.shapeType === "roundRect";
+  const boxShadow = isBoxShadowShape
+    ? effectsToBoxShadow(element.effects, theme)
+    : undefined;
+  const filter = !isBoxShadowShape
+    ? effectsToFilter(element.effects, theme)
+    : undefined;
   const outer: React.CSSProperties = {
     ...elementStyle(element),
     position: "absolute",
     ...(isLine ? { overflow: "visible", minHeight: "1pt" } : {}),
+    ...(boxShadow ? { boxShadow } : {}),
+    ...(filter ? { filter } : {}),
   };
 
   const svgStyle: React.CSSProperties = {

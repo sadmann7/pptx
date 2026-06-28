@@ -1,4 +1,4 @@
-import type { Background, Slide } from "../types";
+import type { Background, Effect, Slide } from "../types";
 import { parseBackground } from "./fill";
 import { parseSpTree } from "./shape";
 import type { PptxZip } from "../zip";
@@ -15,6 +15,7 @@ export async function parseSlide(
   rId: string,
   skipImages: boolean,
   skipNotes: boolean,
+  themeEffectStyles?: Effect[][],
 ): Promise<Slide> {
   const slideXml = await readXml(zip, slidePath);
   const rels = await loadRels(zip, slidePath);
@@ -32,7 +33,9 @@ export async function parseSlide(
 
   // Shape tree
   const spTree = get(cSld, "p:spTree") as Record<string, unknown> | undefined;
-  const elements = spTree ? await parseSpTree(spTree, rels, zip, slidePath, skipImages) : [];
+  const elements = spTree
+    ? await parseSpTree(spTree, rels, zip, slidePath, skipImages, themeEffectStyles)
+    : [];
 
   // Notes
   let notes: string | undefined;

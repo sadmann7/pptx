@@ -1,5 +1,6 @@
-import type { Theme, ThemeColors, ThemeFonts } from "../types";
-import { attr, get } from "../xml";
+import type { Effect, Theme, ThemeColors, ThemeFonts } from "../types";
+import { parseEffects } from "./fill";
+import { attr, get, toArray } from "../xml";
 
 const FALLBACK_COLORS: ThemeColors = {
   dk1: "000000",
@@ -27,10 +28,16 @@ export function parseTheme(themeXml: Record<string, unknown>): Theme {
   const clrScheme = get(fmtScheme, "a:clrScheme") as Record<string, unknown> | undefined;
   const fontScheme = get(fmtScheme, "a:fontScheme") as Record<string, unknown> | undefined;
 
+  const fmtSchemeNode = get(fmtScheme, "a:fmtScheme") as
+    | Record<string, unknown>
+    | undefined;
+  const effectStyles = parseEffectStyleLst(fmtSchemeNode);
+
   return {
     name,
     colors: parseThemeColors(clrScheme),
     fonts: parseThemeFonts(fontScheme),
+    ...(effectStyles.length ? { effectStyles } : {}),
   };
 }
 
@@ -75,4 +82,27 @@ function parseThemeFonts(fontScheme: Record<string, unknown> | undefined): Theme
   const minor = attr(get(minorFonts, "a:latin"), "typeface") ?? "Calibri";
 
   return { major, minor };
+}
+
+/**
+ * Parse effectStyleLst from theme fmtScheme.
+ * Returns an array where index i corresponds to effectRef idx=i+1
+ * (OOXML effectRef idx is 1-based but stored 0-based here for convenience).
+ */
+function parseEffectStyleLst(
+  fmtSchemeNode: Record<string, unknown> | undefined,
+): Effect[][] {
+  if (!fmtSchemeNode) return [];
+  const effectStyleLst = get(fmtSchemeNode, "a:effectStyleLst") as
+    | Record<string, unknown>
+    | undefined;
+  if (!effectStyleLst) return [];
+  const styleNodes = toArray(
+    effectStyleLst["a:effectStyle"] as unknown[],
+  );
+  return styleNodes.map((styleNode) => {
+    const sn = styleNode as Record<string, unknown>;
+    const effectLst = sn["a:effectLst"] ?? sn["effectLst"];
+    return parseEffects(effectLst);
+  });
 }
