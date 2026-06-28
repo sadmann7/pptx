@@ -1,15 +1,15 @@
-import type * as echarts from 'echarts';
-import { SafeXmlNode } from '../../parser/XmlParser';
-import { RenderContext } from '../RenderContext';
-import { numToPct } from './layout';
-import { parseOoxmlBoolElement } from './ooxml';
-import { extractTxPrStyle } from './text';
+import type * as echarts from "echarts";
+import { SafeXmlNode } from "../../parser/xml-parser";
+import { RenderContext } from "../render-context";
+import { numToPct } from "./layout";
+import { parseOoxmlBoolElement } from "./ooxml";
+import { extractTxPrStyle } from "./text";
 import {
   EXPLICIT_FONT_SIZE,
   hasExplicitFontSize,
   type ChartTextStyle,
   type LegendInfo,
-} from './types';
+} from "./types";
 
 type LegendDataItem =
   | string
@@ -25,38 +25,38 @@ export function extractLegendInfo(
   chartNode: SafeXmlNode,
   ctx: RenderContext,
 ): LegendInfo | undefined {
-  const legend = chartNode.child('legend');
+  const legend = chartNode.child("legend");
   if (!legend.exists()) return undefined;
 
-  const legendPos = legend.child('legendPos');
-  const rawPosVal = legendPos.exists() ? legendPos.attr('val') || 'r' : 'r';
-  const posVal = ['b', 't', 'l', 'r', 'tr'].includes(rawPosVal)
-    ? (rawPosVal as LegendInfo['position'])
-    : 'r';
+  const legendPos = legend.child("legendPos");
+  const rawPosVal = legendPos.exists() ? legendPos.attr("val") || "r" : "r";
+  const posVal = ["b", "t", "l", "r", "tr"].includes(rawPosVal)
+    ? (rawPosVal as LegendInfo["position"])
+    : "r";
 
-  const overlay = parseOoxmlBoolElement(legend.child('overlay'));
+  const overlay = parseOoxmlBoolElement(legend.child("overlay"));
 
   const base = { confine: true as const };
-  const topBelowTitle = '14%';
-  let option: echarts.EChartsOption['legend'];
+  const topBelowTitle = "14%";
+  let option: echarts.EChartsOption["legend"];
   switch (posVal) {
-    case 'b':
-      option = { ...base, bottom: '5%', orient: 'horizontal' as const };
+    case "b":
+      option = { ...base, bottom: "5%", orient: "horizontal" as const };
       break;
-    case 't':
-      option = { ...base, top: topBelowTitle, orient: 'horizontal' as const };
+    case "t":
+      option = { ...base, top: topBelowTitle, orient: "horizontal" as const };
       break;
-    case 'l':
-      option = { ...base, left: '2%', top: 'middle', orient: 'vertical' as const };
+    case "l":
+      option = { ...base, left: "2%", top: "middle", orient: "vertical" as const };
       break;
-    case 'r':
-      option = { ...base, right: '2%', top: 'middle', orient: 'vertical' as const };
+    case "r":
+      option = { ...base, right: "2%", top: "middle", orient: "vertical" as const };
       break;
-    case 'tr':
-      option = { ...base, top: topBelowTitle, right: '2%', orient: 'vertical' as const };
+    case "tr":
+      option = { ...base, top: topBelowTitle, right: "2%", orient: "vertical" as const };
       break;
     default:
-      option = { ...base, right: '2%', top: 'middle', orient: 'vertical' as const };
+      option = { ...base, right: "2%", top: "middle", orient: "vertical" as const };
       break;
   }
   return {
@@ -67,11 +67,11 @@ export function extractLegendInfo(
       const s = extractTxPrStyle(legend, ctx);
       if (!s) return undefined;
       const textStyle: ChartTextStyle & {
-        fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+        fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;
       } = {
         ...(s.color ? { color: s.color } : {}),
         ...(s.fontSize !== undefined ? { fontSize: s.fontSize } : {}),
-        ...(s.bold === true ? { fontWeight: 'bold' } : {}),
+        ...(s.bold === true ? { fontWeight: "bold" } : {}),
         ...(s.fontFamily ? { fontFamily: s.fontFamily } : {}),
         ...(s.textShadowColor ? { textShadowColor: s.textShadowColor } : {}),
         ...(s.textShadowBlur !== undefined ? { textShadowBlur: s.textShadowBlur } : {}),
@@ -87,14 +87,14 @@ export function extractLegendInfo(
 
 function extractLegendManualLayout(
   legendNode: SafeXmlNode,
-): Partial<Record<'left' | 'top' | 'width' | 'height', string>> {
-  const manual = legendNode.child('layout').child('manualLayout');
+): Partial<Record<"left" | "top" | "width" | "height", string>> {
+  const manual = legendNode.child("layout").child("manualLayout");
   if (!manual.exists()) return {};
-  const out: Partial<Record<'left' | 'top' | 'width' | 'height', string>> = {};
-  const x = manual.child('x').numAttr('val');
-  const y = manual.child('y').numAttr('val');
-  const w = manual.child('w').numAttr('val');
-  const h = manual.child('h').numAttr('val');
+  const out: Partial<Record<"left" | "top" | "width" | "height", string>> = {};
+  const x = manual.child("x").numAttr("val");
+  const y = manual.child("y").numAttr("val");
+  const w = manual.child("w").numAttr("val");
+  const h = manual.child("h").numAttr("val");
   if (x !== undefined) out.left = numToPct(x);
   if (y !== undefined) out.top = numToPct(y);
   if (w !== undefined) out.width = numToPct(w);
@@ -103,7 +103,7 @@ function extractLegendManualLayout(
 }
 
 export function legendIsAtTop(legendInfo: LegendInfo | undefined): boolean {
-  return legendInfo?.position === 't' || legendInfo?.position === 'tr';
+  return legendInfo?.position === "t" || legendInfo?.position === "tr";
 }
 
 export function getGridTopPx(hasTitle: boolean, legendInfo: LegendInfo | undefined): number {
@@ -123,21 +123,21 @@ export function getLegendTopPx(
 
 export function getLegendPlacement(
   legendInfo: LegendInfo | undefined,
-): 'left' | 'right' | 'top' | 'bottom' | 'none' {
+): "left" | "right" | "top" | "bottom" | "none" {
   if (
     !legendInfo ||
     legendInfo.overlay ||
     !legendInfo.option ||
-    typeof legendInfo.option !== 'object'
+    typeof legendInfo.option !== "object"
   ) {
-    return 'none';
+    return "none";
   }
   const opt = legendInfo.option as Record<string, unknown>;
-  if (opt.bottom !== undefined) return 'bottom';
-  if (opt.top !== undefined && opt.left === undefined && opt.right === undefined) return 'top';
-  if (opt.left !== undefined) return 'left';
-  if (opt.right !== undefined) return 'right';
-  return 'none';
+  if (opt.bottom !== undefined) return "bottom";
+  if (opt.top !== undefined && opt.left === undefined && opt.right === undefined) return "top";
+  if (opt.left !== undefined) return "left";
+  if (opt.right !== undefined) return "right";
+  return "none";
 }
 
 export function getGridBottomPx(legendInfo: LegendInfo | undefined): number {
@@ -151,40 +151,40 @@ export function getGridBottomPx(legendInfo: LegendInfo | undefined): number {
 }
 
 export function buildLegendOption(
-  legendOpt: echarts.EChartsOption['legend'] | undefined,
+  legendOpt: echarts.EChartsOption["legend"] | undefined,
   legendInfo: LegendInfo | undefined,
   legendTopPx: number | undefined,
   data: LegendDataItem[],
   textStyle: ChartTextStyle & {
-    fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+    fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;
   },
-): echarts.EChartsOption['legend'] {
+): echarts.EChartsOption["legend"] {
   if (!legendOpt) return { show: false };
   const manual = legendInfo?.manualLayout ?? {};
   const top =
     manual.top !== undefined ? manual.top : legendTopPx !== undefined ? legendTopPx : undefined;
   const iconSize = textStyle.fontSize ?? 10;
-  const hasPerItemIcons = data.some((d) => typeof d === 'object' && d.icon);
+  const hasPerItemIcons = data.some((d) => typeof d === "object" && d.icon);
   const sharedIcon =
     hasPerItemIcons &&
     data.every(
       (d) =>
-        typeof d === 'object' &&
-        typeof d.icon === 'string' &&
+        typeof d === "object" &&
+        typeof d.icon === "string" &&
         d.icon === (data[0] as { icon?: string }).icon,
     )
       ? (data[0] as { icon?: string }).icon
       : undefined;
-  const useSharedIcon = sharedIcon !== undefined && !sharedIcon.startsWith('path://');
-  const legendData = useSharedIcon ? data.map((d) => (typeof d === 'string' ? d : d.name)) : data;
+  const useSharedIcon = sharedIcon !== undefined && !sharedIcon.startsWith("path://");
+  const legendData = useSharedIcon ? data.map((d) => (typeof d === "string" ? d : d.name)) : data;
   const hasLineLikeIcons = data.some(
-    (d) => typeof d === 'object' && typeof d.icon === 'string' && d.icon.startsWith('path://'),
+    (d) => typeof d === "object" && typeof d.icon === "string" && d.icon.startsWith("path://"),
   );
   return {
     ...legendOpt,
     ...manual,
     ...(top !== undefined ? { top } : {}),
-    ...(useSharedIcon ? { icon: sharedIcon } : hasPerItemIcons ? {} : { icon: 'rect' }),
+    ...(useSharedIcon ? { icon: sharedIcon } : hasPerItemIcons ? {} : { icon: "rect" }),
     itemWidth: hasLineLikeIcons ? Math.max(24, Math.round(iconSize * 2.2)) : iconSize,
     itemHeight: hasLineLikeIcons ? Math.max(8, Math.round(iconSize * 0.9)) : iconSize,
     data: legendData,
@@ -195,7 +195,7 @@ export function buildLegendOption(
 export type LegendOptionObject = {
   show?: boolean;
   data?: (string | { name: string; icon?: string; marker?: string })[];
-  orient?: 'horizontal' | 'vertical';
+  orient?: "horizontal" | "vertical";
   left?: string | number;
   right?: string | number;
   top?: string | number;
@@ -208,13 +208,13 @@ export type LegendOptionObject = {
   textStyle?: {
     color?: string;
     fontSize?: number;
-    fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+    fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;
     fontFamily?: string;
   };
 };
 
 export function getLegendOptionObject(
-  legend: echarts.EChartsOption['legend'],
+  legend: echarts.EChartsOption["legend"],
 ): LegendOptionObject | null {
   if (!legend) return null;
   return Array.isArray(legend)
@@ -226,7 +226,7 @@ export function pickSeriesStringColor(
   color: string | object | undefined,
   fallback: string,
 ): string {
-  return typeof color === 'string' ? color : fallback;
+  return typeof color === "string" ? color : fallback;
 }
 
 export function pickVisualStringColor(
@@ -236,12 +236,12 @@ export function pickVisualStringColor(
   const lineStyle = (visual?.lineStyle as Record<string, unknown> | undefined) ?? {};
   const itemStyle = (visual?.itemStyle as Record<string, unknown> | undefined) ?? {};
   return (
-    (typeof lineStyle.color === 'string' ? lineStyle.color : undefined) ??
-    (typeof itemStyle.color === 'string' ? itemStyle.color : undefined) ??
+    (typeof lineStyle.color === "string" ? lineStyle.color : undefined) ??
+    (typeof itemStyle.color === "string" ? itemStyle.color : undefined) ??
     fallback
   );
 }
 
 export function lineLegendIconPath(): string {
-  return 'path://M2 4.5 L22 4.5';
+  return "path://M2 4.5 L22 4.5";
 }

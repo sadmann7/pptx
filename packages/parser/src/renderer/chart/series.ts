@@ -1,50 +1,50 @@
-import { SafeXmlNode } from '../../parser/XmlParser';
-import { RenderContext } from '../RenderContext';
+import { SafeXmlNode } from "../../parser/xml-parser";
+import { RenderContext } from "../render-context";
 import {
   extractFormatCode,
   extractNumericValues,
   extractNumericValuesWithBlanks,
   extractStringValues,
-} from './format';
-import { parseOoxmlBoolElement } from './ooxml';
+} from "./format";
+import { parseOoxmlBoolElement } from "./ooxml";
 import {
   extractDataPointStyles,
   extractSeriesColor,
   extractSeriesLineNoFill,
   extractSeriesLineWidth,
   markerSizeToPx,
-} from './style';
-import type { SeriesData } from './types';
+} from "./style";
+import type { SeriesData } from "./types";
 
 function extractSeriesName(txNode: SafeXmlNode): string {
-  const strRef = txNode.child('strRef');
+  const strRef = txNode.child("strRef");
   if (strRef.exists()) {
-    const strCache = strRef.child('strCache');
-    const pts = strCache.children('pt');
+    const strCache = strRef.child("strCache");
+    const pts = strCache.children("pt");
     if (pts.length > 0) {
-      return pts[0].child('v').text();
+      return pts[0].child("v").text();
     }
   }
-  const v = txNode.child('v');
+  const v = txNode.child("v");
   if (v.exists()) return v.text();
-  return '';
+  return "";
 }
 
 export function parseExplosion(ser: SafeXmlNode, pointCount: number): number[] | undefined {
-  const explosions: number[] = new Array(pointCount).fill(0);
+  const explosions: number[] = Array.from({ length: pointCount }, () => 0);
   let hasAny = false;
 
-  const serExplosion = ser.child('explosion').numAttr('val') ?? 0;
+  const serExplosion = ser.child("explosion").numAttr("val") ?? 0;
   if (serExplosion > 0) {
     explosions.fill(serExplosion);
     hasAny = true;
   }
 
-  const dPts = ser.children('dPt');
+  const dPts = ser.children("dPt");
   for (const dPt of dPts) {
-    const idx = dPt.child('idx').numAttr('val');
+    const idx = dPt.child("idx").numAttr("val");
     if (idx === undefined) continue;
-    const exp = dPt.child('explosion').numAttr('val');
+    const exp = dPt.child("explosion").numAttr("val");
     if (exp !== undefined && exp > 0) {
       explosions[idx] = exp;
       hasAny = true;
@@ -57,22 +57,22 @@ export function parseExplosion(ser: SafeXmlNode, pointCount: number): number[] |
 export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): SeriesData[] {
   const seriesArr: SeriesData[] = [];
 
-  for (const ser of chartTypeNode.children('ser')) {
-    const tx = ser.child('tx');
+  for (const ser of chartTypeNode.children("ser")) {
+    const tx = ser.child("tx");
     const name = extractSeriesName(tx);
-    const order = ser.child('order').numAttr('val') ?? seriesArr.length;
+    const order = ser.child("order").numAttr("val") ?? seriesArr.length;
 
-    const cat = ser.child('cat');
+    const cat = ser.child("cat");
     const categories = extractStringValues(cat);
 
-    const val = ser.child('val');
+    const val = ser.child("val");
     const numericValues = extractNumericValuesWithBlanks(val);
     const values = numericValues.values;
     let blankIndices = numericValues.blankIndices;
     const formatCode = extractFormatCode(val);
 
-    const xValNode = ser.child('xVal');
-    const yValNode = ser.child('yVal');
+    const xValNode = ser.child("xVal");
+    const yValNode = ser.child("yVal");
     let xValues: number[] | undefined;
     if (yValNode.exists()) {
       const yVals = extractNumericValuesWithBlanks(yValNode);
@@ -90,7 +90,7 @@ export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): Ser
       }
     }
 
-    const bubbleSizeNode = ser.child('bubbleSize');
+    const bubbleSizeNode = ser.child("bubbleSize");
     const bubbleSizes = bubbleSizeNode.exists() ? extractNumericValues(bubbleSizeNode) : undefined;
 
     const colorHex = extractSeriesColor(ser, ctx);
@@ -98,16 +98,16 @@ export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): Ser
     const lineNoFill = extractSeriesLineNoFill(ser);
     const dataPointStyles = extractDataPointStyles(ser, ctx);
     const dataPointColors = dataPointStyles?.map((style) => style?.color);
-    const invertIfNegativeNode = ser.child('invertIfNegative');
+    const invertIfNegativeNode = ser.child("invertIfNegative");
     const invertIfNegative = invertIfNegativeNode.exists()
       ? parseOoxmlBoolElement(invertIfNegativeNode)
       : undefined;
 
-    const marker = ser.child('marker');
-    const markerSymbol = marker.child('symbol').attr('val');
-    const markerSizePt = marker.child('size').numAttr('val');
+    const marker = ser.child("marker");
+    const markerSymbol = marker.child("symbol").attr("val");
+    const markerSizePt = marker.child("size").numAttr("val");
     const markerSize = markerSizePt !== undefined ? markerSizeToPx(markerSizePt) : undefined;
-    const smoothNode = ser.child('smooth');
+    const smoothNode = ser.child("smooth");
     const smooth = smoothNode.exists() ? parseOoxmlBoolElement(smoothNode) : undefined;
 
     seriesArr.push({

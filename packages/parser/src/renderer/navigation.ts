@@ -1,10 +1,10 @@
-import { isExternalTargetMode, resolveRelTarget, type RelEntry } from '../parser/RelParser';
-import type { RenderContext } from './RenderContext';
+import { isExternalTargetMode, resolveRelTarget, type RelEntry } from "../parser/rel-parser";
+import type { RenderContext } from "./render-context";
 
 function dirname(path: string): string {
-  const normalized = path.replace(/\\/g, '/');
-  const slashIndex = normalized.lastIndexOf('/');
-  return slashIndex >= 0 ? normalized.slice(0, slashIndex) : '';
+  const normalized = path.replace(/\\/g, "/");
+  const slashIndex = normalized.lastIndexOf("/");
+  return slashIndex >= 0 ? normalized.slice(0, slashIndex) : "";
 }
 
 function stripUriSuffix(path: string): string {
@@ -13,7 +13,7 @@ function stripUriSuffix(path: string): string {
 }
 
 function normalizePackagePath(path: string): string {
-  return stripUriSuffix(path).replace(/\\/g, '/').replace(/^\/+/, '');
+  return stripUriSuffix(path).replace(/\\/g, "/").replace(/^\/+/, "");
 }
 
 /**
@@ -25,11 +25,11 @@ function normalizePackagePath(path: string): string {
 export function resolveSlideJumpIndex(ctx: RenderContext, rel: RelEntry): number | undefined {
   if (isExternalTargetMode(rel.targetMode)) return undefined;
 
-  const basePath = dirname(ctx.slide.slidePath || 'ppt/slides/slide1.xml');
+  const basePath = dirname(ctx.slide.slidePath || "ppt/slides/slide1.xml");
   const targetPath = normalizePackagePath(resolveRelTarget(basePath, rel.target));
 
   const slideIndex = ctx.presentation.slides.findIndex(
-    (slide) => normalizePackagePath(slide.slidePath || '') === targetPath,
+    (slide) => normalizePackagePath(slide.slidePath || "") === targetPath,
   );
   if (slideIndex >= 0) return slideIndex;
 
@@ -43,16 +43,16 @@ function currentSlideIndex(ctx: RenderContext): number {
   const byIndex = ctx.slide.index;
   if (byIndex >= 0 && byIndex < ctx.presentation.slides.length) return byIndex;
 
-  const currentPath = normalizePackagePath(ctx.slide.slidePath || '');
+  const currentPath = normalizePackagePath(ctx.slide.slidePath || "");
   const byPath = ctx.presentation.slides.findIndex(
-    (slide) => normalizePackagePath(slide.slidePath || '') === currentPath,
+    (slide) => normalizePackagePath(slide.slidePath || "") === currentPath,
   );
   return byPath >= 0 ? byPath : 0;
 }
 
 function decodeQueryComponent(value: string): string {
   try {
-    return decodeURIComponent(value.replace(/\+/g, ' '));
+    return decodeURIComponent(value.replace(/\+/g, " "));
   } catch {
     return value;
   }
@@ -60,10 +60,10 @@ function decodeQueryComponent(value: string): string {
 
 function queryParamCaseInsensitive(query: string, name: string): string | undefined {
   const expectedName = name.toLowerCase();
-  for (const part of query.split('&')) {
-    const [rawKey, ...rawValue] = part.split('=');
+  for (const part of query.split("&")) {
+    const [rawKey, ...rawValue] = part.split("=");
     if (decodeQueryComponent(rawKey).toLowerCase() !== expectedName) continue;
-    return decodeQueryComponent(rawValue.join('='));
+    return decodeQueryComponent(rawValue.join("="));
   }
   return undefined;
 }
@@ -72,20 +72,20 @@ function resolveShowJumpIndex(ctx: RenderContext, action: string): number | unde
   const match = action.match(/^ppaction:\/\/hlinkshowjump\?(.+)$/i);
   if (!match) return undefined;
 
-  const jump = queryParamCaseInsensitive(match[1], 'jump')?.toLowerCase();
+  const jump = queryParamCaseInsensitive(match[1], "jump")?.toLowerCase();
   const slideCount = ctx.presentation.slides.length;
   if (slideCount === 0) return undefined;
 
   switch (jump) {
-    case 'firstslide':
+    case "firstslide":
       return 0;
-    case 'lastslide':
+    case "lastslide":
       return slideCount - 1;
-    case 'nextslide': {
+    case "nextslide": {
       const nextIndex = currentSlideIndex(ctx) + 1;
       return nextIndex < slideCount ? nextIndex : undefined;
     }
-    case 'previousslide': {
+    case "previousslide": {
       const previousIndex = currentSlideIndex(ctx) - 1;
       return previousIndex >= 0 ? previousIndex : undefined;
     }
@@ -100,7 +100,7 @@ export function resolveSlideNavigationIndex(
   rel?: RelEntry,
 ): number | undefined {
   const normalizedAction = action?.toLowerCase();
-  if (normalizedAction === 'ppaction://hlinksldjump' && rel) {
+  if (normalizedAction === "ppaction://hlinksldjump" && rel) {
     return resolveSlideJumpIndex(ctx, rel);
   }
   if (action) {

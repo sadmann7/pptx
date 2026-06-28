@@ -1,9 +1,9 @@
-import { parseZip, parseZipLazyMedia } from '../parser/ZipParser';
-import type { ZipParseLimits } from '../parser/ZipParser';
-import { buildPresentation, PresentationData } from '../model/Presentation';
-import { renderSlide as renderSlideInternal } from '../renderer/SlideRenderer';
-import type { SlideHandle } from '../renderer/SlideRenderer';
-import { isAllowedExternalUrl } from '../utils/urlSafety';
+import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
+import type { ZipParseLimits } from "../parser/zip-parser";
+import { buildPresentation, PresentationData } from "../model/presentation";
+import { renderSlide as renderSlideInternal } from "../renderer/slide-renderer";
+import type { SlideHandle } from "../renderer/slide-renderer";
+import { isAllowedExternalUrl } from "../utils/url-safety";
 import {
   buildTextIndex,
   searchText as searchTextInIndex,
@@ -11,13 +11,13 @@ import {
   type TextIndexOptions,
   type TextSearchOptions,
   type TextSearchResult,
-} from '../search/TextSearch';
-import type { ECharts } from 'echarts';
-import type { PdfjsConfig } from '../utils/pdfRenderer';
+} from "../search/text-search";
+import type { ECharts } from "echarts";
+import type { PdfjsConfig } from "../utils/pdf-renderer";
 
-export type { SlideHandle } from '../renderer/SlideRenderer';
+export type { SlideHandle } from "../renderer/slide-renderer";
 
-export type FitMode = 'contain' | 'none';
+export type FitMode = "contain" | "none";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob;
 
@@ -132,7 +132,7 @@ export class PptxViewer extends EventTarget {
   private slideHandles = new Map<number, SlideHandle>();
   private searchHighlightHandles = new Set<SearchHighlightHandle>();
   private textIndexCache: { key: string; entries: TextIndexEntry[] } | null = null;
-  private activeRenderMode: 'list' | 'slide' | null = null;
+  private activeRenderMode: "list" | "slide" | null = null;
   private listOptions: Required<ListRenderOptions> = {
     windowed: false,
     batchSize: 12,
@@ -146,42 +146,42 @@ export class PptxViewer extends EventTarget {
     this.container = container;
     this.viewerOptions = options ?? {};
     const zoomPercent = this.normalizeZoomPercent(options?.zoomPercent ?? 100);
-    this._fitMode = options?.fitMode ?? 'contain';
+    this._fitMode = options?.fitMode ?? "contain";
     this.zoomFactor = zoomPercent / 100;
 
     // Register shorthand callbacks as event listeners
     if (options?.onSlideChange) {
       const cb = options.onSlideChange;
-      this.addEventListener('slidechange', ((e: CustomEvent) =>
+      this.addEventListener("slidechange", ((e: CustomEvent) =>
         cb(e.detail.index)) as EventListener);
     }
     if (options?.onSlideRendered) {
       const cb = options.onSlideRendered;
-      this.addEventListener('sliderendered', ((e: CustomEvent) =>
+      this.addEventListener("sliderendered", ((e: CustomEvent) =>
         cb(e.detail.index, e.detail.element)) as EventListener);
     }
     if (options?.onSlideError) {
       const cb = options.onSlideError;
-      this.addEventListener('slideerror', ((e: CustomEvent) =>
+      this.addEventListener("slideerror", ((e: CustomEvent) =>
         cb(e.detail.index, e.detail.error)) as EventListener);
     }
     if (options?.onSlideUnmounted) {
       const cb = options.onSlideUnmounted;
-      this.addEventListener('slideunmounted', ((e: CustomEvent) =>
+      this.addEventListener("slideunmounted", ((e: CustomEvent) =>
         cb(e.detail.index)) as EventListener);
     }
     if (options?.onNodeError) {
       const cb = options.onNodeError;
-      this.addEventListener('nodeerror', ((e: CustomEvent) =>
+      this.addEventListener("nodeerror", ((e: CustomEvent) =>
         cb(e.detail.nodeId, e.detail.error)) as EventListener);
     }
     if (options?.onRenderStart) {
       const cb = options.onRenderStart;
-      this.addEventListener('renderstart', () => cb());
+      this.addEventListener("renderstart", () => cb());
     }
     if (options?.onRenderComplete) {
       const cb = options.onRenderComplete;
-      this.addEventListener('rendercomplete', () => cb());
+      this.addEventListener("rendercomplete", () => cb());
     }
   }
 
@@ -191,32 +191,32 @@ export class PptxViewer extends EventTarget {
 
   private emitRenderStart(): void {
     this._isRendering = true;
-    this.dispatchEvent(new Event('renderstart'));
+    this.dispatchEvent(new Event("renderstart"));
   }
 
   private emitRenderComplete(): void {
     this._isRendering = false;
-    this.dispatchEvent(new Event('rendercomplete'));
+    this.dispatchEvent(new Event("rendercomplete"));
   }
 
   private emitSlideChange(index: number): void {
-    this.dispatchEvent(new CustomEvent('slidechange', { detail: { index } }));
+    this.dispatchEvent(new CustomEvent("slidechange", { detail: { index } }));
   }
 
   private emitSlideRendered(index: number, element: HTMLElement): void {
-    this.dispatchEvent(new CustomEvent('sliderendered', { detail: { index, element } }));
+    this.dispatchEvent(new CustomEvent("sliderendered", { detail: { index, element } }));
   }
 
   private emitSlideError(index: number, error: unknown): void {
-    this.dispatchEvent(new CustomEvent('slideerror', { detail: { index, error } }));
+    this.dispatchEvent(new CustomEvent("slideerror", { detail: { index, error } }));
   }
 
   private emitSlideUnmounted(index: number): void {
-    this.dispatchEvent(new CustomEvent('slideunmounted', { detail: { index } }));
+    this.dispatchEvent(new CustomEvent("slideunmounted", { detail: { index } }));
   }
 
   private emitNodeError(nodeId: string, error: unknown): void {
-    this.dispatchEvent(new CustomEvent('nodeerror', { detail: { nodeId, error } }));
+    this.dispatchEvent(new CustomEvent("nodeerror", { detail: { nodeId, error } }));
   }
 
   // -----------------------------------------------------------------------
@@ -241,7 +241,7 @@ export class PptxViewer extends EventTarget {
    * Render all slides in a scrollable list.
    */
   async renderList(options?: ListRenderOptions): Promise<void> {
-    this.activeRenderMode = 'list';
+    this.activeRenderMode = "list";
     this.listOptions = {
       windowed: options?.windowed ?? false,
       batchSize: this.normalizeBatchSize(options?.batchSize ?? 12),
@@ -256,7 +256,7 @@ export class PptxViewer extends EventTarget {
    * Render a single slide (no built-in nav UI).
    */
   async renderSlide(index?: number): Promise<void> {
-    this.activeRenderMode = 'slide';
+    this.activeRenderMode = "slide";
     if (index !== undefined && this.presentation) {
       this.currentSlide = Math.max(0, Math.min(index, this.presentation.slides.length - 1));
     }
@@ -270,7 +270,7 @@ export class PptxViewer extends EventTarget {
   async open(
     input: PreviewInput,
     options?: {
-      renderMode?: 'list' | 'slide';
+      renderMode?: "list" | "slide";
       listOptions?: ListRenderOptions;
       signal?: AbortSignal;
       lazyMedia?: boolean;
@@ -280,7 +280,7 @@ export class PptxViewer extends EventTarget {
     const signal = options?.signal;
     const checkAborted = () => {
       if (signal?.aborted) {
-        throw new DOMException('Preview aborted', 'AbortError');
+        throw new DOMException("Preview aborted", "AbortError");
       }
     };
 
@@ -306,8 +306,8 @@ export class PptxViewer extends EventTarget {
 
     this.load(presentation);
 
-    const renderMode = options?.renderMode ?? 'list';
-    if (renderMode === 'slide') {
+    const renderMode = options?.renderMode ?? "list";
+    if (renderMode === "slide") {
       await this.renderSlide(0);
     } else {
       await this.renderList(options?.listOptions);
@@ -324,7 +324,7 @@ export class PptxViewer extends EventTarget {
     input: PreviewInput,
     container: HTMLElement,
     options?: ViewerOptions & {
-      renderMode?: 'list' | 'slide';
+      renderMode?: "list" | "slide";
       listOptions?: ListRenderOptions;
       signal?: AbortSignal;
       lazyMedia?: boolean;
@@ -353,7 +353,7 @@ export class PptxViewer extends EventTarget {
     if (this.currentSlide !== prev) {
       this.emitSlideChange(this.currentSlide);
     }
-    if (this.activeRenderMode === 'slide') {
+    if (this.activeRenderMode === "slide") {
       const { scale, displayWidth, displayHeight } = this.getDisplayMetrics();
       this.renderSingleSlide(scale, displayWidth, displayHeight);
     } else {
@@ -368,8 +368,8 @@ export class PptxViewer extends EventTarget {
       const targetChild = this.container.querySelector<HTMLElement>(
         `[data-slide-index="${this.currentSlide}"]`,
       );
-      if (targetChild && typeof targetChild.scrollIntoView === 'function') {
-        targetChild.scrollIntoView(scrollOptions ?? { behavior: 'smooth', block: 'center' });
+      if (targetChild && typeof targetChild.scrollIntoView === "function") {
+        targetChild.scrollIntoView(scrollOptions ?? { behavior: "smooth", block: "center" });
       }
     }
   }
@@ -385,7 +385,7 @@ export class PptxViewer extends EventTarget {
   async setFitMode(mode: FitMode): Promise<void> {
     if (this._fitMode === mode) return;
     this._fitMode = mode;
-    if (mode === 'none') {
+    if (mode === "none") {
       this.lastMeasuredContainerWidth = 0;
     }
     await this.queueRender();
@@ -487,7 +487,7 @@ export class PptxViewer extends EventTarget {
 
     if (scale !== undefined && scale !== 1) {
       handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = 'top left';
+      handle.element.style.transformOrigin = "top left";
     }
 
     container.appendChild(handle.element);
@@ -527,9 +527,9 @@ export class PptxViewer extends EventTarget {
     const displayWidth = this.presentation.width * scale;
     const displayHeight = this.presentation.height * scale;
 
-    const wrapper = document.createElement('div');
+    const wrapper = document.createElement("div");
     wrapper.dataset.slideIndex = String(index);
-    wrapper.dataset.pptxThumbnail = 'true';
+    wrapper.dataset.pptxThumbnail = "true";
     wrapper.style.cssText = `
       width: ${displayWidth}px;
       height: ${displayHeight}px;
@@ -582,16 +582,16 @@ export class PptxViewer extends EventTarget {
     const slideElement = this.findRenderedSlideElement(result.slideIndex);
     if (!slideElement) return null;
 
-    if (getComputedStyle(slideElement).position === 'static') {
-      slideElement.style.position = 'relative';
+    if (getComputedStyle(slideElement).position === "static") {
+      slideElement.style.position = "relative";
     }
 
-    const element = document.createElement('div');
-    element.className = 'pptx-search-highlight';
+    const element = document.createElement("div");
+    element.className = "pptx-search-highlight";
     if (options?.className) {
       element.classList.add(...options.className.split(/\s+/).filter(Boolean));
     }
-    element.dataset.pptxSearchHighlight = 'true';
+    element.dataset.pptxSearchHighlight = "true";
     this.applySearchHighlightStyle(element, result, options);
     slideElement.appendChild(element);
 
@@ -615,7 +615,7 @@ export class PptxViewer extends EventTarget {
   }
 
   clearSearchHighlights(): void {
-    for (const handle of [...this.searchHighlightHandles]) {
+    for (const handle of this.searchHighlightHandles) {
       handle.dispose();
     }
     this.searchHighlightHandles.clear();
@@ -659,7 +659,7 @@ export class PptxViewer extends EventTarget {
       URL.revokeObjectURL(url);
     }
     this.mediaUrlCache.clear();
-    this.container.innerHTML = '';
+    this.container.innerHTML = "";
     this.activeRenderMode = null;
   }
 
@@ -690,7 +690,7 @@ export class PptxViewer extends EventTarget {
 
   private toCssLength(value: number | string | undefined, fallback: string): string {
     if (value === undefined) return fallback;
-    return typeof value === 'number' ? `${value}px` : value;
+    return typeof value === "number" ? `${value}px` : value;
   }
 
   private async prepareSearchHighlightTarget(
@@ -701,23 +701,23 @@ export class PptxViewer extends EventTarget {
     if (scrollOption !== false) {
       await this.goToSlide(
         slideIndex,
-        typeof scrollOption === 'object' ? scrollOption : { behavior: 'smooth', block: 'center' },
+        typeof scrollOption === "object" ? scrollOption : { behavior: "smooth", block: "center" },
       );
       return;
     }
 
-    if (this.activeRenderMode === 'slide' && this.currentSlide !== slideIndex) {
+    if (this.activeRenderMode === "slide" && this.currentSlide !== slideIndex) {
       await this.goToSlide(slideIndex);
       return;
     }
 
-    if (this.activeRenderMode === 'list') {
+    if (this.activeRenderMode === "list") {
       this.ensureListSlideMountedFn?.(slideIndex);
     }
   }
 
   private findRenderedSlideElement(slideIndex: number): HTMLElement | null {
-    if (this.activeRenderMode === 'list') {
+    if (this.activeRenderMode === "list") {
       const item = this.container.querySelector<HTMLElement>(`[data-slide-index="${slideIndex}"]`);
       const wrapper = item?.firstElementChild;
       const slide = wrapper?.firstElementChild;
@@ -735,20 +735,20 @@ export class PptxViewer extends EventTarget {
     options?: SearchHighlightOptions,
   ): void {
     const padding = Number.isFinite(options?.padding) ? Math.max(0, options!.padding!) : 0;
-    element.style.position = 'absolute';
-    element.style.pointerEvents = 'none';
-    element.style.boxSizing = 'border-box';
+    element.style.position = "absolute";
+    element.style.pointerEvents = "none";
+    element.style.boxSizing = "border-box";
     element.style.left = `${result.bounds.x - padding}px`;
     element.style.top = `${result.bounds.y - padding}px`;
     element.style.width = `${result.bounds.w + padding * 2}px`;
     element.style.height = `${result.bounds.h + padding * 2}px`;
     element.style.zIndex = String(options?.zIndex ?? 10000);
-    element.style.borderStyle = 'solid';
-    element.style.borderWidth = this.toCssLength(options?.borderWidth, '3px');
-    element.style.borderColor = options?.borderColor ?? 'rgba(255, 214, 102, 0.95)';
-    element.style.borderRadius = this.toCssLength(options?.borderRadius, '6px');
-    element.style.background = options?.backgroundColor ?? 'rgba(255, 214, 102, 0.16)';
-    element.style.boxShadow = options?.boxShadow ?? '0 0 0 2px rgba(17, 17, 34, 0.45)';
+    element.style.borderStyle = "solid";
+    element.style.borderWidth = this.toCssLength(options?.borderWidth, "3px");
+    element.style.borderColor = options?.borderColor ?? "rgba(255, 214, 102, 0.95)";
+    element.style.borderRadius = this.toCssLength(options?.borderRadius, "6px");
+    element.style.background = options?.backgroundColor ?? "rgba(255, 214, 102, 0.16)";
+    element.style.boxShadow = options?.boxShadow ?? "0 0 0 2px rgba(17, 17, 34, 0.45)";
 
     if (options?.style) {
       for (const [property, value] of Object.entries(options.style)) {
@@ -800,10 +800,10 @@ export class PptxViewer extends EventTarget {
       return { scale: 1, displayWidth: 0, displayHeight: 0 };
     }
     const fitWidth = this.viewerOptions.width ?? (this.container.clientWidth || 960);
-    if (this._fitMode === 'contain' && this.viewerOptions.width === undefined) {
+    if (this._fitMode === "contain" && this.viewerOptions.width === undefined) {
       this.lastMeasuredContainerWidth = fitWidth;
     }
-    const fitScale = this._fitMode === 'contain' ? fitWidth / this.presentation.width : 1;
+    const fitScale = this._fitMode === "contain" ? fitWidth / this.presentation.width : 1;
     const scale = fitScale * this.zoomFactor;
     return {
       scale,
@@ -835,10 +835,10 @@ export class PptxViewer extends EventTarget {
           }
           this.slideHandles.clear();
           this.disposeAllCharts();
-          this.container.innerHTML = '';
-          this.container.style.position = 'relative';
+          this.container.innerHTML = "";
+          this.container.style.position = "relative";
 
-          if (this.activeRenderMode === 'slide') {
+          if (this.activeRenderMode === "slide") {
             this.renderSingleSlide(scale, displayWidth, displayHeight);
           } else if (this.listOptions.windowed) {
             await this.renderAllSlidesWindowed(
@@ -857,7 +857,7 @@ export class PptxViewer extends EventTarget {
           // to appear on the page, narrowing the container. If the measured width
           // changed, patch wrapper sizes and scale transforms in-place so content
           // is not clipped by the (now narrower) container.
-          if (this.activeRenderMode !== 'slide') {
+          if (this.activeRenderMode !== "slide") {
             this.correctListMetricsIfNeeded();
           }
 
@@ -875,7 +875,7 @@ export class PptxViewer extends EventTarget {
 
   private handleContainerResize(): void {
     if (!this.presentation) return;
-    if (this._fitMode !== 'contain') return;
+    if (this._fitMode !== "contain") return;
     if (this.viewerOptions.width !== undefined) return;
 
     const nextWidth = this.container.clientWidth || 0;
@@ -894,7 +894,7 @@ export class PptxViewer extends EventTarget {
   private setupAdaptiveResize(): void {
     this.teardownAdaptiveResize();
 
-    if (typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(() => this.handleContainerResize());
       observer.observe(this.container);
       this.resizeObserver = observer;
@@ -902,14 +902,14 @@ export class PptxViewer extends EventTarget {
     }
 
     this.windowResizeHandler = () => this.handleContainerResize();
-    window.addEventListener('resize', this.windowResizeHandler);
+    window.addEventListener("resize", this.windowResizeHandler);
   }
 
   private teardownAdaptiveResize(): void {
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
     if (this.windowResizeHandler) {
-      window.removeEventListener('resize', this.windowResizeHandler);
+      window.removeEventListener("resize", this.windowResizeHandler);
       this.windowResizeHandler = undefined;
     }
     if (this.resizeRafId !== null) {
@@ -932,11 +932,11 @@ export class PptxViewer extends EventTarget {
     displayWidth: number,
     displayHeight: number,
   ): { item: HTMLDivElement; wrapper: HTMLDivElement } {
-    const item = document.createElement('div');
+    const item = document.createElement("div");
     item.dataset.slideIndex = String(index);
-    item.style.cssText = 'width: fit-content; margin: 0 auto 20px;';
+    item.style.cssText = "width: fit-content; margin: 0 auto 20px;";
 
-    const wrapper = document.createElement('div');
+    const wrapper = document.createElement("div");
     wrapper.style.cssText = `
       width: ${displayWidth}px;
       height: ${displayHeight}px;
@@ -949,8 +949,8 @@ export class PptxViewer extends EventTarget {
     item.appendChild(wrapper);
 
     if (this.listOptions.showSlideLabels) {
-      const label = document.createElement('div');
-      label.style.cssText = 'text-align: center; padding: 4px; font-size: 12px; color: #666;';
+      const label = document.createElement("div");
+      label.style.cssText = "text-align: center; padding: 4px; font-size: 12px; color: #666;";
       label.textContent = `Slide ${index + 1}`;
       item.appendChild(label);
     }
@@ -965,9 +965,9 @@ export class PptxViewer extends EventTarget {
     _displayHeight: number,
   ): void {
     if (!this.presentation) return;
-    if (wrapper.dataset.mounted === '1') return;
-    wrapper.dataset.mounted = '1';
-    wrapper.innerHTML = '';
+    if (wrapper.dataset.mounted === "1") return;
+    wrapper.dataset.mounted = "1";
+    wrapper.innerHTML = "";
     this.mountedSlides.add(index);
 
     const slide = this.presentation.slides[index];
@@ -982,39 +982,39 @@ export class PptxViewer extends EventTarget {
 
       this.slideHandles.set(index, handle);
       handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = 'top left';
+      handle.element.style.transformOrigin = "top left";
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(index, handle.element);
     } catch (e) {
       this.emitSlideError(index, e);
-      wrapper.style.background = '#fff3f3';
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.justifyContent = 'center';
-      wrapper.style.border = '2px dashed #ff6b6b';
-      wrapper.style.color = '#cc0000';
-      wrapper.style.fontSize = '14px';
+      wrapper.style.background = "#fff3f3";
+      wrapper.style.display = "flex";
+      wrapper.style.alignItems = "center";
+      wrapper.style.justifyContent = "center";
+      wrapper.style.border = "2px dashed #ff6b6b";
+      wrapper.style.color = "#cc0000";
+      wrapper.style.fontSize = "14px";
       wrapper.textContent = `Slide ${index + 1}: Render Error - ${e instanceof Error ? e.message : String(e)}`;
     }
   }
 
   private unmountListSlide(index: number, wrapper: HTMLDivElement, displayHeight: number): void {
-    if (wrapper.dataset.mounted !== '1') return;
-    wrapper.dataset.mounted = '0';
+    if (wrapper.dataset.mounted !== "1") return;
+    wrapper.dataset.mounted = "0";
     this.mountedSlides.delete(index);
     const handle = this.slideHandles.get(index);
     if (handle) {
       handle.dispose();
       this.slideHandles.delete(index);
     }
-    wrapper.innerHTML = '';
-    wrapper.style.background = '#fff';
-    wrapper.style.display = '';
-    wrapper.style.alignItems = '';
-    wrapper.style.justifyContent = '';
-    wrapper.style.border = '';
-    wrapper.style.color = '';
-    wrapper.style.fontSize = '';
+    wrapper.innerHTML = "";
+    wrapper.style.background = "#fff";
+    wrapper.style.display = "";
+    wrapper.style.alignItems = "";
+    wrapper.style.justifyContent = "";
+    wrapper.style.border = "";
+    wrapper.style.color = "";
+    wrapper.style.fontSize = "";
     wrapper.style.height = `${displayHeight}px`;
     this.emitSlideUnmounted(index);
   }
@@ -1109,7 +1109,7 @@ export class PptxViewer extends EventTarget {
       (entries) => {
         for (const entry of entries) {
           const item = (entry.target as HTMLElement).parentElement;
-          const index = Number(item?.dataset.slideIndex ?? '-1');
+          const index = Number(item?.dataset.slideIndex ?? "-1");
           if (Number.isNaN(index) || index < 0) continue;
           if (entry.isIntersecting) {
             mount(index);
@@ -1134,12 +1134,12 @@ export class PptxViewer extends EventTarget {
   }
 
   private setupScrollSlideTracking(): void {
-    if (this.activeRenderMode === 'slide') return;
+    if (this.activeRenderMode === "slide") return;
 
     const IO = window.IntersectionObserver;
     if (!IO) return;
 
-    const items = this.container.querySelectorAll<HTMLElement>('[data-slide-index]');
+    const items = this.container.querySelectorAll<HTMLElement>("[data-slide-index]");
     if (!items.length) return;
 
     const ratios = new Map<number, number>();
@@ -1148,7 +1148,7 @@ export class PptxViewer extends EventTarget {
     const observer = new IO(
       (entries) => {
         for (const entry of entries) {
-          const idx = Number((entry.target as HTMLElement).dataset.slideIndex ?? '-1');
+          const idx = Number((entry.target as HTMLElement).dataset.slideIndex ?? "-1");
           if (Number.isNaN(idx) || idx < 0) continue;
           ratios.set(idx, entry.intersectionRatio);
         }
@@ -1190,11 +1190,11 @@ export class PptxViewer extends EventTarget {
     }
     this.slideHandles.clear();
     this.disposeAllCharts();
-    this.container.innerHTML = '';
+    this.container.innerHTML = "";
     this.mountedSlides.clear();
     this.mountedSlides.add(this.currentSlide);
 
-    const wrapper = document.createElement('div');
+    const wrapper = document.createElement("div");
     wrapper.style.cssText = `
       width: ${displayWidth}px; height: ${displayHeight}px;
       margin: 0 auto; overflow: hidden; position: relative;
@@ -1211,18 +1211,18 @@ export class PptxViewer extends EventTarget {
       });
       this.slideHandles.set(this.currentSlide, handle);
       handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = 'top left';
+      handle.element.style.transformOrigin = "top left";
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(this.currentSlide, handle.element);
     } catch (e) {
       this.emitSlideError(this.currentSlide, e);
-      wrapper.style.background = '#fff3f3';
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.justifyContent = 'center';
-      wrapper.style.border = '2px dashed #ff6b6b';
-      wrapper.style.color = '#cc0000';
-      wrapper.style.fontSize = '14px';
+      wrapper.style.background = "#fff3f3";
+      wrapper.style.display = "flex";
+      wrapper.style.alignItems = "center";
+      wrapper.style.justifyContent = "center";
+      wrapper.style.border = "2px dashed #ff6b6b";
+      wrapper.style.color = "#cc0000";
+      wrapper.style.fontSize = "14px";
       wrapper.textContent = `Slide ${this.currentSlide + 1}: Render Error - ${e instanceof Error ? e.message : String(e)}`;
     }
 
@@ -1239,7 +1239,7 @@ export class PptxViewer extends EventTarget {
    */
   private correctListMetricsIfNeeded(): void {
     if (!this.presentation) return;
-    if (this._fitMode !== 'contain') return;
+    if (this._fitMode !== "contain") return;
     if (this.viewerOptions.width !== undefined) return;
 
     const currentWidth = this.container.clientWidth || 0;
@@ -1253,7 +1253,7 @@ export class PptxViewer extends EventTarget {
     const newDisplayH = this.presentation.height * newScale;
 
     // Patch every slide wrapper in the list
-    const items = this.container.querySelectorAll<HTMLElement>('[data-slide-index]');
+    const items = this.container.querySelectorAll<HTMLElement>("[data-slide-index]");
     for (const item of items) {
       const wrapper = item.firstElementChild as HTMLElement | null;
       if (!wrapper) continue;
@@ -1271,7 +1271,7 @@ export class PptxViewer extends EventTarget {
     if (target.slideIndex !== undefined) {
       this.goToSlide(target.slideIndex);
     } else if (target.url && isAllowedExternalUrl(target.url)) {
-      window.open(target.url, '_blank', 'noopener,noreferrer');
+      window.open(target.url, "_blank", "noopener,noreferrer");
     }
   }
 }
@@ -1289,22 +1289,22 @@ export async function normalizePreviewInput(input: PreviewInput): Promise<ArrayB
   }
 
   const blobLike = input as Blob & { arrayBuffer?: () => Promise<ArrayBuffer> };
-  if (typeof blobLike.arrayBuffer === 'function') {
+  if (typeof blobLike.arrayBuffer === "function") {
     return blobLike.arrayBuffer();
   }
 
-  if (typeof FileReader !== 'undefined') {
+  if (typeof FileReader !== "undefined") {
     return new Promise<ArrayBuffer>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as ArrayBuffer);
-      reader.onerror = () => reject(reader.error ?? new Error('Failed to read Blob input'));
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read Blob input"));
       reader.readAsArrayBuffer(blobLike);
     });
   }
 
-  if (typeof Response !== 'undefined') {
+  if (typeof Response !== "undefined") {
     return new Response(blobLike).arrayBuffer();
   }
 
-  throw new Error('Blob preview input is not supported in this runtime');
+  throw new Error("Blob preview input is not supported in this runtime");
 }

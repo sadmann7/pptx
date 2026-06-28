@@ -3,12 +3,12 @@
  * with typed node objects for each shape on the slide.
  */
 
-import { parseXml, SafeXmlNode } from '../parser/XmlParser';
-import { RelEntry } from '../parser/RelParser';
-import { parseRenderableChild, type RenderableNode } from './RenderableChild';
-import { parseOoxmlBool } from '../parser/booleans';
+import { parseXml, SafeXmlNode } from "../parser/xml-parser";
+import { RelEntry } from "../parser/rel-parser";
+import { parseRenderableChild, type RenderableNode } from "./renderable-child";
+import { parseOoxmlBool } from "../parser/booleans";
 
-export { parseOleFrameAsPicture } from './RenderableChild';
+export { parseOleFrameAsPicture } from "./renderable-child";
 
 export type SlideNode = RenderableNode;
 
@@ -42,11 +42,11 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
  */
 function findLayoutRel(rels: Map<string, RelEntry>): string {
   for (const [, entry] of rels) {
-    if (entry.type.includes('slideLayout')) {
+    if (entry.type.includes("slideLayout")) {
       return entry.target;
     }
   }
-  return '';
+  return "";
 }
 
 /**
@@ -61,17 +61,17 @@ export function parseSlide(
   root: SafeXmlNode,
   index: number,
   rels: Map<string, RelEntry>,
-  slidePath: string = '',
+  slidePath: string = "",
   diagramDrawings?: Map<string, string>,
 ): SlideData {
-  const cSld = root.child('cSld');
+  const cSld = root.child("cSld");
 
   // --- Background ---
-  const bg = cSld.child('bg');
+  const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
   // --- Parse shape tree children ---
-  const spTree = cSld.child('spTree');
+  const spTree = cSld.child("spTree");
   const nodes: SlideNode[] = [];
 
   for (const child of spTree.allChildren()) {
@@ -89,8 +89,8 @@ export function parseSlide(
   const layoutIndex = findLayoutRel(rels);
 
   // --- showMasterSp: if false, layout/master shapes should not be rendered on this slide ---
-  const showMasterSp = parseDefaultTrueBoolAttr(root.attr('showMasterSp'));
-  const hidden = !parseDefaultTrueBoolAttr(root.attr('show'));
+  const showMasterSp = parseDefaultTrueBoolAttr(root.attr("showMasterSp"));
+  const hidden = !parseDefaultTrueBoolAttr(root.attr("show"));
 
   return {
     index,
@@ -109,7 +109,7 @@ export function createLazySlide(
   sourceXml: string,
   index: number,
   rels: Map<string, RelEntry>,
-  slidePath: string = '',
+  slidePath: string = "",
 ): SlideData {
   return {
     index,

@@ -1,6 +1,6 @@
-import type * as echarts from 'echarts';
+import type * as echarts from "echarts";
 
-export const EXPLICIT_FONT_SIZE = Symbol('pptxExplicitFontSize');
+export const EXPLICIT_FONT_SIZE = Symbol("pptxExplicitFontSize");
 
 export interface SeriesData {
   name: string;
@@ -22,7 +22,7 @@ export interface SeriesData {
   lineNoFill?: boolean;
 }
 
-export type ChartLineType = 'solid' | 'dashed' | 'dotted';
+export type ChartLineType = "solid" | "dashed" | "dotted";
 
 export interface ChartLineStyle {
   color?: string;
@@ -30,20 +30,20 @@ export interface ChartLineStyle {
   type?: ChartLineType;
 }
 
-export const DEFAULT_CHART_FOREGROUND_COLOR = '#000000';
+export const DEFAULT_CHART_FOREGROUND_COLOR = "#000000";
 export const DEFAULT_CHART_AXIS_LABEL_FONT_SIZE = 10;
-export const DEFAULT_CHART_AXIS_LINE_COLOR = '#898989';
+export const DEFAULT_CHART_AXIS_LINE_COLOR = "#898989";
 export const DEFAULT_MAJOR_GRIDLINE_STYLE: Required<ChartLineStyle> = {
   color: DEFAULT_CHART_AXIS_LINE_COLOR,
   width: 1,
-  type: 'solid',
+  type: "solid",
 };
 export const DEFAULT_RADAR_GRIDLINE_STYLE: Required<ChartLineStyle> = {
-  color: '#868686',
+  color: "#868686",
   width: 1,
-  type: 'solid',
+  type: "solid",
 };
-export const CHART_ACCENT_KEYS = ['accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
+export const CHART_ACCENT_KEYS = ["accent1", "accent2", "accent3", "accent4", "accent5", "accent6"];
 
 export interface DataPointStyle {
   color?: string;
@@ -89,7 +89,7 @@ export interface DataLabelConfig {
   padding?: [number, number, number, number];
 }
 
-export type DataLabelManualLayout = Partial<Record<'x' | 'y' | 'width' | 'height', number>>;
+export type DataLabelManualLayout = Partial<Record<"x" | "y" | "width" | "height", number>>;
 
 export type ChartTextStyle = {
   color?: string;
@@ -116,7 +116,7 @@ export function markExplicitFontSize<T extends object>(style: T): T {
 
 export function hasExplicitFontSize(style: unknown): boolean {
   return Boolean(
-    style && typeof style === 'object' && (style as Record<symbol, unknown>)[EXPLICIT_FONT_SIZE],
+    style && typeof style === "object" && (style as Record<symbol, unknown>)[EXPLICIT_FONT_SIZE],
   );
 }
 
@@ -135,46 +135,46 @@ export interface MutableAxisOption {
 }
 
 export type OoxmlChartType =
-  | 'barChart'
-  | 'bar3DChart'
-  | 'lineChart'
-  | 'line3DChart'
-  | 'areaChart'
-  | 'area3DChart'
-  | 'pieChart'
-  | 'pie3DChart'
-  | 'doughnutChart'
-  | 'radarChart'
-  | 'scatterChart'
-  | 'bubbleChart'
-  | 'stockChart'
-  | 'surface3DChart';
+  | "barChart"
+  | "bar3DChart"
+  | "lineChart"
+  | "line3DChart"
+  | "areaChart"
+  | "area3DChart"
+  | "pieChart"
+  | "pie3DChart"
+  | "doughnutChart"
+  | "radarChart"
+  | "scatterChart"
+  | "bubbleChart"
+  | "stockChart"
+  | "surface3DChart";
 
 export const CHART_TYPE_ELEMENTS: OoxmlChartType[] = [
-  'barChart',
-  'bar3DChart',
-  'lineChart',
-  'line3DChart',
-  'areaChart',
-  'area3DChart',
-  'pieChart',
-  'pie3DChart',
-  'doughnutChart',
-  'radarChart',
-  'scatterChart',
-  'bubbleChart',
-  'stockChart',
-  'surface3DChart',
+  "barChart",
+  "bar3DChart",
+  "lineChart",
+  "line3DChart",
+  "areaChart",
+  "area3DChart",
+  "pieChart",
+  "pie3DChart",
+  "doughnutChart",
+  "radarChart",
+  "scatterChart",
+  "bubbleChart",
+  "stockChart",
+  "surface3DChart",
 ];
 
 export interface LegendInfo {
-  option: echarts.EChartsOption['legend'];
-  position: 'b' | 't' | 'l' | 'r' | 'tr';
+  option: echarts.EChartsOption["legend"];
+  position: "b" | "t" | "l" | "r" | "tr";
   overlay: boolean;
   textStyle?: ChartTextStyle & {
-    fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+    fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;
   };
-  manualLayout?: Partial<Record<'left' | 'top' | 'width' | 'height', string>>;
+  manualLayout?: Partial<Record<"left" | "top" | "width" | "height", string>>;
 }
 
 export interface DataTableInfo {

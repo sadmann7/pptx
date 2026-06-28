@@ -3,9 +3,9 @@
  * and placeholder shapes from a p:sldMaster XML.
  */
 
-import { SafeXmlNode } from '../parser/XmlParser';
-import { emuToPx } from '../parser/units';
-import type { PlaceholderEntry } from './Layout';
+import { SafeXmlNode } from "../parser/xml-parser";
+import { emuToPx } from "../parser/units";
+import type { PlaceholderEntry } from "./layout";
 
 export interface MasterData {
   colorMap: Map<string, string>;
@@ -20,7 +20,7 @@ export interface MasterData {
   /** Placeholders with slide-space absolute transforms when nested in groups. */
   placeholderEntries?: PlaceholderEntry[];
   spTree: SafeXmlNode;
-  rels: Map<string, import('../parser/RelParser').RelEntry>;
+  rels: Map<string, import("../parser/rel-parser").RelEntry>;
 }
 
 /**
@@ -28,11 +28,11 @@ export interface MasterData {
  * Looks for `p:nvSpPr > p:nvPr > p:ph` or `p:nvPicPr > p:nvPr > p:ph`.
  */
 function isPlaceholder(node: SafeXmlNode): boolean {
-  for (const wrapper of ['nvSpPr', 'nvPicPr', 'nvGraphicFramePr', 'nvCxnSpPr']) {
+  for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
     const nvWrapper = node.child(wrapper);
     if (!nvWrapper.exists()) continue;
-    const nvPr = nvWrapper.child('nvPr');
-    if (nvPr.child('ph').exists()) {
+    const nvPr = nvWrapper.child("nvPr");
+    if (nvPr.child("ph").exists()) {
       return true;
     }
   }
@@ -45,15 +45,15 @@ function isPlaceholder(node: SafeXmlNode): boolean {
 function getShapeXfrmInEmu(
   node: SafeXmlNode,
 ): { offX: number; offY: number; cx: number; cy: number } | null {
-  const spPrXfrm = node.child('spPr').child('xfrm');
-  const xfrm = spPrXfrm.exists() ? spPrXfrm : node.child('xfrm');
+  const spPrXfrm = node.child("spPr").child("xfrm");
+  const xfrm = spPrXfrm.exists() ? spPrXfrm : node.child("xfrm");
   if (!xfrm.exists()) return null;
-  const off = xfrm.child('off');
-  const ext = xfrm.child('ext');
-  const offX = off.numAttr('x') ?? 0;
-  const offY = off.numAttr('y') ?? 0;
-  const cx = ext.numAttr('cx') ?? 0;
-  const cy = ext.numAttr('cy') ?? 0;
+  const off = xfrm.child("off");
+  const ext = xfrm.child("ext");
+  const offX = off.numAttr("x") ?? 0;
+  const offY = off.numAttr("y") ?? 0;
+  const cx = ext.numAttr("cx") ?? 0;
+  const cy = ext.numAttr("cy") ?? 0;
   return { offX, offY, cx, cy };
 }
 
@@ -67,22 +67,22 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
   chExtCx: number;
   chExtCy: number;
 } | null {
-  const grpSpPr = grpSp.child('grpSpPr');
+  const grpSpPr = grpSp.child("grpSpPr");
   if (!grpSpPr.exists()) return null;
-  const xfrm = grpSpPr.child('xfrm');
+  const xfrm = grpSpPr.child("xfrm");
   if (!xfrm.exists()) return null;
-  const off = xfrm.child('off');
-  const ext = xfrm.child('ext');
-  const chOff = xfrm.child('chOff');
-  const chExt = xfrm.child('chExt');
-  const offX = off.numAttr('x') ?? 0;
-  const offY = off.numAttr('y') ?? 0;
-  const cx = ext.numAttr('cx') ?? 0;
-  const cy = ext.numAttr('cy') ?? 0;
-  const chOffX = chOff.exists() ? (chOff.numAttr('x') ?? 0) : 0;
-  const chOffY = chOff.exists() ? (chOff.numAttr('y') ?? 0) : 0;
-  const chExtCx = chExt.exists() ? (chExt.numAttr('cx') ?? cx) : cx;
-  const chExtCy = chExt.exists() ? (chExt.numAttr('cy') ?? cy) : cy;
+  const off = xfrm.child("off");
+  const ext = xfrm.child("ext");
+  const chOff = xfrm.child("chOff");
+  const chExt = xfrm.child("chExt");
+  const offX = off.numAttr("x") ?? 0;
+  const offY = off.numAttr("y") ?? 0;
+  const cx = ext.numAttr("cx") ?? 0;
+  const cy = ext.numAttr("cy") ?? 0;
+  const chOffX = chOff.exists() ? (chOff.numAttr("x") ?? 0) : 0;
+  const chOffY = chOff.exists() ? (chOff.numAttr("y") ?? 0) : 0;
+  const chExtCx = chExt.exists() ? (chExt.numAttr("cx") ?? cx) : cx;
+  const chExtCy = chExt.exists() ? (chExt.numAttr("cy") ?? cy) : cy;
   return {
     offX,
     offY,
@@ -104,7 +104,7 @@ function extractPlaceholderEntriesRecursive(
 ): PlaceholderEntry[] {
   const out: PlaceholderEntry[] = [];
   for (const child of spTree.allChildren()) {
-    if (child.localName === 'grpSp') {
+    if (child.localName === "grpSp") {
       const gx = getGroupXfrmInEmu(child);
       if (gx && gx.chExtCx > 0 && gx.chExtCy > 0) {
         const scaleX = gx.cx / gx.chExtCx;
@@ -178,27 +178,27 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
  * Parse a slide master XML root (`p:sldMaster`) into MasterData.
  */
 export function parseMaster(root: SafeXmlNode): MasterData {
-  const cSld = root.child('cSld');
+  const cSld = root.child("cSld");
 
   // --- Background ---
-  const bg = cSld.child('bg');
+  const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
   // --- Shape tree ---
-  const spTree = cSld.child('spTree');
+  const spTree = cSld.child("spTree");
 
   // --- Color map ---
-  const clrMap = root.child('clrMap');
+  const clrMap = root.child("clrMap");
   const colorMap = parseAllAttributes(clrMap);
 
   // --- Text styles ---
-  const txStyles = root.child('txStyles');
-  const titleStyle = txStyles.child('titleStyle');
-  const bodyStyle = txStyles.child('bodyStyle');
-  const otherStyle = txStyles.child('otherStyle');
+  const txStyles = root.child("txStyles");
+  const titleStyle = txStyles.child("titleStyle");
+  const bodyStyle = txStyles.child("bodyStyle");
+  const otherStyle = txStyles.child("otherStyle");
 
   // --- Default text style ---
-  const defaultTextStyle = root.child('defaultTextStyle');
+  const defaultTextStyle = root.child("defaultTextStyle");
 
   // --- Placeholders ---
   const placeholderEntries = extractPlaceholderEntriesRecursive(spTree, null);

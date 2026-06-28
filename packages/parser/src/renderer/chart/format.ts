@@ -1,13 +1,13 @@
-import { SafeXmlNode } from '../../parser/XmlParser';
+import { SafeXmlNode } from "../../parser/xml-parser";
 
 const MAX_CHART_CACHE_POINTS = 10_000;
 
 function getCachePointLimit(cache: SafeXmlNode): number {
-  const declared = cache.child('ptCount').numAttr('val');
+  const declared = cache.child("ptCount").numAttr("val");
   let maxPresentIndex = -1;
 
-  for (const pt of cache.children('pt')) {
-    const idx = pt.numAttr('idx');
+  for (const pt of cache.children("pt")) {
+    const idx = pt.numAttr("idx");
     if (idx !== undefined && Number.isInteger(idx) && idx >= 0 && idx < MAX_CHART_CACHE_POINTS) {
       maxPresentIndex = Math.max(maxPresentIndex, idx);
     }
@@ -37,14 +37,14 @@ function isCachePointInRange(idx: number | undefined, pointLimit: number): idx i
 }
 
 export function extractStringValues(refNode: SafeXmlNode): string[] {
-  const cache = refNode.child('strRef').exists()
-    ? refNode.child('strRef').child('strCache')
-    : refNode.child('strCache');
+  const cache = refNode.child("strRef").exists()
+    ? refNode.child("strRef").child("strCache")
+    : refNode.child("strCache");
 
   if (!cache.exists()) {
-    const numCache = refNode.child('numRef').exists()
-      ? refNode.child('numRef').child('numCache')
-      : refNode.child('numCache');
+    const numCache = refNode.child("numRef").exists()
+      ? refNode.child("numRef").child("numCache")
+      : refNode.child("numCache");
     if (numCache.exists()) {
       return extractNumericValuesAsStrings(numCache);
     }
@@ -52,12 +52,12 @@ export function extractStringValues(refNode: SafeXmlNode): string[] {
   }
 
   const pointLimit = getCachePointLimit(cache);
-  const values: string[] = new Array(pointLimit).fill('');
+  const values: string[] = Array.from({ length: pointLimit }, () => "");
 
-  for (const pt of cache.children('pt')) {
-    const idx = pt.numAttr('idx');
+  for (const pt of cache.children("pt")) {
+    const idx = pt.numAttr("idx");
     if (isCachePointInRange(idx, pointLimit)) {
-      const v = pt.child('v').text();
+      const v = pt.child("v").text();
       values[idx] = v;
     }
   }
@@ -66,13 +66,13 @@ export function extractStringValues(refNode: SafeXmlNode): string[] {
 }
 
 export function extractFormatCode(refNode: SafeXmlNode): string | undefined {
-  const cache = refNode.child('numRef').exists()
-    ? refNode.child('numRef').child('numCache')
-    : refNode.child('numCache');
+  const cache = refNode.child("numRef").exists()
+    ? refNode.child("numRef").child("numCache")
+    : refNode.child("numCache");
 
   if (!cache.exists()) return undefined;
 
-  const fc = cache.child('formatCode');
+  const fc = cache.child("formatCode");
   if (!fc.exists()) return undefined;
 
   const text = fc.text();
@@ -81,7 +81,7 @@ export function extractFormatCode(refNode: SafeXmlNode): string | undefined {
 
 function splitFormatSections(formatCode: string): string[] {
   const sections: string[] = [];
-  let current = '';
+  let current = "";
   let inQuote = false;
 
   for (let i = 0; i < formatCode.length; i++) {
@@ -91,9 +91,9 @@ function splitFormatSections(formatCode: string): string[] {
       current += ch;
       continue;
     }
-    if (ch === ';' && !inQuote) {
+    if (ch === ";" && !inQuote) {
       sections.push(current);
-      current = '';
+      current = "";
       continue;
     }
     current += ch;
@@ -104,8 +104,8 @@ function splitFormatSections(formatCode: string): string[] {
 }
 
 function normalizeNumericFormatSection(section: string): string {
-  const withoutDirectives = section.replace(/\[[^\]]+\]/g, '');
-  let normalized = '';
+  const withoutDirectives = section.replace(/\[[^\]]+\]/g, "");
+  let normalized = "";
 
   for (let i = 0; i < withoutDirectives.length; i++) {
     const ch = withoutDirectives[i];
@@ -116,12 +116,12 @@ function normalizeNumericFormatSection(section: string): string {
       continue;
     }
 
-    if (ch === '\\') {
+    if (ch === "\\") {
       if (i + 1 < withoutDirectives.length) normalized += withoutDirectives[++i];
       continue;
     }
 
-    if (ch === '_' || ch === '*') {
+    if (ch === "_" || ch === "*") {
       i++;
       continue;
     }
@@ -138,33 +138,33 @@ function formatOfficeNumber(value: number, formatCode: string): string | undefin
   const section = useNegativeSection ? sections[1] : sections[0];
   const normalized = normalizeNumericFormatSection(section);
 
-  if (!/[#0]/.test(normalized) || (!normalized.includes(',') && sections.length === 1)) {
+  if (!/[#0]/.test(normalized) || (!normalized.includes(",") && sections.length === 1)) {
     return undefined;
   }
 
   const decimalMatch = normalized.match(/\.(0+|#+)/);
   const decimals = decimalMatch ? decimalMatch[1].length : 0;
-  const useThousands = normalized.includes(',');
+  const useThousands = normalized.includes(",");
   const numericValue = useNegativeSection ? Math.abs(value) : value;
-  const formatted = numericValue.toLocaleString('en-US', {
+  const formatted = numericValue.toLocaleString("en-US", {
     useGrouping: useThousands,
-    minimumFractionDigits: decimalMatch?.[1].includes('0') ? decimals : 0,
+    minimumFractionDigits: decimalMatch?.[1].includes("0") ? decimals : 0,
     maximumFractionDigits: decimals,
   });
 
   if (!useNegativeSection) return formatted;
-  if (normalized.includes('(') && normalized.includes(')')) return `(${formatted})`;
-  if (normalized.includes('-')) return `-${formatted}`;
+  if (normalized.includes("(") && normalized.includes(")")) return `(${formatted})`;
+  if (normalized.includes("-")) return `-${formatted}`;
   return formatted;
 }
 
 export function formatValue(value: number, formatCode: string | undefined): string {
-  if (!formatCode || formatCode === 'General') {
+  if (!formatCode || formatCode === "General") {
     if (Number.isInteger(value)) return String(value);
     return parseFloat(value.toFixed(2)).toString();
   }
 
-  if (formatCode.includes('%')) {
+  if (formatCode.includes("%")) {
     const match = formatCode.match(/0\.(0+)%/);
     const decimals = match ? match[1].length : 0;
     const pctValue = value * 100;
@@ -180,7 +180,7 @@ export function formatValue(value: number, formatCode: string | undefined): stri
     return parseFloat(value.toFixed(decimals)).toString();
   }
 
-  if (/^[#0,]+$/.test(formatCode.replace(/[[\]"\\]/g, ''))) {
+  if (/^[#0,]+$/.test(formatCode.replace(/[[\]"\\]/g, ""))) {
     return Math.round(value).toString();
   }
 
@@ -198,23 +198,23 @@ interface NumericValuesWithBlanks {
 }
 
 export function extractNumericValuesWithBlanks(refNode: SafeXmlNode): NumericValuesWithBlanks {
-  const cache = refNode.child('numRef').exists()
-    ? refNode.child('numRef').child('numCache')
-    : refNode.child('numCache');
+  const cache = refNode.child("numRef").exists()
+    ? refNode.child("numRef").child("numCache")
+    : refNode.child("numCache");
 
   if (!cache.exists()) return { values: [], blankIndices: new Set() };
 
   const pointLimit = getCachePointLimit(cache);
-  const values: number[] = new Array(pointLimit).fill(0);
+  const values: number[] = Array.from({ length: pointLimit }, () => 0);
   const blankIndices = new Set<number>();
   for (let i = 0; i < pointLimit; i++) blankIndices.add(i);
 
-  for (const pt of cache.children('pt')) {
-    const idx = pt.numAttr('idx');
+  for (const pt of cache.children("pt")) {
+    const idx = pt.numAttr("idx");
     if (isCachePointInRange(idx, pointLimit)) {
-      const raw = pt.child('v').text().trim();
+      const raw = pt.child("v").text().trim();
       const v = parseFloat(raw);
-      if (raw !== '' && !isNaN(v)) {
+      if (raw !== "" && !isNaN(v)) {
         values[idx] = v;
         blankIndices.delete(idx);
       }
@@ -226,15 +226,15 @@ export function extractNumericValuesWithBlanks(refNode: SafeXmlNode): NumericVal
 
 function extractNumericValuesAsStrings(cache: SafeXmlNode): string[] {
   const pointLimit = getCachePointLimit(cache);
-  const values: string[] = new Array(pointLimit).fill('');
+  const values: string[] = Array.from({ length: pointLimit }, () => "");
 
-  const fc = cache.child('formatCode').text();
+  const fc = cache.child("formatCode").text();
   const isDateFmt = fc && /[yYmMdD]/.test(fc) && !/[#0]/.test(fc);
 
-  for (const pt of cache.children('pt')) {
-    const idx = pt.numAttr('idx');
+  for (const pt of cache.children("pt")) {
+    const idx = pt.numAttr("idx");
     if (isCachePointInRange(idx, pointLimit)) {
-      const raw = pt.child('v').text();
+      const raw = pt.child("v").text();
       if (isDateFmt && raw) {
         values[idx] = excelSerialToDateString(parseFloat(raw));
       } else {

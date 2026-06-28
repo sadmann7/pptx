@@ -1,18 +1,18 @@
-import { SafeXmlNode } from '../../parser/XmlParser';
-import { RenderContext } from '../RenderContext';
-import { resolveColorToHex } from './style';
-import { CHART_ACCENT_KEYS } from './types';
+import { SafeXmlNode } from "../../parser/xml-parser";
+import { RenderContext } from "../render-context";
+import { resolveColorToHex } from "./style";
+import { CHART_ACCENT_KEYS } from "./types";
 
 function parseChartColorMapOverride(chartXml: SafeXmlNode): Map<string, string> | undefined {
-  const clrMapOvr = chartXml.child('clrMapOvr');
+  const clrMapOvr = chartXml.child("clrMapOvr");
   if (!clrMapOvr.exists()) return undefined;
 
   let sourceEl = clrMapOvr.element;
-  const override = clrMapOvr.child('overrideClrMapping');
+  const override = clrMapOvr.child("overrideClrMapping");
   if (override.exists() && override.element) {
     sourceEl = override.element;
   } else {
-    const master = clrMapOvr.child('masterClrMapping');
+    const master = clrMapOvr.child("masterClrMapping");
     if (master.exists()) return undefined;
   }
   if (!sourceEl) return undefined;
@@ -37,27 +37,27 @@ export function createChartRenderContext(chartXml: SafeXmlNode, ctx: RenderConte
 }
 
 export function parseChartStyleId(chartXml: SafeXmlNode): number | undefined {
-  const styleNode = chartXml.child('style');
-  const direct = styleNode.numAttr('val');
+  const styleNode = chartXml.child("style");
+  const direct = styleNode.numAttr("val");
   if (direct !== undefined) return direct;
 
-  const alt = chartXml.child('AlternateContent');
+  const alt = chartXml.child("AlternateContent");
   if (!alt.exists()) return undefined;
   for (const branch of alt.allChildren()) {
-    const s = branch.child('style');
-    const v = s.numAttr('val');
+    const s = branch.child("style");
+    const v = s.numAttr("val");
     if (v !== undefined) return v;
   }
   return undefined;
 }
 
 const CHART_COLOR_NODE_NAMES = new Set([
-  'srgbClr',
-  'schemeClr',
-  'sysClr',
-  'prstClr',
-  'hslClr',
-  'scrgbClr',
+  "srgbClr",
+  "schemeClr",
+  "sysClr",
+  "prstClr",
+  "hslClr",
+  "scrgbClr",
 ]);
 
 function resolveChartColorStyleColor(
@@ -66,7 +66,7 @@ function resolveChartColorStyleColor(
 ): string | undefined {
   if (!colorNode.element || !CHART_COLOR_NODE_NAMES.has(colorNode.localName)) return undefined;
   const doc = colorNode.element.ownerDocument;
-  const wrapper = doc.createElementNS(colorNode.element.namespaceURI, 'solidFill');
+  const wrapper = doc.createElementNS(colorNode.element.namespaceURI, "solidFill");
   wrapper.appendChild(colorNode.element.cloneNode(true));
   return resolveColorToHex(new SafeXmlNode(wrapper), ctx);
 }
@@ -87,17 +87,17 @@ function parseChartColorStylePalette(
 function getThemeAccentPalette(ctx: RenderContext): string[] {
   return CHART_ACCENT_KEYS.map((k) => ctx.theme.colorScheme.get(k))
     .filter((v): v is string => !!v)
-    .map((hex) => (hex.startsWith('#') ? hex : `#${hex}`));
+    .map((hex) => (hex.startsWith("#") ? hex : `#${hex}`));
 }
 
 function darkenHexColor(hex: string, factor: number): string {
-  const cleaned = hex.replace('#', '');
+  const cleaned = hex.replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) return hex;
   const channel = (start: number): number =>
     Math.max(0, Math.min(255, Math.round(parseInt(cleaned.slice(start, start + 2), 16) * factor)));
   return `#${[channel(0), channel(2), channel(4)]
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('')}`;
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 export function getVaryColorPointPalette(

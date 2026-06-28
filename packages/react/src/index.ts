@@ -1,7 +1,7 @@
-import { Root } from "./components/Root";
-import { Viewport } from "./components/Viewport";
-import { Slide } from "./components/Slide";
-import { Thumbnails } from "./components/Thumbnails";
+import { Root } from "./components/root";
+import { Viewport } from "./components/viewport";
+import { Slide } from "./components/slide";
+import { Thumbnails } from "./components/thumbnails";
 
 export const Presentation = {
   Root,

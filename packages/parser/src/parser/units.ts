@@ -43,8 +43,8 @@ export function ptToPx(pt: number): number {
  * Heuristic: detect whether a value is in EMU or points.
  * Values with abs > 20000 are almost certainly EMU (a single point = 12700 EMU).
  */
-export function detectUnit(value: number): 'emu' | 'point' {
-  return Math.abs(value) > 20000 ? 'emu' : 'point';
+export function detectUnit(value: number): "emu" | "point" {
+  return Math.abs(value) > 20000 ? "emu" : "point";
 }
 
 /**
@@ -52,7 +52,7 @@ export function detectUnit(value: number): 'emu' | 'point' {
  * and converts accordingly.
  */
 export function smartToPx(value: number): number {
-  if (detectUnit(value) === 'emu') {
+  if (detectUnit(value) === "emu") {
     return emuToPx(value);
   }
   return ptToPx(value);

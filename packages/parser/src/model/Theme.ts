@@ -2,7 +2,7 @@
  * Theme parser — extracts color scheme and font definitions from a:theme XML.
  */
 
-import { SafeXmlNode } from '../parser/XmlParser';
+import { SafeXmlNode } from "../parser/xml-parser";
 
 export interface ThemeFontInfo {
   latin: string;
@@ -23,18 +23,18 @@ export interface ThemeData {
 
 /** Known color scheme slot names in a:clrScheme. */
 const COLOR_SLOTS = [
-  'dk1',
-  'dk2',
-  'lt1',
-  'lt2',
-  'accent1',
-  'accent2',
-  'accent3',
-  'accent4',
-  'accent5',
-  'accent6',
-  'hlink',
-  'folHlink',
+  "dk1",
+  "dk2",
+  "lt1",
+  "lt2",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "hlink",
+  "folHlink",
 ] as const;
 
 /**
@@ -42,13 +42,13 @@ const COLOR_SLOTS = [
  * Handles both `a:srgbClr@val` and `a:sysClr@lastClr`.
  */
 function extractColor(node: SafeXmlNode): string | undefined {
-  const srgb = node.child('srgbClr');
+  const srgb = node.child("srgbClr");
   if (srgb.exists()) {
-    return srgb.attr('val');
+    return srgb.attr("val");
   }
-  const sys = node.child('sysClr');
+  const sys = node.child("sysClr");
   if (sys.exists()) {
-    return sys.attr('lastClr') ?? sys.attr('val');
+    return sys.attr("lastClr") ?? sys.attr("val");
   }
   return undefined;
 }
@@ -61,18 +61,18 @@ function extractColor(node: SafeXmlNode): string | undefined {
  */
 function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
   const scripts: Record<string, string> = {};
-  for (const font of fontNode.children('font')) {
-    const script = font.attr('script');
-    const typeface = font.attr('typeface');
+  for (const font of fontNode.children("font")) {
+    const script = font.attr("script");
+    const typeface = font.attr("typeface");
     if (script && typeface) {
       scripts[script] = typeface;
     }
   }
 
   const result: ThemeFontInfo = {
-    latin: fontNode.child('latin').attr('typeface') ?? '',
-    ea: fontNode.child('ea').attr('typeface') ?? '',
-    cs: fontNode.child('cs').attr('typeface') ?? '',
+    latin: fontNode.child("latin").attr("typeface") ?? "",
+    ea: fontNode.child("ea").attr("typeface") ?? "",
+    cs: fontNode.child("cs").attr("typeface") ?? "",
   };
   if (Object.keys(scripts).length > 0) {
     result.scripts = scripts;
@@ -84,11 +84,11 @@ function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
  * Parse a theme XML root (`a:theme`) into ThemeData.
  */
 export function parseTheme(root: SafeXmlNode): ThemeData {
-  const themeElements = root.child('themeElements');
+  const themeElements = root.child("themeElements");
   const themeScope = themeElements.exists() ? themeElements : root;
 
   // --- Color scheme ---
-  const clrScheme = themeScope.child('clrScheme');
+  const clrScheme = themeScope.child("clrScheme");
   const colorScheme = new Map<string, string>();
 
   for (const slot of COLOR_SLOTS) {
@@ -102,19 +102,19 @@ export function parseTheme(root: SafeXmlNode): ThemeData {
   }
 
   // --- Font scheme ---
-  const fontScheme = themeScope.child('fontScheme');
-  const majorFont = parseFontInfo(fontScheme.child('majorFont'));
-  const minorFont = parseFontInfo(fontScheme.child('minorFont'));
+  const fontScheme = themeScope.child("fontScheme");
+  const majorFont = parseFontInfo(fontScheme.child("majorFont"));
+  const minorFont = parseFontInfo(fontScheme.child("minorFont"));
 
   // --- Format scheme ---
-  const fmtScheme = themeScope.child('fmtScheme');
-  const fillStyleLst = fmtScheme.child('fillStyleLst');
+  const fmtScheme = themeScope.child("fmtScheme");
+  const fillStyleLst = fmtScheme.child("fillStyleLst");
   const fillStyles: SafeXmlNode[] = fillStyleLst.allChildren();
-  const bgFillStyleLst = fmtScheme.child('bgFillStyleLst');
+  const bgFillStyleLst = fmtScheme.child("bgFillStyleLst");
   const bgFillStyles: SafeXmlNode[] = bgFillStyleLst.allChildren();
-  const lnStyleLst = fmtScheme.child('lnStyleLst');
+  const lnStyleLst = fmtScheme.child("lnStyleLst");
   const lineStyles: SafeXmlNode[] = lnStyleLst.allChildren();
-  const effectStyleLst = fmtScheme.child('effectStyleLst');
+  const effectStyleLst = fmtScheme.child("effectStyleLst");
   const effectStyles: SafeXmlNode[] = effectStyleLst.allChildren();
 
   return { colorScheme, majorFont, minorFont, fillStyles, bgFillStyles, lineStyles, effectStyles };

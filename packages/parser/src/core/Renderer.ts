@@ -1,16 +1,16 @@
-import { parseZip, parseZipLazyMedia } from '../parser/ZipParser';
-import type { ZipParseLimits } from '../parser/ZipParser';
-import { buildPresentation } from '../model/Presentation';
-import { PptxViewer, normalizePreviewInput } from './Viewer';
-import type { FitMode, PreviewInput, ListRenderOptions } from './Viewer';
-import type { PdfjsConfig } from '../utils/pdfRenderer';
+import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
+import type { ZipParseLimits } from "../parser/zip-parser";
+import { buildPresentation } from "../model/presentation";
+import { PptxViewer, normalizePreviewInput } from "./viewer";
+import type { FitMode, PreviewInput, ListRenderOptions } from "./viewer";
+import type { PdfjsConfig } from "../utils/pdf-renderer";
 
-export type { PreviewInput, FitMode } from './Viewer';
-export type { SlideHandle } from '../renderer/SlideRenderer';
+export type { PreviewInput, FitMode } from "./viewer";
+export type { SlideHandle } from "../renderer/slide-renderer";
 
 export interface RendererOptions {
   width?: number;
-  mode?: 'list' | 'slide';
+  mode?: "list" | "slide";
   /** Scaling mode. contain = fit container width, none = use intrinsic slide size. */
   fitMode?: FitMode;
   /** Initial zoom percentage. Effective scale = fitScale * zoomPercent/100. */
@@ -33,7 +33,7 @@ export interface RendererOptions {
    * - full: render and mount all slides (default, backward compatible)
    * - windowed: mount only visible/nearby slides to reduce DOM/memory pressure
    */
-  listMountStrategy?: 'full' | 'windowed';
+  listMountStrategy?: "full" | "windowed";
   /** Number of slides mounted immediately in windowed list mode. */
   windowedInitialSlides?: number;
   /** Overscan in viewport heights for windowed mounting. */
@@ -56,7 +56,7 @@ export interface RendererOptions {
 
 /** @deprecated Use `PptxViewer` instead. */
 export class PptxRenderer extends PptxViewer {
-  private rendererMode: 'list' | 'slide';
+  private rendererMode: "list" | "slide";
   private rendererListOptions: ListRenderOptions;
   private rendererZipLimits?: ZipParseLimits;
   private rendererLazyMedia: boolean;
@@ -79,12 +79,12 @@ export class PptxRenderer extends PptxViewer {
       onSlideUnmounted: options.onSlideUnmounted,
       onNodeError: options.onNodeError,
     });
-    this.rendererMode = options.mode ?? 'list';
+    this.rendererMode = options.mode ?? "list";
     this.rendererZipLimits = options.zipLimits;
     this.rendererLazyMedia = options.lazyMedia === true;
     this.rendererLazySlides = options.lazySlides === true;
     this.rendererListOptions = {
-      windowed: options.listMountStrategy === 'windowed',
+      windowed: options.listMountStrategy === "windowed",
       batchSize: options.listRenderBatchSize,
       initialSlides: options.windowedInitialSlides,
       overscanViewport: options.windowedOverscanViewport,
@@ -107,13 +107,13 @@ export class PptxRenderer extends PptxViewer {
       if (options.signal.aborted) {
         controller.abort();
       } else {
-        options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+        options.signal.addEventListener("abort", () => controller.abort(), { once: true });
       }
     }
 
     const checkAborted = () => {
       if (controller.signal.aborted) {
-        throw new DOMException('Preview aborted', 'AbortError');
+        throw new DOMException("Preview aborted", "AbortError");
       }
     };
 
@@ -135,7 +135,7 @@ export class PptxRenderer extends PptxViewer {
 
     this.load(presentation);
 
-    if (this.rendererMode === 'slide') {
+    if (this.rendererMode === "slide") {
       await this.renderSlide(0);
     } else {
       await this.renderList(this.rendererListOptions);
@@ -148,20 +148,20 @@ export class PptxRenderer extends PptxViewer {
 
   /** Appends prev/next navigation buttons after rendering a single slide. */
   protected override afterSingleSlideRender(): void {
-    const nav = document.createElement('div');
-    nav.style.cssText = 'display: flex; justify-content: center; gap: 12px; margin-top: 12px;';
+    const nav = document.createElement("div");
+    nav.style.cssText = "display: flex; justify-content: center; gap: 12px; margin-top: 12px;";
 
-    const prevBtn = document.createElement('button');
-    prevBtn.textContent = '← Prev';
+    const prevBtn = document.createElement("button");
+    prevBtn.textContent = "← Prev";
     prevBtn.disabled = this.currentSlideIndex === 0;
     prevBtn.onclick = () => this.goToSlide(this.currentSlideIndex - 1);
 
-    const info = document.createElement('span');
-    info.style.cssText = 'line-height: 32px; font-size: 14px;';
+    const info = document.createElement("span");
+    info.style.cssText = "line-height: 32px; font-size: 14px;";
     info.textContent = `${this.currentSlideIndex + 1} / ${this.slideCount}`;
 
-    const nextBtn = document.createElement('button');
-    nextBtn.textContent = 'Next →';
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next →";
     nextBtn.disabled = this.currentSlideIndex >= this.slideCount - 1;
     nextBtn.onclick = () => this.goToSlide(this.currentSlideIndex + 1);
 

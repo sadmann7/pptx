@@ -3,9 +3,9 @@
  * and placeholder shapes from a p:sldLayout XML.
  */
 
-import { SafeXmlNode } from '../parser/XmlParser';
-import { emuToPx } from '../parser/units';
-import { parseOoxmlBool } from '../parser/booleans';
+import { SafeXmlNode } from "../parser/xml-parser";
+import { emuToPx } from "../parser/units";
+import { parseOoxmlBool } from "../parser/booleans";
 
 export interface PlaceholderXfrm {
   position: { x: number; y: number };
@@ -23,7 +23,7 @@ export interface LayoutData {
   background?: SafeXmlNode;
   placeholders: PlaceholderEntry[];
   spTree: SafeXmlNode;
-  rels: Map<string, import('../parser/RelParser').RelEntry>;
+  rels: Map<string, import("../parser/rel-parser").RelEntry>;
   /** When false, shapes from the slide master should NOT be rendered on this layout. */
   showMasterSp: boolean;
 }
@@ -36,11 +36,11 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
  * Check whether a shape node contains a placeholder definition.
  */
 function isPlaceholder(node: SafeXmlNode): boolean {
-  for (const wrapper of ['nvSpPr', 'nvPicPr', 'nvGraphicFramePr', 'nvCxnSpPr']) {
+  for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
     const nvWrapper = node.child(wrapper);
     if (!nvWrapper.exists()) continue;
-    const nvPr = nvWrapper.child('nvPr');
-    if (nvPr.child('ph').exists()) {
+    const nvPr = nvWrapper.child("nvPr");
+    if (nvPr.child("ph").exists()) {
       return true;
     }
   }
@@ -50,15 +50,15 @@ function isPlaceholder(node: SafeXmlNode): boolean {
 function getShapeXfrmInEmu(
   node: SafeXmlNode,
 ): { offX: number; offY: number; cx: number; cy: number } | null {
-  const spPrXfrm = node.child('spPr').child('xfrm');
-  const xfrm = spPrXfrm.exists() ? spPrXfrm : node.child('xfrm');
+  const spPrXfrm = node.child("spPr").child("xfrm");
+  const xfrm = spPrXfrm.exists() ? spPrXfrm : node.child("xfrm");
   if (!xfrm.exists()) return null;
-  const off = xfrm.child('off');
-  const ext = xfrm.child('ext');
-  const offX = off.numAttr('x') ?? 0;
-  const offY = off.numAttr('y') ?? 0;
-  const cx = ext.numAttr('cx') ?? 0;
-  const cy = ext.numAttr('cy') ?? 0;
+  const off = xfrm.child("off");
+  const ext = xfrm.child("ext");
+  const offX = off.numAttr("x") ?? 0;
+  const offY = off.numAttr("y") ?? 0;
+  const cx = ext.numAttr("cx") ?? 0;
+  const cy = ext.numAttr("cy") ?? 0;
   return { offX, offY, cx, cy };
 }
 
@@ -72,23 +72,23 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
   chExtCx: number;
   chExtCy: number;
 } | null {
-  const grpSpPr = grpSp.child('grpSpPr');
+  const grpSpPr = grpSp.child("grpSpPr");
   if (!grpSpPr.exists()) return null;
-  const xfrm = grpSpPr.child('xfrm');
+  const xfrm = grpSpPr.child("xfrm");
   if (!xfrm.exists()) return null;
-  const off = xfrm.child('off');
-  const ext = xfrm.child('ext');
-  const chOff = xfrm.child('chOff');
-  const chExt = xfrm.child('chExt');
-  const offX = off.numAttr('x') ?? 0;
-  const offY = off.numAttr('y') ?? 0;
-  const cx = ext.numAttr('cx') ?? 0;
-  const cy = ext.numAttr('cy') ?? 0;
+  const off = xfrm.child("off");
+  const ext = xfrm.child("ext");
+  const chOff = xfrm.child("chOff");
+  const chExt = xfrm.child("chExt");
+  const offX = off.numAttr("x") ?? 0;
+  const offY = off.numAttr("y") ?? 0;
+  const cx = ext.numAttr("cx") ?? 0;
+  const cy = ext.numAttr("cy") ?? 0;
   // OOXML: when chOff/chExt omitted, child box equals group box (chOff=0,0 and chExt=ext)
-  const chOffX = chOff.exists() ? (chOff.numAttr('x') ?? 0) : 0;
-  const chOffY = chOff.exists() ? (chOff.numAttr('y') ?? 0) : 0;
-  const chExtCx = chExt.exists() ? (chExt.numAttr('cx') ?? cx) : cx;
-  const chExtCy = chExt.exists() ? (chExt.numAttr('cy') ?? cy) : cy;
+  const chOffX = chOff.exists() ? (chOff.numAttr("x") ?? 0) : 0;
+  const chOffY = chOff.exists() ? (chOff.numAttr("y") ?? 0) : 0;
+  const chExtCx = chExt.exists() ? (chExt.numAttr("cx") ?? cx) : cx;
+  const chExtCy = chExt.exists() ? (chExt.numAttr("cy") ?? cy) : cy;
   return {
     offX,
     offY,
@@ -110,7 +110,7 @@ function extractPlaceholdersRecursive(
 ): PlaceholderEntry[] {
   const out: PlaceholderEntry[] = [];
   for (const child of spTree.allChildren()) {
-    if (child.localName === 'grpSp') {
+    if (child.localName === "grpSp") {
       const gx = getGroupXfrmInEmu(child);
       if (gx && gx.chExtCx > 0 && gx.chExtCy > 0) {
         const scaleX = gx.cx / gx.chExtCx;
@@ -182,20 +182,20 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
  * Parse a slide layout XML root (`p:sldLayout`) into LayoutData.
  */
 export function parseLayout(root: SafeXmlNode): LayoutData {
-  const cSld = root.child('cSld');
+  const cSld = root.child("cSld");
 
   // --- Background ---
-  const bg = cSld.child('bg');
+  const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
   // --- Shape tree ---
-  const spTree = cSld.child('spTree');
+  const spTree = cSld.child("spTree");
 
   // --- Color map override ---
   let colorMapOverride: Map<string, string> | undefined;
-  const clrMapOvr = root.child('clrMapOvr');
+  const clrMapOvr = root.child("clrMapOvr");
   if (clrMapOvr.exists()) {
-    const overrideMapping = clrMapOvr.child('overrideClrMapping');
+    const overrideMapping = clrMapOvr.child("overrideClrMapping");
     if (overrideMapping.exists()) {
       colorMapOverride = parseAllAttributes(overrideMapping);
     }
@@ -205,7 +205,7 @@ export function parseLayout(root: SafeXmlNode): LayoutData {
   const placeholders = extractPlaceholdersRecursive(spTree, null);
 
   // --- showMasterSp: if false, master shapes should not be rendered for this layout ---
-  const showMasterSp = parseDefaultTrueBoolAttr(root.attr('showMasterSp'));
+  const showMasterSp = parseDefaultTrueBoolAttr(root.attr("showMasterSp"));
 
   return {
     colorMapOverride,

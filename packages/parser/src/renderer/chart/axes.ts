@@ -1,9 +1,9 @@
-import { SafeXmlNode } from '../../parser/XmlParser';
-import { RenderContext } from '../RenderContext';
-import { formatValue } from './format';
-import { parseOoxmlBoolElement } from './ooxml';
-import { extractChartLineStyle, resolveColorToHex } from './style';
-import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from './text';
+import { SafeXmlNode } from "../../parser/xml-parser";
+import { RenderContext } from "../render-context";
+import { formatValue } from "./format";
+import { parseOoxmlBoolElement } from "./ooxml";
+import { extractChartLineStyle, resolveColorToHex } from "./style";
+import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
 import {
   DEFAULT_CHART_AXIS_LABEL_FONT_SIZE,
   DEFAULT_CHART_AXIS_LINE_COLOR,
@@ -11,39 +11,39 @@ import {
   DEFAULT_MAJOR_GRIDLINE_STYLE,
   type AxisInfo,
   type ChartLineStyle,
-} from './types';
+} from "./types";
 
 const DEFAULT_AXIS_INFO: AxisInfo = {
   deleted: false,
-  tickLblPos: 'nextTo',
+  tickLblPos: "nextTo",
   hasMajorGridlines: false,
-  orientation: 'minMax',
+  orientation: "minMax",
 };
 
 function themeHex(ctx: RenderContext, key: string): string | undefined {
   const value = ctx.theme.colorScheme.get(key);
-  return value?.replace('#', '').toUpperCase();
+  return value?.replace("#", "").toUpperCase();
 }
 
 function legacyOfficeImplicitAxisColor(ctx: RenderContext): string | undefined {
   // Office 2007/2010 default chart themes use black implicit axis/grid lines,
   // while newer Office themes use the lighter gray default.
-  if (themeHex(ctx, 'accent1') === '4F81BD' && themeHex(ctx, 'accent2') === 'C0504D') {
-    return '#000000';
+  if (themeHex(ctx, "accent1") === "4F81BD" && themeHex(ctx, "accent2") === "C0504D") {
+    return "#000000";
   }
   return undefined;
 }
 
 function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | undefined {
-  const txPr = ax.child('txPr');
+  const txPr = ax.child("txPr");
   if (!txPr.exists()) return undefined;
 
-  for (const p of txPr.children('p')) {
-    const pPr = p.child('pPr');
+  for (const p of txPr.children("p")) {
+    const pPr = p.child("pPr");
     if (!pPr.exists()) continue;
-    const defRPr = pPr.child('defRPr');
+    const defRPr = pPr.child("defRPr");
     if (!defRPr.exists()) continue;
-    const fill = defRPr.child('solidFill');
+    const fill = defRPr.child("solidFill");
     if (fill.exists()) {
       return resolveColorToHex(fill, ctx);
     }
@@ -52,9 +52,9 @@ function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | un
 }
 
 function extractAxisLineColor(ax: SafeXmlNode, ctx: RenderContext): string | undefined {
-  const ln = ax.child('spPr').child('ln');
+  const ln = ax.child("spPr").child("ln");
   if (!ln.exists()) return undefined;
-  const fill = ln.child('solidFill');
+  const fill = ln.child("solidFill");
   if (!fill.exists()) return undefined;
   return resolveColorToHex(fill, ctx);
 }
@@ -63,15 +63,15 @@ function extractMajorGridlineStyle(
   ax: SafeXmlNode,
   ctx: RenderContext,
 ): ChartLineStyle | undefined {
-  const ln = ax.child('majorGridlines').child('spPr').child('ln');
+  const ln = ax.child("majorGridlines").child("spPr").child("ln");
   return extractChartLineStyle(ln, ctx);
 }
 
 function extractTitleRotation(title: SafeXmlNode): number | undefined {
-  const bodyPr = title.child('tx').child('rich').child('bodyPr').exists()
-    ? title.child('tx').child('rich').child('bodyPr')
-    : title.child('txPr').child('bodyPr');
-  const rot = bodyPr.numAttr('rot');
+  const bodyPr = title.child("tx").child("rich").child("bodyPr").exists()
+    ? title.child("tx").child("rich").child("bodyPr")
+    : title.child("txPr").child("bodyPr");
+  const rot = bodyPr.numAttr("rot");
   if (rot === undefined) return undefined;
   const deg = rot / 60000;
   return Number(deg.toFixed(3));
@@ -80,8 +80,8 @@ function extractTitleRotation(title: SafeXmlNode): number | undefined {
 function extractAxisTitle(
   ax: SafeXmlNode,
   ctx: RenderContext,
-): Pick<AxisInfo, 'title' | 'titleStyle' | 'titleRotation'> {
-  const title = ax.child('title');
+): Pick<AxisInfo, "title" | "titleStyle" | "titleRotation"> {
+  const title = ax.child("title");
   if (!title.exists()) return {};
 
   const text = extractTitleText(title);
@@ -96,19 +96,19 @@ function extractAxisTitle(
 
 function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
   if (!ax.exists()) return { ...DEFAULT_AXIS_INFO };
-  const deleted = parseOoxmlBoolElement(ax.child('delete'));
-  const tickLblPos = ax.child('tickLblPos').attr('val') || 'nextTo';
-  const crosses = ax.child('crosses').attr('val');
-  const numFmtNode = ax.child('numFmt');
-  const numFmt = numFmtNode.exists() ? numFmtNode.attr('formatCode') || undefined : undefined;
-  const scaling = ax.child('scaling');
-  const minNode = scaling.child('min');
-  const maxNode = scaling.child('max');
-  const min = minNode.exists() ? parseFloat(minNode.attr('val') || '') : undefined;
-  const max = maxNode.exists() ? parseFloat(maxNode.attr('val') || '') : undefined;
-  const hasMajorGridlines = ax.child('majorGridlines').exists();
-  const majorTickMark = ax.child('majorTickMark').attr('val');
-  const orientation = scaling.child('orientation').attr('val') || 'minMax';
+  const deleted = parseOoxmlBoolElement(ax.child("delete"));
+  const tickLblPos = ax.child("tickLblPos").attr("val") || "nextTo";
+  const crosses = ax.child("crosses").attr("val");
+  const numFmtNode = ax.child("numFmt");
+  const numFmt = numFmtNode.exists() ? numFmtNode.attr("formatCode") || undefined : undefined;
+  const scaling = ax.child("scaling");
+  const minNode = scaling.child("min");
+  const maxNode = scaling.child("max");
+  const min = minNode.exists() ? parseFloat(minNode.attr("val") || "") : undefined;
+  const max = maxNode.exists() ? parseFloat(maxNode.attr("val") || "") : undefined;
+  const hasMajorGridlines = ax.child("majorGridlines").exists();
+  const majorTickMark = ax.child("majorTickMark").attr("val");
+  const orientation = scaling.child("orientation").attr("val") || "minMax";
   const txStyle = extractTxPrStyle(ax, ctx);
   const labelColor = txStyle?.color ?? extractAxisLabelColor(ax, ctx);
   const labelFontSize = txStyle?.fontSize;
@@ -125,7 +125,7 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
     deleted,
     tickLblPos,
     crosses,
-    numFmt: numFmt && numFmt !== 'General' ? numFmt : undefined,
+    numFmt: numFmt && numFmt !== "General" ? numFmt : undefined,
     min: min !== undefined && !isNaN(min) ? min : undefined,
     max: max !== undefined && !isNaN(max) ? max : undefined,
     hasMajorGridlines,
@@ -142,9 +142,9 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
 export function getChartAxisIds(chartTypeNode?: SafeXmlNode): string[] {
   if (!chartTypeNode?.exists()) return [];
   return chartTypeNode
-    .children('axId')
-    .map((ax) => ax.attr('val'))
-    .filter((id): id is string => id !== undefined && id !== '');
+    .children("axId")
+    .map((ax) => ax.attr("val"))
+    .filter((id): id is string => id !== undefined && id !== "");
 }
 
 function findAxisById(
@@ -155,7 +155,7 @@ function findAxisById(
   if (axisId) {
     for (const axisName of axisNames) {
       const axes = plotArea.children(axisName);
-      const matched = axes.find((axis) => axis.child('axId').attr('val') === axisId);
+      const matched = axes.find((axis) => axis.child("axId").attr("val") === axisId);
       if (matched) return matched;
     }
     return new SafeXmlNode(null);
@@ -176,8 +176,8 @@ export function parseAxes(
   const axisIds = getChartAxisIds(chartTypeNode);
   const categoryAxisId = axisIds[0];
   const valueAxisId = axisIds[1];
-  const valAx = findAxisById(plotArea, ['valAx'], valueAxisId);
-  const catAx = findAxisById(plotArea, ['catAx', 'dateAx'], categoryAxisId);
+  const valAx = findAxisById(plotArea, ["valAx"], valueAxisId);
+  const catAx = findAxisById(plotArea, ["catAx", "dateAx"], categoryAxisId);
   return {
     valueAxis: parseAxisNode(valAx, ctx),
     categoryAxis: parseAxisNode(catAx, ctx),
@@ -188,15 +188,15 @@ export function parseScatterAxes(
   plotArea: SafeXmlNode,
   ctx: RenderContext,
 ): { xAxis: AxisInfo; yAxis: AxisInfo } {
-  const allValAx = plotArea.children('valAx');
+  const allValAx = plotArea.children("valAx");
   let xAxis: AxisInfo = { ...DEFAULT_AXIS_INFO };
   let yAxis: AxisInfo = { ...DEFAULT_AXIS_INFO };
   for (const ax of allValAx) {
-    const axPos = ax.child('axPos').attr('val') ?? '';
+    const axPos = ax.child("axPos").attr("val") ?? "";
     const info = parseAxisNode(ax, ctx);
-    if (axPos === 'b' || axPos === 't') {
+    if (axPos === "b" || axPos === "t") {
       xAxis = info;
-    } else if (axPos === 'l' || axPos === 'r') {
+    } else if (axPos === "l" || axPos === "r") {
       yAxis = info;
     }
   }
@@ -209,29 +209,29 @@ export function parseScatterAxes(
 export function applyAxisInfo(
   axisDef: Record<string, unknown>,
   info: AxisInfo,
-  kind: 'value' | 'category',
+  kind: "value" | "category",
 ): void {
   if (info.deleted) {
-    axisDef.axisLabel = { ...((axisDef.axisLabel as object) || {}), show: false };
+    axisDef.axisLabel = { ...(axisDef.axisLabel as object), show: false };
     axisDef.axisLine = { show: false };
     axisDef.axisTick = { show: false };
-    if (kind === 'value') axisDef.splitLine = { show: false };
+    if (kind === "value") axisDef.splitLine = { show: false };
     return;
   }
 
-  if (info.orientation === 'maxMin') {
+  if (info.orientation === "maxMin") {
     axisDef.inverse = true;
   }
 
-  if (info.crosses === 'autoZero') {
+  if (info.crosses === "autoZero") {
     const existingLine = (axisDef.axisLine as Record<string, unknown>) || {};
     axisDef.axisLine = { ...existingLine, onZero: true };
   }
 
   if (info.title) {
     axisDef.name = info.title;
-    axisDef.nameLocation = 'middle';
-    axisDef.nameGap = kind === 'value' ? 42 : 28;
+    axisDef.nameLocation = "middle";
+    axisDef.nameGap = kind === "value" ? 42 : 28;
     if (info.titleRotation !== undefined) {
       axisDef.nameRotate = info.titleRotation;
     }
@@ -241,18 +241,18 @@ export function applyAxisInfo(
     if (info.titleStyle?.fontSize !== undefined) nameTextStyle.fontSize = info.titleStyle.fontSize;
     if (info.titleStyle?.fontFamily) nameTextStyle.fontFamily = info.titleStyle.fontFamily;
     if (info.titleStyle?.bold !== undefined) {
-      nameTextStyle.fontWeight = info.titleStyle.bold ? 'bold' : 'normal';
+      nameTextStyle.fontWeight = info.titleStyle.bold ? "bold" : "normal";
     }
     if (Object.keys(nameTextStyle).length > 0) {
       axisDef.nameTextStyle = nameTextStyle;
     }
   }
 
-  if (info.tickLblPos === 'none') {
-    axisDef.axisLabel = { ...((axisDef.axisLabel as object) || {}), show: false };
+  if (info.tickLblPos === "none") {
+    axisDef.axisLabel = { ...(axisDef.axisLabel as object), show: false };
   }
 
-  if (info.majorTickMark === 'none') {
+  if (info.majorTickMark === "none") {
     const existingTick = (axisDef.axisTick as Record<string, unknown>) || {};
     axisDef.axisTick = { ...existingTick, show: false };
   } else if (!info.deleted) {
@@ -266,12 +266,12 @@ export function applyAxisInfo(
     }
   }
 
-  if (kind === 'value') {
+  if (kind === "value") {
     if (info.min !== undefined) axisDef.min = info.min;
     if (info.max !== undefined) axisDef.max = info.max;
   }
 
-  if (kind === 'value' && !info.deleted && info.tickLblPos !== 'none') {
+  if (kind === "value" && !info.deleted && info.tickLblPos !== "none") {
     const existingLabel = (axisDef.axisLabel as Record<string, unknown>) || {};
     if (!existingLabel.formatter) {
       const nf = info.numFmt;
@@ -282,7 +282,7 @@ export function applyAxisInfo(
     }
   }
 
-  if (!info.deleted && info.tickLblPos !== 'none') {
+  if (!info.deleted && info.tickLblPos !== "none") {
     const existingLabel = (axisDef.axisLabel as Record<string, unknown>) || {};
     if (existingLabel.fontSize === undefined) {
       axisDef.axisLabel = {
@@ -292,7 +292,7 @@ export function applyAxisInfo(
     }
   }
 
-  if (kind === 'value') {
+  if (kind === "value") {
     if (!info.hasMajorGridlines) {
       axisDef.splitLine = { show: false };
     } else if (info.majorGridlineStyle) {
