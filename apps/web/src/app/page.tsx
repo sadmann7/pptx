@@ -24,7 +24,13 @@ export default function IndexPage() {
         <PresentationDebug />
         <div className="flex flex-1 overflow-hidden">
           <Presentation.Thumbnails className="border-r border-border" style={{ width: 160 }} />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <Presentation.Loading className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
+              {(progress) => <span>Loading… {progress}%</span>}
+            </Presentation.Loading>
+            <Presentation.Error className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-destructive">
+              {(err) => <span>{err.message}</span>}
+            </Presentation.Error>
             <Presentation.Viewport className="flex-1" autoFit autoFitPadding={32}>
               <Presentation.Slide />
             </Presentation.Viewport>

@@ -1,54 +1,70 @@
-import React from "react";
-import { usePresentationStoreRef } from "../context";
+import * as React from "react";
+import { useZoom, usePresentationStoreRef } from "../context";
+import { mergeRefs, renderElement } from "../utils/render";
+import type { RenderProp } from "../utils/render";
 
-export interface ViewportProps {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-  autoFit?: boolean;
-  autoFitPadding?: number;
+export interface ViewportState {
+  zoom: number;
 }
 
-export function Viewport({
-  children,
-  className,
-  style,
-  autoFit = false,
-  autoFitPadding = 24,
-}: ViewportProps) {
-  const ref = React.useRef<HTMLDivElement>(null);
+export interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
+  autoFit?: boolean;
+  autoFitPadding?: number;
+  /**
+   * Replace the viewport container element.
+   * - ReactElement: cloned with composed props
+   * - Function: `(props, state) => ReactElement`
+   */
+  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ViewportState>;
+}
+
+/**
+ * Scrollable container that optionally auto-fits the slide to its size.
+ * Spread any native `<div>` props — they are composed (not overwritten) with internals.
+ */
+export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
+  { children, className, style, autoFit = false, autoFitPadding = 24, render, ...elementProps },
+  forwardedRef,
+) {
+  const internalRef = React.useRef<HTMLDivElement>(null);
   const store = usePresentationStoreRef();
+  const { zoom } = useZoom();
 
   React.useEffect(() => {
-    if (!autoFit || !ref.current) return;
-    const el = ref.current;
+    if (!autoFit || !internalRef.current) return;
+    const el = internalRef.current;
     const fit = () => {
       if (el.clientWidth > 0 && el.clientHeight > 0)
         store.fitTo(el.clientWidth, el.clientHeight, autoFitPadding);
     };
     const unsubscribe = store.subscribe(fit);
     fit();
-    const observer = new ResizeObserver(fit);
-    observer.observe(el);
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
     return () => {
       unsubscribe();
-      observer.disconnect();
+      ro.disconnect();
     };
   }, [autoFit, autoFitPadding, store]);
 
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
+  const state: ViewportState = { zoom };
+
+  return renderElement(
+    "div",
+    render as RenderProp<Record<string, unknown>, ViewportState> | undefined,
+    {
+      ...elementProps,
+      ref: mergeRefs(internalRef, forwardedRef),
+      className,
+      style: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         overflow: "auto",
         ...style,
-      }}
-    >
-      {children}
-    </div>
+      },
+      children,
+    },
+    state,
   );
-}
+});

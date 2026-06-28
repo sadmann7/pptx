@@ -1,54 +1,78 @@
-import React from "react";
+import * as React from "react";
 import { usePresentation, useSlide, useZoom } from "../context";
 import { renderSlide } from "@pptx/parser";
 import type { PresentationData, SlideData, SlideHandle } from "@pptx/parser";
+import type { PresentationStatus } from "../store";
+import { renderElement } from "../utils/render";
+import type { RenderProp } from "../utils/render";
 
-export interface SlideProps {
-  children?: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
+export interface SlideState {
+  /** Current parse/load status. Reflected as `data-status` on the element. */
+  status: PresentationStatus;
+  /** Zero-based index of the active slide. */
+  index: number;
 }
 
-export function Slide({ children, className, style }: SlideProps) {
+export interface SlideProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Replace the slide wrapper element.
+   * - ReactElement: cloned with composed props
+   * - Function: `(props, state) => ReactElement`
+   */
+  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, SlideState>;
+}
+
+/**
+ * Renders the current slide inside a centered wrapper.
+ * The wrapper always mounts so that sibling layout is stable — slide content
+ * is absent until the presentation is `"ready"`.
+ *
+ * Use `<Presentation.Loading>` / `<Presentation.Error>` to display status UI.
+ *
+ * The element carries a `data-status` attribute matching the store status,
+ * enabling CSS-driven state styles.
+ */
+export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
+  { children, className, style, render, ...elementProps },
+  forwardedRef,
+) {
   const { presentation, status } = usePresentation();
-  const { slide } = useSlide();
+  const { slide, index } = useSlide();
   const { zoom } = useZoom();
 
-  if (status === "loading") {
-    return (
-      <div
-        className={className}
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", ...style }}
-      >
-        <span style={{ color: "#666" }}>Loading...</span>
-      </div>
-    );
-  }
-  if (status === "error")
-    return (
-      <div className={className} style={style}>
-        Failed to parse
-      </div>
-    );
-  if (!presentation || !slide) return null;
+  const state: SlideState = { status, index };
 
-  return (
-    <div
-      className={className}
-      style={{
+  const slideContent =
+    presentation && slide ? (
+      <SlideRenderer presentation={presentation} slide={slide} zoom={zoom}>
+        {children}
+      </SlideRenderer>
+    ) : null;
+
+  return renderElement(
+    "div",
+    render as RenderProp<Record<string, unknown>, SlideState> | undefined,
+    {
+      ...elementProps,
+      ref: forwardedRef,
+      "data-status": status,
+      className,
+      style: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         overflow: "auto",
         ...style,
-      }}
-    >
-      <SlideRenderer presentation={presentation} slide={slide} zoom={zoom}>
-        {children}
-      </SlideRenderer>
-    </div>
+      },
+      children: slideContent,
+    },
+    state,
   );
-}
+});
+
+// ---------------------------------------------------------------------------
+// Internal: imperative slide renderer (untouched from original)
+// ---------------------------------------------------------------------------
 
 interface SlideRendererProps {
   presentation: PresentationData;
@@ -66,14 +90,12 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
     const container = containerRef.current;
     if (!container) return;
 
-    // Dispose previous render
     if (handleRef.current) {
       handleRef.current.dispose();
       handleRef.current = null;
     }
     container.innerHTML = "";
 
-    // Render the slide using the reference library's full renderer
     const handle = renderSlide(presentation, slide, {
       mediaUrlCache,
       onNodeError: (nodeId, error) => {

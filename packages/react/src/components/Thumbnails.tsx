@@ -1,37 +1,78 @@
-import React from "react";
+import * as React from "react";
 import { usePresentation, useSlide } from "../context";
 import { renderSlide } from "@pptx/parser";
 import type { PresentationData, SlideData, SlideHandle } from "@pptx/parser";
+import { renderElement } from "../utils/render";
+import type { RenderProp } from "../utils/render";
 
-export interface ThumbnailsProps {
-  className?: string;
-  style?: React.CSSProperties;
+export interface ThumbnailsState {
+  total: number;
+  currentIndex: number;
 }
 
-export function Thumbnails({ className, style }: ThumbnailsProps) {
+export interface ThumbnailsProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Width of each thumbnail in pixels.
+   * Falls back to `style.width` for backward compatibility, then `140`.
+   */
+  thumbWidth?: number;
+  /**
+   * Replace the thumbnails container element.
+   * - ReactElement: cloned with composed props
+   * - Function: `(props, state) => ReactElement`
+   */
+  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ThumbnailsState>;
+}
+
+/**
+ * Scrollable sidebar that lists slide thumbnails.
+ * Renders nothing until the presentation is `"ready"`.
+ */
+export const Thumbnails = React.forwardRef<HTMLDivElement, ThumbnailsProps>(function Thumbnails(
+  { className, style, thumbWidth, render, ...elementProps },
+  forwardedRef,
+) {
   const { presentation, status } = usePresentation();
   const { index: currentIndex, goTo } = useSlide();
 
   if (status !== "ready" || !presentation) return null;
 
-  const thumbWidth = (style?.width as number) ?? 140;
+  const resolvedThumbWidth = thumbWidth ?? (style?.width as number | undefined) ?? 140;
 
-  return (
-    <div className={className} style={{ overflowY: "auto", padding: 8, ...style }}>
-      {presentation.slides.map((slide, i) => (
-        <ThumbnailItem
-          key={i}
-          index={i}
-          slide={slide}
-          presentation={presentation}
-          isActive={i === currentIndex}
-          thumbWidth={thumbWidth}
-          onClick={() => goTo(i)}
-        />
-      ))}
-    </div>
+  const state: ThumbnailsState = {
+    total: presentation.slides.length,
+    currentIndex,
+  };
+
+  const children = presentation.slides.map((slide, i) => (
+    <ThumbnailItem
+      key={i}
+      index={i}
+      slide={slide}
+      presentation={presentation}
+      isActive={i === currentIndex}
+      thumbWidth={resolvedThumbWidth}
+      onClick={() => goTo(i)}
+    />
+  ));
+
+  return renderElement(
+    "div",
+    render as RenderProp<Record<string, unknown>, ThumbnailsState> | undefined,
+    {
+      ...elementProps,
+      ref: forwardedRef,
+      className,
+      style: { overflowY: "auto", padding: 8, ...style },
+      children,
+    },
+    state,
   );
-}
+});
+
+// ---------------------------------------------------------------------------
+// Internal: individual thumbnail button
+// ---------------------------------------------------------------------------
 
 interface ThumbnailItemProps {
   index: number;
@@ -85,6 +126,7 @@ function ThumbnailItem({
   return (
     <button
       onClick={onClick}
+      data-active={isActive || undefined}
       style={{
         display: "block",
         width: "100%",
