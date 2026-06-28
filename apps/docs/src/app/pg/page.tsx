@@ -8,7 +8,7 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
   PresentationSlide,
-} from "@/components/presentation";
+} from "@/components/ui/presentation";
 import * as React from "react";
 
 export default function PgPage() {
