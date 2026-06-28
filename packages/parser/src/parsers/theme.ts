@@ -1,5 +1,5 @@
-import type { Effect, Theme, ThemeColors, ThemeFonts } from "../types";
-import { parseEffects } from "./fill";
+import type { Effect, Fill, Theme, ThemeColors, ThemeFonts } from "../types";
+import { parseEffects, parseFill } from "./fill";
 import { attr, get, toArray } from "../xml";
 
 const FALLBACK_COLORS: ThemeColors = {
@@ -30,12 +30,14 @@ export function parseTheme(themeXml: Record<string, unknown>): Theme {
 
   const fmtSchemeNode = get(fmtScheme, "a:fmtScheme") as Record<string, unknown> | undefined;
   const effectStyles = parseEffectStyleLst(fmtSchemeNode);
+  const bgFillStyles = parseBgFillStyleLst(fmtSchemeNode);
 
   return {
     name,
     colors: parseThemeColors(clrScheme),
     fonts: parseThemeFonts(fontScheme),
     ...(effectStyles.length ? { effectStyles } : {}),
+    ...(bgFillStyles.length ? { bgFillStyles } : {}),
   };
 }
 
@@ -71,15 +73,66 @@ function parseThemeColors(clrScheme: Record<string, unknown> | undefined): Theme
 }
 
 function parseThemeFonts(fontScheme: Record<string, unknown> | undefined): ThemeFonts {
-  if (!fontScheme) return { major: "Calibri Light", minor: "Calibri" };
+  const defaultFonts: ThemeFonts = {
+    major: "Calibri Light",
+    minor: "Calibri",
+    majorFont: { latin: "Calibri Light" },
+    minorFont: { latin: "Calibri" },
+  };
+  if (!fontScheme) return defaultFonts;
 
   const majorFonts = get(fontScheme, "a:majorFont") as Record<string, unknown> | undefined;
   const minorFonts = get(fontScheme, "a:minorFont") as Record<string, unknown> | undefined;
 
-  const major = attr(get(majorFonts, "a:latin"), "typeface") ?? "Calibri Light";
-  const minor = attr(get(minorFonts, "a:latin"), "typeface") ?? "Calibri";
+  const majorLatin = attr(get(majorFonts, "a:latin"), "typeface") ?? "Calibri Light";
+  const minorLatin = attr(get(minorFonts, "a:latin"), "typeface") ?? "Calibri";
+  const majorEa = attr(get(majorFonts, "a:ea"), "typeface") || undefined;
+  const minorEa = attr(get(minorFonts, "a:ea"), "typeface") || undefined;
+  const majorCs = attr(get(majorFonts, "a:cs"), "typeface") || undefined;
+  const minorCs = attr(get(minorFonts, "a:cs"), "typeface") || undefined;
 
-  return { major, minor };
+  return {
+    major: majorLatin,
+    minor: minorLatin,
+    majorFont: { latin: majorLatin, ea: majorEa, cs: majorCs },
+    minorFont: { latin: minorLatin, ea: minorEa, cs: minorCs },
+  };
+}
+
+/**
+ * Parse bgFillStyleLst from theme fmtScheme.
+ * Returns an array where index 0 corresponds to bgRef idx=1001,
+ * index 1 to bgRef idx=1002, etc.
+ *
+ * NOTE: fast-xml-parser collapses duplicate sibling keys, so multiple fills of
+ * the same type (e.g. two <a:solidFill> entries) may be collapsed. We handle
+ * this by using toArray() for each key, then collecting in order. When the
+ * bgFillStyleLst has only one entry per fill type, document order is preserved.
+ * For the rare case of multiple same-type fills, order is best-effort.
+ */
+function parseBgFillStyleLst(fmtSchemeNode: Record<string, unknown> | undefined): Fill[] {
+  if (!fmtSchemeNode) return [];
+  const bgFillStyleLst = get(fmtSchemeNode, "a:bgFillStyleLst") as
+    | Record<string, unknown>
+    | undefined;
+  if (!bgFillStyleLst) return [];
+
+  const fills: Fill[] = [];
+
+  // Build ordered fills by iterating the object's keys in insertion order.
+  // fast-xml-parser preserves key insertion order, which matches document order
+  // for distinct element types.
+  for (const [key, val] of Object.entries(bgFillStyleLst)) {
+    if (!key.startsWith("a:")) continue;
+    const nodes = toArray(val as unknown[]);
+    for (const node of nodes) {
+      const wrapper = { [key]: node };
+      const fill = parseFill(wrapper);
+      if (fill) fills.push(fill);
+    }
+  }
+
+  return fills;
 }
 
 /**

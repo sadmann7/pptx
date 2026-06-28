@@ -1,10 +1,11 @@
 import React from "react";
-import type { ChartShape, ParsedChart, ThemeColors } from "@pptx/parser";
+import type { ChartShape, ColorMap, ParsedChart, ThemeColors } from "@pptx/parser";
 import { elementStyle } from "../render/transform";
 
 interface ChartElementProps {
   element: ChartShape;
   theme: ThemeColors;
+  colorMap?: ColorMap;
 }
 
 export function ChartElement({ element }: ChartElementProps) {

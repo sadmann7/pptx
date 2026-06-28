@@ -1,8 +1,14 @@
 import React from "react";
-import type { ImageShape, ThemeColors } from "@pptx/parser";
+import type { ColorMap, ImageShape, ThemeColors } from "@pptx/parser";
 import { elementStyle } from "../render/transform";
 
-export function ImageElement({ element }: { element: ImageShape; theme: ThemeColors }) {
+export function ImageElement({
+  element,
+}: {
+  element: ImageShape;
+  theme: ThemeColors;
+  colorMap?: ColorMap;
+}) {
   if (!element.src) return null;
 
   const outer: React.CSSProperties = {

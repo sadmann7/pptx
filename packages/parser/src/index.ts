@@ -58,6 +58,7 @@ export type {
   GradientStop,
   PatternFill,
   NoFill,
+  ImageFill,
   Stroke,
   ArrowEnd,
   ArrowEndType,
@@ -65,6 +66,7 @@ export type {
 
   // Color
   Color,
+  ColorMap,
   SolidColor,
   SchemeColor,
 
@@ -72,6 +74,7 @@ export type {
   Theme,
   ThemeColors,
   ThemeFonts,
+  ThemeFontSet,
 
   // Geometry
   Position,

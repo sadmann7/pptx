@@ -19,7 +19,7 @@ import { parseTable } from "./table";
 import { parseTextBody } from "./text";
 import type { PptxZip, Relationship } from "../zip";
 import { readMediaAsUrl, readString } from "../zip";
-import { attr, attrBool, attrNum, get, toArray } from "../xml";
+import { attr, attrBool, attrNum, get, toArray, type ChildOrderNode } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
 
 // ─── Adjustments ─────────────────────────────────────────────────────────────
@@ -103,9 +103,14 @@ function parseSp(
 ): GeometricShape | TextShape {
   const nvSpPr = get(spNode, "p:nvSpPr") as Record<string, unknown> | undefined;
   const cNvPr = get(nvSpPr, "p:cNvPr") as Record<string, unknown> | undefined;
+  const cNvSpPr = get(nvSpPr, "p:cNvSpPr");
   const id = attr(cNvPr, "id") ?? "";
   const name = attr(cNvPr, "name") ?? "";
   const hidden = attrBool(cNvPr, "hidden") ?? false;
+  // txBox="1" means the shape is a text box — it may still have prstGeom="rect"
+  // to define its wrapping boundary, but it should render as a TextShape, not
+  // as a filled geometric shape.
+  const isTxBox = attrBool(cNvSpPr as Record<string, unknown>, "txBox") === true;
   const placeholder = readPlaceholder(get(nvSpPr, "p:nvPr"));
 
   const spPr = get(spNode, "p:spPr") as Record<string, unknown> | undefined;
@@ -135,8 +140,10 @@ function parseSp(
   const txBody = get(spNode, "p:txBody");
   const hasText = !!txBody;
 
-  // Text box (no geometry, has txBody)
-  if (!prstGeom && !custGeom && hasText) {
+  // Text box: either no geometry present, or explicitly marked txBox="1".
+  // txBox="1" shapes can still carry prstGeom="rect" as a wrapping boundary
+  // but should be treated as transparent text containers, not filled shapes.
+  if ((!prstGeom && !custGeom && hasText) || (isTxBox && hasText)) {
     const { paragraphs, properties } = parseTextBody(txBody);
     return {
       type: "text",
@@ -358,6 +365,8 @@ async function parseGrpSp(
   zip: PptxZip,
   slidePath: string,
   skipImages: boolean,
+  themeEffectStyles?: Effect[][],
+  childOrder?: ChildOrderNode[],
 ): Promise<GroupShape> {
   const nvGrpSpPr = get(grpNode, "p:nvGrpSpPr") as Record<string, unknown> | undefined;
   const cNvPr = get(nvGrpSpPr, "p:cNvPr") as Record<string, unknown> | undefined;
@@ -368,7 +377,25 @@ async function parseGrpSp(
   const xfrm = get(grpSpPr, "a:xfrm");
   const { position, size, transform } = parseXfrm(xfrm);
 
-  const children = await parseSpTree(grpNode, rels, zip, slidePath, skipImages);
+  // Child coordinate space — maps children from (chOff, chExt) into the group's (off, ext)
+  const chOff = get(xfrm, "a:chOff");
+  const chExt = get(xfrm, "a:chExt");
+  const childOffset = chOff
+    ? { x: emuToPoints(attrNum(chOff, "x") ?? 0), y: emuToPoints(attrNum(chOff, "y") ?? 0) }
+    : undefined;
+  const childExtent = chExt
+    ? { width: emuToPoints(attrNum(chExt, "cx") ?? 0), height: emuToPoints(attrNum(chExt, "cy") ?? 0) }
+    : undefined;
+
+  const children = await parseSpTree(
+    grpNode,
+    rels,
+    zip,
+    slidePath,
+    skipImages,
+    themeEffectStyles,
+    childOrder,
+  );
 
   return {
     type: "group",
@@ -378,6 +405,8 @@ async function parseGrpSp(
     size,
     transform,
     children,
+    ...(childOffset ? { childOffset } : {}),
+    ...(childExtent ? { childExtent } : {}),
   };
 }
 
@@ -390,35 +419,71 @@ export async function parseSpTree(
   slidePath: string,
   skipImages: boolean,
   themeEffectStyles?: Effect[][],
+  childOrder?: ChildOrderNode[],
 ): Promise<SlideElement[]> {
-  const elements: SlideElement[] = [];
+  const spEls = toArray(treeNode["p:sp"] as unknown[]).map((sp) =>
+    parseSp(sp as Record<string, unknown>, themeEffectStyles),
+  );
 
-  const spNodes = toArray(treeNode["p:sp"] as unknown[]);
-  for (const sp of spNodes) {
-    elements.push(parseSp(sp as Record<string, unknown>, themeEffectStyles));
+  const picEls: ImageShape[] = [];
+  for (const pic of toArray(treeNode["p:pic"] as unknown[])) {
+    picEls.push(await parsePic(pic as Record<string, unknown>, rels, zip, skipImages));
   }
 
-  const picNodes = toArray(treeNode["p:pic"] as unknown[]);
-  for (const pic of picNodes) {
-    elements.push(await parsePic(pic as Record<string, unknown>, rels, zip, skipImages));
+  const gfEls: (SlideElement | null)[] = [];
+  for (const gf of toArray(treeNode["p:graphicFrame"] as unknown[])) {
+    gfEls.push(await parseGraphicFrame(gf as Record<string, unknown>, rels, zip, slidePath));
   }
 
-  const gfNodes = toArray(treeNode["p:graphicFrame"] as unknown[]);
-  for (const gf of gfNodes) {
-    const el = await parseGraphicFrame(gf as Record<string, unknown>, rels, zip, slidePath);
-    if (el) elements.push(el);
-  }
-
-  const cxnNodes = toArray(treeNode["p:cxnSp"] as unknown[]);
-  for (const cxn of cxnNodes) {
-    elements.push(parseCxnSp(cxn as Record<string, unknown>));
-  }
+  const cxnEls = toArray(treeNode["p:cxnSp"] as unknown[]).map((cxn) =>
+    parseCxnSp(cxn as Record<string, unknown>),
+  );
 
   const grpNodes = toArray(treeNode["p:grpSp"] as unknown[]);
-  for (const grp of grpNodes) {
-    elements.push(
-      await parseGrpSp(grp as Record<string, unknown>, rels, zip, slidePath, skipImages),
+  const grpOrderEntries = childOrder ? childOrder.filter((c) => c.tag === "p:grpSp") : [];
+  const grpEls: GroupShape[] = [];
+  for (let i = 0; i < grpNodes.length; i++) {
+    grpEls.push(
+      await parseGrpSp(
+        grpNodes[i] as Record<string, unknown>,
+        rels,
+        zip,
+        slidePath,
+        skipImages,
+        themeEffectStyles,
+        grpOrderEntries[i]?.groupChildren,
+      ),
     );
+  }
+
+  if (!childOrder) {
+    return [
+      ...spEls,
+      ...picEls,
+      ...(gfEls.filter(Boolean) as SlideElement[]),
+      ...cxnEls,
+      ...grpEls,
+    ];
+  }
+
+  const typeArrays: Record<string, (SlideElement | null)[]> = {
+    "p:sp": spEls,
+    "p:pic": picEls,
+    "p:graphicFrame": gfEls,
+    "p:cxnSp": cxnEls,
+    "p:grpSp": grpEls,
+  };
+  const counters: Record<string, number> = {};
+  const elements: SlideElement[] = [];
+
+  for (const { tag } of childOrder) {
+    const arr = typeArrays[tag];
+    if (!arr) continue;
+    const idx = counters[tag] ?? 0;
+    counters[tag] = idx + 1;
+    if (idx < arr.length && arr[idx] != null) {
+      elements.push(arr[idx]!);
+    }
   }
 
   return elements;

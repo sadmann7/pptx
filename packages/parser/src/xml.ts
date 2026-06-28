@@ -36,16 +36,6 @@ const ALWAYS_ARRAY = new Set([
   "a:gs",
   // Paragraph spacing
   "a:tab",
-  // List styles
-  "a:lvl1pPr",
-  "a:lvl2pPr",
-  "a:lvl3pPr",
-  "a:lvl4pPr",
-  "a:lvl5pPr",
-  "a:lvl6pPr",
-  "a:lvl7pPr",
-  "a:lvl8pPr",
-  "a:lvl9pPr",
   // DrawingML Charts — repeating elements
   "c:ser", // chart series
   "c:pt", // data points in strCache / numCache
@@ -122,4 +112,69 @@ export function textContent(node: unknown): string {
     if (t !== undefined) return String(t);
   }
   return "";
+}
+
+// ─── Document-order extraction ────────────────────────────────────────────────
+
+const SHAPE_CHILD_TAGS = new Set(["p:sp", "p:pic", "p:graphicFrame", "p:cxnSp", "p:grpSp"]);
+
+export interface ChildOrderNode {
+  tag: string;
+  groupChildren?: ChildOrderNode[];
+}
+
+const orderedParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  allowBooleanAttributes: true,
+  parseAttributeValue: false,
+  parseTagValue: false,
+  trimValues: true,
+  preserveOrder: true,
+});
+
+/**
+ * Extract the document-order child tag sequence of a spTree node.
+ * Uses a separate parser with `preserveOrder: true` so cross-type
+ * interleaving (p:sp, p:pic, p:grpSp, …) is preserved.
+ */
+export function extractSpTreeChildOrder(
+  xmlString: string,
+  pathToSpTree: string[],
+): ChildOrderNode[] {
+  const ordered = orderedParser.parse(xmlString) as unknown[];
+  return navigateOrderedTree(ordered, pathToSpTree);
+}
+
+function navigateOrderedTree(tree: unknown[], path: string[]): ChildOrderNode[] {
+  let current: unknown[] = tree;
+  for (const tag of path) {
+    const found = (current as Record<string, unknown>[])?.find(
+      (item) => item != null && typeof item === "object" && tag in item,
+    );
+    if (!found) return [];
+    const next = (found as Record<string, unknown>)[tag];
+    if (!Array.isArray(next)) return [];
+    current = next;
+  }
+  return extractOrderFromChildren(current);
+}
+
+function extractOrderFromChildren(children: unknown[]): ChildOrderNode[] {
+  const result: ChildOrderNode[] = [];
+  for (const item of children) {
+    if (!item || typeof item !== "object") continue;
+    const keys = Object.keys(item as object).filter((k) => k !== ":@");
+    const tag = keys[0];
+    if (!tag || !SHAPE_CHILD_TAGS.has(tag)) continue;
+    const node: ChildOrderNode = { tag };
+    if (tag === "p:grpSp") {
+      const grpChildren = (item as Record<string, unknown>)[tag];
+      if (Array.isArray(grpChildren)) {
+        node.groupChildren = extractOrderFromChildren(grpChildren);
+      }
+    }
+    result.push(node);
+  }
+  return result;
 }

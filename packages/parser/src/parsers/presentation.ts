@@ -6,6 +6,7 @@ import type { PptxZip } from "../zip";
 import { loadZip, loadRels, readXml } from "../zip";
 import { attr, attrNum, get, toArray } from "../xml";
 import { emuToPoints } from "../emu";
+import { parseLevelStyles } from "../resolve/models";
 import { loadLayoutModel, loadMasterModel } from "../resolve/models";
 import { resolveSlideInheritance } from "../resolve/inheritance";
 
@@ -39,6 +40,12 @@ export async function parsePresentation(
   const themeRel = [...presRels.values()].find((r) => r.type.includes("theme"));
   const theme = await parseThemeFromRel(zip, themeRel?.target);
 
+  // ── Presentation-level default text styles ────────────────────────────────
+  const defaultTextStyleNode = get(presXml, "p:presentation", "p:defaultTextStyle") as
+    | Record<string, unknown>
+    | undefined;
+  const defaultTextStyle = parseLevelStyles(defaultTextStyleNode);
+
   // ── Slide list ────────────────────────────────────────────────────────────
   const sldIdLst = get(presXml, "p:presentation", "p:sldIdLst", "p:sldId");
   const slideRefs = toArray(sldIdLst as unknown[]);
@@ -50,7 +57,43 @@ export async function parsePresentation(
       const rel = presRels.get(rId);
       const slidePath = rel?.target ?? `ppt/slides/slide${index + 1}.xml`;
 
-      // Parse raw slide (pass theme effect styles so effectRef can be resolved)
+      // Load layout + master first so we can use the master's theme for
+      // effect style resolution (each master may have its own effectStyles).
+      const slideRels = await loadRels(zip, slidePath);
+      const layoutRel = [...slideRels.values()].find((r) => r.type.includes("slideLayout"));
+      const layoutPath = layoutRel?.target;
+
+      if (layoutPath) {
+        const layout = await loadLayoutModel(zip, layoutPath);
+        const master = await loadMasterModel(zip, layout.masterPath);
+
+        // Prefer the master's own effectStyles; fall back to presentation-level theme.
+        const effectStyles = master.theme?.effectStyles ?? theme.effectStyles;
+
+        // Use master's theme for bgRef resolution (per-master theme colors)
+        const slideTheme = master.theme ?? theme;
+
+        const rawSlide = await parseSlide(
+          zip,
+          slidePath,
+          index,
+          rId,
+          skipImages,
+          skipNotes,
+          effectStyles,
+          slideTheme,
+        );
+
+        const resolved = resolveSlideInheritance(rawSlide, {
+          layout,
+          master,
+          presentationDefaultTextStyle: defaultTextStyle.size > 0 ? defaultTextStyle : undefined,
+        });
+        onProgress?.(index + 1, total);
+        return resolved;
+      }
+
+      // Fallback: no layout found — parse with presentation-level effect styles.
       const rawSlide = await parseSlide(
         zip,
         slidePath,
@@ -59,27 +102,19 @@ export async function parsePresentation(
         skipImages,
         skipNotes,
         theme.effectStyles,
+        theme,
       );
-
-      // Load layout + master for this slide and resolve inheritance
-      const slideRels = await loadRels(zip, slidePath);
-      const layoutRel = [...slideRels.values()].find((r) => r.type.includes("slideLayout"));
-      const layoutPath = layoutRel?.target;
-
-      if (layoutPath) {
-        const layout = await loadLayoutModel(zip, layoutPath);
-        const master = await loadMasterModel(zip, layout.masterPath);
-        const resolved = resolveSlideInheritance(rawSlide, { layout, master });
-        onProgress?.(index + 1, total);
-        return resolved;
-      }
-
       onProgress?.(index + 1, total);
       return rawSlide;
     }),
   );
 
-  return { slideSize, theme, slides };
+  return {
+    slideSize,
+    theme,
+    slides,
+    ...(defaultTextStyle.size > 0 ? { defaultTextStyle } : {}),
+  };
 }
 
 async function parseThemeFromRel(zip: PptxZip, themePath: string | undefined): Promise<Theme> {

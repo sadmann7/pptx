@@ -17,6 +17,7 @@ import type {
   Paragraph,
   ParagraphStyle,
   Position,
+  RunStyle,
   Size,
   Slide,
   SlideElement,
@@ -31,6 +32,8 @@ import { placeholderKey } from "./models";
 export interface InheritanceContext {
   layout: SlideLayoutModel;
   master: SlideMasterModel;
+  /** Presentation-level default text styles (p:defaultTextStyle) */
+  presentationDefaultTextStyle?: Map<number, ParagraphStyle>;
 }
 
 /**
@@ -89,7 +92,25 @@ export function resolveSlideInheritance(slide: Slide, ctx: InheritanceContext): 
   // Background: slide bg → layout bg → master bg
   const background = slide.background ?? ctx.layout.background ?? ctx.master.background;
 
-  return { ...slide, elements, background };
+  // Theme colors: each master may define its own color scheme. Attach the
+  // master's theme colors to the slide so renderers can use the correct palette.
+  const themeColors = ctx.master.theme?.colors;
+
+  // Color map from <p:clrMap>: defines how semantic aliases (bg1, tx1) resolve to
+  // actual theme slots. Critical for dark themes where bg1="dk1" instead of "lt1".
+  const colorMap = ctx.master.colorMap;
+
+  // Theme fonts from the master's theme so the renderer can resolve fontTheme refs.
+  const themeFonts = ctx.master.theme?.fonts;
+
+  return {
+    ...slide,
+    elements,
+    background,
+    ...(themeColors ? { themeColors } : {}),
+    ...(colorMap ? { colorMap } : {}),
+    ...(themeFonts ? { themeFonts } : {}),
+  };
 }
 
 // ─── Synthetic element builder ────────────────────────────────────────────────
@@ -198,16 +219,45 @@ function mergeTextShape(
     master?.bodyProperties,
   );
 
-  // Merge paragraph-level styles into each paragraph's style
+  // Select the master txStyles map that matches this placeholder type per OOXML spec.
+  // title/ctrTitle → p:titleStyle
+  // ftr/dt/sldNum/hdr and non-placeholder text → p:otherStyle
+  // body/obj/subTitle/pic/tbl/chart/dgm/media → p:bodyStyle
+  const phType = el.placeholder?.type ?? "";
+  const masterBaseLevelStyles =
+    phType === "title" || phType === "ctrTitle"
+      ? ctx.master.titleLevelStyles
+      : phType === "body" ||
+          phType === "obj" ||
+          phType === "subTitle" ||
+          phType === "pic" ||
+          phType === "tbl" ||
+          phType === "chart" ||
+          phType === "dgm" ||
+          phType === "media"
+        ? ctx.master.bodyLevelStyles
+        : ctx.master.otherLevelStyles;
+
+  // Merge paragraph-level styles with full 7-level inheritance:
+  // 1. presentation.defaultTextStyle
+  // 2. master.defaultTextStyle
+  // 3. master txStyles (by category)
+  // 4. master placeholder lstStyle
+  // 5. layout placeholder lstStyle
   const mergedLevelStyles = mergeLevelStyleMaps(
-    ctx.master.bodyLevelStyles,
+    ctx.presentationDefaultTextStyle ?? new Map(),
+    ctx.master.defaultTextStyle ?? new Map(),
+    masterBaseLevelStyles,
     master?.levelStyles ?? new Map(),
     layout?.levelStyles ?? new Map(),
   );
 
   const paragraphs = el.paragraphs.map((p) => {
     const level = p.style.level ?? 0;
-    const inheritedStyle = mergedLevelStyles.get(level) ?? mergedLevelStyles.get(0);
+    // In OOXML, lstStyle uses 1-based numbering: lvl1pPr (key 1) applies to
+    // paragraphs with pPr.lvl=0 (default level), lvl2pPr (key 2) to lvl=1, etc.
+    // defPPr (key 0) is the catch-all default for all levels.
+    const inheritedStyle = mergedLevelStyles.get(level + 1) ?? mergedLevelStyles.get(0);
     if (!inheritedStyle) return p;
 
     return {
@@ -265,6 +315,38 @@ function mergeBodyProperties(
 }
 
 /**
+ * Merge run styles per-property so that a child with only `bold: true`
+ * still inherits the parent's fontSize, color, etc.
+ */
+function mergeRunStyle(
+  parent: RunStyle | undefined,
+  child: RunStyle | undefined,
+): RunStyle | undefined {
+  if (!parent && !child) return undefined;
+  if (!parent) return child;
+  if (!child) return parent;
+  return {
+    bold: child.bold ?? parent.bold,
+    italic: child.italic ?? parent.italic,
+    underline: child.underline ?? parent.underline,
+    strikethrough: child.strikethrough ?? parent.strikethrough,
+    fontSize: child.fontSize ?? parent.fontSize,
+    color: child.color ?? parent.color,
+    fontFamily: child.fontFamily ?? parent.fontFamily,
+    fontEa: child.fontEa ?? parent.fontEa,
+    fontCs: child.fontCs ?? parent.fontCs,
+    fontTheme: child.fontTheme ?? parent.fontTheme,
+    letterSpacing: child.letterSpacing ?? parent.letterSpacing,
+    kern: child.kern ?? parent.kern,
+    cap: child.cap ?? parent.cap,
+    highlight: child.highlight ?? parent.highlight,
+    baseline: child.baseline ?? parent.baseline,
+    link: child.link ?? parent.link,
+    language: child.language ?? parent.language,
+  };
+}
+
+/**
  * Merge a paragraph style — `child` takes priority over `parent`.
  * Only unset properties are inherited.
  */
@@ -279,7 +361,7 @@ function mergeParaStyle(parent: ParagraphStyle, child: ParagraphStyle): Paragrap
     spaceAfter: child.spaceAfter ?? parent.spaceAfter,
     lineSpacing: child.lineSpacing ?? parent.lineSpacing,
     bullet: child.bullet ?? parent.bullet,
-    defaultRunStyle: child.defaultRunStyle ?? parent.defaultRunStyle,
+    defaultRunStyle: mergeRunStyle(parent.defaultRunStyle, child.defaultRunStyle),
   };
 }
 

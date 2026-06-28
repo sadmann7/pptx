@@ -1,5 +1,12 @@
 import React from "react";
-import type { Stroke, TableCell, TableShape, ThemeColors } from "@pptx/parser";
+import type {
+  ColorMap,
+  Stroke,
+  TableCell,
+  TableShape,
+  ThemeColors,
+  ThemeFonts,
+} from "@pptx/parser";
 import { fillToCSS, strokeToSVGAttrs } from "../render/color";
 import { elementStyle } from "../render/transform";
 import { ParagraphElement } from "./shared/ParagraphElement";
@@ -7,9 +14,11 @@ import { ParagraphElement } from "./shared/ParagraphElement";
 interface TableElementProps {
   element: TableShape;
   theme: ThemeColors;
+  colorMap?: ColorMap;
+  themeFonts?: ThemeFonts;
 }
 
-export function TableElement({ element, theme }: TableElementProps) {
+export function TableElement({ element, theme, colorMap, themeFonts }: TableElementProps) {
   const outer: React.CSSProperties = {
     ...elementStyle(element),
     // Tables always render above overlapping non-table shapes in PowerPoint,
@@ -40,7 +49,13 @@ export function TableElement({ element, theme }: TableElementProps) {
           {element.rows.map((row, ri) => (
             <tr key={ri} style={row.height ? { height: `${row.height}pt` } : {}}>
               {row.cells.map((cell, ci) => (
-                <TableCellElement key={ci} cell={cell} theme={theme} />
+                <TableCellElement
+                  key={ci}
+                  cell={cell}
+                  theme={theme}
+                  colorMap={colorMap}
+                  themeFonts={themeFonts}
+                />
               ))}
             </tr>
           ))}
@@ -51,24 +66,34 @@ export function TableElement({ element, theme }: TableElementProps) {
 }
 
 /** Convert a Stroke (or undefined) to a CSS border value string, e.g. "0.8pt solid #D1D5DB". */
-function borderValue(stroke: Stroke | undefined, theme: ThemeColors): string {
+function borderValue(stroke: Stroke | undefined, theme: ThemeColors, colorMap?: ColorMap): string {
   if (!stroke) return "none";
-  const s = strokeToSVGAttrs(stroke, theme);
+  const s = strokeToSVGAttrs(stroke, theme, colorMap);
   if (!s.stroke || s.stroke === "none") return "none";
   const width = s.strokeWidth || "0.5pt";
   return `${width} solid ${s.stroke}`;
 }
 
-function TableCellElement({ cell, theme }: { cell: TableCell; theme: ThemeColors }) {
+function TableCellElement({
+  cell,
+  theme,
+  colorMap,
+  themeFonts,
+}: {
+  cell: TableCell;
+  theme: ThemeColors;
+  colorMap?: ColorMap;
+  themeFonts?: ThemeFonts;
+}) {
   if (cell.merged) return null;
 
   // Use per-side borders when available; fall back to a thin gray line so
   // the table always has some grid even if the PPTX has no explicit borders.
   const fallback = "0.5pt solid #e5e7eb";
-  const bL = cell.strokeLeft ? borderValue(cell.strokeLeft, theme) : fallback;
-  const bR = cell.strokeRight ? borderValue(cell.strokeRight, theme) : fallback;
-  const bT = cell.strokeTop ? borderValue(cell.strokeTop, theme) : fallback;
-  const bB = cell.strokeBottom ? borderValue(cell.strokeBottom, theme) : fallback;
+  const bL = cell.strokeLeft ? borderValue(cell.strokeLeft, theme, colorMap) : fallback;
+  const bR = cell.strokeRight ? borderValue(cell.strokeRight, theme, colorMap) : fallback;
+  const bT = cell.strokeTop ? borderValue(cell.strokeTop, theme, colorMap) : fallback;
+  const bB = cell.strokeBottom ? borderValue(cell.strokeBottom, theme, colorMap) : fallback;
 
   const style: React.CSSProperties = {
     verticalAlign: "middle",
@@ -77,7 +102,7 @@ function TableCellElement({ cell, theme }: { cell: TableCell; theme: ThemeColors
     borderRight: bR,
     borderTop: bT,
     borderBottom: bB,
-    background: fillToCSS(cell.fill, theme),
+    background: fillToCSS(cell.fill, theme, colorMap),
     overflow: "hidden",
   };
 
@@ -90,7 +115,13 @@ function TableCellElement({ cell, theme }: { cell: TableCell; theme: ThemeColors
   return (
     <td {...tdProps}>
       {cell.paragraphs.map((p, i) => (
-        <ParagraphElement key={i} paragraph={p} theme={theme} />
+        <ParagraphElement
+          key={i}
+          paragraph={p}
+          theme={theme}
+          colorMap={colorMap}
+          themeFonts={themeFonts}
+        />
       ))}
     </td>
   );

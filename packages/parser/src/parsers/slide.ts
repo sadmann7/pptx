@@ -1,9 +1,9 @@
-import type { Background, Effect, Slide } from "../types";
+import type { Background, Effect, Slide, Theme } from "../types";
 import { parseBackground } from "./fill";
 import { parseSpTree } from "./shape";
 import type { PptxZip } from "../zip";
-import { loadRels, readXml } from "../zip";
-import { get, toArray } from "../xml";
+import { loadRels, readString, readXml } from "../zip";
+import { extractSpTreeChildOrder, get, parseXml, toArray } from "../xml";
 
 /**
  * Parse a single slide XML file into a Slide AST node.
@@ -16,8 +16,10 @@ export async function parseSlide(
   skipImages: boolean,
   skipNotes: boolean,
   themeEffectStyles?: Effect[][],
+  theme?: Theme,
 ): Promise<Slide> {
-  const slideXml = await readXml(zip, slidePath);
+  const rawXml = await readString(zip, slidePath);
+  const slideXml = rawXml ? parseXml(rawXml) : {};
   const rels = await loadRels(zip, slidePath);
 
   const sld = get(slideXml, "p:sld") as Record<string, unknown> | undefined;
@@ -27,14 +29,17 @@ export async function parseSlide(
   let background: Background | undefined;
   const bg = get(cSld, "p:bg");
   if (bg) {
-    const fill = parseBackground(bg);
+    const fill = await parseBackground(bg, zip, rels, theme);
     if (fill) background = { fill };
   }
 
-  // Shape tree
+  // Shape tree — extract document-order child tags then parse
   const spTree = get(cSld, "p:spTree") as Record<string, unknown> | undefined;
+  const childOrder = rawXml
+    ? extractSpTreeChildOrder(rawXml, ["p:sld", "p:cSld", "p:spTree"])
+    : undefined;
   const elements = spTree
-    ? await parseSpTree(spTree, rels, zip, slidePath, skipImages, themeEffectStyles)
+    ? await parseSpTree(spTree, rels, zip, slidePath, skipImages, themeEffectStyles, childOrder)
     : [];
 
   // Notes

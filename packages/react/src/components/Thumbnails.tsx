@@ -1,7 +1,7 @@
 import React from "react";
-import type { Slide, ThemeColors } from "@pptx/parser";
+import type { ColorMap, Slide, ThemeColors, ThemeFonts } from "@pptx/parser";
 import { usePresentation, useSlide } from "../context";
-import { fillToCSS, toCSS } from "../render/color";
+import { fillToCSS, fillToBackgroundImage, toCSS } from "../render/color";
 import { SlideElementRenderer } from "../elements/index";
 
 export interface ThumbnailsProps {
@@ -15,14 +15,6 @@ export interface ThumbnailsProps {
   renderSelected?: (index: number) => React.ReactNode;
 }
 
-/**
- * <Presentation.Thumbnails>
- *
- * A vertical filmstrip of slide thumbnails. Each thumbnail is a scaled-down
- * version of the actual slide — no canvas, just CSS scale().
- *
- * Clicking a thumbnail calls `goTo(index)` on the store.
- */
 export function Thumbnails({
   className,
   style,
@@ -71,7 +63,9 @@ export function Thumbnails({
         <ThumbnailItem
           key={slide.index}
           slide={slide}
-          themeColors={presentation.theme.colors}
+          themeColors={slide.themeColors ?? presentation.theme.colors}
+          colorMap={slide.colorMap}
+          themeFonts={slide.themeFonts ?? presentation.theme.fonts}
           isActive={slide.index === currentIndex}
           width={tw}
           height={th}
@@ -89,6 +83,8 @@ export function Thumbnails({
 interface ThumbnailItemProps {
   slide: Slide;
   themeColors: ThemeColors;
+  colorMap?: ColorMap;
+  themeFonts?: ThemeFonts;
   isActive: boolean;
   width: number;
   height: number;
@@ -102,6 +98,8 @@ interface ThumbnailItemProps {
 function ThumbnailItem({
   slide,
   themeColors,
+  colorMap,
+  themeFonts,
   isActive,
   width,
   height,
@@ -111,7 +109,9 @@ function ThumbnailItem({
   onClick,
   renderSelected,
 }: ThumbnailItemProps) {
-  const bg = slide.background ? fillToCSS(slide.background.fill, themeColors) : "#ffffff";
+  const bgFill = slide.background?.fill;
+  const bg = bgFill ? fillToCSS(bgFill, themeColors, colorMap) : "#ffffff";
+  const bgImage = fillToBackgroundImage(bgFill);
 
   const wrapperStyle: React.CSSProperties = {
     position: "relative",
@@ -123,9 +123,15 @@ function ThumbnailItem({
     outlineOffset: "1px",
     overflow: "hidden",
     background: bg,
+    ...(bgImage && {
+      backgroundImage: bgImage,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    }),
   };
 
-  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors);
+  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors, colorMap);
 
   const canvasStyle: React.CSSProperties = {
     position: "absolute",
@@ -152,7 +158,13 @@ function ThumbnailItem({
     >
       <div style={canvasStyle}>
         {slide.elements.map((el) => (
-          <SlideElementRenderer key={el.id} element={el} theme={themeColors} />
+          <SlideElementRenderer
+            key={el.id}
+            element={el}
+            theme={themeColors}
+            colorMap={colorMap}
+            themeFonts={themeFonts}
+          />
         ))}
       </div>
       {renderSelected && isActive && renderSelected(slide.index)}

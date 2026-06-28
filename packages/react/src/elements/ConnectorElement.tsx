@@ -1,5 +1,5 @@
 import React from "react";
-import type { ArrowEnd, ConnectorShape, ThemeColors } from "@pptx/parser";
+import type { ArrowEnd, ColorMap, ConnectorShape, ThemeColors } from "@pptx/parser";
 import { strokeToSVGAttrs } from "../render/color";
 import { getShapePath } from "../render/shapes";
 import { elementStyle } from "../render/transform";
@@ -8,20 +8,20 @@ import { renderShapeElement } from "./ShapeElement";
 interface ConnectorElementProps {
   element: ConnectorShape;
   theme: ThemeColors;
+  colorMap?: ColorMap;
 }
 
-export function ConnectorElement({ element, theme }: ConnectorElementProps) {
+export function ConnectorElement({ element, theme, colorMap }: ConnectorElementProps) {
   const base = elementStyle(element);
   const outer: React.CSSProperties = {
     ...base,
-    // Never clip the stroke — connectors can have near-zero bounding-box height.
     overflow: "visible",
     pointerEvents: "none",
-    // Guarantee a visible area even when the bounding box is essentially 0-height.
     minHeight: "1pt",
+    minWidth: "1pt",
   };
 
-  const strokeAttrs = strokeToSVGAttrs(element.stroke, theme);
+  const strokeAttrs = strokeToSVGAttrs(element.stroke, theme, colorMap);
   const strokeColor = strokeAttrs.stroke !== "none" ? strokeAttrs.stroke : "#000000";
   const strokeWidth = strokeAttrs.stroke !== "none" ? strokeAttrs.strokeWidth : "0.75pt";
 

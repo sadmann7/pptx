@@ -55,9 +55,22 @@ export function parseBodyProperties(bodyPrNode: unknown): BodyProperties {
   if (spcCol !== undefined) props.columnSpacing = emuToPoints(spcCol);
 
   // Autofit
-  if ("a:spAutoFit" in n || "spAutoFit" in n) props.autofit = "spAutoFit";
-  else if ("a:normAutoFit" in n || "normAutoFit" in n) props.autofit = "normAutoFit";
-  else if ("a:noAutofit" in n || "noAutofit" in n) props.autofit = "none";
+  if ("a:spAutoFit" in n || "spAutoFit" in n) {
+    props.autofit = "spAutoFit";
+  } else if ("a:normAutoFit" in n || "normAutoFit" in n) {
+    props.autofit = "normAutoFit";
+    const normNode = (n["a:normAutoFit"] ?? n["normAutoFit"]) as
+      | Record<string, unknown>
+      | undefined;
+    if (normNode && typeof normNode === "object") {
+      const fs = attrNum(normNode, "fontScale");
+      if (fs !== undefined) props.fontScale = fs / 100000;
+      const lsr = attrNum(normNode, "lnSpcReduction");
+      if (lsr !== undefined) props.lnSpcReduction = lsr / 100000;
+    }
+  } else if ("a:noAutofit" in n || "noAutofit" in n) {
+    props.autofit = "none";
+  }
 
   return props;
 }
@@ -192,17 +205,52 @@ export function parseRunStyle(rPrNode: unknown): RunStyle {
     if (color) style.color = color;
   }
 
-  // Font family
+  // Font families — Latin, East Asian, Complex Script
+  const THEME_FONT_RE = /^\+(mj|mn)-(lt|ea|cs)$/;
   const latin = get(n, "a:latin");
   if (latin) {
     const typeface = attr(latin, "typeface");
-    if (typeface && typeface !== "+mj-lt" && typeface !== "+mn-lt") {
-      style.fontFamily = typeface;
-    } else if (typeface === "+mj-lt") {
-      style.fontTheme = "major";
-    } else if (typeface === "+mn-lt") {
-      style.fontTheme = "minor";
+    if (typeface) {
+      const m = typeface.match(THEME_FONT_RE);
+      if (m) {
+        style.fontTheme = m[1] === "mj" ? "major" : "minor";
+      } else {
+        style.fontFamily = typeface;
+      }
     }
+  }
+  const ea = get(n, "a:ea");
+  if (ea) {
+    const typeface = attr(ea, "typeface");
+    if (typeface && !THEME_FONT_RE.test(typeface)) {
+      style.fontEa = typeface;
+    }
+  }
+  const cs = get(n, "a:cs");
+  if (cs) {
+    const typeface = attr(cs, "typeface");
+    if (typeface && !THEME_FONT_RE.test(typeface)) {
+      style.fontCs = typeface;
+    }
+  }
+
+  // Character spacing (hundredths of pt)
+  const spc = attrNum(n, "spc");
+  if (spc !== undefined) style.letterSpacing = hunPtToPoints(spc);
+
+  // Kerning (hundredths of pt — min font size for kerning; 0 = always)
+  const kern = attrNum(n, "kern");
+  if (kern !== undefined) style.kern = hunPtToPoints(kern);
+
+  // Text capitalization
+  const cap = attr(n, "cap");
+  if (cap && cap !== "none") style.cap = cap;
+
+  // Highlight
+  const hlNode = get(n, "a:highlight");
+  if (hlNode) {
+    const hlColor = parseColor(hlNode);
+    if (hlColor) style.highlight = hlColor;
   }
 
   // Hyperlink

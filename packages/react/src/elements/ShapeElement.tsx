@@ -1,5 +1,5 @@
 import React from "react";
-import type { GeometricShape, ThemeColors } from "@pptx/parser";
+import type { ColorMap, GeometricShape, ThemeColors, ThemeFonts } from "@pptx/parser";
 import { effectsToFilter, fillToSVG, strokeToSVGAttrs } from "../render/color";
 import { bodyStyle } from "../render/text";
 import { getShapePath } from "../render/shapes";
@@ -9,24 +9,26 @@ import { ParagraphElement } from "./shared/ParagraphElement";
 interface ShapeElementProps {
   element: GeometricShape;
   theme: ThemeColors;
+  colorMap?: ColorMap;
+  themeFonts?: ThemeFonts;
 }
 
-export function ShapeElement({ element, theme }: ShapeElementProps) {
+export function ShapeElement({ element, theme, colorMap, themeFonts }: ShapeElementProps) {
   const shape = getShapePath(
     element.shapeType,
     element.size.width,
     element.size.height,
     element.adjustments,
   );
-  const fill = fillToSVG(element.fill, theme);
-  const strokeAttrs = strokeToSVGAttrs(element.stroke, theme);
+  const fill = fillToSVG(element.fill, theme, colorMap);
+  const strokeAttrs = strokeToSVGAttrs(element.stroke, theme, colorMap);
 
   const isLine =
     element.shapeType === "line" ||
     element.shapeType === "arc" ||
     element.shapeType.toLowerCase().includes("connector");
 
-  const filter = effectsToFilter(element.effects, theme);
+  const filter = effectsToFilter(element.effects, theme, colorMap);
   const outer: React.CSSProperties = {
     ...elementStyle(element),
     position: "absolute",
@@ -60,11 +62,19 @@ export function ShapeElement({ element, theme }: ShapeElementProps) {
           style={{
             position: "absolute",
             inset: 0,
-            ...bodyStyle(element.body.properties, theme),
+            ...bodyStyle(element.body.properties, theme, colorMap),
           }}
         >
           {element.body.paragraphs.map((p, i) => (
-            <ParagraphElement key={i} paragraph={p} theme={theme} />
+            <ParagraphElement
+              key={i}
+              paragraph={p}
+              theme={theme}
+              colorMap={colorMap}
+              themeFonts={themeFonts}
+              fontScale={element.body!.properties.fontScale}
+              lnSpcReduction={element.body!.properties.lnSpcReduction}
+            />
           ))}
         </div>
       )}

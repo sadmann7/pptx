@@ -57,9 +57,27 @@ export interface ThemeColors {
   folHlink: string;
 }
 
+/**
+ * Color map from a slide master's <p:clrMap> element.
+ * Maps semantic color roles (bg1, tx1, bg2, tx2, accent1…) to actual theme color slots.
+ * For a light theme: bg1="lt1", tx1="dk1" (defaults).
+ * For a dark theme: bg1="dk1", tx1="lt1" (inverted).
+ */
+export type ColorMap = Partial<
+  Record<keyof ThemeColors | "bg1" | "bg2" | "tx1" | "tx2", keyof ThemeColors>
+>;
+
+export interface ThemeFontSet {
+  latin: string;
+  ea?: string;
+  cs?: string;
+}
+
 export interface ThemeFonts {
   major: string;
   minor: string;
+  majorFont: ThemeFontSet;
+  minorFont: ThemeFontSet;
 }
 
 export interface Theme {
@@ -68,6 +86,11 @@ export interface Theme {
   fonts: ThemeFonts;
   /** Effect style list from the theme's fmtScheme. Index 0-based. */
   effectStyles?: Effect[][];
+  /**
+   * Background fill styles from the theme's bgFillStyleLst.
+   * Index 0-based; bgRef idx=1001 → bgFillStyles[0], etc.
+   */
+  bgFillStyles?: Fill[];
 }
 
 // ─── Text ────────────────────────────────────────────────────────────────────
@@ -151,8 +174,18 @@ export interface RunStyle {
   fontSize?: number;
   color?: Color;
   fontFamily?: string;
+  /** East Asian font family (a:ea typeface) */
+  fontEa?: string;
+  /** Complex Script font family (a:cs typeface) */
+  fontCs?: string;
   /** 'major' | 'minor' resolves via Theme.fonts */
   fontTheme?: "major" | "minor";
+  /** Character spacing in points (a:spc) */
+  letterSpacing?: number;
+  /** Minimum font size (pt) for kerning; 0 = always kern */
+  kern?: number;
+  /** Text capitalization: "all" | "small" | "none" */
+  cap?: string;
   highlight?: Color;
   baseline?: number;
   link?: string;
@@ -191,6 +224,10 @@ export interface BodyProperties {
   direction?: TextDirection;
   wrap?: "none" | "square";
   autofit?: "none" | "spAutoFit" | "normAutoFit";
+  /** normAutoFit font scale (0–1, e.g. 0.85 = 85%) */
+  fontScale?: number;
+  /** normAutoFit line spacing reduction (0–1, e.g. 0.2 = 20%) */
+  lnSpcReduction?: number;
   insetLeft?: number;
   insetRight?: number;
   insetTop?: number;
@@ -229,7 +266,13 @@ export interface NoFill {
   type: "none";
 }
 
-export type Fill = SolidFill | GradientFill | PatternFill | NoFill;
+export interface ImageFill {
+  type: "image";
+  /** Data URL (base64) or path relative to the PPTX zip */
+  src: string;
+}
+
+export type Fill = SolidFill | GradientFill | PatternFill | NoFill | ImageFill;
 
 export type ArrowEndType = "none" | "triangle" | "stealth" | "diamond" | "oval" | "arrow";
 export type ArrowEndSize = "sm" | "med" | "lg";
@@ -421,6 +464,10 @@ export interface ChartShape extends BaseElement {
 export interface GroupShape extends BaseElement {
   type: "group";
   children: SlideElement[];
+  /** Child coordinate space origin (from a:chOff). Children are positioned relative to this. */
+  childOffset?: Position;
+  /** Child coordinate space extent (from a:chExt). Mapped to the group's actual size. */
+  childExtent?: Size;
 }
 
 /** Connector shape (cxnSp) */
@@ -489,6 +536,23 @@ export interface Slide {
   notes?: string;
   /** Whether slide is hidden in the presentation */
   hidden?: boolean;
+  /**
+   * Theme colors resolved from this slide's master.
+   * In multi-master presentations each master can carry a distinct color
+   * scheme. Consumers should prefer this over `Presentation.theme.colors`.
+   */
+  themeColors?: ThemeColors;
+  /**
+   * Color map from the slide master's <p:clrMap>.
+   * Overrides the default bg1→lt1, tx1→dk1 aliases when resolving scheme colors.
+   * Critical for dark themes where bg1="dk1" (inverted).
+   */
+  colorMap?: ColorMap;
+  /**
+   * Theme fonts resolved from this slide's master.
+   * Used to resolve fontTheme "major"/"minor" to actual typeface names.
+   */
+  themeFonts?: ThemeFonts;
 }
 
 // ─── Presentation ────────────────────────────────────────────────────────────
@@ -497,6 +561,8 @@ export interface Presentation {
   slideSize: SlideSize;
   theme: Theme;
   slides: Slide[];
+  /** p:defaultTextStyle — presentation-level default paragraph styles by level */
+  defaultTextStyle?: Map<number, ParagraphStyle>;
 }
 
 // ─── Parser input ────────────────────────────────────────────────────────────

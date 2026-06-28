@@ -12,20 +12,25 @@
 import type {
   Background,
   BodyProperties,
+  ColorMap,
   Fill,
   Paragraph,
   ParagraphStyle,
   Position,
   Size,
   SlideElement,
+  Theme,
+  ThemeColors,
   Transform,
 } from "../types";
-import { parseFill } from "../parsers/fill";
+import { parseFill, parseBackground } from "../parsers/fill";
 import { parseBodyProperties, parseParagraphStyle, parseTextBody } from "../parsers/text";
 import { parseSpTree } from "../parsers/shape";
+import { parseTheme } from "../parsers/theme";
 import type { PptxZip } from "../zip";
-import { loadRels, readXml } from "../zip";
-import { attr, attrNum, get, toArray } from "../xml";
+import { loadRels, readString } from "../zip";
+import { parseXml } from "../xml";
+import { attr, attrNum, extractSpTreeChildOrder, get, toArray } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -64,13 +69,31 @@ export interface SlideMasterModel {
   background?: Background;
   /** Key: `${phType}/${phIdx}` */
   placeholders: Map<string, PlaceholderTemplate>;
-  /** txStyles per-level paragraph styles (master-level body defaults) */
+  /** txStyles body paragraph styles — used for body/obj/pic/tbl/chart/dgm placeholders */
   bodyLevelStyles: Map<number, ParagraphStyle>;
+  /** txStyles title paragraph styles — used for title/ctrTitle placeholders */
+  titleLevelStyles: Map<number, ParagraphStyle>;
+  /** txStyles other paragraph styles — used for ftr/dt/sldNum/hdr and non-placeholder text */
+  otherLevelStyles: Map<number, ParagraphStyle>;
   /**
    * Non-placeholder shapes from the master that appear on every slide
    * (decorative lines, logos, watermarks, etc.)
    */
   backgroundShapes: SlideElement[];
+  /**
+   * Theme parsed from this master's own rels.
+   * Each slide master in a multi-master PPTX can have a distinct theme
+   * (colors, fonts, effects). Slides must resolve colors against their
+   * master's theme, not the presentation-level theme.
+   */
+  theme?: Theme;
+  /**
+   * Color map from <p:clrMap> — maps semantic aliases (bg1, tx1) to actual theme slots.
+   * Critical for dark-theme presentations where bg1="dk1" instead of the default "lt1".
+   */
+  colorMap?: ColorMap;
+  /** Master-level default text styles (p:sldMaster > p:defaultTextStyle) */
+  defaultTextStyle?: Map<number, ParagraphStyle>;
 }
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
@@ -109,7 +132,8 @@ export async function loadMasterModel(zip: PptxZip, masterPath: string): Promise
 // ─── Parsing ─────────────────────────────────────────────────────────────────
 
 async function parseLayoutModel(zip: PptxZip, layoutPath: string): Promise<SlideLayoutModel> {
-  const xml = await readXml(zip, layoutPath);
+  const rawXml = await readString(zip, layoutPath);
+  const xml = rawXml ? parseXml(rawXml) : {};
   const rels = await loadRels(zip, layoutPath);
 
   // Find parent master path
@@ -119,43 +143,145 @@ async function parseLayoutModel(zip: PptxZip, layoutPath: string): Promise<Slide
   const cSld = get(xml, "p:sldLayout", "p:cSld") as Record<string, unknown> | undefined;
 
   const bg = get(cSld, "p:bg");
-  const background = bg ? parseBackgroundFill(bg) : undefined;
+  const bgFill = bg ? await parseBackground(bg, zip, rels) : undefined;
+  const background = bgFill ? { fill: bgFill } : undefined;
 
   const spTree = get(cSld, "p:spTree") as Record<string, unknown> | undefined;
   const placeholders = spTree ? extractPlaceholders(spTree) : new Map();
 
-  // Parse all shapes (skipImages: true — masters rarely embed images)
-  const allShapes = spTree ? await parseSpTree(spTree, rels, zip, layoutPath, true) : [];
-  // Non-placeholder shapes appear on every slide as background decoration
+  const childOrder = rawXml
+    ? extractSpTreeChildOrder(rawXml, ["p:sldLayout", "p:cSld", "p:spTree"])
+    : undefined;
+  const allShapes = spTree
+    ? await parseSpTree(spTree, rels, zip, layoutPath, false, undefined, childOrder)
+    : [];
   const backgroundShapes = allShapes.filter((el) => !el.placeholder);
 
   return { path: layoutPath, masterPath, background, placeholders, backgroundShapes };
 }
 
 async function parseMasterModel(zip: PptxZip, masterPath: string): Promise<SlideMasterModel> {
-  const xml = await readXml(zip, masterPath);
+  const rawXml = await readString(zip, masterPath);
+  const xml = rawXml ? parseXml(rawXml) : {};
   const rels = await loadRels(zip, masterPath);
 
   const cSld = get(xml, "p:sldMaster", "p:cSld") as Record<string, unknown> | undefined;
 
-  const bg = get(cSld, "p:bg");
-  const background = bg ? parseBackgroundFill(bg) : undefined;
-
   const spTree = get(cSld, "p:spTree") as Record<string, unknown> | undefined;
   const placeholders = spTree ? extractPlaceholders(spTree) : new Map();
 
-  const allShapes = spTree ? await parseSpTree(spTree, rels, zip, masterPath, true) : [];
+  const childOrder = rawXml
+    ? extractSpTreeChildOrder(rawXml, ["p:sldMaster", "p:cSld", "p:spTree"])
+    : undefined;
+  const allShapes = spTree
+    ? await parseSpTree(spTree, rels, zip, masterPath, false, undefined, childOrder)
+    : [];
   const backgroundShapes = allShapes.filter((el) => !el.placeholder);
 
-  // txStyles — master-level paragraph style defaults for body text
+  // txStyles — master-level paragraph style defaults for title, body, and other text
   const txStyles = get(xml, "p:sldMaster", "p:txStyles") as Record<string, unknown> | undefined;
+  const titleStyles = get(txStyles, "p:titleStyle") as Record<string, unknown> | undefined;
   const bodyStyles = get(txStyles, "p:bodyStyle") as Record<string, unknown> | undefined;
+  const otherStyles = get(txStyles, "p:otherStyle") as Record<string, unknown> | undefined;
+  const titleLevelStyles = parseLevelStyles(titleStyles);
   const bodyLevelStyles = parseLevelStyles(bodyStyles);
+  const otherLevelStyles = parseLevelStyles(otherStyles);
 
-  return { path: masterPath, background, placeholders, bodyLevelStyles, backgroundShapes };
+  // Each master can have its own theme (colors, fonts, effects). Load it from
+  // the master's own rels so per-master color schemes resolve correctly.
+  const themeRel = [...rels.values()].find((r) => r.type.includes("theme"));
+  let theme: Theme | undefined;
+  if (themeRel) {
+    try {
+      const themeStr = await readString(zip, themeRel.target);
+      const themeXml = themeStr ? parseXml(themeStr) : {};
+      theme = parseTheme(themeXml);
+    } catch {
+      // theme parsing is optional — fall back to presentation-level theme
+    }
+  }
+
+  // Parse background with theme available for p:bgRef resolution
+  const bg = get(cSld, "p:bg");
+  const bgFill = bg ? await parseBackground(bg, zip, rels, theme) : undefined;
+  const background = bgFill ? { fill: bgFill } : undefined;
+
+  // Parse <p:clrMap> which maps semantic color aliases (bg1, tx1) to actual theme slots.
+  // This is critical for dark themes: bg1="dk1" means backgrounds use the dk1 slot (dark),
+  // while a standard light theme has bg1="lt1".
+  const clrMapNode = get(xml, "p:sldMaster", "p:clrMap") as Record<string, unknown> | undefined;
+  const colorMap = clrMapNode ? parseColorMap(clrMapNode) : undefined;
+
+  // Master-level default text styles
+  const defaultTextStyleNode = get(xml, "p:sldMaster", "p:defaultTextStyle") as
+    | Record<string, unknown>
+    | undefined;
+  const defaultTextStyle = parseLevelStyles(defaultTextStyleNode);
+
+  return {
+    path: masterPath,
+    background,
+    placeholders,
+    titleLevelStyles,
+    bodyLevelStyles,
+    otherLevelStyles,
+    backgroundShapes,
+    theme,
+    colorMap,
+    ...(defaultTextStyle.size > 0 ? { defaultTextStyle } : {}),
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Valid theme color slot names. Used to validate clrMap attribute values.
+ */
+const VALID_THEME_SLOTS = new Set<keyof ThemeColors>([
+  "dk1",
+  "dk2",
+  "lt1",
+  "lt2",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "hlink",
+  "folHlink",
+]);
+
+/**
+ * Parse a <p:clrMap> element into a ColorMap.
+ * Each attribute maps a semantic alias to a theme color slot.
+ * Example: bg1="dk1" means "when bg1 is used, look up dk1 from theme colors".
+ */
+function parseColorMap(node: Record<string, unknown>): ColorMap {
+  const colorMap: ColorMap = {};
+  // All known semantic aliases
+  const aliases = [
+    "bg1",
+    "tx1",
+    "bg2",
+    "tx2",
+    "accent1",
+    "accent2",
+    "accent3",
+    "accent4",
+    "accent5",
+    "accent6",
+    "hlink",
+    "folHlink",
+  ];
+  for (const alias of aliases) {
+    const val = attr(node, alias) ?? attr(node, `@_${alias}`);
+    if (val && VALID_THEME_SLOTS.has(val as keyof ThemeColors)) {
+      (colorMap as Record<string, unknown>)[alias] = val as keyof ThemeColors;
+    }
+  }
+  return colorMap;
+}
 
 function placeholderKey(phType: string, phIdx: number): string {
   return `${phType}/${phIdx}`;
@@ -266,7 +392,7 @@ function extractXfrm(xfrmNode: unknown): {
  * Parse per-level paragraph styles from a lstStyle or txStyles node.
  * Keys 0 = defPPr (default), 1-8 = lvl1pPr through lvl8pPr, 9 = lvl9pPr.
  */
-function parseLevelStyles(node: unknown): Map<number, ParagraphStyle> {
+export function parseLevelStyles(node: unknown): Map<number, ParagraphStyle> {
   const map = new Map<number, ParagraphStyle>();
   if (!node || typeof node !== "object") return map;
 
@@ -277,19 +403,12 @@ function parseLevelStyles(node: unknown): Map<number, ParagraphStyle> {
 
   for (let lvl = 1; lvl <= 9; lvl++) {
     const key = `a:lvl${lvl}pPr`;
-    const lvlNode = n[key];
+    const raw = n[key];
+    if (!raw) continue;
+    // Guard against accidental ALWAYS_ARRAY wrapping (lvlNpPr never repeats).
+    const lvlNode = Array.isArray(raw) ? raw[0] : raw;
     if (lvlNode) map.set(lvl, parseParagraphStyle(lvlNode));
   }
 
   return map;
-}
-
-function parseBackgroundFill(bgNode: unknown): Background | undefined {
-  if (!bgNode || typeof bgNode !== "object") return undefined;
-  const n = bgNode as Record<string, unknown>;
-  const bgPr = n["p:bgPr"] ?? n["bgPr"];
-  if (!bgPr) return undefined;
-  const fill = parseFill(bgPr);
-  if (!fill) return undefined;
-  return { fill };
 }

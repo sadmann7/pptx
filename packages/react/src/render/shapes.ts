@@ -184,11 +184,13 @@ export function getShapePath(shapeType: string, w = 100, h = 100, adjs?: number[
         },
       };
 
-    case "chevron":
+    case "chevron": {
+      const dx = (adjs?.[0] ?? 50000) / 1000;
       return {
         element: "polygon",
-        attrs: { points: "0,0 75,0 100,50 75,100 0,100 25,50" },
+        attrs: { points: `0,0 ${100 - dx},0 100,50 ${100 - dx},100 0,100 ${dx},50` },
       };
+    }
 
     case "notchedRightArrow":
       return {
@@ -196,11 +198,13 @@ export function getShapePath(shapeType: string, w = 100, h = 100, adjs?: number[
         attrs: { points: "0,25 70,25 70,5 100,50 70,95 70,75 0,75 15,50" },
       };
 
-    case "homePlate":
+    case "homePlate": {
+      const dx = (adjs?.[0] ?? 50000) / 1000;
       return {
         element: "polygon",
-        attrs: { points: "0,0 75,0 100,50 75,100 0,100" },
+        attrs: { points: `0,0 ${100 - dx},0 100,50 ${100 - dx},100 0,100` },
       };
+    }
 
     case "funnel":
       return {

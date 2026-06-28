@@ -1,4 +1,4 @@
-import type { Color, SchemeColor, SolidColor, ThemeColors } from "./types";
+import type { Color, ColorMap, SchemeColor, SolidColor, ThemeColors } from "./types";
 import { attr, attrNum, get, toArray } from "./xml";
 
 // ─── Raw color parsing from XML nodes ────────────────────────────────────────
@@ -86,7 +86,12 @@ export function parseSolidFillColor(solidFillNode: unknown): Color | undefined {
 
 // ─── Color resolution against a theme ────────────────────────────────────────
 
-const SCHEME_TOKEN_MAP: Record<string, keyof ThemeColors> = {
+/**
+ * Default scheme token map — used when no clrMap is provided.
+ * Maps semantic aliases to theme color slots for a standard light theme:
+ * bg1 → lt1 (light background), tx1 → dk1 (dark text), etc.
+ */
+const DEFAULT_SCHEME_TOKEN_MAP: Record<string, keyof ThemeColors> = {
   dk1: "dk1",
   dk2: "dk2",
   lt1: "lt1",
@@ -99,7 +104,7 @@ const SCHEME_TOKEN_MAP: Record<string, keyof ThemeColors> = {
   accent6: "accent6",
   hlink: "hlink",
   folHlink: "folHlink",
-  // Aliases
+  // Semantic aliases with default light-theme mapping
   tx1: "dk1",
   tx2: "dk2",
   bg1: "lt1",
@@ -107,10 +112,30 @@ const SCHEME_TOKEN_MAP: Record<string, keyof ThemeColors> = {
 };
 
 /**
+ * Build a scheme token map by merging the default map with overrides from a
+ * slide master's <p:clrMap>. For dark themes, bg1="dk1" flips the background
+ * color to be dark, and tx1="lt1" makes text light/white.
+ */
+function buildSchemeTokenMap(colorMap?: ColorMap): Record<string, keyof ThemeColors> {
+  if (!colorMap) return DEFAULT_SCHEME_TOKEN_MAP;
+  const merged = { ...DEFAULT_SCHEME_TOKEN_MAP };
+  for (const [alias, slot] of Object.entries(colorMap)) {
+    if (slot) merged[alias] = slot;
+  }
+  return merged;
+}
+
+/**
  * Fully resolve a Color to a hex string using the theme.
  * Returns '#000000' for unresolvable colors.
+ * @param colorMap - Optional override map from the slide master's <p:clrMap>.
+ *   Use this to correctly resolve bg1/tx1 in dark-themed presentations.
  */
-export function resolveColor(color: Color | undefined, themeColors: ThemeColors): string {
+export function resolveColor(
+  color: Color | undefined,
+  themeColors: ThemeColors,
+  colorMap?: ColorMap,
+): string {
   if (!color) return "#000000";
 
   if (color.type === "solid") {
@@ -122,8 +147,9 @@ export function resolveColor(color: Color | undefined, themeColors: ThemeColors)
     return hex;
   }
 
-  // SchemeColor — resolve via theme
-  const themeKey = SCHEME_TOKEN_MAP[color.token];
+  // SchemeColor — resolve via theme, using the dynamic colorMap if provided
+  const schemeTokenMap = buildSchemeTokenMap(colorMap);
+  const themeKey = schemeTokenMap[color.token];
   let hex = themeKey ? (themeColors[themeKey] ?? "000000") : "000000";
 
   // Apply modifications

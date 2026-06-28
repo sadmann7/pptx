@@ -1,6 +1,6 @@
 import React from "react";
 import { usePresentation, useSlide, useZoom } from "../context";
-import { fillToCSS, toCSS } from "../render/color";
+import { fillToCSS, fillToBackgroundImage, toCSS } from "../render/color";
 import { type ElementRendererFn, SlideElementRenderer } from "../elements/index";
 
 export interface SlideProps {
@@ -73,20 +73,32 @@ export function Slide({ renderElement, children, className, style }: SlideProps)
   if (status !== "ready" || !presentation || !slide) return null;
 
   const { width, height } = presentation.slideSize;
-  const themeColors = presentation.theme.colors;
+  // Prefer slide-specific theme colors (from its master) over the global
+  // presentation theme. Multi-master PPTXs often have distinct palettes per master.
+  const themeColors = slide.themeColors ?? presentation.theme.colors;
+  const colorMap = slide.colorMap;
+  const themeFonts = slide.themeFonts ?? presentation.theme.fonts;
 
-  // Background: solid color or fill from parsed slide/layout/master
-  const bgColor = slide.background ? fillToCSS(slide.background.fill, themeColors) : "#ffffff";
+  // Background: solid color, gradient, or image fill from parsed slide/layout/master
+  const bgFill = slide.background?.fill;
+  const bgColor = bgFill ? fillToCSS(bgFill, themeColors, colorMap) : "#ffffff";
+  const bgImage = fillToBackgroundImage(bgFill);
 
   // Default text color from theme's dk1 (primary dark color).
   // Individual runs with explicit colors override this via inline styles.
-  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors);
+  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors, colorMap);
 
   const canvasStyle: React.CSSProperties = {
     position: "relative",
     width: `${width}pt`,
     height: `${height}pt`,
     background: bgColor,
+    ...(bgImage && {
+      backgroundImage: bgImage,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    }),
     color: defaultTextColor,
     transformOrigin: "top left",
     transform: `scale(${zoom})`,
@@ -111,6 +123,8 @@ export function Slide({ renderElement, children, className, style }: SlideProps)
             key={element.id}
             element={element}
             theme={themeColors}
+            colorMap={colorMap}
+            themeFonts={themeFonts}
             renderElement={renderElement}
           />
         ))}

@@ -6,10 +6,13 @@ import type {
   Fill,
   OuterShadow,
   Stroke,
+  Theme,
 } from "../types";
 import { parseColor, parseGradientStops } from "../color";
 import { attr, attrNum, get } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
+import type { PptxZip, Relationship } from "../zip";
+import { readMediaAsUrl } from "../zip";
 
 /**
  * Parse any fill node (spPr child or similar).
@@ -45,6 +48,15 @@ export function parseFill(node: unknown): Fill | undefined {
     const fgColor = parseColor(get(pf, "a:fgClr") ?? get(pf, "fgClr"));
     const bgColor = parseColor(get(pf, "a:bgClr") ?? get(pf, "bgClr"));
     return { type: "pattern", preset, fgColor, bgColor };
+  }
+
+  // Image fill — records the relationship ID so callers can resolve asynchronously.
+  // The src is temporarily "rId:<id>" and must be resolved by the async parseBackgroundAsync.
+  if ("a:blipFill" in n || "blipFill" in n) {
+    const bf = (n["a:blipFill"] ?? n["blipFill"]) as Record<string, unknown>;
+    const blip = get(bf, "a:blip") as Record<string, unknown> | undefined;
+    const rId = blip ? (attr(blip, "r:embed") ?? attr(blip, "embed") ?? "") : "";
+    if (rId) return { type: "image", src: `rId:${rId}` };
   }
 
   return undefined;
@@ -130,11 +142,67 @@ function parseArrowEnd(node: unknown): ArrowEnd | undefined {
 
 /**
  * Parse background fill from <p:bg> node.
+ * Handles p:bgPr (direct fills including blipFill images) and
+ * p:bgRef (theme background fill references by index).
  */
-export function parseBackground(bgNode: unknown): Fill | undefined {
+export async function parseBackground(
+  bgNode: unknown,
+  zip?: PptxZip,
+  rels?: Map<string, Relationship>,
+  theme?: Theme,
+): Promise<Fill | undefined> {
   if (!bgNode || typeof bgNode !== "object") return undefined;
   const n = bgNode as Record<string, unknown>;
+
+  // p:bgPr — direct background properties (solid, gradient, image, etc.)
   const bgPr = n["p:bgPr"] ?? n["bgPr"];
-  if (!bgPr) return undefined;
-  return parseFill(bgPr);
+  if (bgPr) {
+    const fill = parseFill(bgPr);
+    if (!fill) return undefined;
+    // Resolve rId:XYZ placeholder created by parseFill for blipFill
+    if (fill.type === "image" && fill.src.startsWith("rId:") && zip && rels) {
+      const rId = fill.src.slice(4);
+      const rel = rels.get(rId);
+      if (rel) {
+        const media = await readMediaAsUrl(zip, rel.target);
+        return { type: "image", src: media.src };
+      }
+      return undefined;
+    }
+    return fill;
+  }
+
+  // p:bgRef — reference to theme background fill by 1-based index (1001 = first).
+  // The bgRef element may also carry a color child (schemeClr, srgbClr, etc.)
+  // that overrides the "phClr" (placeholder color) in the referenced fill style.
+  // In practice, most theme bgFillStyleLst entries are solidFill with phClr,
+  // so we treat the bgRef color as the actual solid fill color.
+  const bgRef = n["p:bgRef"] ?? n["bgRef"];
+  if (bgRef) {
+    const bgRefNode = bgRef as Record<string, unknown>;
+    const idx = parseInt(attr(bgRefNode, "idx") ?? "0", 10);
+
+    // The bgRef color override (applied when theme fill uses phClr)
+    const overrideColor = parseColor(bgRefNode);
+
+    if (idx >= 1001 && theme?.bgFillStyles) {
+      const templateFill = theme.bgFillStyles[idx - 1001];
+      if (templateFill) {
+        // If the template fill uses phClr (placeholder color) or the override
+        // color is specified, substitute the override color.
+        if (overrideColor && templateFill.type === "solid") {
+          return { type: "solid", color: overrideColor };
+        }
+        // Otherwise return the template fill as-is (gradient, image, etc.)
+        return templateFill;
+      }
+    }
+
+    // Even without bgFillStyles, if there's a color override, return a solid fill.
+    if (overrideColor) {
+      return { type: "solid", color: overrideColor };
+    }
+  }
+
+  return undefined;
 }
