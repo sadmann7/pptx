@@ -8,7 +8,7 @@ export interface LoadingState {
   progress: number;
 }
 
-export interface LoadingProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+export interface LoadingProps extends Omit<React.ComponentProps<"div">, "children"> {
   /**
    * Rendered while the presentation is loading.
    * Pass a function to receive the current `progress` (0–100).
@@ -19,7 +19,7 @@ export interface LoadingProps extends Omit<React.HTMLAttributes<HTMLDivElement>,
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, LoadingState>;
+  render?: RenderProp<React.ComponentProps<"div">, LoadingState>;
 }
 
 /**

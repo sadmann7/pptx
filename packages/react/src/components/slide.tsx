@@ -13,13 +13,13 @@ export interface SlideState {
   index: number;
 }
 
-export interface SlideProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface SlideProps extends React.ComponentProps<"div"> {
   /**
    * Replace the slide wrapper element.
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, SlideState>;
+  render?: RenderProp<React.ComponentProps<"div">, SlideState>;
 }
 
 /**

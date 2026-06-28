@@ -7,7 +7,7 @@ export interface ViewportState {
   zoom: number;
 }
 
-export interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ViewportProps extends React.ComponentProps<"div"> {
   autoFit?: boolean;
   autoFitPadding?: number;
   /**
@@ -15,7 +15,7 @@ export interface ViewportProps extends React.HTMLAttributes<HTMLDivElement> {
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ViewportState>;
+  render?: RenderProp<React.ComponentProps<"div">, ViewportState>;
 }
 
 /**

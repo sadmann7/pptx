@@ -9,7 +9,7 @@ export interface ErrorState {
 }
 
 export interface PresentationErrorProps extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
+  React.ComponentProps<"div">,
   "children"
 > {
   /**
@@ -22,7 +22,7 @@ export interface PresentationErrorProps extends Omit<
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ErrorState>;
+  render?: RenderProp<React.ComponentProps<"div">, ErrorState>;
 }
 
 /**

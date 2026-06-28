@@ -11,7 +11,7 @@ export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement
  * - ReactElement: cloned with composed props (className/style merged, events chained)
  * - Function: called with (composedProps, state) — full control
  */
-export type RenderProp<P = React.HTMLAttributes<HTMLElement>, S = Record<string, never>> =
+export type RenderProp<P = React.ComponentProps<"div">, S = Record<string, never>> =
   | React.ReactElement
   | ComponentRenderFn<P, S>;
 

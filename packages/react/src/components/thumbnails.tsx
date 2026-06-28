@@ -38,13 +38,13 @@ export interface ThumbnailListRenderState {
   goToIndex: (index: number) => void;
 }
 
-export interface ThumbnailListProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "children"> {
   /**
    * Replace the list container element.
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ThumbnailListState>;
+  render?: RenderProp<React.ComponentProps<"div">, ThumbnailListState>;
   /**
    * - Absent → default `ThumbnailItem` list (one per slide)
    * - ReactNode → rendered as-is inside the container
@@ -207,7 +207,7 @@ export interface ThumbnailItemState {
 }
 
 export interface ThumbnailItemProps extends Omit<
-  React.HTMLAttributes<HTMLButtonElement>,
+  React.ComponentProps<"button">,
   "onClick"
 > {
   /**
@@ -225,7 +225,7 @@ export interface ThumbnailItemProps extends Omit<
    *   <motion.button {...props} animate={{ scale: isActive ? 1.04 : 1 }} />
    * )}
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLButtonElement>, ThumbnailItemState>;
+  render?: RenderProp<React.ComponentProps<"button">, ThumbnailItemState>;
 }
 
 /**
@@ -321,7 +321,7 @@ export interface ThumbnailItemPreviewState {
   scale: number;
 }
 
-export interface ThumbnailItemPreviewProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
   /**
    * Replace the preview element.
    * - ReactElement: cloned with composed props
@@ -330,7 +330,7 @@ export interface ThumbnailItemPreviewProps extends React.HTMLAttributes<HTMLDivE
    * The rendered element is the clipping container — the parsed slide DOM is
    * appended to it imperatively. Preserve `overflow: hidden` and dimensions.
    */
-  render?: RenderProp<React.HTMLAttributes<HTMLDivElement>, ThumbnailItemPreviewState>;
+  render?: RenderProp<React.ComponentProps<"div">, ThumbnailItemPreviewState>;
 }
 
 /**
@@ -431,7 +431,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 // ThumbnailItemNumber
 // ---------------------------------------------------------------------------
 
-export interface ThumbnailItemNumberProps extends React.HTMLAttributes<HTMLSpanElement> {}
+export interface ThumbnailItemNumberProps extends React.ComponentProps<"span"> {}
 
 /**
  * Renders the 1-based slide number for the enclosing `ThumbnailItem`.
