@@ -35,7 +35,7 @@ function PresentationLoading({ className, children, ...props }: LoadingProps) {
       )}
       {...props}
     >
-      {children ?? ((progress: number) => <span>Loading… {progress}%</span>)}
+      {children ?? ((progress) => <span>Loading… {progress}%</span>)}
     </Primitive.Loading>
   );
 }
@@ -50,7 +50,7 @@ function PresentationError({ className, children, ...props }: PresentationErrorP
       )}
       {...props}
     >
-      {children ?? ((err: Error) => <span>{err.message}</span>)}
+      {children ?? ((error: Error) => <span>{error.message}</span>)}
     </Primitive.Error>
   );
 }
@@ -70,7 +70,7 @@ function PresentationThumbnailItemNumber({ className, ...props }: ThumbnailItemN
     <Primitive.ThumbnailItemNumber
       data-slot="presentation-thumbnail-item-number"
       className={cn(
-        "mt-1 block text-center font-mono text-[10px] leading-none text-muted-foreground",
+        "mt-1 block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums",
         className,
       )}
       {...props}
@@ -83,8 +83,8 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
     <Primitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative w-full cursor-pointer rounded-md p-1 outline-none",
-        "ring-1 ring-transparent transition-all duration-100",
+        "relative w-full cursor-pointer rounded-md p-1 outline-none not-last:mt-2",
+        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-all duration-100",
         "hover:bg-accent hover:ring-border",
         "focus-visible:ring-ring",
         "data-active:bg-accent data-active:ring-primary",
@@ -95,7 +95,7 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
       {children ?? (
         <>
           <PresentationThumbnailItemPreview />
-          <PresentationThumbnailItemNumber />
+          <PresentationThumbnailItemNumber className="absolute top-1 right-1" />
         </>
       )}
     </Primitive.ThumbnailItem>
@@ -109,7 +109,7 @@ function PresentationThumbnailList({ className, style, children, ...props }: Thu
   return (
     <Primitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("flex w-40 shrink-0 flex-col gap-1 overflow-y-auto p-2", className)}
+      className={cn("flex w-40 shrink-0 flex-col overflow-y-auto p-2", className)}
       style={style}
       {...props}
     >

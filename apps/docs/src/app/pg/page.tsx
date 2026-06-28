@@ -10,12 +10,14 @@ import {
   PresentationSlide,
 } from "@/components/ui/presentation";
 import * as React from "react";
+import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
 
 export default function PgPage() {
   const [file, setFile] = React.useState<File | null>(null);
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
+      <ThemeSwitch className="absolute top-2 right-2" />
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
         <input
