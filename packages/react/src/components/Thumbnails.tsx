@@ -1,173 +1,59 @@
 import React from "react";
-import type { ColorMap, Slide, ThemeColors, ThemeFonts } from "@pptx/parser";
 import { usePresentation, useSlide } from "../context";
-import { fillToCSS, fillToBackgroundImage, toCSS } from "../render/color";
-import { SlideElementRenderer } from "../elements/index";
+import { materializeSlideNodes } from "@pptx/parser";
+import { SlideCanvas } from "./Slide";
 
 export interface ThumbnailsProps {
   className?: string;
   style?: React.CSSProperties;
-  /** CSS thumbnail width. Height is computed from the slide aspect ratio. @default '120px' */
-  thumbnailWidth?: number | string;
-  /** Called when the user clicks a thumbnail */
-  onSlideClick?: (index: number) => void;
-  /** Render a custom selected indicator */
-  renderSelected?: (index: number) => React.ReactNode;
 }
 
-export function Thumbnails({
-  className,
-  style,
-  thumbnailWidth = 120,
-  onSlideClick,
-  renderSelected,
-}: ThumbnailsProps) {
+export function Thumbnails({ className, style }: ThumbnailsProps) {
   const { presentation, status } = usePresentation();
   const { index: currentIndex, goTo } = useSlide();
-
-  if (status === "loading") {
-    return (
-      <div
-        className={className}
-        style={{ padding: 8, fontFamily: "sans-serif", fontSize: 12, color: "#9ca3af", ...style }}
-      >
-        Loading…
-      </div>
-    );
-  }
+  const mediaUrlCache = React.useRef(new Map<string, string>()).current;
 
   if (status !== "ready" || !presentation) return null;
 
-  const { width: slideW, height: slideH } = presentation.slideSize;
-  const tw = typeof thumbnailWidth === "number" ? thumbnailWidth : Number.parseInt(thumbnailWidth);
-  const th = Math.round(tw * (slideH / slideW));
-  const scale = tw / slideW;
-
-  const containerStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    overflowY: "auto",
-    padding: "8px",
-    ...style,
-  };
-
-  const handleClick = (idx: number) => {
-    goTo(idx);
-    onSlideClick?.(idx);
-  };
+  const thumbWidth = (style?.width as number) ?? 140;
+  const scale = (thumbWidth - 16) / presentation.width;
 
   return (
-    <div className={className} style={containerStyle} role="tablist" aria-label="Slide thumbnails">
-      {presentation.slides.map((slide) => (
-        <ThumbnailItem
-          key={slide.index}
-          slide={slide}
-          themeColors={slide.themeColors ?? presentation.theme.colors}
-          colorMap={slide.colorMap}
-          themeFonts={slide.themeFonts ?? presentation.theme.fonts}
-          isActive={slide.index === currentIndex}
-          width={tw}
-          height={th}
-          scale={scale}
-          slideWidth={slideW}
-          slideHeight={slideH}
-          onClick={() => handleClick(slide.index)}
-          renderSelected={renderSelected}
-        />
-      ))}
+    <div className={className} style={{ overflowY: "auto", padding: 8, ...style }}>
+      {presentation.slides.map((slide, i) => {
+        materializeSlideNodes(presentation, slide);
+        return (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            style={{
+              display: "block",
+              width: "100%",
+              marginBottom: 8,
+              padding: 4,
+              border: i === currentIndex ? "2px solid #3b82f6" : "1px solid #e5e7eb",
+              borderRadius: 4,
+              background: "#fff",
+              cursor: "pointer",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <div style={{ width: presentation.width * scale, height: presentation.height * scale, overflow: "hidden", pointerEvents: "none" }}>
+              <SlideCanvas
+                width={presentation.width}
+                height={presentation.height}
+                zoom={scale}
+                nodes={slide.nodes}
+                presentation={presentation}
+                slideRels={slide.rels}
+                mediaUrlCache={mediaUrlCache}
+              />
+            </div>
+            <div style={{ position: "absolute", bottom: 2, right: 4, fontSize: 9, color: "#888" }}>{i + 1}</div>
+          </button>
+        );
+      })}
     </div>
-  );
-}
-
-interface ThumbnailItemProps {
-  slide: Slide;
-  themeColors: ThemeColors;
-  colorMap?: ColorMap;
-  themeFonts?: ThemeFonts;
-  isActive: boolean;
-  width: number;
-  height: number;
-  scale: number;
-  slideWidth: number;
-  slideHeight: number;
-  onClick: () => void;
-  renderSelected?: (index: number) => React.ReactNode;
-}
-
-function ThumbnailItem({
-  slide,
-  themeColors,
-  colorMap,
-  themeFonts,
-  isActive,
-  width,
-  height,
-  scale,
-  slideWidth,
-  slideHeight,
-  onClick,
-  renderSelected,
-}: ThumbnailItemProps) {
-  const bgFill = slide.background?.fill;
-  const bg = bgFill ? fillToCSS(bgFill, themeColors, colorMap) : "#ffffff";
-  const bgImage = fillToBackgroundImage(bgFill);
-
-  const wrapperStyle: React.CSSProperties = {
-    position: "relative",
-    width: `${width}px`,
-    height: `${height}px`,
-    flexShrink: 0,
-    cursor: "pointer",
-    outline: isActive ? "2px solid #3b82f6" : "1px solid #e5e7eb",
-    outlineOffset: "1px",
-    overflow: "hidden",
-    background: bg,
-    ...(bgImage && {
-      backgroundImage: bgImage,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    }),
-  };
-
-  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors, colorMap);
-
-  const canvasStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: `${slideWidth}pt`,
-    height: `${slideHeight}pt`,
-    transformOrigin: "top left",
-    transform: `scale(${scale})`,
-    color: defaultTextColor,
-    fontFamily: "sans-serif",
-    pointerEvents: "none",
-    userSelect: "none",
-  };
-
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={isActive}
-      aria-label={`Slide ${slide.index + 1}`}
-      style={wrapperStyle}
-      onClick={onClick}
-    >
-      <div style={canvasStyle}>
-        {slide.elements.map((el) => (
-          <SlideElementRenderer
-            key={el.id}
-            element={el}
-            theme={themeColors}
-            colorMap={colorMap}
-            themeFonts={themeFonts}
-          />
-        ))}
-      </div>
-      {renderSelected && isActive && renderSelected(slide.index)}
-    </button>
   );
 }

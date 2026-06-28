@@ -37,41 +37,7 @@ export default function IndexPage() {
 
 function PresentationDebug() {
   const { status, progress, error, presentation } = usePresentation();
-  const { slide } = useSlide();
-
-  React.useEffect(() => {
-    if (slide && status === "ready" && slide.index === 0) {
-      console.group(`[pptx] FINAL elements for slide 0 (${slide.elements.length} total)`);
-      slide.elements.forEach((el, i) => {
-        type AnyEl = {
-          type: string;
-          id: string;
-          placeholder?: { type: string; idx: number };
-          position: { x: number; y: number };
-          size: { width: number; height: number };
-          paragraphs?: { runs?: { type: string; text?: string }[] }[];
-          src?: string;
-        };
-        const e = el as AnyEl;
-        const text =
-          e.type === "text"
-            ? e.paragraphs
-                ?.map((p) => p.runs?.map((r) => r.text).join(""))
-                .join(" / ")
-                .slice(0, 60)
-            : e.type === "image"
-              ? `src=${!!e.src}`
-              : "";
-        const posStr = `x=${e.position.x.toFixed(1)} y=${e.position.y.toFixed(1)}`;
-        const sizeStr = `w=${e.size.width.toFixed(1)} h=${e.size.height.toFixed(1)}`;
-        const phStr = e.placeholder ? `[${e.placeholder.type}/${e.placeholder.idx}]` : "";
-        console.log(
-          `  [${i}] ${e.type}${phStr} id="${e.id}" | ${posStr} | ${sizeStr}${text ? ` | "${text}"` : ""}`,
-        );
-      });
-      console.groupEnd();
-    }
-  }, [slide, status]);
+  const { slide, index } = useSlide();
 
   return (
     <div className="flex items-center gap-3 border-b border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground">
@@ -87,13 +53,12 @@ function PresentationDebug() {
           <span>
             size:{" "}
             <strong className="text-foreground">
-              {presentation.slideSize.width.toFixed(0)} × {presentation.slideSize.height.toFixed(0)}{" "}
-              pt
+              {presentation.width.toFixed(0)} × {presentation.height.toFixed(0)} px
             </strong>
           </span>
           {slide && (
             <span>
-              elements: <strong className="text-foreground">{slide.elements.length}</strong>
+              slide {index + 1}: <strong className="text-foreground">{slide.nodes.length} nodes</strong>
             </span>
           )}
         </>

@@ -1,18 +1,13 @@
-import type { ParseOptions, Presentation, PresentationInput } from "@pptx/parser";
-import { parsePresentation } from "@pptx/parser";
-
-// ─── State ───────────────────────────────────────────────────────────────────
+import { parseZip, buildPresentation } from "@pptx/parser";
+import type { PresentationData, PreviewInput } from "@pptx/parser";
 
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 
 export interface PresentationState {
   status: PresentationStatus;
-  presentation: Presentation | null;
-  /** 0-based current slide index */
+  presentation: PresentationData | null;
   currentIndex: number;
-  /** Scale factor. 1 = native pt dimensions. Use fit() to auto-compute. */
   zoom: number;
-  /** Bytes loaded during parsing, 0–100 */
   progress: number;
   error: Error | null;
 }
@@ -26,52 +21,41 @@ const INITIAL_STATE: PresentationState = {
   error: null,
 };
 
-// ─── Store ───────────────────────────────────────────────────────────────────
+async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
+  if (input instanceof ArrayBuffer) return input;
+  if (input instanceof Uint8Array) return input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+  if (input instanceof Blob) return input.arrayBuffer();
+  throw new Error("Unsupported input type");
+}
 
-/**
- * Plain-object store compatible with React.useSyncExternalStore.
- *
- * One store instance lives per <Presentation.Root>. All compound components
- * read from it via context + useSyncExternalStore selectors.
- */
 export class PresentationStore {
   private state: PresentationState = { ...INITIAL_STATE };
   private listeners = new Set<() => void>();
-  /** Track load calls so stale responses from old files are discarded */
   private loadGeneration = 0;
 
-  // ── useSyncExternalStore interface ──────────────────────────────────────
-
-  getState(): PresentationState {
-    return this.state;
-  }
+  getState(): PresentationState { return this.state; }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  // ── Actions ─────────────────────────────────────────────────────────────
-
-  async load(input: PresentationInput, options?: Omit<ParseOptions, "onProgress">): Promise<void> {
+  async load(input: PreviewInput): Promise<void> {
     this.loadGeneration++;
     const gen = this.loadGeneration;
 
-    this.setState({
-      ...INITIAL_STATE,
-      status: "loading",
-      progress: 0,
-    });
+    this.setState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     try {
-      const presentation = await parsePresentation(input, {
-        ...options,
-        onProgress: (current, total) => {
-          if (gen !== this.loadGeneration) return;
-          this.setState({ ...this.state, progress: Math.round((current / total) * 100) });
-        },
-      });
+      const buffer = await normalizeInput(input);
+      if (gen !== this.loadGeneration) return;
+      this.setState({ ...this.state, progress: 30 });
 
+      const files = await parseZip(buffer);
+      if (gen !== this.loadGeneration) return;
+      this.setState({ ...this.state, progress: 70 });
+
+      const presentation = buildPresentation(files);
       if (gen !== this.loadGeneration) return;
 
       this.setState({
@@ -99,13 +83,8 @@ export class PresentationStore {
     this.setState({ ...this.state, currentIndex: clamped });
   }
 
-  next(): void {
-    this.goTo(this.state.currentIndex + 1);
-  }
-
-  prev(): void {
-    this.goTo(this.state.currentIndex - 1);
-  }
+  next(): void { this.goTo(this.state.currentIndex + 1); }
+  prev(): void { this.goTo(this.state.currentIndex - 1); }
 
   setZoom(zoom: number): void {
     const clamped = Math.max(0.1, Math.min(4, zoom));
@@ -113,29 +92,15 @@ export class PresentationStore {
     this.setState({ ...this.state, zoom: clamped });
   }
 
-  zoomIn(step = 0.25): void {
-    this.setZoom(this.state.zoom + step);
-  }
+  zoomIn(step = 0.25): void { this.setZoom(this.state.zoom + step); }
+  zoomOut(step = 0.25): void { this.setZoom(this.state.zoom - step); }
 
-  zoomOut(step = 0.25): void {
-    this.setZoom(this.state.zoom - step);
-  }
-
-  /**
-   * Compute the zoom needed to fill `containerWidth × containerHeight`
-   * while maintaining the slide aspect ratio.
-   *
-   * containerWidth/Height are in CSS pixels (from getBoundingClientRect / clientWidth).
-   * slideSize is in CSS points. 1pt = 96/72px in browsers, so we must convert.
-   */
   fitTo(containerWidth: number, containerHeight: number, padding = 0): void {
     if (!this.state.presentation) return;
-    const { width, height } = this.state.presentation.slideSize;
+    const { width, height } = this.state.presentation;
     const availW = containerWidth - padding * 2;
     const availH = containerHeight - padding * 2;
-    // Convert slide dimensions from pt to px before computing the ratio
-    const PT_TO_PX = 96 / 72;
-    const zoom = Math.min(availW / (width * PT_TO_PX), availH / (height * PT_TO_PX));
+    const zoom = Math.min(availW / width, availH / height);
     this.setZoom(zoom);
   }
 
@@ -143,8 +108,6 @@ export class PresentationStore {
     this.loadGeneration++;
     this.setState({ ...INITIAL_STATE });
   }
-
-  // ── Internal ─────────────────────────────────────────────────────────────
 
   private setState(state: PresentationState): void {
     this.state = state;
