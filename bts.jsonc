@@ -1,0 +1,31 @@
+// Better-T-Stack
+//
+// Website: https://www.better-t-stack.dev/
+// Stack Builder: https://www.better-t-stack.dev/new
+// Analytics: https://www.better-t-stack.dev/analytics
+// Showcase: https://www.better-t-stack.dev/showcase
+// Sponsor: https://github.com/sponsors/AmanVarshney01
+//
+// Add new addons with: pnpm dlx create-better-t-stack add
+// This file is safe to delete
+
+{
+  "$schema": "https://r2.better-t-stack.dev/schema.json",
+  "version": "3.34.0",
+  "createdAt": "2026-06-28T03:08:13.479Z",
+  "reproducibleCommand": "pnpm create better-t-stack@latest pptx --frontend next --backend hono --runtime node --database none --orm none --api none --auth none --payments none --addons turborepo oxlint fumadocs --examples none --db-setup none --web-deploy none --server-deploy none --git --package-manager pnpm --install",
+  "database": "none",
+  "orm": "none",
+  "backend": "hono",
+  "runtime": "node",
+  "frontend": ["next"],
+  "addons": ["turborepo", "oxlint", "fumadocs"],
+  "examples": [],
+  "auth": "none",
+  "payments": "none",
+  "packageManager": "pnpm",
+  "dbSetup": "none",
+  "api": "none",
+  "webDeploy": "none",
+  "serverDeploy": "none",
+}
