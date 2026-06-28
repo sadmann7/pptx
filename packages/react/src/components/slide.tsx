@@ -1,7 +1,7 @@
 import * as React from "react";
 import { usePresentation, useSlide, useZoom } from "../context";
-import { renderSlide } from "@pptx/parser";
-import type { PresentationData, SlideData, SlideHandle } from "@pptx/parser";
+import { renderSlide } from "@diceui/pptx-parser";
+import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import type { PresentationStatus } from "../store";
 import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";

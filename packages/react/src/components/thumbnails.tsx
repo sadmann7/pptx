@@ -1,8 +1,8 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { usePresentation, usePresentationStoreRef } from "../context";
-import { renderSlide } from "@pptx/parser";
-import type { SlideData, SlideHandle } from "@pptx/parser";
+import { renderSlide } from "@diceui/pptx-parser";
+import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { mergeRefs, renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 

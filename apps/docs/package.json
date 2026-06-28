@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@pptx/react": "workspace:*",
+    "@diceui/pptx": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "cnfast": "^0.0.8",
     "fumadocs-core": "16.10.6",

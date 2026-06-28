@@ -1,6 +1,6 @@
 "use client";
 
-import { Presentation as Primitive } from "@pptx/react";
+import { Presentation as Primitive } from "@diceui/pptx";
 import type {
   ThumbnailListProps,
   ThumbnailListRenderState,
@@ -9,7 +9,7 @@ import type {
   ThumbnailItemNumberProps,
   LoadingProps,
   PresentationErrorProps,
-} from "@pptx/react";
+} from "@diceui/pptx";
 
 import { cn } from "@/lib/utils";
 

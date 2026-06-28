@@ -1,6 +1,6 @@
 "use client";
 
-import { usePresentation, useSlide } from "@pptx/react";
+import { usePresentation, useSlide } from "@diceui/pptx";
 import {
   Presentation,
   PresentationLoading,

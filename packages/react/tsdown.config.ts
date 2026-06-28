@@ -5,6 +5,6 @@ export default defineConfig({
   format: ["esm"],
   dts: true,
   clean: true,
-  external: ["react", "react-dom", "react/jsx-runtime", "@pptx/parser"],
+  external: ["react", "react-dom", "react/jsx-runtime", "@diceui/pptx-parser"],
   publint: false,
 });
