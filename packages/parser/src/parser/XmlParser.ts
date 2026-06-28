@@ -13,12 +13,12 @@
  * to its children array, plus optional ":@" for attributes.
  */
 
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser } from "fast-xml-parser";
 
 // The ordered parser preserves sibling order across different tag names.
 const orderedParser = new XMLParser({
   ignoreAttributes: false,
-  attributeNamePrefix: '@_',
+  attributeNamePrefix: "@_",
   allowBooleanAttributes: true,
   parseAttributeValue: false,
   parseTagValue: false,
@@ -39,10 +39,10 @@ export class SafeXmlNode {
     if (node && !tag) {
       // Determine tag from the object's first non-":@" key
       for (const k of Object.keys(node)) {
-        if (k !== ':@' && k !== '#text') {
+        if (k !== ":@" && k !== "#text") {
           this._tag = k;
           const v = node[k];
-          this._children = Array.isArray(v) ? v as ONode[] : null;
+          this._children = Array.isArray(v) ? (v as ONode[]) : null;
           return;
         }
       }
@@ -52,7 +52,7 @@ export class SafeXmlNode {
       this._tag = tag ?? null;
       if (node && tag) {
         const v = node[tag];
-        this._children = Array.isArray(v) ? v as ONode[] : null;
+        this._children = Array.isArray(v) ? (v as ONode[]) : null;
       } else {
         this._children = null;
       }
@@ -62,7 +62,7 @@ export class SafeXmlNode {
   /** Get a string attribute value, or undefined if missing. */
   attr(name: string): string | undefined {
     if (!this._node) return undefined;
-    const attrs = this._node[':@'] as Record<string, unknown> | undefined;
+    const attrs = this._node[":@"] as Record<string, unknown> | undefined;
     if (!attrs) return undefined;
 
     // Try exact prefixed name
@@ -73,15 +73,15 @@ export class SafeXmlNode {
     }
 
     // Handle namespace prefix: "r:id" → try "@_r:id" then scan for localName match
-    const colonIdx = name.indexOf(':');
+    const colonIdx = name.indexOf(":");
     if (colonIdx >= 0) {
       const localName = name.slice(colonIdx + 1);
       // Scan all attrs for a match on localName after any prefix
       for (const [k, v] of Object.entries(attrs)) {
-        if (!k.startsWith('@_')) continue;
+        if (!k.startsWith("@_")) continue;
         const attrName = k.slice(2); // strip "@_"
-        const attrLocal = attrName.includes(':') ? attrName.split(':').pop()! : attrName;
-        if (attrLocal === localName && attrName.includes(':')) {
+        const attrLocal = attrName.includes(":") ? attrName.split(":").pop()! : attrName;
+        if (attrLocal === localName && attrName.includes(":")) {
           return v === undefined || v === null ? undefined : String(v);
         }
       }
@@ -105,7 +105,7 @@ export class SafeXmlNode {
   child(localName: string): SafeXmlNode {
     if (!this._children) return new SafeXmlNode(null);
     for (const item of this._children) {
-      if (!item || typeof item !== 'object') continue;
+      if (!item || typeof item !== "object") continue;
       const tag = getTag(item);
       if (tag && tagLocalName(tag) === localName) {
         return new SafeXmlNode(item, tag);
@@ -121,7 +121,7 @@ export class SafeXmlNode {
     if (!this._children) return [];
     const result: SafeXmlNode[] = [];
     for (const item of this._children) {
-      if (!item || typeof item !== 'object') continue;
+      if (!item || typeof item !== "object") continue;
       const tag = getTag(item);
       if (!tag) continue;
       if (localName === undefined || tagLocalName(tag) === localName) {
@@ -133,7 +133,7 @@ export class SafeXmlNode {
 
   /** Get the text content, or empty string if the element is missing. */
   text(): string {
-    if (!this._children) return '';
+    if (!this._children) return "";
     return collectText(this._children);
   }
 
@@ -149,7 +149,7 @@ export class SafeXmlNode {
 
   /** The localName of the underlying element, or empty string. */
   get localName(): string {
-    return this._tag ? tagLocalName(this._tag) : '';
+    return this._tag ? tagLocalName(this._tag) : "";
   }
 
   /** Raw access to the underlying node (for rare cases needing attrs iteration). */
@@ -162,22 +162,22 @@ export class SafeXmlNode {
 
 function getTag(obj: ONode): string | undefined {
   for (const k of Object.keys(obj)) {
-    if (k !== ':@' && k !== '#text') return k;
+    if (k !== ":@" && k !== "#text") return k;
   }
   return undefined;
 }
 
 function tagLocalName(tag: string): string {
-  const idx = tag.indexOf(':');
+  const idx = tag.indexOf(":");
   return idx >= 0 ? tag.slice(idx + 1) : tag;
 }
 
 function collectText(children: ONode[]): string {
   const parts: string[] = [];
   for (const item of children) {
-    if (!item || typeof item !== 'object') continue;
-    if ('#text' in item) {
-      const t = item['#text'];
+    if (!item || typeof item !== "object") continue;
+    if ("#text" in item) {
+      const t = item["#text"];
       if (t !== undefined && t !== null) parts.push(String(t));
     }
     // Recurse into child elements to collect nested text
@@ -189,7 +189,7 @@ function collectText(children: ONode[]): string {
       }
     }
   }
-  return parts.join('');
+  return parts.join("");
 }
 
 // ─── Public parse function ────────────────────────────────────────────────────
@@ -205,14 +205,17 @@ export function parseXml(xmlString: string): SafeXmlNode {
     // Skip XML declaration (<?xml ...?>) — find first real element
     let root: ONode | undefined;
     for (const item of result) {
-      if (!item || typeof item !== 'object') continue;
+      if (!item || typeof item !== "object") continue;
       const tag = getTag(item);
-      if (tag && !tag.startsWith('?')) { root = item; break; }
+      if (tag && !tag.startsWith("?")) {
+        root = item;
+        break;
+      }
     }
     if (!root) return new SafeXmlNode(null);
     return new SafeXmlNode(root);
   } catch (e) {
-    console.warn('XML parse error:', e);
+    console.warn("XML parse error:", e);
     return new SafeXmlNode(null);
   }
 }

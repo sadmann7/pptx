@@ -1,5 +1,5 @@
-import JSZip from 'jszip';
-import type { MediaResolver } from '../utils/media';
+import JSZip from "jszip";
+import type { MediaResolver } from "../utils/media";
 
 export interface PptxFiles {
   contentTypes: string;
@@ -40,12 +40,12 @@ export const RECOMMENDED_ZIP_LIMITS: Required<ZipParseLimits> = Object.freeze({
 });
 
 function isMediaPath(path: string): boolean {
-  return path.startsWith('ppt/media/');
+  return path.startsWith("ppt/media/");
 }
 
 function decodeZipPath(path: string): string {
   return path
-    .split('/')
+    .split("/")
     .map((segment) => {
       try {
         return decodeURIComponent(segment);
@@ -53,7 +53,7 @@ function decodeZipPath(path: string): string {
         return segment;
       }
     })
-    .join('/');
+    .join("/");
 }
 
 function setPathMapEntry<T>(map: Map<string, T>, path: string, value: T): void {
@@ -72,9 +72,9 @@ export async function parseZip(
   const entries = Object.entries(zip.files).filter(([, file]) => !file.dir);
 
   const result: PptxFiles = {
-    contentTypes: '',
-    presentation: '',
-    presentationRels: '',
+    contentTypes: "",
+    presentation: "",
+    presentationRels: "",
     slides: new Map(),
     slideRels: new Map(),
     slideLayouts: new Map(),
@@ -92,85 +92,85 @@ export async function parseZip(
   };
 
   for (const [path, file] of entries) {
-    const normalizedPath = path.replace(/\\/g, '/');
+    const normalizedPath = path.replace(/\\/g, "/");
 
-    if (normalizedPath === '[Content_Types].xml') {
-      result.contentTypes = await file.async('string');
+    if (normalizedPath === "[Content_Types].xml") {
+      result.contentTypes = await file.async("string");
       continue;
     }
-    if (normalizedPath === 'ppt/presentation.xml') {
-      result.presentation = await file.async('string');
+    if (normalizedPath === "ppt/presentation.xml") {
+      result.presentation = await file.async("string");
       continue;
     }
-    if (normalizedPath === 'ppt/_rels/presentation.xml.rels') {
-      result.presentationRels = await file.async('string');
+    if (normalizedPath === "ppt/_rels/presentation.xml.rels") {
+      result.presentationRels = await file.async("string");
       continue;
     }
-    if (normalizedPath === 'ppt/tableStyles.xml') {
-      result.tableStyles = await file.async('string');
+    if (normalizedPath === "ppt/tableStyles.xml") {
+      result.tableStyles = await file.async("string");
       continue;
     }
 
     if (isMediaPath(normalizedPath)) {
-      const bytes = await file.async('uint8array');
+      const bytes = await file.async("uint8array");
       setPathMapEntry(result.media, normalizedPath, bytes);
       continue;
     }
 
     if (/^ppt\/slides\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
-      setPathMapEntry(result.slideRels, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slideRels, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/slides\/[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.slides, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slides, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/slideLayouts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
-      setPathMapEntry(result.slideLayoutRels, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slideLayoutRels, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/slideLayouts\/[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.slideLayouts, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slideLayouts, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/slideMasters\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
-      setPathMapEntry(result.slideMasterRels, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slideMasterRels, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/slideMasters\/[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.slideMasters, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.slideMasters, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/theme\/(?!themeOverride)[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.themes, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.themes, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
       if (result.themeOverrides) {
-        setPathMapEntry(result.themeOverrides, normalizedPath, await file.async('string'));
+        setPathMapEntry(result.themeOverrides, normalizedPath, await file.async("string"));
       }
       continue;
     }
     if (/^ppt\/charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       if (result.chartRels) {
-        setPathMapEntry(result.chartRels, normalizedPath, await file.async('string'));
+        setPathMapEntry(result.chartRels, normalizedPath, await file.async("string"));
       }
       continue;
     }
     if (/^ppt\/charts\/(?!style)[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.charts, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.charts, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/charts\/style[^/]*\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.chartStyles, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.chartStyles, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/charts\/colors[^/]*\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.chartColors, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.chartColors, normalizedPath, await file.async("string"));
       continue;
     }
     if (/^ppt\/diagrams\/[^/]+\.xml$/.test(normalizedPath)) {
-      setPathMapEntry(result.diagramDrawings, normalizedPath, await file.async('string'));
+      setPathMapEntry(result.diagramDrawings, normalizedPath, await file.async("string"));
       continue;
     }
   }

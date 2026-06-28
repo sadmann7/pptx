@@ -13,4 +13,4 @@ export const Presentation = {
 export { usePresentation, useSlide, useZoom, usePresentationStoreRef } from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
 export { PresentationStore } from "./store";
-export type { PresentationState, PresentationStatus } from "./store";
+export type { PresentationState, PresentationStatus, PreviewInput } from "./store";

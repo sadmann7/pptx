@@ -53,12 +53,13 @@ function PresentationDebug() {
           <span>
             size:{" "}
             <strong className="text-foreground">
-              {presentation.width.toFixed(0)} × {presentation.height.toFixed(0)} px
+              {presentation.width.toFixed(0)} x {presentation.height.toFixed(0)}
             </strong>
           </span>
           {slide && (
             <span>
-              slide {index + 1}: <strong className="text-foreground">{slide.nodes.length} nodes</strong>
+              slide {index + 1}:{" "}
+              <strong className="text-foreground">{slide.nodes.length} nodes</strong>
             </span>
           )}
         </>

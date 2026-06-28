@@ -1,8 +1,12 @@
-const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
-const ALLOWED_MEDIA_PROTOCOLS = new Set(['http:', 'https:']);
+const ALLOWED_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const ALLOWED_MEDIA_PROTOCOLS = new Set(["http:", "https:"]);
 
 function getUrlProtocol(url: string): string | undefined {
-  try { return new URL(url).protocol.toLowerCase(); } catch { return undefined; }
+  try {
+    return new URL(url).protocol.toLowerCase();
+  } catch {
+    return undefined;
+  }
 }
 
 export function isAllowedExternalUrl(url: string): boolean {

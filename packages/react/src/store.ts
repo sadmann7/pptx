@@ -1,6 +1,7 @@
-import { parseZip, buildPresentation } from "@pptx/parser";
-import type { PresentationData, PreviewInput } from "@pptx/parser";
+import { parseZip, buildPresentation, materializeSlideNodes } from "@aiden0z/pptx-renderer";
+import type { PresentationData } from "@aiden0z/pptx-renderer";
 
+export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 
 export interface PresentationState {
@@ -23,7 +24,8 @@ const INITIAL_STATE: PresentationState = {
 
 async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
   if (input instanceof ArrayBuffer) return input;
-  if (input instanceof Uint8Array) return input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+  if (input instanceof Uint8Array)
+    return input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
   if (input instanceof Blob) return input.arrayBuffer();
   throw new Error("Unsupported input type");
 }
@@ -33,7 +35,9 @@ export class PresentationStore {
   private listeners = new Set<() => void>();
   private loadGeneration = 0;
 
-  getState(): PresentationState { return this.state; }
+  getState(): PresentationState {
+    return this.state;
+  }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -43,7 +47,6 @@ export class PresentationStore {
   async load(input: PreviewInput): Promise<void> {
     this.loadGeneration++;
     const gen = this.loadGeneration;
-
     this.setState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     try {
@@ -57,6 +60,11 @@ export class PresentationStore {
 
       const presentation = buildPresentation(files);
       if (gen !== this.loadGeneration) return;
+
+      // Materialize all slides eagerly so they're ready to render
+      for (const slide of presentation.slides) {
+        materializeSlideNodes(presentation, slide);
+      }
 
       this.setState({
         status: "ready",
@@ -83,8 +91,12 @@ export class PresentationStore {
     this.setState({ ...this.state, currentIndex: clamped });
   }
 
-  next(): void { this.goTo(this.state.currentIndex + 1); }
-  prev(): void { this.goTo(this.state.currentIndex - 1); }
+  next(): void {
+    this.goTo(this.state.currentIndex + 1);
+  }
+  prev(): void {
+    this.goTo(this.state.currentIndex - 1);
+  }
 
   setZoom(zoom: number): void {
     const clamped = Math.max(0.1, Math.min(4, zoom));
@@ -92,8 +104,12 @@ export class PresentationStore {
     this.setState({ ...this.state, zoom: clamped });
   }
 
-  zoomIn(step = 0.25): void { this.setZoom(this.state.zoom + step); }
-  zoomOut(step = 0.25): void { this.setZoom(this.state.zoom - step); }
+  zoomIn(step = 0.25): void {
+    this.setZoom(this.state.zoom + step);
+  }
+  zoomOut(step = 0.25): void {
+    this.setZoom(this.state.zoom - step);
+  }
 
   fitTo(containerWidth: number, containerHeight: number, padding = 0): void {
     if (!this.state.presentation) return;

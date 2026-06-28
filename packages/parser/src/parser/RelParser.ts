@@ -1,4 +1,4 @@
-import { parseXml } from './XmlParser';
+import { parseXml } from "./XmlParser";
 
 export interface RelEntry {
   type: string;
@@ -7,7 +7,7 @@ export interface RelEntry {
 }
 
 export function isExternalTargetMode(targetMode: string | undefined): boolean {
-  return targetMode?.trim().toLowerCase() === 'external';
+  return targetMode?.trim().toLowerCase() === "external";
 }
 
 function stripUriSuffix(target: string): string {
@@ -30,12 +30,12 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
   const root = parseXml(xmlString);
   if (!root.exists()) return result;
 
-  const relationships = root.children('Relationship');
+  const relationships = root.children("Relationship");
   for (const rel of relationships) {
-    const id = rel.attr('Id');
-    const type = rel.attr('Type');
-    const target = rel.attr('Target');
-    const targetMode = rel.attr('TargetMode');
+    const id = rel.attr("Id");
+    const type = rel.attr("Type");
+    const target = rel.attr("Target");
+    const targetMode = rel.attr("TargetMode");
 
     if (id && type !== undefined && target !== undefined) {
       result.set(id, { type, target, targetMode });
@@ -48,25 +48,25 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
 export function resolveRelTarget(basePath: string, target: string): string {
   const targetPath = stripUriSuffix(target);
 
-  if (targetPath.startsWith('/')) {
-    return targetPath.slice(1).replace(/\\/g, '/').split('/').map(decodeUriPathSegment).join('/');
+  if (targetPath.startsWith("/")) {
+    return targetPath.slice(1).replace(/\\/g, "/").split("/").map(decodeUriPathSegment).join("/");
   }
 
-  const baseParts = basePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  const baseParts = basePath.replace(/\\/g, "/").split("/").filter(Boolean);
   const targetParts = targetPath
-    .replace(/\\/g, '/')
-    .split('/')
+    .replace(/\\/g, "/")
+    .split("/")
     .filter(Boolean)
     .map(decodeUriPathSegment);
 
   const resolved = [...baseParts];
   for (const part of targetParts) {
-    if (part === '..') {
+    if (part === "..") {
       resolved.pop();
-    } else if (part !== '.') {
+    } else if (part !== ".") {
       resolved.push(part);
     }
   }
 
-  return resolved.join('/');
+  return resolved.join("/");
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import type { PresentationData, SlideData } from "@pptx/parser";
+import type { PresentationData, SlideData } from "@aiden0z/pptx-renderer";
 import type { PresentationState } from "./store";
 import { PresentationStore } from "./store";
 
@@ -12,7 +12,12 @@ function usePresentationStore(): PresentationStore {
 }
 
 const SERVER_SNAPSHOT: PresentationState = {
-  status: "idle", presentation: null, currentIndex: 0, zoom: 1, progress: 0, error: null,
+  status: "idle",
+  presentation: null,
+  currentIndex: 0,
+  zoom: 1,
+  progress: 0,
+  error: null,
 };
 
 export interface UsePresentationResult {
@@ -29,7 +34,12 @@ export function usePresentation(): UsePresentationResult {
     store.getState.bind(store),
     () => SERVER_SNAPSHOT,
   );
-  return { presentation: state.presentation, status: state.status, error: state.error, progress: state.progress };
+  return {
+    presentation: state.presentation,
+    status: state.status,
+    error: state.error,
+    progress: state.progress,
+  };
 }
 
 export interface UseSlideResult {
@@ -45,16 +55,37 @@ export interface UseSlideResult {
 
 export function useSlide(): UseSlideResult {
   const store = usePresentationStore();
-  const currentIndex = React.useSyncExternalStore(store.subscribe.bind(store), () => store.getState().currentIndex, () => 0);
-  const total = React.useSyncExternalStore(store.subscribe.bind(store), () => store.getState().presentation?.slides.length ?? 0, () => 0);
-  const slide = React.useSyncExternalStore(store.subscribe.bind(store), () => {
-    const { presentation, currentIndex: idx } = store.getState();
-    return presentation?.slides[idx] ?? null;
-  }, () => null);
+  const currentIndex = React.useSyncExternalStore(
+    store.subscribe.bind(store),
+    () => store.getState().currentIndex,
+    () => 0,
+  );
+  const total = React.useSyncExternalStore(
+    store.subscribe.bind(store),
+    () => store.getState().presentation?.slides.length ?? 0,
+    () => 0,
+  );
+  const slide = React.useSyncExternalStore(
+    store.subscribe.bind(store),
+    () => {
+      const { presentation, currentIndex: idx } = store.getState();
+      return presentation?.slides[idx] ?? null;
+    },
+    () => null,
+  );
   const goTo = React.useCallback((i: number) => store.goTo(i), [store]);
   const next = React.useCallback(() => store.next(), [store]);
   const prev = React.useCallback(() => store.prev(), [store]);
-  return { slide, index: currentIndex, total, isFirst: currentIndex === 0, isLast: total > 0 && currentIndex === total - 1, goTo, next, prev };
+  return {
+    slide,
+    index: currentIndex,
+    total,
+    isFirst: currentIndex === 0,
+    isLast: total > 0 && currentIndex === total - 1,
+    goTo,
+    next,
+    prev,
+  };
 }
 
 export interface UseZoomResult {
@@ -67,7 +98,11 @@ export interface UseZoomResult {
 
 export function useZoom(): UseZoomResult {
   const store = usePresentationStore();
-  const zoom = React.useSyncExternalStore(store.subscribe.bind(store), () => store.getState().zoom, () => 1);
+  const zoom = React.useSyncExternalStore(
+    store.subscribe.bind(store),
+    () => store.getState().zoom,
+    () => 1,
+  );
   return {
     zoom,
     setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
@@ -77,4 +112,6 @@ export function useZoom(): UseZoomResult {
   };
 }
 
-export function usePresentationStoreRef(): PresentationStore { return usePresentationStore(); }
+export function usePresentationStoreRef(): PresentationStore {
+  return usePresentationStore();
+}

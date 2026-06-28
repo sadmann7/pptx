@@ -283,6 +283,9 @@ importers:
 
   packages/react:
     dependencies:
+      '@aiden0z/pptx-renderer':
+        specifier: '*'
+        version: 1.2.1
       '@pptx/parser':
         specifier: workspace:*
         version: link:../parser
