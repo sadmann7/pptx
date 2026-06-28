@@ -5,20 +5,16 @@ import { XMLParser } from 'fast-xml-parser'
  * one instance in the XML.
  */
 const ALWAYS_ARRAY = new Set([
-  // Presentation
-  'p:sldIdLst',
+  // Presentation — only the repeating ID elements, NOT their container wrappers
   'p:sldId',
-  'p:sldMasterIdLst',
   'p:sldMasterId',
-  'p:sldLayoutIdLst',
   'p:sldLayoutId',
-  // Slide content
+  // Slide content — repeating shape elements only; p:spTree is a single container
   'p:sp',
   'p:pic',
   'p:graphicFrame',
   'p:grpSp',
   'p:cxnSp',
-  'p:spTree',
   // Text
   'a:p',
   'a:r',

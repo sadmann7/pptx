@@ -7,7 +7,8 @@ export interface ViewportProps {
   style?: React.CSSProperties
   /**
    * If true, the viewport computes and applies `fitTo` whenever the container
-   * is resized. Requires the ResizeObserver API (available in all modern browsers).
+   * is resized OR when the presentation finishes loading.
+   * Requires the ResizeObserver API (available in all modern browsers).
    * @default false
    */
   autoFit?: boolean
@@ -15,12 +16,6 @@ export interface ViewportProps {
   autoFitPadding?: number
 }
 
-/**
- * <Presentation.Viewport>
- *
- * A scrollable container that holds <Presentation.Slide> (and any overlays).
- * When `autoFit` is true, it observes its own size and keeps the slide fitted.
- */
 export function Viewport({
   children,
   className,
@@ -31,23 +26,33 @@ export function Viewport({
   const ref = React.useRef<HTMLDivElement>(null)
   const store = usePresentationStoreRef()
 
-  // Auto-fit: observe container size and call store.fitTo whenever it changes
   React.useEffect(() => {
     if (!autoFit || !ref.current) return
 
     const el = ref.current
 
     const fit = () => {
-      store.fitTo(el.clientWidth, el.clientHeight, autoFitPadding)
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        store.fitTo(el.clientWidth, el.clientHeight, autoFitPadding)
+      }
     }
 
-    fit() // initial fit
+    // Re-fit whenever the store state changes (e.g. presentation finishes loading)
+    // and whenever the container is resized.
+    const unsubscribeStore = store.subscribe(fit)
 
-    if (typeof ResizeObserver === 'undefined') return
+    fit() // attempt immediately (no-op if presentation not loaded yet)
 
-    const observer = new ResizeObserver(fit)
-    observer.observe(el)
-    return () => observer.disconnect()
+    let observer: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(fit)
+      observer.observe(el)
+    }
+
+    return () => {
+      unsubscribeStore()
+      observer?.disconnect()
+    }
   }, [autoFit, autoFitPadding, store])
 
   const containerStyle: React.CSSProperties = {

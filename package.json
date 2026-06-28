@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "check-types": "turbo check-types",
+    "lint": "turbo lint",
+    "typecheck": "turbo check-types",
+    "check": "pnpm lint && pnpm typecheck",
     "dev:web": "turbo -F web dev",
-    "dev:server": "turbo -F server dev",
-    "check": "oxlint && oxfmt --write"
+    "dev:server": "turbo -F server dev"
   },
   "dependencies": {
     "@pptx/env": "workspace:*",
@@ -21,7 +22,7 @@
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",
-    "@types/node": "^22.13.14",
+    "@types/node": "catalog:",
     "oxfmt": "^0.53.0",
     "oxlint": "^1.68.0",
     "turbo": "^2.9.16",

@@ -124,14 +124,18 @@ export class PresentationStore {
   /**
    * Compute the zoom needed to fill `containerWidth × containerHeight`
    * while maintaining the slide aspect ratio.
+   *
+   * containerWidth/Height are in CSS pixels (from getBoundingClientRect / clientWidth).
+   * slideSize is in CSS points. 1pt = 96/72px in browsers, so we must convert.
    */
   fitTo(containerWidth: number, containerHeight: number, padding = 0): void {
-    const slide = this.state.presentation
-    if (!slide) return
-    const { width, height } = slide.slideSize
+    if (!this.state.presentation) return
+    const { width, height } = this.state.presentation.slideSize
     const availW = containerWidth - padding * 2
     const availH = containerHeight - padding * 2
-    const zoom = Math.min(availW / width, availH / height)
+    // Convert slide dimensions from pt to px before computing the ratio
+    const PT_TO_PX = 96 / 72
+    const zoom = Math.min(availW / (width * PT_TO_PX), availH / (height * PT_TO_PX))
     this.setZoom(zoom)
   }
 

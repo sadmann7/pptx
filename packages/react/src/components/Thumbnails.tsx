@@ -1,7 +1,7 @@
 import React from 'react'
 import type { Slide, ThemeColors } from '@pptx/parser'
 import { usePresentation, useSlide } from '../context'
-import { fillToCSS } from '../render/color'
+import { fillToCSS, toCSS } from '../render/color'
 import { SlideElementRenderer } from '../elements/index'
 
 export interface ThumbnailsProps {
@@ -32,6 +32,14 @@ export function Thumbnails({
 }: ThumbnailsProps) {
   const { presentation, status } = usePresentation()
   const { index: currentIndex, goTo } = useSlide()
+
+  if (status === 'loading') {
+    return (
+      <div className={className} style={{ padding: 8, fontFamily: 'sans-serif', fontSize: 12, color: '#9ca3af', ...style }}>
+        Loading…
+      </div>
+    )
+  }
 
   if (status !== 'ready' || !presentation) return null
 
@@ -114,6 +122,8 @@ function ThumbnailItem({
     background: bg,
   }
 
+  const defaultTextColor = toCSS({ type: 'scheme', token: 'dk1' }, themeColors)
+
   const canvasStyle: React.CSSProperties = {
     position: 'absolute',
     top: 0,
@@ -122,6 +132,8 @@ function ThumbnailItem({
     height: `${slideHeight}pt`,
     transformOrigin: 'top left',
     transform: `scale(${scale})`,
+    color: defaultTextColor,
+    fontFamily: 'sans-serif',
     pointerEvents: 'none',
     userSelect: 'none',
   }

@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "oxlint",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@pptx/env": "workspace:*",
@@ -23,8 +25,8 @@
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/node": "^20",
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",

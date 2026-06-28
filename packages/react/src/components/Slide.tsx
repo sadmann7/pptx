@@ -1,6 +1,6 @@
 import React from 'react'
 import { usePresentation, useSlide, useZoom } from '../context'
-import { fillToCSS } from '../render/color'
+import { fillToCSS, toCSS } from '../render/color'
 import { type ElementRendererFn, SlideElementRenderer } from '../elements/index'
 
 export interface SlideProps {
@@ -30,9 +30,25 @@ export interface SlideProps {
  *   - Children (overlays) share the same coordinate space
  */
 export function Slide({ renderElement, children, className, style }: SlideProps) {
-  const { presentation, status } = usePresentation()
+  const { presentation, status, progress } = usePresentation()
   const { slide } = useSlide()
   const { zoom } = useZoom()
+
+  if (status === 'loading') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'sans-serif', color: '#6b7280', fontSize: '14px' }}>
+        Parsing… {progress}%
+      </div>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'sans-serif', color: '#ef4444', fontSize: '14px' }}>
+        Failed to parse presentation
+      </div>
+    )
+  }
 
   if (status !== 'ready' || !presentation || !slide) return null
 
@@ -44,15 +60,21 @@ export function Slide({ renderElement, children, className, style }: SlideProps)
     ? fillToCSS(slide.background.fill, themeColors)
     : '#ffffff'
 
+  // Default text color from theme's dk1 (primary dark color).
+  // Individual runs with explicit colors override this via inline styles.
+  const defaultTextColor = toCSS({ type: 'scheme', token: 'dk1' }, themeColors)
+
   const canvasStyle: React.CSSProperties = {
     position: 'relative',
     width: `${width}pt`,
     height: `${height}pt`,
     background: bgColor,
+    color: defaultTextColor,
     transformOrigin: 'top left',
     transform: `scale(${zoom})`,
     overflow: 'hidden',
     flexShrink: 0,
+    fontFamily: 'sans-serif',
   }
 
   return (
