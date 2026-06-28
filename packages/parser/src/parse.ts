@@ -1,1 +1,1 @@
-export { parsePresentation } from './parsers/presentation'
+export { parsePresentation } from "./parsers/presentation";

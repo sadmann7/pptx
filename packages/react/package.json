@@ -8,14 +8,10 @@
   },
   "scripts": {
     "lint": "oxlint",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@pptx/parser": "workspace:*"
-  },
-  "peerDependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",
@@ -24,5 +20,9 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:"
   }
 }

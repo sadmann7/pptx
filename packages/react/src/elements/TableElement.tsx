@@ -1,28 +1,28 @@
-import React from 'react'
-import type { TableCell, TableShape, ThemeColors } from '@pptx/parser'
-import { fillToCSS, strokeToSVGAttrs } from '../render/color'
-import { elementStyle } from '../render/transform'
-import { ParagraphElement } from './shared/ParagraphElement'
+import React from "react";
+import type { TableCell, TableShape, ThemeColors } from "@pptx/parser";
+import { fillToCSS, strokeToSVGAttrs } from "../render/color";
+import { elementStyle } from "../render/transform";
+import { ParagraphElement } from "./shared/ParagraphElement";
 
 interface TableElementProps {
-  element: TableShape
-  theme: ThemeColors
+  element: TableShape;
+  theme: ThemeColors;
 }
 
 export function TableElement({ element, theme }: TableElementProps) {
   const outer: React.CSSProperties = {
     ...elementStyle(element),
-    overflow: 'hidden',
-  }
+    overflow: "hidden",
+  };
 
   return (
     <div style={outer} data-element-type="table" data-element-id={element.id}>
       <table
         style={{
-          width: '100%',
-          height: '100%',
-          borderCollapse: 'collapse',
-          tableLayout: 'fixed',
+          width: "100%",
+          height: "100%",
+          borderCollapse: "collapse",
+          tableLayout: "fixed",
         }}
       >
         <colgroup>
@@ -41,35 +41,29 @@ export function TableElement({ element, theme }: TableElementProps) {
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
-function TableCellElement({
-  cell,
-  theme,
-}: {
-  cell: TableCell
-  theme: ThemeColors
-}) {
-  if (cell.merged) return null
+function TableCellElement({ cell, theme }: { cell: TableCell; theme: ThemeColors }) {
+  if (cell.merged) return null;
 
-  const strokeAttrs = strokeToSVGAttrs(cell.stroke, theme)
-  const borderColor = strokeAttrs.stroke !== 'none' ? strokeAttrs.stroke : '#d1d5db'
-  const borderWidth = strokeAttrs.strokeWidth !== '0' ? strokeAttrs.strokeWidth : '0.5pt'
+  const strokeAttrs = strokeToSVGAttrs(cell.stroke, theme);
+  const borderColor = strokeAttrs.stroke !== "none" ? strokeAttrs.stroke : "#d1d5db";
+  const borderWidth = strokeAttrs.strokeWidth !== "0" ? strokeAttrs.strokeWidth : "0.5pt";
 
   const style: React.CSSProperties = {
-    verticalAlign: 'middle',
-    padding: '4pt 6pt',
+    verticalAlign: "middle",
+    padding: "4pt 6pt",
     border: `${borderWidth} solid ${borderColor}`,
     background: fillToCSS(cell.fill, theme),
-    overflow: 'hidden',
-  }
+    overflow: "hidden",
+  };
 
   const tdProps: React.TdHTMLAttributes<HTMLTableCellElement> = {
     style,
     ...(cell.rowSpan > 1 ? { rowSpan: cell.rowSpan } : {}),
     ...(cell.colSpan > 1 ? { colSpan: cell.colSpan } : {}),
-  }
+  };
 
   return (
     <td {...tdProps}>
@@ -77,5 +71,5 @@ function TableCellElement({
         <ParagraphElement key={i} paragraph={p} theme={theme} />
       ))}
     </td>
-  )
+  );
 }

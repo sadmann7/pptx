@@ -1,5 +1,5 @@
-import type { ChartShape, ThemeColors } from '@pptx/parser'
-import { elementStyle } from '../render/transform'
+import type { ChartShape, ThemeColors } from "@pptx/parser";
+import { elementStyle } from "../render/transform";
 
 /**
  * Placeholder chart renderer.
@@ -14,19 +14,19 @@ export function ChartElement({ element }: { element: ChartShape; theme: ThemeCol
     <div
       style={{
         ...elementStyle(element),
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f4f4f5',
-        border: '1px dashed #d1d5db',
-        color: '#6b7280',
-        fontSize: '10pt',
-        fontFamily: 'sans-serif',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f4f4f5",
+        border: "1px dashed #d1d5db",
+        color: "#6b7280",
+        fontSize: "10pt",
+        fontFamily: "sans-serif",
       }}
       data-element-type="chart"
       data-element-id={element.id}
     >
       Chart
     </div>
-  )
+  );
 }

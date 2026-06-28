@@ -1,4 +1,4 @@
-import { XMLParser } from 'fast-xml-parser'
+import { XMLParser } from "fast-xml-parser";
 
 /**
  * Elements that must always be treated as arrays even when there's only
@@ -6,83 +6,83 @@ import { XMLParser } from 'fast-xml-parser'
  */
 const ALWAYS_ARRAY = new Set([
   // Presentation — only the repeating ID elements, NOT their container wrappers
-  'p:sldId',
-  'p:sldMasterId',
-  'p:sldLayoutId',
+  "p:sldId",
+  "p:sldMasterId",
+  "p:sldLayoutId",
   // Slide content — repeating shape elements only; p:spTree is a single container
-  'p:sp',
-  'p:pic',
-  'p:graphicFrame',
-  'p:grpSp',
-  'p:cxnSp',
+  "p:sp",
+  "p:pic",
+  "p:graphicFrame",
+  "p:grpSp",
+  "p:cxnSp",
   // Text
-  'a:p',
-  'a:r',
-  'a:br',
-  'a:fld',
+  "a:p",
+  "a:r",
+  "a:br",
+  "a:fld",
   // Table
-  'a:tr',
-  'a:tc',
-  'a:gridCol',
-  'a:tblStyleLst',
+  "a:tr",
+  "a:tc",
+  "a:gridCol",
+  "a:tblStyleLst",
   // Relationships
-  'Relationship',
+  "Relationship",
   // Content types
-  'Override',
-  'Default',
+  "Override",
+  "Default",
   // Theme
-  'a:fmtScheme',
+  "a:fmtScheme",
   // Gradient stops
-  'a:gs',
+  "a:gs",
   // Paragraph spacing
-  'a:tab',
+  "a:tab",
   // List styles
-  'a:lvl1pPr',
-  'a:lvl2pPr',
-  'a:lvl3pPr',
-  'a:lvl4pPr',
-  'a:lvl5pPr',
-  'a:lvl6pPr',
-  'a:lvl7pPr',
-  'a:lvl8pPr',
-  'a:lvl9pPr',
-])
+  "a:lvl1pPr",
+  "a:lvl2pPr",
+  "a:lvl3pPr",
+  "a:lvl4pPr",
+  "a:lvl5pPr",
+  "a:lvl6pPr",
+  "a:lvl7pPr",
+  "a:lvl8pPr",
+  "a:lvl9pPr",
+]);
 
 const parser = new XMLParser({
   ignoreAttributes: false,
-  attributeNamePrefix: '@_',
+  attributeNamePrefix: "@_",
   allowBooleanAttributes: true,
   parseAttributeValue: false,
   parseTagValue: true,
   trimValues: true,
   isArray: (name) => ALWAYS_ARRAY.has(name),
-})
+});
 
 export function parseXml(xmlString: string): Record<string, unknown> {
-  return parser.parse(xmlString) as Record<string, unknown>
+  return parser.parse(xmlString) as Record<string, unknown>;
 }
 
 /** Safe attribute getter — returns string or undefined */
 export function attr(node: unknown, name: string): string | undefined {
-  if (node === null || typeof node !== 'object') return undefined
-  const val = (node as Record<string, unknown>)[`@_${name}`]
-  if (val === undefined || val === null) return undefined
-  return String(val)
+  if (node === null || typeof node !== "object") return undefined;
+  const val = (node as Record<string, unknown>)[`@_${name}`];
+  if (val === undefined || val === null) return undefined;
+  return String(val);
 }
 
 /** Safe numeric attribute getter */
 export function attrNum(node: unknown, name: string): number | undefined {
-  const s = attr(node, name)
-  if (s === undefined) return undefined
-  const n = Number(s)
-  return Number.isNaN(n) ? undefined : n
+  const s = attr(node, name);
+  if (s === undefined) return undefined;
+  const n = Number(s);
+  return Number.isNaN(n) ? undefined : n;
 }
 
 /** Safe boolean attribute getter — treats '1', 'true' as true */
 export function attrBool(node: unknown, name: string): boolean | undefined {
-  const s = attr(node, name)
-  if (s === undefined) return undefined
-  return s === '1' || s === 'true'
+  const s = attr(node, name);
+  if (s === undefined) return undefined;
+  return s === "1" || s === "true";
 }
 
 /**
@@ -90,12 +90,12 @@ export function attrBool(node: unknown, name: string): boolean | undefined {
  * Returns undefined if any segment is missing.
  */
 export function get(root: unknown, ...path: string[]): unknown {
-  let cur: unknown = root
+  let cur: unknown = root;
   for (const key of path) {
-    if (cur === null || typeof cur !== 'object') return undefined
-    cur = (cur as Record<string, unknown>)[key]
+    if (cur === null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[key];
   }
-  return cur
+  return cur;
 }
 
 /**
@@ -103,19 +103,19 @@ export function get(root: unknown, ...path: string[]): unknown {
  * If it's a non-null value, wrap it. If undefined/null, return [].
  */
 export function toArray<T>(val: T | T[] | undefined | null): T[] {
-  if (val === undefined || val === null) return []
-  if (Array.isArray(val)) return val
-  return [val]
+  if (val === undefined || val === null) return [];
+  if (Array.isArray(val)) return val;
+  return [val];
 }
 
 /** Get text content of a node (handles both string leaf and object with #text) */
 export function textContent(node: unknown): string {
-  if (typeof node === 'string') return node
-  if (typeof node === 'number') return String(node)
-  if (node === null || node === undefined) return ''
-  if (typeof node === 'object') {
-    const t = (node as Record<string, unknown>)['#text']
-    if (t !== undefined) return String(t)
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (node === null || node === undefined) return "";
+  if (typeof node === "object") {
+    const t = (node as Record<string, unknown>)["#text"];
+    if (t !== undefined) return String(t);
   }
-  return ''
+  return "";
 }

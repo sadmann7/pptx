@@ -10,8 +10,9 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "typecheck": "turbo check-types",
-    "check": "pnpm lint && pnpm typecheck",
+    "typecheck": "turbo typecheck",
+    "format": "oxfmt --write",
+    "check": "pnpm lint && pnpm typecheck && pnpm format",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev"
   },

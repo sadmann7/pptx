@@ -12,7 +12,7 @@
   },
   "scripts": {
     "lint": "oxlint",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

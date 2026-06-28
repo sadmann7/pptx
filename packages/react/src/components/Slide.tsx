@@ -1,21 +1,21 @@
-import React from 'react'
-import { usePresentation, useSlide, useZoom } from '../context'
-import { fillToCSS, toCSS } from '../render/color'
-import { type ElementRendererFn, SlideElementRenderer } from '../elements/index'
+import React from "react";
+import { usePresentation, useSlide, useZoom } from "../context";
+import { fillToCSS, toCSS } from "../render/color";
+import { type ElementRendererFn, SlideElementRenderer } from "../elements/index";
 
 export interface SlideProps {
   /**
    * Override the renderer for one or more element types.
    * Return undefined to fall back to the default renderer.
    */
-  renderElement?: ElementRendererFn
+  renderElement?: ElementRendererFn;
   /**
    * Overlay children rendered on top of the slide content.
    * Receives the same coordinate space as the slide (pt units, absolute positioning).
    */
-  children?: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
+  children?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 /**
@@ -30,52 +30,70 @@ export interface SlideProps {
  *   - Children (overlays) share the same coordinate space
  */
 export function Slide({ renderElement, children, className, style }: SlideProps) {
-  const { presentation, status, progress } = usePresentation()
-  const { slide } = useSlide()
-  const { zoom } = useZoom()
+  const { presentation, status, progress } = usePresentation();
+  const { slide } = useSlide();
+  const { zoom } = useZoom();
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'sans-serif', color: '#6b7280', fontSize: '14px' }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "2rem",
+          fontFamily: "sans-serif",
+          color: "#6b7280",
+          fontSize: "14px",
+        }}
+      >
         Parsing… {progress}%
       </div>
-    )
+    );
   }
 
-  if (status === 'error') {
+  if (status === "error") {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'sans-serif', color: '#ef4444', fontSize: '14px' }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "2rem",
+          fontFamily: "sans-serif",
+          color: "#ef4444",
+          fontSize: "14px",
+        }}
+      >
         Failed to parse presentation
       </div>
-    )
+    );
   }
 
-  if (status !== 'ready' || !presentation || !slide) return null
+  if (status !== "ready" || !presentation || !slide) return null;
 
-  const { width, height } = presentation.slideSize
-  const themeColors = presentation.theme.colors
+  const { width, height } = presentation.slideSize;
+  const themeColors = presentation.theme.colors;
 
   // Background: solid color or fill from parsed slide/layout/master
-  const bgColor = slide.background
-    ? fillToCSS(slide.background.fill, themeColors)
-    : '#ffffff'
+  const bgColor = slide.background ? fillToCSS(slide.background.fill, themeColors) : "#ffffff";
 
   // Default text color from theme's dk1 (primary dark color).
   // Individual runs with explicit colors override this via inline styles.
-  const defaultTextColor = toCSS({ type: 'scheme', token: 'dk1' }, themeColors)
+  const defaultTextColor = toCSS({ type: "scheme", token: "dk1" }, themeColors);
 
   const canvasStyle: React.CSSProperties = {
-    position: 'relative',
+    position: "relative",
     width: `${width}pt`,
     height: `${height}pt`,
     background: bgColor,
     color: defaultTextColor,
-    transformOrigin: 'top left',
+    transformOrigin: "top left",
     transform: `scale(${zoom})`,
-    overflow: 'hidden',
+    overflow: "hidden",
     flexShrink: 0,
-    fontFamily: 'sans-serif',
-  }
+    fontFamily: "sans-serif",
+  };
 
   return (
     <div
@@ -83,7 +101,7 @@ export function Slide({ renderElement, children, className, style }: SlideProps)
       style={{
         width: `${width * zoom}pt`,
         height: `${height * zoom}pt`,
-        position: 'relative',
+        position: "relative",
         ...style,
       }}
     >
@@ -99,5 +117,5 @@ export function Slide({ renderElement, children, className, style }: SlideProps)
         {children}
       </div>
     </div>
-  )
+  );
 }

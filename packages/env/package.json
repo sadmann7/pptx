@@ -9,7 +9,7 @@
   },
   "scripts": {
     "lint": "oxlint",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.13.1",
