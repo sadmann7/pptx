@@ -1,7 +1,7 @@
 {
   "ignorePatterns": [],
   "sortTailwindcss": {
-    "stylesheet": "./packages/ui/src/styles/globals.css",
+    "stylesheet": "./apps/docs/src/app/global.css",
     "functions": ["cn"]
   }
 }

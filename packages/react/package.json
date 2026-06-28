@@ -2,11 +2,24 @@
   "name": "@pptx/react",
   "version": "0.0.0",
   "private": true,
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "private": false,
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
   "scripts": {
+    "build": "tsdown",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
@@ -19,10 +32,11 @@
     "@types/react-dom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

@@ -5,7 +5,7 @@ import {
   ThumbnailList,
   ThumbnailItem,
   ThumbnailItemPreview,
-  ThumbnailItemIndex,
+  ThumbnailItemNumber,
 } from "./components/thumbnails";
 import { Loading } from "./components/loading";
 import { PresentationError as Error } from "./components/error";
@@ -17,7 +17,7 @@ export const Presentation = {
   ThumbnailList,
   ThumbnailItem,
   ThumbnailItemPreview,
-  ThumbnailItemIndex,
+  ThumbnailItemNumber,
   Loading,
   Error,
 } as const;
@@ -43,7 +43,7 @@ export type {
   ThumbnailItemProps,
   ThumbnailItemPreviewState,
   ThumbnailItemPreviewProps,
-  ThumbnailItemIndexProps,
+  ThumbnailItemNumberProps,
 } from "./components/thumbnails";
 export type { LoadingState, LoadingProps } from "./components/loading";
 export type { ErrorState, PresentationErrorProps } from "./components/error";
