@@ -50,9 +50,6 @@ importers:
 
   .:
     dependencies:
-      '@aiden0z/pptx-renderer':
-        specifier: ^1.2.1
-        version: 1.2.1
       '@pptx/env':
         specifier: workspace:*
         version: link:packages/env
@@ -264,9 +261,9 @@ importers:
 
   packages/parser:
     dependencies:
-      fast-xml-parser:
-        specifier: ^4.5.3
-        version: 4.5.6
+      echarts:
+        specifier: ^6.0.0
+        version: 6.1.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -283,9 +280,6 @@ importers:
 
   packages/react:
     dependencies:
-      '@aiden0z/pptx-renderer':
-        specifier: '*'
-        version: 1.2.1
       '@pptx/parser':
         specifier: workspace:*
         version: link:../parser
@@ -362,14 +356,6 @@ importers:
         version: 6.0.3
 
 packages:
-
-  '@aiden0z/pptx-renderer@1.2.1':
-    resolution: {integrity: sha512-cvIaoPguJ07NnFMbndgpJs6eckbLoRnom3hAx+d4V50UDk/p+21SS0jY+DzgtzPMeswBn7X7vmO1HZTpjjDEXQ==}
-    peerDependencies:
-      pdfjs-dist: ^5.0.0
-    peerDependenciesMeta:
-      pdfjs-dist:
-        optional: true
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2598,10 +2584,6 @@ packages:
   fast-wrap-ansi@0.2.2:
     resolution: {integrity: sha512-7F2Fl+TjRSenLqlU3UjSH0iyqopqoZIu7eZVpEirP2g1GtWa2G/ecEmBdgz31+Mxr+ELclgg6sokpSFIQiZ02Q==}
 
-  fast-xml-parser@4.5.6:
-    resolution: {integrity: sha512-Yd4vkROfJf8AuJrDIVMVmYfULKmIJszVsMv7Vo71aocsKgFxpdlpSHXSaInvyYfgw2PRuObQSW2GFpVMUjxu9A==}
-    hasBin: true
-
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
 
@@ -4069,9 +4051,6 @@ packages:
     resolution: {integrity: sha512-aulFJcD6YK8V1G7iRB5tigAP4TsHBZZrOV8pjV++zdUwmeV8uzbY7yn6h9MswN62adStNZFuCIx4haBnRuMDaw==}
     engines: {node: '>=18'}
 
-  strnum@1.1.2:
-    resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
-
   style-to-js@1.1.21:
     resolution: {integrity: sha512-RjQetxJrrUJLQPHbLku6U/ocGtzyjbJMP9lCNK7Ag0CNh690nSH8woqWH9u16nMjYBAok+i7JO1NP2pOy8IsPQ==}
 
@@ -4403,11 +4382,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@aiden0z/pptx-renderer@1.2.1':
-    dependencies:
-      echarts: 6.1.0
-      jszip: 3.10.1
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -6332,10 +6306,6 @@ snapshots:
     dependencies:
       fast-string-width: 3.0.2
 
-  fast-xml-parser@4.5.6:
-    dependencies:
-      strnum: 1.1.2
-
   fastq@1.20.1:
     dependencies:
       reusify: 1.1.0
@@ -8190,8 +8160,6 @@ snapshots:
   strip-final-newline@2.0.0: {}
 
   strip-final-newline@4.0.0: {}
-
-  strnum@1.1.2: {}
 
   style-to-js@1.1.21:
     dependencies:

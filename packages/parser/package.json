@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "fast-xml-parser": "^4.5.3",
+    "echarts": "^6.0.0",
     "jszip": "^3.10.1"
   },
   "devDependencies": {

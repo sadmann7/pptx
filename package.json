@@ -19,7 +19,6 @@
     "dev:server": "turbo -F server dev"
   },
   "dependencies": {
-    "@aiden0z/pptx-renderer": "^1.2.1",
     "@pptx/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"

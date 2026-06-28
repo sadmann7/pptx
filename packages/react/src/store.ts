@@ -1,5 +1,5 @@
-import { parseZip, buildPresentation, materializeSlideNodes } from "@aiden0z/pptx-renderer";
-import type { PresentationData } from "@aiden0z/pptx-renderer";
+import { parseZip, buildPresentation, materializeSlideNodes } from "@pptx/parser";
+import type { PresentationData } from "@pptx/parser";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";

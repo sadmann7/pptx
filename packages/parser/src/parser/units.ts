@@ -1,3 +1,14 @@
+/**
+ * Unit conversion utilities for OOXML / PPTX.
+ *
+ * PPTX uses several unit systems:
+ *   - EMU (English Metric Units): 1 inch = 914400 EMU
+ *   - Points: 1 inch = 72 pt
+ *   - Hundredths of a point: used for font sizes
+ *   - 60000ths of a degree: used for angles
+ *   - 100000ths (percentage): used for scale factors
+ */
+
 /** EMU to pixels (at 96 DPI). */
 export function emuToPx(emu: number): number {
   return (emu / 914400) * 96;
@@ -26,4 +37,23 @@ export function hundredthPtToPt(val: number): number {
 /** Points to pixels (at 96 DPI). */
 export function ptToPx(pt: number): number {
   return (pt * 96) / 72;
+}
+
+/**
+ * Heuristic: detect whether a value is in EMU or points.
+ * Values with abs > 20000 are almost certainly EMU (a single point = 12700 EMU).
+ */
+export function detectUnit(value: number): 'emu' | 'point' {
+  return Math.abs(value) > 20000 ? 'emu' : 'point';
+}
+
+/**
+ * Smart conversion to pixels: auto-detects whether the value is EMU or points
+ * and converts accordingly.
+ */
+export function smartToPx(value: number): number {
+  if (detectUnit(value) === 'emu') {
+    return emuToPx(value);
+  }
+  return ptToPx(value);
 }

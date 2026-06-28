@@ -1,7 +1,7 @@
 import React from "react";
 import { usePresentation, useSlide, useZoom } from "../context";
-import { renderSlide } from "@aiden0z/pptx-renderer";
-import type { PresentationData, SlideData, SlideHandle } from "@aiden0z/pptx-renderer";
+import { renderSlide } from "@pptx/parser";
+import type { PresentationData, SlideData, SlideHandle } from "@pptx/parser";
 
 export interface SlideProps {
   children?: React.ReactNode;
