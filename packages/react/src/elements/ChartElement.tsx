@@ -225,6 +225,15 @@ function BarChartSVG({ chart }: { chart: ParsedChart }) {
         });
       })}
 
+      {/* Y axis left line */}
+      <line
+        x1={leftPad}
+        y1={topPad}
+        x2={leftPad}
+        y2={topPad + plotH}
+        stroke="#9ca3af"
+        strokeWidth="0.5"
+      />
       {/* X axis baseline */}
       <line
         x1={leftPad}

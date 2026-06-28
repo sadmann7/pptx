@@ -352,7 +352,11 @@ export interface TableCell {
   colSpan: number;
   paragraphs: Paragraph[];
   fill?: Fill;
-  stroke?: Stroke;
+  /** Per-side borders. Falls back to `strokeAll` when a side is not specified. */
+  strokeLeft?: Stroke;
+  strokeRight?: Stroke;
+  strokeTop?: Stroke;
+  strokeBottom?: Stroke;
   /** True if this cell is a continuation of a merged cell */
   merged: boolean;
 }

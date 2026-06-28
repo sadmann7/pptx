@@ -1,5 +1,5 @@
 import React from "react";
-import type { TableCell, TableShape, ThemeColors } from "@pptx/parser";
+import type { Stroke, TableCell, TableShape, ThemeColors } from "@pptx/parser";
 import { fillToCSS, strokeToSVGAttrs } from "../render/color";
 import { elementStyle } from "../render/transform";
 import { ParagraphElement } from "./shared/ParagraphElement";
@@ -12,7 +12,13 @@ interface TableElementProps {
 export function TableElement({ element, theme }: TableElementProps) {
   const outer: React.CSSProperties = {
     ...elementStyle(element),
-    overflow: "hidden",
+    // Tables always render above overlapping non-table shapes in PowerPoint,
+    // regardless of spTree z-order. zIndex:1 replicates that: transparent cells
+    // let background shapes show through while table text stays on top.
+    zIndex: 1,
+    // Don't clip: border-collapse places outer cell borders at the exact edge
+    // of the table box, overflow:hidden would cut the right and bottom borders.
+    overflow: "visible",
   };
 
   return (
@@ -44,17 +50,33 @@ export function TableElement({ element, theme }: TableElementProps) {
   );
 }
 
+/** Convert a Stroke (or undefined) to a CSS border value string, e.g. "0.8pt solid #D1D5DB". */
+function borderValue(stroke: Stroke | undefined, theme: ThemeColors): string {
+  if (!stroke) return "none";
+  const s = strokeToSVGAttrs(stroke, theme);
+  if (!s.stroke || s.stroke === "none") return "none";
+  const width = s.strokeWidth || "0.5pt";
+  return `${width} solid ${s.stroke}`;
+}
+
 function TableCellElement({ cell, theme }: { cell: TableCell; theme: ThemeColors }) {
   if (cell.merged) return null;
 
-  const strokeAttrs = strokeToSVGAttrs(cell.stroke, theme);
-  const borderColor = strokeAttrs.stroke !== "none" ? strokeAttrs.stroke : "#d1d5db";
-  const borderWidth = strokeAttrs.strokeWidth !== "0" ? strokeAttrs.strokeWidth : "0.5pt";
+  // Use per-side borders when available; fall back to a thin gray line so
+  // the table always has some grid even if the PPTX has no explicit borders.
+  const fallback = "0.5pt solid #e5e7eb";
+  const bL = cell.strokeLeft ? borderValue(cell.strokeLeft, theme) : fallback;
+  const bR = cell.strokeRight ? borderValue(cell.strokeRight, theme) : fallback;
+  const bT = cell.strokeTop ? borderValue(cell.strokeTop, theme) : fallback;
+  const bB = cell.strokeBottom ? borderValue(cell.strokeBottom, theme) : fallback;
 
   const style: React.CSSProperties = {
     verticalAlign: "middle",
     padding: "4pt 6pt",
-    border: `${borderWidth} solid ${borderColor}`,
+    borderLeft: bL,
+    borderRight: bR,
+    borderTop: bT,
+    borderBottom: bB,
     background: fillToCSS(cell.fill, theme),
     overflow: "hidden",
   };

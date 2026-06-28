@@ -47,15 +47,21 @@ export function parseTable(
 
       const tcPr = get(tcN, "a:tcPr");
       const fill = parseFill(tcPr);
+
       const lnL = get(tcPr, "a:lnL");
-      const stroke = lnL ? parseStroke(lnL) : undefined;
+      const lnR = get(tcPr, "a:lnR");
+      const lnT = get(tcPr, "a:lnT");
+      const lnB = get(tcPr, "a:lnB");
 
       return {
         rowSpan,
         colSpan,
         paragraphs,
         fill,
-        stroke,
+        ...(lnL ? { strokeLeft: parseStroke(lnL) } : {}),
+        ...(lnR ? { strokeRight: parseStroke(lnR) } : {}),
+        ...(lnT ? { strokeTop: parseStroke(lnT) } : {}),
+        ...(lnB ? { strokeBottom: parseStroke(lnB) } : {}),
         merged: vMerge || hMerge,
       };
     });
