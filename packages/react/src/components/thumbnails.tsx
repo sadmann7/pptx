@@ -463,6 +463,8 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         ref: mergeRefs(containerRef, forwardedRef),
         "aria-hidden": "true",
         "data-active": ctx.isActive || undefined,
+        // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
+        inert: true,
         className,
         style: {
           width: "100%",
