@@ -13,6 +13,14 @@ export { parseOleFrameAsPicture } from "./renderable-child";
 export type SlideNode = RenderableNode;
 
 export interface SlideData {
+  /**
+   * Stable unique identifier for this slide.
+   * Derived from the slide's file path inside the PPTX ZIP
+   * (e.g. `"ppt/slides/slide3.xml"`). Stable across reorders,
+   * insertions, and deletions — safe to use as a React key or
+   * navigation target.
+   */
+  id: string;
   index: number;
   /** True when p:sld@show is false/0; hidden slides stay addressable but are skipped by PDF exports. */
   hidden?: boolean;
@@ -20,8 +28,6 @@ export interface SlideData {
   background?: SafeXmlNode;
   layoutIndex: string;
   rels: Map<string, RelEntry>;
-  /** Full path to the slide file (e.g. "ppt/slides/slide3.xml"). */
-  slidePath: string;
   /** When false, shapes from the layout and master should NOT be rendered on this slide. */
   showMasterSp: boolean;
   /** @internal Raw slide XML used when slide node parsing is deferred. */
@@ -93,13 +99,13 @@ export function parseSlide(
   const hidden = !parseDefaultTrueBoolAttr(root.attr("show"));
 
   return {
+    id: slidePath,
     index,
     hidden,
     nodes,
     background,
     layoutIndex,
     rels,
-    slidePath,
     showMasterSp,
     nodesMaterialized: true,
   };
@@ -112,11 +118,11 @@ export function createLazySlide(
   slidePath: string = "",
 ): SlideData {
   return {
+    id: slidePath,
     index,
     nodes: [],
     layoutIndex: findLayoutRel(rels),
     rels,
-    slidePath,
     showMasterSp: true,
     sourceXml,
     nodesMaterialized: false,
@@ -138,7 +144,7 @@ export function materializeSlideData(
     parseXml(slide.sourceXml),
     slide.index,
     slide.rels,
-    slide.slidePath,
+    slide.id,
     diagramDrawings,
   );
 

@@ -90,7 +90,7 @@ export function createRenderContext(
     theme,
     master,
     layout,
-    partPath: slide.slidePath,
+    partPath: slide.id,
     layoutPath,
     masterPath,
     mediaUrlCache: mediaUrlCache ?? new Map(),

@@ -53,7 +53,7 @@ export function usePresentation(): UsePresentationResult {
 export interface UseSlideResult {
   slide: SlideData | null;
   /**
-   * Stable identity of the active slide (`SlideData.slidePath`).
+   * Stable identity of the active slide (`SlideData.id`).
    * Use this — not `index` — as the source of truth for navigation,
    * keys, and any future editing operations.
    */
@@ -98,7 +98,7 @@ export function useSlide(): UseSlideResult {
 
   // Derive the rest synchronously from the two stable subscribed values.
   const index =
-    presentation && slideId ? presentation.slides.findIndex((s) => s.slidePath === slideId) : -1;
+    presentation && slideId ? presentation.slides.findIndex((s) => s.id === slideId) : -1;
   const slide = index >= 0 ? (presentation?.slides[index] ?? null) : null;
   const total = presentation?.slides.length ?? 0;
 

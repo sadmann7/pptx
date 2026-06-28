@@ -25,11 +25,11 @@ function normalizePackagePath(path: string): string {
 export function resolveSlideJumpIndex(ctx: RenderContext, rel: RelEntry): number | undefined {
   if (isExternalTargetMode(rel.targetMode)) return undefined;
 
-  const basePath = dirname(ctx.slide.slidePath || "ppt/slides/slide1.xml");
+  const basePath = dirname(ctx.slide.id || "ppt/slides/slide1.xml");
   const targetPath = normalizePackagePath(resolveRelTarget(basePath, rel.target));
 
   const slideIndex = ctx.presentation.slides.findIndex(
-    (slide) => normalizePackagePath(slide.slidePath || "") === targetPath,
+    (slide) => normalizePackagePath(slide.id || "") === targetPath,
   );
   if (slideIndex >= 0) return slideIndex;
 
@@ -43,9 +43,9 @@ function currentSlideIndex(ctx: RenderContext): number {
   const byIndex = ctx.slide.index;
   if (byIndex >= 0 && byIndex < ctx.presentation.slides.length) return byIndex;
 
-  const currentPath = normalizePackagePath(ctx.slide.slidePath || "");
+  const currentPath = normalizePackagePath(ctx.slide.id || "");
   const byPath = ctx.presentation.slides.findIndex(
-    (slide) => normalizePackagePath(slide.slidePath || "") === currentPath,
+    (slide) => normalizePackagePath(slide.id || "") === currentPath,
   );
   return byPath >= 0 ? byPath : 0;
 }

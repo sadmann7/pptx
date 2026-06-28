@@ -29,12 +29,10 @@ export default function IndexPage() {
             style={{ width: 160 }}
           >
             {({ slides }) =>
-              slides.map((slide, i) => (
-                <Presentation.ThumbnailItem key={slide.slidePath} slideId={slide.slidePath}>
-                  <Presentation.ThumbnailItemCanvas />
-                  <div className="absolute right-1.5 bottom-1 font-mono text-[9px] text-muted-foreground">
-                    {i + 1}
-                  </div>
+              slides.map((slide) => (
+                <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
+                  <Presentation.ThumbnailItemPreview />
+                  <Presentation.ThumbnailItemIndex className="font-mono text-muted-foreground" />
                 </Presentation.ThumbnailItem>
               ))
             }

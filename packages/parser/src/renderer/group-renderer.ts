@@ -349,7 +349,7 @@ function parseGroupChild(
 ): BaseNodeData | undefined {
   const child = parseRenderableChild(childXml, {
     rels: ctx.slide.rels,
-    partPath: ctx.partPath ?? ctx.slide.slidePath,
+    partPath: ctx.partPath ?? ctx.slide.id,
     diagramDrawings: ctx.presentation.diagramDrawings,
     skipPlaceholders: ctx.skipPlaceholderChildren,
   });

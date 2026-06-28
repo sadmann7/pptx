@@ -365,7 +365,7 @@ export const buildTextIndex = (
         mergedOptions,
         {
           rels: slide.rels,
-          partPath: slide.slidePath,
+          partPath: slide.id,
           diagramDrawings: presentation.diagramDrawings,
           layout,
           master,

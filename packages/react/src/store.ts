@@ -8,10 +8,10 @@ export interface PresentationState {
   status: PresentationStatus;
   presentation: PresentationData | null;
   /**
-   * Stable identity of the active slide — `SlideData.slidePath`
+   * Stable identity of the active slide — `SlideData.id`
    * (e.g. `"ppt/slides/slide3.xml"`). Null when no presentation is loaded.
    *
-   * Using slidePath instead of a positional index means reordering,
+   * Using a stable ID instead of a positional index means reordering,
    * inserting, or deleting slides never silently redirects the viewer
    * to the wrong slide.
    */
@@ -77,7 +77,7 @@ export class PresentationStore {
       this.setState({
         status: "ready",
         presentation,
-        currentSlideId: presentation.slides[0]?.slidePath ?? null,
+        currentSlideId: presentation.slides[0]?.id ?? null,
         zoom: 1,
         progress: 100,
         error: null,
@@ -92,11 +92,11 @@ export class PresentationStore {
     }
   }
 
-  /** Navigate to a slide by its stable ID (`SlideData.slidePath`). */
+  /** Navigate to a slide by its stable ID (`SlideData.id`). */
   goTo(slideId: string): void {
     const { presentation, currentSlideId } = this.state;
     if (!presentation || currentSlideId === slideId) return;
-    const exists = presentation.slides.some((s) => s.slidePath === slideId);
+    const exists = presentation.slides.some((s) => s.id === slideId);
     if (!exists) return;
     this.setState({ ...this.state, currentSlideId: slideId });
   }
@@ -106,21 +106,21 @@ export class PresentationStore {
     const { presentation } = this.state;
     if (!presentation) return;
     const clamped = Math.max(0, Math.min(presentation.slides.length - 1, index));
-    const slideId = presentation.slides[clamped]?.slidePath;
+    const slideId = presentation.slides[clamped]?.id;
     if (slideId) this.goTo(slideId);
   }
 
   next(): void {
     const { presentation, currentSlideId } = this.state;
     if (!presentation || !currentSlideId) return;
-    const idx = presentation.slides.findIndex((s) => s.slidePath === currentSlideId);
+    const idx = presentation.slides.findIndex((s) => s.id === currentSlideId);
     this.goToIndex(idx + 1);
   }
 
   prev(): void {
     const { presentation, currentSlideId } = this.state;
     if (!presentation || !currentSlideId) return;
-    const idx = presentation.slides.findIndex((s) => s.slidePath === currentSlideId);
+    const idx = presentation.slides.findIndex((s) => s.id === currentSlideId);
     this.goToIndex(idx - 1);
   }
 

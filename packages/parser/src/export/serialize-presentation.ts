@@ -219,7 +219,7 @@ export function serializePresentation(pres: PresentationData): SerializedPresent
         index: i,
         hidden: slide.hidden,
         nodes: slide.nodes.map((node) =>
-          serializeNode(node, slide.rels, slide.slidePath, pres.diagramDrawings, layout, master),
+          serializeNode(node, slide.rels, slide.id, pres.diagramDrawings, layout, master),
         ),
       };
     }),
