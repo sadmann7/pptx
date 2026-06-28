@@ -12,10 +12,10 @@ import type {
   TextRun,
   TextVerticalAlignment,
   UnderlineStyle,
-} from '../types.js'
-import { parseColor } from '../color.js'
-import { angleToDegs, emuToPoints, hunPtToPoints, perMilleToPercent } from '../emu.js'
-import { attr, attrBool, attrNum, get, textContent, toArray } from '../xml.js'
+} from '../types'
+import { parseColor } from '../color'
+import { angleToDegs, emuToPoints, hunPtToPoints, perMilleToPercent } from '../emu'
+import { attr, attrBool, attrNum, get, textContent, toArray } from '../xml'
 
 // ─── Body properties ──────────────────────────────────────────────────────────
 

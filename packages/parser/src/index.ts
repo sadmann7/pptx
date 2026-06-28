@@ -1,5 +1,5 @@
 // ─── Main API ─────────────────────────────────────────────────────────────────
-export { parsePresentation } from './parse.js'
+export { parsePresentation } from './parse'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export type {
@@ -77,10 +77,10 @@ export type {
   // Placeholders
   PlaceholderInfo,
   PlaceholderType,
-} from './types.js'
+} from './types'
 
 // ─── Color utilities ──────────────────────────────────────────────────────────
-export { resolveColor } from './color.js'
+export { resolveColor } from './color'
 
 // ─── EMU utilities ────────────────────────────────────────────────────────────
-export { emuToPoints, hunPtToPoints, perMilleToPercent, angleToDegs } from './emu.js'
+export { emuToPoints, hunPtToPoints, perMilleToPercent, angleToDegs } from './emu'

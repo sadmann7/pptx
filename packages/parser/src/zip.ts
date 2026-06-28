@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { parseXml, get, toArray, attr } from './xml.js'
+import { parseXml, get, toArray, attr } from './xml'
 
 export type PptxZip = JSZip
 

@@ -1,5 +1,5 @@
-import type { Color, SchemeColor, SolidColor, ThemeColors } from './types.js'
-import { attr, attrNum, get, toArray } from './xml.js'
+import type { Color, SchemeColor, SolidColor, ThemeColors } from './types'
+import { attr, attrNum, get, toArray } from './xml'
 
 // ─── Raw color parsing from XML nodes ────────────────────────────────────────
 

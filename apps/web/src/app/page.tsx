@@ -1,30 +1,33 @@
 "use client";
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
+import { Presentation } from "@pptx/react";
+import * as React from "react";
 
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+export default function IndexPage() {
+  const [file, setFile] = React.useState<File | null>(null);
 
-export default function Home() {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <div className="grid gap-6">
-        <section className="rounded-lg border p-4">
-          <h2 className="mb-2 font-medium">API Status</h2>
-        </section>
-      </div>
+      <input
+        type="file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setFile(file);
+          }
+        }}
+      />
+      <Presentation.Root file={file}>
+        <div style={{ display: "flex", height: "100vh" }}>
+          <Presentation.Thumbnails style={{ width: 160 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Presentation.Viewport style={{ flex: 1 }} autoFit>
+              <Presentation.Slide />
+            </Presentation.Viewport>
+            <Presentation.Notes style={{ height: 120 }} />
+          </div>
+        </div>
+      </Presentation.Root>
     </div>
   );
 }

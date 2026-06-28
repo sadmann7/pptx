@@ -1,7 +1,7 @@
-import type { Fill, Stroke } from '../types.js'
-import { parseColor, parseGradientStops } from '../color.js'
-import { attr, attrNum, get } from '../xml.js'
-import { angleToDegs, emuToPoints } from '../emu.js'
+import type { Fill, Stroke } from '../types'
+import { parseColor, parseGradientStops } from '../color'
+import { attr, attrNum, get } from '../xml'
+import { angleToDegs, emuToPoints } from '../emu'
 
 /**
  * Parse any fill node (spPr child or similar).

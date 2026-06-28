@@ -1,9 +1,9 @@
-import type { Background, Slide } from '../types.js'
-import { parseBackground } from './fill.js'
-import { parseSpTree } from './shape.js'
-import type { PptxZip } from '../zip.js'
-import { loadRels, readXml } from '../zip.js'
-import { get, toArray } from '../xml.js'
+import type { Background, Slide } from '../types'
+import { parseBackground } from './fill'
+import { parseSpTree } from './shape'
+import type { PptxZip } from '../zip'
+import { loadRels, readXml } from '../zip'
+import { get, toArray } from '../xml'
 
 /**
  * Parse a single slide XML file into a Slide AST node.

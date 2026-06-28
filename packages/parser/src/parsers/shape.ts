@@ -11,14 +11,14 @@ import type {
   SlideElement,
   TextShape,
   Transform,
-} from '../types.js'
-import { parseFill, parseStroke } from './fill.js'
-import { parseTable } from './table.js'
-import { parseTextBody } from './text.js'
-import type { PptxZip, Relationship } from '../zip.js'
-import { readMediaAsUrl } from '../zip.js'
-import { attr, attrBool, attrNum, get, toArray } from '../xml.js'
-import { angleToDegs, emuToPoints } from '../emu.js'
+} from '../types'
+import { parseFill, parseStroke } from './fill'
+import { parseTable } from './table'
+import { parseTextBody } from './text'
+import type { PptxZip, Relationship } from '../zip'
+import { readMediaAsUrl, readString } from '../zip'
+import { attr, attrBool, attrNum, get, toArray } from '../xml'
+import { angleToDegs, emuToPoints } from '../emu'
 
 // ─── Placeholder ─────────────────────────────────────────────────────────────
 
@@ -250,7 +250,7 @@ async function parseGraphicFrame(
 
     let chartXml = ''
     if (rel) {
-      chartXml = await (await import('../zip.js')).readString(zip, rel.target)
+      chartXml = await readString(zip, rel.target)
     }
 
     return {

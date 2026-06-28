@@ -1,8 +1,8 @@
-import type { TableCell, TableRow, TableShape } from '../types.js'
-import { parseFill, parseStroke } from './fill.js'
-import { parseTextBody } from './text.js'
-import { attr, attrNum, get, toArray } from '../xml.js'
-import { emuToPoints } from '../emu.js'
+import type { TableCell, TableRow, TableShape } from '../types'
+import { parseFill, parseStroke } from './fill'
+import { parseTextBody } from './text'
+import { attr, attrNum, get, toArray } from '../xml'
+import { emuToPoints } from '../emu'
 
 export function parseTable(
   graphicFrameNode: Record<string, unknown>,

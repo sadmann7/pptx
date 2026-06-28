@@ -10,13 +10,13 @@
  * Loading is lazy and cached — each path is only parsed once per ZIP.
  */
 
-import type { Background, BodyProperties, Fill, ParagraphStyle, Position, Size, Transform } from '../types.js'
-import { parseFill } from '../parsers/fill.js'
-import { parseBodyProperties, parseParagraphStyle } from '../parsers/text.js'
-import type { PptxZip } from '../zip.js'
-import { loadRels, readXml } from '../zip.js'
-import { attr, attrNum, get, toArray } from '../xml.js'
-import { angleToDegs, emuToPoints } from '../emu.js'
+import type { Background, BodyProperties, Fill, ParagraphStyle, Position, Size, Transform } from '../types'
+import { parseFill } from '../parsers/fill'
+import { parseBodyProperties, parseParagraphStyle } from '../parsers/text'
+import type { PptxZip } from '../zip'
+import { loadRels, readXml } from '../zip'
+import { attr, attrNum, get, toArray } from '../xml'
+import { angleToDegs, emuToPoints } from '../emu'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
-import type { Theme, ThemeColors, ThemeFonts } from '../types.js'
-import { attr, get } from '../xml.js'
+import type { Theme, ThemeColors, ThemeFonts } from '../types'
+import { attr, get } from '../xml'
 
 const FALLBACK_COLORS: ThemeColors = {
   dk1: '000000',

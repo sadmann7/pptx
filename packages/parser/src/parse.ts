@@ -1,1 +1,1 @@
-export { parsePresentation } from './parsers/presentation.js'
+export { parsePresentation } from './parsers/presentation'

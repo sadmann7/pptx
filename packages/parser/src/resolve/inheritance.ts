@@ -23,9 +23,9 @@ import type {
   GeometricShape,
   ImageShape,
   ConnectorShape,
-} from '../types.js'
-import type { SlideLayoutModel, SlideMasterModel, PlaceholderTemplate } from './models.js'
-import { placeholderKey } from './models.js'
+} from '../types'
+import type { SlideLayoutModel, SlideMasterModel, PlaceholderTemplate } from './models'
+import { placeholderKey } from './models'
 
 export interface InheritanceContext {
   layout: SlideLayoutModel

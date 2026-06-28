@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@pptx/env": "workspace:*",
+    "@pptx/react": "workspace:*",
     "@pptx/ui": "workspace:*",
     "babel-plugin-react-compiler": "^1.0.0",
     "dotenv": "catalog:",
