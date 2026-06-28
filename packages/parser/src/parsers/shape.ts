@@ -14,6 +14,7 @@ import type {
   Transform,
 } from "../types";
 import { parseFill, parseEffects, parseStroke } from "./fill";
+import { parseChartXml } from "./chart";
 import { parseTable } from "./table";
 import { parseTextBody } from "./text";
 import type { PptxZip, Relationship } from "../zip";
@@ -296,6 +297,8 @@ async function parseGraphicFrame(
       chartXml = await readString(zip, rel.target);
     }
 
+    const parsedChart = parseChartXml(chartXml) ?? undefined;
+
     return {
       type: "chart",
       id,
@@ -304,6 +307,7 @@ async function parseGraphicFrame(
       size,
       rId: chartRId,
       chartXml,
+      ...(parsedChart ? { parsedChart } : {}),
     } satisfies ChartShape;
   }
 

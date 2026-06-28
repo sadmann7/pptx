@@ -45,6 +45,12 @@ export type {
   TableRow,
   TableCell,
 
+  // Chart
+  ParsedChart,
+  ChartType,
+  ChartSeries,
+  ChartDataPoint,
+
   // Fill & stroke
   Fill,
   SolidFill,

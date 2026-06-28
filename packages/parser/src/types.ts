@@ -371,12 +371,46 @@ export interface TableShape extends BaseElement {
 }
 
 /** Chart (graphicFrame > chart) — opaque, renderer can use chartData */
+// ─── Chart types ──────────────────────────────────────────────────────────────
+
+export type ChartType = "bar" | "pie" | "line" | "area" | "scatter" | "unknown";
+
+export interface ChartDataPoint {
+  /** Category label (x-axis for bar/line, slice label for pie) */
+  label: string;
+  /** Numeric value */
+  value: number;
+  /** Hex color override for this specific data point (e.g. pie slice) */
+  color?: string;
+}
+
+export interface ChartSeries {
+  name: string;
+  /** Series-level hex fill color */
+  color?: string;
+  data: ChartDataPoint[];
+}
+
+export interface ParsedChart {
+  type: ChartType;
+  title?: string;
+  series: ChartSeries[];
+  /** For bar charts: "horizontal" | "vertical" (default "vertical") */
+  barDirection?: "horizontal" | "vertical";
+  /** For bar charts: "clustered" | "stacked" | "percentStacked" */
+  grouping?: "clustered" | "stacked" | "percentStacked";
+  showLegend?: boolean;
+  legendEntries?: Array<{ name: string; color: string }>;
+}
+
 export interface ChartShape extends BaseElement {
   type: "chart";
   /** rId of the chart relationship */
   rId: string;
   /** Raw chart XML string — let the renderer decide what to do with it */
   chartXml: string;
+  /** Parsed chart data — available when the XML could be interpreted */
+  parsedChart?: ParsedChart;
 }
 
 /** Group shape (grpSp) */

@@ -46,6 +46,10 @@ const ALWAYS_ARRAY = new Set([
   "a:lvl7pPr",
   "a:lvl8pPr",
   "a:lvl9pPr",
+  // DrawingML Charts — repeating elements
+  "c:ser", // chart series
+  "c:pt", // data points in strCache / numCache
+  "c:dPt", // per-point style overrides
 ]);
 
 const parser = new XMLParser({
