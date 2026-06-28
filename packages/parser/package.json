@@ -2,11 +2,11 @@
   "name": "@diceui/pptx-parser",
   "version": "0.0.0",
   "private": true,
-  "sideEffects": false,
   "files": [
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
   },

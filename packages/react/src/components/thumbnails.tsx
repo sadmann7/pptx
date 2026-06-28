@@ -206,10 +206,7 @@ export interface ThumbnailItemState {
   displayIndex: number;
 }
 
-export interface ThumbnailItemProps extends Omit<
-  React.ComponentProps<"button">,
-  "onClick"
-> {
+export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onClick"> {
   /**
    * Stable identifier for the slide this item represents (`SlideData.id`).
    * Correct across reorders, insertions, and deletions.

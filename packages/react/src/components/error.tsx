@@ -8,10 +8,7 @@ export interface ErrorState {
   error: Error;
 }
 
-export interface PresentationErrorProps extends Omit<
-  React.ComponentProps<"div">,
-  "children"
-> {
+export interface PresentationErrorProps extends Omit<React.ComponentProps<"div">, "children"> {
   /**
    * Rendered when the presentation is in the `"error"` state.
    * Pass a function to receive the `Error` instance.
