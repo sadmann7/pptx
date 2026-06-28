@@ -84,12 +84,7 @@ export function resolveSlideInheritance(slide: Slide, ctx: InheritanceContext): 
     .filter((el) => !el.hidden)
     .map((el) => ({ ...el, id: `__layout_${el.id}` }));
 
-  const elements = [
-    ...masterBg,
-    ...layoutBg,
-    ...resolvedSlideElements,
-    ...inheritedElements,
-  ];
+  const elements = [...masterBg, ...layoutBg, ...resolvedSlideElements, ...inheritedElements];
 
   // Background: slide bg → layout bg → master bg
   const background = slide.background ?? ctx.layout.background ?? ctx.master.background;
@@ -103,19 +98,16 @@ export function resolveSlideInheritance(slide: Slide, ctx: InheritanceContext): 
  * Create a TextShape from a placeholder template so that master/layout
  * content (footer, date, slide number) appears on slides that don't override it.
  */
-function buildPlaceholderElement(
-  tpl: PlaceholderTemplate,
-  slideIndex: number,
-): TextShape | null {
+function buildPlaceholderElement(tpl: PlaceholderTemplate, slideIndex: number): TextShape | null {
   if (!tpl.position || !tpl.size) return null;
 
   // Resolve slide-number field text to the actual 1-based slide index.
   let paragraphs: Paragraph[] | undefined = tpl.paragraphs;
-  if (tpl.phType === 'sldNum' && tpl.paragraphs) {
+  if (tpl.phType === "sldNum" && tpl.paragraphs) {
     paragraphs = tpl.paragraphs.map((p) => ({
       ...p,
       runs: p.runs.map((r) =>
-        r.type === 'field' && r.fieldType?.toLowerCase().includes('slide')
+        r.type === "field" && r.fieldType?.toLowerCase().includes("slide")
           ? { ...r, text: String(slideIndex + 1) }
           : r,
       ),
@@ -123,16 +115,16 @@ function buildPlaceholderElement(
   }
 
   // Only emit if there's something to render.
-  if (!paragraphs?.length && tpl.phType !== 'sldNum' && tpl.phType !== 'dt') return null;
+  if (!paragraphs?.length && tpl.phType !== "sldNum" && tpl.phType !== "dt") return null;
 
   const syntheticId = `__ph_${tpl.phType}_${tpl.phIdx}`;
   return {
-    type: 'text',
+    type: "text",
     id: syntheticId,
     position: tpl.position,
     size: tpl.size,
     transform: tpl.transform,
-    placeholder: { type: tpl.phType as import('../types').PlaceholderType, idx: tpl.phIdx },
+    placeholder: { type: tpl.phType as import("../types").PlaceholderType, idx: tpl.phIdx },
     paragraphs: paragraphs ?? [],
     properties: tpl.bodyProperties ?? {},
     fill: tpl.fill,

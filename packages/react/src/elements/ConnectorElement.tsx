@@ -35,6 +35,7 @@ export function ConnectorElement({ element, theme }: ConnectorElementProps) {
     fill: "none",
     stroke: strokeColor,
     strokeWidth,
+    vectorEffect: "non-scaling-stroke",
     ...(strokeAttrs.strokeDasharray ? { strokeDasharray: strokeAttrs.strokeDasharray } : {}),
     ...(headMarkerId ? { markerStart: `url(#${headMarkerId})` } : {}),
     ...(tailMarkerId ? { markerEnd: `url(#${tailMarkerId})` } : {}),

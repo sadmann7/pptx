@@ -28,9 +28,7 @@ export function parseTheme(themeXml: Record<string, unknown>): Theme {
   const clrScheme = get(fmtScheme, "a:clrScheme") as Record<string, unknown> | undefined;
   const fontScheme = get(fmtScheme, "a:fontScheme") as Record<string, unknown> | undefined;
 
-  const fmtSchemeNode = get(fmtScheme, "a:fmtScheme") as
-    | Record<string, unknown>
-    | undefined;
+  const fmtSchemeNode = get(fmtScheme, "a:fmtScheme") as Record<string, unknown> | undefined;
   const effectStyles = parseEffectStyleLst(fmtSchemeNode);
 
   return {
@@ -89,17 +87,13 @@ function parseThemeFonts(fontScheme: Record<string, unknown> | undefined): Theme
  * Returns an array where index i corresponds to effectRef idx=i+1
  * (OOXML effectRef idx is 1-based but stored 0-based here for convenience).
  */
-function parseEffectStyleLst(
-  fmtSchemeNode: Record<string, unknown> | undefined,
-): Effect[][] {
+function parseEffectStyleLst(fmtSchemeNode: Record<string, unknown> | undefined): Effect[][] {
   if (!fmtSchemeNode) return [];
   const effectStyleLst = get(fmtSchemeNode, "a:effectStyleLst") as
     | Record<string, unknown>
     | undefined;
   if (!effectStyleLst) return [];
-  const styleNodes = toArray(
-    effectStyleLst["a:effectStyle"] as unknown[],
-  );
+  const styleNodes = toArray(effectStyleLst["a:effectStyle"] as unknown[]);
   return styleNodes.map((styleNode) => {
     const sn = styleNode as Record<string, unknown>;
     const effectLst = sn["a:effectLst"] ?? sn["effectLst"];

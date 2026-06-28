@@ -1,6 +1,6 @@
 import React from "react";
 import type { TextShape, ThemeColors } from "@pptx/parser";
-import { effectsToBoxShadow, fillToCSS } from "../render/color";
+import { effectsToFilter, fillToCSS } from "../render/color";
 import { bodyStyle } from "../render/text";
 import { elementStyle } from "../render/transform";
 import { ParagraphElement } from "./shared/ParagraphElement";
@@ -11,11 +11,11 @@ interface TextElementProps {
 }
 
 export function TextElement({ element, theme }: TextElementProps) {
-  const boxShadow = effectsToBoxShadow(element.effects, theme);
+  const filter = effectsToFilter(element.effects, theme);
   const outer: React.CSSProperties = {
     ...elementStyle(element),
     background: fillToCSS(element.fill, theme),
-    ...(boxShadow ? { boxShadow } : {}),
+    ...(filter ? { filter } : {}),
   };
 
   return (

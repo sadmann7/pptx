@@ -1,11 +1,6 @@
 import React from "react";
 import type { GeometricShape, ThemeColors } from "@pptx/parser";
-import {
-  effectsToBoxShadow,
-  effectsToFilter,
-  fillToSVG,
-  strokeToSVGAttrs,
-} from "../render/color";
+import { effectsToFilter, fillToSVG, strokeToSVGAttrs } from "../render/color";
 import { bodyStyle } from "../render/text";
 import { getShapePath } from "../render/shapes";
 import { elementStyle } from "../render/transform";
@@ -21,26 +16,16 @@ export function ShapeElement({ element, theme }: ShapeElementProps) {
   const fill = fillToSVG(element.fill, theme);
   const strokeAttrs = strokeToSVGAttrs(element.stroke, theme);
 
-  // Shapes that are just lines / connectors have no fill and may be near-zero height.
   const isLine =
     element.shapeType === "line" ||
     element.shapeType === "arc" ||
     element.shapeType.toLowerCase().includes("connector");
 
-  // box-shadow works well for rect/roundRect; filter: drop-shadow for complex shapes.
-  const isBoxShadowShape =
-    element.shapeType === "rect" || element.shapeType === "roundRect";
-  const boxShadow = isBoxShadowShape
-    ? effectsToBoxShadow(element.effects, theme)
-    : undefined;
-  const filter = !isBoxShadowShape
-    ? effectsToFilter(element.effects, theme)
-    : undefined;
+  const filter = effectsToFilter(element.effects, theme);
   const outer: React.CSSProperties = {
     ...elementStyle(element),
     position: "absolute",
     ...(isLine ? { overflow: "visible", minHeight: "1pt" } : {}),
-    ...(boxShadow ? { boxShadow } : {}),
     ...(filter ? { filter } : {}),
   };
 
@@ -86,7 +71,10 @@ export function renderShapeElement(
   shape: ReturnType<typeof getShapePath>,
   sharedProps: Record<string, string | number | undefined>,
 ): React.ReactElement {
-  const allProps = { ...shape.attrs, ...sharedProps };
+  // vectorEffect="non-scaling-stroke" prevents the SVG viewBox transform from
+  // scaling the stroke-width. Without it a 1pt stroke on a shape that maps to
+  // a 2.4× viewBox scale renders 2.4pt thick — looking like a thick border.
+  const allProps = { ...shape.attrs, ...sharedProps, vectorEffect: "non-scaling-stroke" };
 
   switch (shape.element) {
     case "rect":

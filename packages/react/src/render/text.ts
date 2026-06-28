@@ -9,22 +9,29 @@ export function bodyStyle(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _theme: ThemeColors,
 ): React.CSSProperties {
-  // spAutoFit: let the shape grow to fit content — don't clip or fix height.
-  // noAutofit (or default): clip to the fixed bounding box.
+  // spAutoFit  → shape grows with text (height: auto).
+  // normAutoFit → text shrinks to fit; we can't do real font shrinking in CSS so
+  //               we allow overflow so text is visible (better than clipping it).
+  // noAutofit  → text clips to the fixed box (overflow: hidden).
+  // undefined  → unspecified; default to visible overflow so font-metric differences
+  //               between Aptos (OOXML) and system sans-serif don't silently clip text.
   const autofit = props.autofit;
+  const clips = autofit === "none";
   const css: React.CSSProperties = {
-    overflow: autofit === "spAutoFit" ? "visible" : "hidden",
+    overflow: clips ? "hidden" : "visible",
     width: "100%",
     height: autofit === "spAutoFit" ? "auto" : "100%",
+    minHeight: autofit === "spAutoFit" ? undefined : "100%",
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
   };
 
-  if (props.insetLeft != null) css.paddingLeft = `${props.insetLeft}pt`;
-  if (props.insetRight != null) css.paddingRight = `${props.insetRight}pt`;
-  if (props.insetTop != null) css.paddingTop = `${props.insetTop}pt`;
-  if (props.insetBottom != null) css.paddingBottom = `${props.insetBottom}pt`;
+  // OOXML defaults: left/right = 91440 EMU ≈ 7.2pt, top/bottom = 45720 EMU ≈ 3.6pt
+  css.paddingLeft = `${props.insetLeft ?? 7.2}pt`;
+  css.paddingRight = `${props.insetRight ?? 7.2}pt`;
+  css.paddingTop = `${props.insetTop ?? 3.6}pt`;
+  css.paddingBottom = `${props.insetBottom ?? 3.6}pt`;
 
   // Vertical alignment via flexbox
   switch (props.verticalAlignment) {

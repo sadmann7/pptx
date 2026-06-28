@@ -30,8 +30,8 @@ const ALWAYS_ARRAY = new Set([
   // Content types
   "Override",
   "Default",
-  // Theme
-  "a:fmtScheme",
+  // Theme — effectStyle repeats within effectStyleLst
+  "a:effectStyle",
   // Gradient stops
   "a:gs",
   // Paragraph spacing

@@ -52,7 +52,13 @@ export async function parsePresentation(
 
       // Parse raw slide (pass theme effect styles so effectRef can be resolved)
       const rawSlide = await parseSlide(
-        zip, slidePath, index, rId, skipImages, skipNotes, theme.effectStyles,
+        zip,
+        slidePath,
+        index,
+        rId,
+        skipImages,
+        skipNotes,
+        theme.effectStyles,
       );
 
       // Load layout + master for this slide and resolve inheritance

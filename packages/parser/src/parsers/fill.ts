@@ -1,4 +1,12 @@
-import type { ArrowEnd, ArrowEndSize, ArrowEndType, Effect, Fill, OuterShadow, Stroke } from "../types";
+import type {
+  ArrowEnd,
+  ArrowEndSize,
+  ArrowEndType,
+  Effect,
+  Fill,
+  OuterShadow,
+  Stroke,
+} from "../types";
 import { parseColor, parseGradientStops } from "../color";
 import { attr, attrNum, get } from "../xml";
 import { angleToDegs, emuToPoints } from "../emu";
@@ -83,18 +91,18 @@ export function parseStroke(lnNode: unknown): Stroke | undefined {
  * Parse <a:effectLst> to extract shape effects (outer shadow, etc.)
  */
 export function parseEffects(effectLstNode: unknown): Effect[] {
-  if (!effectLstNode || typeof effectLstNode !== "object") return []
-  const n = effectLstNode as Record<string, unknown>
-  const effects: Effect[] = []
+  if (!effectLstNode || typeof effectLstNode !== "object") return [];
+  const n = effectLstNode as Record<string, unknown>;
+  const effects: Effect[] = [];
 
-  const outerShdw = n["a:outerShdw"] ?? n["outerShdw"]
+  const outerShdw = n["a:outerShdw"] ?? n["outerShdw"];
   if (outerShdw && typeof outerShdw === "object") {
-    const sn = outerShdw as Record<string, unknown>
-    const color = parseColor(sn) // shadow node itself may have solidFill child
-    const blurRad = attrNum(sn, "blurRad")
-    const dist = attrNum(sn, "dist")
-    const dir = attrNum(sn, "dir")
-    const algn = attr(sn, "algn")
+    const sn = outerShdw as Record<string, unknown>;
+    const color = parseColor(sn); // shadow node itself may have solidFill child
+    const blurRad = attrNum(sn, "blurRad");
+    const dist = attrNum(sn, "dist");
+    const dir = attrNum(sn, "dir");
+    const algn = attr(sn, "algn");
     const shadow: OuterShadow = {
       type: "outerShadow",
       color: color ?? { type: "solid", hex: "000000", alpha: 40 },
@@ -102,11 +110,11 @@ export function parseEffects(effectLstNode: unknown): Effect[] {
       distance: dist !== undefined ? emuToPoints(dist) : undefined,
       direction: dir !== undefined ? dir / 60000 : undefined,
       alignment: algn,
-    }
-    effects.push(shadow)
+    };
+    effects.push(shadow);
   }
 
-  return effects
+  return effects;
 }
 
 function parseArrowEnd(node: unknown): ArrowEnd | undefined {
