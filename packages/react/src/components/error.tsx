@@ -1,6 +1,6 @@
 import * as React from "react";
 import { usePresentation } from "../context";
-import { renderElement } from "../utils/render";
+import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface ErrorState {
@@ -19,7 +19,7 @@ export interface PresentationErrorProps extends Omit<React.ComponentProps<"div">
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.ComponentProps<"div">, ErrorState>;
+  render?: RenderProp<ErrorState>;
 }
 
 /**
@@ -42,11 +42,10 @@ export const PresentationError = React.forwardRef<HTMLDivElement, PresentationEr
 
     const resolvedChildren = typeof children === "function" ? children(error) : children;
 
-    return renderElement(
-      "div",
-      render as RenderProp<Record<string, unknown>, ErrorState> | undefined,
-      { ...elementProps, ref: forwardedRef, className, style, children: resolvedChildren },
-      { error },
-    );
+    return useRenderElement("div", { render, className, style }, {
+      state: { error },
+      ref: forwardedRef,
+      props: { ...elementProps, children: resolvedChildren },
+    });
   },
 );

@@ -29,7 +29,7 @@ export type { PresentationState, PresentationStatus, PreviewInput } from "./stor
 
 // Render-prop utilities — exposed so consumers can build custom components
 // that compose cleanly with the rest of the system.
-export { mergeProps, mergeRefs, renderElement } from "./utils/render";
+export { mergeProps, mergeRefs, useRenderElement } from "./utils/render";
 export type { RenderProp, ComponentRenderFn } from "./utils/render";
 
 // Component state types

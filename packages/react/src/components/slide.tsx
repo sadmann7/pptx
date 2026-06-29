@@ -3,7 +3,7 @@ import { usePresentation, useSlide, useZoom } from "../context";
 import { renderSlide } from "@diceui/pptx-parser";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import type { PresentationStatus } from "../store";
-import { renderElement } from "../utils/render";
+import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface SlideState {
@@ -19,7 +19,7 @@ export interface SlideProps extends React.ComponentProps<"div"> {
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.ComponentProps<"div">, SlideState>;
+  render?: RenderProp<SlideState>;
 }
 
 /**
@@ -40,8 +40,6 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   const { slide, index } = useSlide();
   const { zoom } = useZoom();
 
-  const state: SlideState = { status, index };
-
   const slideContent =
     presentation && slide ? (
       <SlideRenderer presentation={presentation} slide={slide} zoom={zoom}>
@@ -49,25 +47,21 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
       </SlideRenderer>
     ) : null;
 
-  return renderElement(
-    "div",
-    render as RenderProp<Record<string, unknown>, SlideState> | undefined,
-    {
+  return useRenderElement("div", { render, className, style }, {
+    state: { status, index },
+    ref: forwardedRef,
+    props: {
       ...elementProps,
-      ref: forwardedRef,
       "data-status": status,
-      className,
       style: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         overflow: "auto",
-        ...style,
       },
       children: slideContent,
     },
-    state,
-  );
+  });
 });
 
 // ---------------------------------------------------------------------------

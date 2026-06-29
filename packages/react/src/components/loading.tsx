@@ -1,6 +1,6 @@
 import * as React from "react";
 import { usePresentation } from "../context";
-import { renderElement } from "../utils/render";
+import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface LoadingState {
@@ -19,7 +19,7 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.ComponentProps<"div">, LoadingState>;
+  render?: RenderProp<LoadingState>;
 }
 
 /**
@@ -41,10 +41,9 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
 
   const resolvedChildren = typeof children === "function" ? children(progress) : children;
 
-  return renderElement(
-    "div",
-    render as RenderProp<Record<string, unknown>, LoadingState> | undefined,
-    { ...elementProps, ref: forwardedRef, className, style, children: resolvedChildren },
-    { progress },
-  );
+  return useRenderElement("div", { render, className, style }, {
+    state: { progress },
+    ref: forwardedRef,
+    props: { ...elementProps, children: resolvedChildren },
+  });
 });

@@ -2,7 +2,7 @@ import * as React from "react";
 import { usePresentation, usePresentationStoreRef } from "../context";
 import { renderSlide } from "@diceui/pptx-parser";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { mergeRefs, renderElement } from "../utils/render";
+import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.ComponentProps<"div">, ThumbnailListState>;
+  render?: RenderProp<ThumbnailListState>;
   /**
    * - Absent → default `ThumbnailItem` list (one per slide)
    * - ReactNode → rendered as-is inside the container
@@ -174,45 +174,46 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           onItemFocus: setCurrentTabStopId,
         }}
       >
-        {renderElement(
+        {useRenderElement(
           "div",
-          render as RenderProp<Record<string, unknown>, ThumbnailListState> | undefined,
+          { render, className, style },
           {
-            ...elementProps,
-            ref: mergeRefs(containerRef, forwardedRef),
-            role: "listbox",
-            "aria-label": elementProps["aria-label"] ?? "Slide thumbnails",
-            "aria-orientation": "vertical",
-            // When a button owns tabIndex=0 the container steps out of the tab
-            // order — the list has exactly ONE external tab stop (the active
-            // button). Shift+Tab from the button then skips the container and
-            // exits the list in a single key press.
-            // When no button has a tab stop yet (e.g. before auto-focus fires),
-            // the container acts as the entry point and redirects focus.
-            tabIndex: effectiveTabStopId ? -1 : 0,
-            className,
-            style: { overflowY: "auto", outline: "none", ...style },
-            onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
-              elementProps.onMouseDown?.(e);
-              if (e.target === e.currentTarget) isClickFocusRef.current = true;
+            state,
+            ref: [containerRef, forwardedRef],
+            props: {
+              ...elementProps,
+              role: "listbox",
+              "aria-label": elementProps["aria-label"] ?? "Slide thumbnails",
+              "aria-orientation": "vertical",
+              // When a button owns tabIndex=0 the container steps out of the tab
+              // order — the list has exactly ONE external tab stop (the active
+              // button). Shift+Tab from the button then skips the container and
+              // exits the list in a single key press.
+              // When no button has a tab stop yet (e.g. before auto-focus fires),
+              // the container acts as the entry point and redirects focus.
+              tabIndex: effectiveTabStopId ? -1 : 0,
+              style: { overflowY: "auto", outline: "none" },
+              onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
+                elementProps.onMouseDown?.(e);
+                if (e.target === e.currentTarget) isClickFocusRef.current = true;
+              },
+              onFocus: (e: React.FocusEvent<HTMLDivElement>) => {
+                elementProps.onFocus?.(e);
+                // Container only receives keyboard focus when effectiveTabStopId
+                // is null (no button owns tabIndex=0 yet). Redirect to first button.
+                if (e.target !== e.currentTarget) return;
+                if (isClickFocusRef.current) {
+                  isClickFocusRef.current = false;
+                  return;
+                }
+                const el = containerRef.current;
+                if (!el) return;
+                const allBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("button"));
+                focusFirst(allBtns, true);
+              },
+              children: resolvedChildren,
             },
-            onFocus: (e: React.FocusEvent<HTMLDivElement>) => {
-              elementProps.onFocus?.(e);
-              // Container only receives keyboard focus when effectiveTabStopId
-              // is null (no button owns tabIndex=0 yet). Redirect to first button.
-              if (e.target !== e.currentTarget) return;
-              if (isClickFocusRef.current) {
-                isClickFocusRef.current = false;
-                return;
-              }
-              const el = containerRef.current;
-              if (!el) return;
-              const allBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("button"));
-              focusFirst(allBtns, true);
-            },
-            children: resolvedChildren,
           },
-          state,
         )}
       </ThumbnailRovingCtx.Provider>
     );
@@ -245,7 +246,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
    *   <motion.button {...props} animate={{ scale: isActive ? 1.04 : 1 }} />
    * )}
    */
-  render?: RenderProp<React.ComponentProps<"button">, ThumbnailItemState>;
+  render?: RenderProp<ThumbnailItemState>;
 }
 
 /**
@@ -288,73 +289,75 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
 
     return (
       <ThumbnailItemCtx.Provider value={{ slideId, displayIndex, isActive }}>
-        {renderElement(
+        {useRenderElement(
           "button",
-          render as RenderProp<Record<string, unknown>, ThumbnailItemState> | undefined,
+          { render, className, style },
           {
-            ...elementProps,
-            type: "button",
-            role: "option",
-            "aria-selected": isActive,
-            "aria-label": `Slide ${displayIndex + 1}`,
-            "data-active": isActive || undefined,
-            // Queried by the container's entry-focus handler to restore the last stop.
-            "data-slide-id": slideId,
+            state,
             ref: forwardedRef,
-            tabIndex: isCurrentTabStop ? 0 : -1,
-            className,
-            style: {
-              display: "block",
-              width: "100%",
-              padding: 0,
-              border: "none",
-              background: "none",
-              overflow: "hidden",
-              position: "relative",
-              ...style,
+            props: {
+              ...elementProps,
+              type: "button",
+              role: "option",
+              "aria-selected": isActive,
+              "aria-label": `Slide ${displayIndex + 1}`,
+              "data-active": isActive || undefined,
+              // Queried by the container's entry-focus handler to restore the last stop.
+              "data-slide-id": slideId,
+              tabIndex: isCurrentTabStop ? 0 : -1,
+              style: {
+                display: "block",
+                width: "100%",
+                padding: 0,
+                border: "none",
+                background: "none",
+                overflow: "hidden",
+                position: "relative",
+              },
+              onClick: () => store.goTo(slideId),
+              onFocus: (e: React.FocusEvent<HTMLButtonElement>) => {
+                elementProps.onFocus?.(e);
+                rovingCtx?.onItemFocus(slideId);
+                store.goTo(slideId);
+              },
+              onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
+                elementProps.onMouseDown?.(e);
+                rovingCtx?.onItemFocus(slideId);
+              },
+              onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+                elementProps.onKeyDown?.(e);
+
+                if (e.target !== e.currentTarget) return;
+
+                const focusIntent = MAP_KEY_TO_INTENT[e.key];
+                if (!focusIntent || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+                e.preventDefault();
+
+                const container = rovingCtx?.containerRef.current;
+                if (!container) return;
+
+                let candidates = Array.from(
+                  container.querySelectorAll<HTMLButtonElement>("button"),
+                );
+
+                if (focusIntent === "last") {
+                  candidates = candidates.reverse();
+                } else if (focusIntent === "prev" || focusIntent === "next") {
+                  if (focusIntent === "prev") candidates = candidates.reverse();
+                  const idx = candidates.indexOf(e.currentTarget);
+                  candidates = candidates.slice(idx + 1);
+                }
+
+                setTimeout(() => focusFirst(candidates));
+              },
+              children: children ?? (
+                <>
+                  <ThumbnailItemPreview />
+                  <ThumbnailItemNumber />
+                </>
+              ),
             },
-            onClick: () => store.goTo(slideId),
-            onFocus: (e: React.FocusEvent<HTMLButtonElement>) => {
-              elementProps.onFocus?.(e);
-              rovingCtx?.onItemFocus(slideId);
-              store.goTo(slideId);
-            },
-            onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
-              elementProps.onMouseDown?.(e);
-              rovingCtx?.onItemFocus(slideId);
-            },
-            onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
-              elementProps.onKeyDown?.(e);
-
-              if (e.target !== e.currentTarget) return;
-
-              const focusIntent = MAP_KEY_TO_INTENT[e.key];
-              if (!focusIntent || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-              e.preventDefault();
-
-              const container = rovingCtx?.containerRef.current;
-              if (!container) return;
-
-              let candidates = Array.from(container.querySelectorAll<HTMLButtonElement>("button"));
-
-              if (focusIntent === "last") {
-                candidates = candidates.reverse();
-              } else if (focusIntent === "prev" || focusIntent === "next") {
-                if (focusIntent === "prev") candidates = candidates.reverse();
-                const idx = candidates.indexOf(e.currentTarget);
-                candidates = candidates.slice(idx + 1);
-              }
-
-              setTimeout(() => focusFirst(candidates));
-            },
-            children: children ?? (
-              <>
-                <ThumbnailItemPreview />
-                <ThumbnailItemNumber />
-              </>
-            ),
           },
-          state,
         )}
       </ThumbnailItemCtx.Provider>
     );
@@ -379,7 +382,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
    * The rendered element is the clipping container — the parsed slide DOM is
    * appended to it imperatively. Preserve `overflow: hidden` and dimensions.
    */
-  render?: RenderProp<React.ComponentProps<"div">, ThumbnailItemPreviewState>;
+  render?: RenderProp<ThumbnailItemPreviewState>;
 }
 
 /**
@@ -455,26 +458,26 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     const state: ThumbnailItemPreviewState = { slideId: ctx.slideId, scale };
 
-    return renderElement(
+    return useRenderElement(
       "div",
-      render as RenderProp<Record<string, unknown>, ThumbnailItemPreviewState> | undefined,
+      { render, className, style },
       {
-        ...elementProps,
-        ref: mergeRefs(containerRef, forwardedRef),
-        "aria-hidden": "true",
-        "data-active": ctx.isActive || undefined,
-        // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
-        inert: true,
-        className,
-        style: {
-          width: "100%",
-          height: thumbHeight || undefined,
-          overflow: "hidden",
-          pointerEvents: "none",
-          ...style,
+        state,
+        ref: [containerRef, forwardedRef],
+        props: {
+          ...elementProps,
+          "aria-hidden": "true",
+          "data-active": ctx.isActive || undefined,
+          // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
+          inert: true,
+          style: {
+            width: "100%",
+            height: thumbHeight || undefined,
+            overflow: "hidden",
+            pointerEvents: "none",
+          },
         },
       },
-      state,
     );
   },
 );
@@ -489,10 +492,7 @@ export interface ThumbnailItemNumberProps extends Omit<React.ComponentProps<"spa
    * - ReactElement: cloned with composed props
    * - Function: (props, state) => ReactElement
    */
-  render?: RenderProp<
-    React.ComponentProps<"span">,
-    { isActive: boolean; displayIndex: number; slideId: string }
-  >;
+  render?: RenderProp<{ isActive: boolean; displayIndex: number; slideId: string }>;
   children?: React.ReactNode;
 }
 
@@ -524,19 +524,20 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
       slideId: ctx.slideId,
     };
 
-    return renderElement(
+    return useRenderElement(
       "span",
-      render as RenderProp<Record<string, unknown>, typeof state> | undefined,
+      { render, className, style },
       {
-        ...elementProps,
+        state,
         ref: forwardedRef,
-        "aria-hidden": "true",
-        "data-active": ctx.isActive || undefined,
-        className,
-        style: { userSelect: "none", ...style },
-        children: children ?? ctx.displayIndex + 1,
+        props: {
+          ...elementProps,
+          "aria-hidden": "true",
+          "data-active": ctx.isActive || undefined,
+          style: { userSelect: "none" },
+          children: children ?? ctx.displayIndex + 1,
+        },
       },
-      state,
     );
   },
 );

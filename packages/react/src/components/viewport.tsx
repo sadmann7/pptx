@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useZoom, usePresentationStoreRef } from "../context";
-import { mergeRefs, renderElement } from "../utils/render";
+import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface ViewportState {
@@ -15,7 +15,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<React.ComponentProps<"div">, ViewportState>;
+  render?: RenderProp<ViewportState>;
 }
 
 /**
@@ -47,24 +47,18 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     };
   }, [autoFit, autoFitPadding, store]);
 
-  const state: ViewportState = { zoom };
-
-  return renderElement(
-    "div",
-    render as RenderProp<Record<string, unknown>, ViewportState> | undefined,
-    {
+  return useRenderElement("div", { render, className, style }, {
+    state: { zoom },
+    ref: [internalRef, forwardedRef],
+    props: {
       ...elementProps,
-      ref: mergeRefs(internalRef, forwardedRef),
-      className,
       style: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         overflow: "auto",
-        ...style,
       },
       children,
     },
-    state,
-  );
+  });
 });
