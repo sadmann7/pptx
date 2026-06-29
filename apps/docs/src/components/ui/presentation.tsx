@@ -106,7 +106,7 @@ function PresentationThumbnailList({ className, style, children, ...props }: Thu
   return (
     <Primitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("group/thumbs flex w-40 shrink-0 flex-col overflow-y-auto p-4", className)}
+      className={cn("group/thumbs w-40 shrink-0 overflow-y-auto p-4", className)}
       style={style}
       {...props}
     >
