@@ -1,3 +1,14 @@
+/**
+ * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
+ *
+ * The keyboard-navigation model (tab-stop management, focus-intent mapping,
+ * `focusFirst` helper, and click-vs-keyboard distinction) is directly inspired
+ * by that package.
+ *
+ * @see {@link https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus Radix UI roving focus source}
+ * @license MIT — Radix UI © WorkOS
+ */
+
 import * as React from "react";
 import { usePresentation, usePresentationStoreRef } from "../context";
 import { renderSlide } from "@diceui/pptx-parser";
@@ -6,7 +17,7 @@ import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 // ---------------------------------------------------------------------------
-// Roving focus utilities (pattern from @radix-ui/react-roving-focus)
+// Roving focus utilities
 // ---------------------------------------------------------------------------
 
 type FocusIntent = "first" | "last" | "prev" | "next";
@@ -28,6 +39,15 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
 }
 
 // ---------------------------------------------------------------------------
+// Component name constants
+// ---------------------------------------------------------------------------
+
+const THUMBNAIL_LIST_NAME = "ThumbnailList";
+const THUMBNAIL_ITEM_NAME = "ThumbnailItem";
+const THUMBNAIL_ITEM_PREVIEW_NAME = "ThumbnailItemPreview";
+const THUMBNAIL_ITEM_NUMBER_NAME = "ThumbnailItemNumber";
+
+// ---------------------------------------------------------------------------
 // Internal contexts
 // ---------------------------------------------------------------------------
 
@@ -39,6 +59,14 @@ interface ThumbnailRovingCtxValue {
 
 const ThumbnailRovingCtx = React.createContext<ThumbnailRovingCtxValue | null>(null);
 
+function useThumbnailRovingContext(consumerName: string) {
+  const context = React.useContext(ThumbnailRovingCtx);
+  if (!context) {
+    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_LIST_NAME}\``);
+  }
+  return context;
+}
+
 interface ThumbnailItemCtxValue {
   slideId: string;
   /** Zero-based position of this slide in the current slide list. */
@@ -47,6 +75,14 @@ interface ThumbnailItemCtxValue {
 }
 
 const ThumbnailItemCtx = React.createContext<ThumbnailItemCtxValue | null>(null);
+
+function useThumbnailItemContext(consumerName: string) {
+  const context = React.useContext(ThumbnailItemCtx);
+  if (!context) {
+    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_ITEM_NAME}\``);
+  }
+  return context;
+}
 
 // ---------------------------------------------------------------------------
 // ThumbnailList
@@ -92,16 +128,16 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  *
  * @example
  * // Default — one ThumbnailItem per slide
- * <Presentation.ThumbnailList thumbWidth={160} />
+ * <Presentation.ThumbnailList />
  *
  * @example
  * // Custom items via function children
- * <Presentation.ThumbnailList thumbWidth={160}>
+ * <Presentation.ThumbnailList>
  *   {({ slides }) =>
- *     slides.map((slide, i) => (
+ *     slides.map((slide) => (
  *       <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
  *         <Presentation.ThumbnailItemPreview />
- *         <Presentation.ThumbnailItemIndex />
+ *         <Presentation.ThumbnailItemNumber />
  *       </Presentation.ThumbnailItem>
  *     ))
  *   }
@@ -136,6 +172,19 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       btn?.focus({ preventScroll: true });
     }, [presentation]);
 
+    // Fallback to the store's selected slide so its button gets tabIndex=0
+    // before any keyboard interaction sets currentTabStopId explicitly.
+    const effectiveTabStopId = currentTabStopId ?? currentSlideId;
+
+    const rovingCtxValue = React.useMemo<ThumbnailRovingCtxValue>(
+      () => ({
+        currentTabStopId: effectiveTabStopId,
+        containerRef,
+        onItemFocus: setCurrentTabStopId,
+      }),
+      [effectiveTabStopId],
+    );
+
     if (status !== "ready" || !presentation) return null;
 
     const total = presentation.slides.length;
@@ -144,10 +193,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       : -1;
 
     const state: ThumbnailListState = { total, currentSlideId, currentIndex };
-
-    // Fallback to the store's selected slide so its button gets tabIndex=0
-    // before any keyboard interaction sets currentTabStopId explicitly.
-    const effectiveTabStopId = currentTabStopId ?? currentSlideId;
 
     let resolvedChildren: React.ReactNode;
     if (typeof children === "function") {
@@ -167,13 +212,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     }
 
     return (
-      <ThumbnailRovingCtx.Provider
-        value={{
-          currentTabStopId: effectiveTabStopId,
-          containerRef,
-          onItemFocus: setCurrentTabStopId,
-        }}
-      >
+      <ThumbnailRovingCtx.Provider value={rovingCtxValue}>
         {useRenderElement(
           "div",
           { render, className, style },
@@ -255,9 +294,9 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  * - Identity is derived from `slide.id` — stable across list mutations.
  * - Auto-wires `onClick → goTo`, `data-active`, `aria-selected`, and roving
  *   `tabIndex` (0 when active, -1 otherwise).
- * - Provides context so nested `ThumbnailItemPreview` and `ThumbnailItemIndex`
+ * - Provides context so nested `ThumbnailItemPreview` and `ThumbnailItemNumber`
  *   need no explicit props.
- * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemIndex />`
+ * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemNumber />`
  *   when no children are provided.
  */
 export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(
@@ -266,7 +305,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
     forwardedRef,
   ) {
     const store = usePresentationStoreRef();
-    const rovingCtx = React.useContext(ThumbnailRovingCtx);
+    const rovingCtx = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
 
     const isActive = React.useSyncExternalStore(
       store.subscribe.bind(store),
@@ -283,12 +322,17 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
 
     // This item owns the single tab stop inside the list when it matches the
     // roving context's currentTabStopId — all other items get tabIndex=-1.
-    const isCurrentTabStop = rovingCtx?.currentTabStopId === slideId;
+    const isCurrentTabStop = rovingCtx.currentTabStopId === slideId;
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
 
+    const itemCtxValue = React.useMemo<ThumbnailItemCtxValue>(
+      () => ({ slideId, displayIndex, isActive }),
+      [slideId, displayIndex, isActive],
+    );
+
     return (
-      <ThumbnailItemCtx.Provider value={{ slideId, displayIndex, isActive }}>
+      <ThumbnailItemCtx.Provider value={itemCtxValue}>
         {useRenderElement(
           "button",
           { render, className, style },
@@ -317,12 +361,12 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
               onClick: () => store.goTo(slideId),
               onFocus: (e: React.FocusEvent<HTMLButtonElement>) => {
                 elementProps.onFocus?.(e);
-                rovingCtx?.onItemFocus(slideId);
+                rovingCtx.onItemFocus(slideId);
                 store.goTo(slideId);
               },
               onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
                 elementProps.onMouseDown?.(e);
-                rovingCtx?.onItemFocus(slideId);
+                rovingCtx.onItemFocus(slideId);
               },
               onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
                 elementProps.onKeyDown?.(e);
@@ -333,7 +377,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
                 if (!focusIntent || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
                 e.preventDefault();
 
-                const container = rovingCtx?.containerRef.current;
+                const container = rovingCtx.containerRef.current;
                 if (!container) return;
 
                 let candidates = Array.from(
@@ -398,21 +442,13 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ className, style, render, ...elementProps }, forwardedRef) {
-    const ctx = React.useContext(ThumbnailItemCtx);
+    const context = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
     const { presentation } = usePresentation();
-
-    if (!ctx) {
-      throw new Error(
-        "[pptx/react] <Presentation.ThumbnailItemPreview> must be rendered inside <Presentation.ThumbnailItem>",
-      );
-    }
 
     const containerRef = React.useRef<HTMLDivElement>(null);
     const handleRef = React.useRef<SlideHandle | null>(null);
     const mediaUrlCache = React.useRef(new Map<string, string>()).current;
 
-    // Measure the container's actual rendered width so the caller never has
-    // to pass a manual thumbWidth — the scale always matches the CSS width.
     const [containerWidth, setContainerWidth] = React.useState(0);
     React.useEffect(() => {
       const el = containerRef.current;
@@ -425,7 +461,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       return () => ro.disconnect();
     }, []);
 
-    const slide = presentation?.slides.find((s) => s.id === ctx.slideId) ?? null;
+    const slide = presentation?.slides.find((s) => s.id === context.slideId) ?? null;
     const pWidth = presentation?.width ?? 1;
     const pHeight = presentation?.height ?? 1;
     const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
@@ -456,18 +492,16 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       };
     }, [presentation, slide, scale, mediaUrlCache]);
 
-    const state: ThumbnailItemPreviewState = { slideId: ctx.slideId, scale };
-
     return useRenderElement(
       "div",
       { render, className, style },
       {
-        state,
+        state: { slideId: context.slideId, scale },
         ref: [containerRef, forwardedRef],
         props: {
           ...elementProps,
           "aria-hidden": "true",
-          "data-active": ctx.isActive || undefined,
+          "data-active": context.isActive || undefined,
           // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
           inert: true,
           style: {
@@ -510,32 +544,24 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
     { className, style, children, render, ...elementProps },
     forwardedRef,
   ) {
-    const ctx = React.useContext(ThumbnailItemCtx);
-
-    if (!ctx) {
-      throw new Error(
-        "[pptx/react] <Presentation.ThumbnailItemNumber> must be rendered inside <Presentation.ThumbnailItem>",
-      );
-    }
-
-    const state = {
-      isActive: ctx.isActive,
-      displayIndex: ctx.displayIndex,
-      slideId: ctx.slideId,
-    };
+    const context = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);
 
     return useRenderElement(
       "span",
       { render, className, style },
       {
-        state,
+        state: {
+          isActive: context.isActive,
+          displayIndex: context.displayIndex,
+          slideId: context.slideId,
+        },
         ref: forwardedRef,
         props: {
           ...elementProps,
           "aria-hidden": "true",
-          "data-active": ctx.isActive || undefined,
+          "data-active": context.isActive || undefined,
           style: { userSelect: "none" },
-          children: children ?? ctx.displayIndex + 1,
+          children: children ?? context.displayIndex + 1,
         },
       },
     );

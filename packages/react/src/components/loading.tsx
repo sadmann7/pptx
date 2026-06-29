@@ -41,9 +41,13 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
 
   const resolvedChildren = typeof children === "function" ? children(progress) : children;
 
-  return useRenderElement("div", { render, className, style }, {
-    state: { progress },
-    ref: forwardedRef,
-    props: { ...elementProps, children: resolvedChildren },
-  });
+  return useRenderElement(
+    "div",
+    { render, className, style },
+    {
+      state: { progress },
+      ref: forwardedRef,
+      props: { ...elementProps, children: resolvedChildren },
+    },
+  );
 });

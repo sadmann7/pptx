@@ -42,10 +42,14 @@ export const PresentationError = React.forwardRef<HTMLDivElement, PresentationEr
 
     const resolvedChildren = typeof children === "function" ? children(error) : children;
 
-    return useRenderElement("div", { render, className, style }, {
-      state: { error },
-      ref: forwardedRef,
-      props: { ...elementProps, children: resolvedChildren },
-    });
+    return useRenderElement(
+      "div",
+      { render, className, style },
+      {
+        state: { error },
+        ref: forwardedRef,
+        props: { ...elementProps, children: resolvedChildren },
+      },
+    );
   },
 );

@@ -47,18 +47,22 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     };
   }, [autoFit, autoFitPadding, store]);
 
-  return useRenderElement("div", { render, className, style }, {
-    state: { zoom },
-    ref: [internalRef, forwardedRef],
-    props: {
-      ...elementProps,
-      style: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "auto",
+  return useRenderElement(
+    "div",
+    { render, className, style },
+    {
+      state: { zoom },
+      ref: [internalRef, forwardedRef],
+      props: {
+        ...elementProps,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "auto",
+        },
+        children,
       },
-      children,
     },
-  });
+  );
 });

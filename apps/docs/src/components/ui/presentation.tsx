@@ -95,7 +95,7 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
       {children ?? (
         <>
           <PresentationThumbnailItemPreview />
-          <PresentationThumbnailItemNumber className="absolute top-1 right-1" />
+          <PresentationThumbnailItemNumber className="absolute right-1.5 bottom-1.5" />
         </>
       )}
     </Primitive.ThumbnailItem>
