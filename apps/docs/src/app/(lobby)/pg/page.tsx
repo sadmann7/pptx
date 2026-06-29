@@ -11,7 +11,6 @@ import {
   PresentationViewport,
 } from "@/components/ui/presentation";
 import { usePresentation, useSlide } from "@diceui/pptx";
-import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
 import * as React from "react";
 
 export default function PgPage() {
@@ -19,7 +18,6 @@ export default function PgPage() {
 
   return (
     <div className="flex flex-col bg-background text-foreground">
-      <ThemeSwitch className="absolute top-2 right-2" />
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
         <input
@@ -34,7 +32,7 @@ export default function PgPage() {
       </div>
       <Presentation
         file={file}
-        className="min-h-dvh flex-1"
+        className="min-h-[calc(100dvh-100px)] flex-1"
         onError={(error) => console.error("[pptx] parse error:", error)}
       >
         <PresentationDebug />
