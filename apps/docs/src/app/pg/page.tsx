@@ -1,22 +1,24 @@
 "use client";
 
-import { usePresentation, useSlide } from "@diceui/pptx";
 import {
   Presentation,
-  PresentationLoading,
+  PresentationBody,
+  PresentationContent,
   PresentationError,
+  PresentationLoading,
+  PresentationSlide,
   PresentationThumbnailList,
   PresentationViewport,
-  PresentationSlide,
 } from "@/components/ui/presentation";
-import * as React from "react";
+import { usePresentation, useSlide } from "@diceui/pptx";
 import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
+import * as React from "react";
 
 export default function PgPage() {
   const [file, setFile] = React.useState<File | null>(null);
 
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
+    <div className="flex flex-col bg-background text-foreground">
       <ThemeSwitch className="absolute top-2 right-2" />
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
@@ -24,24 +26,28 @@ export default function PgPage() {
           type="file"
           accept=".pptx"
           className="text-sm"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
+          onChange={(event) => {
+            const f = event.target.files?.[0];
             if (f) setFile(f);
           }}
         />
       </div>
-      <Presentation file={file} onError={(e) => console.error("[pptx] parse error:", e)}>
+      <Presentation
+        file={file}
+        className="flex-1"
+        onError={(error) => console.error("[pptx] parse error:", error)}
+      >
         <PresentationDebug />
-        <div className="flex flex-1 overflow-hidden">
-          <PresentationThumbnailList className="border-r border-border" />
-          <div className="relative flex flex-1 flex-col overflow-hidden">
+        <PresentationBody>
+          <PresentationThumbnailList />
+          <PresentationContent>
             <PresentationLoading />
             <PresentationError />
-            <PresentationViewport className="flex-1" autoFit autoFitPadding={32}>
+            <PresentationViewport autoFit autoFitPadding={32}>
               <PresentationSlide />
             </PresentationViewport>
-          </div>
-        </div>
+          </PresentationContent>
+        </PresentationBody>
       </Presentation>
     </div>
   );

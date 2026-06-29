@@ -1,17 +1,91 @@
-import { RootProvider } from "fumadocs-ui/provider/next";
+import { TailwindIndicator } from "@/components/tailwind-indicator";
+import { fontMono, fontSans } from "@/lib/fonts";
+import { siteConfig } from "@/lib/site";
+import { cn } from "@/lib/utils";
+import "@/styles/globals.css";
+import type { Metadata, Viewport } from "next";
 
-import "./global.css";
-import { Inter } from "next/font/google";
+import type * as React from "react";
+import { Providers } from "@/components/providers";
 
-const inter = Inter({
-  subsets: ["latin"],
-});
+export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.name,
+    template: `%s - ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  keywords: ["react", "ui", "ui-library", "shadcn-ui", "accessibility", "wai-aria"],
+  authors: [
+    {
+      name: "sadmann7",
+      url: "https://www.sadmn.com",
+    },
+  ],
+  creator: "sadmann7",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteConfig.url,
+    title: siteConfig.name,
+    description: siteConfig.description,
+    siteName: siteConfig.name,
+    images: [
+      {
+        url: "/opengraph-image.png",
+        alt: siteConfig.name,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.name,
+    description: siteConfig.description,
+    images: [
+      {
+        url: "/opengraph-image.png",
+        alt: siteConfig.name,
+      },
+    ],
+    creator: "@sadmann17",
+  },
+  icons: {
+    icon: "/icon.png",
+  },
+};
 
-export default function Layout({ children }: LayoutProps<"/">) {
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
+
+interface RootLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
-      <body className="flex min-h-screen flex-col">
-        <RootProvider>{children}</RootProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "isolate min-h-screen font-sans antialiased",
+          fontSans.variable,
+          fontMono.variable,
+        )}
+      >
+        <TailwindIndicator />
+        <Providers
+          theme={{
+            attribute: "class",
+            defaultTheme: "system",
+            enableSystem: true,
+            disableTransitionOnChange: true,
+          }}
+        >
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -57,3 +57,9 @@ html > body[data-scroll-locked] {
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
 }
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}

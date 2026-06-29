@@ -12,12 +12,47 @@ import { Presentation as Primitive } from "@diceui/pptx";
 
 import { cn } from "@/lib/utils";
 
-function Presentation(props: React.ComponentProps<typeof Primitive.Root>) {
-  return <Primitive.Root data-slot="presentation-root" {...props} />;
+function Presentation({ className, ...props }: React.ComponentProps<typeof Primitive.Root>) {
+  return (
+    <Primitive.Root
+      data-slot="presentation-root"
+      className={cn("flex flex-col overflow-hidden", className)}
+      {...props}
+    />
+  );
 }
 
-function PresentationViewport(props: React.ComponentProps<typeof Primitive.Viewport>) {
-  return <Primitive.Viewport data-slot="presentation-viewport" {...props} />;
+function PresentationBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="presentation-body"
+      className={cn("flex flex-1 overflow-hidden", className)}
+      {...props}
+    />
+  );
+}
+
+function PresentationContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="presentation-content"
+      className={cn("relative flex flex-1 flex-col overflow-hidden", className)}
+      {...props}
+    />
+  );
+}
+
+function PresentationViewport({
+  className,
+  ...props
+}: React.ComponentProps<typeof Primitive.Viewport>) {
+  return (
+    <Primitive.Viewport
+      data-slot="presentation-viewport"
+      className={cn("flex-1", className)}
+      {...props}
+    />
+  );
 }
 
 function PresentationSlide(props: React.ComponentProps<typeof Primitive.Slide>) {
@@ -106,7 +141,7 @@ function PresentationThumbnailList({ className, style, children, ...props }: Thu
   return (
     <Primitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("group/thumbs w-40 shrink-0 overflow-y-auto p-4", className)}
+      className={cn("group/thumbs w-40 shrink-0 overflow-y-auto border-r p-4", className)}
       style={style}
       {...props}
     >
@@ -119,6 +154,8 @@ function PresentationThumbnailList({ className, style, children, ...props }: Thu
 
 export {
   Presentation,
+  PresentationBody,
+  PresentationContent,
   PresentationError,
   PresentationLoading,
   PresentationSlide,
