@@ -1,12 +1,14 @@
+import { Providers } from "@/components/providers";
+
 import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { fontMono, fontSans } from "@/lib/fonts";
 import { siteConfig } from "@/lib/site";
+import { fontMono, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
 import type { Metadata, Viewport } from "next";
 
 import type * as React from "react";
-import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -15,17 +17,7 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: [
-    "react",
-    "pptx",
-    "powerpoint",
-    "presentation",
-    "slides",
-    "typescript",
-    "parser",
-    "viewer",
-    "thumbnail",
-  ],
+  keywords: ["pptx", "pptx-viewer", "pptx-parser", "powerpoint", "presentation", "slides"],
   authors: [
     {
       name: "sadmann7",
@@ -86,6 +78,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         )}
       >
         <TailwindIndicator />
+        <Toaster />
         <Providers
           theme={{
             attribute: "class",
