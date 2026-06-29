@@ -2,7 +2,8 @@ export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
   name: "pptx",
-  description: "Open-source PowerPoint renderer for the web.",
+  description:
+    "Composable components for rendering powerpoint presentations. Build custom presentation viewers with thumbnail navigation, and zoom.",
   url: "https://diceui.pptx.com",
   ogImage: "https://diceui.pptx.com/opengraph-image.png",
   links: {

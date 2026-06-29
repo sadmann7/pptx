@@ -34,7 +34,7 @@ export default function PgPage() {
       </div>
       <Presentation
         file={file}
-        className="flex-1"
+        className="min-h-dvh flex-1"
         onError={(error) => console.error("[pptx] parse error:", error)}
       >
         <PresentationDebug />

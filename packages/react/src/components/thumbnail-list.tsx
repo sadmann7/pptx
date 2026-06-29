@@ -51,33 +51,33 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "ThumbnailItemNumber";
 // Internal contexts
 // ---------------------------------------------------------------------------
 
-interface ThumbnailRovingCtxValue {
+interface ThumbnailRovingContextValue {
   currentTabStopId: string | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onItemFocus: (slideId: string) => void;
 }
 
-const ThumbnailRovingCtx = React.createContext<ThumbnailRovingCtxValue | null>(null);
+const ThumbnailRovingContext = React.createContext<ThumbnailRovingContextValue | null>(null);
 
 function useThumbnailRovingContext(consumerName: string) {
-  const context = React.useContext(ThumbnailRovingCtx);
+  const context = React.useContext(ThumbnailRovingContext);
   if (!context) {
     throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_LIST_NAME}\``);
   }
   return context;
 }
 
-interface ThumbnailItemCtxValue {
+interface ThumbnailItemContextValue {
   slideId: string;
   /** Zero-based position of this slide in the current slide list. */
   displayIndex: number;
   isActive: boolean;
 }
 
-const ThumbnailItemCtx = React.createContext<ThumbnailItemCtxValue | null>(null);
+const ThumbnailItemContext = React.createContext<ThumbnailItemContextValue | null>(null);
 
 function useThumbnailItemContext(consumerName: string) {
-  const context = React.useContext(ThumbnailItemCtx);
+  const context = React.useContext(ThumbnailItemContext);
   if (!context) {
     throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_ITEM_NAME}\``);
   }
@@ -176,7 +176,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // before any keyboard interaction sets currentTabStopId explicitly.
     const effectiveTabStopId = currentTabStopId ?? currentSlideId;
 
-    const rovingCtxValue = React.useMemo<ThumbnailRovingCtxValue>(
+    const rovingContextValue = React.useMemo<ThumbnailRovingContextValue>(
       () => ({
         currentTabStopId: effectiveTabStopId,
         containerRef,
@@ -212,7 +212,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     }
 
     return (
-      <ThumbnailRovingCtx.Provider value={rovingCtxValue}>
+      <ThumbnailRovingContext.Provider value={rovingContextValue}>
         {useRenderElement(
           "div",
           { render, className, style },
@@ -254,7 +254,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
             },
           },
         )}
-      </ThumbnailRovingCtx.Provider>
+      </ThumbnailRovingContext.Provider>
     );
   },
 );
@@ -305,7 +305,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
     forwardedRef,
   ) {
     const store = usePresentationStoreRef();
-    const rovingCtx = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
+    const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
 
     const isActive = React.useSyncExternalStore(
       store.subscribe.bind(store),
@@ -322,17 +322,17 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
 
     // This item owns the single tab stop inside the list when it matches the
     // roving context's currentTabStopId — all other items get tabIndex=-1.
-    const isCurrentTabStop = rovingCtx.currentTabStopId === slideId;
+    const isCurrentTabStop = rovingContext.currentTabStopId === slideId;
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
 
-    const itemCtxValue = React.useMemo<ThumbnailItemCtxValue>(
+    const itemContextValue = React.useMemo<ThumbnailItemContextValue>(
       () => ({ slideId, displayIndex, isActive }),
       [slideId, displayIndex, isActive],
     );
 
     return (
-      <ThumbnailItemCtx.Provider value={itemCtxValue}>
+      <ThumbnailItemContext.Provider value={itemContextValue}>
         {useRenderElement(
           "button",
           { render, className, style },
@@ -361,12 +361,12 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
               onClick: () => store.goTo(slideId),
               onFocus: (e: React.FocusEvent<HTMLButtonElement>) => {
                 elementProps.onFocus?.(e);
-                rovingCtx.onItemFocus(slideId);
+                rovingContext.onItemFocus(slideId);
                 store.goTo(slideId);
               },
               onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
                 elementProps.onMouseDown?.(e);
-                rovingCtx.onItemFocus(slideId);
+                rovingContext.onItemFocus(slideId);
               },
               onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
                 elementProps.onKeyDown?.(e);
@@ -377,7 +377,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
                 if (!focusIntent || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
                 e.preventDefault();
 
-                const container = rovingCtx.containerRef.current;
+                const container = rovingContext.containerRef.current;
                 if (!container) return;
 
                 let candidates = Array.from(
@@ -403,7 +403,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
             },
           },
         )}
-      </ThumbnailItemCtx.Provider>
+      </ThumbnailItemContext.Provider>
     );
   },
 );

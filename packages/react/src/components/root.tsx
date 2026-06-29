@@ -1,16 +1,37 @@
-import React from "react";
+import * as React from "react";
 import { PresentationStore } from "../store";
 import type { PreviewInput } from "../store";
 import { PresentationContext } from "../context";
+import { useRenderElement } from "../utils/render";
+import type { RenderProp } from "../utils/render";
 
-export interface RootProps {
+export interface RootState {
+  /** Current file being presented, or `null` if none is loaded. */
   file: PreviewInput | null | undefined;
-  children: React.ReactNode;
-  onLoad?: (store: PresentationStore) => void;
-  onError?: (error: Error) => void;
 }
 
-export function Root({ file, children, onLoad, onError }: RootProps) {
+export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
+  file: PreviewInput | null | undefined;
+  onLoad?: (store: PresentationStore) => void;
+  onError?: (error: Error) => void;
+  /**
+   * Replace the root wrapper element.
+   * - ReactElement: cloned with composed props
+   * - Function: `(props, state) => ReactElement`
+   */
+  render?: RenderProp<RootState>;
+}
+
+export function Root({
+  file,
+  children,
+  className,
+  style,
+  render,
+  onLoad,
+  onError,
+  ...elementProps
+}: RootProps) {
   const store = React.useMemo(() => new PresentationStore(), []);
   const onLoadRef = React.useRef(onLoad);
   onLoadRef.current = onLoad;
@@ -30,5 +51,16 @@ export function Root({ file, children, onLoad, onError }: RootProps) {
       );
   }, [store, file]);
 
-  return <PresentationContext.Provider value={store}>{children}</PresentationContext.Provider>;
+  return (
+    <PresentationContext.Provider value={store}>
+      {useRenderElement(
+        "div",
+        { render, className, style },
+        {
+          state: { file },
+          props: { ...elementProps, children },
+        },
+      )}
+    </PresentationContext.Provider>
+  );
 }

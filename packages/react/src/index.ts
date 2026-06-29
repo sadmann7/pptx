@@ -6,7 +6,7 @@ import {
   ThumbnailItem,
   ThumbnailItemPreview,
   ThumbnailItemNumber,
-} from "./components/thumbnails";
+} from "./components/thumbnail-list";
 import { Loading } from "./components/loading";
 import { PresentationError as Error } from "./components/error";
 
@@ -44,6 +44,6 @@ export type {
   ThumbnailItemPreviewState,
   ThumbnailItemPreviewProps,
   ThumbnailItemNumberProps,
-} from "./components/thumbnails";
+} from "./components/thumbnail-list";
 export type { LoadingState, LoadingProps } from "./components/loading";
 export type { ErrorState, PresentationErrorProps } from "./components/error";

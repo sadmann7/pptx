@@ -15,7 +15,17 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: ["react", "ui", "ui-library", "shadcn-ui", "accessibility", "wai-aria"],
+  keywords: [
+    "react",
+    "pptx",
+    "powerpoint",
+    "presentation",
+    "slides",
+    "typescript",
+    "parser",
+    "viewer",
+    "thumbnail",
+  ],
   authors: [
     {
       name: "sadmann7",
