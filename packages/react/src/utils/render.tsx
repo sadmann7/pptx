@@ -109,7 +109,7 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
 }
 
 // ---------------------------------------------------------------------------
-// useRenderElement
+// renderElement
 // ---------------------------------------------------------------------------
 
 /**
@@ -121,7 +121,7 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
  * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts `UseRenderElementComponentProps`}
  * from Base UI.
  */
-export interface UseRenderElementComponentProps<S> {
+export interface RenderElementComponentProps<S> {
   render?: RenderProp<S>;
   className?: string;
   style?: React.CSSProperties;
@@ -134,7 +134,7 @@ export interface UseRenderElementComponentProps<S> {
  * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts `UseRenderElementParameters`}
  * from Base UI.
  */
-export interface UseRenderElementParams<S, E extends Element> {
+export interface RenderElementParams<S, E extends Element> {
   /** Component state forwarded as the second argument to a function `render` prop. */
   state: S;
   /**
@@ -169,10 +169,10 @@ export interface UseRenderElementParams<S, E extends Element> {
  *
  * @see {@link https://base-ui.com/react/utils/use-render Base UI useRender docs}
  */
-export function useRenderElement<S, E extends Element = Element>(
+export function renderElement<S, E extends Element = Element>(
   defaultTag: keyof React.JSX.IntrinsicElements,
-  componentProps: UseRenderElementComponentProps<S>,
-  params: UseRenderElementParams<S, E>,
+  componentProps: RenderElementComponentProps<S>,
+  params: RenderElementParams<S, E>,
 ): React.ReactElement {
   const { render, className: userClassName, style: userStyle } = componentProps;
   const { state, ref, props } = params;

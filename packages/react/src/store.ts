@@ -1,4 +1,4 @@
-import { parseZip, buildPresentation, materializeSlideNodes } from "@diceui/pptx-parser";
+import { parseZip, buildPresentation } from "@diceui/pptx-parser";
 import type { PresentationData } from "@diceui/pptx-parser";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
@@ -68,11 +68,6 @@ export class PresentationStore {
 
       const presentation = buildPresentation(files);
       if (gen !== this.loadGeneration) return;
-
-      // Materialize all slides eagerly so they're ready to render
-      for (const slide of presentation.slides) {
-        materializeSlideNodes(presentation, slide);
-      }
 
       this.setState({
         status: "ready",

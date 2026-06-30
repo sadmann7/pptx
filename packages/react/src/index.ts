@@ -22,14 +22,9 @@ export const Presentation = {
   Error,
 } as const;
 
-export { usePresentation, useSlide, useZoom, usePresentationStore } from "./context";
+export { usePresentation, useSlide, useZoom } from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
-export { PresentationStore } from "./store";
-export type { PresentationState, PresentationStatus, PreviewInput } from "./store";
 
-// Render-prop utilities — exposed so consumers can build custom components
-// that compose cleanly with the rest of the system.
-export { mergeProps, mergeRefs, useRenderElement } from "./utils/render";
 export type { RenderProp, ComponentRenderFn } from "./utils/render";
 
 // Component state types

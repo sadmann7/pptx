@@ -10,9 +10,9 @@
 
 import * as React from "react";
 import { usePresentation, usePresentationStore } from "../context";
-import { renderSlide } from "@diceui/pptx-parser";
+import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { useRenderElement } from "../utils/render";
+import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 // ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     return (
       <ThumbnailRovingContext.Provider value={rovingContextValue}>
-        {useRenderElement(
+        {renderElement(
           "div",
           { render, className, style },
           {
@@ -358,7 +358,7 @@ export const ThumbnailItem = React.memo(
 
     return (
       <ThumbnailItemContext.Provider value={itemContextValue}>
-        {useRenderElement(
+        {renderElement(
           "button",
           { render, className, style },
           {
@@ -499,6 +499,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       }
       container.innerHTML = "";
 
+      if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
       const handle = renderSlide(presentation, slide, { mediaUrlCache });
       handle.element.style.transformOrigin = "top left";
       container.appendChild(handle.element);
@@ -518,7 +519,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       handleRef.current.element.style.transform = `scale(${scale})`;
     }, [scale]);
 
-    return useRenderElement(
+    return renderElement(
       "div",
       { render, className, style },
       {
@@ -572,7 +573,7 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
   ) {
     const context = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);
 
-    return useRenderElement(
+    return renderElement(
       "span",
       { render, className, style },
       {

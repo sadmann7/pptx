@@ -1,6 +1,6 @@
 import * as React from "react";
 import { usePresentation } from "../context";
-import { useRenderElement } from "../utils/render";
+import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface LoadingState {
@@ -41,7 +41,7 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
 
   const resolvedChildren = typeof children === "function" ? children(progress) : children;
 
-  return useRenderElement(
+  return renderElement(
     "div",
     { render, className, style },
     {

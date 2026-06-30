@@ -2,7 +2,7 @@ import * as React from "react";
 import { PresentationStore } from "../store";
 import type { PreviewInput } from "../store";
 import { PresentationContext } from "../context";
-import { useRenderElement } from "../utils/render";
+import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface RootState {
@@ -53,7 +53,7 @@ export function Root({
 
   return (
     <PresentationContext.Provider value={store}>
-      {useRenderElement(
+      {renderElement(
         "div",
         { render, className, style },
         {

@@ -7,4 +7,5 @@ export default defineConfig({
   clean: true,
   deps: { neverBundle: ["react", "react-dom", "react/jsx-runtime", "@diceui/pptx-parser"] },
   publint: false,
+  banner: { js: '"use client";' },
 });

@@ -1,9 +1,9 @@
 import * as React from "react";
 import { usePresentation, useSlide, useZoom } from "../context";
-import { renderSlide } from "@diceui/pptx-parser";
+import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import type { PresentationStatus } from "../store";
-import { useRenderElement } from "../utils/render";
+import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface SlideState {
@@ -47,7 +47,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
       </SlideRenderer>
     ) : null;
 
-  return useRenderElement(
+  return renderElement(
     "div",
     { render, className, style },
     {
@@ -88,15 +88,13 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
     const container = containerRef.current;
     if (!container) return;
 
-    // Prevent Tab from reaching focusable PPTX content (links, forms, etc.)
-    container.setAttribute("inert", "");
-
     if (handleRef.current) {
       handleRef.current.dispose();
       handleRef.current = null;
     }
     container.innerHTML = "";
 
+    if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
     const handle = renderSlide(presentation, slide, {
       mediaUrlCache,
       onNodeError: (nodeId, error) => {
@@ -122,6 +120,8 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
       style={{ width: width * zoom, height: height * zoom, flexShrink: 0, position: "relative" }}
     >
       <div
+        // Prevent Tab from reaching focusable PPTX content (links, forms, etc.)
+        inert
         ref={containerRef}
         style={{
           width,

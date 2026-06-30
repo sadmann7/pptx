@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useZoom, usePresentationStore } from "../context";
-import { useRenderElement } from "../utils/render";
+import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
 export interface ViewportState {
@@ -47,7 +47,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     };
   }, [autoFit, autoFitPadding, store]);
 
-  return useRenderElement(
+  return renderElement(
     "div",
     { render, className, style },
     {
