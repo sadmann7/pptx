@@ -5,12 +5,11 @@
  * `focusFirst` helper, and click-vs-keyboard distinction) is directly inspired
  * by that package.
  *
- * @see {@link https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus Radix UI roving focus source}
- * @license MIT — Radix UI © WorkOS
+ * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
 
 import * as React from "react";
-import { usePresentation, usePresentationStoreRef } from "../context";
+import { usePresentation, usePresentationStore } from "../context";
 import { renderSlide } from "@diceui/pptx-parser";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { useRenderElement } from "../utils/render";
@@ -53,8 +52,13 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "ThumbnailItemNumber";
 
 interface ThumbnailRovingContextValue {
   currentTabStopId: string | null;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  // Ordered registry of item button elements, populated by each ThumbnailItem
+  // on mount. Using a Map keyed by slideId preserves insertion order (which
+  // matches DOM/slide order) and avoids querySelectorAll on every keypress.
+  itemsRef: React.RefObject<Map<string, HTMLButtonElement>>;
   onItemFocus: (slideId: string) => void;
+  onItemRegister: (slideId: string, el: HTMLButtonElement) => void;
+  onItemUnregister: (slideId: string) => void;
 }
 
 const ThumbnailRovingContext = React.createContext<ThumbnailRovingContextValue | null>(null);
@@ -146,14 +150,18 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList({ className, style, render, children, ...elementProps }, forwardedRef) {
     const { presentation, status } = usePresentation();
-    const store = usePresentationStoreRef();
-    const containerRef = React.useRef<HTMLDivElement>(null);
+    const store = usePresentationStore(THUMBNAIL_LIST_NAME);
 
     // Which slide's button currently owns tabIndex=0.
     const [currentTabStopId, setCurrentTabStopId] = React.useState<string | null>(null);
     // Distinguishes mouse-click focus from keyboard focus so the entry-focus
     // redirect only fires for keyboard (matching Radix roving-focus behaviour).
     const isClickFocusRef = React.useRef(false);
+
+    // Registry of slideId → button element, maintained by each ThumbnailItem.
+    // Map insertion order matches slide/DOM order so keyboard navigation can
+    // read from it directly without querySelectorAll.
+    const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
 
     const currentSlideId = React.useSyncExternalStore(
       store.subscribe.bind(store),
@@ -165,12 +173,13 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // loads. This lets arrow-key navigation work immediately without requiring
     // the user to Tab into the list first.
     React.useEffect(() => {
-      if (!presentation || !containerRef.current) return;
-      const btn =
-        containerRef.current.querySelector<HTMLButtonElement>("[data-active]") ??
-        containerRef.current.querySelector<HTMLButtonElement>("button");
-      btn?.focus({ preventScroll: true });
-    }, [presentation]);
+      if (!presentation) return;
+      const items = itemsRef.current;
+      // Prefer the active slide's button; fall back to the first registered item.
+      const activeBtn = currentSlideId ? items.get(currentSlideId) : undefined;
+      const firstBtn = activeBtn ?? items.values().next().value;
+      firstBtn?.focus({ preventScroll: true });
+    }, [presentation, currentSlideId]);
 
     // Fallback to the store's selected slide so its button gets tabIndex=0
     // before any keyboard interaction sets currentTabStopId explicitly.
@@ -179,8 +188,10 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const rovingContextValue = React.useMemo<ThumbnailRovingContextValue>(
       () => ({
         currentTabStopId: effectiveTabStopId,
-        containerRef,
+        itemsRef,
         onItemFocus: setCurrentTabStopId,
+        onItemRegister: (slideId, el) => itemsRef.current.set(slideId, el),
+        onItemUnregister: (slideId) => itemsRef.current.delete(slideId),
       }),
       [effectiveTabStopId],
     );
@@ -218,7 +229,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           { render, className, style },
           {
             state,
-            ref: [containerRef, forwardedRef],
+            ref: forwardedRef,
             props: {
               ...elementProps,
               role: "listbox",
@@ -245,10 +256,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
                   isClickFocusRef.current = false;
                   return;
                 }
-                const el = containerRef.current;
-                if (!el) return;
-                const allBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("button"));
-                focusFirst(allBtns, true);
+                focusFirst(Array.from(itemsRef.current.values()), true);
               },
               children: resolvedChildren,
             },
@@ -299,12 +307,12 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemNumber />`
  *   when no children are provided.
  */
-export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(
-  function ThumbnailItem(
+export const ThumbnailItem = React.memo(
+  React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
     { slideId, children, className, style, render, ...elementProps },
     forwardedRef,
   ) {
-    const store = usePresentationStoreRef();
+    const store = usePresentationStore(THUMBNAIL_ITEM_NAME);
     const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
 
     const isActive = React.useSyncExternalStore(
@@ -313,12 +321,29 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
       () => false,
     );
 
-    const presentation = React.useSyncExternalStore(
+    // Subscribe narrowly to the index itself (a number) rather than the whole
+    // presentation object, so only actual slide reorders cause a re-render here.
+    const displayIndex = React.useSyncExternalStore(
       store.subscribe.bind(store),
-      () => store.getState().presentation,
-      () => null,
+      () => store.getState().presentation?.slides.findIndex((s) => s.id === slideId) ?? -1,
+      () => -1,
     );
-    const displayIndex = presentation ? presentation.slides.findIndex((s) => s.id === slideId) : -1;
+
+    // Register this button in the roving context's ordered map so the list
+    // can navigate without querySelectorAll. The callback ref fires when the
+    // DOM element is attached/detached.
+    const registerRef = React.useCallback(
+      (el: HTMLButtonElement | null) => {
+        if (el) {
+          rovingContext.onItemRegister(slideId, el);
+        } else {
+          rovingContext.onItemUnregister(slideId);
+        }
+      },
+      // slideId is stable for the lifetime of this item instance
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [slideId],
+    );
 
     // This item owns the single tab stop inside the list when it matches the
     // roving context's currentTabStopId — all other items get tabIndex=-1.
@@ -338,7 +363,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
           { render, className, style },
           {
             state,
-            ref: forwardedRef,
+            ref: [registerRef, forwardedRef],
             props: {
               ...elementProps,
               type: "button",
@@ -346,7 +371,6 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
               "aria-selected": isActive,
               "aria-label": `Slide ${displayIndex + 1}`,
               "data-active": isActive || undefined,
-              // Queried by the container's entry-focus handler to restore the last stop.
               "data-slide-id": slideId,
               tabIndex: isCurrentTabStop ? 0 : -1,
               style: {
@@ -377,12 +401,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
                 if (!focusIntent || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
                 e.preventDefault();
 
-                const container = rovingContext.containerRef.current;
-                if (!container) return;
-
-                let candidates = Array.from(
-                  container.querySelectorAll<HTMLButtonElement>("button"),
-                );
+                let candidates = Array.from(rovingContext.itemsRef.current.values());
 
                 if (focusIntent === "last") {
                   candidates = candidates.reverse();
@@ -405,7 +424,7 @@ export const ThumbnailItem = React.forwardRef<HTMLButtonElement, ThumbnailItemPr
         )}
       </ThumbnailItemContext.Provider>
     );
-  },
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -467,10 +486,12 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
     const thumbHeight = pHeight * scale;
 
+    // Render (or re-render) the slide DOM. Does NOT depend on `scale` — a
+    // resize only changes the CSS transform, which is handled by the effect
+    // below without tearing down and re-creating the slide element.
     React.useEffect(() => {
       const container = containerRef.current;
-      // Skip until we have a measured width — avoids a wasted render at scale 0.
-      if (!container || !presentation || !slide || scale === 0) return;
+      if (!container || !presentation || !slide) return;
 
       if (handleRef.current) {
         handleRef.current.dispose();
@@ -479,7 +500,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       container.innerHTML = "";
 
       const handle = renderSlide(presentation, slide, { mediaUrlCache });
-      handle.element.style.transform = `scale(${scale})`;
       handle.element.style.transformOrigin = "top left";
       container.appendChild(handle.element);
       handleRef.current = handle;
@@ -490,7 +510,13 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           handleRef.current = null;
         }
       };
-    }, [presentation, slide, scale, mediaUrlCache]);
+    }, [presentation, slide, mediaUrlCache]);
+
+    // Apply scale imperatively — avoids a full slide teardown on every resize.
+    React.useEffect(() => {
+      if (!handleRef.current || scale === 0) return;
+      handleRef.current.element.style.transform = `scale(${scale})`;
+    }, [scale]);
 
     return useRenderElement(
       "div",

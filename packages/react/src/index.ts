@@ -22,7 +22,7 @@ export const Presentation = {
   Error,
 } as const;
 
-export { usePresentation, useSlide, useZoom, usePresentationStoreRef } from "./context";
+export { usePresentation, useSlide, useZoom, usePresentationStore } from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
 export { PresentationStore } from "./store";
 export type { PresentationState, PresentationStatus, PreviewInput } from "./store";

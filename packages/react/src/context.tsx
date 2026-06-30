@@ -5,9 +5,11 @@ import { PresentationStore } from "./store";
 
 export const PresentationContext = React.createContext<PresentationStore | null>(null);
 
-function usePresentationStore(): PresentationStore {
+export function usePresentationStore(consumerName: string): PresentationStore {
   const store = React.useContext(PresentationContext);
-  if (!store) throw new Error("[pptx/react] Hooks must be used inside <Presentation.Root>");
+  if (!store) {
+    throw new Error(`\`${consumerName}\` must be used inside \`<Presentation.Root>\``);
+  }
   return store;
 }
 
@@ -32,7 +34,7 @@ export interface UsePresentationResult {
 }
 
 export function usePresentation(): UsePresentationResult {
-  const store = usePresentationStore();
+  const store = usePresentationStore("usePresentation");
   const state = React.useSyncExternalStore(
     store.subscribe.bind(store),
     store.getState.bind(store),
@@ -75,7 +77,7 @@ export interface UseSlideResult {
 }
 
 export function useSlide(): UseSlideResult {
-  const store = usePresentationStore();
+  const store = usePresentationStore("useSlide");
 
   // Subscribe to primitives / stable references only.
   // useSyncExternalStore compares via Object.is — returning a new object
@@ -129,7 +131,7 @@ export interface UseZoomResult {
 }
 
 export function useZoom(): UseZoomResult {
-  const store = usePresentationStore();
+  const store = usePresentationStore("useZoom");
   const zoom = React.useSyncExternalStore(
     store.subscribe.bind(store),
     () => store.getState().zoom,
@@ -142,8 +144,4 @@ export function useZoom(): UseZoomResult {
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
     fitTo: React.useCallback((w: number, h: number, p?: number) => store.fitTo(w, h, p), [store]),
   };
-}
-
-export function usePresentationStoreRef(): PresentationStore {
-  return usePresentationStore();
 }

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useZoom, usePresentationStoreRef } from "../context";
+import { useZoom, usePresentationStore } from "../context";
 import { useRenderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
 
@@ -27,7 +27,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
   forwardedRef,
 ) {
   const internalRef = React.useRef<HTMLDivElement>(null);
-  const store = usePresentationStoreRef();
+  const store = usePresentationStore("Viewport");
   const { zoom } = useZoom();
 
   React.useEffect(() => {
