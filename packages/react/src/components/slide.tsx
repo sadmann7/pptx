@@ -120,8 +120,6 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
       style={{ width: width * zoom, height: height * zoom, flexShrink: 0, position: "relative" }}
     >
       <div
-        // Prevent Tab from reaching focusable PPTX content (links, forms, etc.)
-        inert
         ref={containerRef}
         style={{
           width,
