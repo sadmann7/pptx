@@ -1,6 +1,6 @@
 import * as React from "react";
-import { PresentationStore } from "../store";
-import type { PreviewInput } from "../store";
+import { createPresentationStore } from "../store";
+import type { PresentationStore, PreviewInput } from "../store";
 import { PresentationContext } from "../context";
 import { renderElement } from "../utils/render";
 import type { RenderProp } from "../utils/render";
@@ -32,7 +32,7 @@ export function Root({
   onError,
   ...elementProps
 }: RootProps) {
-  const store = React.useMemo(() => new PresentationStore(), []);
+  const store = React.useMemo(() => createPresentationStore(), []);
   const onLoadRef = React.useRef(onLoad);
   onLoadRef.current = onLoad;
   const onErrorRef = React.useRef(onError);
