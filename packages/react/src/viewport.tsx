@@ -24,27 +24,30 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Spread any native `<div>` props — they are composed (not overwritten) with internals.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
-  { children, className, style, autoFit = false, autoFitPadding = 24, render, ...elementProps },
+  { children, className, style, autoFit = false, autoFitPadding = 24, render, ...viewportProps },
   forwardedRef,
 ) {
-  const internalRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+
   const store = usePresentationStore("PresentationViewport");
   const { zoom } = useZoom();
 
   React.useEffect(() => {
-    if (!autoFit || !internalRef.current) return;
-    const el = internalRef.current;
+    if (!autoFit || !viewportRef.current) return;
+
+    const viewportElement = viewportRef.current;
     const fit = () => {
-      if (el.clientWidth > 0 && el.clientHeight > 0)
-        store.fitTo(el.clientWidth, el.clientHeight, autoFitPadding);
+      if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
+        store.fitTo(viewportElement.clientWidth, viewportElement.clientHeight, autoFitPadding);
     };
     const unsubscribe = store.subscribe(fit);
     fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
+    const resizeObserver = new ResizeObserver(fit);
+    resizeObserver.observe(viewportElement);
+
     return () => {
       unsubscribe();
-      ro.disconnect();
+      resizeObserver.disconnect();
     };
   }, [autoFit, autoFitPadding, store]);
 
@@ -53,9 +56,9 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     { render, className, style },
     {
       state: { zoom },
-      ref: [internalRef, forwardedRef],
+      ref: [viewportRef, forwardedRef],
       props: {
-        ...elementProps,
+        ...viewportProps,
         style: {
           display: "flex",
           alignItems: "center",

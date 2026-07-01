@@ -33,7 +33,7 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
  * </Presentation.Error>
  */
 export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error(
-  { children, className, style, render, ...elementProps },
+  { children, className, style, render, ...errorProps },
   forwardedRef,
 ) {
   const { status, error } = usePresentation();
@@ -48,7 +48,7 @@ export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error
     {
       state: { error },
       ref: forwardedRef,
-      props: { ...elementProps, children: resolvedChildren },
+      props: { ...errorProps, children: resolvedChildren },
     },
   );
 });

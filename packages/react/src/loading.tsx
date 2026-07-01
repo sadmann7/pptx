@@ -33,7 +33,7 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
  * </Presentation.Loading>
  */
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
-  { children, className, style, render, ...elementProps },
+  { children, className, style, render, ...loadingProps },
   forwardedRef,
 ) {
   const { status, progress } = usePresentation();
@@ -48,7 +48,7 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
     {
       state: { progress },
       ref: forwardedRef,
-      props: { ...elementProps, children: resolvedChildren },
+      props: { ...loadingProps, children: resolvedChildren },
     },
   );
 });

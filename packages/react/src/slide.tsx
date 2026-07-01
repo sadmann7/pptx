@@ -35,7 +35,7 @@ export interface SlideProps extends React.ComponentProps<"div"> {
  * enabling CSS-driven state styles.
  */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
-  { children, className, style, render, ...elementProps },
+  { children, className, style, render, ...slideProps },
   forwardedRef,
 ) {
   const { presentation, status } = usePresentation();
@@ -56,7 +56,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
       state: { status, index },
       ref: forwardedRef,
       props: {
-        ...elementProps,
+        ...slideProps,
         "data-status": status,
         style: {
           display: "flex",
