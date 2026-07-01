@@ -134,6 +134,7 @@ const CJK_FONT_FAMILY_ALIAS_KEYS = new Set([
 ]);
 
 const FONT_FAMILY_ALIASES: Record<string, string[]> = {
+  // Microsoft Office default fonts (not installed on most web browsers)
   calibri: ["Calibri", "Aptos", "Carlito", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "calibri light": [
     "Calibri Light",
@@ -147,6 +148,29 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   ],
   aptos: ["Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "aptos display": ["Aptos Display", "Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
+  // Common Windows fonts not universally available on web
+  "franklin gothic medium": [
+    "Franklin Gothic Medium",
+    "Franklin Gothic",
+    "ITC Franklin Gothic",
+    "Arial Narrow",
+    "Arial",
+    "sans-serif",
+  ],
+  "century gothic": ["Century Gothic", "Futura", "Trebuchet MS", "Arial", "sans-serif"],
+  "gill sans": ["Gill Sans", "Gill Sans MT", "Calibri", "sans-serif"],
+  "gill sans mt": ["Gill Sans MT", "Gill Sans", "Calibri", "sans-serif"],
+  "trebuchet ms": ["Trebuchet MS", "Arial", "sans-serif"],
+  "palatino linotype": ["Palatino Linotype", "Palatino", "Book Antiqua", "Georgia", "serif"],
+  "book antiqua": ["Book Antiqua", "Palatino", "Georgia", "serif"],
+  garamond: ["Garamond", "EB Garamond", "Georgia", "serif"],
+  cambria: ["Cambria", "Georgia", "serif"],
+  constantia: ["Constantia", "Palatino", "Georgia", "serif"],
+  corbel: ["Corbel", "Candara", "Arial", "sans-serif"],
+  candara: ["Candara", "Corbel", "Arial", "sans-serif"],
+  consolas: ["Consolas", "Cascadia Code", "Fira Code", "monospace"],
+  "courier new": ["Courier New", "Courier", "monospace"],
+  // CJK
   "microsoft yahei": ["Microsoft YaHei", "微软雅黑"],
   "microsoft yahei ui": ["Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑"],
   微软雅黑: ["微软雅黑", "Microsoft YaHei"],
@@ -172,9 +196,36 @@ function cssFontFamilyToken(fontFamily: string): string {
   return `"${fontFamily.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+// Fonts that are serif by nature — fall back to serif generic, not sans-serif
+const KNOWN_SERIF_FONTS = new Set([
+  "times new roman",
+  "times",
+  "georgia",
+  "garamond",
+  "palatino",
+  "palatino linotype",
+  "book antiqua",
+  "cambria",
+  "constantia",
+  "didot",
+  "bodoni",
+  "caslon",
+  "baskerville",
+  "goudy old style",
+  "minion pro",
+  "adobe garamond",
+]);
+
 function expandFontFamilyAliases(fontFamily: string): string[] {
   const normalized = normalizeFontFamilyName(fontFamily);
-  return FONT_FAMILY_ALIASES[normalized] ?? [fontFamily.trim()];
+  if (FONT_FAMILY_ALIASES[normalized]) {
+    return FONT_FAMILY_ALIASES[normalized];
+  }
+  // For unknown fonts, always append a generic fallback so the browser never
+  // falls back to the default serif. PPTX presentations are overwhelmingly
+  // sans-serif; use sans-serif unless the font name is recognisably serif.
+  const genericFallback = KNOWN_SERIF_FONTS.has(normalized) ? "serif" : "sans-serif";
+  return [fontFamily.trim(), genericFallback];
 }
 
 export function cssFontFamilyStack(fontFamily: string | string[]): string {
