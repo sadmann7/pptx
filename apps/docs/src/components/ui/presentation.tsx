@@ -121,11 +121,7 @@ function PresentationThumbnailItem({
       data-slot="presentation-thumbnail-item"
       className={cn(
         "relative w-full cursor-pointer rounded-md outline-none",
-        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-all duration-100",
-        "hover:bg-accent hover:ring-border",
-        "focus:ring-ring",
-        "data-active:bg-accent data-active:ring-border",
-        "group-focus-within/thumbs:data-active:ring-ring",
+        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-[ring] duration-100 hover:ring-ring focus:ring-ring",
         className,
       )}
       {...props}

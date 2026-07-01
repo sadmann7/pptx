@@ -323,9 +323,9 @@ export const ThumbnailItem = React.memo(
     // can navigate without querySelectorAll. The callback ref fires when the
     // DOM element is attached/detached.
     const registerRef = React.useCallback(
-      (el: HTMLButtonElement | null) => {
-        if (el) {
-          rovingContext.onItemRegister(slideId, el);
+      (element: HTMLButtonElement | null) => {
+        if (element) {
+          rovingContext.onItemRegister(slideId, element);
         } else {
           rovingContext.onItemUnregister(slideId);
         }
