@@ -51,17 +51,16 @@ const SERVER_SNAPSHOT: PresentationState = {
   error: null,
 };
 
-// ---------------------------------------------------------------------------
-// usePresentation
-// ---------------------------------------------------------------------------
-
 export interface UsePresentationResult {
   /** Parsed presentation data, or `null` before the first successful load. */
   presentation: PresentationData | null;
+
   /** Current lifecycle status of the store. */
   status: PresentationState["status"];
+
   /** Error thrown during the last failed parse, or `null` otherwise. */
   error: Error | null;
+
   /** Parse progress reported by the store (0-100). */
   progress: number;
 }
@@ -82,36 +81,41 @@ export function usePresentation(): UsePresentationResult {
   };
 }
 
-// ---------------------------------------------------------------------------
-// useSlide
-// ---------------------------------------------------------------------------
-
 export interface UseSlideResult {
   /** Full parsed data for the active slide, or `null` before load. */
   slide: SlideData | null;
+
   /**
    * Stable identity of the active slide (`SlideData.id`).
    * Use this (not `index`) as the source of truth for navigation,
    * keys, and any future editing operations.
    */
   slideId: string | null;
+
   /**
    * Current display position (0-based). Derived from `slideId` via
    * `findIndex`. Safe to use for display but do NOT store it as identity.
    */
   index: number;
+
   /** Total number of slides in the loaded presentation. `0` before load. */
   total: number;
+
   /** `true` when the active slide is the first in the deck. */
   isFirst: boolean;
+
   /** `true` when the active slide is the last in the deck. */
   isLast: boolean;
-  /** Navigate to a slide by its stable ID. */
+
+  /** Navigate to a slide by its stable id. */
   goTo: (slideId: string) => void;
+
   /** Navigate to a slide by its 0-based index. Clamps to a valid range. */
   goToIndex: (index: number) => void;
+
   /** Advance to the next slide. No-ops on the last slide. */
   next: () => void;
+
   /** Go back to the previous slide. No-ops on the first slide. */
   prev: () => void;
 }
@@ -124,19 +128,14 @@ export interface UseSlideResult {
 export function useSlide(): UseSlideResult {
   const store = usePresentationStore("useSlide");
 
-  // Subscribe to primitives / stable references only.
-  // useSyncExternalStore compares via Object.is: returning a new object
-  // literal on every call would cause an infinite re-render loop.
-
-  // activeSlideId: string | null: primitive, safe to compare directly.
+  // Subscribe to primitives/stable refs only; new object literals on every call cause infinite loops.
   const slideId = React.useSyncExternalStore(
     store.subscribe,
     () => store.getState().activeSlideId,
     () => null,
   );
 
-  // presentation: object reference: only changes when a new file is loaded,
-  // not on slide navigation (the store spreads state but keeps the same ref).
+  // Subscribe to a stable object ref that only changes on new file load, not on slide navigation.
   const presentation = React.useSyncExternalStore(
     store.subscribe,
     () => store.getState().presentation,
@@ -163,27 +162,27 @@ export function useSlide(): UseSlideResult {
   };
 }
 
-// ---------------------------------------------------------------------------
-// useZoom
-// ---------------------------------------------------------------------------
-
 export interface UseZoomResult {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
+
   /** Set an explicit zoom level. */
   setZoom: (zoom: number) => void;
+
   /**
    * Increase zoom by `step`.
    *
    * @default step 0.1
    */
   zoomIn: (step?: number) => void;
+
   /**
    * Decrease zoom by `step`.
    *
    * @default step 0.1
    */
   zoomOut: (step?: number) => void;
+
   /**
    * Compute and apply a zoom that fits the slide inside the given container
    * dimensions, respecting the optional padding.

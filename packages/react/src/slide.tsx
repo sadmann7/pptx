@@ -14,6 +14,7 @@ export interface SlideState {
    * element so CSS can target states directly (e.g. `[data-status="loading"]`).
    */
   status: PresentationStatus;
+
   /** 0-based index of the active slide in the loaded presentation. */
   index: number;
 }
@@ -23,11 +24,6 @@ export interface SlideProps extends React.ComponentProps<"div"> {
    * Replace the slide wrapper element.
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
-   *
-   * @example
-   * render={(props, { status }) => (
-   *   <article {...props} data-slide-status={status} />
-   * )}
    */
   render?: RenderProp<SlideState>;
 }
@@ -40,7 +36,7 @@ export interface SlideProps extends React.ComponentProps<"div"> {
  * and `<Presentation.Error>` alongside this component to cover other states.
  *
  * The wrapper carries a `data-status` attribute matching the store status,
- * enabling CSS-driven state styles without extra JavaScript.
+ * enabling css-driven state styles without extra js.
  */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, className, style, render, ...slideProps },
@@ -52,9 +48,9 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
 
   const slideContent =
     presentation && slide ? (
-      <SlideRenderer presentation={presentation} slide={slide} zoom={zoom}>
+      <SlideImpl presentation={presentation} slide={slide} zoom={zoom}>
         {children}
-      </SlideRenderer>
+      </SlideImpl>
     ) : null;
 
   return renderElement(
@@ -78,18 +74,14 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   );
 });
 
-// ---------------------------------------------------------------------------
-// Internal: imperative slide renderer (untouched from original)
-// ---------------------------------------------------------------------------
-
-interface SlideRendererProps {
+interface SlideImplProps {
   presentation: PresentationData;
   slide: SlideData;
   zoom: number;
   children?: React.ReactNode;
 }
 
-function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererProps) {
+function SlideImpl({ presentation, slide, zoom, children }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCache = React.useRef(new Map<string, string>()).current;
