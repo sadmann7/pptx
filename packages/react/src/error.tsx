@@ -26,11 +26,6 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
 /**
  * Renders its children only when the presentation failed to parse.
  * Place anywhere inside `<Presentation.Root>`.
- *
- * @example
- * <Presentation.Error>
- *   {(err) => <span className="text-destructive">{err.message}</span>}
- * </Presentation.Error>
  */
 export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error(
   { children, className, style, render, ...errorProps },

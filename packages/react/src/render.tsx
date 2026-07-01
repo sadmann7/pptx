@@ -4,8 +4,39 @@ import * as React from "react";
 // Public types
 // ---------------------------------------------------------------------------
 
+/**
+ * Function form of the `render` prop.
+ *
+ * @param props - Composed HTML attributes to spread onto the rendered element.
+ * @param state - Component state; shape varies by component.
+ * @returns A React element that receives the composed props.
+ *
+ * @example
+ * render={(props, { isActive }) => (
+ *   <motion.div {...props} animate={{ opacity: isActive ? 1 : 0.5 }} />
+ * )}
+ */
 export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement;
 
+/**
+ * Customises the rendered element without changing component logic.
+ *
+ * - **ReactElement**: the element is cloned; props are merged in (`className`
+ *   appended, `style` shallow-merged, event handlers chained).
+ * - **Function** (`ComponentRenderFn`): called with final composed props and
+ *   component state; the return value replaces the default element entirely.
+ *
+ * All primitives accept `render` alongside standard HTML element props.
+ *
+ * @example
+ * // Element shorthand
+ * <Presentation.Slide render={<article />} />
+ *
+ * // Function for full control
+ * <Presentation.Slide
+ *   render={(props, { status }) => <article {...props} data-status={status} />}
+ * />
+ */
 export type RenderProp<S = Record<string, never>> =
   | React.ReactElement
   | ComponentRenderFn<React.HTMLAttributes<any>, S>;

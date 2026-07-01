@@ -26,11 +26,6 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
 /**
  * Renders its children only while the presentation is in the `"loading"` state.
  * Place anywhere inside `<Presentation.Root>`.
- *
- * @example
- * <Presentation.Loading>
- *   {(progress) => <span>Loading {progress}%…</span>}
- * </Presentation.Loading>
  */
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
   { children, className, style, render, ...loadingProps },

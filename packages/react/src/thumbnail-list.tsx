@@ -95,18 +95,24 @@ function useThumbnailItemContext(consumerName: string) {
 // ---------------------------------------------------------------------------
 
 export interface ThumbnailListState {
+  /** Total number of slides in the loaded presentation. */
   total: number;
+  /** Stable ID of the currently active slide, or `null` before load. */
   activeSlideId: string | null;
-  /** Derived display index: use `activeSlideId` as identity. */
+  /** 0-based position of the active slide. Derived from `activeSlideId`. */
   activeIndex: number;
 }
 
 export interface ThumbnailListRenderState {
+  /** All slides in the loaded presentation, in order. */
   slides: SlideData[];
+  /** Stable ID of the currently active slide, or `null` before load. */
   activeSlideId: string | null;
-  /** Derived display index: use `activeSlideId` as identity. */
+  /** 0-based position of the active slide. Derived from `activeSlideId`. */
   activeIndex: number;
+  /** Navigate to a slide by its stable ID. */
   goTo: (slideId: string) => void;
+  /** Navigate to a slide by its 0-based index. */
   goToIndex: (index: number) => void;
 }
 
@@ -131,23 +137,6 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  *
  * Handles keyboard navigation (↑↓ / Home / End) with roving focus so
  * only the active item lives in the tab order at any time.
- *
- * @example
- * // Default: one ThumbnailItem per slide
- * <Presentation.ThumbnailList />
- *
- * @example
- * // Custom items via function children
- * <Presentation.ThumbnailList>
- *   {({ slides }) =>
- *     slides.map((slide) => (
- *       <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
- *         <Presentation.ThumbnailItemPreview />
- *         <Presentation.ThumbnailItemNumber />
- *       </Presentation.ThumbnailItem>
- *     ))
- *   }
- * </Presentation.ThumbnailList>
  */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList(
@@ -283,8 +272,11 @@ export namespace ThumbnailList {
 // ---------------------------------------------------------------------------
 
 export interface ThumbnailItemState {
+  /** Stable ID of the slide this item represents (`SlideData.id`). */
   slideId: string;
+  /** `true` when this item's slide is the currently active slide. */
   isActive: boolean;
+  /** 0-based position of this slide in the presentation. */
   displayIndex: number;
 }
 
@@ -448,7 +440,12 @@ export namespace ThumbnailItem {
 // ---------------------------------------------------------------------------
 
 export interface ThumbnailItemPreviewState {
+  /** Stable ID of the slide being rendered. */
   slideId: string;
+  /**
+   * Current CSS scale factor applied to the slide element
+   * (container width / presentation width). `0` before the container is measured.
+   */
   scale: number;
 }
 

@@ -5,11 +5,24 @@ import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 
 export interface ViewportState {
+  /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
 }
 
 export interface ViewportProps extends React.ComponentProps<"div"> {
+  /**
+   * When `true`, automatically scales the slide to fill the viewport's
+   * dimensions whenever the container resizes.
+   *
+   * @default false
+   */
   autoFit?: boolean;
+  /**
+   * Padding (in pixels) applied on all sides when fitting the slide.
+   * Only used when `autoFit` is `true`.
+   *
+   * @default 24
+   */
   autoFitPadding?: number;
   /**
    * Replace the viewport container element.
@@ -20,8 +33,11 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
 }
 
 /**
- * Scrollable container that optionally auto-fits the slide to its size.
- * Spread any native `<div>` props: they are composed (not overwritten) with internals.
+ * Scrollable container that centers the slide and optionally auto-fits it
+ * to the available space.
+ *
+ * Native `<div>` props are composed (not overwritten) with internals.
+ * Place `<Presentation.Slide>` inside to render the current slide.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   { children, className, style, autoFit = false, autoFitPadding = 24, render, ...viewportProps },

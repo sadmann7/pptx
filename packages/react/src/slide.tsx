@@ -9,9 +9,12 @@ import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
 
 export interface SlideState {
-  /** Current parse/load status. Reflected as `data-status` on the element. */
+  /**
+   * Current parse/load status. Reflected as `data-status` on the wrapper
+   * element so CSS can target states directly (e.g. `[data-status="loading"]`).
+   */
   status: PresentationStatus;
-  /** Zero-based index of the active slide. */
+  /** 0-based index of the active slide in the loaded presentation. */
   index: number;
 }
 
@@ -20,19 +23,24 @@ export interface SlideProps extends React.ComponentProps<"div"> {
    * Replace the slide wrapper element.
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
+   *
+   * @example
+   * render={(props, { status }) => (
+   *   <article {...props} data-slide-status={status} />
+   * )}
    */
   render?: RenderProp<SlideState>;
 }
 
 /**
- * Renders the current slide inside a centered wrapper.
- * The wrapper always mounts so that sibling layout is stable: slide content
- * is absent until the presentation is `"ready"`.
+ * Renders the active slide inside a centered wrapper `<div>`.
  *
- * Use `<Presentation.Loading>` / `<Presentation.Error>` to display status UI.
+ * The wrapper always mounts so that sibling layout is stable. Slide content
+ * is absent until the presentation is `"ready"`. Use `<Presentation.Loading>`
+ * and `<Presentation.Error>` alongside this component to cover other states.
  *
- * The element carries a `data-status` attribute matching the store status,
- * enabling CSS-driven state styles.
+ * The wrapper carries a `data-status` attribute matching the store status,
+ * enabling CSS-driven state styles without extra JavaScript.
  */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, className, style, render, ...slideProps },
@@ -83,16 +91,16 @@ interface SlideRendererProps {
 
 function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const handleRef = React.useRef<SlideHandle | null>(null);
+  const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCache = React.useRef(new Map<string, string>()).current;
 
   React.useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    if (handleRef.current) {
-      handleRef.current.dispose();
-      handleRef.current = null;
+    if (slideHandleRef.current) {
+      slideHandleRef.current.dispose();
+      slideHandleRef.current = null;
     }
     container.innerHTML = "";
 
@@ -105,12 +113,12 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
     });
 
     container.appendChild(handle.element);
-    handleRef.current = handle;
+    slideHandleRef.current = handle;
 
     return () => {
-      if (handleRef.current) {
-        handleRef.current.dispose();
-        handleRef.current = null;
+      if (slideHandleRef.current) {
+        slideHandleRef.current.dispose();
+        slideHandleRef.current = null;
       }
     };
   }, [presentation, slide, mediaUrlCache]);
