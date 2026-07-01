@@ -42,7 +42,7 @@ export default function PgPage() {
           <PresentationContent>
             <PresentationLoading />
             <PresentationError />
-            <PresentationViewport autoFit autoFitPadding={32}>
+            <PresentationViewport autoFit>
               <PresentationSlide />
             </PresentationViewport>
           </PresentationContent>
