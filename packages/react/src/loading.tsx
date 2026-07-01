@@ -1,7 +1,7 @@
 import * as React from "react";
 import { usePresentation } from "./context";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
 
 export interface LoadingState {
   /** 0–100 parse progress reported by the store. */
@@ -31,11 +31,6 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
  *   {(progress) => <span>Loading {progress}%…</span>}
  * </Presentation.Loading>
  */
-export namespace Loading {
-  export type State = LoadingState;
-  export type Props = LoadingProps;
-}
-
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
   { children, className, style, render, ...elementProps },
   forwardedRef,
@@ -56,3 +51,8 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
     },
   );
 });
+
+export namespace Loading {
+  export type State = LoadingState;
+  export type Props = LoadingProps;
+}

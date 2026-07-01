@@ -1,7 +1,7 @@
 import * as React from "react";
 import { usePresentationStore, useZoom } from "./context";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
 
 export interface ViewportState {
   zoom: number;
@@ -22,11 +22,6 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Scrollable container that optionally auto-fits the slide to its size.
  * Spread any native `<div>` props — they are composed (not overwritten) with internals.
  */
-export namespace Viewport {
-  export type State = ViewportState;
-  export type Props = ViewportProps;
-}
-
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   { children, className, style, autoFit = false, autoFitPadding = 24, render, ...elementProps },
   forwardedRef,
@@ -71,3 +66,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     },
   );
 });
+
+export namespace Viewport {
+  export type State = ViewportState;
+  export type Props = ViewportProps;
+}

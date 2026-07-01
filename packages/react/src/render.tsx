@@ -1,38 +1,11 @@
-/**
- * Render utilities — pattern adapted from Base UI.
- *
- * The render-prop model, prop-merging strategy, and `useRenderElement` API are
- * directly inspired by the Base UI component library by MUI.
- *
- * @see {@link https://github.com/mui/base-ui Base UI source}
- * @see {@link https://base-ui.com/react/utils/use-render useRender hook docs}
- * @license MIT — Base UI © MUI
- */
-
 import * as React from "react";
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-/**
- * A render callback that receives composed props and component state,
- * returning the element to render.
- *
- * Mirrors {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/types.ts `ComponentRenderFn`}
- * from Base UI.
- */
 export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement;
 
-/**
- * Render prop accepted by every component.
- *
- * - `ReactElement` — cloned with composed props (`className`/`style` merged, event handlers chained)
- * - `Function` — called with `(composedProps, state)` for full control
- *
- * Mirrors the `render` prop pattern from Base UI.
- * @see {@link https://base-ui.com/react/utils/use-render#render Base UI render prop}
- */
 export type RenderProp<S = Record<string, never>> =
   | React.ReactElement
   | ComponentRenderFn<React.HTMLAttributes<any>, S>;
@@ -51,9 +24,7 @@ type AnyProps = Record<string, unknown>;
  * - `on*` event handlers — chained (`a` runs first, then `b`)
  * - Everything else — `b` overwrites `a`
  *
- * Adapted from
- * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/merge-props/mergeProps.ts `mergeProps`}
- * in Base UI.
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/merge-props/mergeProps.ts
  */
 export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
   const result: AnyProps = { ...a };
@@ -92,9 +63,7 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
 /**
  * Combines multiple refs into a single callback ref.
  *
- * Mirrors
- * {@link https://github.com/mui/base-ui/blob/master/packages/utils/src/useMergedRefs.ts `useMergedRefs`}
- * from Base UI (simplified — no hook, no SSR guard needed here).
+ * @see https://github.com/mui/base-ui/blob/master/packages/utils/src/useMergedRefs.ts
  */
 export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): React.RefCallback<T> {
   return (value) => {
@@ -117,9 +86,7 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
  * Pass the full component props object — only `render`, `className`, and `style`
  * are consumed here; everything else is ignored.
  *
- * Mirrors
- * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts `UseRenderElementComponentProps`}
- * from Base UI.
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
  */
 export interface RenderElementComponentProps<S> {
   render?: RenderProp<S>;
@@ -130,9 +97,7 @@ export interface RenderElementComponentProps<S> {
 /**
  * Internal parameters that control how the element is built.
  *
- * Mirrors
- * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts `UseRenderElementParameters`}
- * from Base UI.
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
  */
 export interface RenderElementParams<S, E extends Element> {
   /** Component state forwarded as the second argument to a function `render` prop. */
@@ -163,11 +128,7 @@ export interface RenderElementParams<S, E extends Element> {
  * matching keys in `params.props` so that internal defaults never override
  * user-supplied values.
  *
- * Adapted from
- * {@link https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts `useRenderElement`}
- * in Base UI.
- *
- * @see {@link https://base-ui.com/react/utils/use-render Base UI useRender docs}
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
  */
 export function renderElement<S, E extends Element = Element>(
   defaultTag: keyof React.JSX.IntrinsicElements,

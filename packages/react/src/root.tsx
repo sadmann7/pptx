@@ -22,11 +22,6 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   render?: RenderProp<RootState>;
 }
 
-export namespace Root {
-  export type State = RootState;
-  export type Props = RootProps;
-}
-
 export function Root({
   file,
   children,
@@ -35,11 +30,13 @@ export function Root({
   render,
   onLoad,
   onError,
-  ...elementProps
+  ...rootProps
 }: RootProps) {
   const store = React.useMemo(() => createPresentationStore(), []);
+
   const onLoadRef = React.useRef(onLoad);
   onLoadRef.current = onLoad;
+
   const onErrorRef = React.useRef(onError);
   onErrorRef.current = onError;
 
@@ -48,6 +45,7 @@ export function Root({
       store.reset();
       return;
     }
+
     store
       .load(file)
       .then(() => onLoadRef.current?.(store))
@@ -63,9 +61,14 @@ export function Root({
         { render, className, style },
         {
           state: { file },
-          props: { ...elementProps, children },
+          props: { ...rootProps, children },
         },
       )}
     </PresentationContext.Provider>
   );
+}
+
+export namespace Root {
+  export type State = RootState;
+  export type Props = RootProps;
 }

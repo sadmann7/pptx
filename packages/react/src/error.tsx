@@ -1,7 +1,7 @@
 import * as React from "react";
 import { usePresentation } from "./context";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
 
 export interface ErrorState {
   /** The error thrown during parsing. */
@@ -31,11 +31,6 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
  *   {(err) => <span className="text-destructive">{err.message}</span>}
  * </Presentation.Error>
  */
-export namespace Error {
-  export type State = ErrorState;
-  export type Props = ErrorProps;
-}
-
 export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error(
   { children, className, style, render, ...elementProps },
   forwardedRef,
@@ -56,3 +51,8 @@ export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error
     },
   );
 });
+
+export namespace Error {
+  export type State = ErrorState;
+  export type Props = ErrorProps;
+}

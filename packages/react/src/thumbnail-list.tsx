@@ -8,12 +8,12 @@
  * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
 
+import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
+import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import * as React from "react";
 import { usePresentation, usePresentationStore } from "./context";
-import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
-import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
 
 // ---------------------------------------------------------------------------
 // Roving focus utilities
@@ -147,12 +147,6 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  *   }
  * </Presentation.ThumbnailList>
  */
-export namespace ThumbnailList {
-  export type State = ThumbnailListState;
-  export type RenderState = ThumbnailListRenderState;
-  export type Props = ThumbnailListProps;
-}
-
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList({ className, style, render, children, ...elementProps }, forwardedRef) {
     const { presentation, status } = usePresentation();
@@ -273,6 +267,12 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
   },
 );
 
+export namespace ThumbnailList {
+  export type State = ThumbnailListState;
+  export type RenderState = ThumbnailListRenderState;
+  export type Props = ThumbnailListProps;
+}
+
 // ---------------------------------------------------------------------------
 // ThumbnailItem
 // ---------------------------------------------------------------------------
@@ -313,11 +313,6 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemNumber />`
  *   when no children are provided.
  */
-export namespace ThumbnailItem {
-  export type State = ThumbnailItemState;
-  export type Props = ThumbnailItemProps;
-}
-
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
     { slideId, children, className, style, render, ...elementProps },
@@ -438,6 +433,11 @@ export const ThumbnailItem = React.memo(
   }),
 );
 
+export namespace ThumbnailItem {
+  export type State = ThumbnailItemState;
+  export type Props = ThumbnailItemProps;
+}
+
 // ---------------------------------------------------------------------------
 // ThumbnailItemPreview
 // ---------------------------------------------------------------------------
@@ -470,11 +470,6 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * to it and CSS-scaled to fit. Marked `aria-hidden` since the enclosing
  * button's `aria-label` already identifies the slide.
  */
-export namespace ThumbnailItemPreview {
-  export type State = ThumbnailItemPreviewState;
-  export type Props = ThumbnailItemPreviewProps;
-}
-
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ className, style, render, ...elementProps }, forwardedRef) {
     const context = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
@@ -559,6 +554,11 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
   },
 );
 
+export namespace ThumbnailItemPreview {
+  export type State = ThumbnailItemPreviewState;
+  export type Props = ThumbnailItemPreviewProps;
+}
+
 // ---------------------------------------------------------------------------
 // ThumbnailItemNumber
 // ---------------------------------------------------------------------------
@@ -582,10 +582,6 @@ export interface ThumbnailItemNumberProps extends Omit<React.ComponentProps<"spa
  *
  * Completely unstyled — add `className` / `style` for visual treatment.
  */
-export namespace ThumbnailItemNumber {
-  export type Props = ThumbnailItemNumberProps;
-}
-
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
   function ThumbnailItemNumber(
     { className, style, children, render, ...elementProps },
@@ -614,3 +610,7 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
     );
   },
 );
+
+export namespace ThumbnailItemNumber {
+  export type Props = ThumbnailItemNumberProps;
+}

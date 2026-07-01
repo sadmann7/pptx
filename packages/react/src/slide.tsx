@@ -1,10 +1,10 @@
+import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
+import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import * as React from "react";
 import { usePresentation, useSlide, useZoom } from "./context";
-import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
-import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
-import type { PresentationStatus } from "./store";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
+import type { PresentationStatus } from "./store";
 
 export interface SlideState {
   /** Current parse/load status. Reflected as `data-status` on the element. */
@@ -32,11 +32,6 @@ export interface SlideProps extends React.ComponentProps<"div"> {
  * The element carries a `data-status` attribute matching the store status,
  * enabling CSS-driven state styles.
  */
-export namespace Slide {
-  export type State = SlideState;
-  export type Props = SlideProps;
-}
-
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, className, style, render, ...elementProps },
   forwardedRef,
@@ -140,4 +135,9 @@ function SlideRenderer({ presentation, slide, zoom, children }: SlideRendererPro
       )}
     </div>
   );
+}
+
+export namespace Slide {
+  export type State = SlideState;
+  export type Props = SlideProps;
 }
