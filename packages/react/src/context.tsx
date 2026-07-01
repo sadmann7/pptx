@@ -8,7 +8,7 @@ export const PresentationContext = React.createContext<PresentationStore | null>
 export function usePresentationStore(consumerName: string): PresentationStore {
   const store = React.useContext(PresentationContext);
   if (!store) {
-    throw new Error(`\`${consumerName}\` must be used inside \`<Presentation.Root>\``);
+    throw new Error(`\`${consumerName}\` must be used inside \`Presentation\``);
   }
   return store;
 }

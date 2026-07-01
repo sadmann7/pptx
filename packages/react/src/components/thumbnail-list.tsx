@@ -41,10 +41,10 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
 // Component name constants
 // ---------------------------------------------------------------------------
 
-const THUMBNAIL_LIST_NAME = "ThumbnailList";
-const THUMBNAIL_ITEM_NAME = "ThumbnailItem";
-const THUMBNAIL_ITEM_PREVIEW_NAME = "ThumbnailItemPreview";
-const THUMBNAIL_ITEM_NUMBER_NAME = "ThumbnailItemNumber";
+const THUMBNAIL_LIST_NAME = "PresentationThumbnailList";
+const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
+const THUMBNAIL_ITEM_PREVIEW_NAME = "PresentationThumbnailItemPreview";
+const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
 
 // ---------------------------------------------------------------------------
 // Internal contexts

@@ -17,7 +17,7 @@ export default function PgPage() {
   const [file, setFile] = React.useState<File | null>(null);
 
   return (
-    <div className="flex flex-col bg-background text-foreground">
+    <div className="flex flex-col">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
         <input
