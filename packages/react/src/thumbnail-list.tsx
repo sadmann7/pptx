@@ -460,11 +460,29 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
     const mediaUrlCache = React.useRef(new Map<string, string>()).current;
     const [containerWidth, setContainerWidth] = React.useState(0);
+    // Ref so the slide render effect can read the current scale without
+    // being listed as a dependency (avoids tearing down the slide on resize).
+    const scaleRef = React.useRef(0);
 
+    const slide = presentation?.slides.find((s) => s.id === itemContext.slideId) ?? null;
+    const pWidth = presentation?.width ?? 1;
+    const pHeight = presentation?.height ?? 1;
+    const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
+    scaleRef.current = scale;
+
+    // Measure the container width synchronously before the first paint so that
+    // the slide element is created with the correct transform right away.
+    React.useLayoutEffect(() => {
+      const itemPreviewElement = itemPreviewRef.current;
+      if (itemPreviewElement && itemPreviewElement.offsetWidth > 0) {
+        setContainerWidth(itemPreviewElement.offsetWidth);
+      }
+    }, []);
+
+    // Keep width in sync on subsequent resizes.
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
       if (!itemPreviewElement) return;
-
       const resizeObserver = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (entry) setContainerWidth(entry.contentRect.width);
@@ -472,12 +490,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       resizeObserver.observe(itemPreviewElement);
       return () => resizeObserver.disconnect();
     }, []);
-
-    const slide = presentation?.slides.find((s) => s.id === itemContext.slideId) ?? null;
-    const pWidth = presentation?.width ?? 1;
-    const pHeight = presentation?.height ?? 1;
-    const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
-    const thumbHeight = pHeight * scale;
 
     // Render (or re-render) the slide DOM. Does NOT depend on `scale`: a
     // resize only changes the CSS transform, which is handled by the effect
@@ -493,10 +505,15 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       itemPreviewElement.innerHTML = "";
 
       if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
-      const handle = renderSlide(presentation, slide, { mediaUrlCache });
-      handle.element.style.transformOrigin = "top left";
-      itemPreviewElement.appendChild(handle.element);
-      slideHandleRef.current = handle;
+      const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+      slideHandle.element.style.transformOrigin = "top left";
+      // Apply the current scale immediately so the slide is never visible at
+      // full size before the separate scale effect fires.
+      if (scaleRef.current > 0) {
+        slideHandle.element.style.transform = `scale(${scaleRef.current})`;
+      }
+      itemPreviewElement.appendChild(slideHandle.element);
+      slideHandleRef.current = slideHandle;
 
       return () => {
         if (slideHandleRef.current) {
@@ -526,7 +543,10 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           inert: true,
           style: {
             width: "100%",
-            height: thumbHeight || undefined,
+            // aspect-ratio gives the container the correct height from the
+            // very first render, eliminating the height-collapse layout shift
+            // that occurred while waiting for the ResizeObserver measurement.
+            aspectRatio: `${pWidth} / ${pHeight}`,
             overflow: "hidden",
             pointerEvents: "none",
           },
