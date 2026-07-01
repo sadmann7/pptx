@@ -21,7 +21,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
 
 /**
  * Scrollable container that optionally auto-fits the slide to its size.
- * Spread any native `<div>` props — they are composed (not overwritten) with internals.
+ * Spread any native `<div>` props: they are composed (not overwritten) with internals.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   { children, className, style, autoFit = false, autoFitPadding = 24, render, ...viewportProps },

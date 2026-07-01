@@ -19,10 +19,10 @@ type AnyProps = Record<string, unknown>;
 /**
  * Merges two prop objects with smart composition:
  *
- * - `className` — joined with a space (both preserved)
- * - `style` — shallowly merged, `b` wins per-key
- * - `on*` event handlers — chained (`a` runs first, then `b`)
- * - Everything else — `b` overwrites `a`
+ * - `className`: joined with a space (both preserved)
+ * - `style`: shallowly merged, `b` wins per-key
+ * - `on*` event handlers: chained (`a` runs first, then `b`)
+ * - Everything else: `b` overwrites `a`
  *
  * @see https://github.com/mui/base-ui/blob/master/packages/react/src/merge-props/mergeProps.ts
  */
@@ -83,7 +83,7 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
 
 /**
  * The subset of component props that drive element customisation.
- * Pass the full component props object — only `render`, `className`, and `style`
+ * Pass the full component props object: only `render`, `className`, and `style`
  * are consumed here; everything else is ignored.
  *
  * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
@@ -109,7 +109,7 @@ export interface RenderElementParams<S, E extends Element> {
   ref?: React.Ref<E> | (React.Ref<E> | null | undefined)[];
   /**
    * Internal default props for the element.
-   * May be a single object or an ordered array — merged left-to-right.
+   * May be a single object or an ordered array: merged left-to-right.
    * User-supplied `className` and `style` from `componentProps` are always
    * composed on top (user wins per-key for `style`; appended for `className`).
    */

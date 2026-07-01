@@ -26,7 +26,7 @@ export interface SlideProps extends React.ComponentProps<"div"> {
 
 /**
  * Renders the current slide inside a centered wrapper.
- * The wrapper always mounts so that sibling layout is stable — slide content
+ * The wrapper always mounts so that sibling layout is stable: slide content
  * is absent until the presentation is `"ready"`.
  *
  * Use `<Presentation.Loading>` / `<Presentation.Error>` to display status UI.

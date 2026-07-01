@@ -13,7 +13,7 @@ export const PresentationContext = React.createContext<PresentationStore | null>
  * ```tsx
  * const store = useCreatePresentationStore();
  *
- * // Load manually — e.g. after a fetch/upload
+ * // Load manually: e.g. after a fetch/upload
  * await store.load(buffer, { defaultSlideIndex: 2 });
  *
  * // Pass the store to Root; `file` prop is no longer needed
@@ -75,13 +75,13 @@ export interface UseSlideResult {
   slide: SlideData | null;
   /**
    * Stable identity of the active slide (`SlideData.id`).
-   * Use this — not `index` — as the source of truth for navigation,
+   * Use this: not `index`: as the source of truth for navigation,
    * keys, and any future editing operations.
    */
   slideId: string | null;
   /**
    * Current display position (0-based). Derived from `slideId` via
-   * `findIndex` — safe to use for display but do NOT store it as identity.
+   * `findIndex`: safe to use for display but do NOT store it as identity.
    */
   index: number;
   total: number;
@@ -99,17 +99,17 @@ export function useSlide(): UseSlideResult {
   const store = usePresentationStore("useSlide");
 
   // Subscribe to primitives / stable references only.
-  // useSyncExternalStore compares via Object.is — returning a new object
+  // useSyncExternalStore compares via Object.is: returning a new object
   // literal on every call would cause an infinite re-render loop.
 
-  // activeSlideId: string | null — primitive, safe to compare directly.
+  // activeSlideId: string | null: primitive, safe to compare directly.
   const slideId = React.useSyncExternalStore(
     store.subscribe,
     () => store.getState().activeSlideId,
     () => null,
   );
 
-  // presentation: object reference — only changes when a new file is loaded,
+  // presentation: object reference: only changes when a new file is loaded,
   // not on slide navigation (the store spreads state but keeps the same ref).
   const presentation = React.useSyncExternalStore(
     store.subscribe,

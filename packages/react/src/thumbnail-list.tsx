@@ -97,14 +97,14 @@ function useThumbnailItemContext(consumerName: string) {
 export interface ThumbnailListState {
   total: number;
   activeSlideId: string | null;
-  /** Derived display index — use `activeSlideId` as identity. */
+  /** Derived display index: use `activeSlideId` as identity. */
   activeIndex: number;
 }
 
 export interface ThumbnailListRenderState {
   slides: SlideData[];
   activeSlideId: string | null;
-  /** Derived display index — use `activeSlideId` as identity. */
+  /** Derived display index: use `activeSlideId` as identity. */
   activeIndex: number;
   goTo: (slideId: string) => void;
   goToIndex: (index: number) => void;
@@ -133,7 +133,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  * only the active item lives in the tab order at any time.
  *
  * @example
- * // Default — one ThumbnailItem per slide
+ * // Default: one ThumbnailItem per slide
  * <Presentation.ThumbnailList />
  *
  * @example
@@ -241,7 +241,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
               "aria-label": thumbnailListProps["aria-label"] ?? "Slide thumbnails",
               "aria-orientation": "vertical",
               // When a button owns tabIndex=0 the container steps out of the tab
-              // order — the list has exactly ONE external tab stop (the active
+              // order: the list has exactly ONE external tab stop (the active
               // button). Shift+Tab from the button then skips the container and
               // exits the list in a single key press.
               // When no button has a tab stop yet (e.g. before auto-focus fires),
@@ -310,7 +310,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
 /**
  * Clickable `option` button for a single slide in a `ThumbnailList`.
  *
- * - Identity is derived from `slide.id` — stable across list mutations.
+ * - Identity is derived from `slide.id`: stable across list mutations.
  * - Auto-wires `onClick → goTo`, `data-active`, `aria-selected`, and roving
  *   `tabIndex` (0 when active, -1 otherwise).
  * - Provides context so nested `ThumbnailItemPreview` and `ThumbnailItemNumber`
@@ -357,7 +357,7 @@ export const ThumbnailItem = React.memo(
     );
 
     // This item owns the single tab stop inside the list when it matches the
-    // roving context's currentTabStopId — all other items get tabIndex=-1.
+    // roving context's currentTabStopId: all other items get tabIndex=-1.
     const isCurrentTabStop = rovingContext.currentTabStopId === slideId;
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
@@ -458,7 +458,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    *
-   * The rendered element is the clipping container — the parsed slide DOM is
+   * The rendered element is the clipping container: the parsed slide DOM is
    * appended to it imperatively. Preserve `overflow: hidden` and dimensions.
    */
   render?: RenderProp<ThumbnailItemPreviewState>;
@@ -467,7 +467,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
 /**
  * Renders the slide miniature for the enclosing `ThumbnailItem`.
  *
- * Must be a descendant of `<Presentation.ThumbnailItem>` — reads slide ID
+ * Must be a descendant of `<Presentation.ThumbnailItem>`: reads slide ID
  * from context. Width is measured automatically via `ResizeObserver` so no
  * sizing props are required.
  *
@@ -506,7 +506,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
     const thumbHeight = pHeight * scale;
 
-    // Render (or re-render) the slide DOM. Does NOT depend on `scale` — a
+    // Render (or re-render) the slide DOM. Does NOT depend on `scale`: a
     // resize only changes the CSS transform, which is handled by the effect
     // below without tearing down and re-creating the slide element.
     React.useEffect(() => {
@@ -533,7 +533,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       };
     }, [presentation, slide, mediaUrlCache]);
 
-    // Apply scale imperatively — avoids a full slide teardown on every resize.
+    // Apply scale imperatively: avoids a full slide teardown on every resize.
     React.useEffect(() => {
       if (!handleRef.current || scale === 0) return;
       handleRef.current.element.style.transform = `scale(${scale})`;
@@ -585,11 +585,11 @@ export interface ThumbnailItemNumberProps extends Omit<React.ComponentProps<"spa
 /**
  * Renders the 1-based slide number for the enclosing `ThumbnailItem`.
  *
- * Must be a descendant of `<Presentation.ThumbnailItem>` — reads the display
+ * Must be a descendant of `<Presentation.ThumbnailItem>`: reads the display
  * number from context. Marked `aria-hidden` since the enclosing button's
  * `aria-label` already announces the slide number.
  *
- * Completely unstyled — add `className` / `style` for visual treatment.
+ * Completely unstyled: add `className` / `style` for visual treatment.
  */
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
   function ThumbnailItemNumber(

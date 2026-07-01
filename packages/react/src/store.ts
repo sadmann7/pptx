@@ -1,12 +1,38 @@
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 import { buildPresentation, parseZip } from "@diceui/pptx-parser";
 
+const INITIAL_STATE: PresentationState = {
+  status: "idle",
+  presentation: null,
+  activeSlideId: null,
+  zoom: 1,
+  progress: 0,
+  error: null,
+};
+
+const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
+
+/** Accepted input formats for `store.load()` and the `file` prop. */
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
+
+/**
+ * Lifecycle status of the presentation viewer.
+ *
+ * - `"idle"`: no file loaded yet (initial state, or after `reset()`).
+ * - `"loading"`: parsing is in progress.
+ * - `"ready"`: a presentation is loaded and slides are available.
+ * - `"error"`: parsing failed; inspect `PresentationState.error`.
+ */
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 
+/** Full snapshot of the presentation viewer state. */
 export interface PresentationState {
+  /** Current lifecycle status. */
   status: PresentationStatus;
+
+  /** Parsed presentation data, or `null` when none is loaded. */
   presentation: PresentationData | null;
+
   /**
    * Stable identity of the active slide (`SlideData.id`,
    * e.g. `"ppt/slides/slide3.xml"`). `null` when no presentation is loaded.
@@ -16,20 +42,60 @@ export interface PresentationState {
    * to the wrong slide.
    */
   activeSlideId: string | null;
+
+  /**
+   * Current zoom level, where `1` equals 100%.
+   *
+   * @default 1
+   */
   zoom: number;
+
+  /**
+   * Parse progress from `0` to `100`.
+   * Only meaningful while `status === "loading"`.
+   */
   progress: number;
+
+  /** Error produced by the last failed `load()` call, or `null`. */
   error: Error | null;
 }
 
+/** Store returned by `useCreatePresentationStore` for controlled usage. */
 export interface PresentationStore {
+  /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
   getState: () => PresentationState;
+  /**
+   * Subscribe to state changes.
+   *
+   * ```ts
+   * const unsubscribe = store.subscribe(() => {
+   *   console.log(store.getState().status);
+   * });
+   * // Later:
+   * unsubscribe();
+   * ```
+   *
+   * @returns A function that removes the subscription when called.
+   */
   subscribe: (listener: () => void) => () => void;
 
   /**
    * Parse and display a presentation file.
-   * Returns the parsed `PresentationData` on success.
-   * Rejects with an `AbortError` if a newer `load()` call superseded this one
-   * before it completed — callers can safely ignore that error.
+   *
+   * @returns The parsed `PresentationData` on success.
+   * Rejects with a `DOMException` named `"AbortError"` if a newer `load()`
+   * call superseded this one before it completed: callers can safely ignore
+   * that error.
+   *
+   * ```ts
+   * try {
+   *   const presentation = await store.load(file);
+   *   console.log("slides:", presentation.slides.length);
+   * } catch (err) {
+   *   if (err instanceof DOMException && err.name === "AbortError") return;
+   *   console.error(err);
+   * }
+   * ```
    */
   load: (
     input: PreviewInput,
@@ -37,7 +103,7 @@ export interface PresentationStore {
       /**
        * 0-based index of the slide to navigate to after a successful parse.
        * Also accepts a resolver called with the parsed slides, useful when the
-       * target index depends on the content (e.g. last slide, or a specific id).
+       * target index depends on content.
        *
        * @default 0
        *
@@ -45,42 +111,94 @@ export interface PresentationStore {
        * // Static
        * store.load(file, { defaultSlideIndex: 2 });
        *
-       * // Dynamic — last slide
+       * // Dynamic: last slide
        * store.load(file, { defaultSlideIndex: (slides) => slides.length - 1 });
        *
-       * // Dynamic — by id
-       * store.load(file, { defaultSlideIndex: (slides) => slides.findIndex(s => s.id === savedId) });
+       * // Dynamic: by id
+       * store.load(file, {
+       *   defaultSlideIndex: (slides) => slides.findIndex(s => s.id === savedId),
+       * });
        * ```
        */
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
     },
   ) => Promise<PresentationData>;
+
+  /**
+   * Reset the viewer to its initial idle state and cancel any in-flight load.
+   *
+   * ```ts
+   * store.reset();
+   * ```
+   */
   reset: () => void;
 
+  /**
+   * Navigate to a slide by its stable id (`SlideData.id`).
+   * No-op if the id is not found in the current presentation.
+   */
   goTo: (slideId: string) => void;
+
+  /**
+   * Navigate to a slide by its 0-based index.
+   * Clamps to the valid range; no-op when no presentation is loaded.
+   */
   goToIndex: (index: number) => void;
+
+  /** Navigate to the next slide. No-op when already on the last slide. */
   next: () => void;
+
+  /** Navigate to the previous slide. No-op when already on the first slide. */
   prev: () => void;
 
+  /**
+   * Set the zoom level directly.
+   * Clamped to `[0.1, 4]`.
+   *
+   * @default 1
+   */
   setZoom: (zoom: number) => void;
+
+  /**
+   * Increase zoom by `step`.
+   *
+   * @default step 0.25
+   */
   zoomIn: (step?: number) => void;
+
+  /**
+   * Decrease zoom by `step`.
+   *
+   * @default step 0.25
+   */
   zoomOut: (step?: number) => void;
+
+  /**
+   * Fit the presentation to a container by computing the largest zoom level
+   * that keeps all slides fully visible.
+   *
+   * ```ts
+   * store.fitTo(containerWidth, containerHeight, 32);
+   * ```
+   */
   fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
 
+  /**
+   * Returns the 0-based index of the active slide, or `-1` when none is active.
+   */
   getActiveSlideIndex: () => number;
+
+  /**
+   * Returns the active `SlideData`, or `null` when none is active.
+   */
   getActiveSlide: () => PresentationData["slides"][number] | null;
+
+  /** Returns `true` when there is a next slide to navigate to. */
   canGoNext: () => boolean;
+
+  /** Returns `true` when there is a previous slide to navigate to. */
   canGoPrev: () => boolean;
 }
-
-const INITIAL_STATE: PresentationState = {
-  status: "idle",
-  presentation: null,
-  activeSlideId: null,
-  zoom: 1,
-  progress: 0,
-  error: null,
-};
 
 async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
   if (input instanceof ArrayBuffer) return input;
@@ -160,18 +278,15 @@ export function createPresentationStore(): PresentationStore {
 
     try {
       const buffer = await normalizeInput(input);
-      if (gen !== loadGeneration)
-        throw new DOMException("Superseded by a newer load", "AbortError");
+      if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 30 });
 
       const files = await parseZip(buffer);
-      if (gen !== loadGeneration)
-        throw new DOMException("Superseded by a newer load", "AbortError");
+      if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 70 });
 
       const presentation = buildPresentation(files);
-      if (gen !== loadGeneration)
-        throw new DOMException("Superseded by a newer load", "AbortError");
+      if (gen !== loadGeneration) throw ABORT_ERROR;
 
       const defaultSlideIndex = options?.defaultSlideIndex;
       const requestedIndex =
@@ -192,8 +307,7 @@ export function createPresentationStore(): PresentationStore {
       return presentation;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      if (gen !== loadGeneration)
-        throw new DOMException("Superseded by a newer load", "AbortError");
+      if (gen !== loadGeneration) throw ABORT_ERROR;
       const error = err instanceof Error ? err : new Error(String(err));
       setState({ status: "error", error });
       throw error;

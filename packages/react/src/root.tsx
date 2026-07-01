@@ -76,7 +76,7 @@ interface UncontrolledRootProps extends RootImplProps {
    * // Static
    * <Presentation.Root file={file} defaultSlideIndex={2} />
    *
-   * // Dynamic — last slide
+   * // Dynamic: last slide
    * <Presentation.Root file={file} defaultSlideIndex={(slides) => slides.length - 1} />
    * ```
    */
