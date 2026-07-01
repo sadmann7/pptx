@@ -1,4 +1,5 @@
 import type * as echarts from "echarts";
+import type { graphic } from "echarts/core";
 
 export const EXPLICIT_FONT_SIZE = Symbol("pptxExplicitFontSize");
 
@@ -9,7 +10,7 @@ export interface SeriesData {
   values: number[];
   xValues?: number[];
   bubbleSizes?: number[];
-  colorHex?: string | object;
+  colorHex?: string | graphic.LinearGradient;
   dataPointColors?: (string | undefined)[];
   dataPointStyles?: (DataPointStyle | undefined)[];
   formatCode?: string;

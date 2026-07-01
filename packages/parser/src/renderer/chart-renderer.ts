@@ -2,7 +2,40 @@
  * Chart renderer — converts OOXML chart XML into ECharts visualizations.
  */
 
-import * as echarts from "echarts";
+import type * as echarts from "echarts";
+import { init, use, graphic } from "echarts/core";
+import {
+  BarChart,
+  LineChart,
+  PieChart,
+  RadarChart,
+  ScatterChart,
+  CandlestickChart,
+  CustomChart,
+} from "echarts/charts";
+import {
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent,
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+
+use([
+  BarChart,
+  LineChart,
+  PieChart,
+  RadarChart,
+  ScatterChart,
+  CandlestickChart,
+  CustomChart,
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent,
+  CanvasRenderer,
+]);
+
 import { ChartNodeData } from "../model/nodes/chart-node";
 import { RenderContext } from "./render-context";
 import { SafeXmlNode } from "../parser/xml-parser";
@@ -55,6 +88,7 @@ import { extractBackgroundColors, extractChartFrameStyle } from "./chart/frame";
 import { buildCustomLegendOverlay } from "./chart/legend-overlay";
 import {
   CHART_TYPE_ELEMENTS,
+  ChartLineType,
   DEFAULT_RADAR_GRIDLINE_STYLE,
   markExplicitFontSize,
   type ChartFrameStyle,
@@ -69,6 +103,46 @@ import {
 } from "./chart/types";
 
 export type { ChartFrameStyle } from "./chart/types";
+
+// ---------------------------------------------------------------------------
+// Local type helpers
+// ---------------------------------------------------------------------------
+
+/** Subset of ECharts label formatter callback params used in this renderer. */
+interface LabelFormatterParams {
+  value: number | number[] | unknown;
+  name: string;
+  seriesName?: string;
+  percent?: number;
+  dataIndex?: number;
+}
+
+/** ECharts pie/doughnut series data item. */
+interface PieDataItem {
+  name: string;
+  value: number;
+  itemStyle?: {
+    color?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    borderType?: ChartLineType;
+  };
+  selected?: boolean;
+  selectedOffset?: number;
+  label?: echarts.PieSeriesOption["label"];
+}
+
+/** ECharts bar series data item (value or annotated object). */
+type BarDataItem =
+  | number
+  | null
+  | { value: number | null; itemStyle?: Record<string, unknown>; label?: Record<string, unknown> };
+
+/** ECharts grid component option extended with properties not yet in the public typings. */
+interface GridOptionExtended extends echarts.GridComponentOption {
+  backgroundColor?: string;
+  show?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Chart Title
@@ -395,8 +469,8 @@ function adjustFilledRadarStopColor(
   return rgbToHex(adjusted.r, adjusted.g, adjusted.b);
 }
 
-function buildFilledRadarAreaColor(hex: string): echarts.graphic.LinearGradient {
-  return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+function buildFilledRadarAreaColor(hex: string): graphic.LinearGradient {
+  return new graphic.LinearGradient(0, 0, 0, 1, [
     {
       offset: 0,
       color: adjustFilledRadarStopColor(hex, { saturationScale: 1.95, lightnessOffset: 0.217 }),
@@ -536,26 +610,26 @@ function buildPieLabelOption(
   cfg: DataLabelConfig | undefined,
   formatCode: string | undefined,
   seriesName: string,
-): Record<string, unknown> | undefined {
+): echarts.PieSeriesOption["label"] | undefined {
   if (!cfg || !dataLabelShowsContent(cfg)) return undefined;
   const labelCfg = cfg;
+
   const label = {
     show: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    formatter: (params: any) => {
+    formatter: (params: LabelFormatterParams) => {
       const parts: string[] = [];
       if (labelCfg.showSerName && seriesName) parts.push(seriesName);
       if (labelCfg.showCatName) parts.push(params.name);
-      if (labelCfg.showVal) parts.push(formatValue(params.value, formatCode));
+      if (labelCfg.showVal) parts.push(formatValue(params.value as number, formatCode));
       if (labelCfg.showPercent) parts.push(`${params.percent}%`);
       return parts.join(" ");
     },
     fontSize: labelCfg.fontSize ?? 10,
-    ...(labelCfg.bold === true ? { fontWeight: "bold" as const } : {}),
+    ...(labelCfg.bold === true ? { fontWeight: "bold" } : {}),
     ...(labelCfg.color ? { color: labelCfg.color } : {}),
     position: mapPieLabelPosition(labelCfg.position),
     ...dataLabelBoxProps(labelCfg),
-  };
+  } satisfies echarts.PieSeriesOption["label"];
   return labelCfg.fontSize !== undefined ? markExplicitFontSize(label) : label;
 }
 
@@ -679,18 +753,19 @@ function buildBarChartOption(
       const label = {
         show: true,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        position: mapBarLabelPosition(cfg.position, isStacked) as any,
+        position: mapBarLabelPosition(cfg.position, isStacked) as NonNullable<
+          echarts.BarSeriesOption["label"]
+        >["position"],
         fontSize: cfg.fontSize ?? 9,
         ...(cfg.color ? { color: cfg.color } : {}),
         ...(cfg.bold === true ? { fontWeight: "bold" as const } : {}),
         ...dataLabelBoxProps(cfg),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
+        formatter: (params: LabelFormatterParams) => {
           const rawVal = params?.value;
           const val =
             rawVal && typeof rawVal === "object" && "value" in rawVal ? rawVal.value : rawVal;
           if (val === 0 || val === null) return "";
-          return formatValue(val, isPercentStacked ? "0%" : fc);
+          return formatValue(val as number, isPercentStacked ? "0%" : fc);
         },
       };
       return cfg.fontSize !== undefined ? markExplicitFontSize(label) : label;
@@ -749,8 +824,7 @@ function buildBarChartOption(
         value: displayValue,
         ...(itemStyle ? { itemStyle } : {}),
         ...(pointLabel ? { label: pointLabel } : {}),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any;
+      } as BarDataItem;
     });
 
     return {
@@ -926,13 +1000,14 @@ function buildLineChartOption(
       const lineLabel = {
         show: true,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        position: mapLineLabelPosition(labelCfg.position) as any,
+        position: mapLineLabelPosition(labelCfg.position) as NonNullable<
+          echarts.LineSeriesOption["label"]
+        >["position"],
         fontSize: labelCfg.fontSize ?? 9,
         ...(labelCfg.color ? { color: labelCfg.color } : {}),
         ...(labelCfg.bold === true ? { fontWeight: "bold" as const } : {}),
         ...dataLabelBoxProps(labelCfg),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
+        formatter: (params: LabelFormatterParams) => {
           const rawVal = params?.value;
           const val =
             rawVal && typeof rawVal === "object" && "value" in rawVal ? rawVal.value : rawVal;
@@ -964,8 +1039,10 @@ function buildLineChartOption(
         ? ({ show: false } as echarts.LineSeriesOption["label"])
         : buildLineLabel(mergeDataLabelConfig(perSeriesLabels, ov));
       if (!pointLabel) return displayValue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return { value: displayValue, label: pointLabel } as any;
+      return {
+        value: displayValue,
+        label: pointLabel,
+      } as echarts.LineSeriesOption["data"] extends (infer T)[] ? T : never;
     });
     const forceSymbolForLabel = Boolean(label?.show && echartsSymbol === "none");
     const symbol = forceSymbolForLabel
@@ -1180,8 +1257,7 @@ function buildPieChartOption(
       const pointLabel = mergeDataLabelConfig(meta.sharedLabels, override);
       if (pointLabel?.manualLayout) manualLayouts.set(i, pointLabel.manualLayout);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item: any = {
+      const item: PieDataItem = {
         name: cat || `Item ${i + 1}`,
         value: meta.series.values[i] ?? 0,
       };
@@ -1860,8 +1936,10 @@ function buildStockChartOption(
             seriesArr[1].values[i] ?? 0,
             seriesArr[2].values[i] ?? 0,
           ]),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          renderItem: (params: any, api: any) => {
+          renderItem: (
+            params: echarts.CustomSeriesRenderItemParams,
+            api: echarts.CustomSeriesRenderItemAPI,
+          ) => {
             const xValue = api.value(0);
             const high = api.value(1);
             const low = api.value(2);
@@ -1869,7 +1947,7 @@ function buildStockChartOption(
             const highPoint = api.coord([xValue, high]);
             const lowPoint = api.coord([xValue, low]);
             const closePoint = api.coord([xValue, close]);
-            const bandWidth = Math.max(8, api.size([1, 0])[0] || 12);
+            const bandWidth = Math.max(8, (api.size?.([1, 0]) as number[] | undefined)?.[0] || 12);
             // Office HLC close marks stay as short ticks; scaling them with the full
             // category band makes them look like stray mid-plot marker lines.
             const tickWidth = Math.min(4, Math.max(2, Math.round(bandWidth * 0.04)));
@@ -2380,10 +2458,8 @@ export function parseChartXml(
     if (plotAreaBg) {
       if (option.grid) {
         // Apply plot area background via grid (for cartesian charts)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (option.grid as any).backgroundColor = plotAreaBg;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (option.grid as any).show = true;
+        (option.grid as GridOptionExtended).backgroundColor = plotAreaBg;
+        (option.grid as GridOptionExtended).show = true;
       } else {
         const graphic = buildPlotAreaBackgroundGraphic(chart, plotAreaBg, chartSize);
         if (graphic) prependGraphicOption(option, graphic);
@@ -2544,7 +2620,7 @@ function initChart(
   chartInstances?: Set<echarts.ECharts>,
 ): void {
   try {
-    const chart = echarts.init(container);
+    const chart = init(container);
     chart.setOption(option);
     chartInstances?.add(chart);
 
