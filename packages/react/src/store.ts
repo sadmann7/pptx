@@ -1,5 +1,5 @@
-import type { PresentationData, SlideData, FontInjectionHandle } from "@diceui/pptx-parser";
-import { buildPresentation, parseZip, injectEmbeddedFonts } from "@diceui/pptx-parser";
+import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
+import { buildPresentation, injectEmbeddedFonts, parseZip } from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
