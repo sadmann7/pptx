@@ -31,7 +31,7 @@ export default function PgPage() {
     <div className="flex flex-col">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
-          Open PPTX
+          Open presentation
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>

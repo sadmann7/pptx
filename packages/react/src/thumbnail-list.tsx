@@ -229,7 +229,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
               // When no button has a tab stop yet (e.g. before auto-focus fires),
               // the container acts as the entry point and redirects focus.
               tabIndex: effectiveTabStopId ? -1 : 0,
-              style: { overflowY: "auto", outline: "none" },
               onMouseDown: (event) => {
                 thumbnailListProps.onMouseDown?.(event);
                 if (event.target === event.currentTarget) isClickFocusRef.current = true;
