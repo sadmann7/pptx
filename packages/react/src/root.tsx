@@ -56,6 +56,7 @@ interface ControlledRootProps extends RootImplProps {
 
 interface UncontrolledRootProps extends RootImplProps {
   store?: never;
+
   /**
    * The file to parse and display. Accepts `File`, `Blob`, `ArrayBuffer`,
    * or `Uint8Array`. Set to `null` or `undefined` to reset the viewer.
@@ -65,6 +66,7 @@ interface UncontrolledRootProps extends RootImplProps {
    * ```
    */
   file?: PreviewInput | null | undefined;
+
   /**
    * 0-based index of the slide to navigate to after a successful parse.
    * Also accepts a resolver called with the parsed slides, useful when the
@@ -81,6 +83,7 @@ interface UncontrolledRootProps extends RootImplProps {
    * ```
    */
   defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+
   /**
    * Event handler called once the presentation has been parsed successfully.
    *
@@ -91,6 +94,7 @@ interface UncontrolledRootProps extends RootImplProps {
    * ```
    */
   onLoad?: (store: PresentationStore) => void;
+
   /**
    * Event handler called when parsing fails.
    *

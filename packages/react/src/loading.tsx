@@ -13,8 +13,15 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
   /**
    * Rendered while the presentation is loading.
    * Pass a function to receive the current `progress` (0–100).
+   *
+   * ```tsx
+   * <Presentation.Loading>
+   *   {(progress) => <span>Loading {progress}%</span>}
+   * </Presentation.Loading>
+   * ```
    */
   children?: React.ReactNode | ((progress: number) => React.ReactNode);
+
   /**
    * Replace the wrapper element.
    * - ReactElement: cloned with composed props

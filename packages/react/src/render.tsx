@@ -1,9 +1,5 @@
 import * as React from "react";
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 /**
  * Function form of the `render` prop.
  *
@@ -11,10 +7,11 @@ import * as React from "react";
  * @param state - Component state; shape varies by component.
  * @returns A React element that receives the composed props.
  *
- * @example
- * render={(props, { isActive }) => (
+ * ```tsx
+ * <Presentation.ThumbnailItem render={(props, { isActive }) => (
  *   <motion.div {...props} animate={{ opacity: isActive ? 1 : 0.5 }} />
- * )}
+ * )} />
+ * ```
  */
 export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement;
 
@@ -28,7 +25,7 @@ export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement
  *
  * All primitives accept `render` alongside standard HTML element props.
  *
- * @example
+ * ```tsx
  * // Element shorthand
  * <Presentation.Slide render={<article />} />
  *
@@ -36,6 +33,7 @@ export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement
  * <Presentation.Slide
  *   render={(props, { status }) => <article {...props} data-status={status} />}
  * />
+ * ```
  */
 export type RenderProp<S = Record<string, never>> =
   | React.ReactElement
@@ -87,10 +85,6 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// mergeRefs
-// ---------------------------------------------------------------------------
-
 /**
  * Combines multiple refs into a single callback ref.
  *
@@ -108,16 +102,12 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
   };
 }
 
-// ---------------------------------------------------------------------------
-// renderElement
-// ---------------------------------------------------------------------------
-
 /**
  * The subset of component props that drive element customisation.
  * Pass the full component props object: only `render`, `className`, and `style`
  * are consumed here; everything else is ignored.
  *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
  */
 export interface RenderElementComponentProps<S> {
   render?: RenderProp<S>;
@@ -128,9 +118,9 @@ export interface RenderElementComponentProps<S> {
 /**
  * Internal parameters that control how the element is built.
  *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
  */
-export interface RenderElementParams<S, E extends Element> {
+export interface RenderElementParams<S, E extends Element, P extends AnyProps = AnyProps> {
   /** Component state forwarded as the second argument to a function `render` prop. */
   state: S;
   /**
@@ -144,7 +134,7 @@ export interface RenderElementParams<S, E extends Element> {
    * User-supplied `className` and `style` from `componentProps` are always
    * composed on top (user wins per-key for `style`; appended for `className`).
    */
-  props?: AnyProps | (AnyProps | undefined)[];
+  props?: P | (P | undefined)[];
 }
 
 /**
@@ -159,12 +149,16 @@ export interface RenderElementParams<S, E extends Element> {
  * matching keys in `params.props` so that internal defaults never override
  * user-supplied values.
  *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.ts
+ * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
  */
-export function renderElement<S, E extends Element = Element>(
-  defaultTag: keyof React.JSX.IntrinsicElements,
+export function renderElement<
+  Tag extends keyof React.JSX.IntrinsicElements,
+  S,
+  E extends Element = Element,
+>(
+  defaultTag: Tag,
   componentProps: RenderElementComponentProps<S>,
-  params: RenderElementParams<S, E>,
+  params: RenderElementParams<S, E, React.JSX.IntrinsicElements[Tag] & AnyProps>,
 ): React.ReactElement {
   const { render, className: userClassName, style: userStyle } = componentProps;
   const { state, ref, props } = params;
@@ -206,5 +200,6 @@ export function renderElement<S, E extends Element = Element>(
   }
 
   const Tag = defaultTag as React.ElementType;
+
   return <Tag {...finalProps} />;
 }

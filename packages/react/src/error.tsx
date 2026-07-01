@@ -13,8 +13,15 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
   /**
    * Rendered when the presentation is in the `"error"` state.
    * Pass a function to receive the `Error` instance.
+   *
+   * ```tsx
+   * <Presentation.Error>
+   *   {(err) => <span>{err.message}</span>}
+   * </Presentation.Error>
+   * ```
    */
   children?: React.ReactNode | ((error: Error) => React.ReactNode);
+
   /**
    * Replace the wrapper element.
    * - ReactElement: cloned with composed props
