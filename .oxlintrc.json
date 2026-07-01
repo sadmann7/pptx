@@ -4,17 +4,6 @@
   "categories": {
     "correctness": "error"
   },
-  "rules": {
-    "sort-imports": [
-      "warn",
-      {
-        "allowSeparatedGroups": true,
-        "ignoreCase": true,
-        "ignoreDeclarationSort": true,
-        "ignoreMemberSort": false
-      }
-    ]
-  },
   "env": {
     "builtin": true
   }
