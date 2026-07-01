@@ -7,7 +7,7 @@ export type * from "./loading";
 export type * from "./error";
 export type * from "./thumbnail-list";
 
-export { usePresentation, useSlide, useZoom } from "./context";
+export { useCreatePresentationStore, usePresentation, useSlide, useZoom } from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
 
 export type { RenderProp, ComponentRenderFn } from "./render";

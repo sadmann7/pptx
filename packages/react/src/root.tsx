@@ -5,14 +5,32 @@ import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStore, PreviewInput } from "./store";
 import { createPresentationStore } from "./store";
+
 export interface RootState {
   /** Current file being presented, or `null` if none is loaded. */
   file: PreviewInput | null | undefined;
 }
 
 export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
-  file: PreviewInput | null | undefined;
+  /**
+   * **Controlled mode** — a store created via `useCreatePresentationStore`.
+   * When provided, `file`, `initialSlideIndex`, `onLoad`, and `onError` are
+   * ignored; you drive the store directly (call `store.load()`, etc.).
+   */
+  store?: PresentationStore;
+  /**
+   * **Uncontrolled mode** — the file to parse and display.
+   * Ignored when `store` is provided.
+   */
+  file?: PreviewInput | null | undefined;
+  /**
+   * 0-based index of the slide to navigate to after a successful parse.
+   * Defaults to `0`. Ignored when `store` is provided.
+   */
+  defaultSlideIndex?: number;
+  /** Called once the presentation has been parsed. Ignored in controlled mode. */
   onLoad?: (store: PresentationStore) => void;
+  /** Called when parsing fails. Ignored in controlled mode. */
   onError?: (error: Error) => void;
   /**
    * Replace the root wrapper element.
@@ -23,7 +41,9 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
 }
 
 export function Root({
+  store: externalStore,
   file,
+  defaultSlideIndex,
   children,
   className,
   style,
@@ -32,7 +52,13 @@ export function Root({
   onError,
   ...rootProps
 }: RootProps) {
-  const store = React.useMemo(() => createPresentationStore(), []);
+  // Uncontrolled: stable internal store, created once via lazy-ref pattern
+  const internalStoreRef = React.useRef<PresentationStore | null>(null);
+  if (internalStoreRef.current === null) {
+    internalStoreRef.current = createPresentationStore();
+  }
+
+  const store = externalStore ?? internalStoreRef.current;
 
   const onLoadRef = React.useRef(onLoad);
   onLoadRef.current = onLoad;
@@ -40,19 +66,27 @@ export function Root({
   const onErrorRef = React.useRef(onError);
   onErrorRef.current = onError;
 
+  // Keep a ref so the effect dep array stays stable while still reading the
+  // latest value at the moment the load resolves.
+  const defaultSlideIndexRef = React.useRef(defaultSlideIndex);
+  defaultSlideIndexRef.current = defaultSlideIndex;
+
   React.useEffect(() => {
+    // Controlled mode — caller owns the store lifecycle entirely.
+    if (externalStore) return;
+
     if (!file) {
       store.reset();
       return;
     }
 
     store
-      .load(file)
+      .load(file, { defaultSlideIndex: defaultSlideIndexRef.current })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) =>
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err))),
       );
-  }, [store, file]);
+  }, [store, externalStore, file]);
 
   return (
     <PresentationContext.Provider value={store}>

@@ -1,5 +1,5 @@
-import { buildPresentation, parseZip } from "@diceui/pptx-parser";
 import type { PresentationData } from "@diceui/pptx-parser";
+import { buildPresentation, parseZip } from "@diceui/pptx-parser";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
@@ -25,7 +25,7 @@ export interface PresentationStore {
   getState: () => PresentationState;
   subscribe: (listener: () => void) => () => void;
 
-  load: (input: PreviewInput) => Promise<void>;
+  load: (input: PreviewInput, options?: { defaultSlideIndex?: number }) => Promise<void>;
   reset: () => void;
 
   goTo: (slideId: string) => void;
@@ -120,7 +120,10 @@ export function createPresentationStore(): PresentationStore {
     return () => listeners.delete(listener);
   }
 
-  async function load(input: PreviewInput): Promise<void> {
+  async function load(
+    input: PreviewInput,
+    options?: { defaultSlideIndex?: number },
+  ): Promise<void> {
     loadGeneration += 1;
     const gen = loadGeneration;
 
@@ -138,10 +141,11 @@ export function createPresentationStore(): PresentationStore {
       const presentation = buildPresentation(files);
       if (gen !== loadGeneration) return;
 
+      const startIndex = clamp(options?.defaultSlideIndex ?? 0, 0, presentation.slides.length - 1);
       replaceState({
         status: "ready",
         presentation,
-        currentSlideId: presentation.slides[0]?.id ?? null,
+        currentSlideId: presentation.slides[startIndex]?.id ?? null,
         zoom: 1,
         progress: 100,
         error: null,

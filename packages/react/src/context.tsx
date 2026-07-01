@@ -2,10 +2,31 @@ import * as React from "react";
 
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 
-import type { PresentationState } from "./store";
-import { PresentationStore } from "./store";
+import type { PresentationState, PresentationStore } from "./store";
+import { createPresentationStore } from "./store";
 
 export const PresentationContext = React.createContext<PresentationStore | null>(null);
+
+/**
+ * Creates a stable `PresentationStore` instance for use in controlled mode.
+ *
+ * ```tsx
+ * const store = useCreatePresentationStore();
+ *
+ * // Load manually — e.g. after a fetch/upload
+ * await store.load(buffer, { defaultSlideIndex: 2 });
+ *
+ * // Pass the store to Root; `file` prop is no longer needed
+ * <Presentation.Root store={store}>…</Presentation.Root>
+ * ```
+ */
+export function useCreatePresentationStore(): PresentationStore {
+  const ref = React.useRef<PresentationStore | null>(null);
+  if (ref.current === null) {
+    ref.current = createPresentationStore();
+  }
+  return ref.current;
+}
 
 export function usePresentationStore(consumerName: string): PresentationStore {
   const store = React.useContext(PresentationContext);
