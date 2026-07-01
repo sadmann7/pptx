@@ -204,7 +204,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     } else if (children != null) {
       resolvedChildren = children;
     } else {
-      console.log({ presentation });
       resolvedChildren = presentation.slides.map((slide) => (
         <ThumbnailItem key={slide.id} slideId={slide.id}>
           <ThumbnailItemPreview />
