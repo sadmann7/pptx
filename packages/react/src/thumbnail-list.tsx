@@ -245,7 +245,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
                 // When no button has a tab stop yet (e.g. before auto-focus fires),
                 // the container acts as the entry point and redirects focus.
                 tabIndex: effectiveTabStopId ? -1 : 0,
-                style: { overflowY: "auto", outline: "none" },
                 onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
                   if (event.target === event.currentTarget) isClickFocusRef.current = true;
                 },
@@ -380,13 +379,7 @@ export const ThumbnailItem = React.memo(
                 "data-slide-id": slideId,
                 tabIndex: isCurrentTabStop ? 0 : -1,
                 style: {
-                  display: "block",
                   width: "100%",
-                  padding: 0,
-                  border: "none",
-                  background: "none",
-                  overflow: "hidden",
-                  position: "relative",
                 },
                 onClick: () => store.goTo(slideId),
                 onFocus: () => {
@@ -569,9 +562,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             inert: true,
             style: {
               width: "100%",
-              // aspect-ratio gives the container the correct height from the
-              // very first render, eliminating the height-collapse layout shift
-              // that occurred while waiting for the ResizeObserver measurement.
+              // Prevents height-collapse layout shift while waiting for the ResizeObserver measurement.
               aspectRatio: `${pWidth} / ${pHeight}`,
               overflow: "hidden",
               pointerEvents: "none",

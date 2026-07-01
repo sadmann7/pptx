@@ -138,7 +138,6 @@ function PresentationThumbnailItem({
 
 function PresentationThumbnailList({
   className,
-  style,
   children,
   ...props
 }: PresentationPrimitive.ThumbnailList.Props) {
@@ -149,7 +148,6 @@ function PresentationThumbnailList({
         "flex w-40 shrink-0 flex-col gap-3.5 overflow-y-auto border-r p-3.5",
         className,
       )}
-      style={style}
       {...props}
     >
       {children ??
