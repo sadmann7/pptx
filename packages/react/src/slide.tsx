@@ -1,10 +1,10 @@
 import * as React from "react";
-import { usePresentation, useSlide, useZoom } from "../context";
+import { usePresentation, useSlide, useZoom } from "./context";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
-import type { PresentationStatus } from "../store";
-import { renderElement } from "../utils/render";
-import type { RenderProp } from "../utils/render";
+import type { PresentationStatus } from "./store";
+import { renderElement } from "./render";
+import type { RenderProp } from "./render";
 
 export interface SlideState {
   /** Current parse/load status. Reflected as `data-status` on the element. */

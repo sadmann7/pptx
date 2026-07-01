@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useZoom, usePresentationStore } from "../context";
-import { renderElement } from "../utils/render";
-import type { RenderProp } from "../utils/render";
+import { useZoom, usePresentationStore } from "./context";
+import { renderElement } from "./render";
+import type { RenderProp } from "./render";
 
 export interface ViewportState {
   zoom: number;

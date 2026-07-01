@@ -9,11 +9,11 @@
  */
 
 import * as React from "react";
-import { usePresentation, usePresentationStore } from "../context";
+import { usePresentation, usePresentationStore } from "./context";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { renderElement } from "../utils/render";
-import type { RenderProp } from "../utils/render";
+import { renderElement } from "./render";
+import type { RenderProp } from "./render";
 
 // ---------------------------------------------------------------------------
 // Roving focus utilities

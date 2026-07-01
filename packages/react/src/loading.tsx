@@ -1,7 +1,7 @@
 import * as React from "react";
-import { usePresentation } from "../context";
-import { renderElement } from "../utils/render";
-import type { RenderProp } from "../utils/render";
+import { usePresentation } from "./context";
+import { renderElement } from "./render";
+import type { RenderProp } from "./render";
 
 export interface LoadingState {
   /** 0–100 parse progress reported by the store. */

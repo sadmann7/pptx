@@ -1,18 +1,16 @@
-export * as Presentation from "./presentation";
+export * as Presentation from "./primitive";
 
-// Flat type re-exports — mirrors Base UI's select/index.ts pattern.
-// Allows: import type { RootProps, ViewportState } from '@diceui/pptx'
-export type * from "./components/root";
-export type * from "./components/viewport";
-export type * from "./components/slide";
-export type * from "./components/loading";
-export type * from "./components/error";
-export type * from "./components/thumbnail-list";
+export type * from "./root";
+export type * from "./viewport";
+export type * from "./slide";
+export type * from "./loading";
+export type * from "./error";
+export type * from "./thumbnail-list";
 
 export { usePresentation, useSlide, useZoom } from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
 
-export type { RenderProp, ComponentRenderFn } from "./utils/render";
+export type { RenderProp, ComponentRenderFn } from "./render";
 
 export type {
   PresentationState,

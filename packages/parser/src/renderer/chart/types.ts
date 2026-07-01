@@ -92,7 +92,7 @@ export interface DataLabelConfig {
 
 export type DataLabelManualLayout = Partial<Record<"x" | "y" | "width" | "height", number>>;
 
-export type ChartTextStyle = {
+export interface ChartTextStyle {
   color?: string;
   fontSize?: number;
   bold?: boolean;
@@ -102,7 +102,7 @@ export type ChartTextStyle = {
   textShadowOffsetX?: number;
   textShadowOffsetY?: number;
   [EXPLICIT_FONT_SIZE]?: true;
-};
+}
 
 export interface ChartFrameStyle {
   borderColor?: string;
