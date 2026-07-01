@@ -5,12 +5,12 @@ import { parseOoxmlBoolElement } from "./ooxml";
 import { extractChartLineStyle, resolveColorToHex } from "./style";
 import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
 import {
+  type AxisInfo,
+  type ChartLineStyle,
   DEFAULT_CHART_AXIS_LABEL_FONT_SIZE,
   DEFAULT_CHART_AXIS_LINE_COLOR,
   DEFAULT_CHART_FOREGROUND_COLOR,
   DEFAULT_MAJOR_GRIDLINE_STYLE,
-  type AxisInfo,
-  type ChartLineStyle,
 } from "./types";
 
 const DEFAULT_AXIS_INFO: AxisInfo = {

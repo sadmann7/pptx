@@ -6,13 +6,13 @@ import { SafeXmlNode } from "../parser/xml-parser";
 import { RenderContext } from "./render-context";
 import {
   applyColorModifiers,
-  presetColorToHex,
   hexToRgb,
   hslToRgb,
+  presetColorToHex,
   rgbToHex,
 } from "../utils/color";
 import type { ColorModifier } from "../utils/color";
-import { pctToDecimal, angleToDeg, emuToPx } from "../parser/units";
+import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
 
 // ---------------------------------------------------------------------------
 // Color Resolution

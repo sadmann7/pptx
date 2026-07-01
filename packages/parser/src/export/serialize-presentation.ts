@@ -11,7 +11,7 @@ import {
 import { SlideNode } from "../model/slide";
 import { ShapeNodeData, TextBody } from "../model/nodes/shape-node";
 import { PicNodeData } from "../model/nodes/pic-node";
-import { TableNodeData, TableRow, TableCell } from "../model/nodes/table-node";
+import { TableCell, TableNodeData, TableRow } from "../model/nodes/table-node";
 import { GroupNodeData } from "../model/nodes/group-node";
 import { ChartNodeData } from "../model/nodes/chart-node";
 import { BaseNodeData } from "../model/nodes/base-node";

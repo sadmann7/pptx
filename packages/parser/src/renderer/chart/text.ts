@@ -5,7 +5,7 @@ import { cssFontFamilyStack, resolveThemeFontStack } from "../font-resolver";
 import { RenderContext } from "../render-context";
 import { resolveColor } from "../style-resolver";
 import { resolveColorToHex } from "./style";
-import { EXPLICIT_FONT_SIZE, type ChartTextStyle } from "./types";
+import { type ChartTextStyle, EXPLICIT_FONT_SIZE } from "./types";
 
 type EChartsTextStyle = ChartTextStyle & {
   fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;

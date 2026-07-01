@@ -1,9 +1,9 @@
-import { SafeXmlNode, parseXml } from "../parser/xml-parser";
+import { parseXml, SafeXmlNode } from "../parser/xml-parser";
 import { RelEntry, resolveRelTarget } from "../parser/rel-parser";
 import { parseBaseProps } from "./nodes/base-node";
-import { ShapeNodeData, parseShapeNode } from "./nodes/shape-node";
-import { PicNodeData, parsePicNode } from "./nodes/pic-node";
-import { TableNodeData, parseTableNode } from "./nodes/table-node";
+import { parseShapeNode, ShapeNodeData } from "./nodes/shape-node";
+import { parsePicNode, PicNodeData } from "./nodes/pic-node";
+import { parseTableNode, TableNodeData } from "./nodes/table-node";
 import { GroupNodeData, parseGroupNode } from "./nodes/group-node";
 import { ChartNodeData, parseChartNode } from "./nodes/chart-node";
 

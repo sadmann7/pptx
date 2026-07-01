@@ -8,7 +8,7 @@ import { RenderContext } from "./render-context";
 import type { TextBody, TextParagraph, TextRun } from "../model/nodes/shape-node";
 import { PlaceholderInfo } from "../model/nodes/base-node";
 import { resolveColor, resolveColorToCss, resolveFill } from "./style-resolver";
-import { emuToPx, pctToDecimal, angleToDeg } from "../parser/units";
+import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
 import { parseOoxmlBool } from "../parser/booleans";
 import { isExternalTargetMode } from "../parser/rel-parser";
 import { isAllowedExternalUrl } from "../utils/url-safety";

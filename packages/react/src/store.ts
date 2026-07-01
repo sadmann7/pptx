@@ -1,4 +1,4 @@
-import { parseZip, buildPresentation } from "@diceui/pptx-parser";
+import { buildPresentation, parseZip } from "@diceui/pptx-parser";
 import type { PresentationData } from "@diceui/pptx-parser";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;

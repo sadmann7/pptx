@@ -1,4 +1,4 @@
-import { isExternalTargetMode, resolveRelTarget, type RelEntry } from "../parser/rel-parser";
+import { isExternalTargetMode, type RelEntry, resolveRelTarget } from "../parser/rel-parser";
 import type { RenderContext } from "./render-context";
 
 function dirname(path: string): string {

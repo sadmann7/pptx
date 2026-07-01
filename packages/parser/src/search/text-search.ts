@@ -1,7 +1,7 @@
 import {
   materializeSlideNodes,
-  resolveNodePlaceholderInheritance,
   type PresentationData,
+  resolveNodePlaceholderInheritance,
 } from "../model/presentation";
 import type { SlideNode } from "../model/slide";
 import type { BaseNodeData, NodeType, Position, Size } from "../model/nodes/base-node";

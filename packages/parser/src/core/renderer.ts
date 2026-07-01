@@ -1,8 +1,8 @@
 import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
 import type { ZipParseLimits } from "../parser/zip-parser";
 import { buildPresentation } from "../model/presentation";
-import { PptxViewer, normalizePreviewInput } from "./viewer";
-import type { FitMode, PreviewInput, ListRenderOptions } from "./viewer";
+import { normalizePreviewInput, PptxViewer } from "./viewer";
+import type { FitMode, ListRenderOptions, PreviewInput } from "./viewer";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
 
 export type { PreviewInput, FitMode } from "./viewer";

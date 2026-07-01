@@ -2,7 +2,7 @@
  * Shape renderer — converts ShapeNodeData into positioned HTML/SVG elements.
  */
 
-import { ShapeNodeData, LineEndInfo, TextBody } from "../model/nodes/shape-node";
+import { LineEndInfo, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
 import { RenderContext } from "./render-context";
 import { parseOoxmlBool } from "../parser/booleans";
 import { isExternalTargetMode } from "../parser/rel-parser";

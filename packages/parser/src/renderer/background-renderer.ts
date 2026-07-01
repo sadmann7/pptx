@@ -5,12 +5,12 @@
 import { SafeXmlNode } from "../parser/xml-parser";
 import { RenderContext } from "./render-context";
 import {
+  getFocusedGradientStops,
+  type GradientFillData,
   resolveColor,
   resolveFill,
   resolveGradientFill,
   resolveThemeBackgroundFillReference,
-  getFocusedGradientStops,
-  type GradientFillData,
 } from "./style-resolver";
 import { hexToRgb } from "../utils/color";
 import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";

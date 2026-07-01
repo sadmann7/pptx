@@ -9,7 +9,7 @@
  *   and uses tcTxStyle from each part for cell text color/font (a:tcTxStyle under firstRow, firstCol, etc.).
  */
 
-import { TableNodeData, TableCell } from "../model/nodes/table-node";
+import { TableCell, TableNodeData } from "../model/nodes/table-node";
 import { RenderContext } from "./render-context";
 import {
   resolveColor,

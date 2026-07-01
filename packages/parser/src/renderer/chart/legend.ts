@@ -5,9 +5,9 @@ import { numToPct } from "./layout";
 import { parseOoxmlBoolElement } from "./ooxml";
 import { extractTxPrStyle } from "./text";
 import {
+  type ChartTextStyle,
   EXPLICIT_FONT_SIZE,
   hasExplicitFontSize,
-  type ChartTextStyle,
   type LegendInfo,
 } from "./types";
 

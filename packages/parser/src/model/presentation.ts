@@ -8,10 +8,10 @@ import type { MediaResolver } from "../utils/media";
 import { parseXml, SafeXmlNode } from "../parser/xml-parser";
 import { parseRels, RelEntry, resolveRelTarget } from "../parser/rel-parser";
 import { emuToPx } from "../parser/units";
-import { ThemeData, parseTheme } from "./theme";
+import { parseTheme, ThemeData } from "./theme";
 import { MasterData, parseMaster } from "./master";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
-import { SlideData, SlideNode, createLazySlide, materializeSlideData, parseSlide } from "./slide";
+import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
 import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base-node";
 import type { GroupNodeData } from "./nodes/group-node";
 

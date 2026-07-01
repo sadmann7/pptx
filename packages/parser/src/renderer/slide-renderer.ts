@@ -4,7 +4,7 @@
 
 import { SlideData } from "../model/slide";
 import { materializeSlideNodes, PresentationData } from "../model/presentation";
-import { RenderContext, createRenderContext } from "./render-context";
+import { createRenderContext, RenderContext } from "./render-context";
 import { renderBackground } from "./background-renderer";
 import { renderShape } from "./shape-renderer";
 import { renderImage } from "./image-renderer";

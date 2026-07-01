@@ -3,7 +3,7 @@
  */
 
 import { SafeXmlNode } from "../../parser/xml-parser";
-import { emuToPx, angleToDeg } from "../../parser/units";
+import { angleToDeg, emuToPx } from "../../parser/units";
 import { parseOoxmlBool } from "../../parser/booleans";
 
 export type NodeType = "shape" | "picture" | "table" | "group" | "chart" | "unknown";

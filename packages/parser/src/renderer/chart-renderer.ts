@@ -3,15 +3,15 @@
  */
 
 import type * as echarts from "echarts";
-import { init, use, graphic } from "echarts/core";
+import { graphic, init, use } from "echarts/core";
 import {
   BarChart,
+  CandlestickChart,
+  CustomChart,
   LineChart,
   PieChart,
   RadarChart,
   ScatterChart,
-  CandlestickChart,
-  CustomChart,
 } from "echarts/charts";
 import {
   GridComponent,

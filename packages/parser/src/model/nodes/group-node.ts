@@ -3,7 +3,7 @@
  */
 
 import { SafeXmlNode } from "../../parser/xml-parser";
-import { BaseNodeData, Position, Size, parseBaseProps } from "./base-node";
+import { BaseNodeData, parseBaseProps, Position, Size } from "./base-node";
 import { emuToPx } from "../../parser/units";
 
 export interface GroupNodeData extends BaseNodeData {

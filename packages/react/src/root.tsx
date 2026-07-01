@@ -1,9 +1,9 @@
 import * as React from "react";
-import { createPresentationStore } from "./store";
-import type { PresentationStore, PreviewInput } from "./store";
 import { PresentationContext } from "./context";
-import { renderElement } from "./render";
 import type { RenderProp } from "./render";
+import { renderElement } from "./render";
+import type { PresentationStore, PreviewInput } from "./store";
+import { createPresentationStore } from "./store";
 
 export interface RootState {
   /** Current file being presented, or `null` if none is loaded. */

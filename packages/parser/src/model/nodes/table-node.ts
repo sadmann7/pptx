@@ -4,7 +4,7 @@
 
 import { SafeXmlNode } from "../../parser/xml-parser";
 import { BaseNodeData, parseBaseProps } from "./base-node";
-import { TextBody, parseTextBody } from "./shape-node";
+import { parseTextBody, TextBody } from "./shape-node";
 import { emuToPx } from "../../parser/units";
 import { parseOoxmlBool } from "../../parser/booleans";
 

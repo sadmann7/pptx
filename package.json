@@ -10,10 +10,11 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "lint:fix": "oxlint --fix",
     "typecheck": "turbo typecheck",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
-    "check": "pnpm lint && pnpm typecheck && pnpm format",
+    "check": "turbo lint typecheck && pnpm format",
     "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev"
