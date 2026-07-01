@@ -6,9 +6,9 @@ import { Providers } from "@/components/providers";
 import { TailwindIndicator } from "@/components/tailwind-indicator";
 import { Toaster } from "@/components/ui/sonner";
 import { fontMono, fontSans } from "@/lib/fonts";
-import "@/styles/globals.css";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

@@ -28,7 +28,7 @@ export default function PgPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-(--spacing(14)))] flex-col">
+    <div className="mx-auto flex h-[calc(100dvh-(--spacing(14)))] w-full max-w-(--fd-layout-width) flex-col">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation

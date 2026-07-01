@@ -159,12 +159,10 @@ html > body[data-scroll-locked] {
 }
 
 @layer base {
-  body {
-    @apply bg-background text-foreground;
-  }
   * {
     @apply border-border outline-ring/50;
   }
+
   html {
     @apply font-sans;
   }

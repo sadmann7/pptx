@@ -28,7 +28,7 @@ function PresentationContent({ className, ...props }: React.ComponentProps<"div"
   return (
     <div
       data-slot="presentation-content"
-      className={cn("relative flex flex-1 flex-col overflow-hidden", className)}
+      className={cn("relative isolate flex flex-1 flex-col overflow-hidden", className)}
       {...props}
     />
   );
@@ -57,7 +57,7 @@ function PresentationLoading({
     <PresentationPrimitive.Loading
       data-slot="presentation-loading"
       className={cn(
-        "absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-muted-foreground",
+        "absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground",
         className,
       )}
       {...props}
@@ -72,7 +72,7 @@ function PresentationError({ className, children, ...props }: PresentationPrimit
     <PresentationPrimitive.Error
       data-slot="presentation-error"
       className={cn(
-        "absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-destructive",
+        "absolute inset-0 z-10 flex items-center justify-center text-sm text-destructive",
         className,
       )}
       {...props}
@@ -103,7 +103,7 @@ function PresentationThumbnailItemNumber({
     <PresentationPrimitive.ThumbnailItemNumber
       data-slot="presentation-thumbnail-item-number"
       className={cn(
-        "mt-1 block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums",
+        "block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums",
         className,
       )}
       {...props}
