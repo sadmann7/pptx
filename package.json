@@ -15,6 +15,9 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "check": "turbo lint typecheck && pnpm format",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo build --filter=!docs && changeset publish",
     "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev"
@@ -25,6 +28,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@pptx/config": "workspace:*",
     "@types/node": "catalog:",
     "oxfmt": "^0.53.0",
