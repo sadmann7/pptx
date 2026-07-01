@@ -39,7 +39,7 @@ export function usePresentationStore(consumerName: string): PresentationStore {
 const SERVER_SNAPSHOT: PresentationState = {
   status: "idle",
   presentation: null,
-  currentSlideId: null,
+  activeSlideId: null,
   zoom: 1,
   progress: 0,
   error: null,
@@ -102,10 +102,10 @@ export function useSlide(): UseSlideResult {
   // useSyncExternalStore compares via Object.is — returning a new object
   // literal on every call would cause an infinite re-render loop.
 
-  // currentSlideId: string | null — primitive, safe to compare directly.
+  // activeSlideId: string | null — primitive, safe to compare directly.
   const slideId = React.useSyncExternalStore(
     store.subscribe,
-    () => store.getState().currentSlideId,
+    () => store.getState().activeSlideId,
     () => null,
   );
 

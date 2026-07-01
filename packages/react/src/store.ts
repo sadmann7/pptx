@@ -8,14 +8,14 @@ export interface PresentationState {
   status: PresentationStatus;
   presentation: PresentationData | null;
   /**
-   * Stable identity of the active slide: `SlideData.id`
-   * (e.g. `"ppt/slides/slide3.xml"`). Null when no presentation is loaded.
+   * Stable identity of the active slide (`SlideData.id`,
+   * e.g. `"ppt/slides/slide3.xml"`). `null` when no presentation is loaded.
    *
    * Using a stable id instead of a positional index means reordering,
    * inserting, or deleting slides never silently redirects the viewer
    * to the wrong slide.
    */
-  currentSlideId: string | null;
+  activeSlideId: string | null;
   zoom: number;
   progress: number;
   error: Error | null;
@@ -47,8 +47,8 @@ export interface PresentationStore {
   zoomOut: (step?: number) => void;
   fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
 
-  getCurrentSlideIndex: () => number;
-  getCurrentSlide: () => PresentationData["slides"][number] | null;
+  getActiveSlideIndex: () => number;
+  getActiveSlide: () => PresentationData["slides"][number] | null;
   canGoNext: () => boolean;
   canGoPrev: () => boolean;
 }
@@ -56,7 +56,7 @@ export interface PresentationStore {
 const INITIAL_STATE: PresentationState = {
   status: "idle",
   presentation: null,
-  currentSlideId: null,
+  activeSlideId: null,
   zoom: 1,
   progress: 0,
   error: null,
@@ -157,7 +157,7 @@ export function createPresentationStore(): PresentationStore {
       replaceState({
         status: "ready",
         presentation,
-        currentSlideId: presentation.slides[startIndex]?.id ?? null,
+        activeSlideId: presentation.slides[startIndex]?.id ?? null,
         zoom: 1,
         progress: 100,
         error: null,
@@ -174,24 +174,24 @@ export function createPresentationStore(): PresentationStore {
     }
   }
 
-  function getCurrentSlideIndex(): number {
-    const { currentSlideId } = state;
-    if (!currentSlideId) return -1;
-    return slideIndexById.get(currentSlideId) ?? -1;
+  function getActiveSlideIndex(): number {
+    const { activeSlideId } = state;
+    if (!activeSlideId) return -1;
+    return slideIndexById.get(activeSlideId) ?? -1;
   }
 
-  function getCurrentSlide(): PresentationData["slides"][number] | null {
+  function getActiveSlide(): PresentationData["slides"][number] | null {
     const { presentation } = state;
     if (!presentation) return null;
-    const index = getCurrentSlideIndex();
+    const index = getActiveSlideIndex();
     return presentation.slides[index] ?? null;
   }
 
   function goTo(slideId: string): void {
     if (!state.presentation) return;
-    if (state.currentSlideId === slideId) return;
+    if (state.activeSlideId === slideId) return;
     if (!slideIndexById.has(slideId)) return;
-    setState({ currentSlideId: slideId });
+    setState({ activeSlideId: slideId });
   }
 
   function goToIndex(index: number): void {
@@ -203,13 +203,13 @@ export function createPresentationStore(): PresentationStore {
   }
 
   function next(): void {
-    const index = getCurrentSlideIndex();
+    const index = getActiveSlideIndex();
     if (index === -1) return;
     goToIndex(index + 1);
   }
 
   function prev(): void {
-    const index = getCurrentSlideIndex();
+    const index = getActiveSlideIndex();
     if (index === -1) return;
     goToIndex(index - 1);
   }
@@ -217,12 +217,12 @@ export function createPresentationStore(): PresentationStore {
   function canGoNext(): boolean {
     const { presentation } = state;
     if (!presentation) return false;
-    const index = getCurrentSlideIndex();
+    const index = getActiveSlideIndex();
     return index >= 0 && index < presentation.slides.length - 1;
   }
 
   function canGoPrev(): boolean {
-    return getCurrentSlideIndex() > 0;
+    return getActiveSlideIndex() > 0;
   }
 
   function setZoom(zoom: number): void {
@@ -267,8 +267,8 @@ export function createPresentationStore(): PresentationStore {
     zoomIn,
     zoomOut,
     fitTo,
-    getCurrentSlideIndex,
-    getCurrentSlide,
+    getActiveSlideIndex,
+    getActiveSlide,
     canGoNext,
     canGoPrev,
   };

@@ -96,16 +96,16 @@ function useThumbnailItemContext(consumerName: string) {
 
 export interface ThumbnailListState {
   total: number;
-  currentSlideId: string | null;
-  /** Derived display index — use `currentSlideId` as identity. */
-  currentIndex: number;
+  activeSlideId: string | null;
+  /** Derived display index — use `activeSlideId` as identity. */
+  activeIndex: number;
 }
 
 export interface ThumbnailListRenderState {
   slides: SlideData[];
-  currentSlideId: string | null;
-  /** Derived display index — use `currentSlideId` as identity. */
-  currentIndex: number;
+  activeSlideId: string | null;
+  /** Derived display index — use `activeSlideId` as identity. */
+  activeIndex: number;
   goTo: (slideId: string) => void;
   goToIndex: (index: number) => void;
 }
@@ -168,9 +168,9 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // read from it directly without querySelectorAll.
     const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
 
-    const currentSlideId = React.useSyncExternalStore(
+    const activeSlideId = React.useSyncExternalStore(
       store.subscribe,
-      () => store.getState().currentSlideId,
+      () => store.getState().activeSlideId,
       () => null,
     );
 
@@ -181,14 +181,14 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       if (!presentation) return;
       const items = itemsRef.current;
       // Prefer the active slide's button; fall back to the first registered item.
-      const activeBtn = currentSlideId ? items.get(currentSlideId) : undefined;
+      const activeBtn = activeSlideId ? items.get(activeSlideId) : undefined;
       const firstBtn = activeBtn ?? items.values().next().value;
       firstBtn?.focus({ preventScroll: true });
-    }, [presentation, currentSlideId]);
+    }, [presentation, activeSlideId]);
 
     // Fallback to the store's selected slide so its button gets tabIndex=0
     // before any keyboard interaction sets currentTabStopId explicitly.
-    const effectiveTabStopId = currentTabStopId ?? currentSlideId;
+    const effectiveTabStopId = currentTabStopId ?? activeSlideId;
 
     const rovingContextValue = React.useMemo<ThumbnailRovingContextValue>(
       () => ({
@@ -204,18 +204,18 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     if (status !== "ready" || !presentation) return null;
 
     const total = presentation.slides.length;
-    const currentIndex = currentSlideId
-      ? presentation.slides.findIndex((s) => s.id === currentSlideId)
+    const activeIndex = activeSlideId
+      ? presentation.slides.findIndex((s) => s.id === activeSlideId)
       : -1;
 
-    const state: ThumbnailListState = { total, currentSlideId, currentIndex };
+    const state: ThumbnailListState = { total, activeSlideId, activeIndex };
 
     let resolvedChildren: React.ReactNode;
     if (typeof children === "function") {
       resolvedChildren = children({
         slides: presentation.slides,
-        currentSlideId,
-        currentIndex,
+        activeSlideId,
+        activeIndex,
         goTo: (id) => store.goTo(id),
         goToIndex: (i) => store.goToIndex(i),
       });
@@ -328,7 +328,7 @@ export const ThumbnailItem = React.memo(
 
     const isActive = React.useSyncExternalStore(
       store.subscribe,
-      () => store.getState().currentSlideId === slideId,
+      () => store.getState().activeSlideId === slideId,
       () => false,
     );
 
