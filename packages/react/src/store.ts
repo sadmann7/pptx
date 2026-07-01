@@ -1,5 +1,5 @@
-import type { PresentationData, SlideData } from "@diceui/pptx-parser";
-import { buildPresentation, parseZip } from "@diceui/pptx-parser";
+import type { PresentationData, SlideData, FontInjectionHandle } from "@diceui/pptx-parser";
+import { buildPresentation, parseZip, injectEmbeddedFonts } from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -228,6 +228,7 @@ export function createPresentationStore(): PresentationStore {
   let state: PresentationState = { ...INITIAL_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
+  let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
@@ -274,6 +275,8 @@ export function createPresentationStore(): PresentationStore {
     loadGeneration += 1;
     const gen = loadGeneration;
 
+    fontInjection?.dispose();
+    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     try {
@@ -287,6 +290,8 @@ export function createPresentationStore(): PresentationStore {
 
       const presentation = buildPresentation(files);
       if (gen !== loadGeneration) throw ABORT_ERROR;
+
+      fontInjection = injectEmbeddedFonts(presentation);
 
       const defaultSlideIndex = options?.defaultSlideIndex;
       const requestedIndex =
@@ -391,6 +396,8 @@ export function createPresentationStore(): PresentationStore {
 
   function reset(): void {
     loadGeneration += 1;
+    fontInjection?.dispose();
+    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE });
   }
 

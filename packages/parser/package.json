@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "echarts": "^6.0.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "mtx-decompressor": "^1.4.2"
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",

@@ -15,6 +15,23 @@ import type { GroupNodeData } from "./nodes/group-node";
 import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
 import { parseTheme, ThemeData } from "./theme";
 
+export interface EmbeddedFontVariant {
+  /** Resolved path inside the zip (e.g. "ppt/fonts/font1.fntdata"). */
+  path: string;
+  /** GUID used to XOR-deobfuscate the first 32 bytes (ODTTF). Absent for plain EOT. */
+  fontKey?: string;
+}
+
+export interface EmbeddedFontEntry {
+  typeface: string;
+  pitchFamily?: number;
+  charset?: string;
+  regular?: EmbeddedFontVariant;
+  bold?: EmbeddedFontVariant;
+  italic?: EmbeddedFontVariant;
+  boldItalic?: EmbeddedFontVariant;
+}
+
 export interface PresentationData {
   width: number;
   height: number;
@@ -40,6 +57,10 @@ export interface PresentationData {
   /** Chart color style parts keyed by chart part path. */
   chartColorStyles?: Map<string, SafeXmlNode>;
   isWps: boolean;
+  /** Embedded font binary data keyed by zip path (ppt/fonts/*.fntdata). */
+  fonts: Map<string, Uint8Array>;
+  /** Parsed embedded font list from presentation.xml. */
+  embeddedFonts?: EmbeddedFontEntry[];
 }
 
 export interface BuildPresentationOptions {
@@ -328,6 +349,9 @@ export function buildPresentation(
     }
   }
 
+  // --- Parse embedded fonts ---
+  const embeddedFonts = parseEmbeddedFontList(presRoot, presRels);
+
   const result: PresentationData = {
     width,
     height,
@@ -348,6 +372,8 @@ export function buildPresentation(
     chartStyles,
     chartColorStyles,
     isWps,
+    fonts: files.fonts,
+    embeddedFonts: embeddedFonts.length > 0 ? embeddedFonts : undefined,
   };
 
   // --- Resolve placeholder position inheritance ---
@@ -356,6 +382,50 @@ export function buildPresentation(
   }
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Embedded Font Parsing
+// ---------------------------------------------------------------------------
+
+function resolveEmbeddedFontVariant(
+  variantNode: SafeXmlNode,
+  presRels: Map<string, RelEntry>,
+): EmbeddedFontVariant | undefined {
+  if (!variantNode.exists()) return undefined;
+  const rId = variantNode.attr("r:id") ?? variantNode.attr("id");
+  if (!rId) return undefined;
+  const rel = presRels.get(rId);
+  if (!rel) return undefined;
+  const fontPath = resolveRelTarget("ppt", rel.target);
+  const fontKey = variantNode.attr("fontKey") ?? undefined;
+  return { path: fontPath, fontKey };
+}
+
+function parseEmbeddedFontList(
+  presRoot: SafeXmlNode,
+  presRels: Map<string, RelEntry>,
+): EmbeddedFontEntry[] {
+  const fontLst = presRoot.child("embeddedFontLst");
+  if (!fontLst.exists()) return [];
+  const entries: EmbeddedFontEntry[] = [];
+  for (const embFont of fontLst.children("embeddedFont")) {
+    const fontNode = embFont.child("font");
+    const typeface = fontNode.attr("typeface");
+    if (!typeface) continue;
+    const pitchFamilyStr = fontNode.attr("pitchFamily");
+    const entry: EmbeddedFontEntry = {
+      typeface,
+      pitchFamily: pitchFamilyStr !== undefined ? Number(pitchFamilyStr) : undefined,
+      charset: fontNode.attr("charset") ?? undefined,
+      regular: resolveEmbeddedFontVariant(embFont.child("regular"), presRels),
+      bold: resolveEmbeddedFontVariant(embFont.child("bold"), presRels),
+      italic: resolveEmbeddedFontVariant(embFont.child("italic"), presRels),
+      boldItalic: resolveEmbeddedFontVariant(embFont.child("boldItalic"), presRels),
+    };
+    entries.push(entry);
+  }
+  return entries;
 }
 
 // ---------------------------------------------------------------------------

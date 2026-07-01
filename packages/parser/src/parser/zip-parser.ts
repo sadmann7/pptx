@@ -3,8 +3,8 @@
  * Extracts and categorizes all files from a .pptx (which is a zip archive).
  */
 
-import JSZip from "jszip";
 import type { JSZipObject } from "jszip";
+import JSZip from "jszip";
 
 import type { MediaResolver, ResolvedMedia } from "../utils/media";
 import { resolveMediaPathCandidates } from "../utils/media";
@@ -29,6 +29,7 @@ export interface PptxFiles {
   chartStyles: Map<string, string>; // ppt/charts/style*.xml
   chartColors: Map<string, string>; // ppt/charts/colors*.xml
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
+  fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
 }
 
 export interface ZipParseLimits {
@@ -58,6 +59,10 @@ function throwZipLimitExceeded(reason: string): never {
 
 function isMediaPath(path: string): boolean {
   return path.startsWith("ppt/media/");
+}
+
+function isFontPath(path: string): boolean {
+  return path.startsWith("ppt/fonts/") && path.endsWith(".fntdata");
 }
 
 function decodeZipPath(path: string): string {
@@ -353,6 +358,7 @@ async function parseZipInternal(
     chartStyles: new Map(),
     chartColors: new Map(),
     diagramDrawings: new Map(),
+    fonts: new Map(),
   };
 
   const limitState: ZipLimitState = {
@@ -401,6 +407,13 @@ async function parseZipInternal(
 
       const bytes = await readZipBinaryEntry(normalizedPath, file, limitState);
       setPathMapEntry(result.media, normalizedPath, bytes);
+      return;
+    }
+
+    // --- Fonts (binary) ---
+    if (isFontPath(normalizedPath)) {
+      const bytes = await readZipBinaryEntry(normalizedPath, file, limitState);
+      setPathMapEntry(result.fonts, normalizedPath, bytes);
       return;
     }
 

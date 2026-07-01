@@ -13,6 +13,8 @@ import {
   type TextSearchOptions,
   type TextSearchResult,
 } from "../search/text-search";
+import { injectEmbeddedFonts } from "../utils/font-injector";
+import type { FontInjectionHandle } from "../utils/font-injector";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
 import { isAllowedExternalUrl } from "../utils/url-safety";
 
@@ -133,6 +135,7 @@ export class PptxViewer extends EventTarget {
   private slideHandles = new Map<number, SlideHandle>();
   private searchHighlightHandles = new Set<SearchHighlightHandle>();
   private textIndexCache: { key: string; entries: TextIndexEntry[] } | null = null;
+  private fontInjection?: FontInjectionHandle;
   private activeRenderMode: "list" | "slide" | null = null;
   private listOptions: Required<ListRenderOptions> = {
     windowed: false,
@@ -235,6 +238,7 @@ export class PptxViewer extends EventTarget {
     this.presentation = presentation;
     this.currentSlide = 0;
     this.textIndexCache = null;
+    this.fontInjection = injectEmbeddedFonts(presentation);
     this.setupAdaptiveResize();
   }
 
@@ -643,6 +647,8 @@ export class PptxViewer extends EventTarget {
   }
 
   private unloadRenderedState(): void {
+    this.fontInjection?.dispose();
+    this.fontInjection = undefined;
     this.clearSearchHighlights();
     this.cleanupScrollObserver?.();
     this.cleanupScrollObserver = undefined;

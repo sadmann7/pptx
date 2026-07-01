@@ -24,7 +24,12 @@ export {
   materializeAllSlideNodes,
   materializeSlideNodes,
 } from "./model/presentation";
-export type { BuildPresentationOptions, PresentationData } from "./model/presentation";
+export type {
+  BuildPresentationOptions,
+  EmbeddedFontEntry,
+  EmbeddedFontVariant,
+  PresentationData,
+} from "./model/presentation";
 
 export { serializePresentation } from "./export/serialize-presentation";
 export type {
@@ -73,3 +78,8 @@ export type { TableNodeData, TableCell, TableRow } from "./model/nodes/table-nod
 export type { GroupNodeData } from "./model/nodes/group-node";
 export type { ChartNodeData } from "./model/nodes/chart-node";
 export type { PptxFiles } from "./parser/zip-parser";
+
+// Font utilities
+export { deobfuscateFont } from "./utils/font-deobfuscate";
+export { injectEmbeddedFonts } from "./utils/font-injector";
+export type { FontInjectionHandle } from "./utils/font-injector";
