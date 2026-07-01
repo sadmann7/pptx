@@ -40,8 +40,13 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
   }
 }
 
+function wrapArray<T>(array: T[], startIndex: number): T[] {
+  return array.map((_, i) => array[(startIndex + i) % array.length] as T);
+}
+
 interface ThumbnailRovingContextValue {
   currentTabStopId: string | null;
+  loop: boolean;
   itemsRef: React.RefObject<Map<string, HTMLButtonElement>>;
   onItemFocus: (slideId: string) => void;
   onItemRegister: (slideId: string, el: HTMLButtonElement) => void;
@@ -109,12 +114,21 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<ThumbnailListState>;
+
   /**
    * - Absent → default `ThumbnailItem` list (one per slide)
    * - ReactNode → rendered as-is inside the container
    * - Function → called with slide state when ready
    */
   children?: React.ReactNode | ((state: ThumbnailListRenderState) => React.ReactNode);
+
+  /**
+   * When `true`, keyboard navigation wraps from the last item back to the
+   * first (and vice versa).
+   *
+   * @default false
+   */
+  loop?: boolean;
 }
 
 /**
@@ -126,7 +140,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList(
-    { className, style, render, children, ...thumbnailListProps },
+    { className, style, render, children, loop = false, ...thumbnailListProps },
     forwardedRef,
   ) {
     const { presentation, status } = usePresentation();
@@ -160,12 +174,13 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const rovingContextValue = React.useMemo<ThumbnailRovingContextValue>(
       () => ({
         currentTabStopId: effectiveTabStopId,
+        loop,
         itemsRef,
         onItemFocus: setCurrentTabStopId,
         onItemRegister: (slideId, el) => itemsRef.current.set(slideId, el),
         onItemUnregister: (slideId) => itemsRef.current.delete(slideId),
       }),
-      [effectiveTabStopId],
+      [effectiveTabStopId, loop],
     );
 
     if (status !== "ready" || !presentation) return null;
@@ -390,7 +405,9 @@ export const ThumbnailItem = React.memo(
                 } else if (focusIntent === "prev" || focusIntent === "next") {
                   if (focusIntent === "prev") candidates = candidates.reverse();
                   const idx = candidates.indexOf(event.currentTarget);
-                  candidates = candidates.slice(idx + 1);
+                  candidates = rovingContext.loop
+                    ? wrapArray(candidates, idx + 1)
+                    : candidates.slice(idx + 1);
                 }
 
                 setTimeout(() => focusFirst(candidates));
