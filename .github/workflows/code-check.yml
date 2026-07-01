@@ -5,6 +5,7 @@ on:
     branches: ["*"]
   push:
     branches: [main]
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,40 +13,39 @@ concurrency:
 
 env:
   FORCE_COLOR: 3
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
 jobs:
   format:
     runs-on: ubuntu-latest
     name: Format
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.9.0
+      - name: Checkout repo
+        uses: actions/checkout@v4
       - uses: ./.github/setup
 
-      - run: pnpm format:check
+      - name: Check formatting
+        run: pnpm format:check
 
   lint:
     runs-on: ubuntu-latest
     name: Lint
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.9.0
+      - name: Checkout repo
+        uses: actions/checkout@v4
       - uses: ./.github/setup
 
-      - run: pnpm lint
+      - name: Lint
+        run: pnpm lint
 
   typecheck:
     runs-on: ubuntu-latest
     name: Typecheck
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.9.0
+      - name: Checkout repo
+        uses: actions/checkout@v4
       - uses: ./.github/setup
 
-      - run: pnpm typecheck
+      - name: Typecheck
+        run: pnpm typecheck

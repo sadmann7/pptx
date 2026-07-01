@@ -1,12 +1,19 @@
 name: Setup
-description: Sets up Node and installs dependencies
+description: Sets up pnpm, Node and installs dependencies
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11.9.0
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
       with:
         node-version: 24.x
         cache: pnpm
 
-    - run: pnpm install
+    - name: Install dependencies
+      run: pnpm install
       shell: bash
