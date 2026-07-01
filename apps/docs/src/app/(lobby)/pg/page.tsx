@@ -28,14 +28,14 @@ export default function PgPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-[calc(100dvh-(--spacing(14)))] flex-col">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
-      <Presentation store={store} className="max-h-[calc(100dvh-100px)] flex-1">
+      <Presentation store={store} className="flex-1">
         <PresentationDebug />
         <PresentationBody>
           <PresentationThumbnailList />
