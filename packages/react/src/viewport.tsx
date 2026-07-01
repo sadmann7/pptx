@@ -73,16 +73,18 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     {
       state: { zoom },
       ref: [viewportRef, forwardedRef],
-      props: {
-        ...viewportProps,
-        style: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "auto",
+      props: [
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "auto",
+          },
+          children,
         },
-        children,
-      },
+        viewportProps,
+      ],
     },
   );
 });

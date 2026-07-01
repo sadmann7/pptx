@@ -162,7 +162,7 @@ export function Root({
         { render, className, style },
         {
           state: { file },
-          props: { ...rootProps, children },
+          props: [{ children }, rootProps],
         },
       )}
     </PresentationContext.Provider>

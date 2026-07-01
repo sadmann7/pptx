@@ -204,8 +204,24 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     } else if (children != null) {
       resolvedChildren = children;
     } else {
+      console.log({ presentation });
       resolvedChildren = presentation.slides.map((slide) => (
-        <ThumbnailItem key={slide.id} slideId={slide.id} />
+        <ThumbnailItem key={slide.id} slideId={slide.id}>
+          <ThumbnailItemPreview />
+          <ThumbnailItemNumber
+            style={{
+              position: "absolute",
+              width: "1px",
+              height: "1px",
+              padding: "0",
+              margin: "-1px",
+              overflow: "hidden",
+              clipPath: "inset(50%)",
+              whiteSpace: "nowrap",
+              borderWidth: 0,
+            }}
+          />
+        </ThumbnailItem>
       ));
     }
 
@@ -217,35 +233,36 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           {
             state,
             ref: forwardedRef,
-            props: {
-              ...thumbnailListProps,
-              role: "listbox",
-              "aria-label": thumbnailListProps["aria-label"] ?? "Slide thumbnails",
-              "aria-orientation": "vertical",
-              // When a button owns tabIndex=0 the container steps out of the tab
-              // order: the list has exactly ONE external tab stop (the active
-              // button). Shift+Tab from the button then skips the container and
-              // exits the list in a single key press.
-              // When no button has a tab stop yet (e.g. before auto-focus fires),
-              // the container acts as the entry point and redirects focus.
-              tabIndex: effectiveTabStopId ? -1 : 0,
-              onMouseDown: (event) => {
-                thumbnailListProps.onMouseDown?.(event);
-                if (event.target === event.currentTarget) isClickFocusRef.current = true;
+            props: [
+              {
+                role: "listbox",
+                "aria-label": "Slide thumbnails",
+                "aria-orientation": "vertical",
+                // When a button owns tabIndex=0 the container steps out of the tab
+                // order: the list has exactly ONE external tab stop (the active
+                // button). Shift+Tab from the button then skips the container and
+                // exits the list in a single key press.
+                // When no button has a tab stop yet (e.g. before auto-focus fires),
+                // the container acts as the entry point and redirects focus.
+                tabIndex: effectiveTabStopId ? -1 : 0,
+                style: { overflowY: "auto", outline: "none" },
+                onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
+                  if (event.target === event.currentTarget) isClickFocusRef.current = true;
+                },
+                onFocus: (event: React.FocusEvent<HTMLDivElement>) => {
+                  // Container only receives keyboard focus when effectiveTabStopId
+                  // is null (no button owns tabIndex=0 yet). Redirect to first button.
+                  if (event.target !== event.currentTarget) return;
+                  if (isClickFocusRef.current) {
+                    isClickFocusRef.current = false;
+                    return;
+                  }
+                  focusFirst(Array.from(itemsRef.current.values()), true);
+                },
+                children: resolvedChildren,
               },
-              onFocus: (event) => {
-                thumbnailListProps.onFocus?.(event);
-                // Container only receives keyboard focus when effectiveTabStopId
-                // is null (no button owns tabIndex=0 yet). Redirect to first button.
-                if (event.target !== event.currentTarget) return;
-                if (isClickFocusRef.current) {
-                  isClickFocusRef.current = false;
-                  return;
-                }
-                focusFirst(Array.from(itemsRef.current.values()), true);
-              },
-              children: resolvedChildren,
-            },
+              thumbnailListProps,
+            ],
           },
         )}
       </ThumbnailRovingContext.Provider>
@@ -353,62 +370,64 @@ export const ThumbnailItem = React.memo(
           {
             state,
             ref: [registerRef, forwardedRef],
-            props: {
-              ...thumbnailItemProps,
-              type: "button",
-              role: "option",
-              "aria-selected": isActive,
-              "aria-label": `Slide ${displayIndex + 1}`,
-              "data-active": isActive || undefined,
-              "data-slide-id": slideId,
-              tabIndex: isCurrentTabStop ? 0 : -1,
-              onClick: () => store.goTo(slideId),
-              onFocus: (event) => {
-                thumbnailItemProps.onFocus?.(event);
-                rovingContext.onItemFocus(slideId);
-                store.goTo(slideId);
+            props: [
+              {
+                type: "button",
+                role: "option",
+                "aria-selected": isActive,
+                "aria-label": `Slide ${displayIndex + 1}`,
+                "data-active": isActive || undefined,
+                "data-slide-id": slideId,
+                tabIndex: isCurrentTabStop ? 0 : -1,
+                style: {
+                  display: "block",
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "none",
+                  overflow: "hidden",
+                  position: "relative",
+                },
+                onClick: () => store.goTo(slideId),
+                onFocus: () => {
+                  rovingContext.onItemFocus(slideId);
+                  store.goTo(slideId);
+                },
+                onMouseDown: () => {
+                  rovingContext.onItemFocus(slideId);
+                },
+                onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+                  if (event.target !== event.currentTarget) return;
+
+                  const focusIntent = MAP_KEY_TO_INTENT[event.key];
+                  if (
+                    !focusIntent ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.altKey ||
+                    event.shiftKey
+                  )
+                    return;
+                  event.preventDefault();
+
+                  let candidates = Array.from(rovingContext.itemsRef.current.values());
+
+                  if (focusIntent === "last") {
+                    candidates = candidates.reverse();
+                  } else if (focusIntent === "prev" || focusIntent === "next") {
+                    if (focusIntent === "prev") candidates = candidates.reverse();
+                    const idx = candidates.indexOf(event.currentTarget);
+                    candidates = rovingContext.loop
+                      ? wrapArray(candidates, idx + 1)
+                      : candidates.slice(idx + 1);
+                  }
+
+                  setTimeout(() => focusFirst(candidates));
+                },
+                children,
               },
-              onMouseDown: (event) => {
-                thumbnailItemProps.onMouseDown?.(event);
-                rovingContext.onItemFocus(slideId);
-              },
-              onKeyDown: (event) => {
-                thumbnailItemProps.onKeyDown?.(event);
-
-                if (event.target !== event.currentTarget) return;
-
-                const focusIntent = MAP_KEY_TO_INTENT[event.key];
-                if (
-                  !focusIntent ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.altKey ||
-                  event.shiftKey
-                )
-                  return;
-                event.preventDefault();
-
-                let candidates = Array.from(rovingContext.itemsRef.current.values());
-
-                if (focusIntent === "last") {
-                  candidates = candidates.reverse();
-                } else if (focusIntent === "prev" || focusIntent === "next") {
-                  if (focusIntent === "prev") candidates = candidates.reverse();
-                  const idx = candidates.indexOf(event.currentTarget);
-                  candidates = rovingContext.loop
-                    ? wrapArray(candidates, idx + 1)
-                    : candidates.slice(idx + 1);
-                }
-
-                setTimeout(() => focusFirst(candidates));
-              },
-              children: children ?? (
-                <>
-                  <ThumbnailItemPreview />
-                  <ThumbnailItemNumber />
-                </>
-              ),
-            },
+              thumbnailItemProps,
+            ],
           },
         )}
       </ThumbnailItemContext.Provider>
@@ -542,22 +561,24 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       {
         state: { slideId: itemContext.slideId, scale },
         ref: [itemPreviewRef, forwardedRef],
-        props: {
-          ...thumbnailItemPreviewProps,
-          "aria-hidden": "true",
-          "data-active": itemContext.isActive || undefined,
-          // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
-          inert: true,
-          style: {
-            width: "100%",
-            // aspect-ratio gives the container the correct height from the
-            // very first render, eliminating the height-collapse layout shift
-            // that occurred while waiting for the ResizeObserver measurement.
-            aspectRatio: `${pWidth} / ${pHeight}`,
-            overflow: "hidden",
-            pointerEvents: "none",
+        props: [
+          {
+            "aria-hidden": "true",
+            "data-active": itemContext.isActive || undefined,
+            // Prevent Tab from entering focusable PPTX content (links, forms, etc.)
+            inert: true,
+            style: {
+              width: "100%",
+              // aspect-ratio gives the container the correct height from the
+              // very first render, eliminating the height-collapse layout shift
+              // that occurred while waiting for the ResizeObserver measurement.
+              aspectRatio: `${pWidth} / ${pHeight}`,
+              overflow: "hidden",
+              pointerEvents: "none",
+            },
           },
-        },
+          thumbnailItemPreviewProps,
+        ],
       },
     );
   },
@@ -603,13 +624,15 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
           slideId: itemContext.slideId,
         },
         ref: forwardedRef,
-        props: {
-          ...thumbnailItemNumberProps,
-          "aria-hidden": "true",
-          "data-active": itemContext.isActive || undefined,
-          style: { userSelect: "none" },
-          children: children ?? itemContext.displayIndex + 1,
-        },
+        props: [
+          {
+            "aria-hidden": "true",
+            "data-active": itemContext.isActive || undefined,
+            style: { userSelect: "none" },
+            children: children ?? itemContext.displayIndex + 1,
+          },
+          thumbnailItemNumberProps,
+        ],
       },
     );
   },

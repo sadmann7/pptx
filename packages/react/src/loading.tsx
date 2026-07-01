@@ -50,7 +50,7 @@ export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function L
     {
       state: { progress },
       ref: forwardedRef,
-      props: { ...loadingProps, children: resolvedChildren },
+      props: [{ children: resolvedChildren }, loadingProps],
     },
   );
 });

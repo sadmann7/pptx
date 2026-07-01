@@ -59,17 +59,19 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
     {
       state: { status, index },
       ref: forwardedRef,
-      props: {
-        ...slideProps,
-        "data-status": status,
-        style: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "auto",
+      props: [
+        {
+          "data-status": status,
+          style: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "auto",
+          },
+          children: slideContent,
         },
-        children: slideContent,
-      },
+        slideProps,
+      ],
     },
   );
 });
