@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import type { SlideData } from "@diceui/pptx-parser";
+
 import { PresentationContext } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
@@ -65,14 +67,20 @@ interface UncontrolledRootProps extends RootImplProps {
   file?: PreviewInput | null | undefined;
   /**
    * 0-based index of the slide to navigate to after a successful parse.
+   * Also accepts a resolver called with the parsed slides, useful when the
+   * target depends on content (e.g. last slide, or a specific id).
    *
    * @default 0
    *
    * ```tsx
+   * // Static
    * <Presentation.Root file={file} defaultSlideIndex={2} />
+   *
+   * // Dynamic — last slide
+   * <Presentation.Root file={file} defaultSlideIndex={(slides) => slides.length - 1} />
    * ```
    */
-  defaultSlideIndex?: number;
+  defaultSlideIndex?: number | ((slides: SlideData[]) => number);
   /**
    * Event handler called once the presentation has been parsed successfully.
    *

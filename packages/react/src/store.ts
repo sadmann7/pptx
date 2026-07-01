@@ -1,4 +1,4 @@
-import type { PresentationData } from "@diceui/pptx-parser";
+import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 import { buildPresentation, parseZip } from "@diceui/pptx-parser";
 
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
@@ -33,7 +33,27 @@ export interface PresentationStore {
    */
   load: (
     input: PreviewInput,
-    options?: { defaultSlideIndex?: number },
+    options?: {
+      /**
+       * 0-based index of the slide to navigate to after a successful parse.
+       * Also accepts a resolver called with the parsed slides, useful when the
+       * target index depends on the content (e.g. last slide, or a specific id).
+       *
+       * @default 0
+       *
+       * ```ts
+       * // Static
+       * store.load(file, { defaultSlideIndex: 2 });
+       *
+       * // Dynamic — last slide
+       * store.load(file, { defaultSlideIndex: (slides) => slides.length - 1 });
+       *
+       * // Dynamic — by id
+       * store.load(file, { defaultSlideIndex: (slides) => slides.findIndex(s => s.id === savedId) });
+       * ```
+       */
+      defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+    },
   ) => Promise<PresentationData>;
   reset: () => void;
 
@@ -131,7 +151,7 @@ export function createPresentationStore(): PresentationStore {
 
   async function load(
     input: PreviewInput,
-    options?: { defaultSlideIndex?: number },
+    options?: { defaultSlideIndex?: number | ((slides: SlideData[]) => number) },
   ): Promise<PresentationData> {
     loadGeneration += 1;
     const gen = loadGeneration;
@@ -153,7 +173,13 @@ export function createPresentationStore(): PresentationStore {
       if (gen !== loadGeneration)
         throw new DOMException("Superseded by a newer load", "AbortError");
 
-      const startIndex = clamp(options?.defaultSlideIndex ?? 0, 0, presentation.slides.length - 1);
+      const defaultSlideIndex = options?.defaultSlideIndex;
+      const requestedIndex =
+        typeof defaultSlideIndex === "function"
+          ? defaultSlideIndex(presentation.slides)
+          : (defaultSlideIndex ?? 0);
+      const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
+
       replaceState({
         status: "ready",
         presentation,

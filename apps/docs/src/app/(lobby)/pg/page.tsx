@@ -4,6 +4,8 @@ import * as React from "react";
 
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Presentation,
   PresentationBody,
@@ -16,30 +18,22 @@ import {
 } from "@/components/ui/presentation";
 
 export default function PgPage() {
+  const id = React.useId();
   const store = useCreatePresentationStore();
-  const [defaultSlideIndex, setDefaultSlideIndex] = React.useState(2);
 
-  function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex });
+    store.load(file, { defaultSlideIndex: 0 });
   }
 
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-        <label className="text-sm font-medium text-muted-foreground">Open PPTX</label>
-        <input type="file" accept=".pptx" className="text-sm" onChange={onFileChange} />
-        <label className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground">
-          Start slide
-          <input
-            type="number"
-            min={0}
-            value={defaultSlideIndex}
-            onChange={(e) => setDefaultSlideIndex(Math.max(0, Number(e.target.value)))}
-            className="w-14 rounded border border-border bg-background px-2 py-0.5 text-foreground"
-          />
-        </label>
+        <Label htmlFor={`${id}-file-input`} className="sr-only">
+          Open PPTX
+        </Label>
+        <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
       <Presentation store={store} className="max-h-[calc(100dvh-100px)] flex-1">
         <PresentationDebug />
