@@ -246,6 +246,7 @@ export class PptxViewer extends EventTarget {
    * Render all slides in a scrollable list.
    */
   async renderList(options?: ListRenderOptions): Promise<void> {
+    await this.fontInjection?.ready;
     this.activeRenderMode = "list";
     this.listOptions = {
       windowed: options?.windowed ?? false,
@@ -261,6 +262,7 @@ export class PptxViewer extends EventTarget {
    * Render a single slide (no built-in nav UI).
    */
   async renderSlide(index?: number): Promise<void> {
+    await this.fontInjection?.ready;
     this.activeRenderMode = "slide";
     if (index !== undefined && this.presentation) {
       this.currentSlide = Math.max(0, Math.min(index, this.presentation.slides.length - 1));

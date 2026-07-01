@@ -290,8 +290,13 @@ export function createPresentationStore(): PresentationStore {
 
       const presentation = buildPresentation(files);
       if (gen !== loadGeneration) throw ABORT_ERROR;
+      setState({ progress: 85 });
 
+      // Wait for embedded fonts to register before rendering so text is
+      // measured and painted with the correct fonts (no layout shift).
       fontInjection = injectEmbeddedFonts(presentation);
+      await fontInjection.ready;
+      if (gen !== loadGeneration) throw ABORT_ERROR;
 
       const defaultSlideIndex = options?.defaultSlideIndex;
       const requestedIndex =
