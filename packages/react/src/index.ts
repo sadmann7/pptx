@@ -18,3 +18,5 @@ export type {
   PresentationStatus,
   PreviewInput,
 } from "./store";
+
+export type { PresentationData } from "@diceui/pptx-parser";

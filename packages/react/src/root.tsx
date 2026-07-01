@@ -7,38 +7,95 @@ import type { PresentationStore, PreviewInput } from "./store";
 import { createPresentationStore } from "./store";
 
 export interface RootState {
-  /** Current file being presented, or `null` if none is loaded. */
+  /**
+   *  Current file being presented, or `null` if none is loaded.
+   */
   file: PreviewInput | null | undefined;
 }
 
-export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
+interface RootImplProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
   /**
-   * **Controlled mode** — a store created via `useCreatePresentationStore`.
-   * When provided, `file`, `initialSlideIndex`, `onLoad`, and `onError` are
-   * ignored; you drive the store directly (call `store.load()`, etc.).
+   * Replace the root `<div>` with a custom element or render function.
+   *
+   * ```tsx
+   * // Element: props are merged in
+   * render={<section />}
+   *
+   * // Function: full control
+   * render={(props, state) => <section {...props} data-file={!!state.file} />}
+   * ```
    */
-  store?: PresentationStore;
+  render?: RenderProp<RootState>;
+}
+
+interface ControlledRootProps extends RootImplProps {
   /**
-   * **Uncontrolled mode** — the file to parse and display.
-   * Ignored when `store` is provided.
+   * Controlled mode: a store created via `useCreatePresentationStore`.
+   * You drive the store directly. `file`, `defaultSlideIndex`, `onLoad`,
+   * and `onError` are not available in this mode.
+   *
+   * ```tsx
+   * const store = useCreatePresentationStore();
+   *
+   * async function open(file: File) {
+   *   const presentation = await store.load(file, { defaultSlideIndex: 2 });
+   *   console.log("slides:", presentation.slides.length);
+   * }
+   *
+   * <Presentation.Root store={store}>...</Presentation.Root>
+   * ```
+   */
+  store: PresentationStore;
+  file?: never;
+  defaultSlideIndex?: never;
+  onLoad?: never;
+  onError?: never;
+}
+
+interface UncontrolledRootProps extends RootImplProps {
+  store?: never;
+  /**
+   * The file to parse and display. Accepts `File`, `Blob`, `ArrayBuffer`,
+   * or `Uint8Array`. Set to `null` or `undefined` to reset the viewer.
+   *
+   * ```tsx
+   * <Presentation.Root file={file} />
+   * ```
    */
   file?: PreviewInput | null | undefined;
   /**
    * 0-based index of the slide to navigate to after a successful parse.
-   * Defaults to `0`. Ignored when `store` is provided.
+   *
+   * @default 0
+   *
+   * ```tsx
+   * <Presentation.Root file={file} defaultSlideIndex={2} />
+   * ```
    */
   defaultSlideIndex?: number;
-  /** Called once the presentation has been parsed. Ignored in controlled mode. */
-  onLoad?: (store: PresentationStore) => void;
-  /** Called when parsing fails. Ignored in controlled mode. */
-  onError?: (error: Error) => void;
   /**
-   * Replace the root wrapper element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
+   * Event handler called once the presentation has been parsed successfully.
+   *
+   * ```tsx
+   * onLoad={(store) => {
+   *   console.log("slides:", store.getState().presentation?.slides.length);
+   * }}
+   * ```
    */
-  render?: RenderProp<RootState>;
+  onLoad?: (store: PresentationStore) => void;
+  /**
+   * Event handler called when parsing fails.
+   *
+   * ```tsx
+   * onError={(error) => {
+   *   console.error("Failed to load presentation:", error.message);
+   * }}
+   * ```
+   */
+  onError?: (error: Error) => void;
 }
+
+export type RootProps = ControlledRootProps | UncontrolledRootProps;
 
 export function Root({
   store: externalStore,
@@ -52,7 +109,6 @@ export function Root({
   onError,
   ...rootProps
 }: RootProps) {
-  // Uncontrolled: stable internal store, created once via lazy-ref pattern
   const internalStoreRef = React.useRef<PresentationStore | null>(null);
   if (internalStoreRef.current === null) {
     internalStoreRef.current = createPresentationStore();
@@ -66,13 +122,10 @@ export function Root({
   const onErrorRef = React.useRef(onError);
   onErrorRef.current = onError;
 
-  // Keep a ref so the effect dep array stays stable while still reading the
-  // latest value at the moment the load resolves.
   const defaultSlideIndexRef = React.useRef(defaultSlideIndex);
   defaultSlideIndexRef.current = defaultSlideIndex;
 
   React.useEffect(() => {
-    // Controlled mode — caller owns the store lifecycle entirely.
     if (externalStore) return;
 
     if (!file) {
@@ -83,9 +136,11 @@ export function Root({
     store
       .load(file, { defaultSlideIndex: defaultSlideIndexRef.current })
       .then(() => onLoadRef.current?.(store))
-      .catch((err: unknown) =>
-        onErrorRef.current?.(err instanceof Error ? err : new Error(String(err))),
-      );
+      .catch((err: unknown) => {
+        // AbortError means a newer load() superseded this one so it's not a real failure.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+      });
   }, [store, externalStore, file]);
 
   return (

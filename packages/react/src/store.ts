@@ -25,7 +25,16 @@ export interface PresentationStore {
   getState: () => PresentationState;
   subscribe: (listener: () => void) => () => void;
 
-  load: (input: PreviewInput, options?: { defaultSlideIndex?: number }) => Promise<void>;
+  /**
+   * Parse and display a presentation file.
+   * Returns the parsed `PresentationData` on success.
+   * Rejects with an `AbortError` if a newer `load()` call superseded this one
+   * before it completed — callers can safely ignore that error.
+   */
+  load: (
+    input: PreviewInput,
+    options?: { defaultSlideIndex?: number },
+  ) => Promise<PresentationData>;
   reset: () => void;
 
   goTo: (slideId: string) => void;
@@ -123,7 +132,7 @@ export function createPresentationStore(): PresentationStore {
   async function load(
     input: PreviewInput,
     options?: { defaultSlideIndex?: number },
-  ): Promise<void> {
+  ): Promise<PresentationData> {
     loadGeneration += 1;
     const gen = loadGeneration;
 
@@ -131,15 +140,18 @@ export function createPresentationStore(): PresentationStore {
 
     try {
       const buffer = await normalizeInput(input);
-      if (gen !== loadGeneration) return;
+      if (gen !== loadGeneration)
+        throw new DOMException("Superseded by a newer load", "AbortError");
       setState({ progress: 30 });
 
       const files = await parseZip(buffer);
-      if (gen !== loadGeneration) return;
+      if (gen !== loadGeneration)
+        throw new DOMException("Superseded by a newer load", "AbortError");
       setState({ progress: 70 });
 
       const presentation = buildPresentation(files);
-      if (gen !== loadGeneration) return;
+      if (gen !== loadGeneration)
+        throw new DOMException("Superseded by a newer load", "AbortError");
 
       const startIndex = clamp(options?.defaultSlideIndex ?? 0, 0, presentation.slides.length - 1);
       replaceState({
@@ -150,12 +162,15 @@ export function createPresentationStore(): PresentationStore {
         progress: 100,
         error: null,
       });
+
+      return presentation;
     } catch (err) {
-      if (gen !== loadGeneration) return;
-      setState({
-        status: "error",
-        error: err instanceof Error ? err : new Error(String(err)),
-      });
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (gen !== loadGeneration)
+        throw new DOMException("Superseded by a newer load", "AbortError");
+      const error = err instanceof Error ? err : new Error(String(err));
+      setState({ status: "error", error });
+      throw error;
     }
   }
 
