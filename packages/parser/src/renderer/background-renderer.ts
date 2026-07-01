@@ -2,7 +2,11 @@
  * Background renderer — resolves and applies slide/layout/master backgrounds.
  */
 
+import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
 import { SafeXmlNode } from "../parser/xml-parser";
+import { hexToRgb } from "../utils/color";
+import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
+import { isAllowedExternalMediaUrl } from "../utils/url-safety";
 import { RenderContext } from "./render-context";
 import {
   getFocusedGradientStops,
@@ -12,10 +16,6 @@ import {
   resolveGradientFill,
   resolveThemeBackgroundFillReference,
 } from "./style-resolver";
-import { hexToRgb } from "../utils/color";
-import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
-import { isAllowedExternalMediaUrl } from "../utils/url-safety";
 
 let backgroundGradientIdCounter = 0;
 

@@ -1,4 +1,5 @@
 import type * as echarts from "echarts";
+
 import { SafeXmlNode } from "../../parser/xml-parser";
 import { RenderContext } from "../render-context";
 import { numToPct } from "./layout";

@@ -2,11 +2,11 @@
  * Table node parser — handles graphicFrame elements containing a:tbl.
  */
 
+import { parseOoxmlBool } from "../../parser/booleans";
+import { emuToPx } from "../../parser/units";
 import { SafeXmlNode } from "../../parser/xml-parser";
 import { BaseNodeData, parseBaseProps } from "./base-node";
 import { parseTextBody, TextBody } from "./shape-node";
-import { emuToPx } from "../../parser/units";
-import { parseOoxmlBool } from "../../parser/booleans";
 
 export interface TableCell {
   gridSpan: number;

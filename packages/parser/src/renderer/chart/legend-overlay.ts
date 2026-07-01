@@ -1,4 +1,5 @@
 import type * as echarts from "echarts";
+
 import { getLegendOptionObject, pickVisualStringColor } from "./legend";
 
 export function createLegendIcon(

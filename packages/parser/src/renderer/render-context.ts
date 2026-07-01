@@ -2,13 +2,14 @@
  * Render context — provides resolved theme/master/layout chain for a given slide.
  */
 
+import type { ECharts } from "echarts";
+
+import { LayoutData } from "../model/layout";
+import { MasterData } from "../model/master";
 import { PresentationData } from "../model/presentation";
 import { SlideData } from "../model/slide";
 import { ThemeData } from "../model/theme";
-import { MasterData } from "../model/master";
-import { LayoutData } from "../model/layout";
 import { SafeXmlNode } from "../parser/xml-parser";
-import type { ECharts } from "echarts";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
 
 export interface RenderContext {

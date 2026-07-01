@@ -3,9 +3,9 @@
  */
 
 import { LineEndInfo, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
-import { RenderContext } from "./render-context";
 import { parseOoxmlBool } from "../parser/booleans";
 import { isExternalTargetMode } from "../parser/rel-parser";
+import { RenderContext } from "./render-context";
 
 /** True if the text body has at least one non-empty run (avoids covering shapes with empty placeholder text). */
 function hasVisibleText(textBody: TextBody): boolean {
@@ -100,6 +100,20 @@ function hasBulletParagraph(textBody: TextBody): boolean {
 function isTitlePlaceholder(placeholder: ShapeNodeData["placeholder"]): boolean {
   return placeholder?.type === "title" || placeholder?.type === "ctrTitle";
 }
+import { emuToPx } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
+import { renderCustomGeometry } from "../shapes/custom-geometry";
+import {
+  getPresetShapePath,
+  getActionButtonIconPath,
+  getMultiPathPreset,
+  PresetSubPath,
+} from "../shapes/presets";
+import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
+import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
+import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
+import { cssFontFamilyStack, resolveThemeFontStack } from "./font-resolver";
+import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import {
   resolveFill,
   resolveLineStyle,
@@ -110,22 +124,8 @@ import {
   resolveThemeFillReference,
   getFocusedGradientStops,
 } from "./style-resolver";
-import { renderTextBody } from "./text-renderer";
-import { renderCustomGeometry } from "../shapes/custom-geometry";
-import {
-  getPresetShapePath,
-  getActionButtonIconPath,
-  getMultiPathPreset,
-  PresetSubPath,
-} from "../shapes/presets";
-import { emuToPx } from "../parser/units";
-import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
-import { SafeXmlNode } from "../parser/xml-parser";
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
-import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
 import { getEffectiveBodyPrChild } from "./text-body-properties";
-import { cssFontFamilyStack, resolveThemeFontStack } from "./font-resolver";
-import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
+import { renderTextBody } from "./text-renderer";
 
 function appendTransform(el: HTMLElement, transform: string): void {
   el.style.transform = `${el.style.transform || ""} ${transform}`.trim();

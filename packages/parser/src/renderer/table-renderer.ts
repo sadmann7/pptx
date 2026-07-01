@@ -10,6 +10,12 @@
  */
 
 import { TableCell, TableNodeData } from "../model/nodes/table-node";
+import { parseOoxmlBool } from "../parser/booleans";
+import { emuToPx } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
+import { hexToRgb } from "../utils/color";
+import { resolveThemeFontStack } from "./font-resolver";
+import { getPredefinedTableStyle } from "./predefined-table-styles";
 import { RenderContext } from "./render-context";
 import {
   resolveColor,
@@ -18,12 +24,6 @@ import {
   resolveThemeFillReference,
 } from "./style-resolver";
 import { renderTextBody } from "./text-renderer";
-import { emuToPx } from "../parser/units";
-import { parseOoxmlBool } from "../parser/booleans";
-import { hexToRgb } from "../utils/color";
-import { SafeXmlNode } from "../parser/xml-parser";
-import { getPredefinedTableStyle } from "./predefined-table-styles";
-import { resolveThemeFontStack } from "./font-resolver";
 
 function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
   clearCssFillBackground(el);

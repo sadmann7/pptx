@@ -1,5 +1,9 @@
 "use client";
 
+import * as React from "react";
+
+import { usePresentation, useSlide } from "@diceui/pptx";
+
 import {
   Presentation,
   PresentationBody,
@@ -10,8 +14,6 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@/components/ui/presentation";
-import { usePresentation, useSlide } from "@diceui/pptx";
-import * as React from "react";
 
 export default function PgPage() {
   const [file, setFile] = React.useState<File | null>(null);

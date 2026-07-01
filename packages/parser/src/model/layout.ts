@@ -3,9 +3,9 @@
  * and placeholder shapes from a p:sldLayout XML.
  */
 
-import { SafeXmlNode } from "../parser/xml-parser";
-import { emuToPx } from "../parser/units";
 import { parseOoxmlBool } from "../parser/booleans";
+import { emuToPx } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
 
 export interface PlaceholderXfrm {
   position: { x: number; y: number };

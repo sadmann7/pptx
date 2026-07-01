@@ -8,9 +8,11 @@
  * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
 
+import * as React from "react";
+
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
-import * as React from "react";
+
 import { usePresentation, usePresentationStore } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";

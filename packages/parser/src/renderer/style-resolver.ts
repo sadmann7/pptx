@@ -2,8 +2,8 @@
  * Style resolver — converts OOXML color and fill nodes to CSS values.
  */
 
+import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
 import { SafeXmlNode } from "../parser/xml-parser";
-import { RenderContext } from "./render-context";
 import {
   applyColorModifiers,
   hexToRgb,
@@ -12,7 +12,7 @@ import {
   rgbToHex,
 } from "../utils/color";
 import type { ColorModifier } from "../utils/color";
-import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
+import { RenderContext } from "./render-context";
 
 // ---------------------------------------------------------------------------
 // Color Resolution

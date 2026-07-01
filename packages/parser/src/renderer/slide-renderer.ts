@@ -2,26 +2,27 @@
  * Slide renderer — orchestrates rendering of a complete slide with all its nodes.
  */
 
-import { SlideData } from "../model/slide";
-import { materializeSlideNodes, PresentationData } from "../model/presentation";
-import { createRenderContext, RenderContext } from "./render-context";
-import { renderBackground } from "./background-renderer";
-import { renderShape } from "./shape-renderer";
-import { renderImage } from "./image-renderer";
-import { renderTable } from "./table-renderer";
-import { renderGroup } from "./group-renderer";
-import { renderChart } from "./chart-renderer";
-import { ShapeNodeData } from "../model/nodes/shape-node";
-import { PicNodeData } from "../model/nodes/pic-node";
-import { TableNodeData } from "../model/nodes/table-node";
-import { GroupNodeData } from "../model/nodes/group-node";
-import { ChartNodeData } from "../model/nodes/chart-node";
-import { BaseNodeData } from "../model/nodes/base-node";
-import { SafeXmlNode } from "../parser/xml-parser";
-import type { RelEntry } from "../parser/rel-parser";
-import { isPlaceholderNode, parseRenderableChild } from "../model/renderable-child";
 import type { ECharts } from "echarts";
+
+import { BaseNodeData } from "../model/nodes/base-node";
+import { ChartNodeData } from "../model/nodes/chart-node";
+import { GroupNodeData } from "../model/nodes/group-node";
+import { PicNodeData } from "../model/nodes/pic-node";
+import { ShapeNodeData } from "../model/nodes/shape-node";
+import { TableNodeData } from "../model/nodes/table-node";
+import { materializeSlideNodes, PresentationData } from "../model/presentation";
+import { isPlaceholderNode, parseRenderableChild } from "../model/renderable-child";
+import { SlideData } from "../model/slide";
+import type { RelEntry } from "../parser/rel-parser";
+import { SafeXmlNode } from "../parser/xml-parser";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
+import { renderBackground } from "./background-renderer";
+import { renderChart } from "./chart-renderer";
+import { renderGroup } from "./group-renderer";
+import { renderImage } from "./image-renderer";
+import { createRenderContext, RenderContext } from "./render-context";
+import { renderShape } from "./shape-renderer";
+import { renderTable } from "./table-renderer";
 
 // ---------------------------------------------------------------------------
 // Types

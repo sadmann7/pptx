@@ -2,9 +2,9 @@ import { generate as DefaultImage } from "fumadocs-ui/og";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 
+import { loadFonts } from "@/lib/fonts";
 import { appName } from "@/lib/shared";
 import { getPageImage, source } from "@/lib/source";
-import { loadFonts } from "@/lib/fonts";
 
 export const revalidate = false;
 

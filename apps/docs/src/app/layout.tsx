@@ -1,14 +1,14 @@
-import { Providers } from "@/components/providers";
+import type * as React from "react";
 
-import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { siteConfig } from "@/lib/site";
-import { fontMono, fontSans } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/sonner";
-import "@/styles/globals.css";
 import type { Metadata, Viewport } from "next";
 
-import type * as React from "react";
+import { Providers } from "@/components/providers";
+import { TailwindIndicator } from "@/components/tailwind-indicator";
+import { Toaster } from "@/components/ui/sonner";
+import { fontMono, fontSans } from "@/lib/fonts";
+import "@/styles/globals.css";
+import { siteConfig } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

@@ -1,6 +1,8 @@
+import * as React from "react";
+
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
-import * as React from "react";
+
 import { usePresentation, useSlide, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";

@@ -3,17 +3,17 @@
  * (themes, masters, layouts, slides) into a single PresentationData structure.
  */
 
-import { PptxFiles } from "../parser/zip-parser";
-import type { MediaResolver } from "../utils/media";
-import { parseXml, SafeXmlNode } from "../parser/xml-parser";
 import { parseRels, RelEntry, resolveRelTarget } from "../parser/rel-parser";
 import { emuToPx } from "../parser/units";
-import { parseTheme, ThemeData } from "./theme";
-import { MasterData, parseMaster } from "./master";
+import { parseXml, SafeXmlNode } from "../parser/xml-parser";
+import { PptxFiles } from "../parser/zip-parser";
+import type { MediaResolver } from "../utils/media";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
-import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
+import { MasterData, parseMaster } from "./master";
 import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base-node";
 import type { GroupNodeData } from "./nodes/group-node";
+import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
+import { parseTheme, ThemeData } from "./theme";
 
 export interface PresentationData {
   width: number;

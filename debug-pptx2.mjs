@@ -1,5 +1,6 @@
-import JSZip from "./node_modules/.pnpm/jszip@3.10.1/node_modules/jszip/dist/jszip.min.js";
 import { readFileSync } from "fs";
+
+import JSZip from "./node_modules/.pnpm/jszip@3.10.1/node_modules/jszip/dist/jszip.min.js";
 
 const buf = readFileSync(
   "c:/Users/sadman/Downloads/PPTX examples/[EXT] Q3 North 2025  Roadmap.pptx",

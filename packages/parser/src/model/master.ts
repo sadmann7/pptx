@@ -3,8 +3,8 @@
  * and placeholder shapes from a p:sldMaster XML.
  */
 
-import { SafeXmlNode } from "../parser/xml-parser";
 import { emuToPx } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
 import type { PlaceholderEntry } from "./layout";
 
 export interface MasterData {

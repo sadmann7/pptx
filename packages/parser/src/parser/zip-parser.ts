@@ -5,6 +5,7 @@
 
 import JSZip from "jszip";
 import type { JSZipObject } from "jszip";
+
 import type { MediaResolver, ResolvedMedia } from "../utils/media";
 import { resolveMediaPathCandidates } from "../utils/media";
 

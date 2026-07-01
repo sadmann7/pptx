@@ -3,7 +3,6 @@
  */
 
 import type * as echarts from "echarts";
-import { graphic, init, use } from "echarts/core";
 import {
   BarChart,
   CandlestickChart,
@@ -19,6 +18,7 @@ import {
   TitleComponent,
   TooltipComponent,
 } from "echarts/components";
+import { graphic, init, use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 
 use([
@@ -37,28 +37,13 @@ use([
 ]);
 
 import { ChartNodeData } from "../model/nodes/chart-node";
-import { RenderContext } from "./render-context";
 import { SafeXmlNode } from "../parser/xml-parser";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "../utils/color";
 import { applyAxisInfo, getChartAxisIds, parseAxes, parseScatterAxes } from "./chart/axes";
-import { formatValue } from "./chart/format";
-import { markerSizeToPx } from "./chart/style";
-import {
-  chartTextStyleToEChartsTextStyle,
-  extractTitleRichText,
-  extractTitleText,
-  extractTitleTextStyle,
-  getChartThemeFontFamily,
-} from "./chart/text";
-import { parseOoxmlBoolElement } from "./chart/ooxml";
 import { parseDataLabels, parsePointDataLabelOverrides } from "./chart/data-labels";
-import { parseExplosion, parseSeries } from "./chart/series";
 import { buildDataTableElement, parseDataTable } from "./chart/data-table";
-import {
-  buildChartPalette,
-  createChartRenderContext,
-  getVaryColorPointPalette,
-} from "./chart/palette";
+import { formatValue } from "./chart/format";
+import { extractBackgroundColors, extractChartFrameStyle } from "./chart/frame";
 import { numToPct } from "./chart/layout";
 import {
   buildLegendOption,
@@ -73,6 +58,13 @@ import {
   pickSeriesStringColor,
   type LegendOptionObject,
 } from "./chart/legend";
+import { buildCustomLegendOverlay } from "./chart/legend-overlay";
+import { parseOoxmlBoolElement } from "./chart/ooxml";
+import {
+  buildChartPalette,
+  createChartRenderContext,
+  getVaryColorPointPalette,
+} from "./chart/palette";
 import {
   applyDefaultFontFamily,
   applyDefaultFontSizes,
@@ -84,8 +76,15 @@ import {
   niceAxisInterval,
   niceAxisMax,
 } from "./chart/post-process";
-import { extractBackgroundColors, extractChartFrameStyle } from "./chart/frame";
-import { buildCustomLegendOverlay } from "./chart/legend-overlay";
+import { parseExplosion, parseSeries } from "./chart/series";
+import { markerSizeToPx } from "./chart/style";
+import {
+  chartTextStyleToEChartsTextStyle,
+  extractTitleRichText,
+  extractTitleText,
+  extractTitleTextStyle,
+  getChartThemeFontFamily,
+} from "./chart/text";
 import {
   CHART_TYPE_ELEMENTS,
   ChartLineType,
@@ -101,6 +100,7 @@ import {
   type OoxmlChartType,
   type SeriesData,
 } from "./chart/types";
+import { RenderContext } from "./render-context";
 
 export type { ChartFrameStyle } from "./chart/types";
 

@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
+
+import { XMLParser } from "./node_modules/.pnpm/fast-xml-parser@4.5.6/node_modules/fast-xml-parser/src/xmlparser/XMLParser.js";
 // @ts-nocheck
 import JSZip from "./node_modules/.pnpm/jszip@3.10.1/node_modules/jszip/dist/jszip.min.js";
-import { readFileSync } from "node:fs";
-import { XMLParser } from "./node_modules/.pnpm/fast-xml-parser@4.5.6/node_modules/fast-xml-parser/src/xmlparser/XMLParser.js";
 
 const PPTX_PATH = "[EXT] Q3 North 2025 Roadmap.pptx";
 

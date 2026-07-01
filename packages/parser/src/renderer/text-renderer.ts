@@ -3,18 +3,18 @@
  * with full 7-level style inheritance.
  */
 
-import { SafeXmlNode } from "../parser/xml-parser";
-import { RenderContext } from "./render-context";
-import type { TextBody, TextParagraph, TextRun } from "../model/nodes/shape-node";
 import { PlaceholderInfo } from "../model/nodes/base-node";
-import { resolveColor, resolveColorToCss, resolveFill } from "./style-resolver";
-import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
+import type { TextBody, TextParagraph, TextRun } from "../model/nodes/shape-node";
 import { parseOoxmlBool } from "../parser/booleans";
 import { isExternalTargetMode } from "../parser/rel-parser";
+import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
 import { isAllowedExternalUrl } from "../utils/url-safety";
-import { getEffectiveBodyPrChild } from "./text-body-properties";
 import { cssFontFamilyStack, resolveThemeFont } from "./font-resolver";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
+import { RenderContext } from "./render-context";
+import { resolveColor, resolveColorToCss, resolveFill } from "./style-resolver";
+import { getEffectiveBodyPrChild } from "./text-body-properties";
 
 // ---------------------------------------------------------------------------
 // Style Inheritance Helpers

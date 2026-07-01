@@ -1,5 +1,7 @@
 import * as React from "react";
+
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
+
 import type { PresentationState } from "./store";
 import { PresentationStore } from "./store";
 

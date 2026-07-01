@@ -3,23 +3,23 @@
  * Strips all SafeXmlNode references and re-parses group children.
  */
 
+import type { LayoutData } from "../model/layout";
+import type { MasterData } from "../model/master";
+import { BaseNodeData } from "../model/nodes/base-node";
+import { ChartNodeData } from "../model/nodes/chart-node";
+import { GroupNodeData } from "../model/nodes/group-node";
+import { PicNodeData } from "../model/nodes/pic-node";
+import { ShapeNodeData, TextBody } from "../model/nodes/shape-node";
+import { TableCell, TableNodeData, TableRow } from "../model/nodes/table-node";
 import {
   materializeSlideNodes,
   PresentationData,
   resolveNodePlaceholderInheritance,
 } from "../model/presentation";
-import { SlideNode } from "../model/slide";
-import { ShapeNodeData, TextBody } from "../model/nodes/shape-node";
-import { PicNodeData } from "../model/nodes/pic-node";
-import { TableCell, TableNodeData, TableRow } from "../model/nodes/table-node";
-import { GroupNodeData } from "../model/nodes/group-node";
-import { ChartNodeData } from "../model/nodes/chart-node";
-import { BaseNodeData } from "../model/nodes/base-node";
-import { SafeXmlNode } from "../parser/xml-parser";
 import { parseRenderableChild } from "../model/renderable-child";
+import { SlideNode } from "../model/slide";
 import type { RelEntry } from "../parser/rel-parser";
-import type { LayoutData } from "../model/layout";
-import type { MasterData } from "../model/master";
+import { SafeXmlNode } from "../parser/xml-parser";
 
 // ---------------------------------------------------------------------------
 // Serialized Types (JSON-safe)

@@ -2,9 +2,9 @@
  * Base node types and property parser shared by all slide node kinds.
  */
 
-import { SafeXmlNode } from "../../parser/xml-parser";
-import { angleToDeg, emuToPx } from "../../parser/units";
 import { parseOoxmlBool } from "../../parser/booleans";
+import { angleToDeg, emuToPx } from "../../parser/units";
+import { SafeXmlNode } from "../../parser/xml-parser";
 
 export type NodeType = "shape" | "picture" | "table" | "group" | "chart" | "unknown";
 

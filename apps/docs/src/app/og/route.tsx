@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
-import { siteConfig } from "@/lib/site";
+
 import { loadFonts } from "@/lib/fonts";
+import { siteConfig } from "@/lib/site";
 
 export async function GET(request: Request) {
   try {

@@ -3,24 +3,24 @@
  */
 
 import { PicNodeData } from "../model/nodes/pic-node";
-import { RenderContext } from "./render-context";
+import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
+import { emuToPx } from "../parser/units";
+import { SafeXmlNode } from "../parser/xml-parser";
+import { renderCustomGeometry } from "../shapes/custom-geometry";
+import { getPresetShapePath } from "../shapes/presets";
+import { hexToRgb } from "../utils/color";
+import { parseEmfContent } from "../utils/emf-parser";
 import {
   findMediaByTarget,
   findMediaByTargetAsync,
   getOrCreateBlobUrl,
   resolveMediaPath,
 } from "../utils/media";
-import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
-import { resolveColor, resolveFill, resolveLineStyle } from "./style-resolver";
-import { hexToRgb } from "../utils/color";
-import { parseEmfContent } from "../utils/emf-parser";
 import { renderPdfToImage } from "../utils/pdf-renderer";
-import { emuToPx } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
 import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
-import { renderCustomGeometry } from "../shapes/custom-geometry";
-import { getPresetShapePath } from "../shapes/presets";
+import { RenderContext } from "./render-context";
+import { resolveColor, resolveFill, resolveLineStyle } from "./style-resolver";
 
 /**
  * Check if a file extension is an unsupported legacy format (WMF only now; EMF is handled).

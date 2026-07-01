@@ -2,15 +2,15 @@
  * Group renderer — renders grouped shapes with coordinate space remapping.
  */
 
-import { GroupNodeData } from "../model/nodes/group-node";
-import { RenderContext } from "./render-context";
 import { BaseNodeData } from "../model/nodes/base-node";
+import { GroupNodeData } from "../model/nodes/group-node";
 import type { ShapeNodeData } from "../model/nodes/shape-node";
-import { parseRenderableChild } from "../model/renderable-child";
 import { resolveNodePlaceholderInheritance } from "../model/presentation";
+import { parseRenderableChild } from "../model/renderable-child";
 import { emuToPx } from "../parser/units";
 import { SafeXmlNode } from "../parser/xml-parser";
 import { hexToRgb } from "../utils/color";
+import { RenderContext } from "./render-context";
 import { resolveColor } from "./style-resolver";
 
 function shouldPropagateGroupFlip(node: BaseNodeData): boolean {

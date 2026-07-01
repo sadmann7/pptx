@@ -1,8 +1,9 @@
 import { graphic } from "echarts/core";
-import { SafeXmlNode } from "../../parser/xml-parser";
+
 import { ptToPx } from "../../parser/units";
-import { resolveColor, resolveLineStyle } from "../style-resolver";
+import { SafeXmlNode } from "../../parser/xml-parser";
 import { RenderContext } from "../render-context";
+import { resolveColor, resolveLineStyle } from "../style-resolver";
 import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./types";
 
 export function resolveColorToHex(fillNode: SafeXmlNode, ctx: RenderContext): string | undefined {

@@ -1,9 +1,10 @@
+import type { ECharts } from "echarts";
+
+import { buildPresentation, PresentationData } from "../model/presentation";
 import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
 import type { ZipParseLimits } from "../parser/zip-parser";
-import { buildPresentation, PresentationData } from "../model/presentation";
 import { renderSlide as renderSlideInternal } from "../renderer/slide-renderer";
 import type { SlideHandle } from "../renderer/slide-renderer";
-import { isAllowedExternalUrl } from "../utils/url-safety";
 import {
   buildTextIndex,
   searchText as searchTextInIndex,
@@ -12,8 +13,8 @@ import {
   type TextSearchOptions,
   type TextSearchResult,
 } from "../search/text-search";
-import type { ECharts } from "echarts";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
+import { isAllowedExternalUrl } from "../utils/url-safety";
 
 export type { SlideHandle } from "../renderer/slide-renderer";
 
