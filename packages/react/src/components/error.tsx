@@ -31,6 +31,11 @@ export interface PresentationErrorProps extends Omit<React.ComponentProps<"div">
  *   {(err) => <span className="text-destructive">{err.message}</span>}
  * </Presentation.Error>
  */
+export namespace PresentationError {
+  export type State = ErrorState;
+  export type Props = PresentationErrorProps;
+}
+
 export const PresentationError = React.forwardRef<HTMLDivElement, PresentationErrorProps>(
   function PresentationError(
     { children, className, style, render, ...elementProps },

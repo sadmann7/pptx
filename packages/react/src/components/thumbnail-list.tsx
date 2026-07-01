@@ -147,6 +147,12 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  *   }
  * </Presentation.ThumbnailList>
  */
+export namespace ThumbnailList {
+  export type State = ThumbnailListState;
+  export type RenderState = ThumbnailListRenderState;
+  export type Props = ThumbnailListProps;
+}
+
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList({ className, style, render, children, ...elementProps }, forwardedRef) {
     const { presentation, status } = usePresentation();
@@ -164,7 +170,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
 
     const currentSlideId = React.useSyncExternalStore(
-      store.subscribe.bind(store),
+      store.subscribe,
       () => store.getState().currentSlideId,
       () => null,
     );
@@ -307,6 +313,11 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemNumber />`
  *   when no children are provided.
  */
+export namespace ThumbnailItem {
+  export type State = ThumbnailItemState;
+  export type Props = ThumbnailItemProps;
+}
+
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
     { slideId, children, className, style, render, ...elementProps },
@@ -316,7 +327,7 @@ export const ThumbnailItem = React.memo(
     const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
 
     const isActive = React.useSyncExternalStore(
-      store.subscribe.bind(store),
+      store.subscribe,
       () => store.getState().currentSlideId === slideId,
       () => false,
     );
@@ -324,7 +335,7 @@ export const ThumbnailItem = React.memo(
     // Subscribe narrowly to the index itself (a number) rather than the whole
     // presentation object, so only actual slide reorders cause a re-render here.
     const displayIndex = React.useSyncExternalStore(
-      store.subscribe.bind(store),
+      store.subscribe,
       () => store.getState().presentation?.slides.findIndex((s) => s.id === slideId) ?? -1,
       () => -1,
     );
@@ -459,6 +470,11 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * to it and CSS-scaled to fit. Marked `aria-hidden` since the enclosing
  * button's `aria-label` already identifies the slide.
  */
+export namespace ThumbnailItemPreview {
+  export type State = ThumbnailItemPreviewState;
+  export type Props = ThumbnailItemPreviewProps;
+}
+
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ className, style, render, ...elementProps }, forwardedRef) {
     const context = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
@@ -566,6 +582,10 @@ export interface ThumbnailItemNumberProps extends Omit<React.ComponentProps<"spa
  *
  * Completely unstyled — add `className` / `style` for visual treatment.
  */
+export namespace ThumbnailItemNumber {
+  export type Props = ThumbnailItemNumberProps;
+}
+
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
   function ThumbnailItemNumber(
     { className, style, children, render, ...elementProps },

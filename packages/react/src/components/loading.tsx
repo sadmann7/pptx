@@ -31,6 +31,11 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
  *   {(progress) => <span>Loading {progress}%…</span>}
  * </Presentation.Loading>
  */
+export namespace Loading {
+  export type State = LoadingState;
+  export type Props = LoadingProps;
+}
+
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
   { children, className, style, render, ...elementProps },
   forwardedRef,

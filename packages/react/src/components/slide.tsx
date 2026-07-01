@@ -32,6 +32,11 @@ export interface SlideProps extends React.ComponentProps<"div"> {
  * The element carries a `data-status` attribute matching the store status,
  * enabling CSS-driven state styles.
  */
+export namespace Slide {
+  export type State = SlideState;
+  export type Props = SlideProps;
+}
+
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, className, style, render, ...elementProps },
   forwardedRef,

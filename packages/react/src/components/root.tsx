@@ -22,6 +22,11 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   render?: RenderProp<RootState>;
 }
 
+export namespace Root {
+  export type State = RootState;
+  export type Props = RootProps;
+}
+
 export function Root({
   file,
   children,

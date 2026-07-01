@@ -35,11 +35,7 @@ export interface UsePresentationResult {
 
 export function usePresentation(): UsePresentationResult {
   const store = usePresentationStore("usePresentation");
-  const state = React.useSyncExternalStore(
-    store.subscribe.bind(store),
-    store.getState.bind(store),
-    () => SERVER_SNAPSHOT,
-  );
+  const state = React.useSyncExternalStore(store.subscribe, store.getState, () => SERVER_SNAPSHOT);
   return {
     presentation: state.presentation,
     status: state.status,
@@ -85,7 +81,7 @@ export function useSlide(): UseSlideResult {
 
   // currentSlideId: string | null — primitive, safe to compare directly.
   const slideId = React.useSyncExternalStore(
-    store.subscribe.bind(store),
+    store.subscribe,
     () => store.getState().currentSlideId,
     () => null,
   );
@@ -93,7 +89,7 @@ export function useSlide(): UseSlideResult {
   // presentation: object reference — only changes when a new file is loaded,
   // not on slide navigation (the store spreads state but keeps the same ref).
   const presentation = React.useSyncExternalStore(
-    store.subscribe.bind(store),
+    store.subscribe,
     () => store.getState().presentation,
     () => null,
   );
@@ -133,7 +129,7 @@ export interface UseZoomResult {
 export function useZoom(): UseZoomResult {
   const store = usePresentationStore("useZoom");
   const zoom = React.useSyncExternalStore(
-    store.subscribe.bind(store),
+    store.subscribe,
     () => store.getState().zoom,
     () => 1,
   );

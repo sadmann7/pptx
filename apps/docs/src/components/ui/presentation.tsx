@@ -1,20 +1,12 @@
 "use client";
 
-import type {
-  LoadingProps,
-  PresentationErrorProps,
-  ThumbnailItemNumberProps,
-  ThumbnailItemPreviewProps,
-  ThumbnailItemProps,
-  ThumbnailListProps,
-} from "@diceui/pptx";
-import { Presentation as Primitive } from "@diceui/pptx";
+import { Presentation as PresentationPrimitive } from "@diceui/pptx";
 
 import { cn } from "@/lib/utils";
 
-function Presentation({ className, ...props }: React.ComponentProps<typeof Primitive.Root>) {
+function Presentation({ className, ...props }: PresentationPrimitive.Root.Props) {
   return (
-    <Primitive.Root
+    <PresentationPrimitive.Root
       data-slot="presentation-root"
       className={cn("flex flex-col overflow-hidden", className)}
       {...props}
@@ -42,12 +34,9 @@ function PresentationContent({ className, ...props }: React.ComponentProps<"div"
   );
 }
 
-function PresentationViewport({
-  className,
-  ...props
-}: React.ComponentProps<typeof Primitive.Viewport>) {
+function PresentationViewport({ className, ...props }: PresentationPrimitive.Viewport.Props) {
   return (
-    <Primitive.Viewport
+    <PresentationPrimitive.Viewport
       data-slot="presentation-viewport"
       className={cn("flex-1", className)}
       {...props}
@@ -55,13 +44,17 @@ function PresentationViewport({
   );
 }
 
-function PresentationSlide(props: React.ComponentProps<typeof Primitive.Slide>) {
-  return <Primitive.Slide data-slot="presentation-slide" {...props} />;
+function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
+  return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
 }
 
-function PresentationLoading({ className, children, ...props }: LoadingProps) {
+function PresentationLoading({
+  className,
+  children,
+  ...props
+}: PresentationPrimitive.Loading.Props) {
   return (
-    <Primitive.Loading
+    <PresentationPrimitive.Loading
       data-slot="presentation-loading"
       className={cn(
         "absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-muted-foreground",
@@ -70,13 +63,13 @@ function PresentationLoading({ className, children, ...props }: LoadingProps) {
       {...props}
     >
       {children ?? ((progress) => <span>Loading… {progress}%</span>)}
-    </Primitive.Loading>
+    </PresentationPrimitive.Loading>
   );
 }
 
-function PresentationError({ className, children, ...props }: PresentationErrorProps) {
+function PresentationError({ className, children, ...props }: PresentationPrimitive.Error.Props) {
   return (
-    <Primitive.Error
+    <PresentationPrimitive.Error
       data-slot="presentation-error"
       className={cn(
         "absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-sm text-destructive",
@@ -85,13 +78,16 @@ function PresentationError({ className, children, ...props }: PresentationErrorP
       {...props}
     >
       {children ?? ((error: Error) => <span>{error.message}</span>)}
-    </Primitive.Error>
+    </PresentationPrimitive.Error>
   );
 }
 
-function PresentationThumbnailItemPreview({ className, ...props }: ThumbnailItemPreviewProps) {
+function PresentationThumbnailItemPreview({
+  className,
+  ...props
+}: PresentationPrimitive.ThumbnailItemPreview.Props) {
   return (
-    <Primitive.ThumbnailItemPreview
+    <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
       className={cn("w-full overflow-hidden rounded-sm", className)}
       {...props}
@@ -99,9 +95,12 @@ function PresentationThumbnailItemPreview({ className, ...props }: ThumbnailItem
   );
 }
 
-function PresentationThumbnailItemNumber({ className, ...props }: ThumbnailItemNumberProps) {
+function PresentationThumbnailItemNumber({
+  className,
+  ...props
+}: PresentationPrimitive.ThumbnailItemNumber.Props) {
   return (
-    <Primitive.ThumbnailItemNumber
+    <PresentationPrimitive.ThumbnailItemNumber
       data-slot="presentation-thumbnail-item-number"
       className={cn(
         "mt-1 block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums",
@@ -112,9 +111,13 @@ function PresentationThumbnailItemNumber({ className, ...props }: ThumbnailItemN
   );
 }
 
-function PresentationThumbnailItem({ className, children, ...props }: ThumbnailItemProps) {
+function PresentationThumbnailItem({
+  className,
+  children,
+  ...props
+}: PresentationPrimitive.ThumbnailItem.Props) {
   return (
-    <Primitive.ThumbnailItem
+    <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
         "relative w-full cursor-pointer rounded-md p-1 outline-none not-first:mt-4",
@@ -133,13 +136,18 @@ function PresentationThumbnailItem({ className, children, ...props }: ThumbnailI
           <PresentationThumbnailItemNumber className="absolute right-1.5 bottom-1.5" />
         </>
       )}
-    </Primitive.ThumbnailItem>
+    </PresentationPrimitive.ThumbnailItem>
   );
 }
 
-function PresentationThumbnailList({ className, style, children, ...props }: ThumbnailListProps) {
+function PresentationThumbnailList({
+  className,
+  style,
+  children,
+  ...props
+}: PresentationPrimitive.ThumbnailList.Props) {
   return (
-    <Primitive.ThumbnailList
+    <PresentationPrimitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
       className={cn("group/thumbs w-40 shrink-0 overflow-y-auto border-r p-4", className)}
       style={style}
@@ -148,7 +156,7 @@ function PresentationThumbnailList({ className, style, children, ...props }: Thu
       {children ??
         (({ slides }) =>
           slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
-    </Primitive.ThumbnailList>
+    </PresentationPrimitive.ThumbnailList>
   );
 }
 
