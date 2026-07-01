@@ -120,7 +120,7 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative w-full cursor-pointer rounded-md p-1 outline-none not-first:mt-4",
+        "relative w-full cursor-pointer rounded-md outline-none not-first:mt-4",
         "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-all duration-100",
         "hover:bg-accent hover:ring-border",
         "focus-visible:ring-ring",

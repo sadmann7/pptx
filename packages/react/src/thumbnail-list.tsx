@@ -365,12 +365,6 @@ export const ThumbnailItem = React.memo(
               tabIndex: isCurrentTabStop ? 0 : -1,
               style: {
                 display: "block",
-                width: "100%",
-                padding: 0,
-                border: "none",
-                background: "none",
-                overflow: "hidden",
-                position: "relative",
               },
               onClick: () => store.goTo(slideId),
               onFocus: (event) => {
