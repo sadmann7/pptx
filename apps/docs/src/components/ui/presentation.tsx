@@ -120,10 +120,10 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative w-full cursor-pointer rounded-md outline-none not-first:mt-4",
+        "relative w-full cursor-pointer rounded-md outline-none",
         "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-all duration-100",
         "hover:bg-accent hover:ring-border",
-        "focus-visible:ring-ring",
+        "focus:ring-ring",
         "data-active:bg-accent data-active:ring-border",
         "group-focus-within/thumbs:data-active:ring-ring",
         className,
@@ -149,7 +149,10 @@ function PresentationThumbnailList({
   return (
     <PresentationPrimitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("group/thumbs w-40 shrink-0 overflow-y-auto border-r p-4", className)}
+      className={cn(
+        "flex w-40 shrink-0 flex-col gap-3.5 overflow-y-auto border-r p-3.5",
+        className,
+      )}
       style={style}
       {...props}
     >

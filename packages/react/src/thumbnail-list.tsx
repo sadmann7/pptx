@@ -363,9 +363,6 @@ export const ThumbnailItem = React.memo(
               "data-active": isActive || undefined,
               "data-slide-id": slideId,
               tabIndex: isCurrentTabStop ? 0 : -1,
-              style: {
-                display: "block",
-              },
               onClick: () => store.goTo(slideId),
               onFocus: (event) => {
                 thumbnailItemProps.onFocus?.(event);
