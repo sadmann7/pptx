@@ -6,12 +6,14 @@
  * main thread only registers the resulting TrueType binaries with the
  * document via the FontFace API, which is cheap.
  *
+ * Decks routinely embed dozens of font parts (every family x weight x style)
+ * while the first-rendered slide uses only a few. Callers can pass
+ * `priorityTypefaces` so `ready` resolves as soon as those are registered;
+ * the remaining fonts keep decoding in the background and swap in when
+ * registered (renderers re-run text autofit on `document.fonts` arrival).
+ *
  * When Workers are unavailable (SSR, worker load failure), decoding falls
  * back to the main thread, yielding to the event loop between fonts.
- *
- * Callers should await `handle.ready` before rendering slides so text is
- * measured and painted with the embedded fonts (no fallback-font layout
- * shift).
  */
 
 import type {
@@ -23,9 +25,22 @@ import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "./font-decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./font-worker";
 
 export interface FontInjectionHandle {
-  /** Resolves when every embedded font has been registered (or skipped). */
+  /**
+   * Resolves when the priority fonts are registered (or skipped). When no
+   * `priorityTypefaces` were given, this waits for every embedded font.
+   */
   ready: Promise<void>;
+  /** Resolves when every embedded font has been registered (or skipped). */
+  complete: Promise<void>;
   dispose(): void;
+}
+
+export interface InjectEmbeddedFontsOptions {
+  /**
+   * Typeface names that block `ready`. Anything else decodes in the
+   * background after them. Names must match `EmbeddedFontEntry.typeface`.
+   */
+  priorityTypefaces?: ReadonlySet<string>;
 }
 
 const MAX_WORKERS = 6;
@@ -62,15 +77,17 @@ function nextTick(): Promise<void> {
 // ── Worker pool ─────────────────────────────────────────────────────
 
 /**
- * Decode jobs across a Web Worker pool. Jobs whose worker dies (e.g. the
- * worker script failed to load) are left un-decoded; the caller runs a
- * main-thread fallback for anything missing from the result map.
+ * Decode jobs across a Web Worker pool, invoking `onDecoded` as each result
+ * arrives (in queue order per worker, priority jobs first in the queue).
+ * Jobs whose worker dies (e.g. the worker script failed to load) are left
+ * un-decoded; the caller runs a main-thread fallback for anything missing.
  */
 async function decodeWithWorkerPool(
   jobs: DecodeJob[],
   isDisposed: () => boolean,
-): Promise<Map<string, ArrayBuffer | null>> {
-  const results = new Map<string, ArrayBuffer | null>();
+  onDecoded: (path: string, buffer: ArrayBuffer | null) => void,
+): Promise<Set<string>> {
+  const decodedPaths = new Set<string>();
   const queue = [...jobs];
 
   const concurrency =
@@ -108,7 +125,8 @@ async function decodeWithWorkerPool(
           };
 
           worker.onmessage = (event: MessageEvent<FontWorkerResponse>) => {
-            results.set(event.data.path, event.data.buffer);
+            decodedPaths.add(event.data.path);
+            onDecoded(event.data.path, event.data.buffer);
             takeNext();
           };
           // Fires when the worker script itself fails to load or crashes.
@@ -126,13 +144,20 @@ async function decodeWithWorkerPool(
     worker.terminate();
   }
 
-  return results;
+  return decodedPaths;
 }
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function injectEmbeddedFonts(presentation: PresentationData): FontInjectionHandle {
-  const noop: FontInjectionHandle = { ready: Promise.resolve(), dispose() {} };
+export function injectEmbeddedFonts(
+  presentation: PresentationData,
+  options?: InjectEmbeddedFontsOptions,
+): FontInjectionHandle {
+  const noop: FontInjectionHandle = {
+    ready: Promise.resolve(),
+    complete: Promise.resolve(),
+    dispose() {},
+  };
 
   if (!presentation.embeddedFonts || presentation.embeddedFonts.length === 0) return noop;
   if (typeof document === "undefined" || typeof FontFace === "undefined") return noop;
@@ -148,73 +173,144 @@ export function injectEmbeddedFonts(presentation: PresentationData): FontInjecti
 
   // Same .fntdata part can back multiple typeface entries — decode once.
   const jobByPath = new Map<string, DecodeJob>();
+  const tasksByPath = new Map<string, FontTask[]>();
   for (const task of tasks) {
-    if (jobByPath.has(task.variant.path)) continue;
-    const bytes = presentation.fonts.get(task.variant.path);
+    const path = task.variant.path;
+    const forPath = tasksByPath.get(path);
+    if (forPath) {
+      forPath.push(task);
+    } else {
+      tasksByPath.set(path, [task]);
+    }
+    if (jobByPath.has(path)) continue;
+    const bytes = presentation.fonts.get(path);
     if (!bytes || bytes.length === 0) continue;
-    jobByPath.set(task.variant.path, {
-      path: task.variant.path,
-      bytes,
-      fontKey: task.variant.fontKey,
-    });
+    jobByPath.set(path, { path, bytes, fontKey: task.variant.fontKey });
   }
   if (jobByPath.size === 0) return noop;
+
+  // A part is priority when any of its typefaces is priority. Without an
+  // explicit priority set, everything is priority (ready === complete).
+  const priority = options?.priorityTypefaces;
+  const isPriorityPath = (path: string): boolean =>
+    !priority || (tasksByPath.get(path) ?? []).some((task) => priority.has(task.typeface));
+
+  // Priority parts decode first.
+  const jobs = [...jobByPath.values()].sort(
+    (a, b) => Number(isPriorityPath(b.path)) - Number(isPriorityPath(a.path)),
+  );
+  let pendingPriority = jobs.filter((job) => isPriorityPath(job.path)).length;
 
   const registered: FontFace[] = [];
   let disposed = false;
   const isDisposed = () => disposed;
 
-  const ready = (async () => {
-    let buffers: Map<string, ArrayBuffer | null>;
+  let resolveReady!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    resolveReady = resolve;
+  });
+  if (pendingPriority === 0) resolveReady();
+
+  /** Register every typeface variant backed by a decoded part. */
+  async function registerPath(path: string, buffer: ArrayBuffer | null): Promise<void> {
+    if (buffer) {
+      for (const task of tasksByPath.get(path) ?? []) {
+        if (disposed) return;
+        try {
+          const face = new FontFace(task.typeface, buffer, {
+            weight: task.weight,
+            style: task.style,
+          });
+          await face.load();
+          if (disposed) return;
+          document.fonts.add(face);
+          registered.push(face);
+        } catch {
+          // Invalid font data — skip this variant, text falls back.
+        }
+      }
+    }
+    if (isPriorityPath(path) && --pendingPriority === 0) {
+      resolveReady();
+    }
+  }
+
+  const registrations: Promise<void>[] = [];
+  const onDecoded = (path: string, buffer: ArrayBuffer | null): void => {
+    registrations.push(registerPath(path, buffer));
+  };
+
+  const complete = (async () => {
+    let decodedPaths = new Set<string>();
 
     if (typeof Worker !== "undefined") {
       try {
-        buffers = await decodeWithWorkerPool([...jobByPath.values()], isDisposed);
+        decodedPaths = await decodeWithWorkerPool(jobs, isDisposed, onDecoded);
       } catch {
-        buffers = new Map();
+        decodedPaths = new Set();
       }
-    } else {
-      buffers = new Map();
     }
 
     // Main-thread fallback for anything the pool did not decode
     // (Workers unavailable, worker script failed to load, or died mid-run).
-    for (const job of jobByPath.values()) {
+    for (const job of jobs) {
       if (disposed) return;
-      if (buffers.has(job.path)) continue;
+      if (decodedPaths.has(job.path)) continue;
       const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
-      buffers.set(job.path, decoded ? toStandaloneArrayBuffer(decoded) : null);
+      onDecoded(job.path, decoded ? toStandaloneArrayBuffer(decoded) : null);
       await nextTick();
     }
 
-    // Register a FontFace per typeface variant. Cheap relative to decode.
-    for (const task of tasks) {
-      if (disposed) return;
-      const buffer = buffers.get(task.variant.path);
-      if (!buffer) continue;
-      try {
-        const face = new FontFace(task.typeface, buffer, {
-          weight: task.weight,
-          style: task.style,
-        });
-        await face.load();
-        if (disposed) return;
-        document.fonts.add(face);
-        registered.push(face);
-      } catch {
-        // Invalid font data — skip this variant, text falls back.
-      }
-    }
+    await Promise.all(registrations);
+    // Safety net: never leave `ready` pending (e.g. after dispose).
+    resolveReady();
   })();
 
   return {
     ready,
+    complete,
     dispose() {
       disposed = true;
+      resolveReady();
       for (const face of registered) {
         document.fonts.delete(face);
       }
       registered.length = 0;
     },
   };
+}
+
+/**
+ * Match raw OOXML part sources (a slide plus its layout/master, which text
+ * inherits typefaces from) against the deck's embedded typefaces, returning
+ * the set actually referenced. Theme major/minor fonts are always included,
+ * since text reaches them via `+mj-lt`/`+mn-lt` references.
+ *
+ * Used to prioritize first-slide fonts so `ready` does not wait for every
+ * embedded family in the deck. Late fonts still swap in when registered.
+ */
+export function collectPriorityTypefaces(
+  presentation: PresentationData,
+  sources: ReadonlyArray<string | undefined>,
+): Set<string> | undefined {
+  const embedded = presentation.embeddedFonts;
+  const xmlSources = sources.filter((s): s is string => !!s);
+  if (!embedded || embedded.length === 0 || xmlSources.length === 0) return undefined;
+
+  const priority = new Set<string>();
+  const themeFonts = new Set<string>();
+  for (const theme of presentation.themes.values()) {
+    if (theme.majorFont?.latin) themeFonts.add(theme.majorFont.latin);
+    if (theme.minorFont?.latin) themeFonts.add(theme.minorFont.latin);
+  }
+
+  for (const entry of embedded) {
+    if (
+      themeFonts.has(entry.typeface) ||
+      xmlSources.some((xml) => xml.includes(`typeface="${entry.typeface}"`))
+    ) {
+      priority.add(entry.typeface);
+    }
+  }
+  return priority;
 }

@@ -1,6 +1,7 @@
 import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
 import {
   buildPresentation,
+  collectPriorityTypefaces,
   injectEmbeddedFonts,
   materializeSlideNodes,
   parseZip,
@@ -318,22 +319,34 @@ export function createPresentationStore(): PresentationStore {
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 85 });
 
-      // Wait for embedded fonts to register before rendering so text is
-      // measured and painted with the correct fonts (no layout shift).
-      fontInjection = injectEmbeddedFonts(presentation);
-      await fontInjection.ready;
-      if (gen !== loadGeneration) throw ABORT_ERROR;
-
       const defaultSlideIndex = options?.defaultSlideIndex;
       const requestedIndex =
         typeof defaultSlideIndex === "function"
           ? defaultSlideIndex(presentation.slides)
           : (defaultSlideIndex ?? 0);
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
+      const startSlide = presentation.slides[startIndex];
+
+      // Wait only for the fonts the first-rendered slide needs before
+      // reporting ready (no fallback-font layout shift for visible text);
+      // the rest keep decoding in the background and swap in on arrival.
+      // Typefaces are matched against the slide plus its layout/master
+      // (text inherits fonts from placeholders). `sourceXml` is only present
+      // pre-materialization (lazy mode); without sources every embedded font
+      // is treated as priority.
+      const layoutPath = startSlide ? presentation.slideToLayout.get(startSlide.index) : undefined;
+      const masterPath = layoutPath ? presentation.layoutToMaster.get(layoutPath) : undefined;
+      const priorityTypefaces = collectPriorityTypefaces(presentation, [
+        startSlide?.sourceXml,
+        layoutPath ? files.slideLayouts.get(layoutPath) : undefined,
+        masterPath ? files.slideMasters.get(masterPath) : undefined,
+      ]);
+      fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
+      await fontInjection.ready;
+      if (gen !== loadGeneration) throw ABORT_ERROR;
 
       // The active slide's nodes must be reliable for subscribers the moment
       // the store reports "ready", even in lazy mode.
-      const startSlide = presentation.slides[startIndex];
       if (startSlide) materializeSlideNodes(presentation, startSlide);
 
       replaceState({

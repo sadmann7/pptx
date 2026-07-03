@@ -81,5 +81,5 @@ export type { PptxFiles } from "./ooxml/zip-parser";
 
 // Font utilities
 export { deobfuscateFont } from "./fonts/font-deobfuscate";
-export { injectEmbeddedFonts } from "./fonts/font-injector";
-export type { FontInjectionHandle } from "./fonts/font-injector";
+export { collectPriorityTypefaces, injectEmbeddedFonts } from "./fonts/font-injector";
+export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./fonts/font-injector";
