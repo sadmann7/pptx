@@ -5,7 +5,7 @@ import {
   evaluateGuideFormula,
   evaluateGuides,
   resolveGuideOperand,
-} from "./guide-evaluator";
+} from "../shapes/guide-evaluator";
 
 describe("createGuideContext", () => {
   it("defines the built-in variables from shape extents", () => {

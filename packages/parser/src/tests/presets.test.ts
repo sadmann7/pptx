@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getMultiPathPreset, getPresetShapePath, presetShapes } from "./presets";
+import { getMultiPathPreset, getPresetShapePath, presetShapes } from "../shapes/presets";
 
 /** All 187 preset names from ECMA-376 ST_ShapeType (dml-main.xsd, 5th edition). */
 const ST_SHAPE_TYPE = [

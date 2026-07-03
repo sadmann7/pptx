@@ -810,6 +810,7 @@ export function renderTextBody(
       paraDiv.style.wordBreak = "keep-all";
     }
     const hasLineBreaks = paragraph.runs.some((r) => r.text === "\n");
+    const hasVisibleRuns = paragraph.runs.some((r) => r.text != null && r.text.length > 0);
     const isSingleLineAutoFitParagraph =
       options?.compactSingleLineSpacing &&
       paragraphIndex === singleVisibleParagraph &&
@@ -909,10 +910,13 @@ export function renderTextBody(
     let effectiveFontSize = 12; // default 12pt
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
     if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
-    if (paragraph.runs.length > 0 && paragraph.runs[0].properties) {
-      const sz = paragraph.runs[0].properties.numAttr("sz");
-      if (sz !== undefined) effectiveFontSize = sz / 100;
-    } else if (paragraph.runs.length === 0 && paragraph.endParaRPr) {
+    const firstRunSize =
+      paragraph.runs.length > 0 ? paragraph.runs[0].properties?.numAttr("sz") : undefined;
+    if (firstRunSize !== undefined) {
+      effectiveFontSize = firstRunSize / 100;
+    } else if (!hasVisibleRuns && paragraph.endParaRPr) {
+      // Empty paragraphs (no runs, or only empty-text runs — common in Google
+      // Slides exports) take their line height from endParaRPr, like PowerPoint.
       const sz = paragraph.endParaRPr.numAttr("sz");
       if (sz !== undefined) effectiveFontSize = sz / 100;
     }
@@ -944,7 +948,6 @@ export function renderTextBody(
     // ---- Bullets ----
     // Suppress bullets for metadata placeholders (slide number, date, footer)
     // Also suppress for empty paragraphs (no visible runs) — PowerPoint never shows bullets for them
-    const hasVisibleRuns = paragraph.runs.some((r) => r.text != null && r.text.length > 0);
     const suppressBullet =
       !hasVisibleRuns ||
       placeholder?.type === "sldNum" ||
@@ -1039,8 +1042,11 @@ export function renderTextBody(
     }
 
     // ---- Render runs ----
-    if (paragraph.runs.length === 0) {
-      // Empty paragraph — still need to maintain spacing
+    // Paragraphs without visible text still occupy one line in PowerPoint.
+    // This includes runs with empty <a:t/> (Google Slides exports use stacks of
+    // those as vertical spacing). Skip when the paragraph has explicit <a:br/>
+    // runs, which produce their own line boxes below.
+    if (!hasVisibleRuns && !hasLineBreaks) {
       paraDiv.appendChild(document.createElement("br"));
     }
 
