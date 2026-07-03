@@ -23,6 +23,7 @@
     "build": "tsdown",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -35,6 +36,7 @@
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
     "jszip": "^3.10.1",
     "react": "catalog:",
