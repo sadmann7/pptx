@@ -12,7 +12,7 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   return (
     <PresentationPrimitive.Root
       data-slot="presentation-root"
-      className={cn("flex overflow-hidden", className)}
+      className={cn("flex gap-4 overflow-hidden", className)}
       {...props}
     />
   );
@@ -32,7 +32,7 @@ function PresentationViewport({ className, ...props }: PresentationPrimitive.Vie
   return (
     <PresentationPrimitive.Viewport
       data-slot="presentation-viewport"
-      className={cn("flex-1", className)}
+      className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
       {...props}
     />
   );

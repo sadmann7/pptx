@@ -89,9 +89,6 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
 export function Root({
   file,
   defaultSlideIndex,
-  children,
-  className,
-  style,
   render,
   onLoad,
   onError,
@@ -144,10 +141,10 @@ export function Root({
     <Context.Provider value={store}>
       {renderElement(
         "div",
-        { render, className, style },
+        { render },
         {
           state: { file },
-          props: [{ children }, rootProps],
+          props: [rootProps],
         },
       )}
     </Context.Provider>

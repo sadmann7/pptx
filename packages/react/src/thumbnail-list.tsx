@@ -139,10 +139,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  * only the active item lives in the tab order at any time.
  */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
-  function ThumbnailList(
-    { className, style, render, children, loop = false, ...thumbnailListProps },
-    forwardedRef,
-  ) {
+  function ThumbnailList({ render, children, loop = false, ...thumbnailListProps }, forwardedRef) {
     const { presentation, status } = usePresentation();
     const store = usePresentationStore(THUMBNAIL_LIST_NAME);
 
@@ -228,7 +225,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       <ThumbnailRovingContext.Provider value={rovingContextValue}>
         {renderElement(
           "div",
-          { render, className, style },
+          { render },
           {
             state,
             ref: forwardedRef,
@@ -313,7 +310,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
-    { slideId, children, className, style, render, ...thumbnailItemProps },
+    { slideId, children, render, ...thumbnailItemProps },
     forwardedRef,
   ) {
     const store = usePresentationStore(THUMBNAIL_ITEM_NAME);
@@ -364,7 +361,7 @@ export const ThumbnailItem = React.memo(
       <ThumbnailItemContext.Provider value={itemContextValue}>
         {renderElement(
           "button",
-          { render, className, style },
+          { render },
           {
             state,
             ref: [registerRef, forwardedRef],
@@ -467,10 +464,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * button's `aria-label` already identifies the slide.
  */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
-  function ThumbnailItemPreview(
-    { className, style, render, ...thumbnailItemPreviewProps },
-    forwardedRef,
-  ) {
+  function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
     const { presentation } = usePresentation();
 
@@ -478,6 +472,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
     const mediaUrlCache = React.useRef(new Map<string, string>()).current;
     const [containerWidth, setContainerWidth] = React.useState(0);
+
     // Ref so the slide render effect can read the current scale without
     // being listed as a dependency (avoids tearing down the slide on resize).
     const scaleRef = React.useRef(0);
@@ -549,7 +544,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     return renderElement(
       "div",
-      { render, className, style },
+      { render },
       {
         state: { slideId: itemContext.slideId, scale },
         ref: [itemPreviewRef, forwardedRef],
@@ -598,15 +593,12 @@ export interface ThumbnailItemNumberProps extends React.ComponentProps<"span"> {
  * Completely unstyled: add `className` / `style` for visual treatment.
  */
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
-  function ThumbnailItemNumber(
-    { className, style, children, render, ...thumbnailItemNumberProps },
-    forwardedRef,
-  ) {
+  function ThumbnailItemNumber({ children, render, ...thumbnailItemNumberProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);
 
     return renderElement(
       "span",
-      { render, className, style },
+      { render },
       {
         state: {
           isActive: itemContext.isActive,

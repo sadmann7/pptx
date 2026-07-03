@@ -21,7 +21,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * Padding (in pixels) applied on all sides when fitting the slide.
    * Only used when `autoFit` is `true`.
    *
-   * @default 24
+   * @default 0
    */
   autoFitPadding?: number;
   /**
@@ -40,7 +40,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Place `<Presentation.Slide>` inside to render the current slide.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
-  { children, className, style, autoFit = false, autoFitPadding = 24, render, ...viewportProps },
+  { autoFit = false, autoFitPadding = 0, render, ...viewportProps },
   forwardedRef,
 ) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -69,22 +69,11 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 
   return renderElement(
     "div",
-    { render, className, style },
+    { render },
     {
       state: { zoom },
       ref: [viewportRef, forwardedRef],
-      props: [
-        {
-          style: {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "auto",
-          },
-          children,
-        },
-        viewportProps,
-      ],
+      props: [viewportProps],
     },
   );
 });
