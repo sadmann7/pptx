@@ -103,6 +103,19 @@ describe("end-to-end load (buffer → materialized model)", () => {
   });
 });
 
+describe("time-to-first-slide (buffer → first slide ready)", () => {
+  bench("large eager (parse all slides up front)", async () => {
+    const files = await parseZip(large.buffer);
+    const pres = buildPresentation(files);
+    materializeSlideNodes(pres, pres.slides[0]);
+  });
+  bench("large lazy (parse only first slide)", async () => {
+    const files = await parseZip(large.buffer);
+    const pres = buildPresentation(files, { lazy: true });
+    materializeSlideNodes(pres, pres.slides[0]);
+  });
+});
+
 describe("text search", () => {
   const index = buildTextIndex(large.presentation);
   bench("buildTextIndex (large)", () => {

@@ -307,7 +307,7 @@ export class PptxViewer extends EventTarget {
 
     const useLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
     const presentation = useLazySlides
-      ? buildPresentation(files, { lazySlides: true })
+      ? buildPresentation(files, { lazy: true })
       : buildPresentation(files);
     checkAborted();
 

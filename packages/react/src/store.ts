@@ -1,5 +1,10 @@
 import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
-import { buildPresentation, injectEmbeddedFonts, parseZip } from "@diceui/pptx-parser";
+import {
+  buildPresentation,
+  injectEmbeddedFonts,
+  materializeSlideNodes,
+  parseZip,
+} from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -121,6 +126,20 @@ export interface PresentationStore {
        * ```
        */
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+
+      /**
+       * When `true`, only the active slide's contents are parsed during
+       * `load()`; other slides are parsed when first rendered or navigated
+       * to. Makes time-to-first-slide near-constant regardless of deck size.
+       * Set to `false` to parse every slide during `load()`.
+       *
+       * The store always materializes the active slide before notifying
+       * subscribers, so `SlideData.nodes` of the current slide is reliable.
+       * Non-active slides expose empty `nodes` until they are materialized.
+       *
+       * @default true
+       */
+      lazy?: boolean;
     },
   ) => Promise<PresentationData>;
 
@@ -270,7 +289,10 @@ export function createPresentationStore(): PresentationStore {
 
   async function load(
     input: PreviewInput,
-    options?: { defaultSlideIndex?: number | ((slides: SlideData[]) => number) },
+    options?: {
+      defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+      lazy?: boolean;
+    },
   ): Promise<PresentationData> {
     loadGeneration += 1;
     const gen = loadGeneration;
@@ -288,7 +310,11 @@ export function createPresentationStore(): PresentationStore {
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 70 });
 
-      const presentation = buildPresentation(files);
+      // Lazy by default: defer per-slide node parsing until a slide is
+      // rendered or navigated to, so load time stays flat for large decks.
+      const presentation = buildPresentation(files, {
+        lazy: options?.lazy ?? true,
+      });
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 85 });
 
@@ -305,10 +331,15 @@ export function createPresentationStore(): PresentationStore {
           : (defaultSlideIndex ?? 0);
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
 
+      // The active slide's nodes must be reliable for subscribers the moment
+      // the store reports "ready", even in lazy mode.
+      const startSlide = presentation.slides[startIndex];
+      if (startSlide) materializeSlideNodes(presentation, startSlide);
+
       replaceState({
         status: "ready",
         presentation,
-        activeSlideId: presentation.slides[startIndex]?.id ?? null,
+        activeSlideId: startSlide?.id ?? null,
         zoom: 1,
         progress: 100,
         error: null,
@@ -338,9 +369,18 @@ export function createPresentationStore(): PresentationStore {
   }
 
   function goTo(slideId: string): void {
-    if (!state.presentation) return;
+    const { presentation } = state;
+    if (!presentation) return;
     if (state.activeSlideId === slideId) return;
-    if (!slideIndexById.has(slideId)) return;
+    const index = slideIndexById.get(slideId);
+    if (index === undefined) return;
+
+    // Keep the active slide's nodes reliable in lazy mode: materialize the
+    // target before subscribers observe the navigation. No-op when already
+    // materialized.
+    const target = presentation.slides[index];
+    if (target) materializeSlideNodes(presentation, target);
+
     setState({ activeSlideId: slideId });
   }
 

@@ -65,10 +65,12 @@ export interface PresentationData {
 
 export interface BuildPresentationOptions {
   /**
-   * Defer per-slide shape/table/chart node parsing until a slide is rendered,
-   * searched, serialized, or explicitly materialized.
+   * When `true`, defers per-slide shape/table/chart node parsing until a
+   * slide is rendered, searched, serialized, or explicitly materialized.
+   *
+   * @default false
    */
-  lazySlides?: boolean;
+  lazy?: boolean;
 }
 
 /**
@@ -326,7 +328,7 @@ export function buildPresentation(
     const slideRelsXml = files.slideRels.get(slideRelsPath);
     const slideRels = slideRelsXml ? parseRels(slideRelsXml) : new Map<string, RelEntry>();
 
-    const slideData = options.lazySlides
+    const slideData = options.lazy
       ? createLazySlide(slideXml, i, slideRels, slidePath)
       : parseSlide(parseXml(slideXml), i, slideRels, slidePath, files.diagramDrawings);
 
@@ -377,7 +379,7 @@ export function buildPresentation(
   };
 
   // --- Resolve placeholder position inheritance ---
-  if (!options.lazySlides) {
+  if (!options.lazy) {
     resolvePlaceholderInheritance(result);
   }
 

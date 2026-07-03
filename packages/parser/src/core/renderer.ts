@@ -1,12 +1,12 @@
 import { buildPresentation } from "../model/presentation";
-import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
 import type { ZipParseLimits } from "../parser/zip-parser";
+import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
 import type { PdfjsConfig } from "../utils/pdf-renderer";
-import { normalizePreviewInput, PptxViewer } from "./viewer";
 import type { FitMode, ListRenderOptions, PreviewInput } from "./viewer";
+import { normalizePreviewInput, PptxViewer } from "./viewer";
 
-export type { PreviewInput, FitMode } from "./viewer";
 export type { SlideHandle } from "../renderer/slide-renderer";
+export type { FitMode, PreviewInput } from "./viewer";
 
 export interface RendererOptions {
   width?: number;
@@ -129,7 +129,7 @@ export class PptxRenderer extends PptxViewer {
     checkAborted();
 
     const presentation = this.rendererLazySlides
-      ? buildPresentation(files, { lazySlides: true })
+      ? buildPresentation(files, { lazy: true })
       : buildPresentation(files);
     checkAborted();
 

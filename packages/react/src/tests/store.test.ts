@@ -77,6 +77,53 @@ describe("load", () => {
   });
 });
 
+describe("lazy slides", () => {
+  it("parses only the active slide during load by default", async () => {
+    const store = createPresentationStore();
+    await store.load(fixture);
+    const slides = store.getState().presentation!.slides;
+
+    expect(slides[0].nodesMaterialized).toBe(true);
+    expect(slides[0].nodes.length).toBeGreaterThan(0);
+    expect(slides[1].nodesMaterialized).toBe(false);
+    expect(slides[1].nodes).toHaveLength(0);
+  });
+
+  it("materializes the start slide when defaultSlideIndex targets it", async () => {
+    const store = createPresentationStore();
+    await store.load(fixture, { defaultSlideIndex: 2 });
+    const slides = store.getState().presentation!.slides;
+
+    expect(slides[2].nodesMaterialized).toBe(true);
+    expect(slides[0].nodesMaterialized).toBe(false);
+  });
+
+  it("materializes the target slide before navigation is observable", async () => {
+    const store = createPresentationStore();
+    await store.load(fixture);
+
+    let nodesAtNotify = -1;
+    store.subscribe(() => {
+      nodesAtNotify = store.getActiveSlide()?.nodes.length ?? -1;
+    });
+
+    store.next();
+    const slides = store.getState().presentation!.slides;
+    expect(slides[1].nodesMaterialized).toBe(true);
+    // Subscribers never see an active slide with unparsed nodes.
+    expect(nodesAtNotify).toBeGreaterThan(0);
+  });
+
+  it("parses all slides eagerly with lazy: false", async () => {
+    const store = createPresentationStore();
+    await store.load(fixture, { lazy: false });
+    for (const slide of store.getState().presentation!.slides) {
+      expect(slide.nodesMaterialized).toBe(true);
+      expect(slide.nodes.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("navigation", () => {
   it("navigates with next/prev and reports canGoNext/canGoPrev", async () => {
     const store = await loadedStore();
