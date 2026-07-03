@@ -1,7 +1,6 @@
 {
   "name": "@diceui/pptx",
   "version": "0.0.0",
-  "private": true,
   "files": [
     "dist"
   ],
@@ -11,7 +10,6 @@
     ".": "./src/index.ts"
   },
   "publishConfig": {
-    "private": false,
     "exports": {
       ".": {
         "import": "./dist/index.js",
@@ -46,7 +44,17 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    }
   }
 }

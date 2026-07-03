@@ -1,7 +1,6 @@
 {
   "name": "@diceui/pptx-parser",
   "version": "0.0.0",
-  "private": true,
   "files": [
     "dist"
   ],
@@ -11,7 +10,6 @@
     ".": "./src/index.ts"
   },
   "publishConfig": {
-    "private": false,
     "exports": {
       ".": {
         "import": "./dist/index.js",
