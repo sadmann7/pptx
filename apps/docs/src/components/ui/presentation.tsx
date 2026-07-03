@@ -8,17 +8,7 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   return (
     <PresentationPrimitive.Root
       data-slot="presentation-root"
-      className={cn("flex flex-col overflow-hidden", className)}
-      {...props}
-    />
-  );
-}
-
-function PresentationBody({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="presentation-body"
-      className={cn("flex flex-1 overflow-hidden", className)}
+      className={cn("flex overflow-hidden", className)}
       {...props}
     />
   );
@@ -120,16 +110,16 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative w-full cursor-pointer rounded-md outline-none",
-        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-[ring] duration-100 hover:ring-ring focus:ring-ring",
+        "relative flex w-full cursor-pointer gap-1.5 rounded-md p-1.5 outline-none hover:bg-accent",
+        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-[ring] duration-100 focus-visible:ring-ring data-active:bg-accent",
         className,
       )}
       {...props}
     >
       {children ?? (
         <>
+          <PresentationThumbnailItemNumber />
           <PresentationThumbnailItemPreview />
-          <PresentationThumbnailItemNumber className="absolute right-1.5 bottom-1.5" />
         </>
       )}
     </PresentationPrimitive.ThumbnailItem>
@@ -144,10 +134,7 @@ function PresentationThumbnailList({
   return (
     <PresentationPrimitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn(
-        "flex w-40 shrink-0 flex-col gap-3.5 overflow-y-auto border-r p-3.5",
-        className,
-      )}
+      className={cn("flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r", className)}
       {...props}
     >
       {children ??
@@ -159,7 +146,6 @@ function PresentationThumbnailList({
 
 export {
   Presentation,
-  PresentationBody,
   PresentationContent,
   PresentationError,
   PresentationLoading,

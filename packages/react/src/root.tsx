@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { SlideData } from "@diceui/pptx-parser";
 
-import { PresentationContext } from "./context";
+import { Context } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStore, PreviewInput } from "./store";
@@ -15,7 +15,7 @@ export interface RootState {
   file: PreviewInput | null | undefined;
 }
 
-interface RootImplProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
+export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
   /**
    * Replace the root `<div>` with a custom element or render function.
    *
@@ -28,38 +28,17 @@ interface RootImplProps extends Omit<React.ComponentProps<"div">, "onLoad" | "on
    * ```
    */
   render?: RenderProp<RootState>;
-}
-
-interface ControlledRootProps extends RootImplProps {
-  /**
-   * Controlled mode: a store created via `useCreatePresentationStore`.
-   * You drive the store directly. `file`, `defaultSlideIndex`, `onLoad`,
-   * and `onError` are not available in this mode.
-   *
-   * ```tsx
-   * const store = useCreatePresentationStore();
-   *
-   * async function open(file: File) {
-   *   const presentation = await store.load(file, { defaultSlideIndex: 2 });
-   *   console.log("slides:", presentation.slides.length);
-   * }
-   *
-   * <Presentation.Root store={store}>...</Presentation.Root>
-   * ```
-   */
-  store: PresentationStore;
-  file?: never;
-  defaultSlideIndex?: never;
-  onLoad?: never;
-  onError?: never;
-}
-
-interface UncontrolledRootProps extends RootImplProps {
-  store?: never;
 
   /**
    * The file to parse and display. Accepts `File`, `Blob`, `ArrayBuffer`,
-   * or `Uint8Array`. Set to `null` or `undefined` to reset the viewer.
+   * or `Uint8Array`.
+   *
+   * - Set to `null` to explicitly reset the viewer.
+   * - Omit (`undefined`) to leave the store untouched, e.g. when the store
+   *   is owned elsewhere and loaded manually via `store.load(file)`.
+   *
+   * Works the same with an internal store or one inherited from
+   * `Presentation.Provider`: whoever sets `file` triggers the load.
    *
    * ```tsx
    * <Presentation.Root file={file} />
@@ -107,10 +86,7 @@ interface UncontrolledRootProps extends RootImplProps {
   onError?: (error: Error) => void;
 }
 
-export type RootProps = ControlledRootProps | UncontrolledRootProps;
-
 export function Root({
-  store: externalStore,
   file,
   defaultSlideIndex,
   children,
@@ -121,12 +97,18 @@ export function Root({
   onError,
   ...rootProps
 }: RootProps) {
+  const contextStore = React.useContext(Context);
+
   const internalStoreRef = React.useRef<PresentationStore | null>(null);
-  if (internalStoreRef.current === null) {
+  if (contextStore === null && internalStoreRef.current === null) {
     internalStoreRef.current = createPresentationStore();
   }
 
-  const store = externalStore ?? internalStoreRef.current;
+  const store = contextStore ?? internalStoreRef.current;
+  if (store === null) {
+    // Unreachable: one of the two branches above always assigns a store.
+    throw new Error("`Presentation.Root` failed to resolve a store");
+  }
 
   const onLoadRef = React.useRef(onLoad);
   onLoadRef.current = onLoad;
@@ -138,9 +120,12 @@ export function Root({
   defaultSlideIndexRef.current = defaultSlideIndex;
 
   React.useEffect(() => {
-    if (externalStore) return;
+    // `undefined` means the file API is not in use: Root leaves the store
+    // alone so an owner (e.g. via `Presentation.Provider`) can drive it.
+    if (file === undefined) return;
 
-    if (!file) {
+    // `null` is an explicit request to clear the viewer.
+    if (file === null) {
       store.reset();
       return;
     }
@@ -153,10 +138,10 @@ export function Root({
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
-  }, [store, externalStore, file]);
+  }, [store, file]);
 
   return (
-    <PresentationContext.Provider value={store}>
+    <Context.Provider value={store}>
       {renderElement(
         "div",
         { render, className, style },
@@ -165,7 +150,7 @@ export function Root({
           props: [{ children }, rootProps],
         },
       )}
-    </PresentationContext.Provider>
+    </Context.Provider>
   );
 }
 

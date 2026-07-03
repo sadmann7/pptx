@@ -1,11 +1,12 @@
-export { Root } from "./root";
-export { Viewport } from "./viewport";
-export { Slide } from "./slide";
-export { Loading } from "./loading";
+export { Provider } from "./context";
 export { Error } from "./error";
+export { Loading } from "./loading";
+export { Root } from "./root";
+export { Slide } from "./slide";
 export {
-  ThumbnailList,
   ThumbnailItem,
-  ThumbnailItemPreview,
   ThumbnailItemNumber,
+  ThumbnailItemPreview,
+  ThumbnailList,
 } from "./thumbnail-list";
+export { Viewport } from "./viewport";

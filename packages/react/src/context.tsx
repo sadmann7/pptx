@@ -5,7 +5,39 @@ import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 import type { PresentationState, PresentationStore } from "./store";
 import { createPresentationStore } from "./store";
 
-export const PresentationContext = React.createContext<PresentationStore | null>(null);
+export const Context = React.createContext<PresentationStore | null>(null);
+
+export interface ProviderProps {
+  /** The `PresentationStore` to make available to descendants. */
+  store: PresentationStore;
+
+  /** The children to render inside the provider. */
+  children?: React.ReactNode;
+}
+
+/**
+ * Provides a `PresentationStore` to descendants without rendering any DOM.
+ *
+ * Use this when a component needs `usePresentation`/`useSlide`/`useZoom`
+ * but must live outside `<Presentation.Root>`'s DOM tree (e.g. a debug bar
+ * or toolbar positioned as a sibling so it doesn't join `Root`'s layout).
+ *
+ * ```tsx
+ * const store = useCreatePresentationStore();
+ *
+ * <Presentation.Provider store={store}>
+ *   <DebugBar />
+ *   <Presentation.Root>…</Presentation.Root> // inherits the store from Provider
+ * </Presentation.Provider>
+ * ```
+ */
+export function Provider({ store, children }: ProviderProps) {
+  return <Context.Provider value={store}>{children}</Context.Provider>;
+}
+
+export namespace Provider {
+  export type Props = ProviderProps;
+}
 
 /**
  * Creates a stable `PresentationStore` instance for use in controlled mode.
@@ -16,8 +48,10 @@ export const PresentationContext = React.createContext<PresentationStore | null>
  * // Load manually: e.g. after a fetch/upload
  * await store.load(buffer, { defaultSlideIndex: 2 });
  *
- * // Pass the store to Root; `file` prop is no longer needed
- * <Presentation.Root store={store}>…</Presentation.Root>
+ * // Provide the store; `Root` inherits it and the `file` prop is not needed
+ * <Presentation.Provider store={store}>
+ *   <Presentation.Root>…</Presentation.Root>
+ * </Presentation.Provider>
  * ```
  */
 export function useCreatePresentationStore(): PresentationStore {
@@ -29,13 +63,13 @@ export function useCreatePresentationStore(): PresentationStore {
 }
 
 /**
- * Returns the `PresentationStore` from the nearest `<Presentation.Root>`.
- * Throws if called outside a `Presentation` tree.
+ * Returns the `PresentationStore` from the nearest `<Presentation.Provider>`
+ * or `<Presentation.Root>`. Throws if called outside a `Presentation` tree.
  *
  * @param consumerName - Component name included in the error message for easier debugging.
  */
 export function usePresentationStore(consumerName: string): PresentationStore {
-  const store = React.useContext(PresentationContext);
+  const store = React.useContext(Context);
   if (!store) {
     throw new Error(`\`${consumerName}\` must be used inside \`Presentation\``);
   }
