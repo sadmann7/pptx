@@ -10,9 +10,8 @@
  * and inside a Web Worker.
  */
 
-import { decompressMtx } from "mtx-decompressor";
-
 import { deobfuscateFont } from "./font-deobfuscate";
+import { decompressMtx } from "./mtx";
 
 function isRawFont(data: Uint8Array): boolean {
   if (data.length < 4) return false;

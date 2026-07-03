@@ -28,14 +28,14 @@
   },
   "dependencies": {
     "echarts": "^6.0.0",
-    "jszip": "^3.10.1",
-    "mtx-decompressor": "^1.4.2"
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
+    "mtx-decompressor": "^1.4.2",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
