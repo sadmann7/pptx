@@ -3228,7 +3228,7 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
 presetShapes.set("mathPlus", (w, h, adjustments) => {
   // OOXML: adj1=23520 (max 73490). dx1 = w*73490/200000, dx2 = ss*a/200000
   const ss = Math.min(w, h);
-  const a1 = Math.min(Math.max(adjRaw(adjustments, "adj", 23520), 0), 73490);
+  const a1 = Math.min(Math.max(adjustments?.get("adj1") ?? 23520, 0), 73490);
   const dx1 = (w * 73490) / 200000;
   const dy1 = (h * 73490) / 200000;
   const dx2 = (ss * a1) / 200000;

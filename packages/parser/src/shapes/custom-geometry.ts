@@ -3,6 +3,8 @@
  */
 
 import { SafeXmlNode } from "../parser/xml-parser";
+import type { GuideDefinition } from "./guide-evaluator";
+import { evaluateGuides } from "./guide-evaluator";
 
 function inferPathExtent(pathNode: SafeXmlNode): { w: number; h: number } {
   let maxX = 0;
@@ -34,12 +36,31 @@ function inferPathExtent(pathNode: SafeXmlNode): { w: number; h: number } {
   };
 }
 
+/** Collect `<a:gd>` definitions from an avLst/gdLst node in document order. */
+function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
+  if (!listNode.exists()) return [];
+  const defs: GuideDefinition[] = [];
+  for (const gd of listNode.children("gd")) {
+    const name = gd.attr("name");
+    const fmla = gd.attr("fmla");
+    if (name && fmla) defs.push({ name, fmla });
+  }
+  return defs;
+}
+
 /**
  * Render a custom geometry element to an SVG path d-attribute string.
+ *
+ * Coordinates in `a:pt` (and arcTo radii/angles) may be literal numbers or
+ * references to guides defined in `a:avLst`/`a:gdLst` (ECMA-376
+ * ST_AdjCoordinate / ST_AdjAngle). Guides are evaluated in the shape's EMU
+ * coordinate space (`sourceExtent`), while numeric path points live in the
+ * local space declared by the path's `w`/`h` attributes.
  *
  * @param custGeom - SafeXmlNode wrapping the `a:custGeom` element
  * @param width - Target width in pixels
  * @param height - Target height in pixels
+ * @param sourceExtent - Shape extent in EMU (from `a:xfrm > a:ext`)
  * @returns SVG path d-attribute string
  */
 export function renderCustomGeometry(
@@ -54,10 +75,46 @@ export function renderCustomGeometry(
   const paths = pathLst.children("path");
   const segments: string[] = [];
 
+  // Guides are defined once per custGeom and evaluated in shape EMU space.
+  const guideDefs = [
+    ...collectGuideDefinitions(custGeom.child("avLst")),
+    ...collectGuideDefinitions(custGeom.child("gdLst")),
+  ];
+  const guideSpace = {
+    w: sourceExtent?.w || 0,
+    h: sourceExtent?.h || 0,
+  };
+
   for (const pathNode of paths) {
     const fallbackExtent = inferPathExtent(pathNode);
     const pathW = pathNode.numAttr("w") ?? sourceExtent?.w ?? fallbackExtent.w;
     const pathH = pathNode.numAttr("h") ?? sourceExtent?.h ?? fallbackExtent.h;
+
+    // Without a shape extent, assume guides live in the path's local space.
+    const guideW = guideSpace.w || pathW;
+    const guideH = guideSpace.h || pathH;
+    const guides = guideDefs.length > 0 ? evaluateGuides(guideDefs, guideW, guideH) : null;
+
+    // Guide values (shape EMU space) → path local space conversion factors.
+    const guideToPathX = guideW > 0 ? pathW / guideW : 1;
+    const guideToPathY = guideH > 0 ? pathH / guideH : 1;
+
+    /** Resolve an ST_AdjCoordinate attribute into path local space. */
+    const coord = (raw: string | undefined, axis: "x" | "y"): number => {
+      if (raw === undefined) return 0;
+      const n = Number(raw);
+      if (!Number.isNaN(n)) return n;
+      const value = guides?.get(raw) ?? 0;
+      return value * (axis === "x" ? guideToPathX : guideToPathY);
+    };
+
+    /** Resolve an ST_AdjAngle attribute (no spatial scaling). */
+    const angle = (raw: string | undefined): number => {
+      if (raw === undefined) return 0;
+      const n = Number(raw);
+      if (!Number.isNaN(n)) return n;
+      return guides?.get(raw) ?? 0;
+    };
 
     const scaleX = pathW > 0 ? width / pathW : 1;
     const scaleY = pathH > 0 ? height / pathH : 1;
@@ -71,8 +128,8 @@ export function renderCustomGeometry(
       switch (cmd.localName) {
         case "moveTo": {
           const pt = cmd.child("pt");
-          const x = (pt.numAttr("x") ?? 0) * scaleX;
-          const y = (pt.numAttr("y") ?? 0) * scaleY;
+          const x = coord(pt.attr("x"), "x") * scaleX;
+          const y = coord(pt.attr("y"), "y") * scaleY;
           segments.push(`M${x},${y}`);
           curX = x;
           curY = y;
@@ -81,8 +138,8 @@ export function renderCustomGeometry(
 
         case "lnTo": {
           const pt = cmd.child("pt");
-          const x = (pt.numAttr("x") ?? 0) * scaleX;
-          const y = (pt.numAttr("y") ?? 0) * scaleY;
+          const x = coord(pt.attr("x"), "x") * scaleX;
+          const y = coord(pt.attr("y"), "y") * scaleY;
           segments.push(`L${x},${y}`);
           curX = x;
           curY = y;
@@ -92,12 +149,12 @@ export function renderCustomGeometry(
         case "cubicBezTo": {
           const pts = cmd.children("pt");
           if (pts.length >= 3) {
-            const x1 = (pts[0].numAttr("x") ?? 0) * scaleX;
-            const y1 = (pts[0].numAttr("y") ?? 0) * scaleY;
-            const x2 = (pts[1].numAttr("x") ?? 0) * scaleX;
-            const y2 = (pts[1].numAttr("y") ?? 0) * scaleY;
-            const x3 = (pts[2].numAttr("x") ?? 0) * scaleX;
-            const y3 = (pts[2].numAttr("y") ?? 0) * scaleY;
+            const x1 = coord(pts[0].attr("x"), "x") * scaleX;
+            const y1 = coord(pts[0].attr("y"), "y") * scaleY;
+            const x2 = coord(pts[1].attr("x"), "x") * scaleX;
+            const y2 = coord(pts[1].attr("y"), "y") * scaleY;
+            const x3 = coord(pts[2].attr("x"), "x") * scaleX;
+            const y3 = coord(pts[2].attr("y"), "y") * scaleY;
             segments.push(`C${x1},${y1} ${x2},${y2} ${x3},${y3}`);
             curX = x3;
             curY = y3;
@@ -108,10 +165,10 @@ export function renderCustomGeometry(
         case "quadBezTo": {
           const pts = cmd.children("pt");
           if (pts.length >= 2) {
-            const x1 = (pts[0].numAttr("x") ?? 0) * scaleX;
-            const y1 = (pts[0].numAttr("y") ?? 0) * scaleY;
-            const x2 = (pts[1].numAttr("x") ?? 0) * scaleX;
-            const y2 = (pts[1].numAttr("y") ?? 0) * scaleY;
+            const x1 = coord(pts[0].attr("x"), "x") * scaleX;
+            const y1 = coord(pts[0].attr("y"), "y") * scaleY;
+            const x2 = coord(pts[1].attr("x"), "x") * scaleX;
+            const y2 = coord(pts[1].attr("y"), "y") * scaleY;
             segments.push(`Q${x1},${y1} ${x2},${y2}`);
             curX = x2;
             curY = y2;
@@ -120,12 +177,12 @@ export function renderCustomGeometry(
         }
 
         case "arcTo": {
-          const wRRaw = cmd.numAttr("wR") ?? 0;
-          const hRRaw = cmd.numAttr("hR") ?? 0;
+          const wRRaw = coord(cmd.attr("wR"), "x");
+          const hRRaw = coord(cmd.attr("hR"), "y");
           const wR = wRRaw * scaleX;
           const hR = hRRaw * scaleY;
-          const stAngRaw = cmd.numAttr("stAng") ?? 0;
-          const swAngRaw = cmd.numAttr("swAng") ?? 0;
+          const stAngRaw = angle(cmd.attr("stAng"));
+          const swAngRaw = angle(cmd.attr("swAng"));
 
           // OOXML angles are in 60000ths of a degree
           const stAng = stAngRaw / 60000;

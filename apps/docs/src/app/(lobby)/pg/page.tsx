@@ -32,8 +32,8 @@ export default function PgPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-(--spacing(14)))] w-full max-w-(--fd-layout-width) flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+    <div className="mx-auto flex h-[calc(100dvh-(--spacing(14)))] w-full max-w-(--fd-layout-width) flex-col gap-2">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
@@ -41,7 +41,7 @@ export default function PgPage() {
       </div>
       <PresentationPrimitive.Provider store={store}>
         <PresentationDebug />
-        <Presentation>
+        <Presentation className="flex-1">
           <PresentationThumbnailList />
           <PresentationContent>
             <PresentationLoading />
