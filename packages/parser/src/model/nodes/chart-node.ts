@@ -2,8 +2,8 @@
  * Chart node — represents a chart embedded in a graphicFrame element.
  */
 
-import { RelEntry, resolveRelTarget } from "../../parser/rel-parser";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { RelEntry, resolveRelTarget } from "../../ooxml/rel-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { BaseNodeData, parseBaseProps } from "./base-node";
 
 export interface ChartNodeData extends BaseNodeData {

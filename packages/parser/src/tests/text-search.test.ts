@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { PresentationData } from "../model/presentation";
 import { buildPresentation } from "../model/presentation";
-import { parseZip } from "../parser/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { buildTextIndex, searchPresentation, searchText } from "../search/text-search";
 import { buildPptxWithShapes } from "./minimal-pptx";
 

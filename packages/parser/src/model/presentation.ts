@@ -3,11 +3,11 @@
  * (themes, masters, layouts, slides) into a single PresentationData structure.
  */
 
-import { parseRels, RelEntry, resolveRelTarget } from "../parser/rel-parser";
-import { emuToPx } from "../parser/units";
-import { parseXml, SafeXmlNode } from "../parser/xml-parser";
-import { PptxFiles } from "../parser/zip-parser";
-import type { MediaResolver } from "../utils/media";
+import type { MediaResolver } from "../media/resolve";
+import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel-parser";
+import { emuToPx } from "../ooxml/units";
+import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
+import { PptxFiles } from "../ooxml/zip-parser";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
 import { MasterData, parseMaster } from "./master";
 import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base-node";

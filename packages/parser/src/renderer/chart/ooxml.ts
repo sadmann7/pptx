@@ -1,5 +1,5 @@
-import { parseOoxmlBool } from "../../parser/booleans";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { parseOoxmlBool } from "../../ooxml/booleans";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 
 export function parseOoxmlBoolElement(node: SafeXmlNode): boolean {
   if (!node.exists()) return false;

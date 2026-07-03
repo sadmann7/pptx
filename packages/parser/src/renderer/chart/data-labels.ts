@@ -1,5 +1,5 @@
-import { emuToPx } from "../../parser/units";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { emuToPx } from "../../ooxml/units";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
 import { parseOoxmlBoolElement } from "./ooxml";
 import { resolveColorToHex } from "./style";

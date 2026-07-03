@@ -2,21 +2,21 @@
  * Image renderer — converts PicNodeData into positioned HTML image/video/audio elements.
  */
 
-import { PicNodeData } from "../model/nodes/pic-node";
-import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
-import { emuToPx } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
-import { renderCustomGeometry } from "../shapes/custom-geometry";
-import { getPresetShapePath } from "../shapes/presets";
-import { hexToRgb } from "../utils/color";
-import { parseEmfContent } from "../utils/emf-parser";
+import { renderCustomGeometry } from "../geometry/custom-geometry";
+import { getPresetShapePath } from "../geometry/presets";
+import { parseEmfContent } from "../media/emf-parser";
+import { renderPdfToImage } from "../media/pdf-renderer";
 import {
   findMediaByTarget,
   findMediaByTargetAsync,
   getOrCreateBlobUrl,
   resolveMediaPath,
-} from "../utils/media";
-import { renderPdfToImage } from "../utils/pdf-renderer";
+} from "../media/resolve";
+import { PicNodeData } from "../model/nodes/picture-node";
+import { isExternalTargetMode, RelEntry } from "../ooxml/rel-parser";
+import { emuToPx } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
+import { hexToRgb } from "../utils/color";
 import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { RenderContext } from "./render-context";

@@ -37,7 +37,7 @@ use([
 ]);
 
 import { ChartNodeData } from "../model/nodes/chart-node";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "../utils/color";
 import { applyAxisInfo, getChartAxisIds, parseAxes, parseScatterAxes } from "./chart/axes";
 import { parseDataLabels, parsePointDataLabelOverrides } from "./chart/data-labels";

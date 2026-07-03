@@ -10,7 +10,7 @@
  * cross-verified against the Microsoft OOXML predefined style map.
  */
 
-import { parseXml, SafeXmlNode } from "../parser/xml-parser";
+import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
 
 // ---------------------------------------------------------------------------
 // UUID → (styleName, accent) map — 74 entries across 11 style groups

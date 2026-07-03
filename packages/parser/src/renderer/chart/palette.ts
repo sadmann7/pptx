@@ -1,4 +1,4 @@
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
 import { resolveColorToHex } from "./style";
 import { CHART_ACCENT_KEYS } from "./types";

@@ -1,4 +1,4 @@
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 
 const MAX_CHART_CACHE_POINTS = 10_000;
 

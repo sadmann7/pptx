@@ -4,18 +4,18 @@
 
 import type { ECharts } from "echarts";
 
+import type { PdfjsConfig } from "../media/pdf-renderer";
+import { isPlaceholderNode, parseRenderableChild } from "../model/node-parser";
 import { BaseNodeData } from "../model/nodes/base-node";
 import { ChartNodeData } from "../model/nodes/chart-node";
 import { GroupNodeData } from "../model/nodes/group-node";
-import { PicNodeData } from "../model/nodes/pic-node";
+import { PicNodeData } from "../model/nodes/picture-node";
 import { ShapeNodeData } from "../model/nodes/shape-node";
 import { TableNodeData } from "../model/nodes/table-node";
 import { materializeSlideNodes, PresentationData } from "../model/presentation";
-import { isPlaceholderNode, parseRenderableChild } from "../model/renderable-child";
 import { SlideData } from "../model/slide";
-import type { RelEntry } from "../parser/rel-parser";
-import { SafeXmlNode } from "../parser/xml-parser";
-import type { PdfjsConfig } from "../utils/pdf-renderer";
+import type { RelEntry } from "../ooxml/rel-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { renderBackground } from "./background-renderer";
 import { renderChart } from "./chart-renderer";
 import { renderGroup } from "./group-renderer";

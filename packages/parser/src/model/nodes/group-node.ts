@@ -2,8 +2,8 @@
  * Group node parser — handles grouped shapes (p:grpSp).
  */
 
-import { emuToPx } from "../../parser/units";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { emuToPx } from "../../ooxml/units";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { BaseNodeData, parseBaseProps, Position, Size } from "./base-node";
 
 export interface GroupNodeData extends BaseNodeData {

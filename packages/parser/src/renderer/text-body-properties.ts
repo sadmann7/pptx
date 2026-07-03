@@ -1,5 +1,5 @@
 import type { TextBody } from "../model/nodes/shape-node";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 
 /**
  * Resolve a child under the effective bodyPr for a text body.

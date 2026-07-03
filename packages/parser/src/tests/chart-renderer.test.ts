@@ -2,8 +2,8 @@ import type * as echarts from "echarts";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../model/presentation";
-import { parseXml } from "../parser/xml-parser";
-import { parseZip } from "../parser/zip-parser";
+import { parseXml } from "../ooxml/xml-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { parseChartXml } from "../renderer/chart-renderer";
 import { parseDataLabels, parsePointDataLabelOverrides } from "../renderer/chart/data-labels";
 import { buildDataTableElement, parseDataTable } from "../renderer/chart/data-table";

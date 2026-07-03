@@ -9,7 +9,7 @@ import {
   pctToDecimal,
   ptToPx,
   smartToPx,
-} from "../parser/units";
+} from "../ooxml/units";
 
 describe("unit conversions", () => {
   it("converts EMU to pixels at 96 DPI", () => {

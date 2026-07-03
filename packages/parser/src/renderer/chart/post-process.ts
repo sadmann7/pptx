@@ -1,6 +1,6 @@
 import type * as echarts from "echarts";
 
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { parseOoxmlBoolElement } from "./ooxml";
 import {
   DEFAULT_CHART_FOREGROUND_COLOR,

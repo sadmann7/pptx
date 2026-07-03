@@ -5,10 +5,11 @@
 
 import type { LayoutData } from "../model/layout";
 import type { MasterData } from "../model/master";
+import { parseRenderableChild } from "../model/node-parser";
 import { BaseNodeData } from "../model/nodes/base-node";
 import { ChartNodeData } from "../model/nodes/chart-node";
 import { GroupNodeData } from "../model/nodes/group-node";
-import { PicNodeData } from "../model/nodes/pic-node";
+import { PicNodeData } from "../model/nodes/picture-node";
 import { ShapeNodeData, TextBody } from "../model/nodes/shape-node";
 import { TableCell, TableNodeData, TableRow } from "../model/nodes/table-node";
 import {
@@ -16,10 +17,9 @@ import {
   PresentationData,
   resolveNodePlaceholderInheritance,
 } from "../model/presentation";
-import { parseRenderableChild } from "../model/renderable-child";
 import { SlideNode } from "../model/slide";
-import type { RelEntry } from "../parser/rel-parser";
-import { SafeXmlNode } from "../parser/xml-parser";
+import type { RelEntry } from "../ooxml/rel-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 
 // ---------------------------------------------------------------------------
 // Serialized Types (JSON-safe)

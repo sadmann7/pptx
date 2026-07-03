@@ -4,8 +4,8 @@ import { parseLayout } from "../model/layout";
 import { parseMaster } from "../model/master";
 import { buildPresentation } from "../model/presentation";
 import { parseTheme } from "../model/theme";
-import { parseXml } from "../parser/xml-parser";
-import { parseZip } from "../parser/zip-parser";
+import { parseXml } from "../ooxml/xml-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { renderSlide } from "../renderer/slide-renderer";
 import { buildCustomPptx, CustomPptxOptions } from "./fixture-extras";
 

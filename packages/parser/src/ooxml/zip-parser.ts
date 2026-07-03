@@ -6,8 +6,8 @@
 import type { JSZipObject } from "jszip";
 import JSZip from "jszip";
 
-import type { MediaResolver, ResolvedMedia } from "../utils/media";
-import { resolveMediaPathCandidates } from "../utils/media";
+import type { MediaResolver, ResolvedMedia } from "../media/resolve";
+import { resolveMediaPathCandidates } from "../media/resolve";
 
 export interface PptxFiles {
   contentTypes: string;

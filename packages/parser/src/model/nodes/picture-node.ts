@@ -2,7 +2,7 @@
  * Picture node parser — handles images, video placeholders, and audio placeholders.
  */
 
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { BaseNodeData, parseBaseProps } from "./base-node";
 
 export interface CropRect {

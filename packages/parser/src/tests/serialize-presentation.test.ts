@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { serializePresentation } from "../export/serialize-presentation";
 import type { PresentationData } from "../model/presentation";
 import { buildPresentation } from "../model/presentation";
-import { parseZip } from "../parser/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
+import { serializePresentation } from "../serialize/presentation";
 import { buildPptxWithShapes } from "./minimal-pptx";
 
 const SHAPES = `<p:sp>

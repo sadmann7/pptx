@@ -4,9 +4,9 @@ import type { ChartNodeData } from "../model/nodes/chart-node";
 import { parseChartNode } from "../model/nodes/chart-node";
 import type { PresentationData } from "../model/presentation";
 import { buildPresentation, materializeAllSlideNodes } from "../model/presentation";
-import type { RelEntry } from "../parser/rel-parser";
-import { parseXml } from "../parser/xml-parser";
-import { parseZip } from "../parser/zip-parser";
+import type { RelEntry } from "../ooxml/rel-parser";
+import { parseXml } from "../ooxml/xml-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { BAR_CHART_XML, buildPptxWithChart } from "./chart-pptx";
 
 const CHART_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";

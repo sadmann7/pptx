@@ -2,8 +2,8 @@
  * Style resolver — converts OOXML color and fill nodes to CSS values.
  */
 
-import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import {
   applyColorModifiers,
   hexToRgb,

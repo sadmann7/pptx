@@ -4,13 +4,13 @@
 
 import type { ECharts } from "echarts";
 
+import type { PdfjsConfig } from "../media/pdf-renderer";
 import { LayoutData } from "../model/layout";
 import { MasterData } from "../model/master";
 import { PresentationData } from "../model/presentation";
 import { SlideData } from "../model/slide";
 import { ThemeData } from "../model/theme";
-import { SafeXmlNode } from "../parser/xml-parser";
-import type { PdfjsConfig } from "../utils/pdf-renderer";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 
 export interface RenderContext {
   presentation: PresentationData;

@@ -2,8 +2,8 @@
  * Shape node parser — handles auto-shapes, text boxes, and connectors.
  */
 
-import { angleToDeg, emuToPx } from "../../parser/units";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { angleToDeg, emuToPx } from "../../ooxml/units";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { BaseNodeData, parseBaseProps } from "./base-node";
 
 export interface TextRun {

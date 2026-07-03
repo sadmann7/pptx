@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { MediaResolver } from "../utils/media";
+import type { MediaResolver } from "../media/resolve";
 import {
   findMediaByTarget,
   findMediaByTargetAsync,
@@ -8,7 +8,7 @@ import {
   getOrCreateBlobUrl,
   resolveMediaPath,
   resolveMediaPathCandidates,
-} from "../utils/media";
+} from "../media/resolve";
 
 describe("getMimeType", () => {
   it("maps known extensions", () => {

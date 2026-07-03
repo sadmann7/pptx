@@ -5,10 +5,10 @@
 
 import { PlaceholderInfo } from "../model/nodes/base-node";
 import type { TextBody, TextParagraph, TextRun } from "../model/nodes/shape-node";
-import { parseOoxmlBool } from "../parser/booleans";
-import { isExternalTargetMode } from "../parser/rel-parser";
-import { angleToDeg, emuToPx, pctToDecimal } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { parseOoxmlBool } from "../ooxml/booleans";
+import { isExternalTargetMode } from "../ooxml/rel-parser";
+import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { isAllowedExternalUrl } from "../utils/url-safety";
 import { cssFontFamilyStack, resolveThemeFont } from "./font-resolver";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";

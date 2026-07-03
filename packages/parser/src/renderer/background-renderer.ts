@@ -2,10 +2,10 @@
  * Background renderer — resolves and applies slide/layout/master backgrounds.
  */
 
-import { isExternalTargetMode, RelEntry } from "../parser/rel-parser";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
+import { isExternalTargetMode, RelEntry } from "../ooxml/rel-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb } from "../utils/color";
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
 import { isAllowedExternalMediaUrl } from "../utils/url-safety";
 import { RenderContext } from "./render-context";
 import {

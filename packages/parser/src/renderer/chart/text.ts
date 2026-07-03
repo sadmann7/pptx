@@ -1,6 +1,6 @@
-import { parseOoxmlBool } from "../../parser/booleans";
-import { emuToPx } from "../../parser/units";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { parseOoxmlBool } from "../../ooxml/booleans";
+import { emuToPx } from "../../ooxml/units";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { cssFontFamilyStack, resolveThemeFontStack } from "../font-resolver";
 import { RenderContext } from "../render-context";
 import { resolveColor } from "../style-resolver";

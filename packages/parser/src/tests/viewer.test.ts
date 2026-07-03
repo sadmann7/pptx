@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { PptxRenderer } from "../core/renderer";
-import { normalizePreviewInput, PptxViewer } from "../core/viewer";
+import { PptxRenderer } from "../api/pptx-renderer";
+import { normalizePreviewInput, PptxViewer } from "../api/pptx-viewer";
 import { buildCustomPptx } from "./fixture-extras";
 import { buildPptxWithShapes } from "./minimal-pptx";
 

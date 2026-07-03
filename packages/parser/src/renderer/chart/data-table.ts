@@ -1,4 +1,4 @@
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { formatValue } from "./format";
 import { parseOoxmlBoolValue } from "./ooxml";
 import type { DataTableInfo } from "./types";

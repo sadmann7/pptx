@@ -10,9 +10,9 @@
  */
 
 import { TableCell, TableNodeData } from "../model/nodes/table-node";
-import { parseOoxmlBool } from "../parser/booleans";
-import { emuToPx } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { parseOoxmlBool } from "../ooxml/booleans";
+import { emuToPx } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb } from "../utils/color";
 import { resolveThemeFontStack } from "./font-resolver";
 import { getPredefinedTableStyle } from "./predefined-table-styles";

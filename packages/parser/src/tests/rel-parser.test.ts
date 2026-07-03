@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isExternalTargetMode, parseRels, resolveRelTarget } from "../parser/rel-parser";
+import { isExternalTargetMode, parseRels, resolveRelTarget } from "../ooxml/rel-parser";
 
 const RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">

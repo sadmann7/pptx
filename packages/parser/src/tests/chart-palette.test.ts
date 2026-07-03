@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { parseXml } from "../parser/xml-parser";
+import { parseXml } from "../ooxml/xml-parser";
 import { extractBackgroundColors, extractChartFrameStyle } from "../renderer/chart/frame";
 import {
   buildChartPalette,

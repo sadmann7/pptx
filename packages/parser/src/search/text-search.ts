@@ -1,5 +1,6 @@
 import type { LayoutData } from "../model/layout";
 import type { MasterData } from "../model/master";
+import { isPlaceholderNode, parseRenderableChild } from "../model/node-parser";
 import type { BaseNodeData, NodeType, Position, Size } from "../model/nodes/base-node";
 import type { GroupNodeData } from "../model/nodes/group-node";
 import type { ShapeNodeData, TextBody } from "../model/nodes/shape-node";
@@ -9,10 +10,9 @@ import {
   type PresentationData,
   resolveNodePlaceholderInheritance,
 } from "../model/presentation";
-import { isPlaceholderNode, parseRenderableChild } from "../model/renderable-child";
 import type { SlideNode } from "../model/slide";
-import type { RelEntry } from "../parser/rel-parser";
-import type { SafeXmlNode } from "../parser/xml-parser";
+import type { RelEntry } from "../ooxml/rel-parser";
+import type { SafeXmlNode } from "../ooxml/xml-parser";
 
 export type SearchTextKind = "shape" | "table-cell";
 

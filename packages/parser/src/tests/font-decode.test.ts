@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "../utils/font-decode";
-import { deobfuscateFont } from "../utils/font-deobfuscate";
+import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "../fonts/font-decode";
+import { deobfuscateFont } from "../fonts/font-deobfuscate";
 
 const TEST_GUID = "{01234567-89AB-CDEF-0123-456789ABCDEF}";
 

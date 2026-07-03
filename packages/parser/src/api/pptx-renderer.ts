@@ -1,12 +1,12 @@
+import type { PdfjsConfig } from "../media/pdf-renderer";
 import { buildPresentation } from "../model/presentation";
-import type { ZipParseLimits } from "../parser/zip-parser";
-import { parseZip, parseZipLazyMedia } from "../parser/zip-parser";
-import type { PdfjsConfig } from "../utils/pdf-renderer";
-import type { FitMode, ListRenderOptions, PreviewInput } from "./viewer";
-import { normalizePreviewInput, PptxViewer } from "./viewer";
+import type { ZipParseLimits } from "../ooxml/zip-parser";
+import { parseZip, parseZipLazyMedia } from "../ooxml/zip-parser";
+import type { FitMode, ListRenderOptions, PreviewInput } from "./pptx-viewer";
+import { normalizePreviewInput, PptxViewer } from "./pptx-viewer";
 
 export type { SlideHandle } from "../renderer/slide-renderer";
-export type { FitMode, PreviewInput } from "./viewer";
+export type { FitMode, PreviewInput } from "./pptx-viewer";
 
 export interface RendererOptions {
   width?: number;

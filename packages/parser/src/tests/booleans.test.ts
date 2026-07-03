@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseOoxmlBool } from "../parser/booleans";
+import { parseOoxmlBool } from "../ooxml/booleans";
 
 describe("parseOoxmlBool", () => {
   it("parses xsd:boolean values", () => {

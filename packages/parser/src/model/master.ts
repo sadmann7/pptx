@@ -3,8 +3,8 @@
  * and placeholder shapes from a p:sldMaster XML.
  */
 
-import { emuToPx } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
+import { emuToPx } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import type { PlaceholderEntry } from "./layout";
 
 export interface MasterData {
@@ -20,7 +20,7 @@ export interface MasterData {
   /** Placeholders with slide-space absolute transforms when nested in groups. */
   placeholderEntries?: PlaceholderEntry[];
   spTree: SafeXmlNode;
-  rels: Map<string, import("../parser/rel-parser").RelEntry>;
+  rels: Map<string, import("../ooxml/rel-parser").RelEntry>;
 }
 
 /**

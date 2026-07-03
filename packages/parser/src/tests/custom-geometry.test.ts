@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { parseXml } from "../parser/xml-parser";
-import { renderCustomGeometry } from "../shapes/custom-geometry";
+import { renderCustomGeometry } from "../geometry/custom-geometry";
+import { parseXml } from "../ooxml/xml-parser";
 
 const A_NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
 

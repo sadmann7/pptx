@@ -2,7 +2,7 @@
  * Parse OOXML custom geometry (a:custGeom) into SVG path strings.
  */
 
-import { SafeXmlNode } from "../parser/xml-parser";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import type { GuideDefinition } from "./guide-evaluator";
 import { evaluateGuides } from "./guide-evaluator";
 

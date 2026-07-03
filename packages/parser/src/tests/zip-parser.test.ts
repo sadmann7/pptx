@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../model/presentation";
-import { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "../parser/zip-parser";
+import { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "../ooxml/zip-parser";
 import { renderSlide } from "../renderer/slide-renderer";
 import { buildCustomPptx, fakePngBytes } from "./fixture-extras";
 

@@ -14,7 +14,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation, materializeAllSlideNodes } from "../model/presentation";
-import { parseZip } from "../parser/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { renderSlide } from "../renderer/slide-renderer";
 import { DECK_SPECS, generateDeck } from "./bench-decks";
 

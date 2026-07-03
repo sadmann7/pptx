@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { GroupNodeData } from "../model/nodes/group-node";
-import type { PicNodeData } from "../model/nodes/pic-node";
+import type { PicNodeData } from "../model/nodes/picture-node";
 import type { PresentationData } from "../model/presentation";
 import { buildPresentation, materializeAllSlideNodes } from "../model/presentation";
-import { parseZip } from "../parser/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { renderSlide } from "../renderer/slide-renderer";
 import { buildPptxWithShapes } from "./minimal-pptx";
 

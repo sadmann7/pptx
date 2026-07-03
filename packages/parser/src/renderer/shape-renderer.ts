@@ -3,8 +3,8 @@
  */
 
 import { LineEndInfo, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
-import { parseOoxmlBool } from "../parser/booleans";
-import { isExternalTargetMode } from "../parser/rel-parser";
+import { parseOoxmlBool } from "../ooxml/booleans";
+import { isExternalTargetMode } from "../ooxml/rel-parser";
 import { RenderContext } from "./render-context";
 
 /** True if the text body has at least one non-empty run (avoids covering shapes with empty placeholder text). */
@@ -100,17 +100,17 @@ function hasBulletParagraph(textBody: TextBody): boolean {
 function isTitlePlaceholder(placeholder: ShapeNodeData["placeholder"]): boolean {
   return placeholder?.type === "title" || placeholder?.type === "ctrTitle";
 }
-import { emuToPx } from "../parser/units";
-import { SafeXmlNode } from "../parser/xml-parser";
-import { renderCustomGeometry } from "../shapes/custom-geometry";
+import { renderCustomGeometry } from "../geometry/custom-geometry";
 import {
   getPresetShapePath,
   getActionButtonIconPath,
   getMultiPathPreset,
   PresetSubPath,
-} from "../shapes/presets";
+} from "../geometry/presets";
+import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
+import { emuToPx } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
 import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../utils/media";
 import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
 import { cssFontFamilyStack, resolveThemeFontStack } from "./font-resolver";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";

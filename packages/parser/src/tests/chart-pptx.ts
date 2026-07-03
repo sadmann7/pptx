@@ -9,8 +9,8 @@
 import JSZip from "jszip";
 
 import { buildPresentation } from "../model/presentation";
-import { parseXml, SafeXmlNode } from "../parser/xml-parser";
-import { parseZip } from "../parser/zip-parser";
+import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { createRenderContext, RenderContext } from "../renderer/render-context";
 import { buildPptxWithShapes } from "./minimal-pptx";
 

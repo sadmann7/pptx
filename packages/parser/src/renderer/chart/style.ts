@@ -1,7 +1,7 @@
 import { graphic } from "echarts/core";
 
-import { ptToPx } from "../../parser/units";
-import { SafeXmlNode } from "../../parser/xml-parser";
+import { ptToPx } from "../../ooxml/units";
+import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
 import { resolveColor, resolveLineStyle } from "../style-resolver";
 import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./types";

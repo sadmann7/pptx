@@ -1,5 +1,5 @@
 // New primary exports (v2 API)
-export { PptxViewer } from "./core/viewer";
+export { PptxViewer } from "./api/pptx-viewer";
 export type {
   ViewerOptions,
   FitMode,
@@ -9,15 +9,15 @@ export type {
   SearchHighlightOptions,
   PptxViewerEventMap,
   PreviewInput,
-} from "./core/viewer";
+} from "./api/pptx-viewer";
 
 // Deprecated aliases (v1 compat)
-export { PptxRenderer } from "./core/renderer";
-export type { RendererOptions } from "./core/renderer";
+export { PptxRenderer } from "./api/pptx-renderer";
+export type { RendererOptions } from "./api/pptx-renderer";
 
-export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./parser/zip-parser";
-export type { ZipParseLimits } from "./parser/zip-parser";
-export type { MediaResolver, ResolvedMedia } from "./utils/media";
+export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
+export type { ZipParseLimits } from "./ooxml/zip-parser";
+export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 
 export {
   buildPresentation,
@@ -31,12 +31,12 @@ export type {
   PresentationData,
 } from "./model/presentation";
 
-export { serializePresentation } from "./export/serialize-presentation";
+export { serializePresentation } from "./serialize/presentation";
 export type {
   SerializedPresentation,
   SerializedSlide,
   SerializedNode,
-} from "./export/serialize-presentation";
+} from "./serialize/presentation";
 
 // Model-level text search
 export { buildTextIndex, searchPresentation, searchText } from "./search/text-search";
@@ -52,7 +52,7 @@ export type {
 // Headless single-slide rendering
 export { renderSlide } from "./renderer/slide-renderer";
 export type { SlideHandle, SlideRendererOptions } from "./renderer/slide-renderer";
-export type { PdfjsOptions, PdfjsConfig } from "./utils/pdf-renderer";
+export type { PdfjsOptions, PdfjsConfig } from "./media/pdf-renderer";
 
 // Model types
 export type { SlideData, SlideNode } from "./model/slide";
@@ -73,13 +73,13 @@ export type {
   LineEndInfo,
   TextBoxBounds,
 } from "./model/nodes/shape-node";
-export type { PicNodeData, CropRect } from "./model/nodes/pic-node";
+export type { PicNodeData, CropRect } from "./model/nodes/picture-node";
 export type { TableNodeData, TableCell, TableRow } from "./model/nodes/table-node";
 export type { GroupNodeData } from "./model/nodes/group-node";
 export type { ChartNodeData } from "./model/nodes/chart-node";
-export type { PptxFiles } from "./parser/zip-parser";
+export type { PptxFiles } from "./ooxml/zip-parser";
 
 // Font utilities
-export { deobfuscateFont } from "./utils/font-deobfuscate";
-export { injectEmbeddedFonts } from "./utils/font-injector";
-export type { FontInjectionHandle } from "./utils/font-injector";
+export { deobfuscateFont } from "./fonts/font-deobfuscate";
+export { injectEmbeddedFonts } from "./fonts/font-injector";
+export type { FontInjectionHandle } from "./fonts/font-injector";

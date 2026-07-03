@@ -5,7 +5,7 @@
  * against in-memory fixtures produced by `buildPptxWithShapes` — no mocks.
  */
 import { buildPresentation } from "../model/presentation";
-import { parseZip } from "../parser/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { renderSlide, type SlideRendererOptions } from "../renderer/slide-renderer";
 import { buildPptxWithShapes } from "./minimal-pptx";
 

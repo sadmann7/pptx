@@ -15,17 +15,17 @@
  */
 import { bench, describe } from "vitest";
 
-import { serializePresentation } from "../export/serialize-presentation";
 import type { PresentationData } from "../model/presentation";
 import {
   buildPresentation,
   materializeAllSlideNodes,
   materializeSlideNodes,
 } from "../model/presentation";
-import type { PptxFiles } from "../parser/zip-parser";
-import { parseZip } from "../parser/zip-parser";
+import type { PptxFiles } from "../ooxml/zip-parser";
+import { parseZip } from "../ooxml/zip-parser";
 import { renderSlide } from "../renderer/slide-renderer";
 import { buildTextIndex, searchText } from "../search/text-search";
+import { serializePresentation } from "../serialize/presentation";
 import { DECK_SPECS, generateDeck } from "./bench-decks";
 
 interface Workload {

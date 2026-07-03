@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseXml, SafeXmlNode } from "../parser/xml-parser";
+import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
 
 const SLIDE_XML = `<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
   xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
