@@ -3,6 +3,45 @@
  * All operations are null-safe — accessing missing elements never crashes.
  */
 
+/**
+ * Lazily built per-element index of children by localName.
+ *
+ * Parsed OOXML documents are never mutated after parsing, so the index cannot
+ * go stale. Renderers query the same elements repeatedly (e.g. a shape's
+ * `spPr` is probed for a dozen different child names), which made repeated
+ * linear scans a measurable share of parse/render profiles.
+ *
+ * Two-phase to avoid taxing the initial single-pass model build (where most
+ * elements are queried exactly once): the first lookup on an element is a
+ * plain scan; the index is built only when the same element is queried again.
+ */
+const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
+const queriedOnce = new WeakSet<Element>();
+
+function getChildIndex(el: Element): Map<string, Element[]> | undefined {
+  let index = childIndexCache.get(el);
+  if (index !== undefined) return index;
+
+  if (!queriedOnce.has(el)) {
+    queriedOnce.add(el);
+    return undefined;
+  }
+
+  index = new Map();
+  const children = el.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    const bucket = index.get(child.localName);
+    if (bucket === undefined) {
+      index.set(child.localName, [child]);
+    } else {
+      bucket.push(child);
+    }
+  }
+  childIndexCache.set(el, index);
+  return index;
+}
+
 export class SafeXmlNode {
   private readonly el: Element | null;
 
@@ -10,10 +49,22 @@ export class SafeXmlNode {
     this.el = el;
   }
 
+  /**
+   * Shared immutable instance for all "missing element" results.
+   * SafeXmlNode has no mutable state, so every miss can safely alias one
+   * object — child-chain misses are extremely common (most optional OOXML
+   * elements are absent), and per-miss allocations dominated GC pressure
+   * in parse profiles.
+   */
+  static readonly EMPTY = new SafeXmlNode(null);
+
   /** Get a string attribute value, or undefined if missing. */
   attr(name: string): string | undefined {
     if (!this.el) return undefined;
-    if (this.el.hasAttribute(name)) return this.el.getAttribute(name)!;
+    // Fast path: direct hit (covers non-prefixed attributes and exact-name
+    // prefixed ones). getAttribute returns null when absent.
+    const direct = this.el.getAttribute(name);
+    if (direct !== null) return direct;
 
     const colonIndex = name.indexOf(":");
     const localName = colonIndex >= 0 ? name.slice(colonIndex + 1) : name;
@@ -55,14 +106,19 @@ export class SafeXmlNode {
    * Returns an empty SafeXmlNode if not found, so chaining never crashes.
    */
   child(localName: string): SafeXmlNode {
-    if (!this.el) return new SafeXmlNode(null);
+    if (!this.el) return SafeXmlNode.EMPTY;
+    const index = getChildIndex(this.el);
+    if (index !== undefined) {
+      const match = index.get(localName);
+      return match === undefined ? SafeXmlNode.EMPTY : new SafeXmlNode(match[0]);
+    }
     const children = this.el.children;
     for (let i = 0; i < children.length; i++) {
       if (children[i].localName === localName) {
         return new SafeXmlNode(children[i]);
       }
     }
-    return new SafeXmlNode(null);
+    return SafeXmlNode.EMPTY;
   }
 
   /**
@@ -71,8 +127,15 @@ export class SafeXmlNode {
    */
   children(localName?: string): SafeXmlNode[] {
     if (!this.el) return [];
-    const result: SafeXmlNode[] = [];
+    if (localName !== undefined) {
+      const index = getChildIndex(this.el);
+      if (index !== undefined) {
+        const match = index.get(localName);
+        return match === undefined ? [] : match.map((el) => new SafeXmlNode(el));
+      }
+    }
     const children = this.el.children;
+    const result: SafeXmlNode[] = [];
     for (let i = 0; i < children.length; i++) {
       if (localName === undefined || children[i].localName === localName) {
         result.push(new SafeXmlNode(children[i]));
@@ -108,20 +171,29 @@ export class SafeXmlNode {
   }
 }
 
+// DOMParser is stateless; construct once instead of per part (a large deck
+// parses hundreds of parts).
+let sharedParser: DOMParser | undefined;
+
 /**
  * Parse an XML string into a SafeXmlNode wrapping the document element.
  * Uses the browser's built-in DOMParser.
  */
 export function parseXml(xmlString: string): SafeXmlNode {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlString, "application/xml");
+  sharedParser ??= new DOMParser();
+  const doc = sharedParser.parseFromString(xmlString, "application/xml");
 
-  // Check for parser errors — DOMParser returns a parsererror document on failure
-  const errorNode = doc.querySelector("parsererror");
+  // Check for parser errors — DOMParser returns a parsererror document on
+  // failure. Browsers differ on placement (document root vs. child of the
+  // root), so check the root's tag and a direct tag-name scan; both are far
+  // cheaper than a querySelector CSS match on every parsed part.
+  const root = doc.documentElement;
+  const errorNode =
+    root?.localName === "parsererror" ? root : doc.getElementsByTagName("parsererror")[0];
   if (errorNode) {
     console.warn("XML parse error:", errorNode.textContent);
-    return new SafeXmlNode(null);
+    return SafeXmlNode.EMPTY;
   }
 
-  return new SafeXmlNode(doc.documentElement);
+  return new SafeXmlNode(root);
 }

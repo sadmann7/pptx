@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "bench": "vitest bench --run",
     "build": "tsdown",
     "lint": "oxlint",
     "test": "vitest run",
