@@ -111,7 +111,7 @@ function PresentationThumbnailItem({
       data-slot="presentation-thumbnail-item"
       className={cn(
         "relative flex w-full cursor-pointer gap-1.5 rounded-md p-1.5 outline-none hover:bg-accent",
-        "ring-2 ring-transparent ring-offset-2 ring-offset-background transition-[ring] duration-100 focus-visible:ring-ring data-active:bg-accent",
+        "ring-2 ring-transparent transition-[color,ring] duration-100 focus:ring-ring data-active:bg-accent",
         className,
       )}
       {...props}
@@ -134,7 +134,10 @@ function PresentationThumbnailList({
   return (
     <PresentationPrimitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn("flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r pr-2", className)}
+      className={cn(
+        "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1 pr-2",
+        className,
+      )}
       {...props}
     >
       {children ??
