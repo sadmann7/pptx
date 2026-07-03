@@ -443,13 +443,26 @@ function tableFlipTransform(node: TableNodeData): string {
  * Render a table node into an absolutely-positioned HTML element.
  */
 export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
+  // A table's true size is defined by its grid (sum of gridCol widths and
+  // tr heights), not by the graphicFrame extent. PowerPoint ignores the
+  // frame extent when laying out tables, and producers (notably Google
+  // Slides exports) often leave a stale dummy value there (3000000x3000000),
+  // which would crush the table into a small square.
+  const gridWidth = node.columns.reduce((sum, w) => sum + w, 0);
+  const gridHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
+  const frameW = gridWidth > 0 ? gridWidth : node.size.w;
+  const frameH = gridHeight > 0 ? gridHeight : node.size.h;
+
   const wrapper = document.createElement("div");
   wrapper.style.position = "absolute";
   wrapper.style.left = `${node.position.x}px`;
   wrapper.style.top = `${node.position.y}px`;
-  wrapper.style.width = `${node.size.w}px`;
-  wrapper.style.height = `${node.size.h}px`;
-  wrapper.style.overflow = "hidden";
+  wrapper.style.width = `${frameW}px`;
+  wrapper.style.height = `${frameH}px`;
+  // Row heights are minimums in OOXML: PowerPoint grows rows to fit their
+  // text, letting the table extend beyond the declared height. Clipping here
+  // would cut off cell content mid-row.
+  wrapper.style.overflow = "visible";
 
   // Apply transforms
   const transforms: string[] = [];
