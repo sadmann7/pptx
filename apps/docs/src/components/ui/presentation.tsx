@@ -4,6 +4,10 @@ import { Presentation as PresentationPrimitive } from "@diceui/pptx";
 
 import { cn } from "@/lib/utils";
 
+function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
+  return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;
+}
+
 function Presentation({ className, ...props }: PresentationPrimitive.Root.Props) {
   return (
     <PresentationPrimitive.Root
@@ -152,6 +156,7 @@ export {
   PresentationContent,
   PresentationError,
   PresentationLoading,
+  PresentationProvider,
   PresentationSlide,
   PresentationThumbnailItem,
   PresentationThumbnailItemNumber,

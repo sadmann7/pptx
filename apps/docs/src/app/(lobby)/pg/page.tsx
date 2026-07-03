@@ -2,12 +2,7 @@
 
 import * as React from "react";
 
-import {
-  Presentation as PresentationPrimitive,
-  useCreatePresentationStore,
-  usePresentation,
-  useSlide,
-} from "@diceui/pptx";
+import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +11,7 @@ import {
   PresentationContent,
   PresentationError,
   PresentationLoading,
+  PresentationProvider,
   PresentationSlide,
   PresentationThumbnailList,
   PresentationViewport,
@@ -39,7 +35,7 @@ export default function PgPage() {
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
-      <PresentationPrimitive.Provider store={store}>
+      <PresentationProvider store={store}>
         <PresentationDebug />
         <Presentation className="flex-1">
           <PresentationThumbnailList />
@@ -51,7 +47,7 @@ export default function PgPage() {
             </PresentationViewport>
           </PresentationContent>
         </Presentation>
-      </PresentationPrimitive.Provider>
+      </PresentationProvider>
     </div>
   );
 }
