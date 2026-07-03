@@ -33,8 +33,9 @@ export class SafeXmlNode {
   }
 
   private resolveAttributeNamespace(prefix: string): string | undefined {
+    // Optional call: not all DOM implementations (e.g. happy-dom) provide it.
     return (
-      this.el?.lookupNamespaceURI(prefix) ??
+      this.el?.lookupNamespaceURI?.(prefix) ??
       (prefix === "r"
         ? "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
         : undefined)

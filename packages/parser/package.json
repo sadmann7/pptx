@@ -34,9 +34,9 @@
   "devDependencies": {
     "@pptx/config": "workspace:*",
     "@types/node": "catalog:",
-    "happy-dom": "^20.10.6",
+    "happy-dom": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:"
   }
 }
