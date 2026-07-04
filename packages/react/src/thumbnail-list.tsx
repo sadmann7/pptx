@@ -44,6 +44,20 @@ function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
 }
 
+// Visually-hidden style for the default slide number inside each thumbnail.
+// Hoisted outside render so React.memo on ThumbnailItem sees a stable reference.
+const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: "0",
+  margin: "-1px",
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
+
 /**
  * Time-budgeted scheduler for thumbnail slide rendering.
  *
@@ -302,19 +316,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       resolvedChildren = presentation.slides.map((slide) => (
         <ThumbnailItem key={slide.id} slideId={slide.id}>
           <ThumbnailItemPreview />
-          <ThumbnailItemNumber
-            style={{
-              position: "absolute",
-              width: "1px",
-              height: "1px",
-              padding: "0",
-              margin: "-1px",
-              overflow: "hidden",
-              clipPath: "inset(50%)",
-              whiteSpace: "nowrap",
-              borderWidth: 0,
-            }}
-          />
+          <ThumbnailItemNumber style={VISUALLY_HIDDEN_STYLE} />
         </ThumbnailItem>
       ));
     }
@@ -420,11 +422,11 @@ export const ThumbnailItem = React.memo(
       () => false,
     );
 
-    // Subscribe narrowly to the index itself (a number) rather than the whole
-    // presentation object, so only actual slide reorders cause a re-render here.
+    // O(1) map lookup — the store maintains a slideIndexById map that is
+    // rebuilt on load; no linear scan per emit.
     const displayIndex = React.useSyncExternalStore(
       store.subscribe,
-      () => store.getState().presentation?.slides.findIndex((s) => s.id === slideId) ?? -1,
+      () => store.getSlideIndex(slideId),
       () => -1,
     );
 

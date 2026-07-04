@@ -56,10 +56,24 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
         store.fitTo(viewportElement.clientWidth, viewportElement.clientHeight, autoFitPadding);
     };
-    const unsubscribe = store.subscribe(fit);
+
     fit();
+
+    // Re-fit when the container is resized.
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(viewportElement);
+
+    // Re-fit when a new presentation loads: the new slide's aspect ratio may
+    // differ so the zoom needs to be recalculated. Only fires on presentation
+    // identity changes, not on zoom/navigation/progress updates.
+    let lastPresentation = store.getState().presentation;
+    const unsubscribe = store.subscribe(() => {
+      const presentation = store.getState().presentation;
+      if (presentation !== lastPresentation) {
+        lastPresentation = presentation;
+        fit();
+      }
+    });
 
     return () => {
       unsubscribe();

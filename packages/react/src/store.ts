@@ -198,6 +198,14 @@ export interface PresentationStore {
   fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
 
   /**
+   * Returns the 0-based index of a slide by its stable id, or `-1` if not found.
+   *
+   * O(1) lookup via an internal id→index map. Safe to call inside
+   * `useSyncExternalStore` selectors without the O(N) cost of `findIndex`.
+   */
+  getSlideIndex: (slideId: string) => number;
+
+  /**
    * Returns the 0-based index of the active slide, or `-1` when none is active.
    */
   getActiveSlideIndex: () => number;
@@ -339,6 +347,10 @@ export function createPresentationStore(): PresentationStore {
     }
   }
 
+  function getSlideIndex(slideId: string): number {
+    return slideIndexById.get(slideId) ?? -1;
+  }
+
   function getActiveSlideIndex(): number {
     const { activeSlideId } = state;
     if (!activeSlideId) return -1;
@@ -441,6 +453,7 @@ export function createPresentationStore(): PresentationStore {
     zoomIn,
     zoomOut,
     fitTo,
+    getSlideIndex,
     getActiveSlideIndex,
     getActiveSlide,
     canGoNext,

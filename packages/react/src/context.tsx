@@ -5,6 +5,15 @@ import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 import type { PresentationState, PresentationStore } from "./store";
 import { createPresentationStore } from "./store";
 
+const SERVER_SNAPSHOT: PresentationState = {
+  status: "idle",
+  presentation: null,
+  activeSlideId: null,
+  zoom: 1,
+  progress: 0,
+  error: null,
+};
+
 export const Context = React.createContext<PresentationStore | null>(null);
 
 export interface ProviderProps {
@@ -65,8 +74,6 @@ export function useCreatePresentationStore(): PresentationStore {
 /**
  * Returns the `PresentationStore` from the nearest `<Presentation.Provider>`
  * or `<Presentation.Root>`. Throws if called outside a `Presentation` tree.
- *
- * @param consumerName - Component name included in the error message for easier debugging.
  */
 export function usePresentationStore(consumerName: string): PresentationStore {
   const store = React.useContext(Context);
@@ -76,14 +83,24 @@ export function usePresentationStore(consumerName: string): PresentationStore {
   return store;
 }
 
-const SERVER_SNAPSHOT: PresentationState = {
-  status: "idle",
-  presentation: null,
-  activeSlideId: null,
-  zoom: 1,
-  progress: 0,
-  error: null,
-};
+/**
+ * Subscribes to a single derived value from the presentation store.
+ *
+ * Re-renders the caller only when `selector(state)` returns a different value
+ * (compared with `Object.is`). Use this instead of calling `store.getState()`
+ * directly so unrelated state changes don't cause unnecessary re-renders.
+ */
+function useStoreSelector<T>(
+  store: PresentationStore,
+  selector: (state: PresentationState) => T,
+  serverSnapshot: T,
+): T {
+  return React.useSyncExternalStore(
+    store.subscribe,
+    () => selector(store.getState()),
+    () => serverSnapshot,
+  );
+}
 
 export interface UsePresentationResult {
   /** Parsed presentation data, or `null` before the first successful load. */
@@ -103,16 +120,17 @@ export interface UsePresentationResult {
  * Subscribes to top-level presentation state: parse status, progress, and errors.
  *
  * Must be called inside a `<Presentation.Root>` tree.
+ *
+ * Each field is subscribed independently so that unrelated store updates
+ * (zoom changes, slide navigation) do not cause consumers to re-render.
  */
 export function usePresentation(): UsePresentationResult {
   const store = usePresentationStore("usePresentation");
-  const state = React.useSyncExternalStore(store.subscribe, store.getState, () => SERVER_SNAPSHOT);
-  return {
-    presentation: state.presentation,
-    status: state.status,
-    error: state.error,
-    progress: state.progress,
-  };
+  const presentation = useStoreSelector(store, (s) => s.presentation, SERVER_SNAPSHOT.presentation);
+  const status = useStoreSelector(store, (s) => s.status, SERVER_SNAPSHOT.status);
+  const error = useStoreSelector(store, (s) => s.error, SERVER_SNAPSHOT.error);
+  const progress = useStoreSelector(store, (s) => s.progress, SERVER_SNAPSHOT.progress);
+  return { presentation, status, error, progress };
 }
 
 export interface UseSlideResult {
@@ -163,18 +181,9 @@ export function useSlide(): UseSlideResult {
   const store = usePresentationStore("useSlide");
 
   // Subscribe to primitives/stable refs only; new object literals on every call cause infinite loops.
-  const slideId = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.getState().activeSlideId,
-    () => null,
-  );
-
-  // Subscribe to a stable object ref that only changes on new file load, not on slide navigation.
-  const presentation = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.getState().presentation,
-    () => null,
-  );
+  const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
+  // Stable object ref that only changes on new file load, not on slide navigation.
+  const presentation = useStoreSelector(store, (s) => s.presentation, null);
 
   // Derive the rest synchronously from the two stable subscribed values.
   const index =
@@ -236,11 +245,7 @@ export interface UseZoomResult {
  */
 export function useZoom(): UseZoomResult {
   const store = usePresentationStore("useZoom");
-  const zoom = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.getState().zoom,
-    () => 1,
-  );
+  const zoom = useStoreSelector(store, (s) => s.zoom, 1);
 
   return {
     zoom,
