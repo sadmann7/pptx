@@ -2,10 +2,36 @@
  * Shape renderer — converts ShapeNodeData into positioned HTML/SVG elements.
  */
 
+import { renderCustomGeometry } from "../geometry/custom-geometry";
+import {
+  getActionButtonIconPath,
+  getMultiPathPreset,
+  getPresetShapePath,
+  PresetSubPath,
+} from "../geometry/presets";
+import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
 import { LineEndInfo, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
 import { parseOoxmlBool } from "../ooxml/booleans";
 import { isExternalTargetMode } from "../ooxml/rel-parser";
+import { emuToPx } from "../ooxml/units";
+import { SafeXmlNode } from "../ooxml/xml-parser";
+import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
+import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-validation";
+import { cssFontFamilyStack, resolveThemeFontStack } from "./font-resolver";
+import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { RenderContext } from "./render-context";
+import {
+  getFocusedGradientStops,
+  resolveColor,
+  resolveColorToCss,
+  resolveFill,
+  resolveGradientFill,
+  resolveGradientStroke,
+  resolveLineStyle,
+  resolveThemeFillReference,
+} from "./style-resolver";
+import { getEffectiveBodyPrChild } from "./text-body-properties";
+import { renderTextBody } from "./text-renderer";
 
 /** True if the text body has at least one non-empty run (avoids covering shapes with empty placeholder text). */
 function hasVisibleText(textBody: TextBody): boolean {
@@ -100,32 +126,6 @@ function hasBulletParagraph(textBody: TextBody): boolean {
 function isTitlePlaceholder(placeholder: ShapeNodeData["placeholder"]): boolean {
   return placeholder?.type === "title" || placeholder?.type === "ctrTitle";
 }
-import { renderCustomGeometry } from "../geometry/custom-geometry";
-import {
-  getPresetShapePath,
-  getActionButtonIconPath,
-  getMultiPathPreset,
-  PresetSubPath,
-} from "../geometry/presets";
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
-import { emuToPx } from "../ooxml/units";
-import { SafeXmlNode } from "../ooxml/xml-parser";
-import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
-import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
-import { cssFontFamilyStack, resolveThemeFontStack } from "./font-resolver";
-import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
-import {
-  resolveFill,
-  resolveLineStyle,
-  resolveGradientStroke,
-  resolveGradientFill,
-  resolveColorToCss,
-  resolveColor,
-  resolveThemeFillReference,
-  getFocusedGradientStops,
-} from "./style-resolver";
-import { getEffectiveBodyPrChild } from "./text-body-properties";
-import { renderTextBody } from "./text-renderer";
 
 function appendTransform(el: HTMLElement, transform: string): void {
   el.style.transform = `${el.style.transform || ""} ${transform}`.trim();

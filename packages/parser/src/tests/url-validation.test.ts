@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
+import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-validation";
 
 describe("isAllowedExternalUrl", () => {
   it("allows http, https, and mailto", () => {

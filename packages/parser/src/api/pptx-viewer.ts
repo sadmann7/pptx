@@ -1,13 +1,13 @@
 import type { ECharts } from "echarts";
 
-import { injectEmbeddedFonts } from "../fonts/font-injector";
 import type { FontInjectionHandle } from "../fonts/font-injector";
+import { injectEmbeddedFonts } from "../fonts/font-injector";
 import type { PdfjsConfig } from "../media/pdf-renderer";
 import { buildPresentation, PresentationData } from "../model/presentation";
-import { parseZip, parseZipLazyMedia } from "../ooxml/zip-parser";
 import type { ZipParseLimits } from "../ooxml/zip-parser";
-import { renderSlide as renderSlideInternal } from "../renderer/slide-renderer";
+import { parseZip, parseZipLazyMedia } from "../ooxml/zip-parser";
 import type { SlideHandle } from "../renderer/slide-renderer";
+import { renderSlide as renderSlideInternal } from "../renderer/slide-renderer";
 import {
   buildTextIndex,
   searchText as searchTextInIndex,
@@ -16,7 +16,7 @@ import {
   type TextSearchOptions,
   type TextSearchResult,
 } from "../search/text-search";
-import { isAllowedExternalUrl } from "../utils/url-safety";
+import { isAllowedExternalUrl } from "../utils/url-validation";
 
 export type { SlideHandle } from "../renderer/slide-renderer";
 

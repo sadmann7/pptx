@@ -6,7 +6,7 @@ import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from ".
 import { isExternalTargetMode, RelEntry } from "../ooxml/rel-parser";
 import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb } from "../utils/color";
-import { isAllowedExternalMediaUrl } from "../utils/url-safety";
+import { isAllowedExternalMediaUrl } from "../utils/url-validation";
 import { RenderContext } from "./render-context";
 import {
   getFocusedGradientStops,

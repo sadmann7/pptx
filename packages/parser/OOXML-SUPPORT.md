@@ -73,7 +73,7 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 | Paragraphs: alignment, RTL, indent, margins, line/para spacing (pct + pts)             | ✅     |                                                                         |
 | Bullets: `buChar`, `buAutoNum` (all formats), `buClr`, `buSzPct/Pts`, `buFont`, levels | ✅     | Known deviation: `startAt` re-seeds on every paragraph (`TODO(spec?)`)  |
 | Fields (`a:fld`)                                                                       | 🟡     | Renders cached literal, not computed value (`TODO(spec?)`)              |
-| Hyperlinks: external URLs, `ppaction://` slide jumps                                   | ✅     | URL protocol allow-list (`utils/url-safety.ts`)                         |
+| Hyperlinks: external URLs, `ppaction://` slide jumps                                   | ✅     | URL protocol allow-list (`utils/url-validation.ts`)                     |
 | `bodyPr`: anchor, insets, wrap, `normAutofit`, `spAutoFit`, vertical text              | ✅     | Autofit re-measures via DOM; browser metrics ≠ DirectWrite exactly      |
 | Embedded fonts (`.fntdata`: EOT/MTX, ODTTF deobfuscation)                              | ✅     | Internal MTX decompressor (`fonts/mtx/`), worker pool, priority loading |
 | WordArt / text effects                                                                 | ❌     | Beyond vertical orientation                                             |

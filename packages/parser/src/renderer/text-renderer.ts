@@ -9,7 +9,7 @@ import { parseOoxmlBool } from "../ooxml/booleans";
 import { isExternalTargetMode } from "../ooxml/rel-parser";
 import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/units";
 import { SafeXmlNode } from "../ooxml/xml-parser";
-import { isAllowedExternalUrl } from "../utils/url-safety";
+import { isAllowedExternalUrl } from "../utils/url-validation";
 import { cssFontFamilyStack, resolveThemeFont } from "./font-resolver";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { RenderContext } from "./render-context";

@@ -17,7 +17,7 @@ import { isExternalTargetMode, RelEntry } from "../ooxml/rel-parser";
 import { emuToPx } from "../ooxml/units";
 import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb } from "../utils/color";
-import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-safety";
+import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url-validation";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { RenderContext } from "./render-context";
 import { resolveColor, resolveFill, resolveLineStyle } from "./style-resolver";
