@@ -12,13 +12,10 @@ const INITIAL_STATE: PresentationState = {
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
-// Load-progress cost model: work is measured in byte-equivalent units, where
-// 1 unit ≈ unzipping one compressed input byte. These are per-byte cost
-// ratios of the other phases relative to that baseline — measurable and
-// deck-independent, unlike hardcoded progress-bar segment splits.
-// Reading a Blob into memory is a fast copy (~5% of unzip cost per byte).
+// Load-progress cost model. Work is measured in byte-equivalent units where
+// 1 unit ≈ unzipping one compressed input byte; these ratios express how
+// expensive the other phases are per byte relative to that baseline.
 const READ_COST_PER_BYTE = 0.05;
-// MTX font decompression is CPU-bound, roughly ~20x unzip cost per byte.
 const FONT_DECODE_COST_PER_BYTE = 20;
 
 /** Accepted input formats for `store.load()` and the `file` prop. */
@@ -326,12 +323,9 @@ export function createPresentationStore(): PresentationStore {
     fontInjection = undefined;
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
-    // --- Adaptive progress ------------------------------------------------
-    // Work is measured in byte-equivalent units (see cost-model constants at
-    // the top of this file). The total budget grows as the file reveals more
-    // work (font bytes are only known after unzip); a monotonic clamp keeps
-    // the bar from moving backward when the budget expands — it briefly
-    // stalls, then resumes at the recalibrated rate.
+    // Progress = workDone / workTotal in byte-equivalent units (see cost
+    // model above). The budget grows once font bytes are known after unzip;
+    // the monotonic clamp keeps the bar from moving backward when it does.
     const inputBytes = Math.max(1, input instanceof Blob ? input.size : input.byteLength);
     const readUnits = inputBytes * READ_COST_PER_BYTE;
     const zipUnits = inputBytes;
@@ -365,8 +359,8 @@ export function createPresentationStore(): PresentationStore {
       workDone = readUnits + zipUnits;
       reportProgress();
 
-      // Lazy by default: defer per-slide node parsing until a slide is
-      // rendered or navigated to, so load time stays flat for large decks.
+      // Lazy by default: per-slide node parsing is deferred until a slide
+      // is rendered, keeping load time flat for large decks.
       const presentation = buildPresentation(files, { lazy: options?.lazy ?? true });
       if (gen !== loadGeneration) throw ABORT_ERROR;
 
@@ -378,32 +372,25 @@ export function createPresentationStore(): PresentationStore {
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
       const startSlide = presentation.slides[startIndex];
 
-      // Capture raw XML before materialization clears it (lazy mode).
-      // Used for priority font detection: first-slide typefaces decode first.
+      // Capture raw XML for priority font detection before materialization
+      // clears it (lazy mode).
       const startSlideXml = startSlide?.sourceXml;
 
-      // The active slide's nodes must be reliable for subscribers the moment
-      // the store reports "ready", even in lazy mode.
+      // The active slide's nodes must be reliable the moment the store
+      // reports "ready", even in lazy mode.
       if (startSlide) materializeSlideNodes(presentation, startSlide);
 
-      // Start decoding ALL embedded fonts while still in "loading" state.
-      // Priority typefaces (first slide + theme fonts) decode first in the
-      // worker queue, but we wait for complete — not just ready — so no
-      // embedded font can swap in after slides are visible (no FOUT).
-      // Presentations with no embedded fonts resolve instantly (noop handle).
-      // Workers run in parallel, so wall time ≈ time of the slowest single font.
-      // Font modules are dynamically imported so the decode pipeline (EOT
-      // parsing, MTX decompression, worker pool) stays out of the bundle
-      // and off the wire when fonts are disabled or the deck embeds none.
+      // Decode embedded fonts while still "loading" and wait for all of them,
+      // so no font can swap in after slides are visible (no FOUT). The font
+      // pipeline is a lazily imported chunk — decks without embedded fonts
+      // (or embedFonts: false) never fetch it.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
         const { collectPriorityTypefaces, injectEmbeddedFonts } =
           await import("@diceui/pptx-parser/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
-        // Now that the zip is open, the exact decode workload is known —
-        // expand the budget by the actual embedded font bytes. The fonts map
-        // can hold the same part under both raw and decoded paths, so count
-        // unique buffers only.
+        // Expand the progress budget by the now-known decode workload.
+        // Dedupe: the fonts map can alias one part under two paths.
         let fontBytes = 0;
         for (const part of new Set(presentation.fonts.values())) {
           fontBytes += part.byteLength;
@@ -467,9 +454,8 @@ export function createPresentationStore(): PresentationStore {
     const index = slideIndexById.get(slideId);
     if (index === undefined) return;
 
-    // Keep the active slide's nodes reliable in lazy mode: materialize the
-    // target before subscribers observe the navigation. No-op when already
-    // materialized.
+    // Materialize the target before subscribers observe the navigation
+    // (lazy mode); no-op when already materialized.
     const target = presentation.slides[index];
     if (target) materializeSlideNodes(presentation, target);
 
