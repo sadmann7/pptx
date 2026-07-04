@@ -1,7 +1,5 @@
 import type { ECharts } from "echarts";
 
-import type { FontInjectionHandle } from "../fonts/font-injector";
-import { injectEmbeddedFonts } from "../fonts/font-injector";
 import type { PdfjsConfig } from "../media/pdf-renderer";
 import { buildPresentation, PresentationData } from "../model/presentation";
 import type { ZipParseLimits } from "../ooxml/zip-parser";
@@ -135,7 +133,6 @@ export class PptxViewer extends EventTarget {
   private slideHandles = new Map<number, SlideHandle>();
   private searchHighlightHandles = new Set<SearchHighlightHandle>();
   private textIndexCache: { key: string; entries: TextIndexEntry[] } | null = null;
-  private fontInjection?: FontInjectionHandle;
   private activeRenderMode: "list" | "slide" | null = null;
   private listOptions: Required<ListRenderOptions> = {
     windowed: false,
@@ -238,7 +235,6 @@ export class PptxViewer extends EventTarget {
     this.presentation = presentation;
     this.currentSlide = 0;
     this.textIndexCache = null;
-    this.fontInjection = injectEmbeddedFonts(presentation);
     this.setupAdaptiveResize();
   }
 
@@ -246,7 +242,6 @@ export class PptxViewer extends EventTarget {
    * Render all slides in a scrollable list.
    */
   async renderList(options?: ListRenderOptions): Promise<void> {
-    await this.fontInjection?.ready;
     this.activeRenderMode = "list";
     this.listOptions = {
       windowed: options?.windowed ?? false,
@@ -262,7 +257,6 @@ export class PptxViewer extends EventTarget {
    * Render a single slide (no built-in nav UI).
    */
   async renderSlide(index?: number): Promise<void> {
-    await this.fontInjection?.ready;
     this.activeRenderMode = "slide";
     if (index !== undefined && this.presentation) {
       this.currentSlide = Math.max(0, Math.min(index, this.presentation.slides.length - 1));
@@ -649,8 +643,6 @@ export class PptxViewer extends EventTarget {
   }
 
   private unloadRenderedState(): void {
-    this.fontInjection?.dispose();
-    this.fontInjection = undefined;
     this.clearSearchHighlights();
     this.cleanupScrollObserver?.();
     this.cleanupScrollObserver = undefined;

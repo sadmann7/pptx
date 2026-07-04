@@ -1,11 +1,5 @@
-import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
-import {
-  buildPresentation,
-  collectPriorityTypefaces,
-  injectEmbeddedFonts,
-  materializeSlideNodes,
-  parseZip,
-} from "@diceui/pptx-parser";
+import type { PresentationData, SlideData } from "@diceui/pptx-parser";
+import { buildPresentation, materializeSlideNodes, parseZip } from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -248,7 +242,6 @@ export function createPresentationStore(): PresentationStore {
   let state: PresentationState = { ...INITIAL_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
-  let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
@@ -298,8 +291,6 @@ export function createPresentationStore(): PresentationStore {
     loadGeneration += 1;
     const gen = loadGeneration;
 
-    fontInjection?.dispose();
-    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     try {
@@ -326,24 +317,6 @@ export function createPresentationStore(): PresentationStore {
           : (defaultSlideIndex ?? 0);
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
       const startSlide = presentation.slides[startIndex];
-
-      // Wait only for the fonts the first-rendered slide needs before
-      // reporting ready (no fallback-font layout shift for visible text);
-      // the rest keep decoding in the background and swap in on arrival.
-      // Typefaces are matched against the slide plus its layout/master
-      // (text inherits fonts from placeholders). `sourceXml` is only present
-      // pre-materialization (lazy mode); without sources every embedded font
-      // is treated as priority.
-      const layoutPath = startSlide ? presentation.slideToLayout.get(startSlide.index) : undefined;
-      const masterPath = layoutPath ? presentation.layoutToMaster.get(layoutPath) : undefined;
-      const priorityTypefaces = collectPriorityTypefaces(presentation, [
-        startSlide?.sourceXml,
-        layoutPath ? files.slideLayouts.get(layoutPath) : undefined,
-        masterPath ? files.slideMasters.get(masterPath) : undefined,
-      ]);
-      fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
-      await fontInjection.ready;
-      if (gen !== loadGeneration) throw ABORT_ERROR;
 
       // The active slide's nodes must be reliable for subscribers the moment
       // the store reports "ready", even in lazy mode.
@@ -454,8 +427,6 @@ export function createPresentationStore(): PresentationStore {
 
   function reset(): void {
     loadGeneration += 1;
-    fontInjection?.dispose();
-    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE });
   }
 
