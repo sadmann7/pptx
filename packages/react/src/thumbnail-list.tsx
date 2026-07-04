@@ -44,6 +44,91 @@ function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
 }
 
+/**
+ * Time-budgeted scheduler for thumbnail slide rendering.
+ *
+ * Parsing + DOM generation for a slide can take anywhere from 2ms to 300ms+.
+ * Running every mounted preview synchronously in one commit lets a single
+ * heavy slide block first paint for the whole page. Instead, tasks run in
+ * order against a per-frame budget: work proceeds synchronously until the
+ * budget is spent, then yields to the browser and resumes next frame.
+ *
+ * Cheap slides (the common case) still complete before the first paint; an
+ * expensive slide only delays the thumbnails behind it in the queue.
+ */
+const THUMBNAIL_FRAME_BUDGET_MS = 12;
+
+let thumbnailSyncSpentMs = 0;
+let thumbnailPumpScheduled = false;
+const thumbnailRenderQueue: Array<() => void> = [];
+
+function pumpThumbnailQueue() {
+  thumbnailPumpScheduled = false;
+  thumbnailSyncSpentMs = 0;
+  const frameStart = performance.now();
+  while (
+    thumbnailRenderQueue.length > 0 &&
+    performance.now() - frameStart < THUMBNAIL_FRAME_BUDGET_MS
+  ) {
+    thumbnailRenderQueue.shift()?.();
+  }
+  if (thumbnailRenderQueue.length > 0) scheduleThumbnailPump();
+}
+
+function scheduleThumbnailPump() {
+  if (thumbnailPumpScheduled) return;
+  thumbnailPumpScheduled = true;
+  requestAnimationFrame(pumpThumbnailQueue);
+}
+
+/**
+ * Run `task` synchronously if the current frame still has render budget,
+ * otherwise queue it for an upcoming frame. Returns a cancel function.
+ */
+function scheduleThumbnailRender(task: () => void): () => void {
+  if (thumbnailSyncSpentMs < THUMBNAIL_FRAME_BUDGET_MS) {
+    const start = performance.now();
+    task();
+    thumbnailSyncSpentMs += performance.now() - start;
+    // Reset the sync budget on the next frame so later commits get their own.
+    scheduleThumbnailPump();
+    return () => {};
+  }
+  thumbnailRenderQueue.push(task);
+  scheduleThumbnailPump();
+  return () => {
+    const index = thumbnailRenderQueue.indexOf(task);
+    if (index !== -1) thumbnailRenderQueue.splice(index, 1);
+  };
+}
+
+/**
+ * Bounding rect of the nearest scrollable ancestor's visible area, clipped to
+ * the window. Falls back to the window viewport when no scroll container exists.
+ */
+function findScrollportRect(element: HTMLElement): {
+  top: number;
+  bottom: number;
+  height: number;
+} {
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    const { overflowY } = getComputedStyle(ancestor);
+    if (
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      ancestor.scrollHeight > ancestor.clientHeight
+    ) {
+      const rect = ancestor.getBoundingClientRect();
+      const top = Math.max(rect.top, 0);
+      const bottom = Math.min(rect.bottom, viewportHeight);
+      return { top, bottom, height: Math.max(bottom - top, 0) };
+    }
+    ancestor = ancestor.parentElement;
+  }
+  return { top: 0, bottom: viewportHeight, height: viewportHeight };
+}
+
 interface ThumbnailRovingContextValue {
   currentTabStopId: string | null;
   loop: boolean;
@@ -51,6 +136,8 @@ interface ThumbnailRovingContextValue {
   onItemFocus: (slideId: string) => void;
   onItemRegister: (slideId: string, el: HTMLButtonElement) => void;
   onItemUnregister: (slideId: string) => void;
+  /** Shared object-URL cache so each image is decoded once across all previews. */
+  mediaUrlCache: Map<string, string>;
 }
 
 const ThumbnailRovingContext = React.createContext<ThumbnailRovingContextValue | null>(null);
@@ -146,6 +233,14 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const [currentTabStopId, setCurrentTabStopId] = React.useState<string | null>(null);
     const isClickFocusRef = React.useRef(false);
     const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
+    // One shared object-URL cache for all previews in this list. Each image
+    // path is decoded once and reused, regardless of how many slides reference
+    // it. Keyed by presentation identity so a new load always starts fresh.
+    const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
+    if (!mediaCacheRef.current || mediaCacheRef.current.key !== presentation) {
+      mediaCacheRef.current = { key: presentation ?? {}, cache: new Map() };
+    }
+    const mediaUrlCache = mediaCacheRef.current.cache;
 
     const activeSlideId = React.useSyncExternalStore(
       store.subscribe,
@@ -176,8 +271,11 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         onItemFocus: setCurrentTabStopId,
         onItemRegister: (slideId, el) => itemsRef.current.set(slideId, el),
         onItemUnregister: (slideId) => itemsRef.current.delete(slideId),
+        mediaUrlCache,
       }),
-      [effectiveTabStopId, loop],
+      // mediaUrlCache identity is stable per-presentation (guarded by the ref
+      // above), so it's safe to include without triggering spurious re-renders.
+      [effectiveTabStopId, loop, mediaUrlCache],
     );
 
     if (status !== "ready" || !presentation) return null;
@@ -466,12 +564,17 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
+    const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_PREVIEW_NAME);
     const { presentation } = usePresentation();
 
     const itemPreviewRef = React.useRef<HTMLDivElement>(null);
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
-    const mediaUrlCache = React.useRef(new Map<string, string>()).current;
+    // Shared across all previews in the list — images decoded once, reused everywhere.
+    const { mediaUrlCache } = rovingContext;
     const [containerWidth, setContainerWidth] = React.useState(0);
+    // Previews render lazily: parsing + DOM generation for a slide only happens
+    // once its item scrolls near the viewport. One-way latch (false → true).
+    const [isNearViewport, setIsNearViewport] = React.useState(false);
 
     // Ref so the slide render effect can read the current scale without
     // being listed as a dependency (avoids tearing down the slide on resize).
@@ -485,10 +588,24 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     // Measure the container width synchronously before the first paint so that
     // the slide element is created with the correct transform right away.
+    // Also check initial visibility here: waiting for the IntersectionObserver
+    // (which fires after paint) would flash on-screen thumbnails empty for a
+    // frame on first render.
     React.useLayoutEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
-      if (itemPreviewElement && itemPreviewElement.offsetWidth > 0) {
+      if (!itemPreviewElement) return;
+      if (itemPreviewElement.offsetWidth > 0) {
         setContainerWidth(itemPreviewElement.offsetWidth);
+      }
+      // Visibility must be measured against the thumbnail rail's scrollport,
+      // not the window: items clipped by the rail's overflow are off-screen
+      // even when they'd fall inside the window's bounds.
+      const scrollport = findScrollportRect(itemPreviewElement);
+      const rect = itemPreviewElement.getBoundingClientRect();
+      // Same half-screenful lookahead as the IntersectionObserver's rootMargin.
+      const lookahead = scrollport.height * 0.5;
+      if (rect.top < scrollport.bottom + lookahead && rect.bottom > scrollport.top - lookahead) {
+        setIsNearViewport(true);
       }
     }, []);
 
@@ -504,37 +621,70 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       return () => resizeObserver.disconnect();
     }, []);
 
+    // Defer expensive slide parsing/rendering until this item is near the
+    // scrollport. rootMargin pre-renders one screenful ahead so scrolling
+    // rarely reveals an empty placeholder.
+    React.useEffect(() => {
+      if (isNearViewport) return;
+      const itemPreviewElement = itemPreviewRef.current;
+      if (!itemPreviewElement) return;
+      if (typeof IntersectionObserver === "undefined") {
+        setIsNearViewport(true);
+        return;
+      }
+      const intersectionObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) setIsNearViewport(true);
+        },
+        { rootMargin: "50% 0px" },
+      );
+      intersectionObserver.observe(itemPreviewElement);
+      return () => intersectionObserver.disconnect();
+    }, [isNearViewport]);
+
     // Render (or re-render) the slide DOM. Does NOT depend on `scale`: a
     // resize only changes the CSS transform, which is handled by the effect
     // below without tearing down and re-creating the slide element.
-    React.useEffect(() => {
-      const itemPreviewElement = itemPreviewRef.current;
-      if (!itemPreviewElement || !presentation || !slide) return;
+    // Layout effect + budgeted scheduler: cheap slides render before the first
+    // paint (no placeholder flash); an expensive slide yields to the browser
+    // instead of blocking every thumbnail behind it.
+    React.useLayoutEffect(() => {
+      if (!isNearViewport) return;
+      if (!presentation || !slide) return;
 
-      if (slideHandleRef.current) {
-        slideHandleRef.current.dispose();
-        slideHandleRef.current = null;
-      }
-      itemPreviewElement.innerHTML = "";
+      let disposed = false;
 
-      if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
-      const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-      slideHandle.element.style.transformOrigin = "top left";
-      // Apply the current scale immediately so the slide is never visible at
-      // full size before the separate scale effect fires.
-      if (scaleRef.current > 0) {
-        slideHandle.element.style.transform = `scale(${scaleRef.current})`;
-      }
-      itemPreviewElement.appendChild(slideHandle.element);
-      slideHandleRef.current = slideHandle;
+      const cancel = scheduleThumbnailRender(() => {
+        const itemPreviewElement = itemPreviewRef.current;
+        if (disposed || !itemPreviewElement) return;
+
+        if (slideHandleRef.current) {
+          slideHandleRef.current.dispose();
+          slideHandleRef.current = null;
+        }
+        itemPreviewElement.innerHTML = "";
+
+        if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
+        const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+        slideHandle.element.style.transformOrigin = "top left";
+        // Apply the current scale immediately so the slide is never visible at
+        // full size before the separate scale effect fires.
+        if (scaleRef.current > 0) {
+          slideHandle.element.style.transform = `scale(${scaleRef.current})`;
+        }
+        itemPreviewElement.appendChild(slideHandle.element);
+        slideHandleRef.current = slideHandle;
+      });
 
       return () => {
+        disposed = true;
+        cancel();
         if (slideHandleRef.current) {
           slideHandleRef.current.dispose();
           slideHandleRef.current = null;
         }
       };
-    }, [presentation, slide, mediaUrlCache]);
+    }, [presentation, slide, mediaUrlCache, isNearViewport]);
 
     // Apply scale imperatively: avoids a full slide teardown on every resize.
     React.useEffect(() => {

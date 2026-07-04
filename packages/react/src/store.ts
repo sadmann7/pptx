@@ -1,5 +1,5 @@
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
-import { buildPresentation, materializeSlideNodes, parseZip } from "@diceui/pptx-parser";
+import { buildPresentation, materializeSlideNodes, parseZipLazyMedia } from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -298,15 +298,13 @@ export function createPresentationStore(): PresentationStore {
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 30 });
 
-      const files = await parseZip(buffer);
+      const files = await parseZipLazyMedia(buffer);
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 70 });
 
       // Lazy by default: defer per-slide node parsing until a slide is
       // rendered or navigated to, so load time stays flat for large decks.
-      const presentation = buildPresentation(files, {
-        lazy: options?.lazy ?? true,
-      });
+      const presentation = buildPresentation(files, { lazy: options?.lazy ?? true });
       if (gen !== loadGeneration) throw ABORT_ERROR;
       setState({ progress: 85 });
 
