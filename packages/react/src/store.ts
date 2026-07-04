@@ -1,11 +1,5 @@
 import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
-import {
-  buildPresentation,
-  collectPriorityTypefaces,
-  injectEmbeddedFonts,
-  materializeSlideNodes,
-  parseZipLazyMedia,
-} from "@diceui/pptx-parser";
+import { buildPresentation, materializeSlideNodes, parseZipLazyMedia } from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -141,6 +135,18 @@ export interface PresentationStore {
        * @default true
        */
       lazy?: boolean;
+
+      /**
+       * When `true`, fonts embedded in the PPTX are decoded and registered
+       * with the browser before the store transitions to `"ready"`. This
+       * eliminates font-swap layout shifts (FOUT) at the cost of a brief
+       * extra loading phase while workers decode the font binaries.
+       * Set to `false` to skip embedded font loading entirely (faster load,
+       * but text may render with fallback fonts).
+       *
+       * @default true
+       */
+      embedFonts?: boolean;
     },
   ) => Promise<PresentationData>;
 
@@ -301,6 +307,7 @@ export function createPresentationStore(): PresentationStore {
     options?: {
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
       lazy?: boolean;
+      embedFonts?: boolean;
     },
   ): Promise<PresentationData> {
     loadGeneration += 1;
@@ -347,12 +354,19 @@ export function createPresentationStore(): PresentationStore {
       // embedded font can swap in after slides are visible (no FOUT).
       // Presentations with no embedded fonts resolve instantly (noop handle).
       // Workers run in parallel, so wall time ≈ time of the slowest single font.
-      const priorityTypefaces = collectPriorityTypefaces(presentation, [startSlideXml]);
-      console.log({ priorityTypefaces });
-      fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
-      setState({ progress: 95 });
-      await fontInjection.complete;
-      if (gen !== loadGeneration) throw ABORT_ERROR;
+      // Font modules are dynamically imported so the decode pipeline (EOT
+      // parsing, MTX decompression, worker pool) stays out of the bundle
+      // and off the wire when fonts are disabled or the deck embeds none.
+      if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
+        const { collectPriorityTypefaces, injectEmbeddedFonts } =
+          await import("@diceui/pptx-parser/fonts");
+        if (gen !== loadGeneration) throw ABORT_ERROR;
+        const priorityTypefaces = collectPriorityTypefaces(presentation, [startSlideXml]);
+        fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
+        setState({ progress: 95 });
+        await fontInjection.complete;
+        if (gen !== loadGeneration) throw ABORT_ERROR;
+      }
 
       replaceState({
         status: "ready",

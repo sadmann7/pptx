@@ -8,13 +8,18 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./fonts": "./src/fonts/index.ts"
   },
   "publishConfig": {
     "exports": {
       ".": {
         "import": "./dist/index.js",
         "types": "./dist/index.d.ts"
+      },
+      "./fonts": {
+        "import": "./dist/fonts/index.js",
+        "types": "./dist/fonts/index.d.ts"
       }
     }
   },

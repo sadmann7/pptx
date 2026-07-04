@@ -24,7 +24,7 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0 });
+    store.load(file, { defaultSlideIndex: 0, embedFonts: false });
   }
 
   return (
