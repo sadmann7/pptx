@@ -74,3 +74,8 @@ export type { TableNodeData, TableCell, TableRow } from "./model/nodes/table-nod
 export type { GroupNodeData } from "./model/nodes/group-node";
 export type { ChartNodeData } from "./model/nodes/chart-node";
 export type { PptxFiles } from "./ooxml/zip-parser";
+
+// Font embedding utilities
+export { deobfuscateFont } from "./fonts/font-deobfuscate";
+export { collectPriorityTypefaces, injectEmbeddedFonts } from "./fonts/font-injector";
+export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./fonts/font-injector";

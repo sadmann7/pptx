@@ -1,5 +1,11 @@
-import type { PresentationData, SlideData } from "@diceui/pptx-parser";
-import { buildPresentation, materializeSlideNodes, parseZipLazyMedia } from "@diceui/pptx-parser";
+import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
+import {
+  buildPresentation,
+  collectPriorityTypefaces,
+  injectEmbeddedFonts,
+  materializeSlideNodes,
+  parseZipLazyMedia,
+} from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -250,6 +256,7 @@ export function createPresentationStore(): PresentationStore {
   let state: PresentationState = { ...INITIAL_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
+  let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
@@ -299,6 +306,8 @@ export function createPresentationStore(): PresentationStore {
     loadGeneration += 1;
     const gen = loadGeneration;
 
+    fontInjection?.dispose();
+    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     try {
@@ -324,9 +333,26 @@ export function createPresentationStore(): PresentationStore {
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
       const startSlide = presentation.slides[startIndex];
 
+      // Capture raw XML before materialization clears it (lazy mode).
+      // Used for priority font detection: first-slide typefaces decode first.
+      const startSlideXml = startSlide?.sourceXml;
+
       // The active slide's nodes must be reliable for subscribers the moment
       // the store reports "ready", even in lazy mode.
       if (startSlide) materializeSlideNodes(presentation, startSlide);
+
+      // Start decoding ALL embedded fonts while still in "loading" state.
+      // Priority typefaces (first slide + theme fonts) decode first in the
+      // worker queue, but we wait for complete — not just ready — so no
+      // embedded font can swap in after slides are visible (no FOUT).
+      // Presentations with no embedded fonts resolve instantly (noop handle).
+      // Workers run in parallel, so wall time ≈ time of the slowest single font.
+      const priorityTypefaces = collectPriorityTypefaces(presentation, [startSlideXml]);
+      console.log({ priorityTypefaces });
+      fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
+      setState({ progress: 95 });
+      await fontInjection.complete;
+      if (gen !== loadGeneration) throw ABORT_ERROR;
 
       replaceState({
         status: "ready",
@@ -437,6 +463,8 @@ export function createPresentationStore(): PresentationStore {
 
   function reset(): void {
     loadGeneration += 1;
+    fontInjection?.dispose();
+    fontInjection = undefined;
     replaceState({ ...INITIAL_STATE });
   }
 
