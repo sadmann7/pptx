@@ -16,6 +16,7 @@ import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 import { usePresentation, usePresentationStore } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
+import { findScrollportRect, scheduleThumbnailRender } from "./thumbnail-scheduler";
 
 const THUMBNAIL_LIST_NAME = "PresentationThumbnailList";
 const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
@@ -54,91 +55,6 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
 
 function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
-}
-
-/**
- * Time-budgeted scheduler for thumbnail slide rendering.
- *
- * Parsing + DOM generation for a slide can take anywhere from 2ms to 300ms+.
- * Running every mounted preview synchronously in one commit lets a single
- * heavy slide block first paint for the whole page. Instead, tasks run in
- * order against a per-frame budget: work proceeds synchronously until the
- * budget is spent, then yields to the browser and resumes next frame.
- *
- * Cheap slides (the common case) still complete before the first paint; an
- * expensive slide only delays the thumbnails behind it in the queue.
- */
-const THUMBNAIL_FRAME_BUDGET_MS = 12;
-
-let thumbnailSyncSpentMs = 0;
-let thumbnailPumpScheduled = false;
-const thumbnailRenderQueue: Array<() => void> = [];
-
-function pumpThumbnailQueue() {
-  thumbnailPumpScheduled = false;
-  thumbnailSyncSpentMs = 0;
-  const frameStart = performance.now();
-  while (
-    thumbnailRenderQueue.length > 0 &&
-    performance.now() - frameStart < THUMBNAIL_FRAME_BUDGET_MS
-  ) {
-    thumbnailRenderQueue.shift()?.();
-  }
-  if (thumbnailRenderQueue.length > 0) scheduleThumbnailPump();
-}
-
-function scheduleThumbnailPump() {
-  if (thumbnailPumpScheduled) return;
-  thumbnailPumpScheduled = true;
-  requestAnimationFrame(pumpThumbnailQueue);
-}
-
-/**
- * Run `task` synchronously if the current frame still has render budget,
- * otherwise queue it for an upcoming frame. Returns a cancel function.
- */
-function scheduleThumbnailRender(task: () => void): () => void {
-  if (thumbnailSyncSpentMs < THUMBNAIL_FRAME_BUDGET_MS) {
-    const start = performance.now();
-    task();
-    thumbnailSyncSpentMs += performance.now() - start;
-    // Reset the sync budget on the next frame so later commits get their own.
-    scheduleThumbnailPump();
-    return () => {};
-  }
-  thumbnailRenderQueue.push(task);
-  scheduleThumbnailPump();
-  return () => {
-    const index = thumbnailRenderQueue.indexOf(task);
-    if (index !== -1) thumbnailRenderQueue.splice(index, 1);
-  };
-}
-
-/**
- * Bounding rect of the nearest scrollable ancestor's visible area, clipped to
- * the window. Falls back to the window viewport when no scroll container exists.
- */
-function findScrollportRect(element: HTMLElement): {
-  top: number;
-  bottom: number;
-  height: number;
-} {
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-  let ancestor = element.parentElement;
-  while (ancestor) {
-    const { overflowY } = getComputedStyle(ancestor);
-    if (
-      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
-      ancestor.scrollHeight > ancestor.clientHeight
-    ) {
-      const rect = ancestor.getBoundingClientRect();
-      const top = Math.max(rect.top, 0);
-      const bottom = Math.min(rect.bottom, viewportHeight);
-      return { top, bottom, height: Math.max(bottom - top, 0) };
-    }
-    ancestor = ancestor.parentElement;
-  }
-  return { top: 0, bottom: viewportHeight, height: viewportHeight };
 }
 
 interface ThumbnailRovingContextValue {
