@@ -32,6 +32,14 @@ export interface PptxFiles {
   fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
 }
 
+export interface ZipParseOptions {
+  /**
+   * Called after each zip entry has been read and categorized.
+   * `done` counts processed entries, `total` is the number of entries.
+   */
+  onProgress?: (done: number, total: number) => void;
+}
+
 export interface ZipParseLimits {
   /** Maximum number of non-directory entries in the zip archive. */
   maxEntries?: number;
@@ -269,8 +277,9 @@ async function mapWithConcurrency<T>(
 export async function parseZip(
   buffer: ArrayBuffer,
   limits: ZipParseLimits = {},
+  options: ZipParseOptions = {},
 ): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, { lazyMedia: false });
+  return parseZipInternal(buffer, limits, { lazyMedia: false, onProgress: options.onProgress });
 }
 
 /**
@@ -282,14 +291,15 @@ export async function parseZip(
 export async function parseZipLazyMedia(
   buffer: ArrayBuffer,
   limits: ZipParseLimits = {},
+  options: ZipParseOptions = {},
 ): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, { lazyMedia: true });
+  return parseZipInternal(buffer, limits, { lazyMedia: true, onProgress: options.onProgress });
 }
 
 async function parseZipInternal(
   buffer: ArrayBuffer,
   limits: ZipParseLimits,
-  options: { lazyMedia: boolean },
+  options: { lazyMedia: boolean; onProgress?: (done: number, total: number) => void },
 ): Promise<PptxFiles> {
   const maxConcurrency = limits.maxConcurrency ?? 8;
   if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
@@ -371,7 +381,21 @@ async function parseZipInternal(
   };
   const lazyMediaEntries = new Map<string, LazyMediaEntry>();
 
+  let entriesDone = 0;
+  const reportEntryDone = (): void => {
+    entriesDone += 1;
+    options.onProgress?.(entriesDone, entries.length);
+  };
+
   await mapWithConcurrency(entries, maxConcurrency, async ([path, file]) => {
+    try {
+      await categorizeEntry(path, file);
+    } finally {
+      reportEntryDone();
+    }
+  });
+
+  async function categorizeEntry(path: string, file: JSZipObject): Promise<void> {
     const normalizedPath = path.replace(/\\/g, "/");
 
     // --- Content Types ---
@@ -552,7 +576,7 @@ async function parseZipInternal(
     }
 
     await countUncategorizedEntryIfNeeded(normalizedPath, file, limitState);
-  });
+  }
 
   if (options.lazyMedia) {
     result.mediaResolver = new ZipLazyMediaResolver(

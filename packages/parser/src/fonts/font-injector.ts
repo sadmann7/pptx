@@ -41,6 +41,13 @@ export interface InjectEmbeddedFontsOptions {
    * background after them. Names must match `EmbeddedFontEntry.typeface`.
    */
   priorityTypefaces?: ReadonlySet<string>;
+
+  /**
+   * Called after each font part finishes (decoded and registered, or
+   * skipped on failure). `done` counts finished parts, `total` is the
+   * number of unique font parts in the deck.
+   */
+  onProgress?: (done: number, total: number) => void;
 }
 
 const MAX_WORKERS = 6;
@@ -211,6 +218,9 @@ export function injectEmbeddedFonts(
   });
   if (pendingPriority === 0) resolveReady();
 
+  const totalParts = jobs.length;
+  let partsDone = 0;
+
   /** Register every typeface variant backed by a decoded part. */
   async function registerPath(path: string, buffer: ArrayBuffer | null): Promise<void> {
     if (buffer) {
@@ -230,6 +240,8 @@ export function injectEmbeddedFonts(
         }
       }
     }
+    partsDone += 1;
+    options?.onProgress?.(partsDone, totalParts);
     if (isPriorityPath(path) && --pendingPriority === 0) {
       resolveReady();
     }

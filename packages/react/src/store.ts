@@ -12,6 +12,15 @@ const INITIAL_STATE: PresentationState = {
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
+// Load-progress cost model: work is measured in byte-equivalent units, where
+// 1 unit ≈ unzipping one compressed input byte. These are per-byte cost
+// ratios of the other phases relative to that baseline — measurable and
+// deck-independent, unlike hardcoded progress-bar segment splits.
+// Reading a Blob into memory is a fast copy (~5% of unzip cost per byte).
+const READ_COST_PER_BYTE = 0.05;
+// MTX font decompression is CPU-bound, roughly ~20x unzip cost per byte.
+const FONT_DECODE_COST_PER_BYTE = 20;
+
 /** Accepted input formats for `store.load()` and the `file` prop. */
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 
@@ -317,20 +326,49 @@ export function createPresentationStore(): PresentationStore {
     fontInjection = undefined;
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
+    // --- Adaptive progress ------------------------------------------------
+    // Work is measured in byte-equivalent units (see cost-model constants at
+    // the top of this file). The total budget grows as the file reveals more
+    // work (font bytes are only known after unzip); a monotonic clamp keeps
+    // the bar from moving backward when the budget expands — it briefly
+    // stalls, then resumes at the recalibrated rate.
+    const inputBytes = Math.max(1, input instanceof Blob ? input.size : input.byteLength);
+    const readUnits = inputBytes * READ_COST_PER_BYTE;
+    const zipUnits = inputBytes;
+
+    let workDone = 0;
+    let workTotal = readUnits + zipUnits;
+    let reportedProgress = 0;
+    const reportProgress = (): void => {
+      if (gen !== loadGeneration) return;
+      // Hold at 99 while loading; only the ready state reports 100.
+      const pct = Math.min(99, Math.floor((workDone / workTotal) * 100));
+      if (pct > reportedProgress) {
+        reportedProgress = pct;
+        setState({ progress: pct });
+      }
+    };
+
     try {
       const buffer = await normalizeInput(input);
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      setState({ progress: 30 });
+      workDone = readUnits;
+      reportProgress();
 
-      const files = await parseZipLazyMedia(buffer);
+      const files = await parseZipLazyMedia(buffer, undefined, {
+        onProgress: (done, total) => {
+          workDone = readUnits + zipUnits * (done / total);
+          reportProgress();
+        },
+      });
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      setState({ progress: 70 });
+      workDone = readUnits + zipUnits;
+      reportProgress();
 
       // Lazy by default: defer per-slide node parsing until a slide is
       // rendered or navigated to, so load time stays flat for large decks.
       const presentation = buildPresentation(files, { lazy: options?.lazy ?? true });
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      setState({ progress: 85 });
 
       const defaultSlideIndex = options?.defaultSlideIndex;
       const requestedIndex =
@@ -361,9 +399,27 @@ export function createPresentationStore(): PresentationStore {
         const { collectPriorityTypefaces, injectEmbeddedFonts } =
           await import("@diceui/pptx-parser/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
+
+        // Now that the zip is open, the exact decode workload is known —
+        // expand the budget by the actual embedded font bytes. The fonts map
+        // can hold the same part under both raw and decoded paths, so count
+        // unique buffers only.
+        let fontBytes = 0;
+        for (const part of new Set(presentation.fonts.values())) {
+          fontBytes += part.byteLength;
+        }
+        const fontUnits = fontBytes * FONT_DECODE_COST_PER_BYTE;
+        const fontBaseUnits = workDone;
+        workTotal += fontUnits;
+
         const priorityTypefaces = collectPriorityTypefaces(presentation, [startSlideXml]);
-        fontInjection = injectEmbeddedFonts(presentation, { priorityTypefaces });
-        setState({ progress: 95 });
+        fontInjection = injectEmbeddedFonts(presentation, {
+          priorityTypefaces,
+          onProgress: (done, total) => {
+            workDone = fontBaseUnits + fontUnits * (done / total);
+            reportProgress();
+          },
+        });
         await fontInjection.complete;
         if (gen !== loadGeneration) throw ABORT_ERROR;
       }

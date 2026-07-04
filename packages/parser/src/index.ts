@@ -13,7 +13,7 @@ export type {
 
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
-export type { ZipParseLimits } from "./ooxml/zip-parser";
+export type { ZipParseLimits, ZipParseOptions } from "./ooxml/zip-parser";
 
 export {
   buildPresentation,
