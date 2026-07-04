@@ -11,10 +11,6 @@ export type {
   PreviewInput,
 } from "./api/pptx-viewer";
 
-// Deprecated aliases (v1 compat)
-export { PptxRenderer } from "./api/pptx-renderer";
-export type { RendererOptions } from "./api/pptx-renderer";
-
 export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
 export type { ZipParseLimits } from "./ooxml/zip-parser";
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";

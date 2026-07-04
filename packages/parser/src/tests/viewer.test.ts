@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { PptxRenderer } from "../api/pptx-renderer";
 import { normalizePreviewInput, PptxViewer } from "../api/pptx-viewer";
 import { buildCustomPptx } from "./fixture-extras";
 import { buildPptxWithShapes } from "./minimal-pptx";
@@ -257,32 +256,6 @@ describe("PptxViewer destroy", () => {
     await viewer.open(await buildPptxWithShapes(textShape(2, "Reopened")));
     expect(viewer.slideCount).toBe(1);
     expect(container.textContent).toContain("Reopened");
-  });
-});
-
-describe("PptxRenderer (deprecated wrapper)", () => {
-  it("previews a deck in list mode and reports the slide count", async () => {
-    const container = makeContainer();
-    const renderer = new PptxRenderer(container);
-    cleanups.push(() => renderer.destroy());
-
-    const result = await renderer.preview(await threeSlideDeck());
-    expect(result.slideCount).toBe(3);
-    expect(result.elapsed).toBeGreaterThanOrEqual(0);
-    expect(container.querySelectorAll("[data-slide-index]")).toHaveLength(3);
-  });
-
-  it("appends prev/next navigation in slide mode", async () => {
-    const container = makeContainer();
-    const renderer = new PptxRenderer(container, { mode: "slide" });
-    cleanups.push(() => renderer.destroy());
-
-    await renderer.preview(await threeSlideDeck());
-    const buttons = [...container.querySelectorAll("button")];
-    expect(buttons.map((b) => b.textContent)).toEqual(["← Prev", "Next →"]);
-    expect(buttons[0].disabled).toBe(true); // on first slide
-    expect(buttons[1].disabled).toBe(false);
-    expect(container.textContent).toContain("1 / 3");
   });
 });
 
