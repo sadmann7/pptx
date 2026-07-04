@@ -99,15 +99,15 @@ function SlideImpl({ presentation, slide, zoom, children }: SlideImplProps) {
     container.innerHTML = "";
 
     if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
-    const handle = renderSlide(presentation, slide, {
+    const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },
     });
 
-    container.appendChild(handle.element);
-    slideHandleRef.current = handle;
+    container.appendChild(slideHandle.element);
+    slideHandleRef.current = slideHandle;
 
     return () => {
       if (slideHandleRef.current) {

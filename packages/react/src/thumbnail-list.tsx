@@ -22,6 +22,18 @@ const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
 const THUMBNAIL_ITEM_PREVIEW_NAME = "PresentationThumbnailItemPreview";
 const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
 
+const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: "0",
+  margin: "-1px",
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
+
 type FocusIntent = "first" | "last" | "prev" | "next";
 
 const MAP_KEY_TO_INTENT: Record<string, FocusIntent> = {
@@ -43,20 +55,6 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
 function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
 }
-
-// Visually-hidden style for the default slide number inside each thumbnail.
-// Hoisted outside render so React.memo on ThumbnailItem sees a stable reference.
-const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  padding: "0",
-  margin: "-1px",
-  overflow: "hidden",
-  clipPath: "inset(50%)",
-  whiteSpace: "nowrap",
-  borderWidth: 0,
-};
 
 /**
  * Time-budgeted scheduler for thumbnail slide rendering.
