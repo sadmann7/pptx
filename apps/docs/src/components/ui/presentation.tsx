@@ -83,7 +83,10 @@ function PresentationThumbnailItemPreview({
   return (
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
-      className={cn("w-full overflow-hidden rounded-sm", className)}
+      className={cn(
+        "w-full overflow-hidden rounded-sm data-pending:animate-pulse data-pending:bg-muted",
+        className,
+      )}
       {...props}
     />
   );

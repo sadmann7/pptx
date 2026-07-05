@@ -200,36 +200,51 @@ function getTemplateShapes(
   return nodes;
 }
 
+/**
+ * Persistent, hidden, layout-contained host used to connect slide containers
+ * to the document during render so text-autofit measurement works.
+ *
+ * A single host is created lazily and reused by every `renderSlide()` call.
+ * The previous approach appended each slide container directly to
+ * `document.body` (with per-call style mutation) and removed it afterwards —
+ * two full-document layout invalidations per slide. With a persistent
+ * `contain: strict` host, appending/removing slide subtrees only invalidates
+ * layout inside the host, never the surrounding page. This is what makes
+ * rendering thumbnails during scroll feasible.
+ */
+let measurementHost: HTMLElement | null = null;
+
+function getMeasurementHost(): HTMLElement {
+  if (measurementHost?.isConnected) return measurementHost;
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.setAttribute("data-pptx-measurement-host", "");
+  host.style.position = "fixed";
+  host.style.left = "-100000px";
+  host.style.top = "0";
+  host.style.width = "0";
+  host.style.height = "0";
+  host.style.overflow = "hidden";
+  host.style.visibility = "hidden";
+  host.style.pointerEvents = "none";
+  // Full containment: mutations inside the host cannot invalidate layout,
+  // style, or paint of the rest of the document.
+  host.style.contain = "strict";
+  document.body.appendChild(host);
+  measurementHost = host;
+  return host;
+}
+
 function temporarilyConnectForMeasurement(container: HTMLElement): () => void {
   if (container.isConnected) return () => undefined;
 
-  const previous = {
-    position: container.style.position,
-    left: container.style.left,
-    top: container.style.top,
-    visibility: container.style.visibility,
-    pointerEvents: container.style.pointerEvents,
-    contain: container.style.contain,
-  };
-
-  container.style.position = "fixed";
-  container.style.left = "-100000px";
-  container.style.top = "0";
-  container.style.visibility = "hidden";
-  container.style.pointerEvents = "none";
-  container.style.contain = "layout style paint";
-  document.body.appendChild(container);
+  const host = getMeasurementHost();
+  host.appendChild(container);
 
   return () => {
-    if (container.parentNode === document.body) {
-      document.body.removeChild(container);
+    if (container.parentNode === host) {
+      host.removeChild(container);
     }
-    container.style.position = previous.position;
-    container.style.left = previous.left;
-    container.style.top = previous.top;
-    container.style.visibility = previous.visibility;
-    container.style.pointerEvents = previous.pointerEvents;
-    container.style.contain = previous.contain;
   };
 }
 

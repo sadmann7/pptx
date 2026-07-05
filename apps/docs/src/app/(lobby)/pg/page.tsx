@@ -52,6 +52,54 @@ export default function PgPage() {
   );
 }
 
+interface ThumbnailPerfDetail {
+  frames: number;
+  renders: number;
+  totalMs: number;
+  maxFrameMs: number;
+  backlog: number;
+}
+
+/**
+ * Temporary instrumentation readout: the thumbnail list dispatches a
+ * `pptx:thumbnail-perf` CustomEvent after each render-queue drain frame
+ * (dev builds only). Shows renders completed, avg/max frame cost, backlog.
+ */
+function useThumbnailPerf(): ThumbnailPerfDetail | null {
+  const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
+
+  const subscribe = React.useCallback((onStoreChange: () => void) => {
+    const onPerf = (event: Event) => {
+      perfRef.current = (event as CustomEvent<ThumbnailPerfDetail>).detail;
+      onStoreChange();
+    };
+    window.addEventListener("pptx:thumbnail-perf", onPerf);
+    return () => window.removeEventListener("pptx:thumbnail-perf", onPerf);
+  }, []);
+
+  return React.useSyncExternalStore(
+    subscribe,
+    () => perfRef.current,
+    () => null,
+  );
+}
+
+function ThumbnailPerfReadout() {
+  const perf = useThumbnailPerf();
+  if (!perf) return null;
+
+  const avgFrameMs = perf.frames > 0 ? perf.totalMs / perf.frames : 0;
+  return (
+    <span>
+      thumbs:{" "}
+      <strong className="text-foreground">
+        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
+        · {perf.backlog} queued
+      </strong>
+    </span>
+  );
+}
+
 function PresentationDebug() {
   const { status, progress, error, presentation } = usePresentation();
   const { slide, index } = useSlide();
@@ -79,6 +127,7 @@ function PresentationDebug() {
               <strong className="text-foreground">{slide.nodes.length} nodes</strong>
             </span>
           )}
+          <ThumbnailPerfReadout />
         </>
       )}
       {error && <span className="text-destructive">{error.message}</span>}
