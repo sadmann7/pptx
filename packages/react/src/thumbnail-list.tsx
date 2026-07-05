@@ -755,7 +755,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
       const cancel = scheduleRender(el, () => {
         const element = itemPreviewRef.current;
-        if (!element) return;
+        // Guard against a second render being queued before the first
+        // cleanup runs (e.g. Strict Mode remount, effect identity change).
+        if (!element || slideHandleRef.current) return;
 
         if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
         const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
