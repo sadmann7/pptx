@@ -296,38 +296,59 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // time budget so pre-rendering never janks an in-progress scroll.
     const renderQueueRef = React.useRef<Array<{ el: Element; fn: () => void }>>([]);
     const drainRafRef = React.useRef<number | null>(null);
+    // Re-measuring the whole backlog with getBoundingClientRect every frame is
+    // O(N) forced-layout work even when nothing moved. Partitioning only needs
+    // to happen when visibility could have changed: new entries were queued,
+    // or the rail scrolled. Otherwise the queue is already sorted from the
+    // last partition and draining is pop-only.
+    const queueDirtyRef = React.useRef(false);
+    const lastDrainScrollPosRef = React.useRef<number | null>(null);
 
     const drainRenderQueue = React.useCallback(() => {
       drainRafRef.current = null;
       const queue = renderQueueRef.current;
       if (queue.length === 0) return;
 
-      const scrollport = scrollportRectOf(scrollContainerRef.current);
-      const scrollportCenter = (scrollport.top + scrollport.bottom) / 2;
-
-      // Snapshot positions once, then partition visible vs. lookahead.
-      const measured = queue.map((entry) => {
-        const rect = entry.el.getBoundingClientRect();
-        return {
-          entry,
-          visible: rect.bottom > scrollport.top && rect.top < scrollport.bottom,
-          distance: Math.abs((rect.top + rect.bottom) / 2 - scrollportCenter),
-        };
-      });
-
-      const visible = measured.filter((m) => m.visible).sort((a, b) => a.distance - b.distance);
-      // Sorted farthest-first so pop() yields the nearest entry in O(1).
-      const lookahead = measured.filter((m) => !m.visible).sort((a, b) => b.distance - a.distance);
-
-      queue.length = 0;
-      for (const m of lookahead) queue.push(m.entry);
+      const scrollPos = scrollContainerRef.current
+        ? scrollContainerRef.current.scrollTop
+        : window.scrollY;
+      const needsPartition = queueDirtyRef.current || scrollPos !== lastDrainScrollPosRef.current;
 
       const frameStart = performance.now();
       let rendered = 0;
 
-      for (const m of visible) {
-        m.entry.fn();
-        rendered += 1;
+      if (needsPartition) {
+        queueDirtyRef.current = false;
+        lastDrainScrollPosRef.current = scrollPos;
+
+        const scrollport = scrollportRectOf(scrollContainerRef.current);
+        const scrollportCenter = (scrollport.top + scrollport.bottom) / 2;
+
+        // Snapshot positions once, then partition visible vs. lookahead.
+        const measured = queue.map((entry) => {
+          const rect = entry.el.getBoundingClientRect();
+          return {
+            entry,
+            visible: rect.bottom > scrollport.top && rect.top < scrollport.bottom,
+            distance: Math.abs((rect.top + rect.bottom) / 2 - scrollportCenter),
+          };
+        });
+
+        // All visible entries render this frame regardless of order, so they
+        // need no sort. Lookahead is sorted farthest-first so pop() yields
+        // the nearest entry in O(1).
+        const visible = measured.filter((m) => m.visible);
+        const lookahead = measured
+          .filter((m) => !m.visible)
+          .sort((a, b) => b.distance - a.distance);
+
+        queue.length = 0;
+        for (const m of lookahead) queue.push(m.entry);
+
+        for (const m of visible) {
+          m.entry.fn();
+          rendered += 1;
+        }
       }
 
       // ~8ms budget: leaves headroom in a 16.7ms frame for style/layout/paint
@@ -350,6 +371,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       (el: Element, fn: () => void): (() => void) => {
         const entry = { el, fn };
         renderQueueRef.current.push(entry);
+        queueDirtyRef.current = true;
         if (drainRafRef.current === null) {
           drainRafRef.current = requestAnimationFrame(drainRenderQueue);
         }
@@ -366,6 +388,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         sharedRORef.current?.disconnect();
         sharedRORef.current = null;
         scrollContainerRef.current = null;
+        lastDrainScrollPosRef.current = null;
         if (drainRafRef.current !== null) {
           cancelAnimationFrame(drainRafRef.current);
           drainRafRef.current = null;
@@ -379,11 +402,16 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       () => null,
     );
 
-    // Auto-focus the active (or first) thumbnail whenever a new presentation
-    // loads. This lets arrow-key navigation work immediately without requiring
-    // the user to Tab into the list first.
+    // Auto-focus the active (or first) thumbnail ONCE per presentation load.
+    // This lets arrow-key navigation work immediately without requiring the
+    // user to Tab into the list first. Guarded by presentation identity:
+    // re-running on every activeSlideId change would steal focus from
+    // whatever the user is interacting with (e.g. a next-slide button in the
+    // main view) each time the slide changes.
+    const autoFocusedPresentationRef = React.useRef<object | null>(null);
     React.useEffect(() => {
-      if (!presentation) return;
+      if (!presentation || autoFocusedPresentationRef.current === presentation) return;
+      autoFocusedPresentationRef.current = presentation;
       const items = itemsRef.current;
       const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
       const firstItem = activeItem ?? items.values().next().value;
@@ -630,6 +658,10 @@ export const ThumbnailItem = React.memo(
                       : candidates.slice(idx + 1);
                   }
 
+                  // Deferred so the browser finishes processing this keydown
+                  // (and any focus/scroll side effects) before focus moves;
+                  // synchronous focus here can be swallowed. Same technique
+                  // as Radix UI's roving-focus implementation.
                   setTimeout(() => focusFirst(candidates));
                 },
                 children,
@@ -654,7 +686,9 @@ export interface ThumbnailItemPreviewState {
 
   /**
    * Css scale factor applied to the slide element
-   * (container width / presentation width). `0` before the container is measured.
+   * (container width / presentation width). `0` before the container is
+   * measured. Only tracked reactively when a `render` prop is provided;
+   * default usage applies the scale imperatively without re-rendering.
    */
   scale: number;
 }
@@ -694,14 +728,22 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     // Shared list-level infrastructure: one media cache, one ResizeObserver,
     // one render queue.
     const { mediaUrlCache, observeResize, scheduleRender } = rovingContext;
-    const [containerWidth, setContainerWidth] = React.useState(0);
     // Tracks whether the slide DOM has actually been appended, used imperatively
     // to remove data-pending without triggering a React re-render per slide.
     const hasRenderedRef = React.useRef(false);
 
-    // Ref so the queued render callback can read the current scale without
-    // being a dependency of the render effect (resize must not re-render slides).
-    const scaleRef = React.useRef(0);
+    // IMPERATIVE SIZING MODEL — width measurements never re-render by default.
+    //
+    // The measured container width lives in `widthRef`, and resizes apply the
+    // scale transform directly to the slide element. React state
+    // (`containerWidth`) is only kept in sync when a `render` prop is
+    // provided, because that is the sole consumer of the reactive `scale`
+    // value. Default usage therefore pays zero re-renders on mount
+    // measurement and on every subsequent rail/window resize.
+    const widthRef = React.useRef(0);
+    const [containerWidth, setContainerWidth] = React.useState(0);
+    const hasRenderPropRef = React.useRef(false);
+    hasRenderPropRef.current = render != null;
 
     // O(1) via the store's id→index map; avoids an O(N) slides.find() on
     // every render of every preview.
@@ -710,21 +752,36 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const pWidth = presentation?.width ?? 1;
     const pHeight = presentation?.height ?? 1;
     const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
-    scaleRef.current = scale;
 
-    // Measure container width synchronously before first paint so the slide
-    // element is created with the correct transform immediately.
+    // Ref so the resize callback can read the current presentation width
+    // without re-subscribing to the shared ResizeObserver.
+    const pWidthRef = React.useRef(pWidth);
+    pWidthRef.current = pWidth;
+
+    // Measure container width synchronously before first paint so the queued
+    // slide render picks up the correct transform immediately.
     React.useLayoutEffect(() => {
       const el = itemPreviewRef.current;
-      if (el && el.offsetWidth > 0) setContainerWidth(el.offsetWidth);
+      if (el && el.offsetWidth > 0) {
+        widthRef.current = el.offsetWidth;
+        if (hasRenderPropRef.current) setContainerWidth(el.offsetWidth);
+      }
     }, []);
 
-    // Wire the shared ResizeObserver to keep width in sync on subsequent
-    // container resizes.
+    // Wire the shared ResizeObserver. Applies the transform imperatively:
+    // a resize touches only style on already-rendered slide elements, it
+    // never re-renders the React tree or re-runs the slide render effect.
     React.useEffect(() => {
       const el = itemPreviewRef.current;
       if (!el) return;
-      return observeResize(el, setContainerWidth);
+      return observeResize(el, (width) => {
+        widthRef.current = width;
+        const nextScale = width > 0 ? width / pWidthRef.current : 0;
+        if (slideHandleRef.current && nextScale > 0) {
+          slideHandleRef.current.element.style.transform = `scale(${nextScale})`;
+        }
+        if (hasRenderPropRef.current) setContainerWidth(width);
+      });
     }, [observeResize]);
 
     // RENDER-ONCE MODEL — no lazy / IO-based gating.
@@ -762,8 +819,11 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
         const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
         slideHandle.element.style.transformOrigin = "top left";
-        if (scaleRef.current > 0) {
-          slideHandle.element.style.transform = `scale(${scaleRef.current})`;
+        // Read the latest measured width at render time (not effect time):
+        // the queue may drain this entry many frames after it was scheduled.
+        const currentScale = widthRef.current > 0 ? widthRef.current / pWidthRef.current : 0;
+        if (currentScale > 0) {
+          slideHandle.element.style.transform = `scale(${currentScale})`;
         }
         element.appendChild(slideHandle.element);
         slideHandleRef.current = slideHandle;
@@ -787,12 +847,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         }
       };
     }, [presentation, slide, mediaUrlCache, scheduleRender, itemContext.slideId]);
-
-    // Apply scale imperatively: avoids a full slide teardown on every resize.
-    React.useEffect(() => {
-      if (!slideHandleRef.current || scale === 0) return;
-      slideHandleRef.current.element.style.transform = `scale(${scale})`;
-    }, [scale]);
 
     return renderElement(
       "div",
