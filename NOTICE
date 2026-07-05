@@ -1,0 +1,11 @@
+This product includes software developed by third parties.
+
+-------------------------------------------------------------------------------
+pptx-renderer
+https://github.com/aiden0z/pptx-renderer
+Copyright (c) aiden0z and contributors
+
+Licensed under the Apache License, Version 2.0.
+The packages/parser directory contains code originally derived from this work
+and has been substantially modified, extended, and refactored.
+-------------------------------------------------------------------------------

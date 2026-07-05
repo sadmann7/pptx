@@ -4,7 +4,6 @@
   "categories": {
     "correctness": "error"
   },
-  "rules": {},
   "env": {
     "builtin": true
   }

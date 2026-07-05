@@ -1,21 +1,52 @@
 {
-  "name": "@pptx/parser",
+  "name": "@diceui/pptx-parser",
   "version": "0.0.0",
-  "private": true,
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./fonts": "./src/fonts/index.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
+      "./fonts": {
+        "import": "./dist/fonts/index.js",
+        "types": "./dist/fonts/index.d.ts"
+      }
+    }
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "bench": "vitest bench --run",
+    "build": "tsdown",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "fast-xml-parser": "^4.5.3",
+    "echarts": "^6.0.0",
     "jszip": "^3.10.1"
   },
   "devDependencies": {
+    "@aiden0z/pptx-renderer": "^1.2.3",
     "@pptx/config": "workspace:*",
-    "@types/node": "^22.13.14",
-    "typescript": "catalog:"
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "happy-dom": "catalog:",
+    "jsdom": "^29.1.1",
+    "mtx-decompressor": "^1.4.2",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
