@@ -13,7 +13,6 @@ env:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 jobs:
   release:
@@ -27,13 +26,13 @@ jobs:
       - name: Build packages
         run: pnpm turbo build --filter=!docs
 
-      - name: Create release PR or publish
-        id: changesets
-        uses: changesets/action@v1.4.1
-        with:
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-          publish: pnpm changeset publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-          # npm Trusted Publishing (OIDC): configure at npmjs.com > package > Publishing Access
+      # Uncomment when ready to publish:
+      # - name: Create release PR or publish
+      #   id: changesets
+      #   uses: changesets/action@v1.4.1
+      #   with:
+      #     commit: "chore(release): version packages"
+      #     title: "chore(release): version packages"
+      #     publish: pnpm changeset publish --provenance
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
