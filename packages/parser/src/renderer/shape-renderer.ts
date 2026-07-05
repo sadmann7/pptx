@@ -2445,7 +2445,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
 
       // Dynamic text fit: measure rendered text and compute any additional scale
       // needed after OOXML fontScale, spAutoFit, or implicit single-line fitting.
-      if (needsDynamicAutofit) {
+      if (needsDynamicAutofit && !ctx.thumbnail) {
         const baseTransform = textContainer.style.transform;
         const baseTransformOrigin = textContainer.style.transformOrigin;
         const baseWidth = textContainer.style.width;

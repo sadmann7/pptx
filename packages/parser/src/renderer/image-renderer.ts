@@ -183,10 +183,14 @@ function renderResolvedImage(
   mediaPath: string,
   data: Uint8Array,
 ): void {
-  // Handle EMF images — extract embedded PDF/bitmap content
+  // Handle EMF images — extract embedded PDF/bitmap content.
+  // In thumbnail mode the async EMF→PDF fallback is skipped (too expensive
+  // for preview scale); EMF-only slides render as an empty box at that size.
   if (isEmfFormat(mediaPath)) {
-    const emfData = data instanceof Uint8Array ? data : new Uint8Array(data);
-    renderEmf(emfData, node, ctx, wrapper, mediaPath);
+    if (!ctx.thumbnail) {
+      const emfData = data instanceof Uint8Array ? data : new Uint8Array(data);
+      renderEmf(emfData, node, ctx, wrapper, mediaPath);
+    }
     return;
   }
 

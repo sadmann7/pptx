@@ -47,8 +47,12 @@ export type {
 
 // Headless single-slide rendering
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf-renderer";
-export { renderSlide } from "./renderer/slide-renderer";
-export type { SlideHandle, SlideRendererOptions } from "./renderer/slide-renderer";
+export { renderSlide, renderThumbnail } from "./renderer/slide-renderer";
+export type {
+  SlideHandle,
+  SlideRendererOptions,
+  ThumbnailRendererOptions,
+} from "./renderer/slide-renderer";
 
 // Model types
 export type {

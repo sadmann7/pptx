@@ -2509,6 +2509,17 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   wrapper.style.width = `${node.size.w}px`;
   wrapper.style.height = `${node.size.h}px`;
   wrapper.style.overflow = "hidden";
+
+  // Thumbnail mode: skip full ECharts initialisation (heavy canvas setup).
+  // Render a lightweight placeholder that communicates "chart here" without
+  // the cost of loading and painting an ECharts instance.
+  if (ctx.thumbnail) {
+    wrapper.style.background = "#f3f4f6";
+    wrapper.style.border = "1px solid #e5e7eb";
+    wrapper.style.boxSizing = "border-box";
+    return wrapper;
+  }
+
   wrapper.style.display = "flex";
   wrapper.style.flexDirection = "column";
 

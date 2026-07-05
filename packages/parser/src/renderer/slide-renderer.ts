@@ -253,6 +253,142 @@ function temporarilyConnectForMeasurement(container: HTMLElement): () => void {
 // ---------------------------------------------------------------------------
 
 /**
+ * Options for `renderThumbnail()`.
+ */
+export interface ThumbnailRendererOptions {
+  /** Shared media URL cache for blob URL reuse across slides. */
+  mediaUrlCache?: Map<string, string>;
+}
+
+/**
+ * Render a slide optimised for thumbnail display.
+ *
+ * Uses the same rendering pipeline as `renderSlide()` — real theme colours,
+ * actual shapes, images, and text — but skips operations that are
+ * imperceptible at thumbnail scale and expensive on the main thread:
+ *
+ * - **No DOM measurement host**: text autofit measurement is skipped; text
+ *   renders without scale correction. At 100–200 px thumbnail width the
+ *   difference is invisible.
+ * - **No ECharts**: chart nodes render as a lightweight grey placeholder
+ *   instead of initialising a full canvas-based chart engine.
+ * - **No EMF/PDF async tasks**: EMF-embedded images render as empty boxes
+ *   rather than triggering async PDF decode.
+ *
+ * The returned `SlideHandle` has an immediately resolved `ready` promise
+ * (no async work is started). Dispose is still required to revoke blob
+ * URLs in standalone mode.
+ */
+export function renderThumbnail(
+  presentation: PresentationData,
+  slide: SlideData,
+  options?: ThumbnailRendererOptions,
+): SlideHandle {
+  materializeSlideNodes(presentation, slide);
+
+  const isSharedCache = !!options?.mediaUrlCache;
+
+  const ctx = createRenderContext(presentation, slide, options?.mediaUrlCache);
+  // Signal to all renderers that they are in thumbnail mode.
+  ctx.thumbnail = true;
+  // No asyncTasks array — async work is never started in thumbnail mode.
+
+  const container = document.createElement("div");
+  container.style.position = "relative";
+  container.style.width = `${presentation.width}px`;
+  container.style.height = `${presentation.height}px`;
+  container.style.overflow = "hidden";
+  container.style.backgroundColor = "#FFFFFF";
+
+  // No measurement host: skip the temporarilyConnectForMeasurement call
+  // that renderSlide uses for text autofit. This avoids two full-document
+  // layout invalidations per slide.
+
+  try {
+    try {
+      renderBackground(ctx, container);
+    } catch {
+      // Non-fatal
+    }
+
+    if (slide.showMasterSp && ctx.layout.showMasterSp) {
+      const masterCtx: RenderContext = {
+        ...ctx,
+        slide: { ...ctx.slide, rels: ctx.master.rels },
+        partPath: ctx.masterPath,
+        skipPlaceholderChildren: true,
+      };
+      const masterShapes = getTemplateShapes(
+        ctx.master.spTree,
+        ctx.master.rels,
+        ctx.masterPath,
+        presentation.diagramDrawings,
+      );
+      for (const node of masterShapes) {
+        try {
+          container.appendChild(renderNode(node, masterCtx));
+        } catch {
+          // Non-fatal
+        }
+      }
+    }
+
+    if (slide.showMasterSp) {
+      const layoutCtx: RenderContext = {
+        ...ctx,
+        slide: { ...ctx.slide, rels: ctx.layout.rels },
+        partPath: ctx.layoutPath,
+        skipPlaceholderChildren: true,
+      };
+      const layoutShapes = getTemplateShapes(
+        ctx.layout.spTree,
+        ctx.layout.rels,
+        ctx.layoutPath,
+        presentation.diagramDrawings,
+      );
+      for (const node of layoutShapes) {
+        try {
+          container.appendChild(renderNode(node, layoutCtx));
+        } catch {
+          // Non-fatal
+        }
+      }
+    }
+
+    for (const node of slide.nodes) {
+      try {
+        container.appendChild(renderNode(node, ctx));
+      } catch {
+        // Non-fatal — skip failed nodes silently in thumbnail mode
+      }
+    }
+  } catch {
+    // Outer guard for any unexpected renderer failure
+  }
+
+  const mediaUrlCache = ctx.mediaUrlCache;
+  let disposed = false;
+
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    if (!isSharedCache) {
+      for (const url of mediaUrlCache.values()) URL.revokeObjectURL(url);
+      mediaUrlCache.clear();
+    }
+  };
+
+  return {
+    element: container,
+    ready: Promise.resolve(),
+    dispose,
+    [Symbol.dispose](): void {
+      dispose();
+    },
+  };
+}
+
+/**
  * Render a complete slide into an HTML element.
  *
  * Rendering order:
