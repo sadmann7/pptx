@@ -2,8 +2,9 @@
  * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
  *
  * The keyboard-navigation model (tab-stop management, focus-intent mapping,
- * `focusFirst` helper, and click-vs-keyboard distinction) is directly inspired
- * by that package.
+ * and click-vs-keyboard distinction) is directly inspired by that package,
+ * reworked to be index-based so it stays correct under virtualization
+ * (where most item DOM is unmounted at any given time).
  *
  * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
@@ -21,6 +22,18 @@ const THUMBNAIL_LIST_NAME = "PresentationThumbnailList";
 const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
 const THUMBNAIL_ITEM_PREVIEW_NAME = "PresentationThumbnailItemPreview";
 const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
+
+/**
+ * Items mounted above/below the visible range so scrolling never reveals an
+ * unmounted row before React can commit the next window.
+ */
+const DEFAULT_OVERSCAN = 5;
+
+/**
+ * Number of items mounted before the first layout measurement resolves the
+ * real item stride (and in environments without layout, e.g. jsdom).
+ */
+const FALLBACK_WINDOW_SIZE = 20;
 
 const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
   position: "absolute",
@@ -52,17 +65,9 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
   }
 }
 
-function wrapArray<T>(array: T[], startIndex: number): T[] {
-  return array.map((_, i) => array[(startIndex + i) % array.length] as T);
-}
-
 /**
  * Nearest scrollable ancestor (`overflow-y: auto | scroll | overlay`), or
  * `null` when the element scrolls with the window.
- *
- * Deliberately does NOT require `scrollHeight > clientHeight`: the scroll
- * container must be identified at observer-creation time, before slides have
- * loaded and stretched the container.
  */
 function findScrollContainer(element: Element): HTMLElement | null {
   let ancestor = element.parentElement;
@@ -76,30 +81,25 @@ function findScrollContainer(element: Element): HTMLElement | null {
   return null;
 }
 
-interface ScrollportRect {
-  top: number;
-  bottom: number;
-  height: number;
-}
-
-/** Visible box of a scroll container (or the window), clipped to the window. */
-function scrollportRectOf(scrollContainer: HTMLElement | null): ScrollportRect {
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-  if (!scrollContainer) {
-    return { top: 0, bottom: viewportHeight, height: viewportHeight };
+/**
+ * The element whose scroll position drives the virtualization window: the
+ * list itself when it scrolls, otherwise the nearest scrollable ancestor,
+ * otherwise `null` (the window scrolls).
+ */
+function resolveScroller(listEl: HTMLElement): HTMLElement | null {
+  const { overflowY } = getComputedStyle(listEl);
+  if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
+    return listEl;
   }
-  const rect = scrollContainer.getBoundingClientRect();
-  const top = Math.max(rect.top, 0);
-  const bottom = Math.min(rect.bottom, viewportHeight);
-  return { top, bottom, height: Math.max(bottom - top, 0) };
+  return findScrollContainer(listEl);
 }
 
 /**
- * Dev-only render-queue instrumentation (Phase 0 of the thumbnail overhaul).
+ * Dev-only render-queue instrumentation.
  *
- * Each drain frame reports how many visible-slide renders ran, how long the
- * frame's render work took, and the remaining backlog. Aggregates accumulate
- * on `window.__pptxThumbnailPerf` and a `pptx:thumbnail-perf` CustomEvent is
+ * Each drain frame reports how many slide renders ran, how long the frame's
+ * render work took, and the remaining backlog. Aggregates accumulate on
+ * `window.__pptxThumbnailPerf` and a `pptx:thumbnail-perf` CustomEvent is
  * dispatched so a debug UI (e.g. the docs playground) can display them live.
  * Compiled out of production bundles via the NODE_ENV guard.
  */
@@ -131,28 +131,43 @@ function recordThumbnailPerf(renderCount: number, frameMs: number, backlog: numb
 }
 
 interface ThumbnailRovingContextValue {
-  currentTabStopId: string | null;
-  loop: boolean;
-  itemsRef: React.RefObject<Map<string, HTMLButtonElement>>;
+  /**
+   * Tab-stop tracking lives in a mini external store instead of context
+   * state: putting the roving id in the context value would invalidate
+   * every item on each focus/slide change, re-rendering all mounted
+   * thumbnails when only two (old and new tab stop) actually changed.
+   */
+  subscribeTabStop: (callback: () => void) => () => void;
+  getEffectiveTabStopId: () => string | null;
   onItemFocus: (slideId: string) => void;
   onItemRegister: (slideId: string, el: HTMLButtonElement) => void;
   onItemUnregister: (slideId: string) => void;
+  /**
+   * Index-based keyboard navigation. Resolves the target slide from the
+   * store's ordering, scrolls it into the virtualization window if its
+   * button is currently unmounted, and focuses it once available.
+   */
+  focusByIntent: (slideId: string, intent: FocusIntent) => void;
   /** Shared object-URL cache so each image is decoded once across all previews. */
   mediaUrlCache: Map<string, string>;
+  /**
+   * Rendered slide DOM cache, keyed by slide id. Previews unmounted by the
+   * virtualization window keep their handle here; scrolling back re-attaches
+   * the existing element instead of re-parsing and re-rendering the slide.
+   */
+  slideHandleCache: Map<string, SlideHandle>;
   /**
    * Register with the list-level shared ResizeObserver.
    * Returns a cleanup function that unregisters the element.
    */
   observeResize: (el: Element, cb: (width: number) => void) => () => void;
   /**
-   * Enqueue a slide render, drained per animation frame.
-   * Entries currently visible in the scrollport render unconditionally this
-   * frame (an empty visible thumbnail is worse UX than one slightly longer
-   * frame). Off-screen entries render nearest-to-scrollport-first within an
-   * 8ms per-frame budget so background fill never causes jank.
+   * Enqueue a slide render, drained FIFO per animation frame within a time
+   * budget (at least one per frame). With virtualization only near-viewport
+   * items are ever queued, so FIFO order matches visual order.
    * Returns a cancel function that removes the entry from the queue.
    */
-  scheduleRender: (el: Element, fn: () => void) => () => void;
+  scheduleRender: (fn: () => void) => () => void;
 }
 
 const ThumbnailRovingContext = React.createContext<ThumbnailRovingContextValue | null>(null);
@@ -193,13 +208,18 @@ export interface ThumbnailListState {
 }
 
 export interface ThumbnailListRenderState {
-  /** All slides in the loaded presentation, in order. */
+  /**
+   * The slides currently mounted by the virtualization window, in order.
+   * Only slides near the visible scrollport are included; the list manages
+   * scrollbar geometry with spacer elements so mapping this slice to
+   * `ThumbnailItem`s produces a correctly sized, scrollable rail.
+   */
   slides: SlideData[];
 
   /** Stable id of the currently active slide, or `null` before load. */
   activeSlideId: string | null;
 
-  /** 0-based position of the active slide. Derived from `activeSlideId`. */
+  /** 0-based position of the active slide within ALL slides. */
   activeIndex: number;
 
   /** Navigate to a slide by its stable id. */
@@ -218,9 +238,9 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
   render?: RenderProp<ThumbnailListState>;
 
   /**
-   * - Absent → default `ThumbnailItem` list (one per slide)
-   * - ReactNode → rendered as-is inside the container
-   * - Function → called with slide state when ready
+   * - Absent → default `ThumbnailItem` list (virtualized)
+   * - ReactNode → rendered as-is inside the container (NOT virtualized)
+   * - Function → called with the virtualized window of slides
    */
   children?: React.ReactNode | ((state: ThumbnailListRenderState) => React.ReactNode);
 
@@ -231,42 +251,131 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
    * @default false
    */
   loop?: boolean;
+
+  /**
+   * Number of extra items to keep mounted above and below the visible
+   * scrollport so scrolling never reveals an unmounted row.
+   *
+   * @default 5
+   */
+  overscan?: number;
+}
+
+interface VirtualRange {
+  start: number;
+  end: number;
+}
+
+interface VirtualMetrics {
+  /** Item height + row gap. `0` until the first item has been measured. */
+  stride: number;
+  /** Row gap of the list container. */
+  gap: number;
 }
 
 /**
  * Scrollable `listbox` container listing all slide thumbnails.
  * Renders nothing until the presentation is `"ready"`.
  *
- * Handles keyboard navigation (↑↓ / Home / End) with roving focus so
- * only the active item lives in the tab order at any time.
+ * VIRTUALIZED: only slides near the visible scrollport are mounted (plus an
+ * `overscan` buffer on each side); spacer elements keep the scrollbar sized
+ * as if every slide were rendered. Item height is measured from the first
+ * mounted item, so all items are assumed to share one height (true for the
+ * default width + aspect-ratio sizing).
+ *
+ * Handles keyboard navigation (↑↓ / Home / End) with roving focus so only
+ * the active item lives in the tab order at any time. Navigation is
+ * index-based: targets outside the window are scrolled into it, mounted,
+ * then focused.
  */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
-  function ThumbnailList({ render, children, loop = false, ...thumbnailListProps }, forwardedRef) {
+  function ThumbnailList(
+    { render, children, loop = false, overscan = DEFAULT_OVERSCAN, ...thumbnailListProps },
+    forwardedRef,
+  ) {
     const { presentation, status } = usePresentation();
     const store = usePresentationStore(THUMBNAIL_LIST_NAME);
 
-    const [currentTabStopId, setCurrentTabStopId] = React.useState<string | null>(null);
-    const isClickFocusRef = React.useRef(false);
+    const listRef = React.useRef<HTMLDivElement>(null);
     const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
-    // One shared object-URL cache for all previews in this list. Each image
-    // path is decoded once and reused, regardless of how many slides reference
-    // it. Keyed by presentation identity so a new load always starts fresh.
+    const isClickFocusRef = React.useRef(false);
+
+    // Props read from stable callbacks without invalidating them.
+    const loopRef = React.useRef(loop);
+    loopRef.current = loop;
+    const overscanRef = React.useRef(overscan);
+    overscanRef.current = overscan;
+
+    // --- Roving tab stop (mini external store) ---
+    // A ref + listener set, NOT React state: state would flow through the
+    // context value and re-render every memoized item on each focus change,
+    // when only two items (the old and new tab stop) actually need to
+    // update. Falls back to the store's active slide before any explicit
+    // focus, so subscribers listen to both sources.
+    const currentTabStopIdRef = React.useRef<string | null>(null);
+    const tabStopListenersRef = React.useRef(new Set<() => void>());
+
+    const getEffectiveTabStopId = React.useCallback(
+      () => currentTabStopIdRef.current ?? store.getState().activeSlideId,
+      [store],
+    );
+
+    const subscribeTabStop = React.useCallback(
+      (callback: () => void) => {
+        tabStopListenersRef.current.add(callback);
+        const unsubscribeStore = store.subscribe(callback);
+        return () => {
+          tabStopListenersRef.current.delete(callback);
+          unsubscribeStore();
+        };
+      },
+      [store],
+    );
+
+    const setCurrentTabStopId = React.useCallback((slideId: string | null) => {
+      if (currentTabStopIdRef.current === slideId) return;
+      currentTabStopIdRef.current = slideId;
+      for (const callback of tabStopListenersRef.current) callback();
+    }, []);
+
+    // --- Shared caches, keyed by presentation identity ---
+    // One object-URL cache and one rendered-slide-handle cache for all
+    // previews in this list. A new presentation always starts fresh; the
+    // effect below disposes the previous presentation's resources.
     const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
     if (!mediaCacheRef.current || mediaCacheRef.current.key !== presentation) {
       mediaCacheRef.current = { key: presentation ?? {}, cache: new Map() };
     }
     const mediaUrlCache = mediaCacheRef.current.cache;
 
+    const handleCacheRef = React.useRef<{
+      key: object;
+      cache: Map<string, SlideHandle>;
+    } | null>(null);
+    if (!handleCacheRef.current || handleCacheRef.current.key !== presentation) {
+      handleCacheRef.current = { key: presentation ?? {}, cache: new Map() };
+    }
+    const slideHandleCache = handleCacheRef.current.cache;
+
+    // Dispose the caches created for a presentation when it is replaced or
+    // the list unmounts. The cleanup closes over the maps belonging to the
+    // presentation that was current when the effect ran.
+    React.useEffect(() => {
+      const handles = slideHandleCache;
+      const media = mediaUrlCache;
+      return () => {
+        for (const handle of handles.values()) handle.dispose();
+        handles.clear();
+        for (const url of media.values()) URL.revokeObjectURL(url);
+        media.clear();
+      };
+    }, [slideHandleCache, mediaUrlCache]);
+
     // --- Shared ResizeObserver ---
-    // One ResizeObserver serves every preview in the list; per-item observers
-    // add meaningful setup and bookkeeping overhead on large decks.
+    // One ResizeObserver serves every preview in the list; per-item
+    // observers add meaningful setup and bookkeeping overhead.
     const resizeCallbacksRef = React.useRef(new Map<Element, (width: number) => void>());
     const sharedRORef = React.useRef<ResizeObserver | null>(null);
-    // The rail's scroll container — resolved lazily on the first observeResize
-    // call (when a DOM element is available) and cached for the render queue's
-    // visibility partitioning, avoiding per-frame ancestor walks.
-    const scrollContainerRef = React.useRef<HTMLElement | null>(null);
-
     if (!sharedRORef.current && typeof ResizeObserver !== "undefined") {
       sharedRORef.current = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -276,10 +385,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     }
 
     const observeResize = React.useCallback((el: Element, cb: (width: number) => void) => {
-      // Resolve the scroll container once from the first registered element.
-      if (!scrollContainerRef.current) {
-        scrollContainerRef.current = findScrollContainer(el);
-      }
       resizeCallbacksRef.current.set(el, cb);
       sharedRORef.current?.observe(el);
       return () => {
@@ -289,94 +394,46 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     }, []);
 
     // --- Central render queue ---
-    // All renderSlide() work is serialised here and drained per animation
-    // frame. Entries inside the rail's visible scrollport render
-    // unconditionally in the same frame (a visible blank is worse UX than a
-    // single long frame); lookahead entries render nearest-first within a
-    // time budget so pre-rendering never janks an in-progress scroll.
-    const renderQueueRef = React.useRef<Array<{ el: Element; fn: () => void }>>([]);
+    // All renderSlide() work is serialised here and drained FIFO within a
+    // fixed per-frame time budget. With virtualization the queue only ever
+    // holds near-viewport items (mount order == visual order), so no
+    // visibility partitioning or prioritisation is needed.
+    const renderQueueRef = React.useRef<Array<() => void>>([]);
     const drainRafRef = React.useRef<number | null>(null);
-    // Re-measuring the whole backlog with getBoundingClientRect every frame is
-    // O(N) forced-layout work even when nothing moved. Partitioning only needs
-    // to happen when visibility could have changed: new entries were queued,
-    // or the rail scrolled. Otherwise the queue is already sorted from the
-    // last partition and draining is pop-only.
-    const queueDirtyRef = React.useRef(false);
-    const lastDrainScrollPosRef = React.useRef<number | null>(null);
 
-    const drainRenderQueue = React.useCallback(() => {
+    const drainRenderQueue = React.useCallback(function drain() {
       drainRafRef.current = null;
       const queue = renderQueueRef.current;
       if (queue.length === 0) return;
 
-      const scrollPos = scrollContainerRef.current
-        ? scrollContainerRef.current.scrollTop
-        : window.scrollY;
-      const needsPartition = queueDirtyRef.current || scrollPos !== lastDrainScrollPosRef.current;
-
       const frameStart = performance.now();
       let rendered = 0;
 
-      if (needsPartition) {
-        queueDirtyRef.current = false;
-        lastDrainScrollPosRef.current = scrollPos;
-
-        const scrollport = scrollportRectOf(scrollContainerRef.current);
-        const scrollportCenter = (scrollport.top + scrollport.bottom) / 2;
-
-        // Snapshot positions once, then partition visible vs. lookahead.
-        const measured = queue.map((entry) => {
-          const rect = entry.el.getBoundingClientRect();
-          return {
-            entry,
-            visible: rect.bottom > scrollport.top && rect.top < scrollport.bottom,
-            distance: Math.abs((rect.top + rect.bottom) / 2 - scrollportCenter),
-          };
-        });
-
-        // All visible entries render this frame regardless of order, so they
-        // need no sort. Lookahead is sorted farthest-first so pop() yields
-        // the nearest entry in O(1).
-        const visible = measured.filter((m) => m.visible);
-        const lookahead = measured
-          .filter((m) => !m.visible)
-          .sort((a, b) => b.distance - a.distance);
-
-        queue.length = 0;
-        for (const m of lookahead) queue.push(m.entry);
-
-        for (const m of visible) {
-          m.entry.fn();
-          rendered += 1;
-        }
-      }
-
-      // ~8ms budget: leaves headroom in a 16.7ms frame for style/layout/paint
-      // of the slides just built. Simple slides take 1-3ms, so several render
-      // per frame; complex ones degrade to ~1 per frame naturally.
+      // ~8ms budget: leaves headroom in a 16.7ms frame for style/layout/
+      // paint of the slides just built. Simple slides take 1-3ms, so
+      // several render per frame; complex ones degrade to ~1 per frame.
+      // Always renders at least one entry so progress is guaranteed.
       const budgetMs = 8;
-      while (queue.length > 0 && performance.now() - frameStart < budgetMs) {
-        queue.pop()?.fn();
+      do {
+        queue.shift()?.();
         rendered += 1;
-      }
+      } while (queue.length > 0 && performance.now() - frameStart < budgetMs);
 
       recordThumbnailPerf(rendered, performance.now() - frameStart, queue.length);
 
       if (queue.length > 0) {
-        drainRafRef.current = requestAnimationFrame(drainRenderQueue);
+        drainRafRef.current = requestAnimationFrame(drain);
       }
     }, []);
 
     const scheduleRender = React.useCallback(
-      (el: Element, fn: () => void): (() => void) => {
-        const entry = { el, fn };
-        renderQueueRef.current.push(entry);
-        queueDirtyRef.current = true;
+      (fn: () => void): (() => void) => {
+        renderQueueRef.current.push(fn);
         if (drainRafRef.current === null) {
           drainRafRef.current = requestAnimationFrame(drainRenderQueue);
         }
         return () => {
-          const idx = renderQueueRef.current.indexOf(entry);
+          const idx = renderQueueRef.current.indexOf(fn);
           if (idx !== -1) renderQueueRef.current.splice(idx, 1);
         };
       },
@@ -387,14 +444,185 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       return () => {
         sharedRORef.current?.disconnect();
         sharedRORef.current = null;
-        scrollContainerRef.current = null;
-        lastDrainScrollPosRef.current = null;
         if (drainRafRef.current !== null) {
           cancelAnimationFrame(drainRafRef.current);
           drainRafRef.current = null;
         }
+        renderQueueRef.current = [];
       };
     }, []);
+
+    // --- Virtualization window ---
+    // Range of slide indices currently mounted. Starts with a fallback
+    // window until the first item's height has been measured; from then on
+    // it is derived from the scroll position.
+    const [range, setRange] = React.useState<VirtualRange>({
+      start: 0,
+      end: FALLBACK_WINDOW_SIZE - 1,
+    });
+    const rangeRef = React.useRef(range);
+    rangeRef.current = range;
+
+    const [metrics, setMetrics] = React.useState<VirtualMetrics>({ stride: 0, gap: 0 });
+    const metricsRef = React.useRef(metrics);
+    metricsRef.current = metrics;
+
+    // Top of item 0 in the scroller's scroll coordinates (accounts for list
+    // padding and any content above the list inside the scroller).
+    const listTopRef = React.useRef(0);
+    // The resolved scroll driver; `null` means the window scrolls.
+    const scrollerRef = React.useRef<HTMLElement | null>(null);
+
+    // Reset the window when a new presentation loads (render-phase state
+    // adjustment, guarded by identity).
+    const lastPresentationRef = React.useRef<object | null>(null);
+    if (lastPresentationRef.current !== presentation) {
+      lastPresentationRef.current = presentation;
+      setRange({ start: 0, end: FALLBACK_WINDOW_SIZE - 1 });
+      setMetrics({ stride: 0, gap: 0 });
+    }
+
+    const computeRange = React.useCallback(() => {
+      const { stride } = metricsRef.current;
+      if (stride <= 0) return;
+      const total = store.getState().presentation?.slides.length ?? 0;
+      if (total === 0) return;
+
+      const scroller = scrollerRef.current;
+      const scrollTop = scroller ? scroller.scrollTop : window.scrollY;
+      const viewportHeight = scroller ? scroller.clientHeight : window.innerHeight;
+      const relativeTop = scrollTop - listTopRef.current;
+
+      const visibleStart = Math.floor(Math.max(relativeTop, 0) / stride);
+      const visibleEnd = Math.floor(Math.max(relativeTop + viewportHeight, 0) / stride);
+      const start = Math.max(0, Math.min(visibleStart - overscanRef.current, total - 1));
+      const end = Math.max(0, Math.min(visibleEnd + overscanRef.current, total - 1));
+
+      setRange((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    }, [store]);
+
+    /**
+     * Measures the item stride from the first mounted item and the list's
+     * row gap, and anchors item 0's position in scroller coordinates.
+     * Returns `false` when nothing is measurable yet (no item, or no layout
+     * as in jsdom) — the fallback window stays in effect.
+     */
+    const measure = React.useCallback((): boolean => {
+      const listEl = listRef.current;
+      if (!listEl) return false;
+      const firstItem = listEl.querySelector<HTMLElement>("[data-slide-id]");
+      if (!firstItem || firstItem.offsetHeight === 0) return false;
+
+      const gap = Number.parseFloat(getComputedStyle(listEl).rowGap) || 0;
+      const stride = firstItem.offsetHeight + gap;
+
+      const scroller = scrollerRef.current;
+      const itemRect = firstItem.getBoundingClientRect();
+      const itemTopInScroller = scroller
+        ? itemRect.top - scroller.getBoundingClientRect().top + scroller.scrollTop
+        : itemRect.top + window.scrollY;
+      // The first mounted item is `range.start`, not necessarily item 0.
+      listTopRef.current = itemTopInScroller - rangeRef.current.start * stride;
+
+      setMetrics((prev) => (prev.stride === stride && prev.gap === gap ? prev : { stride, gap }));
+      return true;
+    }, []);
+
+    // Wire up the scroll driver: resolve the scroller, listen for scrolls,
+    // and re-measure when the list resizes (a width change alters item
+    // heights through the aspect-ratio sizing).
+    React.useLayoutEffect(() => {
+      const listEl = listRef.current;
+      if (!listEl || !presentation) return;
+
+      scrollerRef.current = resolveScroller(listEl);
+      const target: EventTarget = scrollerRef.current ?? window;
+
+      const measureAndCompute = () => {
+        if (measure()) computeRange();
+      };
+
+      const onScroll = () => computeRange();
+      target.addEventListener("scroll", onScroll, { passive: true });
+
+      measureAndCompute();
+
+      let resizeObserver: ResizeObserver | null = null;
+      if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(measureAndCompute);
+        resizeObserver.observe(listEl);
+      }
+
+      return () => {
+        target.removeEventListener("scroll", onScroll);
+        resizeObserver?.disconnect();
+        scrollerRef.current = null;
+      };
+    }, [presentation, measure, computeRange]);
+
+    /** Instantly scrolls so the item at `index` is fully visible. */
+    const scrollToIndex = React.useCallback(
+      (index: number) => {
+        const { stride, gap } = metricsRef.current;
+        if (stride <= 0) return;
+        const scroller = scrollerRef.current;
+
+        const itemTop = listTopRef.current + index * stride;
+        const itemBottom = itemTop + stride - gap;
+        const viewTop = scroller ? scroller.scrollTop : window.scrollY;
+        const viewportHeight = scroller ? scroller.clientHeight : window.innerHeight;
+
+        let nextTop: number | null = null;
+        if (itemTop < viewTop) nextTop = itemTop;
+        else if (itemBottom > viewTop + viewportHeight) nextTop = itemBottom - viewportHeight;
+        if (nextTop === null) return;
+
+        if (scroller) scroller.scrollTo({ top: nextTop });
+        else window.scrollTo({ top: nextTop });
+        // Update the window synchronously so the target mounts this commit
+        // instead of waiting for the async scroll event.
+        computeRange();
+      },
+      [computeRange],
+    );
+
+    // Focus target for keyboard navigation whose button wasn't mounted at
+    // intent time; fulfilled by onItemRegister when the button appears.
+    const pendingFocusIdRef = React.useRef<string | null>(null);
+
+    const focusByIntent = React.useCallback(
+      (slideId: string, intent: FocusIntent) => {
+        const slides = store.getState().presentation?.slides;
+        if (!slides || slides.length === 0) return;
+        const total = slides.length;
+        const index = store.getSlideIndex(slideId);
+        if (index < 0) return;
+
+        let target: number;
+        if (intent === "first") target = 0;
+        else if (intent === "last") target = total - 1;
+        else {
+          target = intent === "next" ? index + 1 : index - 1;
+          if (loopRef.current) target = (target + total) % total;
+          else if (target < 0 || target >= total) return;
+        }
+
+        const targetSlide = slides[target];
+        if (!targetSlide) return;
+        const button = itemsRef.current.get(targetSlide.id);
+        if (button) {
+          // Deferred so the browser finishes processing this keydown (and
+          // any focus/scroll side effects) before focus moves; synchronous
+          // focus here can be swallowed. Same technique as Radix UI's
+          // roving-focus implementation.
+          setTimeout(() => button.focus());
+        } else {
+          pendingFocusIdRef.current = targetSlide.id;
+          scrollToIndex(target);
+        }
+      },
+      [store, scrollToIndex],
+    );
 
     const activeSlideId = React.useSyncExternalStore(
       store.subscribe,
@@ -418,25 +646,57 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       firstItem?.focus({ preventScroll: true });
     }, [presentation, activeSlideId]);
 
-    // Fallback to the store's selected slide so its button gets tabIndex=0
-    // before any keyboard interaction sets currentTabStopId explicitly.
-    const effectiveTabStopId = currentTabStopId ?? activeSlideId;
+    // Container tabIndex only cares whether ANY button owns the tab stop,
+    // so subscribe to the boolean — the container re-renders on the
+    // null↔non-null transition, not on every focus move between items.
+    const hasTabStop = React.useSyncExternalStore(
+      subscribeTabStop,
+      () => getEffectiveTabStopId() != null,
+      () => false,
+    );
+
+    const onItemRegister = React.useCallback((slideId: string, el: HTMLButtonElement) => {
+      itemsRef.current.set(slideId, el);
+      if (pendingFocusIdRef.current === slideId) {
+        pendingFocusIdRef.current = null;
+        // Deferred for the same keydown-swallowing reason as focusByIntent.
+        setTimeout(() => el.focus());
+      }
+    }, []);
+
+    const onItemUnregister = React.useCallback((slideId: string) => {
+      itemsRef.current.delete(slideId);
+    }, []);
 
     const rovingContextValue = React.useMemo<ThumbnailRovingContextValue>(
       () => ({
-        currentTabStopId: effectiveTabStopId,
-        loop,
-        itemsRef,
+        subscribeTabStop,
+        getEffectiveTabStopId,
         onItemFocus: setCurrentTabStopId,
-        onItemRegister: (slideId, el) => itemsRef.current.set(slideId, el),
-        onItemUnregister: (slideId) => itemsRef.current.delete(slideId),
+        onItemRegister,
+        onItemUnregister,
+        focusByIntent,
         mediaUrlCache,
+        slideHandleCache,
         observeResize,
         scheduleRender,
       }),
-      // mediaUrlCache identity is stable per-presentation (guarded by the ref
-      // above); the observer/scheduler callbacks are stable useCallbacks.
-      [effectiveTabStopId, loop, mediaUrlCache, observeResize, scheduleRender],
+      // Every dependency is stable per-presentation (the caches are guarded
+      // by identity refs above; the callbacks are stable useCallbacks), so
+      // this context value never invalidates the memoized items on focus or
+      // slide changes.
+      [
+        subscribeTabStop,
+        getEffectiveTabStopId,
+        setCurrentTabStopId,
+        onItemRegister,
+        onItemUnregister,
+        focusByIntent,
+        mediaUrlCache,
+        slideHandleCache,
+        observeResize,
+        scheduleRender,
+      ],
     );
 
     if (status !== "ready" || !presentation) return null;
@@ -448,10 +708,23 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     const state: ThumbnailListState = { total, activeSlideId, activeIndex };
 
+    // Clamp the window to the current deck and slice the mounted slides.
+    const start = Math.max(0, Math.min(range.start, total - 1));
+    const end = Math.max(start, Math.min(range.end, total - 1));
+    const windowSlides = presentation.slides.slice(start, end + 1);
+
+    // Spacers replace the unmounted items above/below the window so the
+    // scrollbar geometry matches a fully rendered list. As flex children
+    // they also participate in the container's row gap, hence the `- gap`
+    // (a spacer contributes its height PLUS one gap).
+    const { stride, gap } = metrics;
+    const topSpacerHeight = stride > 0 && start > 0 ? start * stride - gap : 0;
+    const bottomSpacerHeight = stride > 0 && end < total - 1 ? (total - 1 - end) * stride - gap : 0;
+
     let resolvedChildren: React.ReactNode;
     if (typeof children === "function") {
       resolvedChildren = children({
-        slides: presentation.slides,
+        slides: windowSlides,
         activeSlideId,
         activeIndex,
         goTo: (id) => store.goTo(id),
@@ -460,13 +733,29 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     } else if (children != null) {
       resolvedChildren = children;
     } else {
-      resolvedChildren = presentation.slides.map((slide) => (
+      resolvedChildren = windowSlides.map((slide) => (
         <ThumbnailItem key={slide.id} slideId={slide.id}>
           <ThumbnailItemPreview />
           <ThumbnailItemNumber style={VISUALLY_HIDDEN_STYLE} />
         </ThumbnailItem>
       ));
     }
+
+    // Static ReactNode children opt out of virtualization (no spacers).
+    const isVirtualized = typeof children === "function" || children == null;
+    const virtualizedChildren = isVirtualized ? (
+      <>
+        {topSpacerHeight > 0 && (
+          <div aria-hidden style={{ height: topSpacerHeight, flexShrink: 0 }} />
+        )}
+        {resolvedChildren}
+        {bottomSpacerHeight > 0 && (
+          <div aria-hidden style={{ height: bottomSpacerHeight, flexShrink: 0 }} />
+        )}
+      </>
+    ) : (
+      resolvedChildren
+    );
 
     return (
       <ThumbnailRovingContext.Provider value={rovingContextValue}>
@@ -475,7 +764,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           { render },
           {
             state,
-            ref: forwardedRef,
+            ref: [listRef, forwardedRef],
             props: [
               {
                 role: "listbox",
@@ -487,21 +776,26 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
                 // exits the list in a single key press.
                 // When no button has a tab stop yet (e.g. before auto-focus fires),
                 // the container acts as the entry point and redirects focus.
-                tabIndex: effectiveTabStopId ? -1 : 0,
+                tabIndex: hasTabStop ? -1 : 0,
                 onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
                   if (event.target === event.currentTarget) isClickFocusRef.current = true;
                 },
                 onFocus: (event: React.FocusEvent<HTMLDivElement>) => {
-                  // Container only receives keyboard focus when effectiveTabStopId
-                  // is null (no button owns tabIndex=0 yet). Redirect to first button.
+                  // Container only receives keyboard focus when no button owns
+                  // tabIndex=0 yet. Redirect to the first mounted button in
+                  // slide order (registration order is mount order, which
+                  // under virtualization is not slide order).
                   if (event.target !== event.currentTarget) return;
                   if (isClickFocusRef.current) {
                     isClickFocusRef.current = false;
                     return;
                   }
-                  focusFirst(Array.from(itemsRef.current.values()), true);
+                  const candidates = Array.from(itemsRef.current.entries())
+                    .sort((a, b) => store.getSlideIndex(a[0]) - store.getSlideIndex(b[0]))
+                    .map(([, el]) => el);
+                  focusFirst(candidates, true);
                 },
-                children: resolvedChildren,
+                children: virtualizedChildren,
               },
               thumbnailListProps,
             ],
@@ -550,6 +844,8 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  * - Identity is derived from `slide.id`: stable across list mutations.
  * - Auto-wires `onClick → goTo`, `data-active`, `aria-selected`, and roving
  *   `tabIndex` (0 when active, -1 otherwise).
+ * - Exposes `aria-posinset`/`aria-setsize` so assistive tech announces the
+ *   full deck size even though the list is virtualized.
  * - Provides context so nested `ThumbnailItemPreview` and `ThumbnailItemNumber`
  *   need no explicit props.
  * - Defaults to rendering `<ThumbnailItemPreview />` + `<ThumbnailItemNumber />`
@@ -577,25 +873,36 @@ export const ThumbnailItem = React.memo(
       () => -1,
     );
 
-    // Register this button in the roving context's ordered map so the list
-    // can navigate without querySelectorAll. The callback ref fires when the
-    // DOM element is attached/detached.
+    const setSize = React.useSyncExternalStore(
+      store.subscribe,
+      () => store.getState().presentation?.slides.length ?? 0,
+      () => 0,
+    );
+
+    // Register this button in the roving context's map so the list can
+    // focus targets without querySelectorAll. The callback ref fires when
+    // the DOM element is attached/detached.
+    const { onItemRegister, onItemUnregister } = rovingContext;
     const registerRef = React.useCallback(
       (element: HTMLButtonElement | null) => {
         if (element) {
-          rovingContext.onItemRegister(slideId, element);
+          onItemRegister(slideId, element);
         } else {
-          rovingContext.onItemUnregister(slideId);
+          onItemUnregister(slideId);
         }
       },
-      // slideId is stable for the lifetime of this item instance
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [slideId],
+      [slideId, onItemRegister, onItemUnregister],
     );
 
     // This item owns the single tab stop inside the list when it matches the
-    // roving context's currentTabStopId: all other items get tabIndex=-1.
-    const isCurrentTabStop = rovingContext.currentTabStopId === slideId;
+    // roving tab-stop store: all other items get tabIndex=-1. Subscribing to
+    // the boolean slice means a focus move re-renders exactly two items (the
+    // old and new tab stop) instead of the whole list.
+    const isCurrentTabStop = React.useSyncExternalStore(
+      rovingContext.subscribeTabStop,
+      () => rovingContext.getEffectiveTabStopId() === slideId,
+      () => false,
+    );
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
 
@@ -618,6 +925,8 @@ export const ThumbnailItem = React.memo(
                 role: "option",
                 "aria-selected": isActive,
                 "aria-label": `Slide ${displayIndex + 1}`,
+                "aria-posinset": displayIndex + 1,
+                "aria-setsize": setSize,
                 "data-active": isActive || undefined,
                 "data-slide-id": slideId,
                 tabIndex: isCurrentTabStop ? 0 : -1,
@@ -646,23 +955,7 @@ export const ThumbnailItem = React.memo(
                     return;
                   event.preventDefault();
 
-                  let candidates = Array.from(rovingContext.itemsRef.current.values());
-
-                  if (focusIntent === "last") {
-                    candidates = candidates.reverse();
-                  } else if (focusIntent === "prev" || focusIntent === "next") {
-                    if (focusIntent === "prev") candidates = candidates.reverse();
-                    const idx = candidates.indexOf(event.currentTarget);
-                    candidates = rovingContext.loop
-                      ? wrapArray(candidates, idx + 1)
-                      : candidates.slice(idx + 1);
-                  }
-
-                  // Deferred so the browser finishes processing this keydown
-                  // (and any focus/scroll side effects) before focus moves;
-                  // synchronous focus here can be swallowed. Same technique
-                  // as Radix UI's roving-focus implementation.
-                  setTimeout(() => focusFirst(candidates));
+                  rovingContext.focusByIntent(slideId, focusIntent);
                 },
                 children,
               },
@@ -715,6 +1008,11 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * The rendered element is the clipping container: parsed slide DOM is appended
  * to it and css-scaled to fit. Marked `aria-hidden` since the enclosing
  * button's `aria-label` already identifies the slide.
+ *
+ * The slide DOM itself is built once per slide and kept in the list's
+ * handle cache: when the virtualization window unmounts this preview the
+ * element is detached (not disposed), and re-attached instantly if the
+ * slide scrolls back into view.
  */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
@@ -725,9 +1023,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     const itemPreviewRef = React.useRef<HTMLDivElement>(null);
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
-    // Shared list-level infrastructure: one media cache, one ResizeObserver,
-    // one render queue.
-    const { mediaUrlCache, observeResize, scheduleRender } = rovingContext;
+    // Shared list-level infrastructure: one media cache, one rendered-slide
+    // cache, one ResizeObserver, one render queue.
+    const { mediaUrlCache, slideHandleCache, observeResize, scheduleRender } = rovingContext;
     // Tracks whether the slide DOM has actually been appended, used imperatively
     // to remove data-pending without triggering a React re-render per slide.
     const hasRenderedRef = React.useRef(false);
@@ -784,69 +1082,67 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       });
     }, [observeResize]);
 
-    // RENDER-ONCE MODEL — no lazy / IO-based gating.
+    // RENDER-ONCE, CACHE-FOREVER MODEL (per presentation).
     //
-    // Every item schedules its render immediately (via the list's shared
-    // priority queue) and never disposes on scroll. The queue handles
-    // prioritisation: items currently visible in the scrollport render
-    // unconditionally this frame; off-screen items fill in nearest-first
-    // within the 8ms budget. Once rendered, the slide DOM stays for the
-    // lifetime of the (presentation, slide) pair — visited regions can never
-    // go blank again.
-    //
-    // This approach removed the IntersectionObserver entirely. The IO had a
-    // fundamental timing issue in React 18 Strict Mode: React actually
-    // destroys and recreates DOM nodes during its simulated unmount/remount
-    // cycle for effect cleanup verification. When effects re-run and
-    // `io.observe(el)` is called on freshly inserted nodes, the IO fires its
-    // initial callback before the browser has performed a layout pass — every
-    // `entry.boundingClientRect` is `{ width: 0, height: 0 }`, so no element
-    // ever reports `isIntersecting: true`, and items after the initial seed
-    // zone are permanently stuck with `data-pending` set.
-    //
-    // The cleanup runs only on unmount or when presentation/slide changes.
-    // Scrolling never triggers it.
-    React.useEffect(() => {
+    // The virtualization window mounts/unmounts this preview as the user
+    // scrolls. On mount: a cached handle re-attaches synchronously (layout
+    // effect, so no pending flash when scrolling back); a cache miss
+    // schedules the expensive parse+render on the list's budgeted queue.
+    // On unmount: the slide element is detached but NOT disposed — the
+    // handle stays in the list-level cache for instant re-attachment. The
+    // list disposes the whole cache when the presentation changes or the
+    // list unmounts.
+    React.useLayoutEffect(() => {
       const el = itemPreviewRef.current;
       if (!el || !presentation || !slide) return;
 
-      const cancel = scheduleRender(el, () => {
-        const element = itemPreviewRef.current;
-        // Guard against a second render being queued before the first
-        // cleanup runs (e.g. Strict Mode remount, effect identity change).
-        if (!element || slideHandleRef.current) return;
-
-        if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
-        const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-        slideHandle.element.style.transformOrigin = "top left";
-        // Read the latest measured width at render time (not effect time):
-        // the queue may drain this entry many frames after it was scheduled.
+      const attach = (element: HTMLDivElement, handle: SlideHandle) => {
+        // Read the latest measured width at attach time (a queued render
+        // may land many frames after it was scheduled).
         const currentScale = widthRef.current > 0 ? widthRef.current / pWidthRef.current : 0;
         if (currentScale > 0) {
-          slideHandle.element.style.transform = `scale(${currentScale})`;
+          handle.element.style.transform = `scale(${currentScale})`;
         }
-        element.appendChild(slideHandle.element);
-        slideHandleRef.current = slideHandle;
-        // Flip data-pending imperatively: avoids triggering N React re-renders
-        // while the initial fill is draining the queue.
+        element.appendChild(handle.element);
+        slideHandleRef.current = handle;
+        // Flip data-pending imperatively: avoids triggering N React
+        // re-renders while the queue drains.
         hasRenderedRef.current = true;
         delete element.dataset.pending;
-      });
+      };
+
+      let cancel: (() => void) | null = null;
+      const cached = slideHandleCache.get(slide.id);
+      if (cached) {
+        attach(el, cached);
+      } else {
+        cancel = scheduleRender(() => {
+          const element = itemPreviewRef.current;
+          // Guard against a second render being queued before the first
+          // cleanup runs (e.g. Strict Mode remount, effect identity change).
+          if (!element || slideHandleRef.current) return;
+
+          if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
+          const handle = renderSlide(presentation, slide, { mediaUrlCache });
+          handle.element.style.transformOrigin = "top left";
+          slideHandleCache.set(slide.id, handle);
+          attach(element, handle);
+        });
+      }
 
       return () => {
-        cancel();
-        if (slideHandleRef.current) {
-          slideHandleRef.current.dispose();
-          slideHandleRef.current = null;
-        }
+        cancel?.();
+        const handle = slideHandleRef.current;
+        slideHandleRef.current = null;
+        // Detach only — the handle lives on in the cache.
+        handle?.element.remove();
         const element = itemPreviewRef.current;
         if (element) {
-          element.innerHTML = "";
           hasRenderedRef.current = false;
           element.dataset.pending = "";
         }
       };
-    }, [presentation, slide, mediaUrlCache, scheduleRender, itemContext.slideId]);
+    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender]);
 
     return renderElement(
       "div",
@@ -868,18 +1164,10 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               aspectRatio: `${pWidth} / ${pHeight}`,
               overflow: "hidden",
               pointerEvents: "none",
-              // Full containment: mutations inside one preview (slide DOM
-              // landing) cannot invalidate layout/paint of the rail or page,
-              // and offscreen previews contribute no paint work. Safe with
-              // size containment because the box is sized by width +
-              // aspect-ratio, never by its contents.
-              // `layout style paint` gives us layout isolation (mutations
-              // inside don't reflow the page) and paint isolation (offscreen
-              // previews are skipped by the compositor) WITHOUT `size`
-              // containment. `contain: strict` includes size containment,
-              // which suppresses `aspect-ratio`-derived height, leaving
-              // elements at 0px tall — the IntersectionObserver then sees
-              // zero-area targets and never fires `isIntersecting: true`.
+              // `layout style paint` gives layout isolation (mutations
+              // inside don't reflow the page) and paint isolation WITHOUT
+              // `size` containment, which would suppress the
+              // `aspect-ratio`-derived height and collapse the box.
               contain: "layout style paint",
             },
           },
