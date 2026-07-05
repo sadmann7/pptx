@@ -44,6 +44,13 @@ export interface RenderContext {
    * or with a URL string for external links.
    */
   onNavigate?: (target: { slideIndex?: number; url?: string }) => void;
+  /**
+   * When `true`, the context is being used for thumbnail rendering.
+   * Renderers should skip expensive operations that are imperceptible at
+   * thumbnail scale: DOM measurement for text autofit, ECharts initialisation,
+   * and async EMF/PDF fallback rendering.
+   */
+  thumbnail?: boolean;
 }
 
 export function createRenderContext(
