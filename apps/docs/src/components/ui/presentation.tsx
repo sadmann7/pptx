@@ -42,11 +42,11 @@ function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
   return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
 }
 
-function PresentationEditLayer({ className, ...props }: PresentationPrimitive.EditLayer.Props) {
+function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
   return (
-    <PresentationPrimitive.EditLayer
-      data-slot="presentation-edit-layer"
-      className={cn("[--pptx-edit-accent:var(--accent)]", className)}
+    <PresentationPrimitive.Selection
+      data-slot="presentation-selection"
+      className={cn("[--pptx-selection:var(--ring)]", className)}
       {...props}
     />
   );
@@ -167,10 +167,10 @@ function PresentationThumbnailList({
 export {
   Presentation,
   PresentationContent,
-  PresentationEditLayer,
   PresentationError,
   PresentationLoading,
   PresentationProvider,
+  PresentationSelection,
   PresentationSlide,
   PresentationThumbnailItem,
   PresentationThumbnailItemNumber,

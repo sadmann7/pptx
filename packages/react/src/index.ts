@@ -1,9 +1,9 @@
 export * as Presentation from "./primitive";
 
-export type * from "./edit-layer";
 export type * from "./error";
 export type * from "./loading";
 export type * from "./root";
+export type * from "./selection";
 export type * from "./slide";
 export type * from "./thumbnail-list";
 export type * from "./viewport";

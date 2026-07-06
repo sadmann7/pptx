@@ -6,7 +6,7 @@ import { usePresentation, usePresentationStore, useSlide, useZoom } from "./cont
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
-const EDIT_LAYER_NAME = "PresentationEditLayer";
+const SELECTION_NAME = "PresentationSelection";
 
 /** Minimum shape size (slide px) a resize can shrink to. */
 const MIN_SIZE = 8;
@@ -94,20 +94,20 @@ function nodeRect(node: SlideNode): Rect {
 // ---------------------------------------------------------------------------
 
 /** The current interaction state of the edit layer. */
-export interface EditLayerState {
-  /** Interaction mode of the layer. */
+export interface SelectionState {
+  /** Interaction mode of the selection. */
   mode: "idle" | "selected" | "move" | "resize";
   /** The slide node currently selected, or `null` when nothing is selected. */
   selectedNode: SlideNode | null;
 }
 
-export interface EditLayerProps extends React.ComponentProps<"div"> {
+export interface SelectionProps extends React.ComponentProps<"div"> {
   /**
    * Replace the root overlay element.
    * - ReactElement: cloned with composed props
    * - Function: `(props, state) => ReactElement`
    */
-  render?: RenderProp<EditLayerState>;
+  render?: RenderProp<SelectionState>;
 }
 
 /**
@@ -123,11 +123,11 @@ export interface EditLayerProps extends React.ComponentProps<"div"> {
  * Every committed gesture goes through `store.edit()`, so it participates in
  * undo/redo and is persisted by `store.save()`.
  */
-export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(function EditLayer(
-  { render, ...editLayerProps },
+export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
+  { render, ...selectionProps },
   forwardedRef,
 ) {
-  const store = usePresentationStore(EDIT_LAYER_NAME);
+  const store = usePresentationStore(SELECTION_NAME);
   const { presentation } = usePresentation();
   const { slide, slideId } = useSlide();
   const { zoom } = useZoom();
@@ -142,7 +142,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
       ? (slide.nodes.find((n) => n.id === state.nodeId) ?? null)
       : null;
 
-  const publicState: EditLayerState = { mode: state.mode, selectedNode };
+  const publicState: SelectionState = { mode: state.mode, selectedNode };
 
   if (!presentation?.pkg || !slide || !slideId) return null;
 
@@ -337,7 +337,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
       ref: mergeRefs(rootRef, forwardedRef),
       props: [
         {
-          "data-edit-layer": "",
+          "data-pptx-selection": "",
           "data-mode": state.mode,
           tabIndex: -1,
           onPointerDown,
@@ -361,7 +361,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
             touchAction: "none",
           },
         },
-        editLayerProps,
+        selectionProps,
       ],
     },
   );
@@ -410,7 +410,7 @@ function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxPr
         width: rect.w * zoom,
         height: rect.h * zoom,
         transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
-        boxShadow: "0 0 0 1.5px var(--pptx-edit-accent, #2563eb)",
+        boxShadow: "0 0 0 1.5px var(--pptx-selection, #2563eb)",
         cursor: "move",
         pointerEvents: "none",
       }}
@@ -429,7 +429,7 @@ function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxPr
               marginLeft: -4.5,
               marginTop: -4.5,
               background: "#fff",
-              border: "1.5px solid var(--pptx-edit-accent, #2563eb)",
+              border: "1.5px solid var(--pptx-selection, #2563eb)",
               borderRadius: 2,
               cursor: HANDLE_CURSORS[direction],
               pointerEvents: "auto",
@@ -440,7 +440,7 @@ function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxPr
   );
 }
 
-export namespace EditLayer {
-  export type State = EditLayerState;
-  export type Props = EditLayerProps;
+export namespace Selection {
+  export type State = SelectionState;
+  export type Props = SelectionProps;
 }

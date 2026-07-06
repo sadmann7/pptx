@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Presentation,
   PresentationContent,
-  PresentationEditLayer,
+  PresentationSelection,
   PresentationError,
   PresentationLoading,
   PresentationProvider,
@@ -48,7 +48,7 @@ export default function PgPage() {
             <PresentationError />
             <PresentationViewport autoFit>
               <PresentationSlide>
-                <PresentationEditLayer />
+                <PresentationSelection />
               </PresentationSlide>
             </PresentationViewport>
           </PresentationContent>
