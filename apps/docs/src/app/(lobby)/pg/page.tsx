@@ -2,8 +2,10 @@
 
 import * as React from "react";
 
+import type { PresentationData, PresentationStore } from "@diceui/pptx";
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,7 +26,7 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0 });
+    store.load(file, { defaultSlideIndex: 0, editable: true });
   }
 
   return (
@@ -37,6 +39,9 @@ export default function PgPage() {
       </div>
       <PresentationProvider store={store}>
         <PresentationDebug />
+        <EditToolbar store={store} />
+        {/* `editable` lives on store.load() here — the Root prop only applies
+            when Root's `file` prop drives loading. */}
         <Presentation className="flex-1">
           <PresentationThumbnailList />
           <PresentationContent>
@@ -97,6 +102,116 @@ function ThumbnailPerfReadout() {
         · {perf.backlog} queued
       </strong>
     </span>
+  );
+}
+
+/** Locate the first editable text run on the active slide. */
+function findFirstTextRun(
+  presentation: PresentationData,
+  slideId: string,
+): { nodeId: string; text: string } | null {
+  const slide = presentation.slides.find((s) => s.id === slideId);
+  if (!slide) return null;
+  for (const node of slide.nodes) {
+    if (node.nodeType !== "shape") continue;
+    if (!("textBody" in node) || !node.textBody) continue;
+    const run = node.textBody.paragraphs[0]?.runs[0];
+    if (run) return { nodeId: node.id, text: run.text };
+  }
+  return null;
+}
+
+/**
+ * Temporary editing testbed until the interactive editor UI exists:
+ * exercises `store.edit()`, undo/redo, and `store.save()` end to end.
+ */
+function EditToolbar({ store }: { store: PresentationStore }) {
+  const { status } = usePresentation();
+  const { slideId } = useSlide();
+
+  const canUndo = React.useSyncExternalStore(
+    store.subscribe,
+    () => store.canUndo(),
+    () => false,
+  );
+  const canRedo = React.useSyncExternalStore(
+    store.subscribe,
+    () => store.canRedo(),
+    () => false,
+  );
+
+  if (status !== "ready") return null;
+
+  const run = (action: () => Promise<unknown>) => {
+    action().catch((err) => console.error("[pg] edit failed:", err));
+  };
+
+  const onEditText = () => {
+    const presentation = store.getState().presentation;
+    if (!presentation || !slideId) return;
+    const target = findFirstTextRun(presentation, slideId);
+    if (!target) {
+      console.warn("[pg] no text run on this slide to edit");
+      return;
+    }
+    const text = window.prompt("New text for the first run:", target.text);
+    if (text === null) return;
+    run(() =>
+      store.edit({
+        type: "setTextRun",
+        slideId,
+        nodeId: target.nodeId,
+        paragraphIndex: 0,
+        runIndex: 0,
+        text,
+      }),
+    );
+  };
+
+  const onSave = () => {
+    run(async () => {
+      const bytes = await store.save();
+      const blob = new Blob([bytes.slice().buffer as ArrayBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "edited.pptx";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
+      <Button size="sm" variant="outline" onClick={onEditText}>
+        Edit text…
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => slideId && run(() => store.edit({ type: "duplicateSlide", slideId }))}
+      >
+        Duplicate slide
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => slideId && run(() => store.edit({ type: "deleteSlide", slideId }))}
+      >
+        Delete slide
+      </Button>
+      <Button size="sm" variant="ghost" disabled={!canUndo} onClick={() => store.undo()}>
+        Undo
+      </Button>
+      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void store.redo()}>
+        Redo
+      </Button>
+      <Button size="sm" className="ml-auto" onClick={onSave}>
+        Save .pptx
+      </Button>
+    </div>
   );
 }
 

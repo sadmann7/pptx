@@ -12,6 +12,7 @@ const SERVER_SNAPSHOT: PresentationState = {
   zoom: 1,
   progress: 0,
   error: null,
+  revision: 0,
 };
 
 export const Context = React.createContext<PresentationStore | null>(null);
@@ -114,6 +115,13 @@ export interface UsePresentationResult {
 
   /** Parse progress reported by the store (0-100). */
   progress: number;
+
+  /**
+   * Edit revision counter; bumps on every `store.edit()`, `undo()`, or
+   * `redo()`. The `presentation` object is mutated in place by edits, so
+   * derive from this value (not object identity) to react to content changes.
+   */
+  revision: number;
 }
 
 /**
@@ -130,7 +138,8 @@ export function usePresentation(): UsePresentationResult {
   const status = useStoreSelector(store, (s) => s.status, SERVER_SNAPSHOT.status);
   const error = useStoreSelector(store, (s) => s.error, SERVER_SNAPSHOT.error);
   const progress = useStoreSelector(store, (s) => s.progress, SERVER_SNAPSHOT.progress);
-  return { presentation, status, error, progress };
+  const revision = useStoreSelector(store, (s) => s.revision, SERVER_SNAPSHOT.revision);
+  return { presentation, status, error, progress, revision };
 }
 
 export interface UseSlideResult {

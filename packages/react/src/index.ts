@@ -19,4 +19,15 @@ export type {
   PreviewInput,
 } from "./store";
 
-export type { PresentationData } from "@diceui/pptx-parser";
+export type {
+  DeleteNodeOperation,
+  DeleteSlideOperation,
+  DuplicateSlideOperation,
+  EditOperation,
+  EditResult,
+  MoveSlideOperation,
+  PresentationData,
+  SetNodeTransformOperation,
+  SetSolidFillOperation,
+  SetTextRunOperation,
+} from "@diceui/pptx-parser";

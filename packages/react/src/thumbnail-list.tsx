@@ -43,6 +43,12 @@ const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
 
 type FocusIntent = "first" | "last" | "prev" | "next";
 
+/** Cached rendered thumbnail plus the edit revision it was rendered at. */
+interface CachedThumbnail {
+  handle: SlideHandle;
+  revision: number;
+}
+
 const MAP_KEY_TO_INTENT: Record<string, FocusIntent> = {
   ArrowUp: "prev",
   ArrowDown: "next",
@@ -81,9 +87,10 @@ interface ThumbnailRovingContextValue {
   mediaUrlCache: Map<string, string>;
   /**
    * Rendered slide DOM cache, keyed by slide id. Scrolling back re-attaches
-   * the existing element instantly instead of re-rendering.
+   * the existing element instantly instead of re-rendering. Entries are
+   * invalidated when the slide's edit revision moves past the cached one.
    */
-  slideHandleCache: Map<string, SlideHandle>;
+  slideHandleCache: Map<string, CachedThumbnail>;
   /**
    * Register with the list-level shared ResizeObserver.
    * Returns a cleanup function that unregisters the element.
@@ -236,7 +243,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     const handleCacheRef = React.useRef<{
       key: object;
-      cache: Map<string, SlideHandle>;
+      cache: Map<string, CachedThumbnail>;
     } | null>(null);
     if (!handleCacheRef.current || handleCacheRef.current.key !== presentation) {
       handleCacheRef.current = { key: presentation ?? {}, cache: new Map() };
@@ -247,7 +254,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       const handles = slideHandleCache;
       const media = mediaUrlCache;
       return () => {
-        for (const handle of handles.values()) handle.dispose();
+        for (const entry of handles.values()) entry.handle.dispose();
         handles.clear();
         for (const url of media.values()) URL.revokeObjectURL(url);
         media.clear();
@@ -617,6 +624,14 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const pWidth = presentation?.width ?? 1;
     const pHeight = presentation?.height ?? 1;
 
+    // Edit revision of this slide; a bump re-runs the IO effect below, which
+    // treats the cached handle as stale and re-renders the miniature.
+    const revision = React.useSyncExternalStore(
+      store.subscribe,
+      () => store.getSlideRevision(itemContext.slideId),
+      () => 0,
+    );
+
     const widthRef = React.useRef(0);
     const [containerWidth, setContainerWidth] = React.useState(0);
     const hasRenderPropRef = React.useRef(false);
@@ -694,16 +709,21 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             cancelRender = null;
 
             const cached = slideHandleCache.get(slide.id);
-            if (cached) {
-              attach(element, cached);
+            if (cached && cached.revision === revision) {
+              attach(element, cached.handle);
             } else {
+              if (cached) {
+                // Rendered under an older edit revision — discard.
+                cached.handle.dispose();
+                slideHandleCache.delete(slide.id);
+              }
               cancelRender = scheduleRender(() => {
                 cancelRender = null;
                 const el2 = itemPreviewRef.current;
                 if (!el2 || slideHandleRef.current) return;
                 const handle = renderSlide(presentation, slide, { mediaUrlCache });
                 handle.element.style.transformOrigin = "top left";
-                slideHandleCache.set(slide.id, handle);
+                slideHandleCache.set(slide.id, { handle, revision });
                 attach(el2, handle);
               });
             }
@@ -725,7 +745,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         const element = itemPreviewRef.current;
         if (element) detach(element);
       };
-    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender]);
+    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender, revision]);
 
     return renderElement(
       "div",
