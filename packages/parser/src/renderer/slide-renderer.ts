@@ -495,10 +495,15 @@ export function renderSlide(
     for (const node of slide.nodes) {
       try {
         const el = renderNode(node, ctx);
+        // Only slide-level (editable) nodes are stamped; master/layout
+        // template shapes are not part of the slide's editable content.
+        el.setAttribute("data-pptx-node-id", node.id);
         container.appendChild(el);
       } catch (e) {
         options?.onNodeError?.(node.id, e);
-        container.appendChild(createErrorPlaceholder(node));
+        const placeholder = createErrorPlaceholder(node);
+        placeholder.setAttribute("data-pptx-node-id", node.id);
+        container.appendChild(placeholder);
       }
     }
   } finally {

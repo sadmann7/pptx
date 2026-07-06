@@ -1,5 +1,6 @@
 export * as Presentation from "./primitive";
 
+export type * from "./edit-layer";
 export type * from "./error";
 export type * from "./loading";
 export type * from "./root";

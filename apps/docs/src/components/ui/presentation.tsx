@@ -42,6 +42,10 @@ function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
   return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
 }
 
+function PresentationEditLayer(props: PresentationPrimitive.EditLayer.Props) {
+  return <PresentationPrimitive.EditLayer data-slot="presentation-edit-layer" {...props} />;
+}
+
 function PresentationLoading({
   className,
   children,
@@ -157,6 +161,7 @@ function PresentationThumbnailList({
 export {
   Presentation,
   PresentationContent,
+  PresentationEditLayer,
   PresentationError,
   PresentationLoading,
   PresentationProvider,
