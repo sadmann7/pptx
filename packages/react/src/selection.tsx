@@ -108,6 +108,57 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<SelectionState>;
+  /**
+   * Called after `Ctrl+Z` fires.
+   * `status` is `"empty"` when the undo stack has nothing to revert.
+   * `error` is set if the operation threw.
+   *
+   * ```ts
+   * onUndo={(status, error) => {
+   *   if (error) toast.error("Undo failed");
+   *   else if (status === "empty") toast("Nothing to undo");
+   *   else toast("Undone");
+   * }}
+   * ```
+   */
+  onUndo?: (status: "success" | "empty", error?: unknown) => void;
+  /**
+   * Called after `Ctrl+Shift+Z` / `Ctrl+Y` fires.
+   * `status` is `"empty"` when the redo stack has nothing to replay.
+   * `error` is set if the operation threw.
+   *
+   * ```ts
+   * onRedo={(status, error) => {
+   *   if (error) toast.error("Redo failed");
+   *   else if (status === "empty") toast("Nothing to redo");
+   *   else toast("Redone");
+   * }}
+   * ```
+   */
+  onRedo?: (status: "success" | "empty", error?: unknown) => void;
+  /**
+   * Called after a node delete is attempted (keyboard or pointer).
+   * `error` is set if the operation threw.
+   *
+   * ```ts
+   * onNodeDelete={(nodeId, error) => {
+   *   if (error) toast.error("Delete failed");
+   *   else toast(`Deleted ${nodeId}`);
+   * }}
+   * ```
+   */
+  onNodeDelete?: (nodeId: string, error?: unknown) => void;
+  /**
+   * Called after a node move or resize is attempted.
+   * `error` is set if the operation threw.
+   *
+   * ```ts
+   * onNodeTransform={(nodeId, error) => {
+   *   if (error) toast.error("Transform failed");
+   * }}
+   * ```
+   */
+  onNodeTransform?: (nodeId: string, error?: unknown) => void;
 }
 
 /**
@@ -124,7 +175,7 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * undo/redo and is persisted by `store.save()`.
  */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
-  { render, ...selectionProps },
+  { render, onUndo, onRedo, onNodeDelete, onNodeTransform, ...selectionProps },
   forwardedRef,
 ) {
   const store = usePresentationStore(SELECTION_NAME);
@@ -172,10 +223,19 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     return null;
   }
 
-  function commitEdit(action: () => Promise<unknown>, onError?: () => void): void {
-    action().catch((err) => {
-      onError?.();
-      console.warn("[pptx] edit failed:", err);
+  function commitEdit(
+    action: () => Promise<unknown>,
+    onRollback?: () => void,
+    onSuccess?: () => void,
+    onFailure?: (error: unknown) => void,
+  ): void {
+    action().then(onSuccess, (err) => {
+      onRollback?.();
+      if (onFailure) {
+        onFailure(err);
+      } else {
+        console.warn("[pptx] edit failed:", err);
+      }
     });
   }
 
@@ -257,6 +317,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
             const el = shapeElement(nodeId);
             if (el) el.style.translate = "";
           },
+          () => onNodeTransform?.(nodeId),
+          (error) => onNodeTransform?.(nodeId, error),
         );
       } else {
         // Unmoved click: clear any stray preview translate.
@@ -268,14 +330,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       setState({ mode: "selected", nodeId });
       if (selectedNode && (dx !== 0 || dy !== 0)) {
         const next = resizeRect(nodeRect(selectedNode), handle, dx, dy);
-        commitEdit(() =>
-          store.edit({
-            type: "setNodeTransform",
-            slideId: slideId!,
-            nodeId,
-            position: { x: next.x, y: next.y },
-            size: { w: next.w, h: next.h },
-          }),
+        commitEdit(
+          () =>
+            store.edit({
+              type: "setNodeTransform",
+              slideId: slideId!,
+              nodeId,
+              position: { x: next.x, y: next.y },
+              size: { w: next.w, h: next.h },
+            }),
+          undefined,
+          () => onNodeTransform?.(nodeId),
+          (error) => onNodeTransform?.(nodeId, error),
         );
       }
     }
@@ -290,17 +356,38 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   }
 
   function nudge(node: SlideNode, delta: Position): void {
-    commitEdit(() =>
-      store.edit({
-        type: "setNodeTransform",
-        slideId: slideId!,
-        nodeId: node.id,
-        position: { x: node.position.x + delta.x, y: node.position.y + delta.y },
-      }),
+    commitEdit(
+      () =>
+        store.edit({
+          type: "setNodeTransform",
+          slideId: slideId!,
+          nodeId: node.id,
+          position: { x: node.position.x + delta.x, y: node.position.y + delta.y },
+        }),
+      undefined,
+      () => onNodeTransform?.(node.id),
+      (error) => onNodeTransform?.(node.id, error),
     );
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
+    const mod = event.ctrlKey || event.metaKey;
+
+    // Undo / redo — active whenever the overlay is focused, no shape needed.
+    if (mod && event.key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      onUndo?.(store.undo() ? "success" : "empty");
+      return;
+    }
+    if (mod && (event.key === "y" || (event.key === "z" && event.shiftKey))) {
+      event.preventDefault();
+      store
+        .redo()
+        .then((success) => onRedo?.(success ? "success" : "empty"))
+        .catch((error) => onRedo?.("empty", error));
+      return;
+    }
+
     if (!selectedNode) return;
 
     if (event.key === "Escape") {
@@ -309,8 +396,12 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      commitEdit(() =>
-        store.edit({ type: "deleteNode", slideId: slideId!, nodeId: selectedNode.id }),
+      const nodeId = selectedNode.id;
+      commitEdit(
+        () => store.edit({ type: "deleteNode", slideId: slideId!, nodeId }),
+        undefined,
+        () => onNodeDelete?.(nodeId),
+        (error) => onNodeDelete?.(nodeId, error),
       );
       return;
     }
@@ -366,10 +457,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     },
   );
 });
-
-// ---------------------------------------------------------------------------
-// SelectionBox (internal)
-// ---------------------------------------------------------------------------
 
 interface SelectionBoxProps {
   node: SlideNode;

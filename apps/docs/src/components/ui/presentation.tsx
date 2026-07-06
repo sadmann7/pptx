@@ -1,6 +1,7 @@
 "use client";
 
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,19 @@ function PresentationSelection({ className, ...props }: PresentationPrimitive.Se
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
       className={cn("[--pptx-selection:var(--ring)]", className)}
+      onUndo={(_, error) => {
+        if (error) toast.error(error instanceof Error ? error.message : "Undo failed");
+      }}
+      onRedo={(_, error) => {
+        if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+      }}
+      onNodeDelete={(_, error) => {
+        if (error) toast.error(error instanceof Error ? error.message : "Could not delete shape");
+      }}
+      onNodeTransform={(_, error) => {
+        if (error)
+          toast.error(error instanceof Error ? error.message : "Could not move or resize shape");
+      }}
       {...props}
     />
   );
