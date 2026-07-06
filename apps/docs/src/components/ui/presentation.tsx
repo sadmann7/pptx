@@ -42,8 +42,14 @@ function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
   return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
 }
 
-function PresentationEditLayer(props: PresentationPrimitive.EditLayer.Props) {
-  return <PresentationPrimitive.EditLayer data-slot="presentation-edit-layer" {...props} />;
+function PresentationEditLayer({ className, ...props }: PresentationPrimitive.EditLayer.Props) {
+  return (
+    <PresentationPrimitive.EditLayer
+      data-slot="presentation-edit-layer"
+      className={cn("[--pptx-edit-accent:var(--accent)]", className)}
+      {...props}
+    />
+  );
 }
 
 function PresentationLoading({

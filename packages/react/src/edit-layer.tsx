@@ -3,6 +3,8 @@ import * as React from "react";
 import type { Position, SlideNode } from "@diceui/pptx-parser";
 
 import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
+import type { RenderProp } from "./render";
+import { mergeRefs, renderElement } from "./render";
 
 const EDIT_LAYER_NAME = "PresentationEditLayer";
 
@@ -25,7 +27,8 @@ const HANDLE_CURSORS: Record<HandleDirection, string> = {
   w: "ew-resize",
 };
 
-type EditLayerState =
+// Internal discriminated union — not part of the public API.
+type InternalState =
   | { mode: "idle" }
   | { mode: "selected"; nodeId: string }
   | {
@@ -86,9 +89,25 @@ function nodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
 
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+/** The current interaction state of the edit layer. */
+export interface EditLayerState {
+  /** Interaction mode of the layer. */
+  mode: "idle" | "selected" | "move" | "resize";
+  /** The slide node currently selected, or `null` when nothing is selected. */
+  selectedNode: SlideNode | null;
+}
+
 export interface EditLayerProps extends React.ComponentProps<"div"> {
-  /** Selection accent color. @default "#2563eb" */
-  accentColor?: string;
+  /**
+   * Replace the root overlay element.
+   * - ReactElement: cloned with composed props
+   * - Function: `(props, state) => ReactElement`
+   */
+  render?: RenderProp<EditLayerState>;
 }
 
 /**
@@ -105,7 +124,7 @@ export interface EditLayerProps extends React.ComponentProps<"div"> {
  * undo/redo and is persisted by `store.save()`.
  */
 export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(function EditLayer(
-  { accentColor = "#2563eb", style, ...editLayerProps },
+  { render, ...editLayerProps },
   forwardedRef,
 ) {
   const store = usePresentationStore(EDIT_LAYER_NAME);
@@ -114,7 +133,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
   const { zoom } = useZoom();
 
   const rootRef = React.useRef<HTMLDivElement>(null);
-  const [state, setState] = React.useState<EditLayerState>({ mode: "idle" });
+  const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
   // Selection is derived: a stale nodeId (deleted node, slide change) simply
   // resolves to null and the overlay disappears without effect-driven resets.
@@ -123,8 +142,9 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
       ? (slide.nodes.find((n) => n.id === state.nodeId) ?? null)
       : null;
 
-  const editable = Boolean(presentation?.pkg);
-  if (!editable || !slide || !slideId) return null;
+  const publicState: EditLayerState = { mode: state.mode, selectedNode };
+
+  if (!presentation?.pkg || !slide || !slideId) return null;
 
   /** The wrapper div that contains both the rendered slide and this overlay. */
   function slideWrapper(): HTMLElement | null {
@@ -159,7 +179,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     });
   }
 
-  function onRootPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.button !== 0) return;
     const nodeId = hitTest(event.clientX, event.clientY);
     if (!nodeId) {
@@ -197,7 +217,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     });
   }
 
-  function onRootPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+  function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
     if (state.mode !== "move" && state.mode !== "resize") return;
     const dx = (event.clientX - state.startX) / zoom;
     const dy = (event.clientY - state.startY) / zoom;
@@ -218,7 +238,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     }
   }
 
-  function onRootPointerUp(): void {
+  function onPointerUp(): void {
     if (state.mode === "move") {
       const { nodeId, dx, dy, moved } = state;
       setState({ mode: "selected", nodeId });
@@ -261,7 +281,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     }
   }
 
-  function onRootPointerCancel(): void {
+  function onPointerCancel(): void {
     if (state.mode === "move" || state.mode === "resize") {
       const el = shapeElement(state.nodeId);
       if (el) el.style.translate = "";
@@ -280,7 +300,7 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     );
   }
 
-  function onRootKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
+  function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
     if (!selectedNode) return;
 
     if (event.key === "Escape") {
@@ -309,53 +329,56 @@ export const EditLayer = React.forwardRef<HTMLDivElement, EditLayerProps>(functi
     }
   }
 
-  return (
-    <div
-      {...editLayerProps}
-      ref={(el) => {
-        rootRef.current = el;
-        if (typeof forwardedRef === "function") forwardedRef(el);
-        else if (forwardedRef) forwardedRef.current = el;
-      }}
-      data-edit-layer=""
-      data-mode={state.mode}
-      tabIndex={-1}
-      onPointerDown={onRootPointerDown}
-      onPointerMove={onRootPointerMove}
-      onPointerUp={onRootPointerUp}
-      onPointerCancel={onRootPointerCancel}
-      onKeyDown={onRootKeyDown}
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "auto",
-        outline: "none",
-        touchAction: "none",
-        ...style,
-      }}
-    >
-      {selectedNode && (
-        <SelectionBox
-          node={selectedNode}
-          state={state}
-          zoom={zoom}
-          accentColor={accentColor}
-          onHandlePointerDown={onHandlePointerDown}
-        />
-      )}
-    </div>
+  return renderElement(
+    "div",
+    { render },
+    {
+      state: publicState,
+      ref: mergeRefs(rootRef, forwardedRef),
+      props: [
+        {
+          "data-edit-layer": "",
+          "data-mode": state.mode,
+          tabIndex: -1,
+          onPointerDown,
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel,
+          onKeyDown,
+          children: selectedNode ? (
+            <SelectionBox
+              node={selectedNode}
+              state={state}
+              zoom={zoom}
+              onHandlePointerDown={onHandlePointerDown}
+            />
+          ) : null,
+          style: {
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "auto",
+            outline: "none",
+            touchAction: "none",
+          },
+        },
+        editLayerProps,
+      ],
+    },
   );
 });
 
+// ---------------------------------------------------------------------------
+// SelectionBox (internal)
+// ---------------------------------------------------------------------------
+
 interface SelectionBoxProps {
   node: SlideNode;
-  state: EditLayerState;
+  state: InternalState;
   zoom: number;
-  accentColor: string;
   onHandlePointerDown: (event: React.PointerEvent<HTMLDivElement>, handle: HandleDirection) => void;
 }
 
-function SelectionBox({ node, state, zoom, accentColor, onHandlePointerDown }: SelectionBoxProps) {
+function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxProps) {
   let rect = nodeRect(node);
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
@@ -387,7 +410,7 @@ function SelectionBox({ node, state, zoom, accentColor, onHandlePointerDown }: S
         width: rect.w * zoom,
         height: rect.h * zoom,
         transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
-        boxShadow: `0 0 0 1.5px ${accentColor}`,
+        boxShadow: "0 0 0 1.5px var(--pptx-edit-accent, #2563eb)",
         cursor: "move",
         pointerEvents: "none",
       }}
@@ -406,7 +429,7 @@ function SelectionBox({ node, state, zoom, accentColor, onHandlePointerDown }: S
               marginLeft: -4.5,
               marginTop: -4.5,
               background: "#fff",
-              border: `1.5px solid ${accentColor}`,
+              border: "1.5px solid var(--pptx-edit-accent, #2563eb)",
               borderRadius: 2,
               cursor: HANDLE_CURSORS[direction],
               pointerEvents: "auto",
@@ -418,5 +441,6 @@ function SelectionBox({ node, state, zoom, accentColor, onHandlePointerDown }: S
 }
 
 export namespace EditLayer {
+  export type State = EditLayerState;
   export type Props = EditLayerProps;
 }
