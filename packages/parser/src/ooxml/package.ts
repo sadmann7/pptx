@@ -12,7 +12,6 @@
  * not be detached (e.g. transferred to a worker) while saving is still needed.
  */
 
-import type { JSZipObject } from "jszip";
 import JSZip from "jszip";
 
 import { SafeXmlNode } from "./xml-parser";
@@ -44,7 +43,10 @@ let sharedDecoder: TextDecoder | undefined;
 
 function encodeText(text: string): Uint8Array {
   sharedEncoder ??= new TextEncoder();
-  return sharedEncoder.encode(text);
+  const encoded = sharedEncoder.encode(text);
+  // TextEncoder may come from another realm (e.g. jsdom), whose Uint8Array
+  // fails JSZip's instanceof checks — rewrap in this realm's constructor.
+  return encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
 }
 
 /**
@@ -174,24 +176,50 @@ export class PptxPackage {
     return existed;
   }
 
+  /**
+   * Current content of a part as it would be written on save: live-XML
+   * serialization when dirty, raw override when replaced, source bytes
+   * otherwise.
+   */
+  async readBytes(path: string): Promise<Uint8Array | undefined> {
+    const key = this.canonical(path);
+    if (this.deleted.has(key)) return undefined;
+
+    if (this.dirty.has(key)) {
+      return this.serializeDirtyPart(key);
+    }
+
+    const override = this.overrides.get(key);
+    if (override) return override;
+
+    const file = this.zip.file(key);
+    if (!file || file.dir) return undefined;
+    return file.async("uint8array");
+  }
+
+  /** UTF-8 decoded {@link readBytes}. */
+  async readText(path: string): Promise<string | undefined> {
+    const bytes = await this.readBytes(path);
+    if (bytes === undefined) return undefined;
+    sharedDecoder ??= new TextDecoder("utf-8");
+    return sharedDecoder.decode(bytes);
+  }
+
   /** Write the package to a new .pptx archive. */
   async save(options: PptxSaveOptions = {}): Promise<Uint8Array> {
     const out = new JSZip();
 
-    for (const [key, file] of Object.entries(this.zip.files)) {
-      if (file.dir || this.deleted.has(key) || this.overrides.has(key)) continue;
-      if (this.dirty.has(key)) {
-        out.file(key, this.serializeDirtyPart(key, file), { binary: true });
-      } else {
-        // JSZip accepts a promise as content; the entry is only decompressed
-        // when the output archive is generated.
-        out.file(key, file.async("uint8array"), { binary: true });
-      }
-    }
-
-    for (const [key, bytes] of this.overrides) {
-      if (this.deleted.has(key)) continue;
-      out.file(key, bytes, { binary: true });
+    for (const key of this.paths()) {
+      // JSZip accepts a promise as content; source entries are only
+      // decompressed when the output archive is generated.
+      out.file(
+        key,
+        this.readBytes(key).then((bytes) => {
+          if (!bytes) throw new Error(`PptxPackage: part "${key}" disappeared during save`);
+          return bytes;
+        }),
+        { binary: true },
+      );
     }
 
     return out.generateAsync({
@@ -200,7 +228,7 @@ export class PptxPackage {
     });
   }
 
-  private async serializeDirtyPart(key: string, file: JSZipObject): Promise<Uint8Array> {
+  private async serializeDirtyPart(key: string): Promise<Uint8Array> {
     const element = this.xmlRoots.get(key)?.element;
     if (!element) {
       throw new Error(`PptxPackage: dirty part "${key}" has no XML document to serialize`);
@@ -208,8 +236,8 @@ export class PptxPackage {
 
     sharedSerializer ??= new XMLSerializer();
     const xml = sharedSerializer.serializeToString(element);
-    const original = await file.async("uint8array");
-    const declaration = extractXmlDeclaration(original) ?? DEFAULT_XML_DECLARATION;
+    const original = this.overrides.get(key) ?? (await this.zip.file(key)?.async("uint8array"));
+    const declaration = (original && extractXmlDeclaration(original)) ?? DEFAULT_XML_DECLARATION;
     return encodeText(declaration + xml);
   }
 

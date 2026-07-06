@@ -11,6 +11,18 @@ export type {
   ViewerOptions,
 } from "./api/pptx-viewer";
 
+export { applyEdit } from "./edit/operations";
+export type {
+  DeleteNodeOperation,
+  DeleteSlideOperation,
+  DuplicateSlideOperation,
+  EditOperation,
+  EditResult,
+  MoveSlideOperation,
+  SetNodeTransformOperation,
+  SetSolidFillOperation,
+  SetTextRunOperation,
+} from "./edit/operations";
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 export { PptxPackage } from "./ooxml/package";
 export type { PptxSaveOptions } from "./ooxml/package";
