@@ -8,6 +8,7 @@ import JSZip from "jszip";
 
 import type { MediaResolver, ResolvedMedia } from "../media/resolve";
 import { resolveMediaPathCandidates } from "../media/resolve";
+import { decodeZipPath, PptxPackage } from "./package";
 
 export interface PptxFiles {
   contentTypes: string;
@@ -30,6 +31,8 @@ export interface PptxFiles {
   chartColors: Map<string, string>; // ppt/charts/colors*.xml
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
   fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
+  /** Retained source package for round-trip save. Present when parsed with `keepPackage: true`. */
+  pkg?: PptxPackage;
 }
 
 export interface ZipParseOptions {
@@ -38,6 +41,12 @@ export interface ZipParseOptions {
    * `done` counts processed entries, `total` is the number of entries.
    */
   onProgress?: (done: number, total: number) => void;
+  /**
+   * Retain the source archive as a {@link PptxPackage} on `PptxFiles.pkg`
+   * so the presentation can be written back to a .pptx after editing.
+   * Uncategorized parts stay compressed in memory. @default false
+   */
+  keepPackage?: boolean;
 }
 
 export interface ZipParseLimits {
@@ -71,19 +80,6 @@ function isMediaPath(path: string): boolean {
 
 function isFontPath(path: string): boolean {
   return path.startsWith("ppt/fonts/") && path.endsWith(".fntdata");
-}
-
-function decodeZipPath(path: string): string {
-  return path
-    .split("/")
-    .map((segment) => {
-      try {
-        return decodeURIComponent(segment);
-      } catch {
-        return segment;
-      }
-    })
-    .join("/");
 }
 
 function setPathMapEntry<T>(map: Map<string, T>, path: string, value: T): void {
@@ -279,7 +275,11 @@ export async function parseZip(
   limits: ZipParseLimits = {},
   options: ZipParseOptions = {},
 ): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, { lazyMedia: false, onProgress: options.onProgress });
+  return parseZipInternal(buffer, limits, {
+    lazyMedia: false,
+    onProgress: options.onProgress,
+    keepPackage: options.keepPackage,
+  });
 }
 
 /**
@@ -293,13 +293,21 @@ export async function parseZipLazyMedia(
   limits: ZipParseLimits = {},
   options: ZipParseOptions = {},
 ): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, { lazyMedia: true, onProgress: options.onProgress });
+  return parseZipInternal(buffer, limits, {
+    lazyMedia: true,
+    onProgress: options.onProgress,
+    keepPackage: options.keepPackage,
+  });
 }
 
 async function parseZipInternal(
   buffer: ArrayBuffer,
   limits: ZipParseLimits,
-  options: { lazyMedia: boolean; onProgress?: (done: number, total: number) => void },
+  options: {
+    lazyMedia: boolean;
+    onProgress?: (done: number, total: number) => void;
+    keepPackage?: boolean;
+  },
 ): Promise<PptxFiles> {
   const maxConcurrency = limits.maxConcurrency ?? 8;
   if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
@@ -585,6 +593,10 @@ async function parseZipInternal(
       limitState,
       knownMediaBytes,
     );
+  }
+
+  if (options.keepPackage) {
+    result.pkg = new PptxPackage(zip);
   }
 
   return result;
