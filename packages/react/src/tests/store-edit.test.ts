@@ -22,7 +22,7 @@ beforeAll(async () => {
 async function editableStore(): Promise<PresentationStore> {
   const store = createPresentationStore();
   // embedFonts off: the fixture has none, and the font pipeline needs workers.
-  await store.load(fixture, { editable: true, embedFonts: false });
+  await store.load(fixture, { readOnly: false, embedFonts: false });
   return store;
 }
 
@@ -40,7 +40,7 @@ describe("store.edit", () => {
     ).rejects.toThrow(/no presentation/);
   });
 
-  it("rejects when the deck was loaded without editable: true", async () => {
+  it("rejects when the deck was loaded without readOnly: false", async () => {
     const store = createPresentationStore();
     await store.load(fixture, { embedFonts: false });
     const slideId = store.getState().presentation!.slides[0].id;
@@ -53,7 +53,7 @@ describe("store.edit", () => {
         runIndex: 0,
         text: "x",
       }),
-    ).rejects.toThrow(/keepPackage|editable/);
+    ).rejects.toThrow(/keepPackage|readOnly/);
   });
 
   it("applies an edit, bumps revisions, and notifies subscribers", async () => {
@@ -237,7 +237,7 @@ describe("history lifecycle", () => {
     });
     expect(store.canUndo()).toBe(true);
 
-    await store.load(fixture, { editable: true, embedFonts: false });
+    await store.load(fixture, { readOnly: false, embedFonts: false });
     expect(store.canUndo()).toBe(false);
     expect(store.canRedo()).toBe(false);
     expect(store.getState().revision).toBe(0);

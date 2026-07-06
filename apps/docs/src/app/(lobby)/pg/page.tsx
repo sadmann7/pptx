@@ -27,7 +27,7 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0, editable: true });
+    store.load(file, { defaultSlideIndex: 0, readOnly: false });
   }
 
   return (
@@ -41,8 +41,6 @@ export default function PgPage() {
       <PresentationProvider store={store}>
         <PresentationDebug />
         <EditToolbar store={store} />
-        {/* `editable` lives on store.load() here — the Root prop only applies
-            when Root's `file` prop drives loading. */}
         <Presentation className="flex-1">
           <PresentationThumbnailList />
           <PresentationContent>

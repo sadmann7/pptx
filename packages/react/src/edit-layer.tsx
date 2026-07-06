@@ -95,7 +95,7 @@ export interface EditLayerProps extends React.ComponentProps<"div"> {
  * PowerPoint-style shape selection and manipulation overlay.
  *
  * Place inside `<Presentation.Slide>`. Renders nothing unless the loaded
- * presentation was opened with `editable: true`.
+ * presentation was opened with `readOnly={false}`.
  *
  * - Click a shape to select it (topmost shape wins, like PowerPoint).
  * - Drag to move; drag the handles to resize (non-rotated shapes).

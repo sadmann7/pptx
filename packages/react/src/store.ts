@@ -178,13 +178,17 @@ export interface PresentationStore {
       embedFonts?: boolean;
 
       /**
-       * When `true`, the source package is retained so the presentation can
+       * When `false`, the source package is retained so the presentation can
        * be edited (`store.edit()`) and saved back to a .pptx (`store.save()`).
        * The retained package keeps the source zip in memory (compressed).
        *
-       * @default false
+       * Follows the same convention as `<input readOnly>`: omitting the prop
+       * (or passing `true`) gives a read-only viewer; pass `false` to enable
+       * editing.
+       *
+       * @default true
        */
-      editable?: boolean;
+      readOnly?: boolean;
     },
   ) => Promise<PresentationData>;
 
@@ -274,7 +278,7 @@ export interface PresentationStore {
   /**
    * Apply an edit operation to the loaded presentation.
    *
-   * Requires the deck to have been loaded with `{ editable: true }`.
+   * Requires the deck to have been loaded with `{ readOnly: false }`.
    * On success the edit is pushed onto the undo stack, the redo stack is
    * cleared, and affected slides get a new revision so mounted views
    * re-render.
@@ -304,7 +308,7 @@ export interface PresentationStore {
 
   /**
    * Serialize the (possibly edited) presentation back to a .pptx archive.
-   * Requires the deck to have been loaded with `{ editable: true }`.
+   * Requires the deck to have been loaded with `{ readOnly: false }`.
    */
   save: (options?: PptxSaveOptions) => Promise<Uint8Array>;
 
@@ -399,7 +403,7 @@ export function createPresentationStore(): PresentationStore {
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
       lazy?: boolean;
       embedFonts?: boolean;
-      editable?: boolean;
+      readOnly?: boolean;
     },
   ): Promise<PresentationData> {
     loadGeneration += 1;
@@ -437,7 +441,7 @@ export function createPresentationStore(): PresentationStore {
       reportProgress();
 
       const files = await parseZipLazyMedia(buffer, undefined, {
-        keepPackage: options?.editable ?? false,
+        keepPackage: options?.readOnly === false,
         onProgress: (done, total) => {
           workDone = readUnits + zipUnits * (done / total);
           reportProgress();

@@ -64,12 +64,15 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   defaultSlideIndex?: number | ((slides: SlideData[]) => number);
 
   /**
-   * When `true`, the source package is retained so the presentation can be
+   * When `false`, the source package is retained so the presentation can be
    * edited via `store.edit()` and saved back to a .pptx via `store.save()`.
    *
-   * @default false
+   * Follows the same convention as `<input readOnly>`: omit the prop (or
+   * pass `true`) for a read-only viewer; pass `false` to enable editing.
+   *
+   * @default true
    */
-  editable?: boolean;
+  readOnly?: boolean;
 
   /**
    * Event handler called once the presentation has been parsed successfully.
@@ -97,7 +100,7 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
 export function Root({
   file,
   defaultSlideIndex,
-  editable,
+  readOnly,
   render,
   onLoad,
   onError,
@@ -137,14 +140,14 @@ export function Root({
     }
 
     store
-      .load(file, { defaultSlideIndex: defaultSlideIndexRef.current, editable })
+      .load(file, { defaultSlideIndex: defaultSlideIndexRef.current, readOnly })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
         // AbortError means a newer load() superseded this one so it's not a real failure.
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
-  }, [store, file, editable]);
+  }, [store, file, readOnly]);
 
   return (
     <Context.Provider value={store}>
