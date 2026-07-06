@@ -374,17 +374,29 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     const mod = event.ctrlKey || event.metaKey;
 
     // Undo / redo — active whenever the overlay is focused, no shape needed.
-    if (mod && event.key === "z" && !event.shiftKey) {
+    // After each operation the slide re-renders (revision bump → SlideImpl
+    // replaces its DOM), which steals focus from the overlay. Refocus
+    // immediately so subsequent shortcuts keep working.
+    const key = event.key.toLowerCase();
+    if (mod && key === "z" && !event.shiftKey) {
       event.preventDefault();
-      onUndo?.(store.undo() ? "success" : "empty");
+      const success = store.undo();
+      rootRef.current?.focus({ preventScroll: true });
+      onUndo?.(success ? "success" : "empty");
       return;
     }
-    if (mod && (event.key === "y" || (event.key === "z" && event.shiftKey))) {
+    if (mod && (key === "y" || (key === "z" && event.shiftKey))) {
       event.preventDefault();
       store
         .redo()
-        .then((success) => onRedo?.(success ? "success" : "empty"))
-        .catch((error) => onRedo?.("empty", error));
+        .then((success) => {
+          rootRef.current?.focus({ preventScroll: true });
+          onRedo?.(success ? "success" : "empty");
+        })
+        .catch((error) => {
+          rootRef.current?.focus({ preventScroll: true });
+          onRedo?.("empty", error);
+        });
       return;
     }
 
