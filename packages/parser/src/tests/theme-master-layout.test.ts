@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { parseLayout } from "../model/layout";
 import { parseMaster } from "../model/master";
-import { buildPresentation } from "../model/presentation";
+import type { BaseNodeData } from "../model/nodes/base-node";
+import { buildPresentation, resolveNodePlaceholderInheritance } from "../model/presentation";
 import { parseTheme } from "../model/theme";
 import { parseXml } from "../ooxml/xml-parser";
 import { parseZip } from "../ooxml/zip-parser";
@@ -199,5 +200,58 @@ describe("parseMaster", () => {
     const entry = master.placeholderEntries![0];
     expect(entry.absoluteXfrm?.position).toEqual({ x: 96, y: 96 });
     expect(entry.absoluteXfrm?.size).toEqual({ w: 192, h: 192 });
+  });
+});
+
+describe("placeholder inheritance type equivalence", () => {
+  // Layout with a `title` placeholder and a `body` idx=1 placeholder,
+  // mirroring decks where the slide uses ctrTitle/subTitle instead.
+  const layout = parseLayout(
+    parseXml(`<p:sldLayout ${P_NS}><p:cSld><p:spTree>
+<p:sp>
+<p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="1828800" cy="914400"/></a:xfrm></p:spPr>
+</p:sp>
+<p:sp>
+<p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="914400" y="2743200"/><a:ext cx="1828800" cy="1828800"/></a:xfrm></p:spPr>
+</p:sp>
+</p:spTree></p:cSld></p:sldLayout>`),
+  );
+
+  function makeNode(type: string, idx?: number): BaseNodeData {
+    return {
+      id: "1",
+      name: "n",
+      nodeType: "shape",
+      position: { x: 0, y: 0 },
+      size: { w: 0, h: 0 },
+      rotation: 0,
+      flipH: false,
+      flipV: false,
+      placeholder: { type, idx },
+      source: parseXml(`<p:sp ${P_NS}/>`),
+    };
+  }
+
+  it("inherits layout `title` geometry for a slide `ctrTitle` placeholder", () => {
+    const node = makeNode("ctrTitle");
+    resolveNodePlaceholderInheritance(node, layout, undefined);
+    expect(node.position).toEqual({ x: 96, y: 96 });
+    expect(node.size).toEqual({ w: 192, h: 96 });
+  });
+
+  it("inherits layout `body` geometry for a slide `subTitle` placeholder with matching idx", () => {
+    const node = makeNode("subTitle", 1);
+    resolveNodePlaceholderInheritance(node, layout, undefined);
+    expect(node.position).toEqual({ x: 96, y: 288 });
+    expect(node.size).toEqual({ w: 192, h: 192 });
+  });
+
+  it("still prefers exact type+idx matches", () => {
+    const node = makeNode("body", 1);
+    resolveNodePlaceholderInheritance(node, layout, undefined);
+    expect(node.position).toEqual({ x: 96, y: 288 });
+    expect(node.size).toEqual({ w: 192, h: 192 });
   });
 });

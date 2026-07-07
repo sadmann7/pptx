@@ -479,34 +479,69 @@ function getPhXfrm(phNode: SafeXmlNode): { position: Position; size: Size } | un
 }
 
 /**
+ * Placeholder types that PowerPoint treats as equivalent when matching a slide
+ * placeholder against layout/master placeholders. E.g. a slide `ctrTitle` can
+ * inherit from a layout `title`, and a slide `subTitle` from a layout `body`.
+ */
+const PLACEHOLDER_TYPE_EQUIVALENCE: Record<string, string> = {
+  title: "title",
+  ctrTitle: "title",
+  body: "body",
+  subTitle: "body",
+  obj: "body",
+};
+
+/** Normalize a placeholder type to its equivalence-class key. */
+export function normalizePlaceholderType(type: string | undefined): string | undefined {
+  if (type === undefined) return undefined;
+  return PLACEHOLDER_TYPE_EQUIVALENCE[type] ?? type;
+}
+
+/**
  * Find a matching layout placeholder (PlaceholderEntry); use entry.absoluteXfrm when present.
+ *
+ * Match priority (best score wins):
+ *   6. exact type + same idx
+ *   5. equivalent type (title≡ctrTitle, body≡subTitle≡obj) + same idx
+ *   4. exact type, any idx
+ *   3. equivalent type, any idx
+ *   2. same idx, both without type
+ *   1. same idx, mismatched types (last-resort fallback)
+ * A missing idx attribute is treated as idx 0 per OOXML defaults.
  */
 function findMatchingLayoutPlaceholder(
   placeholders: PlaceholderEntry[],
   type?: string,
   idx?: number,
 ): PlaceholderEntry | undefined {
-  let typeMatch: PlaceholderEntry | undefined;
+  const typeKey = normalizePlaceholderType(type);
+  const normIdx = idx ?? 0;
+
+  let best: PlaceholderEntry | undefined;
+  let bestScore = 0;
 
   for (const entry of placeholders) {
     const info = getPhInfo(entry.node);
+    const sameType = type !== undefined && info.type === type;
+    const equivType = typeKey !== undefined && normalizePlaceholderType(info.type) === typeKey;
+    const sameIdx = (info.idx ?? 0) === normIdx;
 
-    if (type !== undefined && info.type === type && idx !== undefined && info.idx === idx) {
-      return entry;
-    }
-    if (type !== undefined && info.type === type && !typeMatch) {
-      typeMatch = entry;
-    }
-    if (idx !== undefined && info.idx === idx && type === undefined && info.type === undefined) {
-      return entry;
+    let score = 0;
+    if (sameType && sameIdx) score = 6;
+    else if (equivType && sameIdx) score = 5;
+    else if (sameType) score = 4;
+    else if (equivType) score = 3;
+    else if (sameIdx && type === undefined && info.type === undefined) score = 2;
+    else if (sameIdx && idx !== undefined && info.idx !== undefined) score = 1;
+
+    if (score > bestScore) {
+      best = entry;
+      bestScore = score;
+      if (score === 6) break;
     }
   }
-  if (type === undefined && idx !== undefined) {
-    for (const entry of placeholders) {
-      if (getPhInfo(entry.node).idx === idx) return entry;
-    }
-  }
-  return typeMatch;
+
+  return best;
 }
 
 function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {

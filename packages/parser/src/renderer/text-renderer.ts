@@ -5,6 +5,7 @@
 
 import { PlaceholderInfo } from "../model/nodes/base-node";
 import type { TextBody, TextParagraph, TextRun } from "../model/nodes/shape-node";
+import { normalizePlaceholderType } from "../model/presentation";
 import { parseOoxmlBool } from "../ooxml/booleans";
 import { isExternalTargetMode } from "../ooxml/rel-parser";
 import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/units";
@@ -83,9 +84,13 @@ function findPlaceholderNode(
     const phType = phEl.attr("type");
     const phIdx = phEl.numAttr("idx");
 
-    // Match by idx first (most specific), then by type
+    // Match by idx first (most specific), then by exact type, then by
+    // equivalent type (title≡ctrTitle, body≡subTitle≡obj)
     if (info.idx !== undefined && phIdx === info.idx) return ph;
     if (info.type && phType === info.type) return ph;
+    if (info.type && normalizePlaceholderType(phType) === normalizePlaceholderType(info.type)) {
+      return ph;
+    }
   }
   return undefined;
 }
