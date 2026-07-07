@@ -237,13 +237,16 @@ export async function buildCustomPptx(options: CustomPptxOptions = {}): Promise<
   zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", slideMasterRels);
   zip.file("ppt/slideLayouts/slideLayout1.xml", slideLayoutFor(options));
   zip.file("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slideLayoutRels);
+
   for (let i = 0; i < slides.length; i++) {
     zip.file(`ppt/slides/slide${i + 1}.xml`, slideFor(slides[i]));
     zip.file(`ppt/slides/_rels/slide${i + 1}.xml.rels`, slideRels);
   }
+
   for (const [path, content] of Object.entries(options.extraFiles ?? {})) {
     zip.file(path, content);
   }
+
   return zip.generateAsync({ type: "arraybuffer" });
 }
 
