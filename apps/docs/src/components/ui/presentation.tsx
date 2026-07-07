@@ -61,6 +61,9 @@ function PresentationSelection({ className, ...props }: PresentationPrimitive.Se
         if (error)
           toast.error(error instanceof Error ? error.message : "Could not move or resize shape");
       }}
+      onTextChange={(_, error) => {
+        if (error) toast.error(error instanceof Error ? error.message : "Text edit failed");
+      }}
       {...props}
     />
   );

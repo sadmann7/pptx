@@ -30,5 +30,8 @@ export type {
   PresentationData,
   SetNodeTransformOperation,
   SetSolidFillOperation,
+  SetTextBodyOperation,
+  SetTextBodyParagraph,
+  SetTextBodyRun,
   SetTextRunOperation,
 } from "@diceui/pptx-parser";

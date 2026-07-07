@@ -21,6 +21,9 @@ export type {
   MoveSlideOperation,
   SetNodeTransformOperation,
   SetSolidFillOperation,
+  SetTextBodyOperation,
+  SetTextBodyParagraph,
+  SetTextBodyRun,
   SetTextRunOperation,
 } from "./edit/operations";
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";

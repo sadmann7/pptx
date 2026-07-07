@@ -392,3 +392,134 @@ describe("deleteSlide", () => {
     ).rejects.toThrow(/last slide/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// setTextBody
+// ---------------------------------------------------------------------------
+
+function multiRunShape(id: number): string {
+  return `<p:sp>
+<p:nvSpPr><p:cNvPr id="${id}" name="Shape ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/>
+  <a:p><a:pPr lvl="0"/><a:r><a:rPr lang="en-US" sz="2400" b="1"/><a:t>Bold</a:t></a:r><a:r><a:rPr lang="en-US" sz="1800"/><a:t> normal</a:t></a:r><a:endParaRPr lang="en-US"/></a:p>
+  <a:p><a:pPr lvl="1"/><a:r><a:rPr lang="en-US" sz="1400" i="1"/><a:t>Italic second</a:t></a:r></a:p>
+</p:txBody>
+</p:sp>`;
+}
+
+describe("setTextBody", () => {
+  it("replaces text while preserving run styles from source references", async () => {
+    const pres = await openEditable([multiRunShape(2)]);
+    const slideId = pres.slides[0].id;
+    const shape = shapeOn(pres, 0, "2");
+
+    expect(shape.textBody?.paragraphs).toHaveLength(2);
+    expect(shape.textBody?.paragraphs[0].runs).toHaveLength(2);
+
+    const result = await applyEdit(pres, {
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [
+        {
+          sourceParagraphIndex: 0,
+          runs: [
+            { text: "New bold", sourceRun: [0, 0] },
+            { text: " still normal", sourceRun: [0, 1] },
+          ],
+        },
+      ],
+    });
+
+    expect(result.affectedSlideIds).toEqual([slideId]);
+    const updated = shapeOn(pres, 0, "2");
+    expect(updated.textBody?.paragraphs).toHaveLength(1);
+    expect(updated.textBody?.paragraphs[0].runs[0].text).toBe("New bold");
+    expect(updated.textBody?.paragraphs[0].runs[1].text).toBe(" still normal");
+
+    // Bold run's rPr should be cloned from source [0,0].
+    const savedXml = await savedPartText(pres, "ppt/slides/slide1.xml");
+    expect(savedXml).toContain('b="1"');
+    expect(savedXml).toContain("New bold");
+
+    // Reopened file has the same content.
+    const reopened = await saveAndReopen(pres);
+    const roShape = shapeOn(reopened, 0, "2");
+    expect(roShape.textBody?.paragraphs[0].runs[0].text).toBe("New bold");
+  });
+
+  it("adds a new paragraph (Enter key simulation)", async () => {
+    const pres = await openEditable([textShape(2, "Hello")]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, {
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [
+        { sourceParagraphIndex: 0, runs: [{ text: "Hello" }] },
+        { sourceParagraphIndex: 0, runs: [{ text: "World" }] },
+      ],
+    });
+
+    const shape = shapeOn(pres, 0, "2");
+    expect(shape.textBody?.paragraphs).toHaveLength(2);
+    expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("World");
+
+    const reopened = await saveAndReopen(pres);
+    expect(shapeOn(reopened, 0, "2").textBody?.paragraphs).toHaveLength(2);
+  });
+
+  it("undo restores original paragraphs and XML", async () => {
+    const pres = await openEditable([multiRunShape(2)]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "Replaced" }] }],
+    });
+
+    expect(shapeOn(pres, 0, "2").textBody?.paragraphs).toHaveLength(1);
+
+    result.undo();
+
+    const shape = shapeOn(pres, 0, "2");
+    expect(shape.textBody?.paragraphs).toHaveLength(2);
+    expect(shape.textBody?.paragraphs[0].runs[0].text).toBe("Bold");
+    expect(shape.textBody?.paragraphs[0].runs[1].text).toBe(" normal");
+    expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Italic second");
+
+    // Undo survives save/reopen.
+    const reopened = await saveAndReopen(pres);
+    const roShape = shapeOn(reopened, 0, "2");
+    expect(roShape.textBody?.paragraphs).toHaveLength(2);
+    expect(roShape.textBody?.paragraphs[1].runs[0].text).toBe("Italic second");
+  });
+
+  it("handles line breaks (a:br) in output", async () => {
+    const pres = await openEditable([textShape(2, "Line1")]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, {
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [
+        {
+          sourceParagraphIndex: 0,
+          runs: [{ text: "Before" }, { text: "\n" }, { text: "After" }],
+        },
+      ],
+    });
+
+    const shape = shapeOn(pres, 0, "2");
+    expect(shape.textBody?.paragraphs[0].runs).toHaveLength(3);
+    expect(shape.textBody?.paragraphs[0].runs[1].text).toBe("\n");
+
+    const savedXml = await savedPartText(pres, "ppt/slides/slide1.xml");
+    expect(savedXml).toContain("<a:br");
+  });
+});

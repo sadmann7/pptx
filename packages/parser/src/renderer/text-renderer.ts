@@ -805,6 +805,7 @@ export function renderTextBody(
 
   for (const [paragraphIndex, paragraph] of textBody.paragraphs.entries()) {
     const paraDiv = document.createElement("div");
+    paraDiv.dataset.pptxP = String(paragraphIndex);
     paraDiv.style.width = "100%";
     paraDiv.style.minWidth = "0px";
     paraDiv.style.maxWidth = "100%";
@@ -975,6 +976,8 @@ export function renderTextBody(
 
     if (bulletPrefix) {
       const bulletSpan = document.createElement("span");
+      bulletSpan.dataset.pptxBullet = "";
+      bulletSpan.contentEditable = "false";
       bulletSpan.textContent = bulletPrefix + " ";
       const marginLeft = merged.marginLeft;
       const textIndent = merged.textIndent;
@@ -1078,7 +1081,8 @@ export function renderTextBody(
     // spaces at line start but PowerPoint renders them (e.g. code indented
     // with spaces), so those runs get white-space:pre-wrap to preserve them.
     let atLineStart = true;
-    for (const run of paragraph.runs) {
+    for (let runIndex = 0; runIndex < paragraph.runs.length; runIndex++) {
+      const run = paragraph.runs[runIndex];
       if (run.text === "\n") {
         atLineStart = true;
         if (useLineWrappers) {
@@ -1150,6 +1154,8 @@ export function renderTextBody(
       } else {
         element = document.createElement("span");
       }
+
+      element.dataset.pptxR = String(runIndex);
 
       // Preserve consecutive spaces by alternating with &nbsp; so they survive
       // HTML whitespace collapse without being stretched by text-align:justify.

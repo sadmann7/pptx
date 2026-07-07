@@ -13,7 +13,7 @@
 
 import type { Position, Size } from "../model/nodes/base-node";
 import type { GroupNodeData } from "../model/nodes/group-node";
-import type { ShapeNodeData } from "../model/nodes/shape-node";
+import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape-node";
 import { materializeSlideNodes, PresentationData } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
@@ -96,6 +96,27 @@ export interface DeleteSlideOperation {
   slideId: string;
 }
 
+/** Replace the entire text body of a shape. */
+export interface SetTextBodyOperation {
+  type: "setTextBody";
+  slideId: string;
+  nodeId: string;
+  paragraphs: SetTextBodyParagraph[];
+}
+
+export interface SetTextBodyParagraph {
+  /** Index of the source paragraph whose `a:pPr` / `a:endParaRPr` to clone. -1 = bare paragraph. */
+  sourceParagraphIndex: number;
+  runs: SetTextBodyRun[];
+}
+
+export interface SetTextBodyRun {
+  text: string;
+  /** Source `[paragraphIndex, runIndex]` to copy `a:rPr` from. When omitted the
+   *  first run of the source paragraph (or no rPr at all) is used. */
+  sourceRun?: [number, number];
+}
+
 export type EditOperation =
   | SetTextRunOperation
   | SetNodeTransformOperation
@@ -103,7 +124,8 @@ export type EditOperation =
   | DeleteNodeOperation
   | MoveSlideOperation
   | DuplicateSlideOperation
-  | DeleteSlideOperation;
+  | DeleteSlideOperation
+  | SetTextBodyOperation;
 
 export interface EditResult {
   /** Slide ids whose rendered output may have changed. */
@@ -125,6 +147,8 @@ export async function applyEdit(
   switch (op.type) {
     case "setTextRun":
       return applySetTextRun(presentation, op);
+    case "setTextBody":
+      return applySetTextBody(presentation, op);
     case "setNodeTransform":
       return applySetNodeTransform(presentation, op);
     case "setSolidFill":
@@ -247,6 +271,159 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
     undo: () => {
       tEl.textContent = prevText;
       run.text = prevText;
+      pkg.markDirty(slide.id);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// setTextBody
+// ---------------------------------------------------------------------------
+
+function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): EditResult {
+  const pkg = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+
+  if (node.nodeType !== "shape" || !node.textBody) {
+    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body`);
+  }
+  const shape = node as ShapeNodeData;
+  const textBody = shape.textBody!;
+
+  // Snapshot the current state for undo.
+  const prevParagraphs = textBody.paragraphs;
+
+  // XML: <p:txBody> element containing the live <a:p> elements.
+  const txBodyNode = node.source.child("txBody");
+  const txBodyEl = requireElement(txBodyNode, "txBody");
+  const doc = txBodyEl.ownerDocument;
+
+  // Snapshot original <a:p> elements (for undo) and keep them by index for
+  // cloning pPr/rPr from source references.
+  const origPEls = Array.from(txBodyEl.getElementsByTagNameNS(A_NS, "p"));
+  const origParagraphs = prevParagraphs;
+
+  // Collect source run XML elements indexed by [pIdx][rIdx].
+  const origRunEls: Element[][] = [];
+  for (const pEl of origPEls) {
+    const runEls: Element[] = [];
+    for (const child of Array.from(pEl.children)) {
+      if (RUN_LOCAL_NAMES.has(child.localName)) {
+        runEls.push(child);
+      }
+    }
+    origRunEls.push(runEls);
+  }
+
+  // Remove existing <a:p> elements from txBody.
+  for (const pEl of origPEls) {
+    removeChild(pEl);
+  }
+
+  // Build new <a:p> elements and model paragraphs.
+  const newParagraphs: TextParagraph[] = [];
+
+  for (const opPara of op.paragraphs) {
+    const pEl = doc.createElementNS(A_NS, "a:p");
+
+    // Clone a:pPr from source paragraph.
+    let level = 0;
+    let pPrNode: SafeXmlNode | undefined;
+    let endParaRPrNode: SafeXmlNode | undefined;
+    if (opPara.sourceParagraphIndex >= 0 && opPara.sourceParagraphIndex < origParagraphs.length) {
+      const srcPara = origParagraphs[opPara.sourceParagraphIndex];
+      level = srcPara.level;
+      if (srcPara.properties?.element) {
+        pEl.appendChild(srcPara.properties.element.cloneNode(true));
+        pPrNode = new SafeXmlNode(pEl.getElementsByTagNameNS(A_NS, "pPr")[0]);
+      }
+      if (srcPara.endParaRPr?.element) {
+        endParaRPrNode = new SafeXmlNode(srcPara.endParaRPr.element.cloneNode(true) as Element);
+      }
+    }
+
+    const runs: TextRun[] = [];
+
+    // Resolve default rPr to clone when sourceRun is not specified.
+    function resolveDefaultRPr(srcParaIdx: number): Element | null {
+      if (srcParaIdx < 0 || srcParaIdx >= origParagraphs.length) return null;
+      const srcRuns = origRunEls[srcParaIdx];
+      if (!srcRuns || srcRuns.length === 0) return null;
+      const firstRunEl = srcRuns[0];
+      const rPr = firstRunEl.getElementsByTagNameNS(A_NS, "rPr")[0];
+      return rPr ?? null;
+    }
+
+    for (const opRun of opPara.runs) {
+      // Resolve the source rPr element to clone styling from.
+      let rPrEl: Element | null = null;
+      if (opRun.sourceRun) {
+        const [srcPI, srcRI] = opRun.sourceRun;
+        const srcRunEl = origRunEls[srcPI]?.[srcRI];
+        if (srcRunEl) {
+          rPrEl = srcRunEl.getElementsByTagNameNS(A_NS, "rPr")[0] ?? null;
+        }
+      } else {
+        rPrEl = resolveDefaultRPr(opPara.sourceParagraphIndex);
+      }
+
+      // a:br for newlines, a:r for text.
+      if (opRun.text === "\n") {
+        const brEl = doc.createElementNS(A_NS, "a:br");
+        if (rPrEl) brEl.appendChild(rPrEl.cloneNode(true));
+        pEl.appendChild(brEl);
+        runs.push({
+          text: "\n",
+          properties: rPrEl ? new SafeXmlNode(brEl.getElementsByTagNameNS(A_NS, "rPr")[0]) : undefined,
+        });
+      } else {
+        const rEl = doc.createElementNS(A_NS, "a:r");
+        if (rPrEl) rEl.appendChild(rPrEl.cloneNode(true));
+        const tEl = doc.createElementNS(A_NS, "a:t");
+        tEl.textContent = opRun.text;
+        rEl.appendChild(tEl);
+        pEl.appendChild(rEl);
+        runs.push({
+          text: opRun.text,
+          properties: rPrEl ? new SafeXmlNode(rEl.getElementsByTagNameNS(A_NS, "rPr")[0]) : undefined,
+        });
+      }
+    }
+
+    // Append a:endParaRPr if the source paragraph had one.
+    if (endParaRPrNode?.element) {
+      pEl.appendChild(endParaRPrNode.element);
+    }
+
+    insertChild(txBodyEl, pEl, null);
+
+    newParagraphs.push({
+      properties: pPrNode,
+      runs,
+      level,
+      endParaRPr: endParaRPrNode,
+    });
+  }
+
+  // Update the typed model.
+  textBody.paragraphs = newParagraphs;
+  pkg.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      // Remove new <a:p> elements.
+      const currentPEls = Array.from(txBodyEl.getElementsByTagNameNS(A_NS, "p"));
+      for (const pEl of currentPEls) {
+        removeChild(pEl);
+      }
+      // Restore original <a:p> elements.
+      for (const pEl of origPEls) {
+        insertChild(txBodyEl, pEl, null);
+      }
+      // Restore model.
+      textBody.paragraphs = prevParagraphs;
       pkg.markDirty(slide.id);
     },
   };

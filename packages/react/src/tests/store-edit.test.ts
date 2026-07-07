@@ -223,6 +223,34 @@ describe("structural edits and navigation", () => {
   });
 });
 
+describe("setTextBody via store", () => {
+  it("replaces the text body and bumps revision; undo restores", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+
+    await store.edit({
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [
+        { sourceParagraphIndex: 0, runs: [{ text: "First line" }] },
+        { sourceParagraphIndex: 0, runs: [{ text: "Second line" }] },
+      ],
+    });
+
+    const shape = store.getState().presentation!.slides[0].nodes.find(
+      (n) => n.id === "2",
+    ) as ShapeNodeData;
+    expect(shape.textBody?.paragraphs).toHaveLength(2);
+    expect(shape.textBody?.paragraphs[0].runs[0].text).toBe("First line");
+    expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Second line");
+    expect(store.getSlideRevision(slideId)).toBe(1);
+
+    store.undo();
+    expect(slideText(store, 0)).toBe("Slide 1");
+  });
+});
+
 describe("history lifecycle", () => {
   it("clears edit history and revisions on a new load", async () => {
     const store = await editableStore();
