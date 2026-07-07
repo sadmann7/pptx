@@ -8,6 +8,13 @@ import { mergeRefs, renderElement } from "./render";
 
 const SELECTION_NAME = "PresentationSelection";
 
+/** Temporary debug logging for inline text editing. */
+const DEBUG_TEXT_EDIT = true;
+
+function debugLog(...args: unknown[]): void {
+  if (DEBUG_TEXT_EDIT) console.debug("[pptx-selection]", ...args);
+}
+
 /** Minimum shape size (slide px) a resize can shrink to. */
 const MIN_SIZE = 8;
 /** Screen-px movement before a pointer-down becomes a drag instead of a click. */
@@ -109,11 +116,16 @@ function nodeRect(node: SlideNode): Rect {
 function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
 
-  const paraDivs = Array.from(container.children).filter(
+  const children = Array.from(container.children).filter(
     (el) => el instanceof HTMLElement,
   ) as HTMLElement[];
 
-  const effectiveDivs = paraDivs.length > 0 ? paraDivs : [container];
+  // After destructive edits the paragraph divs may be gone, leaving run
+  // spans (or bare text) directly in the container — treat the container
+  // itself as a single implicit paragraph in that case.
+  const paraDivs = children.filter((el) => el.dataset.pptxR === undefined);
+  const effectiveDivs =
+    paraDivs.length > 0 && paraDivs.length === children.length ? paraDivs : [container];
   let lastSourceP = 0;
 
   for (const paraDiv of effectiveDivs) {
@@ -126,6 +138,14 @@ function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   }
 
   return paragraphs;
+}
+
+/**
+ * Strip zero-width spaces: caret placeholders inserted by `snapCaretIntoRun`
+ * and line-height spacer spans from the renderer must not reach the model.
+ */
+function cleanText(raw: string | null | undefined): string {
+  return (raw ?? "").replace(/\u200B/g, "");
 }
 
 function readRunsFromParagraphDiv(
@@ -143,7 +163,7 @@ function readRunsFromParagraphDiv(
     if (child instanceof HTMLElement && child.dataset.pptxR !== undefined) {
       const runIdx = Number(child.dataset.pptxR);
       const sourceRun: [number, number] = [defaultSourceP, runIdx];
-      const text = child.textContent ?? "";
+      const text = cleanText(child.textContent);
       if (text.length > 0) {
         runs.push({ text, sourceRun });
         lastSourceR = sourceRun;
@@ -151,12 +171,12 @@ function readRunsFromParagraphDiv(
     } else if (child instanceof HTMLBRElement) {
       // Browsers insert <br> for empty paragraphs; skip.
     } else if (child.nodeType === Node.TEXT_NODE) {
-      const text = child.textContent ?? "";
+      const text = cleanText(child.textContent);
       if (text.length > 0) {
         runs.push({ text, sourceRun: lastSourceR });
       }
     } else if (child instanceof HTMLElement) {
-      const text = child.textContent ?? "";
+      const text = cleanText(child.textContent);
       if (text.length > 0) {
         runs.push({ text, sourceRun: lastSourceR });
       }
@@ -249,6 +269,20 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const stateRef = React.useRef(state);
   stateRef.current = state;
 
+  // Shallow clone of a styled run span, captured on entering text mode.
+  // When the browser destroys all run spans (select-all + delete), typed
+  // text is re-wrapped with this template so it keeps the run's styling.
+  const runTemplateRef = React.useRef<HTMLElement | null>(null);
+
+  // Edit revision of the active slide. A bump means SlideImpl will replace
+  // the slide DOM in its effect; the text-mode repair effect below uses this
+  // to re-attach contentEditable to the fresh DOM.
+  const slideRevision = React.useSyncExternalStore(
+    store.subscribe,
+    () => (slideId != null ? store.getSlideRevision(slideId) : 0),
+    () => 0,
+  );
+
   const selectedNode =
     state.mode !== "idle" && slide
       ? (slide.nodes.find((n) => n.id === state.nodeId) ?? null)
@@ -273,8 +307,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   }
 
   function textContainerOf(shapeEl: HTMLElement): HTMLElement | null {
-    const firstPara = shapeEl.querySelector("[data-pptx-p]");
-    return (firstPara?.parentElement as HTMLElement) ?? null;
+    // Empty placeholders also render a prompt overlay ("Click to add text")
+    // whose paragraphs carry data-pptx-p; skip it — only the real text
+    // container is editable.
+    for (const para of Array.from(shapeEl.querySelectorAll<HTMLElement>("[data-pptx-p]"))) {
+      if (para.closest("[data-pptx-placeholder-prompt]")) continue;
+      return para.parentElement;
+    }
+    return null;
+  }
+
+  function placeholderPromptOf(shapeEl: HTMLElement): HTMLElement | null {
+    return shapeEl.querySelector<HTMLElement>("[data-pptx-placeholder-prompt]");
   }
 
   function hitTest(clientX: number, clientY: number): string | null {
@@ -315,9 +359,20 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   function enterTextMode(nodeId: string, clientX?: number, clientY?: number): void {
     const shapeEl = shapeElement(nodeId);
-    if (!shapeEl) return;
-    const textEl = textContainerOf(shapeEl);
-    if (!textEl) return;
+    const textEl = shapeEl ? textContainerOf(shapeEl) : null;
+    debugLog("enterTextMode", {
+      nodeId,
+      shapeElFound: Boolean(shapeEl),
+      textElFound: Boolean(textEl),
+      textElConnected: textEl?.isConnected,
+      textElHtml: textEl?.outerHTML.slice(0, 200),
+    });
+    if (!textEl) {
+      // No editable text container (e.g. decorative shape) — fall back to
+      // selection instead of leaving the previous mode (move) active.
+      setState({ mode: "selected", nodeId });
+      return;
+    }
 
     textEl.contentEditable = "plaintext-only";
     if (!textEl.isContentEditable) {
@@ -325,6 +380,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     }
     textEl.style.cursor = "text";
     textEl.style.outline = "none";
+
+    // Capture a styling template before the browser can mutate the DOM.
+    const templateSource = textEl.querySelector<HTMLElement>("[data-pptx-r]");
+    runTemplateRef.current = templateSource
+      ? (templateSource.cloneNode(false) as HTMLElement)
+      : null;
+
+    // Hide the placeholder prompt overlay ("Click to add text") while
+    // editing — it paints above the real text container and would cover
+    // freshly typed text. The commit re-render restores or drops it.
+    const prompt = shapeEl ? placeholderPromptOf(shapeEl) : null;
+    if (prompt) prompt.style.display = "none";
 
     // The caret-from-point APIs hit-test the DOM, and the overlay still
     // covers the text at this moment (React hasn't re-rendered with
@@ -340,6 +407,15 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       placeCaretAtEnd(textEl);
     }
 
+    const sel = window.getSelection();
+    debugLog("enterTextMode done", {
+      activeElement: document.activeElement?.tagName,
+      activeIsTextEl: document.activeElement === textEl,
+      selAnchorInTextEl: sel?.anchorNode ? textEl.contains(sel.anchorNode) : null,
+      selAnchor: sel?.anchorNode?.nodeName,
+      isContentEditable: textEl.isContentEditable,
+    });
+
     setState({ mode: "text", nodeId, editingEl: textEl });
   }
 
@@ -350,15 +426,97 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
    * earliest reliable moment the replacement shape element exists.
    */
   function resumeTextEditing(nodeId: string): void {
+    debugLog("resumeTextEditing scheduled", { nodeId });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        debugLog("resumeTextEditing firing", { nodeId });
         enterTextMode(nodeId);
       });
     });
   }
 
+  /**
+   * Place the caret inside the last styled run span of `scope`. Typed text
+   * must land inside a `[data-pptx-r]` span to inherit the run's font and
+   * color — a bare text node at the container/paragraph level renders with
+   * unstyled defaults (e.g. black text on a dark slide → invisible typing).
+   * Returns false when the scope has no run spans.
+   */
+  function snapCaretIntoRun(scope: HTMLElement): boolean {
+    const runs = scope.querySelectorAll<HTMLElement>("[data-pptx-r]");
+    const last = runs[runs.length - 1];
+    if (!last) return false;
+    const sel = window.getSelection();
+    if (!sel) return false;
+
+    let target = last.lastChild;
+    if (!target || target.nodeType !== Node.TEXT_NODE) {
+      target = document.createTextNode("");
+      last.appendChild(target);
+    }
+    // Chrome cannot keep the caret inside an empty text node: the first
+    // keystroke escapes into the parent div, losing the run's styling
+    // (typed text then inherits theme defaults, e.g. near-white → invisible).
+    // A zero-width space gives the caret a real position; read-back strips it.
+    if ((target.textContent ?? "").length === 0) {
+      target.textContent = "\u200B";
+    }
+    const range = document.createRange();
+    range.setStart(target, (target.textContent ?? "").length);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }
+
+  /**
+   * Self-repair after destructive edits (e.g. select-all + delete): the
+   * browser removes the styled run spans, so subsequent typing lands on a
+   * bare div and renders with unstyled defaults. Re-wrap the text node at
+   * the caret in a clone of the run span captured on entering text mode.
+   */
+  function repairRunStyling(editingEl: HTMLElement): void {
+    const sel = window.getSelection();
+    const anchor = sel?.anchorNode;
+    if (!anchor || !sel?.isCollapsed || !editingEl.contains(anchor)) return;
+    const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
+    if (!anchorEl || anchorEl.closest("[data-pptx-r]")) return;
+
+    const template = runTemplateRef.current;
+    if (!template) return;
+
+    const span = template.cloneNode(false) as HTMLElement;
+    const offset = sel.anchorOffset;
+
+    if (anchor.nodeType === Node.TEXT_NODE) {
+      // Reparent the bare text node into a styled span; the node identity is
+      // preserved so the caret offset stays valid.
+      anchor.parentNode?.insertBefore(span, anchor);
+      span.appendChild(anchor);
+      const range = document.createRange();
+      range.setStart(anchor, Math.min(offset, (anchor.textContent ?? "").length));
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      // No text node at the caret (everything was deleted); insert a seeded
+      // span so the next keystroke lands inside it.
+      const text = document.createTextNode("\u200B");
+      span.appendChild(text);
+      const range = sel.getRangeAt(0);
+      range.insertNode(span);
+      const caret = document.createRange();
+      caret.setStart(text, text.length);
+      caret.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(caret);
+    }
+    debugLog("repaired run styling at caret", { spanHtml: span.outerHTML.slice(0, 200) });
+  }
+
   function placeCaretAtEnd(textEl: HTMLElement): void {
     try {
+      if (snapCaretIntoRun(textEl)) return;
       const sel = window.getSelection();
       if (!sel) return;
       const range = document.createRange();
@@ -390,6 +548,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
           range.collapse(true);
           sel.removeAllRanges();
           sel.addRange(range);
+          fixupCaretAnchor(sel);
           return;
         }
       }
@@ -399,11 +558,26 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         if (range) {
           sel.removeAllRanges();
           sel.addRange(range);
+          fixupCaretAnchor(sel);
         }
       }
     } catch {
       // Ignore caret placement failures.
     }
+  }
+
+  /**
+   * If a point-placed caret anchored on an element (not a text node inside a
+   * run span), snap it into the nearest run so typing inherits run styling.
+   */
+  function fixupCaretAnchor(sel: Selection): void {
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    if (anchor.nodeType === Node.TEXT_NODE) return;
+    const el = anchor as HTMLElement;
+    // Prefer a run in the paragraph under the caret, else anywhere in scope.
+    const paraDiv = el.closest?.("[data-pptx-p]") as HTMLElement | null;
+    snapCaretIntoRun(paraDiv ?? el);
   }
 
   /** Tear down contentEditable and commit the edited text if it changed. */
@@ -413,9 +587,23 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     editingEl.contentEditable = "false";
     editingEl.style.cursor = "";
 
+    // Un-hide the placeholder prompt hidden by enterTextMode. When the edit
+    // commits, the re-render rebuilds the shape anyway; when nothing changed
+    // (no re-render), the prompt must come back by hand.
+    const shapeEl = shapeElement(nodeId);
+    const prompt = shapeEl ? placeholderPromptOf(shapeEl) : null;
+    if (prompt) prompt.style.display = "";
+
     const node = slide!.nodes.find((n) => n.id === nodeId);
     if (!node) return;
     const readBack = readBackTextBody(editingEl);
+    debugLog("commitTextEdits", {
+      nodeId,
+      editingElConnected: editingEl.isConnected,
+      editingElHtml: editingEl.innerHTML.slice(0, 200),
+      readBack: JSON.stringify(readBack).slice(0, 300),
+      changed: textBodyChanged(node, readBack),
+    });
     if (!textBodyChanged(node, readBack)) return;
 
     commitEdit(
@@ -503,14 +691,70 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       }
     }
 
+    function onDocInput(e: Event): void {
+      const cur = stateRef.current;
+      if (cur.mode !== "text") return;
+      repairRunStyling(cur.editingEl);
+      const target = e.target as HTMLElement;
+      const sel = window.getSelection();
+      const anchorNode = sel?.anchorNode;
+      const anchorEl =
+        anchorNode instanceof Element
+          ? (anchorNode as HTMLElement)
+          : (anchorNode?.parentElement ?? null);
+      const rect = anchorEl?.getBoundingClientRect();
+      const cs = anchorEl ? getComputedStyle(anchorEl) : null;
+      const onTop =
+        rect && rect.width + rect.height > 0
+          ? document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+          : null;
+      debugLog("input event", {
+        typedContent: cur.editingEl.textContent?.slice(0, 80),
+        anchorTag: anchorEl?.tagName,
+        anchorIsRunSpan: anchorEl?.dataset?.pptxR !== undefined,
+        anchorRect: rect ? `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}` : null,
+        color: cs?.color,
+        fontSize: cs?.fontSize,
+        opacity: cs?.opacity,
+        visibility: cs?.visibility,
+        onTopAtAnchor: onTop ? `${onTop.tagName} ${(onTop as HTMLElement).dataset?.pptxNodeId ?? ""}` : null,
+        anchorHtml: anchorEl?.outerHTML.slice(0, 200),
+        targetIsEditingEl: target === cur.editingEl,
+        editingElConnected: cur.editingEl.isConnected,
+      });
+    }
+
     document.addEventListener("pointerdown", onDocPointerDown, true);
     document.addEventListener("keydown", onDocKeyDown, true);
+    document.addEventListener("input", onDocInput, true);
     return () => {
       document.removeEventListener("pointerdown", onDocPointerDown, true);
       document.removeEventListener("keydown", onDocKeyDown, true);
+      document.removeEventListener("input", onDocInput, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stateRef is stable
   }, [isTextMode]);
+
+  // --- Text-mode repair after slide re-renders ---
+  // A revision bump makes SlideImpl replace the slide DOM in its effect,
+  // detaching our contentEditable element: typed text would go into the
+  // detached tree and never appear on screen. SlideImpl is a parent, so its
+  // effect runs after this one; the rAF fires after the whole effects flush,
+  // when the fresh DOM is in place, and re-attaches editing to it.
+  React.useEffect(() => {
+    debugLog("revision effect", { slideRevision, mode: stateRef.current.mode });
+    if (stateRef.current.mode !== "text") return;
+    const raf = requestAnimationFrame(() => {
+      const cur = stateRef.current;
+      if (cur.mode !== "text") return;
+      debugLog("repair check", { editingElConnected: cur.editingEl.isConnected });
+      if (cur.editingEl.isConnected) return;
+      debugLog("repairing: re-entering text mode", { nodeId: cur.nodeId });
+      enterTextMode(cur.nodeId);
+    });
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- repair keyed on revision only
+  }, [slideRevision]);
 
   // --- Overlay pointer events (non-text modes) ---
 
