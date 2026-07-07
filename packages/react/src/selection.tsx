@@ -141,8 +141,8 @@ function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
 }
 
 /**
- * Strip zero-width spaces: caret placeholders inserted by `snapCaretIntoRun`
- * and line-height spacer spans from the renderer must not reach the model.
+ * Strip zero-width spaces: line-height spacer spans from the renderer must
+ * not reach the model.
  */
 function cleanText(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\u200B/g, "");
@@ -269,10 +269,11 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const stateRef = React.useRef(state);
   stateRef.current = state;
 
-  // Shallow clone of a styled run span, captured on entering text mode.
-  // When the browser destroys all run spans (select-all + delete), typed
-  // text is re-wrapped with this template so it keeps the run's styling.
-  const runTemplateRef = React.useRef<HTMLElement | null>(null);
+  // Shallow clone of a styled run span, captured per shape on entering text
+  // mode. When the browser destroys all run spans (select-all + delete),
+  // typed text is re-wrapped with this template so it keeps the run's
+  // styling.
+  const runTemplateRef = React.useRef<{ nodeId: string; span: HTMLElement } | null>(null);
 
   // Edit revision of the active slide. A bump means SlideImpl will replace
   // the slide DOM in its effect; the text-mode repair effect below uses this
@@ -382,10 +383,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     textEl.style.outline = "none";
 
     // Capture a styling template before the browser can mutate the DOM.
+    // When the DOM has no run spans left (e.g. re-entering a box that was
+    // cleared without a re-render), keep the template captured earlier for
+    // this shape instead of discarding it.
     const templateSource = textEl.querySelector<HTMLElement>("[data-pptx-r]");
-    runTemplateRef.current = templateSource
-      ? (templateSource.cloneNode(false) as HTMLElement)
-      : null;
+    if (templateSource) {
+      runTemplateRef.current = {
+        nodeId,
+        span: templateSource.cloneNode(false) as HTMLElement,
+      };
+    } else if (runTemplateRef.current?.nodeId !== nodeId) {
+      runTemplateRef.current = null;
+    }
 
     // Hide the placeholder prompt overlay ("Click to add text") while
     // editing — it paints above the real text container and would cover
@@ -454,13 +463,10 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       target = document.createTextNode("");
       last.appendChild(target);
     }
-    // Chrome cannot keep the caret inside an empty text node: the first
-    // keystroke escapes into the parent div, losing the run's styling
-    // (typed text then inherits theme defaults, e.g. near-white → invisible).
-    // A zero-width space gives the caret a real position; read-back strips it.
-    if ((target.textContent ?? "").length === 0) {
-      target.textContent = "\u200B";
-    }
+    // Note: Chrome cannot keep the caret inside an empty text node — the
+    // first keystroke would escape into the parent div and lose the run's
+    // styling. The beforeinput interceptor (onDocBeforeInput) handles that
+    // case by inserting the typed text into the span itself.
     const range = document.createRange();
     range.setStart(target, (target.textContent ?? "").length);
     range.collapse(true);
@@ -469,48 +475,127 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     return true;
   }
 
+  /** Move the caret to the given text node offset. */
+  function setCaret(node: Node, offset: number): void {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
   /**
-   * Self-repair after destructive edits (e.g. select-all + delete): the
-   * browser removes the styled run spans, so subsequent typing lands on a
-   * bare div and renders with unstyled defaults. Re-wrap the text node at
-   * the caret in a clone of the run span captured on entering text mode.
+   * Empty paragraphs are rendered with a placeholder `<br>` to preserve their
+   * line height; once real text is inserted the `<br>` would push it onto a
+   * second line. Remove it, but only when the paragraph holds nothing except
+   * the just-inserted text — `<br>`s in paragraphs with other content are
+   * genuine line breaks.
    */
-  function repairRunStyling(editingEl: HTMLElement): void {
+  function removePlaceholderBreak(from: Node, insertedText: string): void {
+    const el = from instanceof Element ? (from as HTMLElement) : from.parentElement;
+    const para = el?.closest<HTMLElement>("[data-pptx-p]");
+    if (!para) return;
+    if (cleanText(para.textContent) !== cleanText(insertedText)) return;
+    for (const child of Array.from(para.children)) {
+      if (child instanceof HTMLBRElement) child.remove();
+    }
+  }
+
+  /**
+   * Intercept text insertion when the browser would drop it outside a styled
+   * run span. Chrome cannot keep the caret inside an empty text node (the
+   * keystroke escapes into the parent div), and destructive edits like
+   * select-all + delete remove the run spans entirely — in both cases typed
+   * text would render with unstyled defaults (e.g. near-white → invisible).
+   * Instead of the default insertion we place the text into the run span at
+   * the caret, or into a clone of the span captured on entering text mode.
+   */
+  /** The styling template span for a shape, if one was captured for it. */
+  function runTemplateFor(nodeId: string): HTMLElement | null {
+    const entry = runTemplateRef.current;
+    return entry && entry.nodeId === nodeId ? entry.span : null;
+  }
+
+  function interceptTextInsertion(e: InputEvent, editingEl: HTMLElement, nodeId: string): void {
+    if (e.inputType !== "insertText" || !e.data) return;
+    const sel = window.getSelection();
+    const anchor = sel?.anchorNode;
+    if (!anchor || !sel.isCollapsed || !editingEl.contains(anchor)) return;
+
+    const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
+    const runSpan = anchorEl?.closest<HTMLElement>("[data-pptx-r]");
+
+    if (runSpan) {
+      // Caret is in a run span with a non-empty text node: the default
+      // insertion behaves correctly, don't interfere.
+      if (anchor.nodeType === Node.TEXT_NODE && (anchor.textContent ?? "").length > 0) return;
+      // Empty span — insert the text ourselves so it stays inside.
+      e.preventDefault();
+      let textNode = runSpan.lastChild;
+      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+        textNode = document.createTextNode("");
+        runSpan.appendChild(textNode);
+      }
+      textNode.textContent = (textNode.textContent ?? "") + e.data;
+      removePlaceholderBreak(textNode, e.data);
+      setCaret(textNode, (textNode.textContent ?? "").length);
+      debugLog("beforeinput: inserted into empty run span", { data: e.data });
+      return;
+    }
+
+    // Caret is on a bare div (run spans destroyed): wrap the insertion in a
+    // clone of the template span so it keeps the run's styling.
+    const template = runTemplateFor(nodeId);
+    if (!template) return;
+    e.preventDefault();
+    const span = template.cloneNode(false) as HTMLElement;
+    const textNode = document.createTextNode(e.data);
+    span.appendChild(textNode);
+    if (anchorEl?.closest("[data-pptx-p]")) {
+      sel.getRangeAt(0).insertNode(span);
+    } else {
+      // Caret sits at the container level (e.g. caret fallback when all run
+      // spans were destroyed): inserting there would land the span *below*
+      // the paragraph div, on its own line. Append into the last paragraph
+      // instead.
+      const paras = editingEl.querySelectorAll<HTMLElement>("[data-pptx-p]");
+      const lastPara = paras[paras.length - 1];
+      if (lastPara) lastPara.appendChild(span);
+      else sel.getRangeAt(0).insertNode(span);
+    }
+    removePlaceholderBreak(span, e.data);
+    setCaret(textNode, textNode.length);
+    debugLog("beforeinput: rewrapped typing in run span", {
+      spanHtml: span.outerHTML.slice(0, 200),
+    });
+  }
+
+  /**
+   * Post-input safety net: if typed text still ended up as a bare text node
+   * outside any run span (paths not covered by beforeinput, e.g. IME
+   * composition or paste), reparent it into a clone of the template span.
+   */
+  function repairRunStyling(editingEl: HTMLElement, nodeId: string): void {
     const sel = window.getSelection();
     const anchor = sel?.anchorNode;
     if (!anchor || !sel?.isCollapsed || !editingEl.contains(anchor)) return;
-    const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
+    if (anchor.nodeType !== Node.TEXT_NODE) return;
+    const anchorEl = anchor.parentElement;
     if (!anchorEl || anchorEl.closest("[data-pptx-r]")) return;
 
-    const template = runTemplateRef.current;
+    const template = runTemplateFor(nodeId);
     if (!template) return;
 
     const span = template.cloneNode(false) as HTMLElement;
     const offset = sel.anchorOffset;
-
-    if (anchor.nodeType === Node.TEXT_NODE) {
-      // Reparent the bare text node into a styled span; the node identity is
-      // preserved so the caret offset stays valid.
-      anchor.parentNode?.insertBefore(span, anchor);
-      span.appendChild(anchor);
-      const range = document.createRange();
-      range.setStart(anchor, Math.min(offset, (anchor.textContent ?? "").length));
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    } else {
-      // No text node at the caret (everything was deleted); insert a seeded
-      // span so the next keystroke lands inside it.
-      const text = document.createTextNode("\u200B");
-      span.appendChild(text);
-      const range = sel.getRangeAt(0);
-      range.insertNode(span);
-      const caret = document.createRange();
-      caret.setStart(text, text.length);
-      caret.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(caret);
-    }
+    // Reparent the bare text node into a styled span; the node identity is
+    // preserved so the caret offset stays valid.
+    anchor.parentNode?.insertBefore(span, anchor);
+    span.appendChild(anchor);
+    removePlaceholderBreak(span, anchor.textContent ?? "");
+    setCaret(anchor, Math.min(offset, (anchor.textContent ?? "").length));
     debugLog("repaired run styling at caret", { spanHtml: span.outerHTML.slice(0, 200) });
   }
 
@@ -519,8 +604,13 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       if (snapCaretIntoRun(textEl)) return;
       const sel = window.getSelection();
       if (!sel) return;
+      // No run spans: prefer the end of the last paragraph div over the
+      // container itself so typing lands on the paragraph's line rather
+      // than a new line below it.
+      const paras = textEl.querySelectorAll<HTMLElement>("[data-pptx-p]");
+      const target = paras[paras.length - 1] ?? textEl;
       const range = document.createRange();
-      range.selectNodeContents(textEl);
+      range.selectNodeContents(target);
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
@@ -691,10 +781,16 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       }
     }
 
+    function onDocBeforeInput(e: Event): void {
+      const cur = stateRef.current;
+      if (cur.mode !== "text") return;
+      interceptTextInsertion(e as InputEvent, cur.editingEl, cur.nodeId);
+    }
+
     function onDocInput(e: Event): void {
       const cur = stateRef.current;
       if (cur.mode !== "text") return;
-      repairRunStyling(cur.editingEl);
+      repairRunStyling(cur.editingEl, cur.nodeId);
       const target = e.target as HTMLElement;
       const sel = window.getSelection();
       const anchorNode = sel?.anchorNode;
@@ -726,10 +822,12 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
     document.addEventListener("pointerdown", onDocPointerDown, true);
     document.addEventListener("keydown", onDocKeyDown, true);
+    document.addEventListener("beforeinput", onDocBeforeInput, true);
     document.addEventListener("input", onDocInput, true);
     return () => {
       document.removeEventListener("pointerdown", onDocPointerDown, true);
       document.removeEventListener("keydown", onDocKeyDown, true);
+      document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stateRef is stable
