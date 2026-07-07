@@ -114,6 +114,9 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
     if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache,
+      // Editable presentations (loaded with readOnly: false) get PowerPoint-style
+      // dashed outlines and prompt text on empty placeholders.
+      placeholderPrompts: presentation.pkg != null,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },

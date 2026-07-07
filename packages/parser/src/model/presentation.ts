@@ -573,6 +573,30 @@ function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {
 }
 
 /**
+ * Find the layout (or master, as fallback) placeholder shape node that a slide
+ * placeholder inherits from. Used for edit-mode prompt text: the template
+ * node's txBody carries the "Click to add title"-style prompt runs.
+ */
+export function findPlaceholderTemplateNode(
+  placeholder: PlaceholderInfo,
+  layout: LayoutData | undefined,
+  master: MasterData | undefined,
+): SafeXmlNode | undefined {
+  const layoutMatch = layout
+    ? findMatchingLayoutPlaceholder(layout.placeholders, placeholder.type, placeholder.idx)
+    : undefined;
+  if (layoutMatch) return layoutMatch.node;
+  const masterMatch = master
+    ? findMatchingLayoutPlaceholder(
+        getMasterPlaceholderEntries(master),
+        placeholder.type,
+        placeholder.idx,
+      )
+    : undefined;
+  return masterMatch?.node;
+}
+
+/**
  * Walk through all slide nodes (including group children recursively)
  * and fill in missing position/size from layout/master placeholders.
  */

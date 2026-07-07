@@ -43,6 +43,12 @@ export interface SlideRendererOptions {
   pdfjs?: PdfjsConfig;
   /** Shared set of live ECharts instances for explicit disposal. */
   chartInstances?: Set<ECharts>;
+  /**
+   * Render empty slide placeholders with a dashed outline and the
+   * layout/master prompt text, like PowerPoint's editing view.
+   * Intended for edit mode; default `false`.
+   */
+  placeholderPrompts?: boolean;
 }
 
 /**
@@ -419,6 +425,9 @@ export function renderSlide(
   ctx.asyncTasks = asyncTasks;
   if (options?.onNavigate) {
     ctx.onNavigate = options.onNavigate;
+  }
+  if (options?.placeholderPrompts) {
+    ctx.placeholderPrompts = true;
   }
 
   // Create slide container
