@@ -254,4 +254,31 @@ describe("placeholder inheritance type equivalence", () => {
     expect(node.position).toEqual({ x: 96, y: 288 });
     expect(node.size).toEqual({ w: 192, h: 192 });
   });
+
+  it("inherits layout `title` lstStyle for a rendered `ctrTitle` placeholder", async () => {
+    // Layout title placeholder styles runs at 44pt in a distinctive color.
+    const layoutTitle = `<p:sp>
+<p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="4572000" cy="914400"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr/>
+<a:lstStyle><a:lvl1pPr><a:defRPr sz="4400"><a:solidFill><a:srgbClr val="123456"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>
+<a:p><a:r><a:t>Title prompt</a:t></a:r></a:p></p:txBody>
+</p:sp>`;
+    // Slide uses ctrTitle with no geometry, no run properties of its own.
+    const slideCtrTitle = `<p:sp>
+<p:nvSpPr><p:cNvPr id="10" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr><p:ph type="ctrTitle"/></p:nvPr></p:nvSpPr>
+<p:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>EQUIV MARKER</a:t></a:r></a:p></p:txBody>
+</p:sp>`;
+
+    const element = await renderCustomSlide({
+      slides: [slideCtrTitle],
+      layoutShapesXml: layoutTitle,
+    });
+
+    const span = markerSpan(element, "EQUIV MARKER");
+    // Color and size come from the layout title's lstStyle via type equivalence.
+    expect(span.style.color.toUpperCase()).toBe("#123456");
+    expect(span.style.fontSize).toBe("44pt");
+  });
 });

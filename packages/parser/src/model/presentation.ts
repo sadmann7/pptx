@@ -506,7 +506,8 @@ export function normalizePlaceholderType(type: string | undefined): string | und
  *   4. exact type, any idx
  *   3. equivalent type, any idx
  *   2. same idx, both without type
- *   1. same idx, mismatched types (last-resort fallback)
+ *   1. same idx with mismatched types (last-resort fallback; only when both
+ *      placeholders explicitly specify idx, so defaulted idx 0 never triggers it)
  * A missing idx attribute is treated as idx 0 per OOXML defaults.
  */
 function findMatchingLayoutPlaceholder(

@@ -19,6 +19,8 @@ export interface CustomPptxOptions {
   masterBgXml?: string;
   /** Full `<p:clrMapOvr>...</p:clrMapOvr>` element for the slide layout. */
   layoutClrMapOvrXml?: string;
+  /** Shapes XML (`p:sp`/...) injected into the slide layout's spTree. */
+  layoutShapesXml?: string;
   /** Latin typeface for the theme's majorFont (default "Calibri Light"). */
   majorLatin?: string;
   /** Latin typeface for the theme's minorFont (default "Calibri"). */
@@ -185,6 +187,7 @@ function slideLayoutFor(options: CustomPptxOptions): string {
 <p:spTree>
 <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
 <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${options.layoutShapesXml ?? ""}
 </p:spTree>
 </p:cSld>
 ${clrMapOvr}
