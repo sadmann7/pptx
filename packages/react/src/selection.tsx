@@ -585,6 +585,10 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+    // No button held — not a drag. Guard against stale-state moves that can
+    // occur between setState({ mode: "selected" }) in onPointerUp and the
+    // React re-render that creates a fresh closure.
+    if (event.buttons === 0) return;
     if (state.mode !== "move" && state.mode !== "resize") return;
     const dx = (event.clientX - state.startX) / zoom;
     const dy = (event.clientY - state.startY) / zoom;
