@@ -375,7 +375,9 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
         pEl.appendChild(brEl);
         runs.push({
           text: "\n",
-          properties: rPrEl ? new SafeXmlNode(brEl.getElementsByTagNameNS(A_NS, "rPr")[0]) : undefined,
+          properties: rPrEl
+            ? new SafeXmlNode(brEl.getElementsByTagNameNS(A_NS, "rPr")[0])
+            : undefined,
         });
       } else {
         const rEl = doc.createElementNS(A_NS, "a:r");
@@ -386,7 +388,9 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
         pEl.appendChild(rEl);
         runs.push({
           text: opRun.text,
-          properties: rPrEl ? new SafeXmlNode(rEl.getElementsByTagNameNS(A_NS, "rPr")[0]) : undefined,
+          properties: rPrEl
+            ? new SafeXmlNode(rEl.getElementsByTagNameNS(A_NS, "rPr")[0])
+            : undefined,
         });
       }
     }

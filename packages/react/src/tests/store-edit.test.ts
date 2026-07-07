@@ -238,9 +238,9 @@ describe("setTextBody via store", () => {
       ],
     });
 
-    const shape = store.getState().presentation!.slides[0].nodes.find(
-      (n) => n.id === "2",
-    ) as ShapeNodeData;
+    const shape = store
+      .getState()
+      .presentation!.slides[0].nodes.find((n) => n.id === "2") as ShapeNodeData;
     expect(shape.textBody?.paragraphs).toHaveLength(2);
     expect(shape.textBody?.paragraphs[0].runs[0].text).toBe("First line");
     expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Second line");

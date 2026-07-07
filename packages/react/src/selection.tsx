@@ -40,6 +40,8 @@ type InternalState =
       dy: number;
       /** True once movement exceeded the drag threshold; gates the commit. */
       moved: boolean;
+      /** Move started from text-mode border drag: return to text mode after. */
+      resumeText?: boolean;
     }
   | {
       mode: "resize";
@@ -107,15 +109,10 @@ function nodeRect(node: SlideNode): Rect {
 function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
 
-  // The text container's children are paragraph divs (data-pptx-p) or
-  // browser-inserted divs (from pressing Enter).
   const paraDivs = Array.from(container.children).filter(
     (el) => el instanceof HTMLElement,
   ) as HTMLElement[];
 
-  // If the container has no child divs (e.g. all text was deleted and the
-  // user typed directly into the container) treat the whole container as one
-  // paragraph.
   const effectiveDivs = paraDivs.length > 0 ? paraDivs : [container];
   let lastSourceP = 0;
 
@@ -139,7 +136,6 @@ function readRunsFromParagraphDiv(
   let lastSourceR: [number, number] | undefined;
 
   for (const child of Array.from(paraDiv.childNodes)) {
-    // Skip bullet spans.
     if (child instanceof HTMLElement && child.dataset.pptxBullet !== undefined) {
       continue;
     }
@@ -153,14 +149,13 @@ function readRunsFromParagraphDiv(
         lastSourceR = sourceRun;
       }
     } else if (child instanceof HTMLBRElement) {
-      // Browsers insert <br> for empty paragraphs; skip at end.
+      // Browsers insert <br> for empty paragraphs; skip.
     } else if (child.nodeType === Node.TEXT_NODE) {
       const text = child.textContent ?? "";
       if (text.length > 0) {
         runs.push({ text, sourceRun: lastSourceR });
       }
     } else if (child instanceof HTMLElement) {
-      // Browser-wrapped content (e.g. <span> without data-pptx-r).
       const text = child.textContent ?? "";
       if (text.length > 0) {
         runs.push({ text, sourceRun: lastSourceR });
@@ -168,7 +163,6 @@ function readRunsFromParagraphDiv(
     }
   }
 
-  // Ensure at least one empty run so the paragraph is not dropped.
   if (runs.length === 0) {
     runs.push({ text: "", sourceRun: lastSourceR });
   }
@@ -231,13 +225,13 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * Place inside `<Presentation.Slide>`. Renders nothing unless the loaded
  * presentation was opened with `readOnly={false}`.
  *
- * - Click a shape to select it (topmost shape wins, like PowerPoint).
- * - Double-click (or F2/Enter) a text shape to edit text inline.
- * - Drag to move; drag the handles to resize (non-rotated shapes).
- * - Arrow keys nudge (Shift for 10px steps), Delete removes, Escape deselects.
- *
- * Every committed gesture goes through `store.edit()`, so it participates in
- * undo/redo and is persisted by `store.save()`.
+ * Interaction model mirrors PowerPoint:
+ * - Click inside a text shape → edit text (caret appears).
+ * - Drag any shape → move it.
+ * - Escape from text editing → select the shape (handles appear).
+ * - Escape from selection → deselect.
+ * - Click a non-text shape → select it.
+ * - Arrow keys nudge, Delete removes (while shape is selected, not editing text).
  */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
   { render, onUndo, onRedo, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
@@ -251,8 +245,10 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
-  // Selection is derived: a stale nodeId (deleted node, slide change) simply
-  // resolves to null and the overlay disappears without effect-driven resets.
+  // Stable refs for document-level listeners (avoids stale closures).
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+
   const selectedNode =
     state.mode !== "idle" && slide
       ? (slide.nodes.find((n) => n.id === state.nodeId) ?? null)
@@ -263,7 +259,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   if (!presentation?.pkg || !slide || !slideId) return null;
 
-  /** The wrapper div that contains both the rendered slide and this overlay. */
+  // --- DOM helpers ---
+
   function slideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
   }
@@ -275,26 +272,27 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     );
   }
 
-  /** Find the text container div inside a shape element. */
   function textContainerOf(shapeEl: HTMLElement): HTMLElement | null {
-    // The text container is the flex-column div that holds the paragraph divs.
-    // It's the first descendant with data-pptx-p children.
     const firstPara = shapeEl.querySelector("[data-pptx-p]");
     return (firstPara?.parentElement as HTMLElement) ?? null;
   }
 
-  /** Topmost slide node under the pointer, using DOM paint order. */
   function hitTest(clientX: number, clientY: number): string | null {
     const root = rootRef.current;
     const wrapper = slideWrapper();
     if (!root || !wrapper) return null;
     for (const el of document.elementsFromPoint(clientX, clientY)) {
-      if (root.contains(el)) continue; // skip the overlay itself
+      if (root.contains(el)) continue;
       if (!wrapper.contains(el)) continue;
       const nodeEl = (el as HTMLElement).closest<HTMLElement>("[data-pptx-node-id]");
       if (nodeEl) return nodeEl.getAttribute("data-pptx-node-id");
     }
     return null;
+  }
+
+  function nodeHasText(nodeId: string): boolean {
+    const node = slide!.nodes.find((n) => n.id === nodeId);
+    return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
   }
 
   function commitEdit(
@@ -315,11 +313,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   // --- Text editing helpers ---
 
-  function nodeHasText(nodeId: string): boolean {
-    const node = slide!.nodes.find((n) => n.id === nodeId);
-    return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
-  }
-
   function enterTextMode(nodeId: string, clientX?: number, clientY?: number): void {
     const shapeEl = shapeElement(nodeId);
     if (!shapeEl) return;
@@ -327,81 +320,202 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     if (!textEl) return;
 
     textEl.contentEditable = "plaintext-only";
-    // Fallback: some browsers (Firefox) don't support plaintext-only.
     if (!textEl.isContentEditable) {
       textEl.contentEditable = "true";
     }
     textEl.style.cursor = "text";
     textEl.style.outline = "none";
-    textEl.focus();
 
-    // Place caret at click position if possible.
+    // The caret-from-point APIs hit-test the DOM, and the overlay still
+    // covers the text at this moment (React hasn't re-rendered with
+    // pointerEvents: none yet). Disable it directly so the point resolves
+    // into the text; the state render below keeps it disabled.
+    if (rootRef.current) rootRef.current.style.pointerEvents = "none";
+
+    textEl.focus({ preventScroll: true });
+
     if (clientX !== undefined && clientY !== undefined) {
-      try {
-        if (document.caretRangeFromPoint) {
-          const range = document.caretRangeFromPoint(clientX, clientY);
-          if (range) {
-            const sel = window.getSelection();
-            sel?.removeAllRanges();
-            sel?.addRange(range);
-          }
-        }
-      } catch {
-        // Ignore caret placement failures.
-      }
+      placeCaretAtPoint(clientX, clientY);
+    } else {
+      placeCaretAtEnd(textEl);
     }
 
     setState({ mode: "text", nodeId, editingEl: textEl });
   }
 
-  function exitTextMode(): void {
-    if (state.mode !== "text") return;
-    const { nodeId, editingEl } = state;
+  /**
+   * Re-enter text mode after a commit re-rendered the slide. The store
+   * notify flushes React state at microtask end and the new slide DOM is
+   * committed before the next paint, so a double rAF (not a timeout) is the
+   * earliest reliable moment the replacement shape element exists.
+   */
+  function resumeTextEditing(nodeId: string): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        enterTextMode(nodeId);
+      });
+    });
+  }
+
+  function placeCaretAtEnd(textEl: HTMLElement): void {
+    try {
+      const sel = window.getSelection();
+      if (!sel) return;
+      const range = document.createRange();
+      range.selectNodeContents(textEl);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch {
+      // Ignore caret placement failures.
+    }
+  }
+
+  function placeCaretAtPoint(clientX: number, clientY: number): void {
+    try {
+      const sel = window.getSelection();
+      if (!sel) return;
+      // Standard API (Firefox, newer Chrome/Safari).
+      const docWithCaret = document as Document & {
+        caretPositionFromPoint?: (
+          x: number,
+          y: number,
+        ) => { offsetNode: Node; offset: number } | null;
+      };
+      if (docWithCaret.caretPositionFromPoint) {
+        const pos = docWithCaret.caretPositionFromPoint(clientX, clientY);
+        if (pos) {
+          const range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          return;
+        }
+      }
+      // Legacy WebKit API.
+      if (document.caretRangeFromPoint) {
+        const range = document.caretRangeFromPoint(clientX, clientY);
+        if (range) {
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
+    } catch {
+      // Ignore caret placement failures.
+    }
+  }
+
+  /** Tear down contentEditable and commit the edited text if it changed. */
+  function commitTextEdits(current: Extract<InternalState, { mode: "text" }>): void {
+    const { nodeId, editingEl } = current;
 
     editingEl.contentEditable = "false";
     editingEl.style.cursor = "";
 
-    // Read back the DOM and commit if changed.
     const node = slide!.nodes.find((n) => n.id === nodeId);
-    if (node) {
-      const readBack = readBackTextBody(editingEl);
-      if (textBodyChanged(node, readBack)) {
-        commitEdit(
-          () =>
-            store.edit({
-              type: "setTextBody",
-              slideId: slideId!,
-              nodeId,
-              paragraphs: readBack,
-            }),
-          undefined,
-          () => onTextChange?.(nodeId),
-          (error) => onTextChange?.(nodeId, error),
-        );
-      }
-    }
+    if (!node) return;
+    const readBack = readBackTextBody(editingEl);
+    if (!textBodyChanged(node, readBack)) return;
 
-    setState({ mode: "selected", nodeId });
+    commitEdit(
+      () =>
+        store.edit({
+          type: "setTextBody",
+          slideId: slideId!,
+          nodeId,
+          paragraphs: readBack,
+        }),
+      undefined,
+      () => {
+        // The commit re-renders the slide, which steals focus from the
+        // overlay. Refocus so keyboard shortcuts (undo/redo) keep working.
+        rootRef.current?.focus({ preventScroll: true });
+        onTextChange?.(nodeId);
+      },
+      (error) => {
+        rootRef.current?.focus({ preventScroll: true });
+        onTextChange?.(nodeId, error);
+      },
+    );
+  }
+
+  function doExitTextMode(
+    current: Extract<InternalState, { mode: "text" }>,
+    nextNodeId?: string | null,
+  ): void {
+    commitTextEdits(current);
+
+    // Transition to the appropriate next state.
+    if (nextNodeId === null) {
+      setState({ mode: "idle" });
+    } else {
+      setState({ mode: "selected", nodeId: nextNodeId ?? current.nodeId });
+    }
     rootRef.current?.focus({ preventScroll: true });
   }
 
-  // --- Pointer events ---
+  // --- Document-level listeners for text mode ---
+  // When in text mode the overlay has pointerEvents: none, so we must listen
+  // on the document for clicks-outside and Escape.
+  React.useEffect(() => {
+    if (!isTextMode) return;
+
+    function onDocPointerDown(e: PointerEvent): void {
+      const cur = stateRef.current;
+      if (cur.mode !== "text") return;
+
+      // Click inside the editing element → let contentEditable handle it.
+      if (cur.editingEl.contains(e.target as Node)) return;
+
+      // Clicks on the overlay's own children (border move strips) are
+      // handled by their own handlers.
+      if (rootRef.current?.contains(e.target as Node)) return;
+
+      // Click on another shape?
+      const wrapper = rootRef.current?.parentElement?.parentElement;
+      if (!wrapper) return;
+      const target = e.target as HTMLElement;
+      const nodeEl = target.closest?.("[data-pptx-node-id]") as HTMLElement | null;
+      const hitNodeId =
+        nodeEl && wrapper.contains(nodeEl) ? nodeEl.getAttribute("data-pptx-node-id") : null;
+
+      if (hitNodeId && hitNodeId !== cur.nodeId) {
+        // Clicked a different shape: exit text, select the new one.
+        doExitTextMode(cur, hitNodeId);
+      } else if (!hitNodeId) {
+        // Clicked empty area: exit text, deselect.
+        doExitTextMode(cur, null);
+      }
+      // Else clicked inside the same shape but outside the text container
+      // (e.g. shape padding area) — stay in text mode.
+    }
+
+    function onDocKeyDown(e: KeyboardEvent): void {
+      const cur = stateRef.current;
+      if (cur.mode !== "text") return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Escape → select the shape (PowerPoint behavior).
+        doExitTextMode(cur);
+        return;
+      }
+    }
+
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("keydown", onDocKeyDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDocPointerDown, true);
+      document.removeEventListener("keydown", onDocKeyDown, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stateRef is stable
+  }, [isTextMode]);
+
+  // --- Overlay pointer events (non-text modes) ---
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
-    if (event.button !== 0) return;
-
-    // In text mode, clicks outside the editing shape exit text mode.
-    if (isTextMode) {
-      const nodeId = hitTest(event.clientX, event.clientY);
-      if (nodeId !== state.nodeId) {
-        exitTextMode();
-        if (!nodeId) {
-          setState({ mode: "idle" });
-        }
-      }
-      // Let the click propagate to the contentEditable element.
-      return;
-    }
+    if (event.button !== 0 || isTextMode) return;
 
     const nodeId = hitTest(event.clientX, event.clientY);
     if (!nodeId) {
@@ -409,19 +523,9 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       return;
     }
 
-    // Double-click on a text shape enters text mode immediately.
-    if (event.detail >= 2 && nodeHasText(nodeId)) {
-      enterTextMode(nodeId, event.clientX, event.clientY);
-      return;
-    }
-
-    // Clicking an already-selected text shape enters text mode (like
-    // PowerPoint: first click selects, second click starts editing).
-    if (state.mode === "selected" && state.nodeId === nodeId && nodeHasText(nodeId)) {
-      enterTextMode(nodeId, event.clientX, event.clientY);
-      return;
-    }
-
+    // All shapes start in move mode on pointer-down. On pointer-up we check
+    // if the user actually dragged. If they didn't (it was a click), text
+    // shapes enter text mode and non-text shapes enter selected mode.
     rootRef.current?.setPointerCapture(event.pointerId);
     rootRef.current?.focus();
     setState({
@@ -453,6 +557,33 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     });
   }
 
+  /**
+   * Dragging the border strips while editing text (PowerPoint: grab the
+   * frame to move the box without leaving your edits behind). Commits the
+   * text first, then starts a move drag.
+   */
+  function onBorderPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+    if (event.button !== 0 || state.mode !== "text") return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const { nodeId } = state;
+    commitTextEdits(state);
+
+    rootRef.current?.setPointerCapture(event.pointerId);
+    rootRef.current?.focus({ preventScroll: true });
+    setState({
+      mode: "move",
+      nodeId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dx: 0,
+      dy: 0,
+      moved: false,
+      resumeText: true,
+    });
+  }
+
   function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
     if (state.mode !== "move" && state.mode !== "resize") return;
     const dx = (event.clientX - state.startX) / zoom;
@@ -474,9 +605,11 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   function onPointerUp(): void {
     if (state.mode === "move") {
-      const { nodeId, dx, dy, moved } = state;
-      setState({ mode: "selected", nodeId });
+      const { nodeId, dx, dy, moved, resumeText } = state;
+
       if (moved && selectedNode) {
+        // Actual drag → commit the move, land in selected mode.
+        setState({ mode: "selected", nodeId });
         commitEdit(
           () =>
             store.edit({
@@ -489,12 +622,30 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
             const el = shapeElement(nodeId);
             if (el) el.style.translate = "";
           },
-          () => onNodeTransform?.(nodeId),
+          () => {
+            onNodeTransform?.(nodeId);
+            // Border drag from text mode: return to editing so the user can
+            // keep typing right where they left off (PowerPoint behavior).
+            if (resumeText) resumeTextEditing(nodeId);
+          },
           (error) => onNodeTransform?.(nodeId, error),
         );
       } else {
+        // Click (no drag). Clear any stray preview translate.
         const el = shapeElement(nodeId);
         if (el) el.style.translate = "";
+
+        // Text shapes → edit immediately. Non-text shapes → select.
+        if (resumeText) {
+          // Border click without drag: back to editing (caret at end). The
+          // text commit may re-render the slide, so wait for the new DOM.
+          resumeTextEditing(nodeId);
+        } else if (nodeHasText(nodeId)) {
+          // Use the original pointer position for caret placement.
+          enterTextMode(nodeId, state.startX, state.startY);
+        } else {
+          setState({ mode: "selected", nodeId });
+        }
       }
     } else if (state.mode === "resize") {
       const { nodeId, handle, dx, dy } = state;
@@ -542,19 +693,14 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
-    // In text mode, only Escape exits; everything else goes to contentEditable.
-    if (isTextMode) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        exitTextMode();
-      }
-      return;
-    }
+    // Text mode keys are handled by the document listener; this handler
+    // only fires when the overlay div has focus (selected/idle modes).
+    if (isTextMode) return;
 
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
-    // Undo / redo
+    // Undo / redo — active whenever the overlay is focused.
     if (mod && key === "z" && !event.shiftKey) {
       event.preventDefault();
       const success = store.undo();
@@ -638,6 +784,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
               state={state}
               zoom={zoom}
               onHandlePointerDown={onHandlePointerDown}
+              onBorderPointerDown={onBorderPointerDown}
             />
           ) : null,
           style: {
@@ -659,14 +806,24 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 // SelectionBox (internal)
 // ---------------------------------------------------------------------------
 
+/** Hitbox width (screen px) of the border move strips shown while editing text. */
+const BORDER_GRAB_SIZE = 10;
+
 interface SelectionBoxProps {
   node: SlideNode;
   state: InternalState;
   zoom: number;
   onHandlePointerDown: (event: React.PointerEvent<HTMLDivElement>, handle: HandleDirection) => void;
+  onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
-function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxProps) {
+function SelectionBox({
+  node,
+  state,
+  zoom,
+  onHandlePointerDown,
+  onBorderPointerDown,
+}: SelectionBoxProps) {
   let rect = nodeRect(node);
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
@@ -675,7 +832,6 @@ function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxPr
   }
 
   const isTextMode = state.mode === "text";
-  // Resize math assumes axis-aligned bounds; rotated shapes get move-only.
   const showHandles = node.rotation === 0 && state.mode !== "move" && !isTextMode;
 
   const handlePositions: Record<HandleDirection, React.CSSProperties> = {
@@ -725,7 +881,45 @@ function SelectionBox({ node, state, zoom, onHandlePointerDown }: SelectionBoxPr
             }}
           />
         ))}
+      {isTextMode && <BorderMoveStrips onPointerDown={onBorderPointerDown} />}
     </div>
+  );
+}
+
+/**
+ * Invisible grab strips straddling the shape border while editing text.
+ * Dragging them moves the shape (PowerPoint: grab the frame to move).
+ * The hitbox extends both inward and outward from the border line.
+ */
+function BorderMoveStrips({
+  onPointerDown,
+}: {
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+}) {
+  const half = BORDER_GRAB_SIZE / 2;
+  const strips: React.CSSProperties[] = [
+    { left: -half, right: -half, top: -half, height: BORDER_GRAB_SIZE },
+    { left: -half, right: -half, bottom: -half, height: BORDER_GRAB_SIZE },
+    { left: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
+    { right: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
+  ];
+  return (
+    <>
+      {strips.map((style, i) => (
+        <div
+          key={i}
+          data-border-move=""
+          onPointerDown={onPointerDown}
+          style={{
+            position: "absolute",
+            ...style,
+            cursor: "move",
+            pointerEvents: "auto",
+            touchAction: "none",
+          }}
+        />
+      ))}
+    </>
   );
 }
 
