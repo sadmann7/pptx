@@ -108,3 +108,66 @@ describe("empty paragraph rendering", () => {
     expect(paragraphs[0].style.fontSize).toBe("32pt");
   });
 });
+
+/** Returns all run spans inside the paragraph that contains `marker`. */
+function runSpansContaining(element: HTMLElement, marker: string): HTMLElement[] {
+  const divs = [...element.querySelectorAll<HTMLElement>("div")];
+  const para = divs.find((d) => d.textContent?.includes(marker));
+  if (!para) throw new Error(`paragraph containing "${marker}" not found`);
+  return [...para.querySelectorAll<HTMLElement>("span")].filter(
+    (s) => !s.querySelector("span"), // leaf spans only
+  );
+}
+
+describe("leading whitespace preservation", () => {
+  it("applies white-space:pre-wrap to a run that starts with a space", async () => {
+    const element = await renderTextBox(
+      `<a:p>${EMPTY_PPR}<a:r><a:t>  MARKER indented</a:t></a:r></a:p>`,
+    );
+
+    const [span] = runSpansContaining(element, "MARKER indented");
+    expect(span).toBeDefined();
+    expect(span.textContent).toBe("  MARKER indented");
+    expect(span.style.whiteSpace).toBe("pre-wrap");
+  });
+
+  it("does not apply pre-wrap to a mid-line run that starts with a space", async () => {
+    // Two runs on the same paragraph: the second begins with a space but is
+    // not at line start — default whitespace handling applies.
+    const element = await renderTextBox(
+      `<a:p>${EMPTY_PPR}<a:r><a:t>MARKER</a:t></a:r><a:r><a:t> continues</a:t></a:r></a:p>`,
+    );
+
+    const spans = runSpansContaining(element, "MARKER");
+    expect(spans).toHaveLength(2);
+    // First run: no special whitespace needed.
+    expect(spans[0].style.whiteSpace).toBe("");
+    // Second run: space but NOT at line start — no pre-wrap.
+    expect(spans[1].style.whiteSpace).toBe("");
+  });
+
+  it("applies pre-wrap to the first run after an explicit line break", async () => {
+    // A <a:br/> resets the line-start flag; the run after it begins a new
+    // visual line and its leading space must be preserved.
+    const element = await renderTextBox(
+      `<a:p>${EMPTY_PPR}<a:r><a:t>MARKER first</a:t></a:r><a:br/><a:r><a:t>  second line</a:t></a:r></a:p>`,
+    );
+
+    const spans = runSpansContaining(element, "MARKER first");
+    // First run: no pre-wrap.
+    expect(spans[0].style.whiteSpace).toBe("");
+    // Run after <br>: leading space → pre-wrap.
+    expect(spans[1].style.whiteSpace).toBe("pre-wrap");
+    expect(spans[1].textContent).toBe("  second line");
+  });
+
+  it("still uses white-space:pre for runs that contain tabs", async () => {
+    const element = await renderTextBox(
+      `<a:p>${EMPTY_PPR}<a:r><a:t>&#x9;MARKER tabbed</a:t></a:r></a:p>`,
+    );
+
+    const [span] = runSpansContaining(element, "MARKER tabbed");
+    expect(span).toBeDefined();
+    expect(span.style.whiteSpace).toBe("pre");
+  });
+});

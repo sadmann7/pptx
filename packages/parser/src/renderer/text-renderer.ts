@@ -1074,8 +1074,13 @@ export function renderTextBody(
       paraDiv.appendChild(currentLineDiv);
     }
 
+    // Tracks whether the next run starts a visual line: CSS collapses leading
+    // spaces at line start but PowerPoint renders them (e.g. code indented
+    // with spaces), so those runs get white-space:pre-wrap to preserve them.
+    let atLineStart = true;
     for (const run of paragraph.runs) {
       if (run.text === "\n") {
+        atLineStart = true;
         if (useLineWrappers) {
           // Close current line div and start a new one
           currentLineDiv = document.createElement("div");
@@ -1152,6 +1157,12 @@ export function renderTextBody(
       if (run.text && run.text.includes("\t")) {
         element.textContent = run.text;
         element.style.whiteSpace = "pre";
+      } else if (atLineStart && run.text?.startsWith(" ")) {
+        // CSS drops spaces at the start of a line, but PowerPoint renders them
+        // (e.g. code indented with spaces). pre-wrap keeps the real space
+        // characters so the layout matches PowerPoint without altering the text.
+        element.textContent = run.text;
+        element.style.whiteSpace = "pre-wrap";
       } else if (run.text && / {2}/.test(run.text)) {
         // Replace pairs of spaces with " &nbsp;" so browsers cannot collapse them,
         // while normal spaces between words remain stretchable for justify.
@@ -1163,6 +1174,9 @@ export function renderTextBody(
         element.innerHTML = escaped;
       } else {
         element.textContent = run.text;
+      }
+      if (run.text && run.text.length > 0) {
+        atLineStart = false;
       }
 
       // Apply run styles (with normAutofit fontScale)
