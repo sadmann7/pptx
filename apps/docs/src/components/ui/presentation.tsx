@@ -49,20 +49,30 @@ function PresentationSelection({ className, ...props }: PresentationPrimitive.Se
       data-slot="presentation-selection"
       className={cn("[--pptx-selection:var(--ring)]", className)}
       onUndo={(_, error) => {
-        if (error) toast.error(error instanceof Error ? error.message : "Undo failed");
+        const errorMessage = error instanceof Error ? error.message : "Undo failed";
+        console.error(errorMessage);
+        if (error) toast.error(errorMessage);
       }}
       onRedo={(_, error) => {
-        if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+        const errorMessage = error instanceof Error ? error.message : "Redo failed";
+        console.error(errorMessage);
+        if (error) toast.error(errorMessage);
       }}
       onNodeDelete={(_, error) => {
-        if (error) toast.error(error instanceof Error ? error.message : "Could not delete shape");
+        const errorMessage = error instanceof Error ? error.message : "Could not delete shape";
+        console.error(errorMessage);
+        if (error) toast.error(errorMessage);
       }}
       onNodeTransform={(_, error) => {
-        if (error)
-          toast.error(error instanceof Error ? error.message : "Could not move or resize shape");
+        const errorMessage =
+          error instanceof Error ? error.message : "Could not move or resize shape";
+        console.error(errorMessage);
+        if (error) toast.error(errorMessage);
       }}
       onTextChange={(_, error) => {
-        if (error) toast.error(error instanceof Error ? error.message : "Text edit failed");
+        const errorMessage = error instanceof Error ? error.message : "Text edit failed";
+        console.error(errorMessage);
+        if (error) toast.error(errorMessage);
       }}
       {...props}
     />

@@ -13,6 +13,7 @@ export type {
 
 export { applyEdit } from "./edit/operations";
 export type {
+  BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
   DuplicateSlideOperation,

@@ -117,6 +117,16 @@ export interface SetTextBodyRun {
   sourceRun?: [number, number];
 }
 
+/**
+ * Apply several operations as one atomic edit with a single undo (e.g.
+ * moving a multi-selection). Sub-operations are applied in order and undone
+ * in reverse. If one fails midway, the already-applied ones are rolled back.
+ */
+export interface BatchOperation {
+  type: "batch";
+  operations: EditOperation[];
+}
+
 export type EditOperation =
   | SetTextRunOperation
   | SetNodeTransformOperation
@@ -125,7 +135,8 @@ export type EditOperation =
   | MoveSlideOperation
   | DuplicateSlideOperation
   | DeleteSlideOperation
-  | SetTextBodyOperation;
+  | SetTextBodyOperation
+  | BatchOperation;
 
 export interface EditResult {
   /** Slide ids whose rendered output may have changed. */
@@ -161,7 +172,33 @@ export async function applyEdit(
       return applyDuplicateSlide(presentation, op);
     case "deleteSlide":
       return applyDeleteSlide(presentation, op);
+    case "batch":
+      return applyBatch(presentation, op);
   }
+}
+
+async function applyBatch(presentation: PresentationData, op: BatchOperation): Promise<EditResult> {
+  const results: EditResult[] = [];
+  try {
+    for (const subOp of op.operations) {
+      results.push(await applyEdit(presentation, subOp));
+    }
+  } catch (error) {
+    for (const result of results.reverse()) result.undo();
+    throw error;
+  }
+
+  const affected = new Set<string>();
+  for (const result of results) {
+    for (const slideId of result.affectedSlideIds) affected.add(slideId);
+  }
+
+  return {
+    affectedSlideIds: [...affected],
+    undo: () => {
+      for (let i = results.length - 1; i >= 0; i--) results[i].undo();
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

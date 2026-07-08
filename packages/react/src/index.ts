@@ -21,6 +21,7 @@ export type {
 } from "./store";
 
 export type {
+  BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
   DuplicateSlideOperation,

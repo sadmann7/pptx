@@ -562,3 +562,47 @@ describe("setTextBody", () => {
     expect(savedXml).toContain("<a:br");
   });
 });
+
+describe("batch", () => {
+  it("applies sub-operations in order and undoes them all at once", async () => {
+    const pres = await openEditable([textShape(2, "A") + textShape(3, "B")]);
+    const slideId = pres.slides[0].id;
+    const before2 = { ...shapeOn(pres, 0, "2").position };
+    const before3 = { ...shapeOn(pres, 0, "3").position };
+
+    const result = await applyEdit(pres, {
+      type: "batch",
+      operations: [
+        { type: "setNodeTransform", slideId, nodeId: "2", position: { x: 10, y: 20 } },
+        { type: "setNodeTransform", slideId, nodeId: "3", position: { x: 30, y: 40 } },
+      ],
+    });
+
+    expect(result.affectedSlideIds).toEqual([slideId]);
+    expect(shapeOn(pres, 0, "2").position).toEqual({ x: 10, y: 20 });
+    expect(shapeOn(pres, 0, "3").position).toEqual({ x: 30, y: 40 });
+
+    // One undo restores every sub-operation.
+    result.undo();
+    expect(shapeOn(pres, 0, "2").position).toEqual(before2);
+    expect(shapeOn(pres, 0, "3").position).toEqual(before3);
+  });
+
+  it("rolls back already-applied sub-operations when one fails", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+    const before = { ...shapeOn(pres, 0, "2").position };
+
+    await expect(
+      applyEdit(pres, {
+        type: "batch",
+        operations: [
+          { type: "setNodeTransform", slideId, nodeId: "2", position: { x: 99, y: 99 } },
+          { type: "deleteNode", slideId, nodeId: "does-not-exist" },
+        ],
+      }),
+    ).rejects.toThrow(/no top-level node/);
+
+    expect(shapeOn(pres, 0, "2").position).toEqual(before);
+  });
+});
