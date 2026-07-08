@@ -100,6 +100,24 @@ describe("store.edit", () => {
     await reopened.load(bytes.slice().buffer as ArrayBuffer, { embedFonts: false });
     expect(slideText(reopened, 0)).toBe("Persisted");
   });
+
+  it("batch-deletes a multi-selection as one undoable edit", async () => {
+    const store = await editableStore();
+    const slide = store.getState().presentation!.slides[0];
+    const slideId = slide.id;
+    const nodeIds = slide.nodes.map((n) => n.id);
+    expect(nodeIds.length).toBeGreaterThan(0);
+
+    await store.edit({
+      type: "batch",
+      operations: nodeIds.map((nodeId) => ({ type: "deleteNode" as const, slideId, nodeId })),
+    });
+    expect(store.getState().presentation!.slides[0].nodes).toHaveLength(0);
+
+    // A single undo restores the whole selection.
+    expect(store.undo()).toBe(true);
+    expect(store.getState().presentation!.slides[0].nodes).toHaveLength(nodeIds.length);
+  });
 });
 
 describe("undo / redo", () => {
