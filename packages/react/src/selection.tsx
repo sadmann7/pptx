@@ -322,6 +322,16 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     return shapeEl.querySelector<HTMLElement>("[data-pptx-placeholder-prompt]");
   }
 
+  /**
+   * Drop any document text selection left behind by earlier gestures.
+   * A stale selection under the pointer turns the next press-and-drag into a
+   * native drag-and-drop, cancelling our pointer stream mid-resize/move.
+   */
+  function clearDocumentSelection(): void {
+    const sel = document.getSelection();
+    if (sel && !sel.isCollapsed) sel.removeAllRanges();
+  }
+
   function hitTest(clientX: number, clientY: number): string | null {
     const root = rootRef.current;
     const wrapper = slideWrapper();
@@ -940,10 +950,34 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     if (event.button !== 0 || isTextMode) return;
 
     const nodeId = hitTest(event.clientX, event.clientY);
+    const selShapeEl = selectedNode ? shapeElement(selectedNode.id) : null;
+    debugLog("root pointerdown", {
+      hit: nodeId,
+      mode: state.mode,
+      x: event.clientX,
+      y: event.clientY,
+      target: (event.target as HTMLElement)?.tagName,
+      targetHandle: (event.target as HTMLElement)?.dataset?.resizeHandle,
+      selectedRect: selectedNode ? nodeRect(selectedNode) : null,
+      selectedDomRect: selShapeEl
+        ? (() => {
+            const r = selShapeEl.getBoundingClientRect();
+            return `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+          })()
+        : null,
+    });
     if (!nodeId) {
       setState({ mode: "idle" });
       return;
     }
+
+    // Prevent the browser's default mousedown behavior. Without this, a drag
+    // silently extends a text selection across the slide, and the NEXT press
+    // inside that selection starts a native drag-and-drop of the selection —
+    // the pointer stream is cancelled (not-allowed cursor, no pointerup) and
+    // the gesture goes dead.
+    event.preventDefault();
+    clearDocumentSelection();
 
     // All shapes start in move mode on pointer-down. On pointer-up we check
     // if the user actually dragged. If they didn't (it was a click), text
@@ -965,8 +999,12 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     event: React.PointerEvent<HTMLDivElement>,
     handle: HandleDirection,
   ): void {
+    debugLog("handle pointerdown", { handle, mode: state.mode, button: event.button });
     if (event.button !== 0 || state.mode === "idle" || isTextMode) return;
     event.stopPropagation();
+    // See onPointerDown: stop selection extension / native drag initiation.
+    event.preventDefault();
+    clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
     setState({
       mode: "resize",
@@ -1078,6 +1116,14 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     } else if (state.mode === "resize") {
       const { nodeId, handle, dx, dy } = state;
       setState({ mode: "selected", nodeId });
+      debugLog("resize pointerup", {
+        nodeId,
+        handle,
+        dx,
+        dy,
+        hasSelectedNode: Boolean(selectedNode),
+        baseRect: selectedNode ? nodeRect(selectedNode) : null,
+      });
       if (selectedNode && (dx !== 0 || dy !== 0)) {
         const next = resizeRect(nodeRect(selectedNode), handle, dx, dy);
         commitEdit(
@@ -1099,6 +1145,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   /** Double click on a regular shape with text → edit with caret at point. */
   function onDoubleClick(event: React.MouseEvent<HTMLDivElement>): void {
+    debugLog("double click", { isTextMode });
     if (isTextMode) return;
     const nodeId = hitTest(event.clientX, event.clientY);
     if (nodeId && nodeHasText(nodeId)) {
@@ -1106,7 +1153,15 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     }
   }
 
+  /** Native drag-and-drop of slide content (images, stale text selections)
+   * cancels our pointer gestures; block it while the overlay is interactive. */
+  function onDragStart(event: React.DragEvent<HTMLDivElement>): void {
+    debugLog("dragstart blocked", { target: (event.target as HTMLElement)?.tagName });
+    event.preventDefault();
+  }
+
   function onPointerCancel(): void {
+    debugLog("pointercancel", { mode: state.mode });
     if (state.mode === "move" || state.mode === "resize") {
       const el = shapeElement(state.nodeId);
       if (el) el.style.translate = "";
@@ -1224,6 +1279,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
           onPointerCancel,
           onDoubleClick,
           onKeyDown,
+          onDragStart,
           children: selectedNode ? (
             <SelectionBox
               node={selectedNode}
@@ -1324,6 +1380,7 @@ function SelectionBox({
               borderRadius: 2,
               cursor: HANDLE_CURSORS[direction],
               pointerEvents: "auto",
+              touchAction: "none",
             }}
           />
         ))}
