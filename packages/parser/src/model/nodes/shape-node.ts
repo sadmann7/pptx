@@ -61,6 +61,8 @@ export interface ShapeNodeData extends BaseNodeData {
   textBody?: TextBody;
   /** When set (e.g. diagram txXfrm), text is laid out in this rect instead of full shape. */
   textBoxBounds?: TextBoxBounds;
+  /** True for dedicated text boxes (`cNvSpPr txBox="1"`), false for regular shapes with text. */
+  isTextBox?: boolean;
 }
 
 /**
@@ -241,6 +243,10 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
   const txBody = spNode.child("txBody");
   const textBody = parseTextBody(txBody);
 
+  // --- Text box flag (PowerPoint: single click on a text box edits text;
+  // regular shapes need a double click) ---
+  const isTextBox = spNode.child("nvSpPr").child("cNvSpPr").attr("txBox") === "1";
+
   // --- Text transform (diagram shapes: dsp:txXfrm gives text box position/size in same space as xfrm)
   let textBoxBounds: TextBoxBounds | undefined;
   const txXfrm = spNode.child("txXfrm");
@@ -289,5 +295,6 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
     tailEnd,
     textBody,
     textBoxBounds,
+    isTextBox,
   };
 }

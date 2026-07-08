@@ -44,18 +44,6 @@ function hasVisibleText(textBody: TextBody): boolean {
   return false;
 }
 
-/**
- * A text body with at least one run is editable text, even when every run is
- * currently empty (e.g. the user cleared a text box). Decorative shapes carry
- * paragraphs with no runs at all (only endParaRPr) and stay skipped.
- */
-function hasEditableRuns(textBody: TextBody): boolean {
-  for (const p of textBody.paragraphs) {
-    if (p.runs.length > 0) return true;
-  }
-  return false;
-}
-
 function isSingleLineTextBody(textBody: TextBody): boolean {
   let visibleParagraphCount = 0;
   for (const p of textBody.paragraphs) {
@@ -2251,13 +2239,13 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   }
 
   // ---- Render text overlay (only when there is visible text; skip for decorative shapes with empty txBody) ----
-  // In editable decks (retained package) an all-empty text body still renders
-  // its container so inline text editing can re-enter a cleared text box.
+  // In editable decks (retained package) an empty text body still renders its
+  // container so inline text editing can target it — a cleared text box, or a
+  // plain shape you can click and type into like PowerPoint.
   if (
     node.textBody &&
     node.textBody.paragraphs.length > 0 &&
-    (hasVisibleText(node.textBody) ||
-      (ctx.presentation.pkg !== undefined && hasEditableRuns(node.textBody)))
+    (hasVisibleText(node.textBody) || ctx.presentation.pkg !== undefined)
   ) {
     const warpedText = renderWarpedTextBody(node, ctx);
     if (warpedText) {

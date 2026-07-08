@@ -931,6 +931,19 @@ export function renderTextBody(
     // multi-paragraph labels do not inherit a 13px page font and overflow their boxes.
     paraDiv.style.fontSize = `${effectiveFontSize * fontScale}pt`;
 
+    // Stamp the paragraph's default text color so content not wrapped in a
+    // run span (text typed into an empty paragraph during inline editing)
+    // inherits the color PowerPoint would use instead of the page CSS color.
+    // Empty paragraphs take their pending-text formatting from endParaRPr,
+    // like PowerPoint. Runs always set an explicit color, so this never
+    // changes how existing runs render.
+    const paraDefaultStyle: MergedRunStyle = { ...defaultRunStyle };
+    if (!hasVisibleRuns && paragraph.endParaRPr) {
+      mergeRunProps(paraDefaultStyle, paragraph.endParaRPr, ctx);
+    }
+    paraDiv.style.color =
+      options?.fontRefColor ?? options?.cellTextColor ?? paraDefaultStyle.color ?? "#000000";
+
     const trimSpaceBefore =
       options?.trimOuterParagraphSpacing && paragraphIndex === firstVisibleParagraphIndex;
     const trimSpaceAfter =

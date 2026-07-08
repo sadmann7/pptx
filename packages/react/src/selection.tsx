@@ -198,12 +198,12 @@ function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boo
   if (!paragraphs) return false;
   if (paragraphs.length !== readBack.length) return true;
   for (let i = 0; i < paragraphs.length; i++) {
-    const origRuns = paragraphs[i].runs;
-    const newRuns = readBack[i].runs;
-    if (origRuns.length !== newRuns.length) return true;
-    for (let j = 0; j < origRuns.length; j++) {
-      if (origRuns[j].text !== newRuns[j].text) return true;
-    }
+    // Compare concatenated text, not run-by-run: a paragraph with no runs
+    // reads back as a single empty run, which is not a real change (plain
+    // shapes render an empty editable paragraph before any typing happens).
+    const origText = paragraphs[i].runs.map((r) => r.text ?? "").join("");
+    const newText = readBack[i].runs.map((r) => r.text).join("");
+    if (origText !== newText) return true;
   }
   return false;
 }
@@ -340,6 +340,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
   }
 
+  /**
+   * PowerPoint: a single click starts text editing only on dedicated text
+   * boxes and placeholders. Regular shapes with text select on click and
+   * need a double click (or typing) to edit.
+   */
+  function nodeEditsOnClick(nodeId: string): boolean {
+    const node = slide!.nodes.find((n) => n.id === nodeId);
+    if (node?.nodeType !== "shape") return false;
+    const shape = node as ShapeNodeData;
+    return Boolean(shape.textBody) && (Boolean(shape.isTextBox) || Boolean(shape.placeholder));
+  }
+
   function commitEdit(
     action: () => Promise<unknown>,
     onRollback?: () => void,
@@ -358,7 +370,12 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   // --- Text editing helpers ---
 
-  function enterTextMode(nodeId: string, clientX?: number, clientY?: number): void {
+  function enterTextMode(
+    nodeId: string,
+    clientX?: number,
+    clientY?: number,
+    insertText?: string,
+  ): void {
     const shapeEl = shapeElement(nodeId);
     const textEl = shapeEl ? textContainerOf(shapeEl) : null;
     debugLog("enterTextMode", {
@@ -414,6 +431,12 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       placeCaretAtPoint(clientX, clientY);
     } else {
       placeCaretAtEnd(textEl);
+    }
+
+    // PowerPoint: typing while a shape is selected starts editing with that
+    // keystroke as the first character.
+    if (insertText) {
+      insertTextAtCaret(textEl, nodeId, insertText);
     }
 
     const sel = window.getSelection();
@@ -518,40 +541,51 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     return entry && entry.nodeId === nodeId ? entry.span : null;
   }
 
-  function interceptTextInsertion(e: InputEvent, editingEl: HTMLElement, nodeId: string): void {
-    if (e.inputType !== "insertText" || !e.data) return;
+  /**
+   * Insert `data` at the current caret, keeping it inside a styled run span
+   * (existing span at the caret, or a clone of the shape's template span).
+   * Returns false when there is nowhere sensible to insert.
+   */
+  function insertTextAtCaret(editingEl: HTMLElement, nodeId: string, data: string): boolean {
     const sel = window.getSelection();
     const anchor = sel?.anchorNode;
-    if (!anchor || !sel.isCollapsed || !editingEl.contains(anchor)) return;
+    if (!anchor || !sel?.isCollapsed || !editingEl.contains(anchor)) return false;
 
     const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
     const runSpan = anchorEl?.closest<HTMLElement>("[data-pptx-r]");
 
     if (runSpan) {
-      // Caret is in a run span with a non-empty text node: the default
-      // insertion behaves correctly, don't interfere.
-      if (anchor.nodeType === Node.TEXT_NODE && (anchor.textContent ?? "").length > 0) return;
-      // Empty span — insert the text ourselves so it stays inside.
-      e.preventDefault();
-      let textNode = runSpan.lastChild;
-      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-        textNode = document.createTextNode("");
-        runSpan.appendChild(textNode);
+      if (anchor.nodeType === Node.TEXT_NODE && (anchor.textContent ?? "").length > 0) {
+        // Insert into the existing text node at the caret offset.
+        const textNode = anchor as Text;
+        const offset = Math.min(sel.anchorOffset, textNode.length);
+        textNode.insertData(offset, data);
+        setCaret(textNode, offset + data.length);
+      } else {
+        // Empty span — append a text node so the text stays inside.
+        let textNode = runSpan.lastChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+          textNode = document.createTextNode("");
+          runSpan.appendChild(textNode);
+        }
+        textNode.textContent = (textNode.textContent ?? "") + data;
+        setCaret(textNode, (textNode.textContent ?? "").length);
       }
-      textNode.textContent = (textNode.textContent ?? "") + e.data;
-      removePlaceholderBreak(textNode, e.data);
-      setCaret(textNode, (textNode.textContent ?? "").length);
-      debugLog("beforeinput: inserted into empty run span", { data: e.data });
-      return;
+      removePlaceholderBreak(runSpan, data);
+      debugLog("inserted into run span", { data });
+      return true;
     }
 
-    // Caret is on a bare div (run spans destroyed): wrap the insertion in a
-    // clone of the template span so it keeps the run's styling.
+    // Caret is on a bare div (run spans destroyed, or the shape never had
+    // any — e.g. a plain rectangle you just started typing into): wrap the
+    // insertion in a clone of the template span when one was captured, else
+    // a plain span that inherits the paragraph's styling. Read-back emits it
+    // without a sourceRun and the edit falls back to paragraph defaults.
     const template = runTemplateFor(nodeId);
-    if (!template) return;
-    e.preventDefault();
-    const span = template.cloneNode(false) as HTMLElement;
-    const textNode = document.createTextNode(e.data);
+    const span = template
+      ? (template.cloneNode(false) as HTMLElement)
+      : document.createElement("span");
+    const textNode = document.createTextNode(data);
     span.appendChild(textNode);
     if (anchorEl?.closest("[data-pptx-p]")) {
       sel.getRangeAt(0).insertNode(span);
@@ -565,11 +599,35 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       if (lastPara) lastPara.appendChild(span);
       else sel.getRangeAt(0).insertNode(span);
     }
-    removePlaceholderBreak(span, e.data);
+    removePlaceholderBreak(span, data);
     setCaret(textNode, textNode.length);
-    debugLog("beforeinput: rewrapped typing in run span", {
-      spanHtml: span.outerHTML.slice(0, 200),
-    });
+    debugLog("rewrapped typing in run span", { spanHtml: span.outerHTML.slice(0, 200) });
+    return true;
+  }
+
+  function interceptTextInsertion(e: InputEvent, editingEl: HTMLElement, nodeId: string): void {
+    if (e.inputType !== "insertText" || !e.data) return;
+    const sel = window.getSelection();
+    const anchor = sel?.anchorNode;
+    if (!anchor || !sel.isCollapsed || !editingEl.contains(anchor)) return;
+
+    const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
+
+    // Caret in a non-empty text node inside a styled element (run span,
+    // hyperlink run, or a fallback span from a previous insertion): the
+    // default insertion behaves correctly, don't interfere.
+    if (
+      anchor.nodeType === Node.TEXT_NODE &&
+      (anchor.textContent ?? "").length > 0 &&
+      anchorEl &&
+      (anchorEl.closest("[data-pptx-r]") || anchorEl.tagName === "SPAN")
+    ) {
+      return;
+    }
+
+    if (insertTextAtCaret(editingEl, nodeId, e.data)) {
+      e.preventDefault();
+    }
   }
 
   /**
@@ -759,10 +817,28 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         nodeEl && wrapper.contains(nodeEl) ? nodeEl.getAttribute("data-pptx-node-id") : null;
 
       if (hitNodeId && hitNodeId !== cur.nodeId) {
-        // Clicked a different shape: exit text, select the new one.
-        doExitTextMode(cur, hitNodeId);
+        // Clicked a different shape: exit text and start interacting with it
+        // in the same gesture (PowerPoint: you can immediately drag another
+        // shape while editing). preventDefault stops the browser's default
+        // mousedown focus change from blurring the overlay — without it,
+        // typing right after this click would go nowhere.
+        e.preventDefault();
+        commitTextEdits(cur);
+        rootRef.current?.setPointerCapture(e.pointerId);
+        rootRef.current?.focus({ preventScroll: true });
+        setState({
+          mode: "move",
+          nodeId: hitNodeId,
+          startX: e.clientX,
+          startY: e.clientY,
+          dx: 0,
+          dy: 0,
+          moved: false,
+        });
       } else if (!hitNodeId) {
-        // Clicked empty area: exit text, deselect.
+        // Clicked empty area: exit text, deselect. preventDefault keeps the
+        // overlay focused so undo/redo shortcuts still work afterwards.
+        e.preventDefault();
         doExitTextMode(cur, null);
       }
       // Else clicked inside the same shape but outside the text container
@@ -808,12 +884,16 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         typedContent: cur.editingEl.textContent?.slice(0, 80),
         anchorTag: anchorEl?.tagName,
         anchorIsRunSpan: anchorEl?.dataset?.pptxR !== undefined,
-        anchorRect: rect ? `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}` : null,
+        anchorRect: rect
+          ? `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}`
+          : null,
         color: cs?.color,
         fontSize: cs?.fontSize,
         opacity: cs?.opacity,
         visibility: cs?.visibility,
-        onTopAtAnchor: onTop ? `${onTop.tagName} ${(onTop as HTMLElement).dataset?.pptxNodeId ?? ""}` : null,
+        onTopAtAnchor: onTop
+          ? `${onTop.tagName} ${(onTop as HTMLElement).dataset?.pptxNodeId ?? ""}`
+          : null,
         anchorHtml: anchorEl?.outerHTML.slice(0, 200),
         targetIsEditingEl: target === cur.editingEl,
         editingElConnected: cur.editingEl.isConnected,
@@ -981,12 +1061,14 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         const el = shapeElement(nodeId);
         if (el) el.style.translate = "";
 
-        // Text shapes → edit immediately. Non-text shapes → select.
+        // Text boxes / placeholders → edit immediately. Everything else
+        // (regular shapes, even with text) → select; they edit on
+        // double-click or by typing.
         if (resumeText) {
           // Border click without drag: back to editing (caret at end). The
           // text commit may re-render the slide, so wait for the new DOM.
           resumeTextEditing(nodeId);
-        } else if (nodeHasText(nodeId)) {
+        } else if (nodeEditsOnClick(nodeId)) {
           // Use the original pointer position for caret placement.
           enterTextMode(nodeId, state.startX, state.startY);
         } else {
@@ -1012,6 +1094,15 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
           (error) => onNodeTransform?.(nodeId, error),
         );
       }
+    }
+  }
+
+  /** Double click on a regular shape with text → edit with caret at point. */
+  function onDoubleClick(event: React.MouseEvent<HTMLDivElement>): void {
+    if (isTextMode) return;
+    const nodeId = hitTest(event.clientX, event.clientY);
+    if (nodeId && nodeHasText(nodeId)) {
+      enterTextMode(nodeId, event.clientX, event.clientY);
     }
   }
 
@@ -1078,6 +1169,14 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       return;
     }
 
+    // PowerPoint: typing while a shape is selected starts text editing with
+    // that keystroke as the first character (caret at end of existing text).
+    if (event.key.length === 1 && !mod && !event.altKey && nodeHasText(selectedNode.id)) {
+      event.preventDefault();
+      enterTextMode(selectedNode.id, undefined, undefined, event.key);
+      return;
+    }
+
     if (event.key === "Escape") {
       setState({ mode: "idle" });
       return;
@@ -1123,6 +1222,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
           onPointerMove,
           onPointerUp,
           onPointerCancel,
+          onDoubleClick,
           onKeyDown,
           children: selectedNode ? (
             <SelectionBox
