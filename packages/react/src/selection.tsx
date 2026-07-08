@@ -301,7 +301,7 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Ctrl/Cmd+A selects every shape on the slide.
  * - Arrow keys nudge, Delete removes — applied to the whole selection.
  */
-export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
+const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
   { render, onUndo, onRedo, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
   forwardedRef,
 ) {
@@ -1507,6 +1507,23 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     },
   );
 });
+
+/**
+ * Thin outer wrapper that keys the inner component by `slideId`. When the
+ * slide changes, React unmounts and remounts `SelectionImpl`, naturally
+ * resetting its local state (selection, text-editing refs). Shape IDs are
+ * reused across slides, so a stale selection would otherwise bleed onto the
+ * new slide — the key swap is the React-idiomatic way to scope local state
+ * to the current context without effect-driven resets.
+ */
+export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(
+  function Selection(props, forwardedRef) {
+    const { slideId } = useSlide();
+    if (!slideId) return null;
+
+    return <SelectionImpl key={slideId} ref={forwardedRef} {...props} />;
+  },
+);
 
 // ---------------------------------------------------------------------------
 // SelectionBox (internal)
