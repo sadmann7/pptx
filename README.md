@@ -1,81 +1,183 @@
-# pptx
+# @diceui/pptx
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines Next.js, Hono, and more.
+A TypeScript monorepo for parsing, rendering, and editing PowerPoint (`.pptx`) files in the browser.
 
-## Features
+## Packages
 
-- **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **Node.js** - Runtime environment
-- **Turborepo** - Optimized monorepo build system
-- **Oxlint** - Oxlint + Oxfmt (linting & formatting)
+| Package                                    | Description                                                  | Bundle               |
+| ------------------------------------------ | ------------------------------------------------------------ | -------------------- |
+| [`@diceui/pptx-parser`](./packages/parser) | Core OOXML parser and DOM renderer — no framework dependency | 729 KB / 161 KB gzip |
+| [`@diceui/pptx`](./packages/react)         | React component library built on top of the parser           | 85 KB / 22 KB gzip   |
 
-## Getting Started
+## Quick start
 
-First, install the dependencies:
+```bash
+# React
+npm install @diceui/pptx
+
+# Parser only (no React dependency)
+npm install @diceui/pptx-parser
+```
+
+### Viewer
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+export function Viewer({ file }: { file: File }) {
+  return (
+    <Presentation.Root file={file}>
+      <Presentation.Sidebar />
+      <Presentation.Viewport>
+        <Presentation.Slide />
+      </Presentation.Viewport>
+    </Presentation.Root>
+  );
+}
+```
+
+### Viewer with editing
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+export function Editor({ file }: { file: File }) {
+  return (
+    <Presentation.Root file={file}>
+      <Presentation.Sidebar />
+      <Presentation.Viewport>
+        <Presentation.Slide />
+        <Presentation.Selection
+          onUndo={(_, error) => error && toast.error("Nothing to undo")}
+          onRedo={(_, error) => error && toast.error("Nothing to redo")}
+          onNodeTransform={(_, error) => error && toast.error("Could not move shape")}
+          onNodeDelete={(_, error) => error && toast.error("Could not delete shape")}
+          onTextChange={(_, error) => error && toast.error("Could not save text")}
+        />
+      </Presentation.Viewport>
+    </Presentation.Root>
+  );
+}
+```
+
+### Parser only (no React)
+
+```ts
+import { parsePptx, renderSlide } from "@diceui/pptx-parser";
+
+const presentation = await parsePptx(arrayBuffer);
+const slide = presentation.slides[0];
+const handle = renderSlide(presentation, slide);
+
+document.body.appendChild(handle.element);
+
+// When done
+handle.dispose();
+```
+
+## React API
+
+### `Presentation.Root`
+
+The context provider. Accepts a `File`, `ArrayBuffer`, or URL string as `file`.
+
+### `Presentation.Viewport`
+
+Scrollable canvas area. Renders the active slide scaled to fit.
+
+### `Presentation.Slide`
+
+Renders the active slide. Must be inside `Presentation.Viewport`.
+
+### `Presentation.Selection`
+
+Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock), inline text editing, multi-select, marquee selection, and keyboard shortcuts. Must be placed as a sibling to `Presentation.Slide` inside `Presentation.Viewport`.
+
+**Interaction model:**
+
+| Action                       | Behavior                       |
+| ---------------------------- | ------------------------------ |
+| Click text box / placeholder | Select + enter text mode       |
+| Click regular shape          | Select                         |
+| Double-click regular shape   | Enter text mode                |
+| Type while shape selected    | Enter text mode                |
+| Drag shape                   | Move                           |
+| Drag border of text box      | Move while keeping text mode   |
+| Drag resize handle           | Resize                         |
+| Shift + drag corner handle   | Resize preserving aspect ratio |
+| Ctrl/Cmd+A                   | Select all                     |
+| Shift/Ctrl+click             | Toggle shape in selection      |
+| Drag empty canvas            | Marquee select                 |
+| Delete / Backspace           | Delete selected shape(s)       |
+| Arrow keys                   | Nudge (1 px; Shift = 10 px)    |
+| Ctrl/Cmd+Z                   | Undo                           |
+| Ctrl/Cmd+Y / Ctrl+Shift+Z    | Redo                           |
+| Escape                       | Deselect / exit text mode      |
+
+### `Presentation.ThumbnailList`
+
+Slide strip. Supports virtualized rendering for large decks.
+
+### `Presentation.Toolbar` / `Presentation.Controls`
+
+Pre-built toolbar and slide navigation controls.
+
+### `Presentation.Error` / `Presentation.Loading`
+
+Slot components for custom loading and error states.
+
+### Hooks
+
+```ts
+const { presentation, status } = usePresentation();
+const { slide } = useSlide();
+const { zoom, setZoom } = useZoom();
+const store = useCreatePresentationStore({ file });
+```
+
+## Edit operations (parser)
+
+All mutations go through `store.edit(operation)` and support undo/redo via `store.undo()` / `store.redo()`.
+
+| Operation          | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `setTextRun`       | Replace a single text run's content              |
+| `setTextBody`      | Replace all paragraphs and runs in a shape       |
+| `setNodeTransform` | Move / resize a shape                            |
+| `setSolidFill`     | Change a shape's fill color                      |
+| `deleteNode`       | Delete a shape from a slide                      |
+| `moveSlide`        | Reorder slides                                   |
+| `duplicateSlide`   | Duplicate a slide                                |
+| `deleteSlide`      | Delete a slide                                   |
+| `batch`            | Group multiple operations into one undoable step |
+
+## Development
 
 ```bash
 pnpm install
+pnpm dev          # starts apps/docs on http://localhost:3000
+pnpm build        # build all packages
+pnpm test         # run all tests
+pnpm check-types  # TypeScript type check
+pnpm check        # lint + format (oxlint)
 ```
 
-Then, run the development server:
+## Project structure
 
-```bash
-pnpm run dev
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
-
-## UI Customization
-
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
-
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
-
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
-
-```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
-```
-
-Import shared components like this:
-
-```tsx
-import { Button } from "@pptx/ui/components/button";
-```
-
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
-
-## Git Hooks and Formatting
-
-- Run checks: `pnpm run check`
-
-## Project Structure
-
-```
+```text
 pptx/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   └── server/      # Backend API (Hono)
-├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
+│   └── docs/              # Next.js docs + interactive playground
+└── packages/
+    ├── parser/            # @diceui/pptx-parser — OOXML parser, renderer, edit ops
+    ├── react/             # @diceui/pptx — React primitives
+    └── config/            # Shared TypeScript / build config
 ```
 
-## Available Scripts
+## OOXML support
 
-- `pnpm run dev`: Start all applications in development mode
-- `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
-- `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run check`: Run Oxlint and Oxfmt
+See [`packages/parser/OOXML-SUPPORT.md`](./packages/parser/OOXML-SUPPORT.md) for a detailed feature matrix against ECMA-376.
+
+## License
+
+Apache-2.0 — see [LICENSE](./LICENSE).

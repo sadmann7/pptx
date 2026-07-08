@@ -66,18 +66,19 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 
 ## Text (DrawingML §21.1)
 
-| Feature                                                                                | Status | Notes                                                                   |
-| -------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| Runs: b/i/u/strike, size, color, highlight, spacing, caps, baseline                    | ✅     |                                                                         |
-| Fonts: explicit `latin`/`ea`/`cs`, theme `+mj-lt`/`+mn-lt`                             | ✅     |                                                                         |
-| Paragraphs: alignment, RTL, indent, margins, line/para spacing (pct + pts)             | ✅     |                                                                         |
-| Bullets: `buChar`, `buAutoNum` (all formats), `buClr`, `buSzPct/Pts`, `buFont`, levels | ✅     | Known deviation: `startAt` re-seeds on every paragraph (`TODO(spec?)`)  |
-| Fields (`a:fld`)                                                                       | 🟡     | Renders cached literal, not computed value (`TODO(spec?)`)              |
-| Hyperlinks: external URLs, `ppaction://` slide jumps                                   | ✅     | URL protocol allow-list (`utils/url-validation.ts`)                     |
-| `bodyPr`: anchor, insets, wrap, `normAutofit`, `spAutoFit`, vertical text              | ✅     | Autofit re-measures via DOM; browser metrics ≠ DirectWrite exactly      |
-| Embedded fonts (`.fntdata`: EOT/MTX, ODTTF deobfuscation)                              | ✅     | Internal MTX decompressor (`fonts/mtx/`), worker pool, priority loading |
-| WordArt / text effects                                                                 | ❌     | Beyond vertical orientation                                             |
-| Math (OMML)                                                                            | ❌     |                                                                         |
+| Feature                                                                                | Status | Notes                                                                                                   |
+| -------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| Runs: b/i/u/strike, size, color, highlight, spacing, caps, baseline                    | ✅     |                                                                                                         |
+| Fonts: explicit `latin`/`ea`/`cs`, theme `+mj-lt`/`+mn-lt`                             | ✅     |                                                                                                         |
+| Paragraphs: alignment, RTL, indent, margins, line/para spacing (pct + pts)             | ✅     |                                                                                                         |
+| Bullets: `buChar`, `buAutoNum` (all formats), `buClr`, `buSzPct/Pts`, `buFont`, levels | ✅     | Known deviation: `startAt` re-seeds on every paragraph (`TODO(spec?)`)                                  |
+| Fields (`a:fld`)                                                                       | 🟡     | Renders cached literal, not computed value (`TODO(spec?)`)                                              |
+| Hyperlinks: external URLs, `ppaction://` slide jumps                                   | ✅     | URL protocol allow-list (`utils/url-validation.ts`)                                                     |
+| `bodyPr`: anchor, insets, wrap, `normAutofit`, `spAutoFit`, vertical text              | ✅     | Autofit re-measures via DOM; browser metrics ≠ DirectWrite exactly                                      |
+| Leading spaces / tabs at line start                                                    | ✅     | `white-space: pre-wrap` applied to runs that start a visual line with spaces; matches PowerPoint layout |
+| Embedded fonts (`.fntdata`: EOT/MTX, ODTTF deobfuscation)                              | ✅     | Internal MTX decompressor (`fonts/mtx/`), worker pool, priority loading                                 |
+| WordArt / text effects                                                                 | ❌     | Beyond vertical orientation                                                                             |
+| Math (OMML)                                                                            | ❌     |                                                                                                         |
 
 ## Tables (DrawingML §21.1.3)
 
@@ -110,6 +111,27 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 | Video/audio placeholders                                         | 🟡     | Poster + native controls for supported formats; no OLE                   |
 | SmartArt (`dgm`)                                                 | 🟡     | Rendered from `diagrams/drawing*.xml` fallback, not the layout algorithm |
 | OLE objects                                                      | ❌     |                                                                          |
+
+## In-place editing (non-spec extension)
+
+The parser exposes a mutation layer on top of the parsed model. These are not OOXML spec features but rather editor operations that produce valid OOXML.
+
+| Operation                                                  | Status | Notes                                           |
+| ---------------------------------------------------------- | ------ | ----------------------------------------------- |
+| `setTextRun` — replace a single run's text                 | ✅     | Preserves run `rPr`                             |
+| `setTextBody` — replace all paragraphs / runs in a shape   | ✅     | Inherits `endParaRPr` when no source run exists |
+| `setNodeTransform` — move / resize a shape (`xfrm`)        | ✅     | EMU precision                                   |
+| `setSolidFill` — change a shape's solid fill color         | ✅     | `srgbClr`                                       |
+| `deleteNode` — remove a shape from a slide                 | ✅     |                                                 |
+| `moveSlide` — reorder slides                               | ✅     |                                                 |
+| `duplicateSlide` — clone a slide                           | ✅     |                                                 |
+| `deleteSlide` — remove a slide                             | ✅     |                                                 |
+| `batch` — group multiple operations into one undoable step | ✅     | Sub-ops rolled back on failure                  |
+| Undo / redo stack                                          | ✅     | Per-operation inverse stored at commit time     |
+| Editing table cells                                        | ❌     |                                                 |
+| Editing chart data                                         | ❌     |                                                 |
+| Editing connector endpoints                                | ❌     |                                                 |
+| Adding new shapes                                          | ❌     |                                                 |
 
 ## Known spec deviations (tracked as `TODO(spec?)` in tests)
 
