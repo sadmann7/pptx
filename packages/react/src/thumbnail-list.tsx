@@ -624,13 +624,16 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const pWidth = presentation?.width ?? 1;
     const pHeight = presentation?.height ?? 1;
 
-    // Edit revision of this slide; a bump re-runs the IO effect below, which
-    // treats the cached handle as stale and re-renders the miniature.
+    // Edit revision of this slide; a bump means the cached miniature is
+    // stale. Kept in a ref so the IO effect doesn't tear down on every edit
+    // (that detach→re-attach gap is what causes the thumbnail flash).
     const revision = React.useSyncExternalStore(
       store.subscribe,
       () => store.getSlideRevision(itemContext.slideId),
       () => 0,
     );
+    const revisionRef = React.useRef(revision);
+    revisionRef.current = revision;
 
     const widthRef = React.useRef(0);
     const [containerWidth, setContainerWidth] = React.useState(0);
@@ -709,7 +712,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             cancelRender = null;
 
             const cached = slideHandleCache.get(slide.id);
-            if (cached && cached.revision === revision) {
+            if (cached && cached.revision === revisionRef.current) {
               attach(element, cached.handle);
             } else {
               if (cached) {
@@ -723,7 +726,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
                 if (!el2 || slideHandleRef.current) return;
                 const handle = renderSlide(presentation, slide, { mediaUrlCache });
                 handle.element.style.transformOrigin = "top left";
-                slideHandleCache.set(slide.id, { handle, revision });
+                slideHandleCache.set(slide.id, { handle, revision: revisionRef.current });
                 attach(el2, handle);
               });
             }
@@ -745,7 +748,32 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         const element = itemPreviewRef.current;
         if (element) detach(element);
       };
-    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender, revision]);
+    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender]);
+
+    // Re-render the miniature in place when an edit bumps the revision,
+    // without tearing down the IntersectionObserver (the detach→re-attach
+    // gap was the cause of the thumbnail flash on every edit). Only fires
+    // when the slide is currently visible/attached; off-screen slides are
+    // re-rendered on demand by the IO callback using revisionRef.
+    React.useEffect(() => {
+      const element = itemPreviewRef.current;
+      if (!element || !presentation || !slide) return;
+      if (!slideHandleRef.current) return; // not visible — IO handles it
+
+      const oldHandle = slideHandleRef.current;
+      oldHandle.element.remove();
+      oldHandle.dispose();
+      slideHandleRef.current = null;
+      slideHandleCache.delete(slide.id);
+
+      const handle = renderSlide(presentation, slide, { mediaUrlCache });
+      handle.element.style.transformOrigin = "top left";
+      const currentScale = widthRef.current > 0 ? widthRef.current / pWidthRef.current : 0;
+      if (currentScale > 0) handle.element.style.transform = `scale(${currentScale})`;
+      element.appendChild(handle.element);
+      slideHandleRef.current = handle;
+      slideHandleCache.set(slide.id, { handle, revision });
+    }, [revision]);
 
     return renderElement(
       "div",
