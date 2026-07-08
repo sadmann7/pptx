@@ -499,6 +499,45 @@ describe("setTextBody", () => {
     expect(roShape.textBody?.paragraphs[1].runs[0].text).toBe("Italic second");
   });
 
+  it("clones endParaRPr into new runs when the source paragraph has no runs", async () => {
+    // A plain shape with an empty paragraph: PowerPoint stores the formatting
+    // for text typed there in a:endParaRPr. Typing into it must produce a run
+    // with that formatting, not the theme default.
+    const emptyParaShape = `<p:sp>
+<p:nvSpPr><p:cNvPr id="2" name="Shape 2"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/>
+  <a:p><a:endParaRPr lang="en-US" sz="1800" b="1"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:endParaRPr></a:p>
+</p:txBody>
+</p:sp>`;
+    const pres = await openEditable([emptyParaShape]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, {
+      type: "setTextBody",
+      slideId,
+      nodeId: "2",
+      paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "typed" }] }],
+    });
+
+    const shape = shapeOn(pres, 0, "2");
+    const run = shape.textBody?.paragraphs[0].runs[0];
+    expect(run?.text).toBe("typed");
+    expect(run?.properties?.numAttr("sz")).toBe(1800);
+    expect(run?.properties?.attr("b")).toBe("1");
+
+    // Saved XML carries the rPr (converted from endParaRPr) on the new run.
+    const savedXml = await savedPartText(pres, "ppt/slides/slide1.xml");
+    expect(savedXml).toContain("typed");
+    expect(savedXml).toMatch(/<a:r>\s*<a:rPr[^>]*sz="1800"/);
+
+    // Survives save/reopen with the same formatting.
+    const reopened = await saveAndReopen(pres);
+    const roRun = shapeOn(reopened, 0, "2").textBody?.paragraphs[0].runs[0];
+    expect(roRun?.text).toBe("typed");
+    expect(roRun?.properties?.numAttr("sz")).toBe(1800);
+  });
+
   it("handles line breaks (a:br) in output", async () => {
     const pres = await openEditable([textShape(2, "Line1")]);
     const slideId = pres.slides[0].id;

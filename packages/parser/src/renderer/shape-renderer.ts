@@ -327,6 +327,11 @@ const SINGLE_PARAGRAPH_WRAPPED_AUTOFIT_HEIGHT_TOLERANCE = 1.25;
 const WRAPPED_AUTOFIT_WIDTH_TOLERANCE_PX = 1;
 const NO_AUTOFIT_TITLE_METRIC_SCALE_FLOOR = 0.9;
 const SP_AUTOFIT_UNWRAPPED_WIDTH_SCALE_FLOOR = 0.9;
+// The implicit single-line fit compensates for browser fonts measuring wider
+// than Office fonts (~10%), keeping authored labels on one line. It must not
+// shrink text drastically: with wrapping enabled and no autofit, PowerPoint
+// wraps and overflows instead — e.g. text typed into a small shape.
+const IMPLICIT_SINGLE_LINE_METRIC_SCALE_FLOOR = 0.85;
 
 function getSupportedTextWarpPreset(textBody: TextBody): "textArchDown" | "textArchUp" | null {
   const prstTxWarp = textBody.bodyProperties?.child("prstTxWarp");
@@ -2630,8 +2635,17 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               usesSingleLineSpAutoFitWidthFit ||
               usesImplicitSingleLineFit ||
               usesNoAutofitSingleLineTitleFit;
+            // Wrapping-enabled implicit fit only corrects small browser font
+            // metric differences. Larger overflow means the text genuinely
+            // doesn't fit on one line (e.g. typed during editing), and
+            // PowerPoint wraps + overflows rather than shrinking.
+            const implicitFitScaleTooAggressive =
+              usesImplicitSingleLineFit &&
+              textWrap !== "none" &&
+              widthScale < IMPLICIT_SINGLE_LINE_METRIC_SCALE_FLOOR;
             if (
               canUseUnwrappedWidthScale &&
+              !implicitFitScaleTooAggressive &&
               (!usesNoAutofitSingleLineTitleFit ||
                 widthScale >= NO_AUTOFIT_TITLE_METRIC_SCALE_FLOOR)
             ) {

@@ -943,6 +943,22 @@ export function renderTextBody(
     }
     paraDiv.style.color =
       options?.fontRefColor ?? options?.cellTextColor ?? paraDefaultStyle.color ?? "#000000";
+    // Same for font family: without this, text typed into an empty paragraph
+    // inherits the page font, then switches to the theme font on commit.
+    {
+      const paraFont =
+        options?.cellTextFontFamily ??
+        paraDefaultStyle.fontFamilyStack ??
+        paraDefaultStyle.fontFamily ??
+        ctx.theme.minorFont.latin ??
+        ctx.theme.minorFont.ea;
+      if (paraFont) {
+        const resolvedFont = Array.isArray(paraFont)
+          ? paraFont.map((font) => resolveThemeFont(font, ctx))
+          : resolveThemeFont(paraFont, ctx);
+        paraDiv.style.fontFamily = cssFontFamilyStack(resolvedFont);
+      }
+    }
 
     const trimSpaceBefore =
       options?.trimOuterParagraphSpacing && paragraphIndex === firstVisibleParagraphIndex;

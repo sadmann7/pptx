@@ -355,6 +355,25 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
       return rPr ?? null;
     }
 
+    // When the source paragraph has no runs at all, PowerPoint takes the
+    // formatting for newly typed text from a:endParaRPr. Convert it into an
+    // a:rPr (same attributes and children, different element name) so new
+    // runs keep the paragraph's pending-text size/color/font.
+    function endParaRPrAsRPr(srcParaIdx: number): Element | null {
+      if (srcParaIdx < 0 || srcParaIdx >= origParagraphs.length) return null;
+      const src = origParagraphs[srcParaIdx].endParaRPr?.element;
+      if (!src) return null;
+      const rPr = doc.createElementNS(A_NS, "a:rPr");
+      for (const attr of Array.from(src.attributes)) {
+        if (attr.name.startsWith("xmlns")) continue;
+        rPr.setAttribute(attr.name, attr.value);
+      }
+      for (const child of Array.from(src.childNodes)) {
+        rPr.appendChild(child.cloneNode(true));
+      }
+      return rPr;
+    }
+
     for (const opRun of opPara.runs) {
       // Resolve the source rPr element to clone styling from.
       let rPrEl: Element | null = null;
@@ -365,7 +384,9 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
           rPrEl = srcRunEl.getElementsByTagNameNS(A_NS, "rPr")[0] ?? null;
         }
       } else {
-        rPrEl = resolveDefaultRPr(opPara.sourceParagraphIndex);
+        rPrEl =
+          resolveDefaultRPr(opPara.sourceParagraphIndex) ??
+          endParaRPrAsRPr(opPara.sourceParagraphIndex);
       }
 
       // a:br for newlines, a:r for text.
