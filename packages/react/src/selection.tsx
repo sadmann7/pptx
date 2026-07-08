@@ -301,23 +301,8 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Ctrl/Cmd+A selects every shape on the slide.
  * - Arrow keys nudge, Delete removes — applied to the whole selection.
  */
-/** Internal props — extends the public API with a ref the outer wrapper
- * uses to request focus after a cross-slide undo/redo remount. */
-interface SelectionImplProps extends SelectionProps {
-  focusOnMountRef: React.MutableRefObject<boolean>;
-}
-
-const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(function SelectionImpl(
-  {
-    render,
-    onUndo,
-    onRedo,
-    onNodeDelete,
-    onNodeTransform,
-    onTextChange,
-    focusOnMountRef,
-    ...selectionProps
-  },
+const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
+  { render, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
   forwardedRef,
 ) {
   const store = usePresentationStore(SELECTION_NAME);
@@ -327,21 +312,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(funct
 
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
-
-  // Callback ref: sets rootRef for imperative access, and reclaims focus when
-  // the outer wrapper flagged a cross-slide undo/redo remount. Fires at commit
-  // time (not a separate effect), which is the right hook for "do something
-  // when this DOM node mounts."
-  const setRootRef = React.useCallback(
-    (element: HTMLDivElement | null) => {
-      rootRef.current = element;
-      if (element && focusOnMountRef.current) {
-        focusOnMountRef.current = false;
-        element.focus({ preventScroll: true });
-      }
-    },
-    [focusOnMountRef],
-  );
 
   // Stable refs for document-level listeners (avoids stale closures).
   const stateRef = React.useRef(state);
@@ -1379,47 +1349,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(funct
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
     // Text mode keys are handled by the document listener; this handler
     // only fires when the overlay div has focus (selected/idle modes).
+    // Undo/redo shortcuts live in the outer Selection wrapper (document
+    // level) so they survive the slide-change remount of this component.
     if (isTextMode) return;
 
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
-
-    // Undo / redo — active whenever the overlay is focused.
-    if (mod && key === "z" && !event.shiftKey) {
-      event.preventDefault();
-      // If undo navigates to another slide, this component remounts (key
-      // change). Set the flag so the fresh mount reclaims focus; cancel it
-      // here when the slide didn't change (no remount will consume it).
-      focusOnMountRef.current = true;
-      const slideBefore = store.getState().activeSlideId;
-      const success = store.undo();
-      if (store.getState().activeSlideId === slideBefore) {
-        focusOnMountRef.current = false;
-        rootRef.current?.focus({ preventScroll: true });
-      }
-      onUndo?.(success ? "success" : "empty");
-      return;
-    }
-    if (mod && (key === "y" || (key === "z" && event.shiftKey))) {
-      event.preventDefault();
-      focusOnMountRef.current = true;
-      const slideBefore = store.getState().activeSlideId;
-      store
-        .redo()
-        .then((success) => {
-          if (store.getState().activeSlideId === slideBefore) {
-            focusOnMountRef.current = false;
-            rootRef.current?.focus({ preventScroll: true });
-          }
-          onRedo?.(success ? "success" : "empty");
-        })
-        .catch((error) => {
-          focusOnMountRef.current = false;
-          rootRef.current?.focus({ preventScroll: true });
-          onRedo?.("empty", error);
-        });
-      return;
-    }
 
     // Ctrl/Cmd+A selects every shape on the slide (PowerPoint).
     if (mod && key === "a") {
@@ -1508,7 +1443,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(funct
     { render },
     {
       state: publicState,
-      ref: mergeRefs(setRootRef, forwardedRef),
+      ref: mergeRefs(rootRef, forwardedRef),
       props: [
         {
           "data-pptx-selection": "",
@@ -1552,6 +1487,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(funct
   );
 });
 
+/** True when a key event originates in an element with its own undo stack —
+ * our text-mode contentEditable or any host-app input. Their Ctrl+Z must
+ * reach the browser's native undo, not the presentation history. */
+function isNativeUndoTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
 /**
  * Thin outer wrapper that keys the inner component by `slideId`. When the
  * slide changes, React unmounts and remounts `SelectionImpl`, naturally
@@ -1559,25 +1507,58 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(funct
  * reused across slides, so a stale selection would otherwise bleed onto the
  * new slide — the key swap is the React-idiomatic way to scope local state
  * to the current context without effect-driven resets.
+ *
+ * Undo/redo shortcuts are handled here, at document level, rather than in
+ * `SelectionImpl`: they are store operations that don't need selection state,
+ * and they must survive the remount when an undo navigates to another slide.
+ * PowerPoint likewise accepts Ctrl+Z regardless of what part of the app has
+ * focus.
  */
-export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(
-  function Selection(props, forwardedRef) {
-    const { slideId } = useSlide();
-    // Survives slide-change remounts of SelectionImpl so cross-slide
-    // undo/redo can request focus on the fresh mount.
-    const focusOnMountRef = React.useRef(false);
-    if (!slideId) return null;
+export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
+  { onUndo, onRedo, ...props },
+  forwardedRef,
+) {
+  const store = usePresentationStore(SELECTION_NAME);
+  const { presentation } = usePresentation();
+  const { slideId } = useSlide();
 
-    return (
-      <SelectionImpl
-        key={slideId}
-        ref={forwardedRef}
-        focusOnMountRef={focusOnMountRef}
-        {...props}
-      />
-    );
-  },
-);
+  // Refs keep the effect bound once while callbacks stay fresh.
+  const onUndoRef = React.useRef(onUndo);
+  onUndoRef.current = onUndo;
+  const onRedoRef = React.useRef(onRedo);
+  onRedoRef.current = onRedo;
+
+  const editable = presentation?.pkg != null;
+
+  React.useEffect(() => {
+    if (!editable) return;
+
+    function onDocKeyDown(e: KeyboardEvent): void {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (isNativeUndoTarget(e.target)) return;
+      const key = e.key.toLowerCase();
+
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        const success = store.undo();
+        onUndoRef.current?.(success ? "success" : "empty");
+      } else if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        store.redo().then(
+          (success) => onRedoRef.current?.(success ? "success" : "empty"),
+          (error) => onRedoRef.current?.("empty", error),
+        );
+      }
+    }
+
+    document.addEventListener("keydown", onDocKeyDown);
+    return () => document.removeEventListener("keydown", onDocKeyDown);
+  }, [editable, store]);
+
+  if (!slideId) return null;
+
+  return <SelectionImpl key={slideId} ref={forwardedRef} {...props} />;
+});
 
 // ---------------------------------------------------------------------------
 // SelectionBox (internal)
