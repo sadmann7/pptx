@@ -58,6 +58,8 @@ type InternalState =
       startY: number;
       dx: number;
       dy: number;
+      /** Shift held during the drag: corner handles keep the aspect ratio. */
+      lockAspect: boolean;
     }
   | {
       mode: "text";
@@ -73,8 +75,20 @@ interface Rect {
   h: number;
 }
 
-/** Apply a resize drag (slide-px deltas) to the original rect, clamped to MIN_SIZE. */
-function resizeRect(origin: Rect, handle: HandleDirection, dx: number, dy: number): Rect {
+const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
+
+/**
+ * Apply a resize drag (slide-px deltas) to the original rect, clamped to
+ * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
+ * dimensions proportionally around the opposite corner, like PowerPoint.
+ */
+function resizeRect(
+  origin: Rect,
+  handle: HandleDirection,
+  dx: number,
+  dy: number,
+  lockAspect = false,
+): Rect {
   let { x, y, w, h } = origin;
 
   if (handle.includes("e")) w = origin.w + dx;
@@ -86,6 +100,21 @@ function resizeRect(origin: Rect, handle: HandleDirection, dx: number, dy: numbe
   if (handle.includes("n")) {
     h = origin.h - dy;
     y = origin.y + dy;
+  }
+
+  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
+    // Follow the axis the pointer changed most (relative to the shape) and
+    // derive the other from the original aspect ratio.
+    let scale =
+      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
+    // Keep both dimensions at or above the minimum size.
+    scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
+    w = origin.w * scale;
+    h = origin.h * scale;
+    // Re-anchor so the opposite corner stays put.
+    if (handle.includes("w")) x = origin.x + origin.w - w;
+    if (handle.includes("n")) y = origin.y + origin.h - h;
+    return { x, y, w, h };
   }
 
   if (w < MIN_SIZE) {
@@ -1014,6 +1043,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       startY: event.clientY,
       dx: 0,
       dy: 0,
+      lockAspect: event.shiftKey,
     });
   }
 
@@ -1063,7 +1093,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       }
       setState({ ...state, dx, dy, moved });
     } else {
-      setState({ ...state, dx, dy });
+      // Track Shift live so holding/releasing it mid-drag toggles the lock.
+      setState({ ...state, dx, dy, lockAspect: event.shiftKey });
     }
   }
 
@@ -1114,18 +1145,19 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         }
       }
     } else if (state.mode === "resize") {
-      const { nodeId, handle, dx, dy } = state;
+      const { nodeId, handle, dx, dy, lockAspect } = state;
       setState({ mode: "selected", nodeId });
       debugLog("resize pointerup", {
         nodeId,
         handle,
         dx,
         dy,
+        lockAspect,
         hasSelectedNode: Boolean(selectedNode),
         baseRect: selectedNode ? nodeRect(selectedNode) : null,
       });
       if (selectedNode && (dx !== 0 || dy !== 0)) {
-        const next = resizeRect(nodeRect(selectedNode), handle, dx, dy);
+        const next = resizeRect(nodeRect(selectedNode), handle, dx, dy, lockAspect);
         commitEdit(
           () =>
             store.edit({
@@ -1330,7 +1362,7 @@ function SelectionBox({
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
   } else if (state.mode === "resize") {
-    rect = resizeRect(rect, state.handle, state.dx, state.dy);
+    rect = resizeRect(rect, state.handle, state.dx, state.dy, state.lockAspect);
   }
 
   const isTextMode = state.mode === "text";
