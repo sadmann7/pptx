@@ -112,27 +112,6 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 | SmartArt (`dgm`)                                                 | 🟡     | Rendered from `diagrams/drawing*.xml` fallback, not the layout algorithm |
 | OLE objects                                                      | ❌     |                                                                          |
 
-## In-place editing (non-spec extension)
-
-The parser exposes a mutation layer on top of the parsed model. These are not OOXML spec features but rather editor operations that produce valid OOXML.
-
-| Operation                                                  | Status | Notes                                           |
-| ---------------------------------------------------------- | ------ | ----------------------------------------------- |
-| `setTextRun` — replace a single run's text                 | ✅     | Preserves run `rPr`                             |
-| `setTextBody` — replace all paragraphs / runs in a shape   | ✅     | Inherits `endParaRPr` when no source run exists |
-| `setNodeTransform` — move / resize a shape (`xfrm`)        | ✅     | EMU precision                                   |
-| `setSolidFill` — change a shape's solid fill color         | ✅     | `srgbClr`                                       |
-| `deleteNode` — remove a shape from a slide                 | ✅     |                                                 |
-| `moveSlide` — reorder slides                               | ✅     |                                                 |
-| `duplicateSlide` — clone a slide                           | ✅     |                                                 |
-| `deleteSlide` — remove a slide                             | ✅     |                                                 |
-| `batch` — group multiple operations into one undoable step | ✅     | Sub-ops rolled back on failure                  |
-| Undo / redo stack                                          | ✅     | Per-operation inverse stored at commit time     |
-| Editing table cells                                        | ❌     |                                                 |
-| Editing chart data                                         | ❌     |                                                 |
-| Editing connector endpoints                                | ❌     |                                                 |
-| Adding new shapes                                          | ❌     |                                                 |
-
 ## Known spec deviations (tracked as `TODO(spec?)` in tests)
 
 1. `buAutoNum` `startAt` restarts numbering on every paragraph that declares it.
