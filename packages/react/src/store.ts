@@ -636,7 +636,11 @@ export function createPresentationStore(): PresentationStore {
    * subscribers. The presentation object is mutated in place, so the state
    * `revision` counter is the only identity change subscribers see.
    */
-  function commitEdit(affectedSlideIds: string[], prevActiveIndex: number): void {
+  function commitEdit(
+    affectedSlideIds: string[],
+    prevActiveIndex: number,
+    navigateToFirstAffected = false,
+  ): void {
     const { presentation } = state;
     if (!presentation) return;
 
@@ -650,6 +654,12 @@ export function createPresentationStore(): PresentationStore {
     if (activeGone || activeSlideId === null) {
       const fallbackIndex = clamp(prevActiveIndex, 0, presentation.slides.length - 1);
       activeSlideId = presentation.slides[fallbackIndex]?.id ?? null;
+    }
+    // Undo/redo: jump to the slide the action touched so the user sees the
+    // change (PowerPoint behavior). Only when that slide still exists.
+    if (navigateToFirstAffected) {
+      const target = affectedSlideIds.find((id) => slideIndexById.has(id));
+      if (target) activeSlideId = target;
     }
     const activeSlide = activeSlideId
       ? presentation.slides[slideIndexById.get(activeSlideId) ?? -1]
@@ -684,7 +694,7 @@ export function createPresentationStore(): PresentationStore {
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
-    commitEdit(affected, prevActiveIndex);
+    commitEdit(affected, prevActiveIndex, true);
     return true;
   }
 
@@ -698,7 +708,7 @@ export function createPresentationStore(): PresentationStore {
     // Re-apply the original operation; it captures fresh undo state.
     const result = await applyEdit(presentation, entry.op);
     undoStack.push({ op: entry.op, result });
-    commitEdit(result.affectedSlideIds, prevActiveIndex);
+    commitEdit(result.affectedSlideIds, prevActiveIndex, true);
     return true;
   }
 

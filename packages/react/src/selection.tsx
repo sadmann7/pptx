@@ -301,8 +301,23 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Ctrl/Cmd+A selects every shape on the slide.
  * - Arrow keys nudge, Delete removes — applied to the whole selection.
  */
-const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
-  { render, onUndo, onRedo, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
+/** Internal props — extends the public API with a ref the outer wrapper
+ * uses to request focus after a cross-slide undo/redo remount. */
+interface SelectionImplProps extends SelectionProps {
+  focusOnMountRef: React.MutableRefObject<boolean>;
+}
+
+const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionImplProps>(function SelectionImpl(
+  {
+    render,
+    onUndo,
+    onRedo,
+    onNodeDelete,
+    onNodeTransform,
+    onTextChange,
+    focusOnMountRef,
+    ...selectionProps
+  },
   forwardedRef,
 ) {
   const store = usePresentationStore(SELECTION_NAME);
@@ -312,6 +327,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
+
+  // Callback ref: sets rootRef for imperative access, and reclaims focus when
+  // the outer wrapper flagged a cross-slide undo/redo remount. Fires at commit
+  // time (not a separate effect), which is the right hook for "do something
+  // when this DOM node mounts."
+  const setRootRef = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      rootRef.current = element;
+      if (element && focusOnMountRef.current) {
+        focusOnMountRef.current = false;
+        element.focus({ preventScroll: true });
+      }
+    },
+    [focusOnMountRef],
+  );
 
   // Stable refs for document-level listeners (avoids stale closures).
   const stateRef = React.useRef(state);
@@ -1357,20 +1387,34 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // Undo / redo — active whenever the overlay is focused.
     if (mod && key === "z" && !event.shiftKey) {
       event.preventDefault();
+      // If undo navigates to another slide, this component remounts (key
+      // change). Set the flag so the fresh mount reclaims focus; cancel it
+      // here when the slide didn't change (no remount will consume it).
+      focusOnMountRef.current = true;
+      const slideBefore = store.getState().activeSlideId;
       const success = store.undo();
-      rootRef.current?.focus({ preventScroll: true });
+      if (store.getState().activeSlideId === slideBefore) {
+        focusOnMountRef.current = false;
+        rootRef.current?.focus({ preventScroll: true });
+      }
       onUndo?.(success ? "success" : "empty");
       return;
     }
     if (mod && (key === "y" || (key === "z" && event.shiftKey))) {
       event.preventDefault();
+      focusOnMountRef.current = true;
+      const slideBefore = store.getState().activeSlideId;
       store
         .redo()
         .then((success) => {
-          rootRef.current?.focus({ preventScroll: true });
+          if (store.getState().activeSlideId === slideBefore) {
+            focusOnMountRef.current = false;
+            rootRef.current?.focus({ preventScroll: true });
+          }
           onRedo?.(success ? "success" : "empty");
         })
         .catch((error) => {
+          focusOnMountRef.current = false;
           rootRef.current?.focus({ preventScroll: true });
           onRedo?.("empty", error);
         });
@@ -1464,7 +1508,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     { render },
     {
       state: publicState,
-      ref: mergeRefs(rootRef, forwardedRef),
+      ref: mergeRefs(setRootRef, forwardedRef),
       props: [
         {
           "data-pptx-selection": "",
@@ -1519,9 +1563,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(
   function Selection(props, forwardedRef) {
     const { slideId } = useSlide();
+    // Survives slide-change remounts of SelectionImpl so cross-slide
+    // undo/redo can request focus on the fresh mount.
+    const focusOnMountRef = React.useRef(false);
     if (!slideId) return null;
 
-    return <SelectionImpl key={slideId} ref={forwardedRef} {...props} />;
+    return (
+      <SelectionImpl
+        key={slideId}
+        ref={forwardedRef}
+        focusOnMountRef={focusOnMountRef}
+        {...props}
+      />
+    );
   },
 );
 

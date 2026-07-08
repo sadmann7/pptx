@@ -192,6 +192,35 @@ describe("undo / redo", () => {
     store.undo();
     expect(store.getSlideRevision(slideId)).toBe(before + 1);
   });
+
+  it("navigates to the edited slide on cross-slide undo", async () => {
+    const store = await editableStore();
+    const slides = store.getState().presentation!.slides;
+    const slide0Id = slides[0].id;
+    const slide1Id = slides[1].id;
+
+    // Edit slide 0, then navigate to slide 1.
+    await store.edit({
+      type: "setTextRun",
+      slideId: slide0Id,
+      nodeId: "2",
+      paragraphIndex: 0,
+      runIndex: 0,
+      text: "edited",
+    });
+    store.goTo(slide1Id);
+    expect(store.getState().activeSlideId).toBe(slide1Id);
+
+    // Undo should navigate back to slide 0 (where the edit was).
+    store.undo();
+    expect(store.getState().activeSlideId).toBe(slide0Id);
+    expect(slideText(store, 0)).toBe("Slide 1");
+
+    // Redo should navigate to slide 0 again.
+    await store.redo();
+    expect(store.getState().activeSlideId).toBe(slide0Id);
+    expect(slideText(store, 0)).toBe("edited");
+  });
 });
 
 describe("structural edits and navigation", () => {
