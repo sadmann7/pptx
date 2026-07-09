@@ -2,13 +2,13 @@
 
 Composable primitives for rendering and editing powerpoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
 
-`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, …) that you assemble and style yourself. Under the hood, `@diceui/pptx-parser` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo — all without a framework dependency.
+`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-parser` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
 
 ## Packages
 
 | Package                                    | Description                                                  | Bundle               |
 | ------------------------------------------ | ------------------------------------------------------------ | -------------------- |
-| [`@diceui/pptx-parser`](./packages/parser) | Core OOXML parser and DOM renderer — no framework dependency | 729 KB / 161 KB gzip |
+| [`@diceui/pptx-parser`](./packages/parser) | Core OOXML parser and DOM renderer (no framework dependency) | 729 KB / 161 KB gzip |
 | [`@diceui/pptx`](./packages/react)         | React component library built on top of the parser           | 85 KB / 22 KB gzip   |
 
 ## Quick start
@@ -155,8 +155,8 @@ pnpm install
 pnpm dev          # starts apps/docs on http://localhost:3000
 pnpm build        # build all packages
 pnpm test         # run all tests
-pnpm check-types  # TypeScript type check
-pnpm check        # lint + format (oxlint)
+pnpm typecheck    # TypeScript type check
+pnpm check        # lint + format (oxlint + oxfmt)
 ```
 
 ## Project structure
@@ -166,8 +166,8 @@ pptx/
 ├── apps/
 │   └── docs/              # Next.js docs + interactive playground
 └── packages/
-    ├── parser/            # @diceui/pptx-parser — OOXML parser, renderer, edit ops
-    ├── react/             # @diceui/pptx — React primitives
+    ├── parser/            # @diceui/pptx-parser (OOXML parser, renderer, edit ops)
+    ├── react/             # @diceui/pptx (React primitives)
     └── config/            # Shared TypeScript / build config
 ```
 
@@ -175,6 +175,11 @@ pptx/
 
 See [`packages/parser/OOXML-SUPPORT.md`](./packages/parser/OOXML-SUPPORT.md) for a detailed feature matrix against ECMA-376.
 
+## Credits
+
+- **[pptx-renderer](https://github.com/aiden0z/pptx-renderer)** (Apache-2.0): the parser was originally derived from this work and has been substantially modified, extended, and refactored.
+- **[mtx-decompressor](https://github.com/ChristopherVR/mtx-decompressor)** (MPL-2.0): the embedded font decoder (`packages/parser/src/fonts/mtx/`) is derived from this library and optimized for our use case.
+
 ## License
 
-Apache-2.0 — see [LICENSE](./LICENSE).
+Apache-2.0. See [LICENSE](./LICENSE).

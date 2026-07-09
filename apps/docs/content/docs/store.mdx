@@ -56,12 +56,12 @@ interface PresentationState {
 store.load(file, {
   defaultSlideIndex?: number | ((slides) => number), // default: 0
   readOnly?: boolean,    // default: true
-  lazy?: boolean,        // default: true — parse slides on demand
-  embedFonts?: boolean,  // default: true — decode embedded fonts before ready
+  lazy?: boolean,        // default: true (parse slides on demand)
+  embedFonts?: boolean,  // default: true (decode embedded fonts before ready)
 })
 ```
 
-Parses a `File`, `Blob`, `ArrayBuffer`, or `Uint8Array`. Returns a promise that resolves to `PresentationData`. A superseded load rejects with `DOMException("AbortError")` — safe to ignore.
+Parses a `File`, `Blob`, `ArrayBuffer`, or `Uint8Array`. Returns a promise that resolves to `PresentationData`. A superseded load rejects with `DOMException("AbortError")` (safe to ignore).
 
 ### `reset()`
 

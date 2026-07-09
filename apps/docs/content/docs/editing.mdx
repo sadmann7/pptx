@@ -19,7 +19,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 
 - **Move** shapes by dragging them
 - **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock aspect ratio)
-- **Edit text** inline — single-click a text box, double-click or start typing on any shape
+- **Edit text** inline: single-click a text box, double-click or start typing on any shape
 - **Multi-select** with Shift/Ctrl+click, Ctrl+A, or drag a marquee on empty canvas
 - **Undo / redo** with Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y)
 - **Delete** selected shapes with Delete or Backspace
@@ -53,7 +53,7 @@ Each edit callback receives `(id, error?)`. Check `error` to show a toast or log
 
 ## Programmatic edits
 
-Use `store.edit()` to apply changes from outside the UI — for example, from a toolbar button. Edit operations have full undo/redo support.
+Use `store.edit()` to apply changes from outside the UI (for example, from a toolbar button). Edit operations have full undo/redo support.
 
 ```tsx
 import { useCreatePresentationStore } from "@diceui/pptx";
