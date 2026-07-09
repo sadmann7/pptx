@@ -1,7 +1,6 @@
 "use client";
 
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -12,7 +11,7 @@ function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props
 function Presentation({ className, ...props }: PresentationPrimitive.Root.Props) {
   return (
     <PresentationPrimitive.Root
-      data-slot="presentation-root"
+      data-slot="presentation"
       className={cn("flex gap-4 overflow-hidden", className)}
       {...props}
     />
@@ -47,33 +46,7 @@ function PresentationSelection({ className, ...props }: PresentationPrimitive.Se
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
-      className={cn("[--pptx-selection:var(--ring)]", className)}
-      onUndo={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Undo failed";
-        toast.error(errorMessage);
-      }}
-      onRedo={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Redo failed";
-        toast.error(errorMessage);
-      }}
-      onNodeDelete={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Could not delete shape";
-        toast.error(errorMessage);
-      }}
-      onNodeTransform={(_, error) => {
-        if (!error) return;
-        const errorMessage =
-          error instanceof Error ? error.message : "Could not move or resize shape";
-        toast.error(errorMessage);
-      }}
-      onTextChange={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Text edit failed";
-        toast.error(errorMessage);
-      }}
+      className={cn("[--presentation-selection:var(--ring)]", className)}
       {...props}
     />
   );
