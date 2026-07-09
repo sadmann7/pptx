@@ -1,0 +1,115 @@
+---
+title: Quick Start
+description: Build a presentation viewer in minutes.
+---
+
+## Basic viewer
+
+The minimal setup renders the active slide with a thumbnail strip and navigation controls.
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+export function Viewer({ file }: { file: File }) {
+  return (
+    <Presentation.Root file={file}>
+      <Presentation.ThumbnailList />
+      <Presentation.Viewport autoFit>
+        <Presentation.Slide />
+      </Presentation.Viewport>
+    </Presentation.Root>
+  );
+}
+```
+
+Pass a `File` object (e.g. from `<input type="file">`), an `ArrayBuffer`, or a URL string to `file`.
+
+## With loading and error states
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+export function Viewer({ file }: { file: File }) {
+  return (
+    <Presentation.Root file={file}>
+      <Presentation.ThumbnailList />
+      <Presentation.Viewport autoFit>
+        <Presentation.Loading />
+        <Presentation.Error />
+        <Presentation.Slide />
+      </Presentation.Viewport>
+    </Presentation.Root>
+  );
+}
+```
+
+## With editing
+
+Add `readOnly={false}` to enable editing, then place `Presentation.Selection` inside `Presentation.Slide`:
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+export function Editor({ file }: { file: File }) {
+  return (
+    <Presentation.Root file={file} readOnly={false}>
+      <Presentation.ThumbnailList />
+      <Presentation.Viewport autoFit>
+        <Presentation.Loading />
+        <Presentation.Error />
+        <Presentation.Slide>
+          <Presentation.Selection
+            onUndo={(_, error) => error && console.error("Nothing to undo")}
+            onRedo={(_, error) => error && console.error("Nothing to redo")}
+          />
+        </Presentation.Slide>
+      </Presentation.Viewport>
+    </Presentation.Root>
+  );
+}
+```
+
+## Controlled store
+
+For more control (programmatic navigation, editing, saving), create a store explicitly with `useCreatePresentationStore` and pass it to `Presentation.Provider`:
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+import { useCreatePresentationStore } from "@diceui/pptx";
+
+export function Editor() {
+  const store = useCreatePresentationStore();
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await store.load(file, { readOnly: false });
+  }
+
+  async function onSave() {
+    const bytes = await store.save();
+    const blob = new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "presentation.pptx";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Presentation.Provider store={store}>
+      <input type="file" accept=".pptx" onChange={onFileChange} />
+      <button onClick={onSave}>Save</button>
+      <Presentation.Root>
+        <Presentation.Viewport autoFit>
+          <Presentation.Slide>
+            <Presentation.Selection />
+          </Presentation.Slide>
+        </Presentation.Viewport>
+      </Presentation.Root>
+    </Presentation.Provider>
+  );
+}
+```

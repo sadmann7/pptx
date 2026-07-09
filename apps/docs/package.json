@@ -20,6 +20,7 @@
     "cnfast": "^0.0.8",
     "fumadocs-core": "16.10.6",
     "fumadocs-mdx": "15.0.13",
+    "fumadocs-typescript": "^5.3.0",
     "fumadocs-ui": "16.10.6",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",

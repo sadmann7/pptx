@@ -1,0 +1,230 @@
+---
+title: Store
+description: Presentation store API reference.
+---
+
+The store is the single source of truth for all presentation state: loading, navigation, zoom, edits, and undo history. It's compatible with React's `useSyncExternalStore`.
+
+## Creating a store
+
+### Uncontrolled (default)
+
+`Presentation.Root` creates an internal store automatically. This is the simplest setup:
+
+```tsx
+<Presentation.Root file={file}>
+  {/* descendants can use usePresentation(), useSlide(), useZoom() */}
+</Presentation.Root>
+```
+
+### Controlled
+
+Use `useCreatePresentationStore` when you need to drive the store from outside (programmatic load, toolbar buttons, save):
+
+```tsx
+import { useCreatePresentationStore } from "@diceui/pptx";
+
+const store = useCreatePresentationStore();
+
+// then pass it to the provider
+<Presentation.Provider store={store}>
+  <Presentation.Root>...</Presentation.Root>
+</Presentation.Provider>;
+```
+
+## State
+
+```ts
+interface PresentationState {
+  status: "idle" | "loading" | "ready" | "error";
+  presentation: PresentationData | null;
+  activeSlideId: string | null;
+  zoom: number; // default: 1
+  progress: number; // 0–100, meaningful while status === "loading"
+  error: Error | null;
+  revision: number; // bumped on every edit/undo/redo
+}
+```
+
+`revision` is important: `presentation` is mutated in place by edits, so its object identity never changes. Subscribe to `revision` to react to content changes.
+
+## Methods
+
+### `load(input, options?)`
+
+```ts
+store.load(file, {
+  defaultSlideIndex?: number | ((slides) => number), // default: 0
+  readOnly?: boolean,    // default: true
+  lazy?: boolean,        // default: true — parse slides on demand
+  embedFonts?: boolean,  // default: true — decode embedded fonts before ready
+})
+```
+
+Parses a `File`, `Blob`, `ArrayBuffer`, or `Uint8Array`. Returns a promise that resolves to `PresentationData`. A superseded load rejects with `DOMException("AbortError")` — safe to ignore.
+
+### `reset()`
+
+Clears the store back to the initial idle state and aborts any in-flight load.
+
+### Navigation
+
+```ts
+store.goTo(slideId: string)   // by stable slide id
+store.goToIndex(index: number) // 0-based, clamped to valid range
+store.next()
+store.prev()
+store.getActiveSlide() // SlideData | null
+store.canGoNext()
+store.canGoPrev()
+```
+
+### Zoom
+
+```ts
+store.setZoom(n: number)      // clamped to [0.1, 4]
+store.zoomIn(step?: number)   // default step: 0.25
+store.zoomOut(step?: number)
+store.fitTo(width, height, padding?) // compute largest zoom that fits
+```
+
+### Editing
+
+Requires the deck to have been loaded with `{ readOnly: false }`.
+
+```ts
+await store.edit(op: EditOperation): Promise<EditResult>
+store.undo(): boolean
+await store.redo(): Promise<boolean>
+store.canUndo(): boolean
+store.canRedo(): boolean
+await store.save(options?): Promise<Uint8Array>
+store.getSlideRevision(slideId: string): number
+```
+
+## Edit operations
+
+All operations accept `slideId` and `nodeId` (both strings).
+
+### `setTextRun`
+
+Replace a single run's text content. Preserves all other run formatting.
+
+```ts
+await store.edit({
+  type: "setTextRun",
+  slideId,
+  nodeId,
+  paragraphIndex: 0,
+  runIndex: 0,
+  text: "New text",
+});
+```
+
+### `setTextBody`
+
+Replace all paragraphs and runs in a shape.
+
+```ts
+await store.edit({
+  type: "setTextBody",
+  slideId,
+  nodeId,
+  paragraphs: [
+    {
+      runs: [{ text: "Line one" }],
+    },
+    {
+      runs: [{ text: "Line two" }],
+    },
+  ],
+});
+```
+
+### `setNodeTransform`
+
+Move or resize a shape. All values are in slide pixels.
+
+```ts
+await store.edit({
+  type: "setNodeTransform",
+  slideId,
+  nodeId,
+  x: 100,
+  y: 50,
+  width: 400,
+  height: 200,
+  rotation: 0, // degrees, optional
+});
+```
+
+### `setSolidFill`
+
+Change a shape's solid fill color.
+
+```ts
+await store.edit({
+  type: "setSolidFill",
+  slideId,
+  nodeId,
+  color: "#3b82f6", // hex
+});
+```
+
+### `deleteNode`
+
+Remove a shape from a slide.
+
+```ts
+await store.edit({ type: "deleteNode", slideId, nodeId });
+```
+
+### `moveSlide`
+
+Reorder slides.
+
+```ts
+await store.edit({ type: "moveSlide", slideId, toIndex: 2 });
+```
+
+### `duplicateSlide`
+
+Clone a slide. The duplicate is inserted immediately after the source.
+
+```ts
+await store.edit({ type: "duplicateSlide", slideId });
+```
+
+### `deleteSlide`
+
+Remove a slide.
+
+```ts
+await store.edit({ type: "deleteSlide", slideId });
+```
+
+### `batch`
+
+Group multiple operations into a single undoable step.
+
+```ts
+await store.edit({
+  type: "batch",
+  ops: [
+    { type: "deleteNode", slideId, nodeId: "2" },
+    { type: "deleteNode", slideId, nodeId: "3" },
+  ],
+});
+```
+
+## Hooks
+
+```tsx
+import {
+  usePresentation, // { presentation, status, progress, error }
+  useSlide, // { slide, slideId, index }
+  useZoom, // { zoom, setZoom, zoomIn, zoomOut, fitTo }
+} from "@diceui/pptx";
+```
+
+All hooks must be used inside `Presentation.Root` or `Presentation.Provider`.

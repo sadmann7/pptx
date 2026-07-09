@@ -1,13 +1,34 @@
 ---
-title: Hello World
-description: Your first document
+title: Introduction
+description: Composable React components for viewing and editing PowerPoint presentations.
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+`@diceui/pptx` is a React component library that parses, renders, and edits `.pptx` files entirely in the browser — no server required.
 
-## What is Next?
+## Features
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+- **Faithful rendering** — Preset and custom geometries, gradients, tables, charts, embedded fonts, images, and more.
+- **Editing** — Move, resize, and inline text editing with full undo/redo stack.
+- **Composable API** — Primitive components you assemble like shadcn/ui. Bring your own layout.
+- **Thumbnail strip** — Virtualized slide list with lazy rendering for large decks.
+- **Auto-fit zoom** — Slide scales to fill the viewport automatically.
+- **TypeScript** — Fully typed API including edit operations.
+
+## Packages
+
+| Package               | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `@diceui/pptx`        | React component library                                      |
+| `@diceui/pptx-parser` | Core OOXML parser and DOM renderer (no framework dependency) |
+
+## Architecture
+
+The library is split into two layers:
+
+**Parser** (`@diceui/pptx-parser`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, and rendering each slide to a plain DOM tree. It has no React dependency.
+
+**React** (`@diceui/pptx`) wraps the parser with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.
+
+## License
+
+Apache-2.0
