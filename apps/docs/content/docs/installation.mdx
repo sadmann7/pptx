@@ -3,13 +3,34 @@ title: Installation
 description: Install @diceui/pptx and its peer dependencies.
 ---
 
-## React
+## Install the package
 
 ```package-install
 @diceui/pptx
 ```
 
-`react` and `react-dom` (v18 or v19) are peer dependencies and must be installed separately if not already in your project.
+## shadcn/ui
+
+If you are using shadcn/ui, you can also install it as a pre-built component via the shadcn CLI:
+
+```package-install
+npx shadcn@latest add "@diceui/pptx"
+```
+
+```
+PresentationProvider
+└── Presentation
+    ├── PresentationThumbnailList
+    │   └── PresentationThumbnailItem
+    │       ├── PresentationThumbnailItemNumber
+    │       └── PresentationThumbnailItemPreview
+    └── PresentationContent
+        ├── PresentationLoading
+        ├── PresentationError
+        └── PresentationViewport
+            └── PresentationSlide
+                └── PresentationSelection
+```
 
 ## Parser only
 
@@ -18,15 +39,3 @@ If you don't use React and only need the OOXML parser and renderer:
 ```package-install
 @diceui/pptx-parser
 ```
-
-The parser has no framework dependency. It runs in any modern browser environment that supports the Web Crypto API and dynamic imports.
-
-## Requirements
-
-| Requirement | Version                                   |
-| ----------- | ----------------------------------------- |
-| React       | 18 or 19                                  |
-| TypeScript  | 5.0+ (optional but recommended)           |
-| Browser     | Evergreen (Chrome, Firefox, Safari, Edge) |
-
-The library is ESM-only (`"type": "module"`). It does not ship a CommonJS build.

@@ -3,28 +3,9 @@ title: Quick Start
 description: Build a presentation viewer in minutes.
 ---
 
-## Basic viewer
+## Viewer
 
-The minimal setup renders the active slide with a thumbnail strip and navigation controls.
-
-```tsx
-import * as Presentation from "@diceui/pptx";
-
-export function Viewer({ file }: { file: File }) {
-  return (
-    <Presentation.Root file={file}>
-      <Presentation.ThumbnailList />
-      <Presentation.Viewport autoFit>
-        <Presentation.Slide />
-      </Presentation.Viewport>
-    </Presentation.Root>
-  );
-}
-```
-
-Pass a `File` object (e.g. from `<input type="file">`), an `ArrayBuffer`, or a URL string to `file`.
-
-## With loading and error states
+The minimal setup renders the active slide with a thumbnail strip.
 
 ```tsx
 import * as Presentation from "@diceui/pptx";
@@ -43,9 +24,42 @@ export function Viewer({ file }: { file: File }) {
 }
 ```
 
+Pass a `File` object (e.g. from `<input type="file">`), an `ArrayBuffer`, or a URL string to `file`.
+
+## With shadcn/ui
+
+If you installed via the shadcn CLI, use the pre-built components instead:
+
+```tsx
+import {
+  Presentation,
+  PresentationContent,
+  PresentationError,
+  PresentationLoading,
+  PresentationSlide,
+  PresentationThumbnailList,
+  PresentationViewport,
+} from "@/components/ui/presentation";
+
+export function Viewer({ file }: { file: File }) {
+  return (
+    <Presentation file={file}>
+      <PresentationThumbnailList />
+      <PresentationContent>
+        <PresentationLoading />
+        <PresentationError />
+        <PresentationViewport autoFit>
+          <PresentationSlide />
+        </PresentationViewport>
+      </PresentationContent>
+    </Presentation>
+  );
+}
+```
+
 ## With editing
 
-Add `readOnly={false}` to enable editing, then place `Presentation.Selection` inside `Presentation.Slide`:
+Add `readOnly={false}` when loading, then place `Presentation.Selection` inside `Presentation.Slide`:
 
 ```tsx
 import * as Presentation from "@diceui/pptx";
@@ -71,7 +85,7 @@ export function Editor({ file }: { file: File }) {
 
 ## Controlled store
 
-For more control (programmatic navigation, editing, saving), create a store explicitly with `useCreatePresentationStore` and pass it to `Presentation.Provider`:
+For programmatic navigation, editing, and saving, create a store explicitly:
 
 ```tsx
 import * as Presentation from "@diceui/pptx";
