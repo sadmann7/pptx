@@ -73,8 +73,11 @@ export function Editor({ file }: { file: File }) {
         <Presentation.Error />
         <Presentation.Slide>
           <Presentation.Selection
-            onUndo={(_, error) => error && console.error("Nothing to undo")}
-            onRedo={(_, error) => error && console.error("Nothing to redo")}
+            onUndo={(status) => status === "empty" && console.warn("Nothing to undo")}
+            onRedo={(status, error) => {
+              if (error) console.error(error);
+              else if (status === "empty") console.warn("Nothing to redo");
+            }}
           />
         </Presentation.Slide>
       </Presentation.Viewport>

@@ -1,6 +1,6 @@
 # pptx
 
-Composable primitives for rendering and editing powerpoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
+Composable primitives for rendering and editing PowerPoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
 
 `@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-parser` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
 
@@ -156,7 +156,7 @@ pnpm dev          # starts apps/docs on http://localhost:3000
 pnpm build        # build all packages
 pnpm test         # run all tests
 pnpm typecheck    # TypeScript type check
-pnpm check        # lint + format (oxlint + oxfmt)
+pnpm check        # lint + typecheck + format (oxlint + tsc + oxfmt)
 ```
 
 ## Project structure

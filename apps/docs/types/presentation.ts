@@ -4,7 +4,7 @@
 // Usage in MDX:
 //   <AutoTypeTable path="types/presentation.ts" name="RootOwnProps" />
 
-import type React from "react";
+import type * as React from "react";
 
 import type { Presentation as PresentationPrimitive } from "@diceui/pptx";
 

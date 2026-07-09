@@ -1,18 +1,20 @@
 ---
 title: Introduction
-description: Composable React components for viewing and editing PowerPoint presentations.
+description: Composable components for viewing and editing PowerPoint presentations.
 ---
 
-`@diceui/pptx` is a React component library that parses, renders, and edits `.pptx` files entirely in the browser with no server required.
+`@diceui/pptx` is a React component library that parses, renders, and edits `.pptx` files entirely in the browser.
 
 ## Features
 
-- **Faithful rendering**: Preset and custom geometries, gradients, tables, charts, embedded fonts, images, and more.
-- **Editing**: Move, resize, and inline text editing with full undo/redo stack.
-- **Composable API**: Primitive components you assemble like shadcn/ui. Bring your own layout.
-- **Thumbnail strip**: Virtualized slide list with lazy rendering for large decks.
-- **Auto-fit zoom**: Slide scales to fill the viewport automatically.
-- **TypeScript**: Fully typed API including edit operations.
+- **Rendering**: Shapes, preset and custom geometries, gradients, pattern fills, shadows, tables, charts, images, and embedded fonts.
+- **Editing**: Move, resize (with aspect-ratio lock), multi-select, marquee, inline text editing, and full undo/redo.
+- **Keyboard shortcuts**: Ctrl+Z/Y, arrow nudge, Delete, Escape, Ctrl+A matching PowerPoint behavior.
+- **Embedded fonts**: Decodes and registers ODTTF/MTX fonts from the PPTX so slides render with the original typefaces.
+- **Thumbnail strip**: Virtualized slide list with lazy rendering and a shared render queue so large decks never block the main thread.
+- **Auto-fit zoom**: Slide scales to fill the viewport and re-fits on window resize.
+- **Lossless save**: Round-trips untouched parts byte-for-byte; only edited slides are re-serialized.
+- **Composable API**: Primitive components you assemble like shadcn/ui. Bring your own layout and styles.
 
 ## Packages
 
@@ -28,7 +30,3 @@ The library is split into two layers:
 **Parser** (`@diceui/pptx-parser`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, and rendering each slide to a plain DOM tree. It has no React dependency.
 
 **React** (`@diceui/pptx`) wraps the parser with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.
-
-## License
-
-Apache-2.0

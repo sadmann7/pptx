@@ -64,8 +64,11 @@ Must be placed inside `Presentation.Slide`.
 ```tsx
 <Presentation.Slide>
   <Presentation.Selection
-    onUndo={(_, error) => error && toast.error("Nothing to undo")}
-    onRedo={(_, error) => error && toast.error("Nothing to redo")}
+    onUndo={(status) => status === "empty" && toast.error("Nothing to undo")}
+    onRedo={(status, error) => {
+      if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+      else if (status === "empty") toast.error("Nothing to redo");
+    }}
     onNodeDelete={(id, error) => error && toast.error("Could not delete")}
     onNodeTransform={(id, error) => error && toast.error("Could not move")}
     onTextChange={(id, error) => error && toast.error("Text edit failed")}
