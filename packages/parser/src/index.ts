@@ -11,9 +11,28 @@ export type {
   ViewerOptions,
 } from "./api/pptx-viewer";
 
+export { applyEdit } from "./edit/operations";
+export type {
+  BatchOperation,
+  DeleteNodeOperation,
+  DeleteSlideOperation,
+  DuplicateSlideOperation,
+  EditOperation,
+  EditResult,
+  MoveSlideOperation,
+  SetNodeTransformOperation,
+  SetSolidFillOperation,
+  SetTextBodyOperation,
+  SetTextBodyParagraph,
+  SetTextBodyRun,
+  SetTextRunOperation,
+} from "./edit/operations";
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";
+export { PptxPackage } from "./ooxml/package";
+export type { PptxSaveOptions } from "./ooxml/package";
 export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
 export type { ZipParseLimits, ZipParseOptions } from "./ooxml/zip-parser";
+export { writePptx } from "./write/pptx-writer";
 
 export {
   buildPresentation,

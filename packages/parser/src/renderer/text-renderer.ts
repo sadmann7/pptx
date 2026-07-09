@@ -805,6 +805,7 @@ export function renderTextBody(
 
   for (const [paragraphIndex, paragraph] of textBody.paragraphs.entries()) {
     const paraDiv = document.createElement("div");
+    paraDiv.dataset.pptxP = String(paragraphIndex);
     paraDiv.style.width = "100%";
     paraDiv.style.minWidth = "0px";
     paraDiv.style.maxWidth = "100%";
@@ -930,6 +931,35 @@ export function renderTextBody(
     // multi-paragraph labels do not inherit a 13px page font and overflow their boxes.
     paraDiv.style.fontSize = `${effectiveFontSize * fontScale}pt`;
 
+    // Stamp the paragraph's default text color so content not wrapped in a
+    // run span (text typed into an empty paragraph during inline editing)
+    // inherits the color PowerPoint would use instead of the page CSS color.
+    // Empty paragraphs take their pending-text formatting from endParaRPr,
+    // like PowerPoint. Runs always set an explicit color, so this never
+    // changes how existing runs render.
+    const paraDefaultStyle: MergedRunStyle = { ...defaultRunStyle };
+    if (!hasVisibleRuns && paragraph.endParaRPr) {
+      mergeRunProps(paraDefaultStyle, paragraph.endParaRPr, ctx);
+    }
+    paraDiv.style.color =
+      options?.fontRefColor ?? options?.cellTextColor ?? paraDefaultStyle.color ?? "#000000";
+    // Same for font family: without this, text typed into an empty paragraph
+    // inherits the page font, then switches to the theme font on commit.
+    {
+      const paraFont =
+        options?.cellTextFontFamily ??
+        paraDefaultStyle.fontFamilyStack ??
+        paraDefaultStyle.fontFamily ??
+        ctx.theme.minorFont.latin ??
+        ctx.theme.minorFont.ea;
+      if (paraFont) {
+        const resolvedFont = Array.isArray(paraFont)
+          ? paraFont.map((font) => resolveThemeFont(font, ctx))
+          : resolveThemeFont(paraFont, ctx);
+        paraDiv.style.fontFamily = cssFontFamilyStack(resolvedFont);
+      }
+    }
+
     const trimSpaceBefore =
       options?.trimOuterParagraphSpacing && paragraphIndex === firstVisibleParagraphIndex;
     const trimSpaceAfter =
@@ -975,6 +1005,8 @@ export function renderTextBody(
 
     if (bulletPrefix) {
       const bulletSpan = document.createElement("span");
+      bulletSpan.dataset.pptxBullet = "";
+      bulletSpan.contentEditable = "false";
       bulletSpan.textContent = bulletPrefix + " ";
       const marginLeft = merged.marginLeft;
       const textIndent = merged.textIndent;
@@ -1078,7 +1110,8 @@ export function renderTextBody(
     // spaces at line start but PowerPoint renders them (e.g. code indented
     // with spaces), so those runs get white-space:pre-wrap to preserve them.
     let atLineStart = true;
-    for (const run of paragraph.runs) {
+    for (let runIndex = 0; runIndex < paragraph.runs.length; runIndex++) {
+      const run = paragraph.runs[runIndex];
       if (run.text === "\n") {
         atLineStart = true;
         if (useLineWrappers) {
@@ -1150,6 +1183,8 @@ export function renderTextBody(
       } else {
         element = document.createElement("span");
       }
+
+      element.dataset.pptxR = String(runIndex);
 
       // Preserve consecutive spaces by alternating with &nbsp; so they survive
       // HTML whitespace collapse without being stretched by text-align:justify.

@@ -14,6 +14,16 @@ export function emuToPx(emu: number): number {
   return (emu / 914400) * 96;
 }
 
+/** Pixels (at 96 DPI) to EMU, rounded to an integer as required by OOXML. */
+export function pxToEmu(px: number): number {
+  return Math.round((px / 96) * 914400);
+}
+
+/** Degrees to OOXML angle (60000ths of a degree), rounded to an integer. */
+export function degToAngle(deg: number): number {
+  return Math.round(deg * 60000);
+}
+
 /** EMU to points. */
 export function emuToPt(emu: number): number {
   return emu / 12700;

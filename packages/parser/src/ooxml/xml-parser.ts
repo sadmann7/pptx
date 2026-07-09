@@ -18,6 +18,19 @@
 const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
 const queriedOnce = new WeakSet<Element>();
 
+/**
+ * Drop the cached child index for an element whose children were mutated.
+ *
+ * Edit operations that insert or remove child elements MUST call this on the
+ * parent, otherwise later `child()`/`children()` lookups return stale results.
+ * Attribute and text mutations don't affect the index and need no
+ * invalidation.
+ */
+export function invalidateChildIndex(el: Element): void {
+  childIndexCache.delete(el);
+  queriedOnce.delete(el);
+}
+
 function getChildIndex(el: Element): Map<string, Element[]> | undefined {
   let index = childIndexCache.get(el);
   if (index !== undefined) return index;

@@ -10,7 +10,8 @@ import {
   PresetSubPath,
 } from "../geometry/presets";
 import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
-import { LineEndInfo, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
+import { LineEndInfo, parseTextBody, ShapeNodeData, TextBody } from "../model/nodes/shape-node";
+import { findPlaceholderTemplateNode } from "../model/presentation";
 import { parseOoxmlBool } from "../ooxml/booleans";
 import { isExternalTargetMode } from "../ooxml/rel-parser";
 import { emuToPx } from "../ooxml/units";
@@ -125,6 +126,59 @@ function hasBulletParagraph(textBody: TextBody): boolean {
 
 function isTitlePlaceholder(placeholder: ShapeNodeData["placeholder"]): boolean {
   return placeholder?.type === "title" || placeholder?.type === "ctrTitle";
+}
+
+/** Metadata placeholders never show edit-mode prompts on the slide surface. */
+const PROMPTLESS_PLACEHOLDER_TYPES = new Set(["sldNum", "dt", "ftr"]);
+
+/**
+ * Edit-mode affordance for empty placeholders: dashed outline plus the
+ * layout/master prompt text ("Click to add title" style), mirroring
+ * PowerPoint's editing view. Only called when `ctx.placeholderPrompts` is set.
+ */
+function renderPlaceholderPrompt(
+  node: ShapeNodeData,
+  ctx: RenderContext,
+  wrapper: HTMLElement,
+): void {
+  wrapper.setAttribute("data-pptx-placeholder-empty", "true");
+  wrapper.style.outline = "1px dashed rgba(148, 163, 184, 0.9)";
+  wrapper.style.outlineOffset = "-1px";
+
+  if (!node.placeholder) return;
+
+  const templateNode = findPlaceholderTemplateNode(node.placeholder, ctx.layout, ctx.master);
+  if (!templateNode) return;
+
+  const promptBody = parseTextBody(templateNode.child("txBody"));
+  if (!promptBody) return;
+
+  // Keep only paragraphs with actual prompt text; layouts often carry extra
+  // empty per-level paragraphs that would render as blank lines.
+  const paragraphs = promptBody.paragraphs.filter((p) =>
+    p.runs.some((r) => r.text != null && r.text.trim().length > 0),
+  );
+  if (paragraphs.length === 0) return;
+
+  const container = document.createElement("div");
+  container.setAttribute("data-pptx-placeholder-prompt", "true");
+  container.style.position = "absolute";
+  if (node.textBoxBounds) {
+    container.style.left = `${node.textBoxBounds.x}px`;
+    container.style.top = `${node.textBoxBounds.y}px`;
+    container.style.width = `${node.textBoxBounds.w}px`;
+    container.style.height = `${node.textBoxBounds.h}px`;
+  } else {
+    container.style.inset = "0";
+  }
+  container.style.display = "flex";
+  container.style.flexDirection = "column";
+  container.style.boxSizing = "border-box";
+  container.style.overflow = "hidden";
+  container.style.pointerEvents = "none";
+
+  renderTextBody({ ...promptBody, paragraphs }, node.placeholder, ctx, container);
+  wrapper.appendChild(container);
 }
 
 function appendTransform(el: HTMLElement, transform: string): void {
@@ -273,6 +327,11 @@ const SINGLE_PARAGRAPH_WRAPPED_AUTOFIT_HEIGHT_TOLERANCE = 1.25;
 const WRAPPED_AUTOFIT_WIDTH_TOLERANCE_PX = 1;
 const NO_AUTOFIT_TITLE_METRIC_SCALE_FLOOR = 0.9;
 const SP_AUTOFIT_UNWRAPPED_WIDTH_SCALE_FLOOR = 0.9;
+// The implicit single-line fit compensates for browser fonts measuring wider
+// than Office fonts (~10%), keeping authored labels on one line. It must not
+// shrink text drastically: with wrapping enabled and no autofit, PowerPoint
+// wraps and overflows instead — e.g. text typed into a small shape.
+const IMPLICIT_SINGLE_LINE_METRIC_SCALE_FLOOR = 0.85;
 
 function getSupportedTextWarpPreset(textBody: TextBody): "textArchDown" | "textArchUp" | null {
   const prstTxWarp = textBody.bodyProperties?.child("prstTxWarp");
@@ -2185,7 +2244,14 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   }
 
   // ---- Render text overlay (only when there is visible text; skip for decorative shapes with empty txBody) ----
-  if (node.textBody && node.textBody.paragraphs.length > 0 && hasVisibleText(node.textBody)) {
+  // In editable decks (retained package) an empty text body still renders its
+  // container so inline text editing can target it — a cleared text box, or a
+  // plain shape you can click and type into like PowerPoint.
+  if (
+    node.textBody &&
+    node.textBody.paragraphs.length > 0 &&
+    (hasVisibleText(node.textBody) || ctx.presentation.pkg !== undefined)
+  ) {
     const warpedText = renderWarpedTextBody(node, ctx);
     if (warpedText) {
       wrapper.appendChild(warpedText);
@@ -2569,8 +2635,17 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               usesSingleLineSpAutoFitWidthFit ||
               usesImplicitSingleLineFit ||
               usesNoAutofitSingleLineTitleFit;
+            // Wrapping-enabled implicit fit only corrects small browser font
+            // metric differences. Larger overflow means the text genuinely
+            // doesn't fit on one line (e.g. typed during editing), and
+            // PowerPoint wraps + overflows rather than shrinking.
+            const implicitFitScaleTooAggressive =
+              usesImplicitSingleLineFit &&
+              textWrap !== "none" &&
+              widthScale < IMPLICIT_SINGLE_LINE_METRIC_SCALE_FLOOR;
             if (
               canUseUnwrappedWidthScale &&
+              !implicitFitScaleTooAggressive &&
               (!usesNoAutofitSingleLineTitleFit ||
                 widthScale >= NO_AUTOFIT_TITLE_METRIC_SCALE_FLOOR)
             ) {
@@ -2823,6 +2898,16 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (wrapper.style as any).webkitBoxReflect = reflectValue;
     }
+  }
+
+  // ---- Edit-mode prompt for empty placeholders ----
+  if (
+    ctx.placeholderPrompts &&
+    node.placeholder &&
+    !PROMPTLESS_PLACEHOLDER_TYPES.has(node.placeholder.type ?? "") &&
+    !(node.textBody && hasVisibleText(node.textBody))
+  ) {
+    renderPlaceholderPrompt(node, ctx, wrapper);
   }
 
   // ---- Shape-level hyperlink / action button navigation ----

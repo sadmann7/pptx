@@ -40,6 +40,11 @@ export interface ViewerOptions {
   lazyMedia?: boolean;
   /** Parse slide shape/table/chart nodes on demand instead of during model build. Default `false`. */
   lazySlides?: boolean;
+  /**
+   * Retain the source package on the presentation (`presentationData.pkg`) so
+   * it can be written back to a .pptx via `writePptx()`. Default `false`.
+   */
+  keepPackage?: boolean;
   /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. Use `false` to disable. */
   pdfjs?: PdfjsConfig;
   onSlideChange?: (index: number) => void;
@@ -294,9 +299,10 @@ export class PptxViewer extends EventTarget {
     checkAborted();
 
     const useLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
+    const zipOptions = { keepPackage: this.viewerOptions.keepPackage };
     const files = useLazyMedia
-      ? await parseZipLazyMedia(buffer, this.viewerOptions.zipLimits)
-      : await parseZip(buffer, this.viewerOptions.zipLimits);
+      ? await parseZipLazyMedia(buffer, this.viewerOptions.zipLimits, zipOptions)
+      : await parseZip(buffer, this.viewerOptions.zipLimits, zipOptions);
     checkAborted();
 
     const useLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;

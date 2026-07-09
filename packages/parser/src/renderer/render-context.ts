@@ -39,6 +39,12 @@ export interface RenderContext {
   /** Template rendering skips placeholder descendants inside groups as well as top-level shapes. */
   skipPlaceholderChildren?: boolean;
   /**
+   * Edit-mode affordance: render empty slide placeholders with a dashed
+   * outline and the layout/master prompt text (PowerPoint editing-view style).
+   * Off by default — presentation output never shows prompts.
+   */
+  placeholderPrompts?: boolean;
+  /**
    * Navigation callback for shape-level hyperlink actions (action buttons, clickable shapes).
    * Called with target slide index (0-based) for supported internal slide actions,
    * or with a URL string for external links.

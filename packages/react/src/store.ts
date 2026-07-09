@@ -1,5 +1,18 @@
-import type { FontInjectionHandle, PresentationData, SlideData } from "@diceui/pptx-parser";
-import { buildPresentation, materializeSlideNodes, parseZipLazyMedia } from "@diceui/pptx-parser";
+import type {
+  EditOperation,
+  EditResult,
+  FontInjectionHandle,
+  PptxSaveOptions,
+  PresentationData,
+  SlideData,
+} from "@diceui/pptx-parser";
+import {
+  applyEdit,
+  buildPresentation,
+  materializeSlideNodes,
+  parseZipLazyMedia,
+  writePptx,
+} from "@diceui/pptx-parser";
 
 const INITIAL_STATE: PresentationState = {
   status: "idle",
@@ -8,6 +21,7 @@ const INITIAL_STATE: PresentationState = {
   zoom: 1,
   progress: 0,
   error: null,
+  revision: 0,
 };
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
@@ -64,6 +78,15 @@ export interface PresentationState {
 
   /** Error produced by the last failed `load()` call, or `null`. */
   error: Error | null;
+
+  /**
+   * Monotonic counter bumped on every applied edit, undo, or redo.
+   *
+   * The `presentation` object is mutated in place by edits, so its identity
+   * never changes; subscribe to `revision` to react to content changes.
+   * Resets to `0` on `load()` and `reset()`.
+   */
+  revision: number;
 }
 
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
@@ -153,6 +176,19 @@ export interface PresentationStore {
        * @default true
        */
       embedFonts?: boolean;
+
+      /**
+       * When `false`, the source package is retained so the presentation can
+       * be edited (`store.edit()`) and saved back to a .pptx (`store.save()`).
+       * The retained package keeps the source zip in memory (compressed).
+       *
+       * Follows the same convention as `<input readOnly>`: omitting the prop
+       * (or passing `true`) gives a read-only viewer; pass `false` to enable
+       * editing.
+       *
+       * @default true
+       */
+      readOnly?: boolean;
     },
   ) => Promise<PresentationData>;
 
@@ -238,6 +274,50 @@ export interface PresentationStore {
 
   /** Returns `true` when there is a previous slide to navigate to. */
   canGoPrev: () => boolean;
+
+  /**
+   * Apply an edit operation to the loaded presentation.
+   *
+   * Requires the deck to have been loaded with `{ readOnly: false }`.
+   * On success the edit is pushed onto the undo stack, the redo stack is
+   * cleared, and affected slides get a new revision so mounted views
+   * re-render.
+   *
+   * ```ts
+   * await store.edit({
+   *   type: "setTextRun",
+   *   slideId, nodeId: "2",
+   *   paragraphIndex: 0, runIndex: 0,
+   *   text: "Hello",
+   * });
+   * ```
+   */
+  edit: (op: EditOperation) => Promise<EditResult>;
+
+  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
+  undo: () => boolean;
+
+  /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
+  redo: () => Promise<boolean>;
+
+  /** Returns `true` when there is an edit to undo. */
+  canUndo: () => boolean;
+
+  /** Returns `true` when there is an edit to redo. */
+  canRedo: () => boolean;
+
+  /**
+   * Serialize the (possibly edited) presentation back to a .pptx archive.
+   * Requires the deck to have been loaded with `{ readOnly: false }`.
+   */
+  save: (options?: PptxSaveOptions) => Promise<Uint8Array>;
+
+  /**
+   * Returns the render revision of a slide: bumped whenever an edit, undo,
+   * or redo affects that slide. Safe to call inside `useSyncExternalStore`
+   * selectors.
+   */
+  getSlideRevision: (slideId: string) => number;
 }
 
 async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
@@ -271,6 +351,15 @@ export function createPresentationStore(): PresentationStore {
   let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
+
+  // --- Edit history ---
+  interface HistoryEntry {
+    op: EditOperation;
+    result: EditResult;
+  }
+  let undoStack: HistoryEntry[] = [];
+  let redoStack: HistoryEntry[] = [];
+  let slideRevisionById = new Map<string, number>();
 
   function rebuildSlideIndex(presentation: PresentationData | null): void {
     slideIndexById = new Map();
@@ -314,6 +403,7 @@ export function createPresentationStore(): PresentationStore {
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
       lazy?: boolean;
       embedFonts?: boolean;
+      readOnly?: boolean;
     },
   ): Promise<PresentationData> {
     loadGeneration += 1;
@@ -321,6 +411,7 @@ export function createPresentationStore(): PresentationStore {
 
     fontInjection?.dispose();
     fontInjection = undefined;
+    clearEditHistory();
     replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
@@ -350,6 +441,7 @@ export function createPresentationStore(): PresentationStore {
       reportProgress();
 
       const files = await parseZipLazyMedia(buffer, undefined, {
+        keepPackage: options?.readOnly === false,
         onProgress: (done, total) => {
           workDone = readUnits + zipUnits * (done / total);
           reportProgress();
@@ -418,6 +510,7 @@ export function createPresentationStore(): PresentationStore {
         zoom: 1,
         progress: 100,
         error: null,
+        revision: 0,
       });
 
       return presentation;
@@ -521,7 +614,128 @@ export function createPresentationStore(): PresentationStore {
     loadGeneration += 1;
     fontInjection?.dispose();
     fontInjection = undefined;
+    clearEditHistory();
     replaceState({ ...INITIAL_STATE });
+  }
+
+  // --- Editing ---
+
+  function clearEditHistory(): void {
+    undoStack = [];
+    redoStack = [];
+    slideRevisionById = new Map();
+  }
+
+  function getSlideRevision(slideId: string): number {
+    return slideRevisionById.get(slideId) ?? 0;
+  }
+
+  /**
+   * Publish the outcome of an edit/undo/redo: bump affected slide revisions,
+   * repair navigation if the active slide disappeared, and notify
+   * subscribers. The presentation object is mutated in place, so the state
+   * `revision` counter is the only identity change subscribers see.
+   */
+  function commitEdit(
+    affectedSlideIds: string[],
+    prevActiveIndex: number,
+    navigateToFirstAffected = false,
+  ): void {
+    const { presentation } = state;
+    if (!presentation) return;
+
+    for (const slideId of affectedSlideIds) {
+      slideRevisionById.set(slideId, getSlideRevision(slideId) + 1);
+    }
+    rebuildSlideIndex(presentation);
+
+    let activeSlideId = state.activeSlideId;
+    const activeGone = activeSlideId !== null && !slideIndexById.has(activeSlideId);
+    if (activeGone || activeSlideId === null) {
+      const fallbackIndex = clamp(prevActiveIndex, 0, presentation.slides.length - 1);
+      activeSlideId = presentation.slides[fallbackIndex]?.id ?? null;
+    }
+    // Undo/redo: jump to the slide the action touched so the user sees the
+    // change (PowerPoint behavior). Only when that slide still exists.
+    if (navigateToFirstAffected) {
+      const target = affectedSlideIds.find((id) => slideIndexById.has(id));
+      if (target) activeSlideId = target;
+    }
+    const activeSlide = activeSlideId
+      ? presentation.slides[slideIndexById.get(activeSlideId) ?? -1]
+      : undefined;
+    if (activeSlide) materializeSlideNodes(presentation, activeSlide);
+
+    setState({ activeSlideId, revision: state.revision + 1 });
+  }
+
+  async function edit(op: EditOperation): Promise<EditResult> {
+    const { presentation, status } = state;
+    if (!presentation || status !== "ready") {
+      throw new Error("PresentationStore.edit: no presentation is loaded");
+    }
+    if (!presentation.pkg) {
+      throw new Error(
+        "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load()",
+      );
+    }
+
+    const prevActiveIndex = getActiveSlideIndex();
+    const result = await applyEdit(presentation, op);
+    undoStack.push({ op, result });
+    redoStack = [];
+    commitEdit(result.affectedSlideIds, prevActiveIndex);
+    return result;
+  }
+
+  function undo(): boolean {
+    const entry = undoStack.pop();
+    if (!entry) return false;
+    const prevActiveIndex = getActiveSlideIndex();
+    entry.result.undo();
+    redoStack.push(entry);
+    // Undo of a duplicate removes the created slide; include it so any
+    // mounted view of it is invalidated.
+    const affected = entry.result.createdSlideId
+      ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
+      : entry.result.affectedSlideIds;
+    commitEdit(affected, prevActiveIndex, true);
+    return true;
+  }
+
+  async function redo(): Promise<boolean> {
+    const entry = redoStack.pop();
+    if (!entry) return false;
+    const { presentation } = state;
+    if (!presentation) return false;
+
+    const prevActiveIndex = getActiveSlideIndex();
+    // Re-apply the original operation; it captures fresh undo state.
+    const result = await applyEdit(presentation, entry.op);
+    undoStack.push({ op: entry.op, result });
+    commitEdit(result.affectedSlideIds, prevActiveIndex, true);
+    return true;
+  }
+
+  function canUndo(): boolean {
+    return undoStack.length > 0;
+  }
+
+  function canRedo(): boolean {
+    return redoStack.length > 0;
+  }
+
+  async function save(options?: PptxSaveOptions): Promise<Uint8Array> {
+    const { presentation } = state;
+    if (!presentation) {
+      throw new Error("PresentationStore.save: no presentation is loaded");
+    }
+    if (!presentation.pkg) {
+      throw new Error(
+        "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
+      );
+    }
+    return writePptx(presentation, options);
   }
 
   return {
@@ -542,5 +756,12 @@ export function createPresentationStore(): PresentationStore {
     getActiveSlide,
     canGoNext,
     canGoPrev,
+    edit,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    save,
+    getSlideRevision,
   };
 }

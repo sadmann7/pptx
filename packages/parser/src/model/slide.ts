@@ -129,24 +129,24 @@ export function createLazySlide(
   };
 }
 
+/**
+ * Parse a lazy slide's deferred XML into nodes.
+ * Returns the parsed slide XML root (for package registration), or undefined
+ * when the slide was already materialized.
+ */
 export function materializeSlideData(
   slide: SlideData,
   diagramDrawings?: Map<string, string>,
-): void {
-  if (slide.nodesMaterialized) return;
+): SafeXmlNode | undefined {
+  if (slide.nodesMaterialized) return undefined;
   if (!slide.sourceXml) {
     slide.nodesMaterialized = true;
-    return;
+    return undefined;
   }
 
   const resolvedLayoutIndex = slide.layoutIndex;
-  const parsed = parseSlide(
-    parseXml(slide.sourceXml),
-    slide.index,
-    slide.rels,
-    slide.id,
-    diagramDrawings,
-  );
+  const root = parseXml(slide.sourceXml);
+  const parsed = parseSlide(root, slide.index, slide.rels, slide.id, diagramDrawings);
 
   slide.hidden = parsed.hidden;
   slide.nodes = parsed.nodes;
@@ -155,4 +155,5 @@ export function materializeSlideData(
   slide.showMasterSp = parsed.showMasterSp;
   slide.nodesMaterialized = true;
   slide.sourceXml = undefined;
+  return root;
 }

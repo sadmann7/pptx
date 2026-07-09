@@ -43,6 +43,12 @@ export interface SlideRendererOptions {
   pdfjs?: PdfjsConfig;
   /** Shared set of live ECharts instances for explicit disposal. */
   chartInstances?: Set<ECharts>;
+  /**
+   * Render empty slide placeholders with a dashed outline and the
+   * layout/master prompt text, like PowerPoint's editing view.
+   * Intended for edit mode; default `false`.
+   */
+  placeholderPrompts?: boolean;
 }
 
 /**
@@ -420,6 +426,9 @@ export function renderSlide(
   if (options?.onNavigate) {
     ctx.onNavigate = options.onNavigate;
   }
+  if (options?.placeholderPrompts) {
+    ctx.placeholderPrompts = true;
+  }
 
   // Create slide container
   const container = document.createElement("div");
@@ -495,10 +504,15 @@ export function renderSlide(
     for (const node of slide.nodes) {
       try {
         const el = renderNode(node, ctx);
+        // Only slide-level (editable) nodes are stamped; master/layout
+        // template shapes are not part of the slide's editable content.
+        el.setAttribute("data-pptx-node-id", node.id);
         container.appendChild(el);
       } catch (e) {
         options?.onNodeError?.(node.id, e);
-        container.appendChild(createErrorPlaceholder(node));
+        const placeholder = createErrorPlaceholder(node);
+        placeholder.setAttribute("data-pptx-node-id", node.id);
+        container.appendChild(placeholder);
       }
     }
   } finally {

@@ -3,6 +3,7 @@ export * as Presentation from "./primitive";
 export type * from "./error";
 export type * from "./loading";
 export type * from "./root";
+export type * from "./selection";
 export type * from "./slide";
 export type * from "./thumbnail-list";
 export type * from "./viewport";
@@ -19,4 +20,19 @@ export type {
   PreviewInput,
 } from "./store";
 
-export type { PresentationData } from "@diceui/pptx-parser";
+export type {
+  BatchOperation,
+  DeleteNodeOperation,
+  DeleteSlideOperation,
+  DuplicateSlideOperation,
+  EditOperation,
+  EditResult,
+  MoveSlideOperation,
+  PresentationData,
+  SetNodeTransformOperation,
+  SetSolidFillOperation,
+  SetTextBodyOperation,
+  SetTextBodyParagraph,
+  SetTextBodyRun,
+  SetTextRunOperation,
+} from "@diceui/pptx-parser";

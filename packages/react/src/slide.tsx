@@ -3,10 +3,12 @@ import * as React from "react";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 
-import { usePresentation, useSlide, useZoom } from "./context";
+import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
+
+const SLIDE_NAME = "PresentationSlide";
 
 export interface SlideState {
   /**
@@ -45,10 +47,19 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   const { presentation, status } = usePresentation();
   const { slide, index } = useSlide();
   const { zoom } = useZoom();
+  const store = usePresentationStore(SLIDE_NAME);
+
+  // Bumped when an edit/undo/redo touches this slide; re-renders the content.
+  const slideId = slide?.id;
+  const revision = React.useSyncExternalStore(
+    store.subscribe,
+    () => (slideId !== undefined ? store.getSlideRevision(slideId) : 0),
+    () => 0,
+  );
 
   const slideContent =
     presentation && slide ? (
-      <SlideImpl presentation={presentation} slide={slide} zoom={zoom}>
+      <SlideImpl presentation={presentation} slide={slide} zoom={zoom} revision={revision}>
         {children}
       </SlideImpl>
     ) : null;
@@ -80,10 +91,12 @@ interface SlideImplProps {
   presentation: PresentationData;
   slide: SlideData;
   zoom: number;
+  /** Edit revision of this slide; a change forces a fresh render. */
+  revision: number;
   children?: React.ReactNode;
 }
 
-function SlideImpl({ presentation, slide, zoom, children }: SlideImplProps) {
+function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCache = React.useRef(new Map<string, string>()).current;
@@ -101,6 +114,9 @@ function SlideImpl({ presentation, slide, zoom, children }: SlideImplProps) {
     if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache,
+      // Editable presentations (loaded with readOnly: false) get PowerPoint-style
+      // dashed outlines and prompt text on empty placeholders.
+      placeholderPrompts: presentation.pkg != null,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },
@@ -115,7 +131,7 @@ function SlideImpl({ presentation, slide, zoom, children }: SlideImplProps) {
         slideHandleRef.current = null;
       }
     };
-  }, [presentation, slide, mediaUrlCache]);
+  }, [presentation, slide, mediaUrlCache, revision]);
 
   const { width, height } = presentation;
 

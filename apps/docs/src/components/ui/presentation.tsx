@@ -1,6 +1,7 @@
 "use client";
 
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,42 @@ function PresentationViewport({ className, ...props }: PresentationPrimitive.Vie
 
 function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
   return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
+}
+
+function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
+  return (
+    <PresentationPrimitive.Selection
+      data-slot="presentation-selection"
+      className={cn("[--pptx-selection:var(--ring)]", className)}
+      onUndo={(_, error) => {
+        if (!error) return;
+        const errorMessage = error instanceof Error ? error.message : "Undo failed";
+        toast.error(errorMessage);
+      }}
+      onRedo={(_, error) => {
+        if (!error) return;
+        const errorMessage = error instanceof Error ? error.message : "Redo failed";
+        toast.error(errorMessage);
+      }}
+      onNodeDelete={(_, error) => {
+        if (!error) return;
+        const errorMessage = error instanceof Error ? error.message : "Could not delete shape";
+        toast.error(errorMessage);
+      }}
+      onNodeTransform={(_, error) => {
+        if (!error) return;
+        const errorMessage =
+          error instanceof Error ? error.message : "Could not move or resize shape";
+        toast.error(errorMessage);
+      }}
+      onTextChange={(_, error) => {
+        if (!error) return;
+        const errorMessage = error instanceof Error ? error.message : "Text edit failed";
+        toast.error(errorMessage);
+      }}
+      {...props}
+    />
+  );
 }
 
 function PresentationLoading({
@@ -160,6 +197,7 @@ export {
   PresentationError,
   PresentationLoading,
   PresentationProvider,
+  PresentationSelection,
   PresentationSlide,
   PresentationThumbnailItem,
   PresentationThumbnailItemNumber,
