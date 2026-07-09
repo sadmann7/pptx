@@ -793,6 +793,13 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               overflow: "hidden",
               pointerEvents: "none",
               contain: "layout style paint",
+              // Same inheritance reset as the main slide container.
+              fontSize: "initial",
+              lineHeight: "normal",
+              color: "initial",
+              fontFamily: "initial",
+              fontWeight: "normal",
+              letterSpacing: "normal",
             },
           },
           thumbnailItemPreviewProps,

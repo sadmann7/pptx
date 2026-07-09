@@ -12,7 +12,7 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   return (
     <PresentationPrimitive.Root
       data-slot="presentation"
-      className={cn("flex gap-4 overflow-hidden", className)}
+      className={cn("flex overflow-hidden", className)}
       {...props}
     />
   );
@@ -38,8 +38,14 @@ function PresentationViewport({ className, ...props }: PresentationPrimitive.Vie
   );
 }
 
-function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
-  return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
+function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.Props) {
+  return (
+    <PresentationPrimitive.Slide
+      data-slot="presentation-slide"
+      className={cn("border", className)}
+      {...props}
+    />
+  );
 }
 
 function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
@@ -127,7 +133,7 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative flex w-full cursor-pointer gap-1.5 rounded-md p-1.5 outline-none hover:bg-accent",
+        "relative flex w-full cursor-pointer gap-1.5 rounded-md border p-1.5 outline-none hover:bg-accent",
         "ring-2 ring-transparent transition-[color,ring] duration-100 focus:ring-ring data-active:bg-accent",
         className,
       )}

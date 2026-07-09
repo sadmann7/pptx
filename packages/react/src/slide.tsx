@@ -148,6 +148,15 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
           transform: `scale(${zoom})`,
           position: "relative",
           overflow: "hidden",
+          // Reset inherited typography; .prose (and similar) sets font/color via inheritance which not-prose cannot block.
+          fontSize: "initial",
+          lineHeight: "normal",
+          color: "initial",
+          fontFamily: "initial",
+          fontWeight: "normal",
+          letterSpacing: "normal",
+          textDecoration: "none",
+          textTransform: "none",
         }}
       />
       {children && (
