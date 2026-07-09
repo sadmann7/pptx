@@ -3,7 +3,7 @@ export type SiteConfig = typeof siteConfig;
 export const siteConfig = {
   name: "pptx",
   description:
-    "Composable components for rendering powerpoint presentations. Build custom presentation viewers with thumbnail navigation, and zoom.",
+    "Composable primitives for rendering and editing powerpoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.",
   url: "https://diceui.pptx.com",
   ogImage: "https://diceui.pptx.com/opengraph-image.png",
   links: {

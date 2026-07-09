@@ -9,10 +9,11 @@ import { mergeRefs, renderElement } from "./render";
 const SELECTION_NAME = "PresentationSelection";
 
 /** Temporary debug logging for inline text editing. */
-const DEBUG_TEXT_EDIT = true;
+const DEBUG_TEXT_EDIT = false;
 
 function debugLog(...args: unknown[]): void {
-  if (DEBUG_TEXT_EDIT) console.debug("[pptx-selection]", ...args);
+  if (!DEBUG_TEXT_EDIT) return;
+  console.debug("[pptx-selection]", ...args);
 }
 
 /** Minimum shape size (slide px) a resize can shrink to. */

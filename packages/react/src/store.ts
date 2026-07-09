@@ -674,6 +674,11 @@ export function createPresentationStore(): PresentationStore {
     if (!presentation || status !== "ready") {
       throw new Error("PresentationStore.edit: no presentation is loaded");
     }
+    if (!presentation.pkg) {
+      throw new Error(
+        "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load()",
+      );
+    }
 
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, op);
@@ -724,6 +729,11 @@ export function createPresentationStore(): PresentationStore {
     const { presentation } = state;
     if (!presentation) {
       throw new Error("PresentationStore.save: no presentation is loaded");
+    }
+    if (!presentation.pkg) {
+      throw new Error(
+        "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
+      );
     }
     return writePptx(presentation, options);
   }

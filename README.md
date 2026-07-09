@@ -1,6 +1,8 @@
-# @diceui/pptx
+# pptx
 
-A TypeScript monorepo for parsing, rendering, and editing PowerPoint (`.pptx`) files in the browser.
+Composable primitives for rendering and editing powerpoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
+
+`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, …) that you assemble and style yourself. Under the hood, `@diceui/pptx-parser` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo — all without a framework dependency.
 
 ## Packages
 
@@ -46,14 +48,9 @@ export function Editor({ file }: { file: File }) {
     <Presentation.Root file={file}>
       <Presentation.Sidebar />
       <Presentation.Viewport>
-        <Presentation.Slide />
-        <Presentation.Selection
-          onUndo={(_, error) => error && toast.error("Nothing to undo")}
-          onRedo={(_, error) => error && toast.error("Nothing to redo")}
-          onNodeTransform={(_, error) => error && toast.error("Could not move shape")}
-          onNodeDelete={(_, error) => error && toast.error("Could not delete shape")}
-          onTextChange={(_, error) => error && toast.error("Could not save text")}
-        />
+        <Presentation.Slide>
+          <Presentation.Selection />
+        </Presentation.Slide>
       </Presentation.Viewport>
     </Presentation.Root>
   );
@@ -91,7 +88,7 @@ Renders the active slide. Must be inside `Presentation.Viewport`.
 
 ### `Presentation.Selection`
 
-Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock), inline text editing, multi-select, marquee selection, and keyboard shortcuts. Must be placed as a sibling to `Presentation.Slide` inside `Presentation.Viewport`.
+Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock), inline text editing, multi-select, marquee selection, and keyboard shortcuts. Must be placed inside `Presentation.Slide` (as its child) so it can overlay the slide surface.
 
 **Interaction model:**
 
