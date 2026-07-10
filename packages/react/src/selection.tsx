@@ -6,7 +6,7 @@ import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom }
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
-const SELECTION_NAME = "PresentationSelection";
+const SELECTION_NAME = "Presentation.Selection";
 
 /** Temporary debug logging for inline text editing. */
 const DEBUG_TEXT_EDIT = false;

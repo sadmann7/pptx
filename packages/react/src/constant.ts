@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import type { StoreState } from "./store";
 
 /**

@@ -64,13 +64,15 @@ export function useCreateStore(): Store {
 }
 
 /**
- * Returns the `PresentationStore` from the nearest `<Presentation.Provider>`
- * or `<Presentation.Root>`. Throws if called outside a `Presentation` tree.
+ * Returns the `PresentationStore` from the nearest `Presentation.Root`
+ * or `Presentation.Provider`. Throws if called outside either.
  */
 export function useStoreContext(consumerName: string): Store {
   const store = React.useContext(Context);
   if (!store) {
-    throw new Error(`\`${consumerName}\` must be used inside \`Presentation.Provider\``);
+    throw new Error(
+      `\`${consumerName}\` must be used within \`Presentation.Root\` or \`Presentation.Provider\``,
+    );
   }
   return store;
 }

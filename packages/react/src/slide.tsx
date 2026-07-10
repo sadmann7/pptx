@@ -9,7 +9,7 @@ import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
 
-const SLIDE_NAME = "PresentationSlide";
+const SLIDE_NAME = "Presentation.Slide";
 
 export interface SlideState {
   /**

@@ -24,10 +24,10 @@ import {
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 
-const THUMBNAIL_LIST_NAME = "PresentationThumbnailList";
-const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
-const THUMBNAIL_ITEM_PREVIEW_NAME = "PresentationThumbnailItemPreview";
-const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
+const THUMBNAIL_LIST_NAME = "Presentation.ThumbnailList";
+const THUMBNAIL_ITEM_NAME = "Presentation.ThumbnailItem";
+const THUMBNAIL_ITEM_PREVIEW_NAME = "Presentation.ThumbnailItemPreview";
+const THUMBNAIL_ITEM_NUMBER_NAME = "Presentation.ThumbnailItemNumber";
 
 /**
  * IntersectionObserver rootMargin applied when observing each preview frame.

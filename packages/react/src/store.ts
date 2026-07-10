@@ -131,7 +131,7 @@ export interface Store {
    *   const presentation = await store.load(file);
    *   console.log("slides:", presentation.slides.length);
    * } catch (error) {
-   *   if (error instanceof DOMException && err.name === "AbortError") return;
+   *   if (error instanceof DOMException && error.name === "AbortError") return;
    *   console.error(error);
    * }
    * ```
