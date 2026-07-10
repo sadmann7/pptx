@@ -1,6 +1,6 @@
 import { SafeXmlNode } from "../../ooxml/xml-parser";
+import { parseOoxmlBoolValue } from "./bool-helpers";
 import { formatValue } from "./format";
-import { parseOoxmlBoolValue } from "./ooxml";
 import type { DataTableInfo } from "./types";
 
 export function parseDataTable(plotArea: SafeXmlNode): { showKeys: boolean } | undefined {

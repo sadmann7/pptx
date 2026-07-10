@@ -2,8 +2,8 @@ import type * as echarts from "echarts";
 
 import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
+import { parseOoxmlBoolElement } from "./bool-helpers";
 import { numToPct } from "./layout";
-import { parseOoxmlBoolElement } from "./ooxml";
 import { extractTxPrStyle } from "./text";
 import {
   type ChartTextStyle,

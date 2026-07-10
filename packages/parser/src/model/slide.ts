@@ -6,9 +6,9 @@
 import { parseOoxmlBool } from "../ooxml/booleans";
 import { RelEntry } from "../ooxml/rel-parser";
 import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
-import { parseRenderableChild, type RenderableNode } from "./node-parser";
+import { parseRenderableChild, type RenderableNode } from "./nodes/node-parser";
 
-export { parseOleFrameAsPicture } from "./node-parser";
+export { parseOleFrameAsPicture } from "./nodes/node-parser";
 
 export type SlideNode = RenderableNode;
 

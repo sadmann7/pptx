@@ -2,9 +2,9 @@
  * Group renderer — renders grouped shapes with coordinate space remapping.
  */
 
-import { parseRenderableChild } from "../model/node-parser";
 import { BaseNodeData } from "../model/nodes/base-node";
 import { GroupNodeData } from "../model/nodes/group-node";
+import { parseRenderableChild } from "../model/nodes/node-parser";
 import type { ShapeNodeData } from "../model/nodes/shape-node";
 import { resolveNodePlaceholderInheritance } from "../model/presentation";
 import { emuToPx } from "../ooxml/units";

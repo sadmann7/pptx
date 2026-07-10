@@ -1,7 +1,7 @@
 import { emuToPx } from "../../ooxml/units";
 import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
-import { parseOoxmlBoolElement } from "./ooxml";
+import { parseOoxmlBoolElement } from "./bool-helpers";
 import { resolveColorToHex } from "./style";
 import { extractTxPrColor, extractTxPrStyle } from "./text";
 import type { DataLabelConfig, DataLabelManualLayout } from "./types";

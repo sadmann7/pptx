@@ -32,7 +32,7 @@ export { PptxPackage } from "./ooxml/package";
 export type { PptxSaveOptions } from "./ooxml/package";
 export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
 export type { ZipParseLimits, ZipParseOptions } from "./ooxml/zip-parser";
-export { writePptx } from "./write/pptx-writer";
+export { writePptx } from "./ooxml/pptx-writer";
 
 export {
   buildPresentation,
@@ -46,15 +46,11 @@ export type {
   PresentationData,
 } from "./model/presentation";
 
-export { serializePresentation } from "./serialize/presentation";
-export type {
-  SerializedNode,
-  SerializedPresentation,
-  SerializedSlide,
-} from "./serialize/presentation";
+export { serializePresentation } from "./model/serialize";
+export type { SerializedNode, SerializedPresentation, SerializedSlide } from "./model/serialize";
 
 // Model-level text search
-export { buildTextIndex, searchPresentation, searchText } from "./search/text-search";
+export { buildTextIndex, searchPresentation, searchText } from "./model/text-search";
 export type {
   SearchTextKind,
   TextBounds,
@@ -62,7 +58,7 @@ export type {
   TextIndexOptions,
   TextSearchOptions,
   TextSearchResult,
-} from "./search/text-search";
+} from "./model/text-search";
 
 // Headless single-slide rendering
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf-renderer";

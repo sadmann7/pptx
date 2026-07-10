@@ -1,7 +1,7 @@
 import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
+import { parseOoxmlBoolElement } from "./bool-helpers";
 import { formatValue } from "./format";
-import { parseOoxmlBoolElement } from "./ooxml";
 import { extractChartLineStyle, resolveColorToHex } from "./style";
 import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
 import {

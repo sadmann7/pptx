@@ -5,10 +5,10 @@
 import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "../media/pdf-renderer";
-import { isPlaceholderNode, parseRenderableChild } from "../model/node-parser";
 import { BaseNodeData } from "../model/nodes/base-node";
 import { ChartNodeData } from "../model/nodes/chart-node";
 import { GroupNodeData } from "../model/nodes/group-node";
+import { isPlaceholderNode, parseRenderableChild } from "../model/nodes/node-parser";
 import { PicNodeData } from "../model/nodes/picture-node";
 import { ShapeNodeData } from "../model/nodes/shape-node";
 import { TableNodeData } from "../model/nodes/table-node";

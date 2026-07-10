@@ -40,6 +40,7 @@ import { ChartNodeData } from "../model/nodes/chart-node";
 import { SafeXmlNode } from "../ooxml/xml-parser";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "../utils/color";
 import { applyAxisInfo, getChartAxisIds, parseAxes, parseScatterAxes } from "./chart/axes";
+import { parseOoxmlBoolElement } from "./chart/bool-helpers";
 import { parseDataLabels, parsePointDataLabelOverrides } from "./chart/data-labels";
 import { buildDataTableElement, parseDataTable } from "./chart/data-table";
 import { formatValue } from "./chart/format";
@@ -59,7 +60,6 @@ import {
   type LegendOptionObject,
 } from "./chart/legend";
 import { buildCustomLegendOverlay } from "./chart/legend-overlay";
-import { parseOoxmlBoolElement } from "./chart/ooxml";
 import {
   buildChartPalette,
   createChartRenderContext,

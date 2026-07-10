@@ -1,7 +1,7 @@
 import type * as echarts from "echarts";
 
 import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { parseOoxmlBoolElement } from "./ooxml";
+import { parseOoxmlBoolElement } from "./bool-helpers";
 import {
   DEFAULT_CHART_FOREGROUND_COLOR,
   hasExplicitFontSize,

@@ -1,12 +1,12 @@
 import { SafeXmlNode } from "../../ooxml/xml-parser";
 import { RenderContext } from "../render-context";
+import { parseOoxmlBoolElement } from "./bool-helpers";
 import {
   extractFormatCode,
   extractNumericValues,
   extractNumericValuesWithBlanks,
   extractStringValues,
 } from "./format";
-import { parseOoxmlBoolElement } from "./ooxml";
 import {
   extractDataPointStyles,
   extractSeriesColor,
