@@ -1,5 +1,5 @@
-/**
- * Table renderer — converts TableNodeData into positioned HTML table elements.
+﻿/**
+ * Converts TableNodeData into positioned HTML table elements.
  *
  * Table style behavior follows:
  * - OOXML ECMA-376 §21.1.3.15 tblPr: firstRow, firstCol, bandRow, bandCol, lastRow, lastCol
@@ -357,7 +357,7 @@ function applyStyleBorders(
       continue;
     }
 
-    // <a:lnRef> — reference to theme line style (common in table styles)
+    // <a:lnRef>: reference to theme line style (common in table styles)
     const lnRef = side.child("lnRef");
     if (lnRef.exists()) {
       const idx = lnRef.numAttr("idx") ?? 0;
@@ -685,7 +685,7 @@ function applyBorder(
   const ln = tcPr.child(lineName);
   if (!ln.exists()) return;
 
-  // Check for noFill — explicitly clear any border set by table style
+  // Check for noFill: explicitly clear any border set by table style
   const noFill = ln.child("noFill");
   if (noFill.exists()) {
     td.style[cssProp] = "none";

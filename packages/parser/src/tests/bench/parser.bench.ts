@@ -1,17 +1,17 @@
-/**
+﻿/**
  * Stage-level benchmarks for the parse/render pipeline.
  *
  * Run with: pnpm -F "@diceui/pptx-parser" bench
  *
  * Each stage is measured in isolation against pre-built inputs so the numbers
  * attribute time to the right phase:
- *   parseZip           — unzip + part extraction
- *   buildPresentation  — XML parsing + model construction
- *   materialize        — node materialization + placeholder inheritance
- *   renderSlide        — DOM/SVG generation for one slide
- *   renderAllSlides    — full-deck rendering
- *   search             — text index + query
- *   serialize          — JSON export
+ *   parseZip          : unzip + part extraction
+ *   buildPresentation : XML parsing + model construction
+ *   materialize       : node materialization + placeholder inheritance
+ *   renderSlide       : DOM/SVG generation for one slide
+ *   renderAllSlides   : full-deck rendering
+ *   search            : text index + query
+ *   serialize         : JSON export
  */
 import { bench, describe } from "vitest";
 

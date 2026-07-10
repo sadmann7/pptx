@@ -1,5 +1,6 @@
-/**
- * Render context — provides resolved theme/master/layout chain for a given slide.
+﻿/**
+ * Per-slide render context: holds the resolved theme/master/layout chain,
+ * media caches, async task queue, and render options.
  */
 
 import type { ECharts } from "echarts";
@@ -41,7 +42,7 @@ export interface RenderContext {
   /**
    * Edit-mode affordance: render empty slide placeholders with a dashed
    * outline and the layout/master prompt text (PowerPoint editing-view style).
-   * Off by default — presentation output never shows prompts.
+   * Off by default; presentation output never shows prompts.
    */
   placeholderPrompts?: boolean;
   /**

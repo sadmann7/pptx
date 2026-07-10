@@ -1,4 +1,4 @@
-import type * as echarts from "echarts";
+﻿import type * as echarts from "echarts";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../../model/presentation";
@@ -34,7 +34,7 @@ function parseOption(chartXmlString: string) {
 
 type AnyRecord = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-describe("parseChartXml — bar chart", () => {
+describe("parseChartXml: bar chart", () => {
   let option: AnyRecord;
 
   beforeAll(() => {
@@ -95,7 +95,7 @@ describe("parseChartXml — bar chart", () => {
   });
 });
 
-describe("parseChartXml — bar chart variants", () => {
+describe("parseChartXml: bar chart variants", () => {
   it("formats value axis labels using the axis numFmt", () => {
     const xml = chartSpaceXml(`<c:plotArea>
 <c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
@@ -173,7 +173,7 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
   });
 });
 
-describe("parseChartXml — titles", () => {
+describe("parseChartXml: titles", () => {
   it("synthesizes the Office auto-title from a single series name", () => {
     const xml = chartSpaceXml(`<c:autoTitleDeleted val="0"/>
 <c:plotArea>
@@ -208,7 +208,7 @@ describe("parseChartXml — titles", () => {
   });
 });
 
-describe("parseChartXml — line chart", () => {
+describe("parseChartXml: line chart", () => {
   it("builds smooth marker-less line series", () => {
     const xml = chartSpaceXml(`<c:plotArea>
 <c:lineChart><c:grouping val="standard"/>
@@ -267,7 +267,7 @@ describe("parseChartXml — line chart", () => {
   });
 });
 
-describe("parseChartXml — pie and doughnut", () => {
+describe("parseChartXml: pie and doughnut", () => {
   const PIE_XML = chartSpaceXml(`<c:plotArea>
 <c:pieChart>
 <c:varyColors val="1"/>
@@ -337,7 +337,7 @@ ${seriesXml(0, "Rings", ["A", "B"], [1, 2])}
   });
 });
 
-describe("parseChartXml — scatter chart", () => {
+describe("parseChartXml: scatter chart", () => {
   const scatterSeries = `<c:ser>
 <c:idx val="0"/><c:order val="0"/>
 <c:tx><c:v>Points</c:v></c:tx>
@@ -371,7 +371,7 @@ describe("parseChartXml — scatter chart", () => {
   });
 });
 
-describe("parseChartXml — combo charts", () => {
+describe("parseChartXml: combo charts", () => {
   it("merges a secondary line chart onto a bar chart with a second value axis", () => {
     const xml = chartSpaceXml(`<c:plotArea>
 <c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
@@ -401,7 +401,7 @@ ${seriesXml(2, "Line", ["X", "Y"], [0.1, 0.9])}
   });
 });
 
-describe("parseChartXml — fallbacks", () => {
+describe("parseChartXml: fallbacks", () => {
   it("reports an unsupported chart when the plotArea has no known chart type", () => {
     const { option } = parseOption(
       chartSpaceXml("<c:plotArea><c:layout/></c:plotArea>"),

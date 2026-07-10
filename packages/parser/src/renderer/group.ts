@@ -1,5 +1,5 @@
-/**
- * Group renderer — renders grouped shapes with coordinate space remapping.
+﻿/**
+ * Renders grouped shapes with coordinate space remapping.
  */
 
 import { BaseNodeData } from "../model/nodes/base";
@@ -315,7 +315,7 @@ export function renderGroup(
       const el = renderNode(childNode, childCtx);
       wrapper.appendChild(el);
     } catch {
-      // Per-child error handling — create error placeholder
+      // Per-child error handling: create error placeholder
       const errDiv = document.createElement("div");
       errDiv.style.position = "absolute";
       errDiv.style.border = "1px dashed #ff6b6b";

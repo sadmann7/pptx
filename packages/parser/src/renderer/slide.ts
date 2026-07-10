@@ -1,5 +1,9 @@
-/**
- * Slide renderer — orchestrates rendering of a complete slide with all its nodes.
+﻿/**
+ * Renders a complete OOXML slide into DOM elements.
+ *
+ * Entry points are {@link renderSlide} (full interactive render with async
+ * media) and {@link renderThumbnail} (lightweight static miniature). Both
+ * share the same node pipeline but differ in async work and post-processing.
  */
 
 import type { ECharts } from "echarts";
@@ -88,7 +92,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "chart":
       return renderChart(node as ChartNodeData, ctx);
     default: {
-      // Unknown node type — render as empty positioned div
+      // Unknown node type: render as empty positioned div
       const el = document.createElement("div");
       el.style.position = "absolute";
       el.style.left = `${node.position.x}px`;
@@ -146,7 +150,7 @@ const templateShapeCache = new WeakMap<SafeXmlNode, TemplateShapeCacheEntry>();
 /**
  * Parse and collect renderable shapes from a master or layout spTree.
  * Only includes NON-placeholder shapes (decorative elements, logos, footers).
- * Placeholder shapes are never rendered from master/layout — they only serve
+ * Placeholder shapes are never rendered from master/layout; they only serve
  * as position/size inheritance templates.
  */
 function parseTemplateShapes(
@@ -164,7 +168,7 @@ function parseTemplateShapes(
   };
 
   for (const child of spTree.allChildren()) {
-    // Skip ALL placeholder shapes — they're templates, not renderable content
+    // Skip ALL placeholder shapes: they're templates, not renderable content
     if (isPlaceholderNode(child)) continue;
 
     try {
@@ -212,7 +216,7 @@ function getTemplateShapes(
  *
  * A single host is created lazily and reused by every `renderSlide()` call.
  * The previous approach appended each slide container directly to
- * `document.body` (with per-call style mutation) and removed it afterwards —
+ * `document.body` (with per-call style mutation) and removed it afterwards;
  * two full-document layout invalidations per slide. With a persistent
  * `contain: strict` host, appending/removing slide subtrees only invalidates
  * layout inside the host, never the surrounding page. This is what makes
@@ -269,8 +273,8 @@ export interface ThumbnailRendererOptions {
 /**
  * Render a slide optimised for thumbnail display.
  *
- * Uses the same rendering pipeline as `renderSlide()` — real theme colours,
- * actual shapes, images, and text — but skips operations that are
+ * Uses the same rendering pipeline as `renderSlide()`: real theme colours,
+ * actual shapes, images, and text; skips operations that are
  * imperceptible at thumbnail scale and expensive on the main thread:
  *
  * - **No DOM measurement host**: text autofit measurement is skipped; text
@@ -297,7 +301,7 @@ export function renderThumbnail(
   const ctx = createRenderContext(presentation, slide, options?.mediaUrlCache);
   // Signal to all renderers that they are in thumbnail mode.
   ctx.thumbnail = true;
-  // No asyncTasks array — async work is never started in thumbnail mode.
+  // No asyncTasks array; async work is never started in thumbnail mode.
 
   const container = document.createElement("div");
   container.style.position = "relative";
@@ -365,7 +369,7 @@ export function renderThumbnail(
       try {
         container.appendChild(renderNode(node, ctx));
       } catch {
-        // Non-fatal — skip failed nodes silently in thumbnail mode
+        // Non-fatal; skip failed nodes silently in thumbnail mode
       }
     }
   } catch {

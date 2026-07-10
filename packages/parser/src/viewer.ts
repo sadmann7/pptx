@@ -230,7 +230,7 @@ export class PptxViewer extends EventTarget {
   // -----------------------------------------------------------------------
 
   /**
-   * Load a parsed presentation model. Does NOT render — call `renderList()` or
+   * Load a parsed presentation model. Does NOT render. Call `renderList()` or
    * `renderSlide()` afterwards.
    */
   load(presentation: PresentationData): void {
@@ -1242,7 +1242,7 @@ export class PptxViewer extends EventTarget {
    * (or a scroll ancestor), narrowing the container. If the container's
    * clientWidth now differs from the width used to compute the initial
    * scale, patch every wrapper's dimensions and each slide element's
-   * transform in-place — no DOM rebuild required.
+   * transform in-place; no DOM rebuild required.
    */
   private correctListMetricsIfNeeded(): void {
     if (!this.presentation) return;
@@ -1252,7 +1252,7 @@ export class PptxViewer extends EventTarget {
     const currentWidth = this.container.clientWidth || 0;
     if (!currentWidth || currentWidth === this.lastMeasuredContainerWidth) return;
 
-    // Width changed — recompute metrics
+    // Width changed: recompute metrics
     this.lastMeasuredContainerWidth = currentWidth;
     const fitScale = currentWidth / this.presentation.width;
     const newScale = fitScale * this.zoomFactor;

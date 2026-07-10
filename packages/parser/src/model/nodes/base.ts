@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Base node types and property parser shared by all slide node kinds.
  */
 
@@ -45,7 +45,7 @@ export interface BaseNodeData {
   placeholder?: PlaceholderInfo;
   /** Shape-level hyperlink/click action (action buttons, clickable shapes). */
   hlinkClick?: HlinkAction;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   source: SafeXmlNode;
 }
 
@@ -95,7 +95,7 @@ function findXfrm(node: SafeXmlNode): SafeXmlNode {
   const directXfrm = node.child("xfrm");
   if (directXfrm.exists()) return directXfrm;
 
-  // Return empty node — all reads will return defaults
+  // Return empty node: all reads will return defaults
   return node.child("__nonexistent__");
 }
 

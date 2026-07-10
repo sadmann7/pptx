@@ -26,7 +26,7 @@ function textShape(id: number, text: string, extraSpPr = ""): string {
 </p:sp>`;
 }
 
-/** Shape without an xfrm — position/size resolve to 0 (inherited-transform case). */
+/** Shape without an xfrm; position/size resolve to 0 (inherited-transform case). */
 function shapeWithoutXfrm(id: number): string {
   return `<p:sp>
 <p:nvSpPr><p:cNvPr id="${id}" name="NoXfrm ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
@@ -165,7 +165,7 @@ describe("setNodeTransform", () => {
 
     result.undo();
     const undoneXml = await savedPartText(pres, "ppt/slides/slide1.xml");
-    // The created xfrm is removed again — spPr starts with prstGeom as before.
+    // The created xfrm is removed again; spPr starts with prstGeom as before.
     expect(undoneXml).toContain("<p:spPr><a:prstGeom");
     expect(shapeOn(pres, 0, "2").position).toEqual({ x: 0, y: 0 });
   });
@@ -370,7 +370,7 @@ describe("deleteSlide", () => {
     );
     expect(texts).toEqual(["Keep", "Gone"]);
 
-    // The restored slide's live XML is re-registered — edits still work.
+    // The restored slide's live XML is re-registered; edits still work.
     await applyEdit(pres, {
       type: "setTextRun",
       slideId: deletedId,

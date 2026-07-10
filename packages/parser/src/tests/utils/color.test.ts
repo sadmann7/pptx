@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import {
   applyAlpha,
@@ -106,7 +106,7 @@ describe("OOXML modifiers", () => {
 
 describe("applyColorModifiers", () => {
   it("applies modifiers in document order", () => {
-    // lumMod then lumOff — the standard Office "lighter variant" recipe.
+    // lumMod then lumOff: the standard Office "lighter variant" recipe.
     const viaComposite = applyColorModifiers("#4472C4", [
       { name: "lumMod", val: 60000 },
       { name: "lumOff", val: 40000 },

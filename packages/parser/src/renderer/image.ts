@@ -1,5 +1,8 @@
-/**
- * Image renderer — converts PicNodeData into positioned HTML image/video/audio elements.
+﻿/**
+ * Renders PicNodeData (images, video, audio) as positioned HTML elements.
+ *
+ * Handles EMF extraction, async blob URL resolution, crop/fit transforms,
+ * and SVG shape clip paths.
  */
 
 import { renderCustomGeometry } from "../geometry/custom";
@@ -183,7 +186,7 @@ function renderResolvedImage(
   mediaPath: string,
   data: Uint8Array,
 ): void {
-  // Handle EMF images — extract embedded PDF/bitmap content.
+  // Handle EMF images: extract embedded PDF/bitmap content.
   // In thumbnail mode the async EMF→PDF fallback is skipped (too expensive
   // for preview scale); EMF-only slides render as an empty box at that size.
   if (isEmfFormat(mediaPath)) {
@@ -258,7 +261,7 @@ function renderImageUrl(
       // Scale image so the visible portion fills the wrapper exactly
       const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%
       const scaleY = 1 / visibleH;
-      // Use pixel values for offset — CSS margin-top/margin-left percentages are
+      // Use pixel values for offset: CSS margin-top/margin-left percentages are
       // both relative to the containing block's WIDTH (not height), which causes
       // incorrect offsets for non-square wrappers with significant crops.
       const wrapperW = node.size.w * ((fillRectBox?.width ?? 100) / 100);
@@ -727,7 +730,7 @@ function renderVideo(node: PicNodeData, ctx: RenderContext, wrapper: HTMLElement
     }
     wrapper.appendChild(video);
   } else if (posterUrl) {
-    // No video data available — show poster with play overlay
+    // No video data available: show poster with play overlay
     const img = document.createElement("img");
     img.src = posterUrl;
     img.style.width = "100%";
@@ -882,7 +885,7 @@ function renderEmf(
       renderEmfBitmap(content.imageData, wrapper, ctx, mediaPath);
       break;
     case "empty":
-      // Render nothing — transparent placeholder
+      // Render nothing: transparent placeholder
       break;
     case "unsupported":
       // Vector-only EMF cannot be faithfully rendered in the browser. A visible
@@ -894,7 +897,7 @@ function renderEmf(
 
 /**
  * Render an embedded PDF from EMF using pdfjs-dist.
- * Populates the wrapper asynchronously — the wrapper is returned immediately.
+ * Populates the wrapper asynchronously. The wrapper is returned immediately.
  */
 function renderEmfPdf(
   pdfData: Uint8Array,
@@ -918,7 +921,7 @@ function renderEmfPdf(
       }
     })
     .catch(() => {
-      // PDF rendering failed — leave wrapper empty (transparent)
+      // PDF rendering failed: leave wrapper empty (transparent)
     });
   ctx.asyncTasks?.push(task);
 }

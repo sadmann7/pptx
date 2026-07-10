@@ -5,8 +5,8 @@
  * the live parsed XML documents for parts the model exposes. On save,
  * untouched parts are copied through byte-for-byte; parts marked dirty are
  * re-serialized from their (possibly mutated) XML documents. This preserves
- * everything the parser does not understand — animations, comments, custom
- * XML, vendor extensions — across an open → edit → save cycle.
+ * everything the parser does not understand (animations, comments, custom
+ * XML, vendor extensions) across an open → edit → save cycle.
  *
  * The package holds references into the source zip, so the input buffer must
  * not be detached (e.g. transferred to a worker) while saving is still needed.
@@ -45,13 +45,13 @@ function encodeText(text: string): Uint8Array {
   sharedEncoder ??= new TextEncoder();
   const encoded = sharedEncoder.encode(text);
   // TextEncoder may come from another realm (e.g. jsdom), whose Uint8Array
-  // fails JSZip's instanceof checks — rewrap in this realm's constructor.
+  // fails JSZip's instanceof checks; rewrap in this realm's constructor.
   return encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
 }
 
 /**
  * Extract the original `<?xml ...?>` declaration (including any trailing
- * newline) so a re-serialized part keeps the source's prolog — XMLSerializer
+ * newline) so a re-serialized part keeps the source's prolog; XMLSerializer
  * never emits the declaration itself.
  */
 function extractXmlDeclaration(bytes: Uint8Array): string | undefined {

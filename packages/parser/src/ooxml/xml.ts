@@ -1,6 +1,8 @@
 /**
- * Safe XML parser using browser DOMParser.
- * All operations are null-safe — accessing missing elements never crashes.
+ * Null-safe XML wrapper over browser DOMParser.
+ *
+ * Missing elements return an empty sentinel node rather than throwing,
+ * so call-site code stays exception-free even on malformed OOXML.
  */
 
 /**
@@ -65,7 +67,7 @@ export class SafeXmlNode {
   /**
    * Shared immutable instance for all "missing element" results.
    * SafeXmlNode has no mutable state, so every miss can safely alias one
-   * object — child-chain misses are extremely common (most optional OOXML
+   * object; child-chain misses are extremely common (most optional OOXML
    * elements are absent), and per-miss allocations dominated GC pressure
    * in parse profiles.
    */
@@ -196,7 +198,7 @@ export function parseXml(xmlString: string): SafeXmlNode {
   sharedParser ??= new DOMParser();
   const doc = sharedParser.parseFromString(xmlString, "application/xml");
 
-  // Check for parser errors — DOMParser returns a parsererror document on
+  // Check for parser errors: DOMParser returns a parsererror document on
   // failure. Browsers differ on placement (document root vs. child of the
   // root), so check the root's tag and a direct tag-name scan; both are far
   // cheaper than a querySelector CSS match on every parsed part.

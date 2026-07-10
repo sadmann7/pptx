@@ -1,5 +1,5 @@
-/**
- * Picture node parser — handles images, video placeholders, and audio placeholders.
+﻿/**
+ * Parses p:pic elements (images, video and audio placeholders) into PicNodeData.
  */
 
 import { SafeXmlNode } from "../../ooxml/xml";
@@ -17,9 +17,9 @@ export interface PicNodeData extends BaseNodeData {
   blipEmbed?: string;
   blipLink?: string;
   crop?: CropRect;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   fill?: SafeXmlNode;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   line?: SafeXmlNode;
   /** Picture preset geometry, when the picture is clipped to a non-rectangular preset. */
   presetGeometry?: string;

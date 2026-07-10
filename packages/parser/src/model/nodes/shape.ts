@@ -1,5 +1,5 @@
-/**
- * Shape node parser — handles auto-shapes, text boxes, and connectors.
+﻿/**
+ * Parses p:sp elements (auto-shapes, text boxes, connectors) into ShapeNodeData.
  */
 
 import { angleToDeg, emuToPx } from "../../ooxml/unit";
@@ -8,12 +8,12 @@ import { BaseNodeData, parseBaseProps } from "./base";
 
 export interface TextRun {
   text: string;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   properties?: SafeXmlNode;
 }
 
 export interface TextParagraph {
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   properties?: SafeXmlNode;
   runs: TextRun[];
   level: number;
@@ -22,11 +22,11 @@ export interface TextParagraph {
 }
 
 export interface TextBody {
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   bodyProperties?: SafeXmlNode;
   /** @internal Fallback bodyPr from layout/master placeholder (used when shape's own bodyPr is missing attrs). */
   layoutBodyProperties?: SafeXmlNode;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   listStyle?: SafeXmlNode;
   paragraphs: TextParagraph[];
 }
@@ -50,11 +50,11 @@ export interface ShapeNodeData extends BaseNodeData {
   nodeType: "shape";
   presetGeometry?: string;
   adjustments: Map<string, number>;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   customGeometry?: SafeXmlNode;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   fill?: SafeXmlNode;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   line?: SafeXmlNode;
   headEnd?: LineEndInfo;
   tailEnd?: LineEndInfo;
@@ -84,8 +84,8 @@ function parseParagraph(pNode: SafeXmlNode): TextParagraph {
     });
   }
 
-  // Line breaks (a:br) — treated as runs with newline text
-  // Field codes (a:fld) — treated as runs with their display text
+  // Line breaks (a:br): treated as runs with newline text
+  // Field codes (a:fld): treated as runs with their display text
   for (const child of pNode.allChildren()) {
     if (child.localName === "br") {
       // a:br nodes are interspersed with a:r nodes, but since we iterate
@@ -180,7 +180,7 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
     const fmla = gd.attr("fmla") ?? "";
     if (!name) continue;
 
-    // fmla is typically "val NNNNN" — extract the numeric part
+    // fmla is typically "val NNNNN": extract the numeric part
     const match = fmla.match(/val\s+(-?\d+)/);
     if (match) {
       adjustments.set(name, Number(match[1]));

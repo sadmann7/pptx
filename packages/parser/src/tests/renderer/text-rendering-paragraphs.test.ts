@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Paragraph-level formatting (a:pPr) through the real render pipeline:
  * alignment, line spacing, space before/after, indentation, line breaks,
  * tabs and the trailing endParaRPr spacer.
@@ -43,7 +43,7 @@ describe("line spacing", () => {
       `<a:pPr><a:lnSpc><a:spcPct val="150000"/></a:lnSpc></a:pPr>`,
     );
     expect(parseFloat(paragraph.style.lineHeight)).toBeCloseTo(1.5, 3);
-    // Unitless — CSS percentage would be inherited as a fixed px value.
+    // Unitless: CSS percentage would be inherited as a fixed px value.
     expect(paragraph.style.lineHeight).not.toMatch(/%|pt|px/);
   });
 

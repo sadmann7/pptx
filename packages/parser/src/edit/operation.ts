@@ -504,7 +504,7 @@ interface XfrmHandle {
 
 /**
  * Find the node's xfrm element, creating one when the node inherits its
- * transform (e.g. layout placeholders have no xfrm of their own — moving
+ * transform (e.g. layout placeholders have no xfrm of their own; moving
  * them requires writing a new one into the slide part).
  */
 function getOrCreateXfrm(node: SlideNode): XfrmHandle {
@@ -589,7 +589,7 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   };
 
   // A freshly created xfrm must carry the full resolved transform, not just
-  // the fields being changed — the resolved model values are the source.
+  // the fields being changed: the resolved model values are the source.
   const position = op.position ?? (created ? node.position : undefined);
   const size = op.size ?? (created ? node.size : undefined);
 
@@ -686,7 +686,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
 
   const colorMatch = /^#?([0-9a-fA-F]{6})$/.exec(op.color);
   if (!colorMatch) {
-    throw new Error(`applyEdit: invalid color "${op.color}" — expected 6-digit hex`);
+    throw new Error(`applyEdit: invalid color "${op.color}"; expected 6-digit hex`);
   }
   const color = colorMatch[1].toUpperCase();
 
@@ -789,7 +789,7 @@ async function loadSlideListContext(pres: PresentationData): Promise<SlideListCo
   const lstNode = presRoot.child("sldIdLst");
   const lstEl = lstNode.element;
   if (!lstEl) {
-    throw new Error("applyEdit: unsupported package — presentation.xml has no sldIdLst");
+    throw new Error("applyEdit: unsupported package: presentation.xml has no sldIdLst");
   }
   const relsText = (await sourcePackage.readText(PRESENTATION_RELS_PATH)) ?? "";
   return { sourcePackage, lstNode, lstEl, relsText, rels: parseRels(relsText) };

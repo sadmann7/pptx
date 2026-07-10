@@ -1,5 +1,5 @@
 ﻿/**
- * Shape renderer — converts ShapeNodeData into positioned HTML/SVG elements.
+ * Converts ShapeNodeData into positioned HTML/SVG elements.
  */
 
 import { renderCustomGeometry } from "../geometry/custom";
@@ -330,7 +330,7 @@ const SP_AUTOFIT_UNWRAPPED_WIDTH_SCALE_FLOOR = 0.9;
 // The implicit single-line fit compensates for browser fonts measuring wider
 // than Office fonts (~10%), keeping authored labels on one line. It must not
 // shrink text drastically: with wrapping enabled and no autofit, PowerPoint
-// wraps and overflows instead — e.g. text typed into a small shape.
+// wraps and overflows instead, e.g. text typed into a small shape.
 const IMPLICIT_SINGLE_LINE_METRIC_SCALE_FLOOR = 0.85;
 
 function getSupportedTextWarpPreset(textBody: TextBody): "textArchDown" | "textArchUp" | null {
@@ -434,7 +434,7 @@ function renderWarpedTextBody(node: ShapeNodeData, ctx: RenderContext): SVGSVGEl
 }
 
 // ---------------------------------------------------------------------------
-// Shape blipFill (image fill) — resolve to blob URL for reuse (e.g. SVG/PNG in process diagrams)
+// Shape blipFill (image fill): resolve to blob URL for reuse (e.g. SVG/PNG in process diagrams)
 // ---------------------------------------------------------------------------
 
 /** Resolve shape blipFill to a blob URL so we can render it (e.g. slide 23 process graphic). */
@@ -1437,7 +1437,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   let gradientStroke: ReturnType<typeof resolveGradientStroke> = null;
 
   // Resolve effective line: explicit <a:ln> on shape, or use theme line from lnRef.
-  // When line is explicitly <a:noFill/>, do not use lnRef — diagram arrows (e.g. circularArrow) must have no stroke.
+  // When line is explicitly <a:noFill/>, do not use lnRef; diagram arrows (e.g. circularArrow) must have no stroke.
   const lineIsNoFill = node.line && node.line.child("noFill").exists();
   const hasExplicitLine = node.line && !lineIsNoFill;
   const themeLineFromLnRef =
@@ -1824,9 +1824,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // Stroke — gradient stroke or solid stroke (skip for circularArrow; already set stroke=none above)
+      // Stroke: gradient stroke or solid stroke (skip for circularArrow; already set stroke=none above)
       // For multi-path presets where the first sub-path specifies stroke:false (e.g. callout1/2/3,
-      // accentCallout1/2/3), suppress stroke on the main path element — the leader line and accent
+      // accentCallout1/2/3), suppress stroke on the main path element; the leader line and accent
       // bar are rendered as separate sub-path elements with their own stroke settings.
       const mainPathStrokeSuppressed = multiPaths && multiPaths[0]?.stroke === false;
       if (
@@ -2097,7 +2097,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
                   : "rgba(255,255,255,0.3)"),
             );
           } else {
-            // 'norm' — same fill as main path
+            // 'norm': same fill as main path
             extraPath.setAttribute("fill", mainPathFill || "none");
           }
           if (sp.stroke && effectiveStrokeWidth > 0 && strokeColor !== "transparent") {
@@ -2230,12 +2230,12 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // (Can top ellipse overlay removed — now handled by multiPathPresets 'can' lighten sub-path)
+      // (Can top ellipse overlay removed; now handled by multiPathPresets 'can' lighten sub-path)
 
       wrapper.appendChild(svg);
     }
   } else if (fillCss && fillCss !== "transparent") {
-    // No geometry but has fill — apply as background color
+    // No geometry but has fill: apply as background color
     if (fillCss.includes("gradient")) {
       wrapper.style.background = fillCss;
     } else {
@@ -2245,7 +2245,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
 
   // ---- Render text overlay (only when there is visible text; skip for decorative shapes with empty txBody) ----
   // In editable decks (retained package) an empty text body still renders its
-  // container so inline text editing can target it — a cleared text box, or a
+  // container so inline text editing can target it: a cleared text box, or a
   // plain shape you can click and type into like PowerPoint.
   if (
     node.textBody &&
@@ -2309,7 +2309,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       const usesNoAutofitSingleLineTitleFit =
         hasNoAutofit && isTitlePlaceholder(node.placeholder) && isSingleLineTextBody(node.textBody);
       textContainer.style.overflowX = "visible";
-      // noAutofit means "don't auto-fit" — NOT "clip text". PowerPoint allows text to
+      // noAutofit means "don't auto-fit", NOT "clip text". PowerPoint allows text to
       // overflow the shape boundary visibly.
       textContainer.style.overflowY = "visible";
 

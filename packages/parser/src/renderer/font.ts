@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Font resolution helpers shared by text-like renderers.
  */
 
@@ -196,7 +196,7 @@ function cssFontFamilyToken(fontFamily: string): string {
   return `"${fontFamily.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-// Fonts that are serif by nature — fall back to serif generic, not sans-serif
+// Fonts that are serif by nature: fall back to serif generic, not sans-serif
 const KNOWN_SERIF_FONTS = new Set([
   "times new roman",
   "times",

@@ -1,5 +1,5 @@
-/**
- * Slide master parser — extracts color map, background, text styles,
+﻿/**
+ * Extracts color map, background, text styles,
  * and placeholder shapes from a p:sldMaster XML.
  */
 

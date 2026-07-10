@@ -1,5 +1,5 @@
-/**
- * Slide layout parser — extracts color map override, background,
+﻿/**
+ * Extracts color map override, background,
  * and placeholder shapes from a p:sldLayout XML.
  */
 

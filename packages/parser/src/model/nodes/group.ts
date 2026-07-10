@@ -1,5 +1,6 @@
-/**
- * Group node parser — handles grouped shapes (p:grpSp).
+﻿/**
+ * Parses p:grpSp (group shape) elements into GroupNodeData,
+ * recursively handling nested shapes.
  */
 
 import { emuToPx } from "../../ooxml/unit";
@@ -10,7 +11,7 @@ export interface GroupNodeData extends BaseNodeData {
   nodeType: "group";
   childOffset: Position;
   childExtent: Size;
-  /** @internal Raw XML nodes — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML nodes, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   children: SafeXmlNode[];
 }
 

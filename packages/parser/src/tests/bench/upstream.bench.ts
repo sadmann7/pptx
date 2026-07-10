@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Head-to-head benchmark: our parser vs @aiden0z/pptx-renderer@1.2.3.
  *
  * Run with: pnpm -F "@diceui/pptx-parser" bench
@@ -7,7 +7,7 @@
  * so the comparison is purely parser throughput, not fixture differences.
  *
  * jsdom is used instead of happy-dom because the upstream package calls
- * Element.lookupNamespaceURI() unconditionally — a method happy-dom doesn't
+ * Element.lookupNamespaceURI() unconditionally: a method happy-dom doesn't
  * implement. Our package patches this with optional chaining; upstream doesn't.
  *
  * @vitest-environment jsdom
@@ -41,7 +41,7 @@ const largeFilesUpstream = await upstreamParseZip(largeBuffer);
 
 // ─── parseZip ────────────────────────────────────────────────────────────────
 
-describe("parseZip — medium (20 slides)", () => {
+describe("parseZip: medium (20 slides)", () => {
   bench("ours", async () => {
     await ourParseZip(mediumBuffer);
   });
@@ -50,7 +50,7 @@ describe("parseZip — medium (20 slides)", () => {
   });
 });
 
-describe("parseZip — large (100 slides)", () => {
+describe("parseZip: large (100 slides)", () => {
   bench("ours", async () => {
     await ourParseZip(largeBuffer);
   });
@@ -59,7 +59,7 @@ describe("parseZip — large (100 slides)", () => {
   });
 });
 
-describe("parseZipLazyMedia — large (100 slides)", () => {
+describe("parseZipLazyMedia: large (100 slides)", () => {
   bench("ours", async () => {
     await ourParseZipLazyMedia(largeBuffer);
   });
@@ -70,7 +70,7 @@ describe("parseZipLazyMedia — large (100 slides)", () => {
 
 // ─── buildPresentation ───────────────────────────────────────────────────────
 
-describe("buildPresentation — medium", () => {
+describe("buildPresentation: medium", () => {
   bench("ours", () => {
     ourBuild(mediumFilesOurs);
   });
@@ -79,7 +79,7 @@ describe("buildPresentation — medium", () => {
   });
 });
 
-describe("buildPresentation — large", () => {
+describe("buildPresentation: large", () => {
   bench("ours", () => {
     ourBuild(largeFilesOurs);
   });
@@ -90,7 +90,7 @@ describe("buildPresentation — large", () => {
 
 // ─── end-to-end load (buffer → first slide ready) ────────────────────────────
 
-describe("time-to-first-slide — medium", () => {
+describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {
     const files = await ourParseZip(mediumBuffer);
     const pres = ourBuild(files, { lazy: true });
@@ -103,7 +103,7 @@ describe("time-to-first-slide — medium", () => {
   });
 });
 
-describe("time-to-first-slide — large", () => {
+describe("time-to-first-slide: large", () => {
   bench("ours", async () => {
     const files = await ourParseZip(largeBuffer);
     const pres = ourBuild(files, { lazy: true });
@@ -120,7 +120,7 @@ describe("time-to-first-slide — large", () => {
 // Skipped for upstream: jsdom's DOM node allocations for 100 slides × repeated
 // rounds exhaust the default Node heap (~4 GB). The per-slide cost can be
 // inferred from time-to-first-slide above times slide count.
-describe("full-deck materialize — large (100 slides)", () => {
+describe("full-deck materialize: large (100 slides)", () => {
   bench("ours", () => {
     const pres = ourBuild(largeFilesOurs);
     for (const slide of pres.slides) ourMaterialize(pres, slide);

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CPU profiling harness (not a real test). Skipped unless PROFILE=1.
  *
  * Usage:
@@ -79,7 +79,7 @@ async function captureProfile(workload: () => void | Promise<void>): Promise<Pro
 
 function printTop(label: string, rows: ProfileRow[], limit = 30): void {
   const total = rows.reduce((sum, r) => sum + r.selfMs, 0);
-  const lines = [`\n===== ${label} — total self time ${total.toFixed(1)}ms =====`];
+  const lines = [`\n===== ${label}: total self time ${total.toFixed(1)}ms =====`];
   for (const row of rows.slice(0, limit)) {
     const pct = ((row.selfMs / total) * 100).toFixed(1).padStart(5);
     lines.push(`${pct}%  ${row.selfMs.toFixed(1).padStart(8)}ms  ${row.name}  [${row.file}]`);

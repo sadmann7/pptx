@@ -1,5 +1,5 @@
-/**
- * Table node parser — handles graphicFrame elements containing a:tbl.
+﻿/**
+ * Parses graphicFrame elements containing a:tbl into TableNodeData.
  */
 
 import { parseOoxmlBool } from "../../ooxml/boolean";
@@ -14,7 +14,7 @@ export interface TableCell {
   hMerge: boolean;
   vMerge: boolean;
   textBody?: TextBody;
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   properties?: SafeXmlNode;
 }
 
@@ -27,7 +27,7 @@ export interface TableNodeData extends BaseNodeData {
   nodeType: "table";
   columns: number[];
   rows: TableRow[];
-  /** @internal Raw XML node — opaque to consumers. Use serializePresentation() for JSON-safe data. */
+  /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   properties?: SafeXmlNode;
   tableStyleId?: string;
 }

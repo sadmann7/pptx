@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Predefined (built-in) Office table styles.
  *
  * PowerPoint has 74 predefined table styles that exist natively but are NOT
@@ -13,7 +13,7 @@
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 
 // ---------------------------------------------------------------------------
-// UUID → (styleName, accent) map — 74 entries across 11 style groups
+// UUID → (styleName, accent) map: 74 entries across 11 style groups
 // ---------------------------------------------------------------------------
 
 const styleIdMap = new Map<string, [string, string]>([
@@ -115,7 +115,7 @@ const styleIdMap = new Map<string, [string, string]>([
 ]);
 
 // ---------------------------------------------------------------------------
-// XML helpers — reduce boilerplate in style generators
+// XML helpers: reduce boilerplate in style generators
 // ---------------------------------------------------------------------------
 
 const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
@@ -776,7 +776,7 @@ const cache = new Map<string, SafeXmlNode>();
 /**
  * Get a predefined table style by its UUID.
  * Returns the parsed SafeXmlNode (a:tblStyle element) or undefined if not a known predefined style.
- * Results are cached — same UUID always returns the same instance.
+ * Results are cached: same UUID always returns the same instance.
  */
 export function getPredefinedTableStyle(styleId: string): SafeXmlNode | undefined {
   const cached = cache.get(styleId);

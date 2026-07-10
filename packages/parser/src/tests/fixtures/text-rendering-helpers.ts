@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Shared helpers for the text-rendering test suites.
  *
  * All helpers run the REAL pipeline (parseZip → buildPresentation → renderSlide)
- * against in-memory fixtures produced by `buildPptxWithShapes` — no mocks.
+ * against in-memory fixtures produced by `buildPptxWithShapes` (no mocks).
  */
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip";

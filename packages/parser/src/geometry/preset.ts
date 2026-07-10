@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Preset shape SVG path generators for OOXML preset geometry types.
  *
  * Each generator takes width, height, and optional adjustment values,
@@ -440,7 +440,7 @@ presetShapes.set("star4", (w, h, adjustments) => {
   return starShape(w, h, 4, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star5", (w, h, adjustments) => {
-  // OOXML: adj=19098, hf=105146, vf=110557 — scaling factors for non-square bounding box
+  // OOXML: adj=19098, hf=105146, vf=110557; scaling factors for non-square bounding box
   const aRaw = adjustments?.get("adj") ?? 19098;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 105146;
@@ -469,7 +469,7 @@ presetShapes.set("star5", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star6", (w, h, adjustments) => {
-  // OOXML: adj=28868, hf=115470 — horizontal scaling factor
+  // OOXML: adj=28868, hf=115470; horizontal scaling factor
   const aRaw = adjustments?.get("adj") ?? 28868;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 115470;
@@ -497,7 +497,7 @@ presetShapes.set("star6", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star7", (w, h, adjustments) => {
-  // OOXML star7: adj=34601, hf=102572, vf=105210 — center shifted to svc
+  // OOXML star7: adj=34601, hf=102572, vf=105210; center shifted to svc
   const aRaw = adjustments?.get("adj") ?? 34601;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const swd2 = ((w / 2) * 102572) / 100000;
@@ -530,7 +530,7 @@ presetShapes.set("star8", (w, h, adjustments) => {
   return starShape(w, h, 8, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star10", (w, h, adjustments) => {
-  // OOXML: adj=42533, hf=105146 — horizontal scaling factor
+  // OOXML: adj=42533, hf=105146; horizontal scaling factor
   const aRaw = adjustments?.get("adj") ?? 42533;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 105146;
@@ -846,7 +846,7 @@ presetShapes.set("rightArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftArrowCallout", (w, h, adjustments) => {
-  // OOXML: Mirror of rightArrowCallout — arrowhead points left
+  // OOXML: Mirror of rightArrowCallout; arrowhead points left
   const ss = Math.min(w, h);
   const maxAdj2 = (50000 * h) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, maxAdj2));
@@ -882,7 +882,7 @@ presetShapes.set("leftArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("upArrowCallout", (w, h, adjustments) => {
-  // OOXML: Vertical variant — arrowhead points up
+  // OOXML: Vertical variant; arrowhead points up
   const ss = Math.min(w, h);
   const maxAdj2 = (50000 * w) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, maxAdj2));
@@ -1250,7 +1250,7 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   // Uses 4 adjustments per ECMA-376 spec.
   const ss = Math.min(w, h);
 
-  // Constrained adjustments (raw values, not fractions — we do our own math)
+  // Constrained adjustments (raw values, not fractions; we do our own math)
   const adj2Raw = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
   const maxAdj1 = adj2Raw * 2;
   const adj1Raw = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
@@ -1278,10 +1278,10 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   const y5 = dh2 + bd;
 
   // OOXML arcTo: from current point, arc with radii (wR, hR), start angle stAng, sweep swAng.
-  // Arc 1: outer bend — from (0, y5), radii=bd, 180°→270° (sweep +90°)
+  // Arc 1: outer bend; from (0, y5), radii=bd, 180°→270° (sweep +90°)
   //   Center of arc is at (bd, y5) relative, endpoint at (bd, y5-bd) = (bd, dh2)
   //   SVG: A bd,bd 0 0,1 bd,dh2
-  // Arc 2: inner bend — from (x3, y3), radii=bd2, 270°→180° (sweep -90°)
+  // Arc 2: inner bend; from (x3, y3), radii=bd2, 270°→180° (sweep -90°)
   //   Center at (x3, y3+bd2), endpoint at (x3-bd2, y3+bd2) = (th, y3+bd2)
   //   SVG: A bd2,bd2 0 0,0 th,y6  where y6 = y3+bd2
 
@@ -1696,11 +1696,11 @@ function buildCircularArrowPath(
   const ooxCos = (val: number, ang: number) => val * Math.cos(toRad60k(ang));
   const cat2 = (r: number, ht: number, wt: number) => r * Math.cos(Math.atan2(wt, ht));
   const sat2 = (r: number, ht: number, wt: number) => r * Math.sin(Math.atan2(wt, ht));
-  // OOXML: at2(x, y) = atan2(y, x) — first arg is x, second is y
+  // OOXML: at2(x, y) = atan2(y, x); first arg is x, second is y
   const at2 = (x: number, y: number) => ((Math.atan2(y, x) * 180) / Math.PI) * 60000;
   const modF = (x: number, y: number, z: number) => Math.sqrt(x * x + y * y + z * z);
 
-  // Adjustments — leftCircularArrow has different OOXML defaults
+  // Adjustments; leftCircularArrow has different OOXML defaults
   const isLeft = variant === "leftCircularArrow";
   const adj1 = adjustments?.get("adj1") ?? 12500;
   const adj2 = adjustments?.get("adj2") ?? (isLeft ? -1142319 : 1142319);
@@ -1903,7 +1903,7 @@ function buildCircularArrowPath(
   const xC = hc + sdxC;
   const yC = vc + sdyC;
 
-  // Inner arc angles — leftCircularArrow uses intermediate istAng0/iswAng0
+  // Inner arc angles; leftCircularArrow uses intermediate istAng0/iswAng0
   const ist0 = at2(sdxC, sdyC);
   const ist1 = ist0 + 21600000;
   const istAng0 = ist0 >= 0 ? ist0 : ist1;
@@ -2312,7 +2312,7 @@ presetShapes.set("flowChartDocument", (w, h) => {
 });
 
 presetShapes.set("flowChartInputOutput", (w, h) => {
-  // OOXML: path w=5 h=5, points: (0,5)(1,0)(5,0)(4,5) — offset = w/5
+  // OOXML: path w=5 h=5, points: (0,5)(1,0)(5,0)(4,5); offset = w/5
   const offset = w / 5;
   return `M${offset},0 L${w},0 L${w - offset},${h} L0,${h} Z`;
 });
@@ -3913,7 +3913,7 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
 presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
 // Fallback rectangle for action buttons without multiPathPresets entry yet
-// actionButtonSound fallback removed — uses multiPathPresets entry below
+// actionButtonSound fallback removed; uses multiPathPresets entry below
 
 // Multi-path action button presets are registered after the multiPathPresets Map
 // declaration (see below in the multiPathPresets section).
@@ -3923,7 +3923,7 @@ presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h}
 // ---------------------------------------------------------------------------
 const actionButtonIcons = new Map<string, (w: number, h: number) => string>();
 
-// actionButtonHome icon removed — uses multiPathPresets entry below
+// actionButtonHome icon removed; uses multiPathPresets entry below
 
 actionButtonIcons.set("actionButtonForwardNext", (w, h) => {
   // Right-pointing triangle (▶)
@@ -3942,7 +3942,7 @@ actionButtonIcons.set("actionButtonBackPrevious", (w, h) => {
 });
 
 actionButtonIcons.set("actionButtonReturn", (w, h) => {
-  // Curved return arrow (↩) — shaft goes right at bottom, curves UP at right end,
+  // Curved return arrow (↩); shaft goes right at bottom, curves UP at right end,
   // returns left at top with arrowhead pointing left (standard PowerPoint icon).
   const cx = w / 2,
     cy = h / 2,
@@ -3999,7 +3999,7 @@ actionButtonIcons.set("actionButtonEnd", (w, h) => {
   ].join(" ");
 });
 
-// actionButtonHelp icon removed — uses multiPathPresets entry below
+// actionButtonHelp icon removed; uses multiPathPresets entry below
 
 actionButtonIcons.set("actionButtonInformation", (w, h) => {
   // Info icon (i)
@@ -4030,7 +4030,7 @@ actionButtonIcons.set("actionButtonDocument", (w, h) => {
   ].join(" ");
 });
 
-// actionButtonSound icon removed — uses multiPathPresets entry below
+// actionButtonSound icon removed; uses multiPathPresets entry below
 
 // actionButtonMovie icon is now rendered via multiPathPresets (see below).
 
@@ -4209,7 +4209,7 @@ presetShapes.set("teardrop", (w, h) => {
 
 presetShapes.set("pie", (w, h, adjustments) => {
   // OOXML pie: adj1 = start angle, adj2 = end angle (60000ths of a degree). Sweep clockwise from start to end.
-  // OOXML angles are "visual" (geometric) — must convert to parametric for ellipses (rx≠ry).
+  // OOXML angles are "visual" (geometric); must convert to parametric for ellipses (rx≠ry).
   const adj1Raw = adjustments?.get("adj1") ?? 0;
   const adj2Raw = adjustments?.get("adj2") ?? 16200000; // 270° end default
   const startDeg = (adj1Raw / 60000) % 360;
@@ -4242,7 +4242,7 @@ presetShapes.set("pieWedge", (w, h) => {
 
 presetShapes.set("arc", (w, h, adjustments) => {
   // OOXML arc: adj1/adj2 are angles in 60000ths of a degree
-  // OOXML angles are "visual" (geometric) — must convert to parametric for ellipses (rx≠ry).
+  // OOXML angles are "visual" (geometric); must convert to parametric for ellipses (rx≠ry).
   const adj1Raw = adjustments?.get("adj1") ?? 16200000; // default 270°
   const adj2Raw = adjustments?.get("adj2") ?? 0; // default 0°
   const startDeg = adj1Raw / 60000;
@@ -4266,7 +4266,7 @@ presetShapes.set("arc", (w, h, adjustments) => {
 
 presetShapes.set("chord", (w, h, adjustments) => {
   // OOXML chord: arc + chord line. Spec uses ellipse (arcTo wR="wd2" hR="hd2") per presetShapeDefinitions.
-  // OOXML angles are "visual" (geometric) angles — the angle of the ray from center to the point.
+  // OOXML angles are "visual" (geometric) angles; the angle of the ray from center to the point.
   // For ellipses (rx≠ry), convert to parametric angle: t = atan2(sin(θ)/ry, cos(θ)/rx)
   const adj1Raw = adjustments?.get("adj1") ?? 2700000; // default 45°
   const adj2Raw = adjustments?.get("adj2") ?? 16200000; // default 270°
@@ -4412,7 +4412,7 @@ presetShapes.set("funnel", (w, h) => {
  * if the shape type is not implemented.
  */
 // ---------------------------------------------------------------------------
-// Preset shape overlays — additional paths for 3D-like shapes (lighter top face, etc.)
+// Preset shape overlays; additional paths for 3D-like shapes (lighter top face, etc.)
 // ---------------------------------------------------------------------------
 
 export interface PresetOverlay {
@@ -4459,7 +4459,7 @@ export function getPresetOverlays(
 }
 
 // ---------------------------------------------------------------------------
-// Multi-path preset shapes — complex shapes with multiple SVG paths
+// Multi-path preset shapes; complex shapes with multiple SVG paths
 // Each path has its own fill modifier and stroke behavior, matching OOXML spec.
 // ---------------------------------------------------------------------------
 
@@ -4603,7 +4603,7 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
   const g25 = g11 + g17;
   const g26 = g11 + g18;
 
-  // Fill icon path (paths 0 & 1 in OOXML spec — identical geometry)
+  // Fill icon path (paths 0 & 1 in OOXML spec; identical geometry)
   // Arc 1: from (g24, g20), wR=g27 hR=g27 stAng=0° swAng=90°
   //   center = (g24-g27, g20), endpoint = (g24-g27, g20+g27) = (g24-g27, g19)
   // Arc 2: from (g25, g19), wR=g27 hR=g27 stAng=90° swAng=90°
@@ -4631,7 +4631,7 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
     `Z`,
   ].join(" ");
 
-  // Outline path (path 2 in OOXML spec — traces shape with different arc winding)
+  // Outline path (path 2 in OOXML spec; traces shape with different arc winding)
   // Starts from right outer edge, traces clockwise: outer right → outer bottom → outer left → inner left → inner bottom → inner right → arrow
   // Arc A: from (g22, g20), wR=g17 hR=g17 stAng=0° swAng=90°
   //   center = (g22-g17, g20) = (g22-g17, g20), endpoint = (g22-g17, g20+g17)
@@ -5181,7 +5181,7 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
 
   const shadow = [`M${x3},${y1}`, arc2a.svg, arc2b.svg, `L${x3},${ry2}`, "Z"].join(" ");
 
-  // Path 3: Stroke outline (no fill) — same as body + interior fold lines
+  // Path 3: Stroke outline (no fill); same as body + interior fold lines
   const outline = [body, `M${x3},${y1} L${x3},${ry2}`, `M${x2},${y2} L${x2},${ly3}`].join(" ");
 
   return [
@@ -5455,7 +5455,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("smileyFace", (w, h, adjustments) => {
-  // OOXML smileyFace: 4 paths — face(norm), eyes(darkenLess), smile(none), outline(none+stroke)
+  // OOXML smileyFace: 4 paths; face(norm), eyes(darkenLess), smile(none), outline(none+stroke)
   const wd2 = w / 2;
   const hd2 = h / 2;
   const hc = w / 2;
@@ -5482,17 +5482,17 @@ multiPathPresets.set("smileyFace", (w, h, adjustments) => {
   const dy3 = (h * a) / 50000;
   const y5 = y4 + dy3;
 
-  // Path 1: face ellipse (fill=norm, stroke=false) — two half-arcs for full circle
+  // Path 1: face ellipse (fill=norm, stroke=false); two half-arcs for full circle
   const face = `M${w},${vc} A${wd2},${hd2} 0 1,1 0,${vc} A${wd2},${hd2} 0 1,1 ${w},${vc} Z`;
 
-  // Path 2: eyes (fill=darkenLess) — two small ellipses at OOXML positions (two half-arcs each)
+  // Path 2: eyes (fill=darkenLess); two small ellipses at OOXML positions (two half-arcs each)
   const leftEye = `M${(x2 + wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x2 - wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x2 + wR).toFixed(2)},${y1.toFixed(2)} Z`;
   const rightEye = `M${(x3 + wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x3 - wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x3 + wR).toFixed(2)},${y1.toFixed(2)} Z`;
 
-  // Path 3: smile (fill=none) — quadratic Bezier (OOXML quadBezTo)
+  // Path 3: smile (fill=none); quadratic Bezier (OOXML quadBezTo)
   const smile = `M${x1.toFixed(2)},${y2.toFixed(2)} Q${hc.toFixed(2)},${y5.toFixed(2)} ${x4.toFixed(2)},${y2.toFixed(2)}`;
 
-  // Path 4: face outline (fill=none, stroke=true) — same as path 1
+  // Path 4: face outline (fill=none, stroke=true); same as path 1
   const outline = `M${w},${vc} A${wd2},${hd2} 0 1,1 0,${vc} A${wd2},${hd2} 0 1,1 ${w},${vc} Z`;
 
   return [
@@ -5517,7 +5517,7 @@ multiPathPresets.set("foldedCorner", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("can", (w, h, adjustments) => {
-  // OOXML: 3 paths — body (norm), top face (lighten), outline (stroke-only)
+  // OOXML: 3 paths; body (norm), top face (lighten), outline (stroke-only)
   const ss = Math.min(w, h);
   const maxAdj = (50000 * h) / ss;
   const a = Math.min(Math.max(adjustments?.get("adj") ?? 25000, 0), maxAdj);
@@ -5766,7 +5766,7 @@ multiPathPresets.set("chartplus", (w, h) => {
 });
 
 multiPathPresets.set("chartstar", (w, h) => {
-  // OOXML: 3 guide paths — 2 diagonals + 1 vertical (no horizontal center line)
+  // OOXML: 3 guide paths; 2 diagonals + 1 vertical (no horizontal center line)
   const cx = w / 2;
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: false },
@@ -6213,7 +6213,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (x4, ch2) — but after the arc we should be at (x4, 0)… wait
+  // lnTo (x4, ch2); but after the arc we should be at (x4, 0)… wait
   // Actually: arcTo from (w, ch2) with stAng=0 swAng=90° → center=(w-ch2, ch2), end=(w-ch2, 0)=x4,0
   // Then lnTo (x4, ch2)... hmm, this goes from top-right curl area
   // Let me re-read: lnTo pt x="x4" y="ch2"... that doesn't match. Wait, the lnTo goes DOWN.
@@ -6269,7 +6269,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   p1.push(arc.svg);
   p1.push("Z");
 
-  // Path 2: darkenLess fill (stroke=false) — shadow areas
+  // Path 2: darkenLess fill (stroke=false); shadow areas
   const p2: string[] = [];
   // Sub-path 1: same as path1 sub-path2 (left bottom curl)
   cx = ch2;

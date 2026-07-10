@@ -1,5 +1,5 @@
 /**
- * Chart node — represents a chart embedded in a graphicFrame element.
+ * Parses graphicFrame elements containing a c:chart into ChartNodeData.
  */
 
 import { RelEntry, resolveRelTarget } from "../../ooxml/rel";

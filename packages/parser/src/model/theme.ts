@@ -1,5 +1,5 @@
 /**
- * Theme parser — extracts color scheme and font definitions from a:theme XML.
+ * Extracts color scheme and font definitions from a:theme XML.
  */
 
 import { SafeXmlNode } from "../ooxml/xml";

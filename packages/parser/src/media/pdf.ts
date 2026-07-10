@@ -1,9 +1,9 @@
-/**
+﻿/**
  * PDF-to-image renderer for embedded EMF PDFs.
  *
  * pdfjs-dist v5 has process-level shared state (PagesMapper.#pagesNumber,
  * GlobalWorkerOptions.workerSrc, PDFWorker.#isWorkerDisabled) that a library
- * must never touch on the main thread — doing so clobbers the host app's pdfjs
+ * must never touch on the main thread; doing so clobbers the host app's pdfjs
  * configuration.
  *
  * Solution: render EMF PDFs exclusively inside a dedicated Web Worker. The
@@ -11,7 +11,7 @@
  * is fully isolated from the main thread.
  *
  * If Worker + OffscreenCanvas are unavailable (extremely rare in 2025+
- * browsers), rendering is skipped and the caller gets null — no main-thread
+ * browsers), rendering is skipped and the caller gets null. No main-thread
  * fallback, no global state pollution.
  */
 
@@ -31,7 +31,7 @@ export interface PdfjsOptions {
 export type PdfjsConfig = PdfjsOptions | false;
 
 // ---------------------------------------------------------------------------
-// Resolved pdfjs URL — computed once from optional module resolution
+// Resolved pdfjs URL, computed once from optional module resolution
 // ---------------------------------------------------------------------------
 
 const PDFJS_MODULE_SPECIFIER = "pdfjs-dist/build/pdf.min.mjs";
@@ -270,7 +270,7 @@ export async function renderPdfToImage(
     const blob = await renderInWorker(pdfData, width, height, pdfjsUrl, pdfWorkerUrl);
     if (blob) return URL.createObjectURL(blob);
   } catch {
-    // Worker failed — no fallback, return null
+    // Worker failed: no fallback, return null
   }
 
   return null;

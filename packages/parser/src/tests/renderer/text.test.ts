@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip";
@@ -133,7 +133,7 @@ describe("leading whitespace preservation", () => {
 
   it("does not apply pre-wrap to a mid-line run that starts with a space", async () => {
     // Two runs on the same paragraph: the second begins with a space but is
-    // not at line start — default whitespace handling applies.
+    // not at line start: default whitespace handling applies.
     const element = await renderTextBox(
       `<a:p>${EMPTY_PPR}<a:r><a:t>MARKER</a:t></a:r><a:r><a:t> continues</a:t></a:r></a:p>`,
     );
@@ -142,7 +142,7 @@ describe("leading whitespace preservation", () => {
     expect(spans).toHaveLength(2);
     // First run: no special whitespace needed.
     expect(spans[0].style.whiteSpace).toBe("");
-    // Second run: space but NOT at line start — no pre-wrap.
+    // Second run: space but NOT at line start; no pre-wrap.
     expect(spans[1].style.whiteSpace).toBe("");
   });
 

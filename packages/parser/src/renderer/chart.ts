@@ -1,5 +1,6 @@
-/**
- * Chart renderer — converts OOXML chart XML into ECharts visualizations.
+﻿/**
+ * Converts OOXML chart XML into ECharts option objects and mounts live
+ * ECharts instances into the DOM.
  */
 
 import type * as echarts from "echarts";
@@ -275,7 +276,7 @@ const OOXML_SYMBOL_MAP: Record<string, string> = {
   diamond: "diamond",
   triangle: "triangle",
   none: "none",
-  // Less common symbols — fallback to circle
+  // Less common symbols: fallback to circle
   star: "circle",
   dash: "circle",
   dot: "circle",
@@ -2644,7 +2645,7 @@ function initChart(
       if (container.isConnected) {
         chart.resize();
       } else {
-        // Container removed from DOM — dispose to prevent leaks
+        // Container removed from DOM: dispose to prevent leaks
         ro.disconnect();
         if (!chart.isDisposed()) {
           chart.dispose();

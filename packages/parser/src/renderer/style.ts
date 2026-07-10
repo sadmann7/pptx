@@ -1,5 +1,8 @@
-/**
- * Style resolver — converts OOXML color and fill nodes to CSS values.
+﻿/**
+ * Resolves OOXML color, fill, and effect nodes to CSS values.
+ *
+ * Covers theme color lookups, luminance/tint/shade modifiers, solid fills,
+ * gradient fills, and transparency.
  */
 
 import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/unit";
@@ -165,7 +168,7 @@ function resolveColorUncached(
       }
 
       default:
-        // Not a recognized color child — continue looking
+        // Not a recognized color child; continue looking
         break;
     }
   }
@@ -271,25 +274,25 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return resolveGradient(gradFill, ctx);
   }
 
-  // blipFill — handled externally by ImageRenderer
+  // blipFill: handled externally by ImageRenderer
   const blipFill = spPr.child("blipFill");
   if (blipFill.exists()) {
     return "";
   }
 
-  // pattFill — pattern fill rendered as CSS repeating gradient
+  // pattFill: pattern fill rendered as CSS repeating gradient
   const pattFill = spPr.child("pattFill");
   if (pattFill.exists()) {
     return resolvePatternFill(pattFill, ctx);
   }
 
-  // grpFill — inherit fill from parent group
+  // grpFill: inherit fill from parent group
   const grpFill = spPr.child("grpFill");
   if (grpFill.exists()) {
     if (ctx.groupFillNode) {
       return resolveFill(ctx.groupFillNode, ctx);
     }
-    // No group fill context available — fall through to no fill
+    // No group fill context available; fall through to no fill
     return "";
   }
 
@@ -299,7 +302,7 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return "transparent";
   }
 
-  // No fill found — inherit
+  // No fill found; inherit
   return "";
 }
 
@@ -456,7 +459,7 @@ function resolvePatternFill(
       );
     }
 
-    // Sphere / shingle — radial gradient approximation
+    // Sphere / shingle: radial gradient approximation
     case "sphere":
     case "shingle":
     case "plaid":
@@ -513,7 +516,7 @@ function resolveGradient(
     if (pathType === "circle" || pathType === "shape" || pathType === "rect") {
       // OOXML path gradients: stop pos=0 = fillToRect center, pos=100000 = shape edge.
       // CSS radial-gradient: 0% = center, 100% = edge.
-      // Conventions match — no reversal needed.
+      // Conventions match; no reversal needed.
 
       // Resolve fillToRect center point
       const fillToRect = parseFillToRect(path);
@@ -552,7 +555,7 @@ function resolveGradient(
  *
  * @param ln       The `<a:ln>` node from spPr
  * @param ctx      Render context
- * @param lnRef    Optional `<a:lnRef>` from `<p:style>` — provides fallback color
+ * @param lnRef    Optional `<a:lnRef>` from `<p:style>` providing fallback color
  *                 when `<a:ln>` has no explicit solidFill (common for connectors)
  */
 export function resolveLineStyle(
@@ -908,7 +911,7 @@ export interface GradientStrokeData {
 
 /**
  * Resolve a gradient stroke from an `<a:ln>` node that contains `<a:gradFill>`.
- * Returns gradient stop data, angle, and line width — or null if no gradient fill is present.
+ * Returns gradient stop data, angle, and line width. Returns null if no gradient fill is present.
  */
 export function resolveGradientStroke(
   ln: SafeXmlNode,

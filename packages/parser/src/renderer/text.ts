@@ -1,6 +1,8 @@
-/**
- * Text renderer — converts OOXML text body into HTML DOM elements
- * with full 7-level style inheritance.
+﻿/**
+ * Converts an OOXML text body into HTML DOM elements.
+ *
+ * Resolves the full 7-level style inheritance chain: run → paragraph →
+ * shape → layout → master → theme → built-in defaults.
  */
 
 import { PlaceholderInfo } from "../model/nodes/base";
@@ -161,7 +163,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
   // IMPORTANT: We must use UNITLESS CSS line-height values (e.g., 1.0, 1.2)
   // instead of percentages (e.g., 100%, 120%). CSS percentage line-height is
   // computed once against the element's own font-size and inherited as a FIXED
-  // pixel value — so a parent div with line-height:120% and font-size:16px
+  // pixel value, so a parent div with line-height:120% and font-size:16px
   // inherits 19.2px to ALL children, even those with font-size:80pt.
   // Unitless values are inherited as-is and each child recomputes against its
   // own font-size.
@@ -297,7 +299,7 @@ interface MergedRunStyle {
   hlinkClick?: string;
   hlinkSlideIndex?: number;
   hlinkTooltip?: string;
-  /** Character spacing (tracking) in points — from a:spc @val (hundredths of pt). */
+  /** Character spacing (tracking) in points, from a:spc @val (hundredths of pt). */
   letterSpacingPt?: number;
   /** Kerning: minimum font size (pt) for kerning; 0 = always kern. */
   kern?: number;
@@ -321,7 +323,7 @@ interface MergedRunStyle {
   textOutlineWidth?: number;
   /** Text outline CSS color (solid fill on ln). */
   textOutlineColor?: string;
-  /** Text outline CSS gradient (gradient fill on ln) — used as mask-image for fade effect. */
+  /** Text outline CSS gradient (gradient fill on ln): used as mask-image for fade effect. */
   textOutlineGradientCss?: string;
   /** CSS text-shadow fragments from a:rPr/a:effectLst effects. */
   textShadow?: string;
@@ -489,7 +491,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
       const { color: c, alpha: a } = resolveColor(lnSolid, ctx);
       target.textOutlineColor = colorToCssLocal(c, a);
     }
-    // Gradient fill on outline — build CSS gradient for mask effect
+    // Gradient fill on outline: build CSS gradient for mask effect
     const lnGrad = ln.child("gradFill");
     if (lnGrad.exists()) {
       target.textOutlineGradientCss = resolveGradientForText(lnGrad, ctx);
@@ -921,7 +923,7 @@ export function renderTextBody(
     if (firstRunSize !== undefined) {
       effectiveFontSize = firstRunSize / 100;
     } else if (!hasVisibleRuns && paragraph.endParaRPr) {
-      // Empty paragraphs (no runs, or only empty-text runs — common in Google
+      // Empty paragraphs (no runs, or only empty-text runs; common in Google
       // Slides exports) take their line height from endParaRPr, like PowerPoint.
       const sz = paragraph.endParaRPr.numAttr("sz");
       if (sz !== undefined) effectiveFontSize = sz / 100;
@@ -982,7 +984,7 @@ export function renderTextBody(
 
     // ---- Bullets ----
     // Suppress bullets for metadata placeholders (slide number, date, footer)
-    // Also suppress for empty paragraphs (no visible runs) — PowerPoint never shows bullets for them
+    // Also suppress for empty paragraphs with no visible runs: PowerPoint never shows bullets for them
     const suppressBullet =
       !hasVisibleRuns ||
       placeholder?.type === "sldNum" ||
@@ -1324,7 +1326,7 @@ export function renderTextBody(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
         } else if (runStyle.textNoFill) {
-          // noFill with no outline — invisible text (but keep space)
+          // noFill with no outline: invisible text (but keep space)
           element.style.color = "transparent";
         } else if (runStyle.textOutlineColor) {
           // Outline with normal fill
@@ -1358,7 +1360,7 @@ export function renderTextBody(
         }
       }
 
-      // Character spacing (a:spc) — compact/tracking in points
+      // Character spacing (a:spc): compact/tracking in points
       if (runStyle.letterSpacingPt !== undefined) {
         element.style.letterSpacing = `${runStyle.letterSpacingPt}pt`;
       }

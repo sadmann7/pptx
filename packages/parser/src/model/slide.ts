@@ -1,5 +1,5 @@
-/**
- * Slide parser — converts a slide XML into a structured SlideData
+﻿/**
+ * Parses a slide XML into a structured SlideData
  * with typed node objects for each shape on the slide.
  */
 
@@ -17,7 +17,7 @@ export interface SlideData {
    * Stable unique identifier for this slide.
    * Derived from the slide's file path inside the PPTX ZIP
    * (e.g. `"ppt/slides/slide3.xml"`). Stable across reorders,
-   * insertions, and deletions — safe to use as a React key or
+   * insertions, and deletions. Safe to use as a React key or
    * navigation target.
    */
   id: string;

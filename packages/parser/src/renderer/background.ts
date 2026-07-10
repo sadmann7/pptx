@@ -1,5 +1,6 @@
-/**
- * Background renderer — resolves and applies slide/layout/master backgrounds.
+﻿/**
+ * Resolves and applies slide, layout, and master background fills,
+ * including solid colors, gradients, patterns, and image backgrounds.
  */
 
 import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
@@ -348,7 +349,7 @@ function renderBgPr(
     return;
   }
 
-  // noFill — still render as white; the slide is a self-contained element
+  // noFill: still render as white; the slide is a self-contained element
   // and transparent backgrounds break when embedded in dark containers
   const noFill = bgPr.child("noFill");
   if (noFill.exists()) {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Inject embedded PPTX fonts into the DOM.
  *
  * Decompression (LZCOMP + adaptive Huffman per font part) is CPU-heavy, so
@@ -178,7 +178,7 @@ export function injectEmbeddedFonts(
   }
   if (tasks.length === 0) return noop;
 
-  // Same .fntdata part can back multiple typeface entries — decode once.
+  // Same .fntdata part can back multiple typeface entries; decode once.
   const jobByPath = new Map<string, DecodeJob>();
   const tasksByPath = new Map<string, FontTask[]>();
   for (const task of tasks) {
@@ -236,7 +236,7 @@ export function injectEmbeddedFonts(
           document.fonts.add(face);
           registered.push(face);
         } catch {
-          // Invalid font data — skip this variant, text falls back.
+          // Invalid font data: skip this variant, text falls back.
         }
       }
     }

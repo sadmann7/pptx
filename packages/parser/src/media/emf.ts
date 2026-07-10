@@ -1,5 +1,5 @@
-/**
- * EMF (Enhanced Metafile) binary parser — extracts embedded content from EMF files.
+﻿/**
+ * EMF (Enhanced Metafile) binary parser that extracts embedded content.
  *
  * PPTX files frequently embed EMF images as OLE object previews.
  * Most contain embedded PDF data inside GDI comment records, or DIB bitmaps
@@ -129,7 +129,7 @@ function parseGdiComment(
 }
 
 /**
- * Parse MULTIFORMATS GDI comment — contains format descriptors pointing to embedded data.
+ * Parse MULTIFORMATS GDI comment: contains format descriptors pointing to embedded data.
  */
 function parseMultiformats(
   data: Uint8Array,
@@ -183,7 +183,7 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   }
 
   if (pdfEnd === -1) {
-    // No %%EOF found — take everything from %PDF to end of buffer
+    // No %%EOF found: take everything from %PDF to end of buffer
     pdfEnd = buf.length;
   }
 

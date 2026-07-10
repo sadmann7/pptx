@@ -1,6 +1,6 @@
 ﻿/**
- * Top-level presentation builder — assembles all parsed components
- * (themes, masters, layouts, slides) into a single PresentationData structure.
+ * Assembles parsed PPTX components (themes, masters, layouts, slides)
+ * into a unified {@link PresentationData} structure.
  */
 
 import type { MediaResolver } from "../media/resolve";
@@ -765,7 +765,7 @@ function resolveNodesPlaceholders(
   for (const node of nodes) {
     // Recursively handle group children
     if (node.nodeType === "group" && "children" in node) {
-      // Group children are raw SafeXmlNode, not parsed yet — skip
+      // Group children are raw SafeXmlNode, not parsed yet: skip
       // (they get parsed during rendering in GroupRenderer)
     }
 

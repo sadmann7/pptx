@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -34,7 +34,7 @@ const MAX_OUT = 16 * 1024 * 1024;
  *
  * Fields are intentionally public: the adaptive-Huffman decoder walks its
  * tree with the buffer held in locals to avoid per-bit call overhead.
- * Prefetching whole bytes early is safe — like the byte-at-a-time original,
+ * Prefetching whole bytes early is safe: like the byte-at-a-time original,
  * it only fails when a bit is actually requested past the end of data.
  */
 class BitReader {
@@ -395,7 +395,7 @@ export function lzcompDecompress(data: Uint8Array, size: number, version: number
   const base = PRELOAD_SIZE;
 
   // Every emitted byte also lands in the window at base+pos, so in the
-  // common non-RLE case the output IS the window tail — no second buffer.
+  // common non-RLE case the output IS the window tail; no second buffer.
   const rle = usingRunLength ? new RleSink(outLen) : null;
 
   for (let pos = 0; pos < outLen; ) {
