@@ -30,9 +30,9 @@ export type {
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 export { PptxPackage } from "./ooxml/package";
 export type { PptxSaveOptions } from "./ooxml/package";
+export { writePptx } from "./ooxml/pptx-writer";
 export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip-parser";
 export type { ZipParseLimits, ZipParseOptions } from "./ooxml/zip-parser";
-export { writePptx } from "./ooxml/pptx-writer";
 
 export {
   buildPresentation,
