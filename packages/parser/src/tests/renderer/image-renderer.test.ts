@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildRichPptx, tinyPngBytes } from "../helpers/rich-pptx";
+import { buildRichPptx, tinyPngBytes } from "../fixtures/rich-pptx";
 
 const IMAGE_REL = `<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>`;
 

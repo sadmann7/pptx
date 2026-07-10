@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { ServerPerSlideMetrics, SlideVisualMetricFields } from "../helpers/e2e-compare";
+import type { ServerPerSlideMetrics, SlideVisualMetricFields } from "./e2e-compare";
 import {
   mergeServerMetricsIntoSlides,
   resolveComparablePdfPages,
   resolveComparePanelState,
   resolveCompareSlideCounts,
-} from "../helpers/e2e-compare";
+} from "./e2e-compare";
 
 describe("resolveComparablePdfPages", () => {
   it("maps visible slides to sequential pdf pages", () => {

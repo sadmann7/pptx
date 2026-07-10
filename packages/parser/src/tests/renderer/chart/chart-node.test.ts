@@ -7,7 +7,7 @@ import { buildPresentation, materializeAllSlideNodes } from "../../../model/pres
 import type { RelEntry } from "../../../ooxml/rel-parser";
 import { parseXml } from "../../../ooxml/xml-parser";
 import { parseZip } from "../../../ooxml/zip-parser";
-import { BAR_CHART_XML, buildPptxWithChart } from "../../helpers/chart-pptx";
+import { BAR_CHART_XML, buildPptxWithChart } from "../../fixtures/chart-pptx";
 
 const CHART_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";
 

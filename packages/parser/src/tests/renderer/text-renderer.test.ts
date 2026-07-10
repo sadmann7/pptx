@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 /** Renders a single text box with the given txBody paragraphs through the full pipeline. */
 async function renderTextBox(paragraphsXml: string): Promise<HTMLElement> {

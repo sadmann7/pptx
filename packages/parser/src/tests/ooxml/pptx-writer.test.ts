@@ -12,8 +12,8 @@ import { buildPresentation, materializeSlideNodes } from "../../model/presentati
 import { serializePresentation } from "../../model/serialize";
 import { writePptx } from "../../ooxml/pptx-writer";
 import { parseZip } from "../../ooxml/zip-parser";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
-import { buildRichPptx, tinyPngBytes } from "../helpers/rich-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
+import { buildRichPptx, tinyPngBytes } from "../fixtures/rich-pptx";
 
 function textShape(id: number, text: string): string {
   return `<p:sp>

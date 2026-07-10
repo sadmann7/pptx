@@ -9,7 +9,7 @@ import {
   paragraphsOf,
   renderTextBox,
   spansOf,
-} from "../helpers/text-rendering-helpers";
+} from "../fixtures/text-rendering-helpers";
 
 /** Renders one paragraph and returns the span for its single run. */
 async function renderRun(rPrXml: string, text = "MARKER"): Promise<HTMLElement> {

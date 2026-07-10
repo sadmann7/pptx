@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildCustomPptx } from "../helpers/fixture-extras";
+import { buildCustomPptx } from "../fixtures/fixture-extras";
 
 // Layout title placeholder with prompt text, plus a promptless sldNum placeholder.
 const LAYOUT_SHAPES = `<p:sp>

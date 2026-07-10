@@ -6,7 +6,7 @@ import type { PresentationData } from "../../model/presentation";
 import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const GROUPED_SHAPES = `<p:grpSp>
 <p:nvGrpSpPr><p:cNvPr id="10" name="Group"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>

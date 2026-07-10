@@ -27,7 +27,7 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0, readOnly: false });
+    store.load(file, { defaultSlideIndex: 0 });
   }
 
   return (
@@ -135,6 +135,7 @@ function EditToolbar({ store }: { store: PresentationStore }) {
     () => store.canUndo(),
     () => false,
   );
+
   const canRedo = React.useSyncExternalStore(
     store.subscribe,
     () => store.canRedo(),
@@ -143,11 +144,11 @@ function EditToolbar({ store }: { store: PresentationStore }) {
 
   if (status !== "ready") return null;
 
-  const run = (action: () => Promise<unknown>) => {
+  function run(action: () => Promise<unknown>) {
     action().catch((err) => console.error("[pg] edit failed:", err));
-  };
+  }
 
-  const onEditText = () => {
+  function onEditText() {
     const presentation = store.getState().presentation;
     if (!presentation || !slideId) return;
     const target = findFirstTextRun(presentation, slideId);
@@ -167,9 +168,9 @@ function EditToolbar({ store }: { store: PresentationStore }) {
         text,
       }),
     );
-  };
+  }
 
-  const onSave = () => {
+  function onSave() {
     run(async () => {
       const bytes = await store.save();
       const blob = new Blob([bytes.slice().buffer as ArrayBuffer], {
@@ -182,7 +183,7 @@ function EditToolbar({ store }: { store: PresentationStore }) {
       a.click();
       URL.revokeObjectURL(url);
     });
-  };
+  }
 
   return (
     <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">

@@ -13,7 +13,7 @@ import {
   parseChartFragment,
   chartSpaceXml,
   createChartTestContext,
-} from "../../helpers/chart-pptx";
+} from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 

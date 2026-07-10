@@ -8,7 +8,7 @@ import {
   extractStringValues,
   formatValue,
 } from "../../../renderer/chart/format";
-import { parseChartFragment } from "../../helpers/chart-pptx";
+import { parseChartFragment } from "../../fixtures/chart-pptx";
 
 describe("formatValue", () => {
   it("formats General/absent codes with up to 2 decimals", () => {

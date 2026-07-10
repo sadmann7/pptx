@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
-import { buildRichPptx } from "../helpers/rich-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
+import { buildRichPptx } from "../fixtures/rich-pptx";
 
 async function renderShapes(shapesXml: string): Promise<HTMLElement> {
   const buffer = await buildPptxWithShapes(shapesXml);

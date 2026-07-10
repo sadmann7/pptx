@@ -4,7 +4,7 @@ import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
 import { parseZip } from "../../ooxml/zip-parser";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const SHAPES = `<p:sp>
 <p:nvSpPr><p:cNvPr id="2" name="Title Box"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>

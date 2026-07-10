@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { normalizePreviewInput, PptxViewer } from "../../api/pptx-viewer";
-import { buildCustomPptx } from "../helpers/fixture-extras";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { normalizePreviewInput, PptxViewer } from "../../pptx-viewer";
+import { buildCustomPptx } from "../fixtures/fixture-extras";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 function textShape(id: number, text: string): string {
   return `<p:sp>

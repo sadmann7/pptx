@@ -4,7 +4,7 @@ import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
 import { buildTextIndex, searchPresentation, searchText } from "../../model/text-search";
 import { parseZip } from "../../ooxml/zip-parser";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 function textShape(id: number, text: string): string {
   return `<p:sp>

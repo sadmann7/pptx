@@ -16,7 +16,7 @@ import type { ShapeNodeData } from "../../model/nodes/shape-node";
 import { buildPresentation, PresentationData } from "../../model/presentation";
 import { writePptx } from "../../ooxml/pptx-writer";
 import { parseZip } from "../../ooxml/zip-parser";
-import { buildCustomPptx } from "../helpers/fixture-extras";
+import { buildCustomPptx } from "../fixtures/fixture-extras";
 
 function textShape(id: number, text: string, extraSpPr = ""): string {
   return `<p:sp>

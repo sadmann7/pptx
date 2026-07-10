@@ -1,7 +1,7 @@
 import type { ECharts } from "echarts";
 
-import type { PdfjsConfig } from "../media/pdf-renderer";
-import { buildPresentation, PresentationData } from "../model/presentation";
+import type { PdfjsConfig } from "./media/pdf-renderer";
+import { buildPresentation, PresentationData } from "./model/presentation";
 import {
   buildTextIndex,
   searchText as searchTextInIndex,
@@ -9,14 +9,14 @@ import {
   type TextIndexOptions,
   type TextSearchOptions,
   type TextSearchResult,
-} from "../model/text-search";
-import type { ZipParseLimits } from "../ooxml/zip-parser";
-import { parseZip, parseZipLazyMedia } from "../ooxml/zip-parser";
-import type { SlideHandle } from "../renderer/slide-renderer";
-import { renderSlide as renderSlideInternal } from "../renderer/slide-renderer";
-import { isAllowedExternalUrl } from "../utils/url-validation";
+} from "./model/text-search";
+import type { ZipParseLimits } from "./ooxml/zip-parser";
+import { parseZip, parseZipLazyMedia } from "./ooxml/zip-parser";
+import type { SlideHandle } from "./renderer/slide-renderer";
+import { renderSlide as renderSlideInternal } from "./renderer/slide-renderer";
+import { isAllowedExternalUrl } from "./utils/url-validation";
 
-export type { SlideHandle } from "../renderer/slide-renderer";
+export type { SlideHandle } from "./renderer/slide-renderer";
 
 export type FitMode = "contain" | "none";
 

@@ -10,7 +10,7 @@ import {
   renderTextBox,
   spansOf,
   textContainerOf,
-} from "../helpers/text-rendering-helpers";
+} from "../fixtures/text-rendering-helpers";
 
 const MARKER_PARAGRAPH = `<a:p><a:r><a:t>MARKER</a:t></a:r></a:p>`;
 

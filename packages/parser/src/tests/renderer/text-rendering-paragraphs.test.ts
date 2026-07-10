@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { paragraphsOf, renderTextBox, spansOf } from "../helpers/text-rendering-helpers";
+import { paragraphsOf, renderTextBox, spansOf } from "../fixtures/text-rendering-helpers";
 
 /** Renders a single paragraph with the given pPr and returns its div. */
 async function renderParagraph(pPrXml: string, runsXml?: string): Promise<HTMLElement> {

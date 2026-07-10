@@ -1,5 +1,5 @@
 // New primary exports (v2 API)
-export { PptxViewer } from "./api/pptx-viewer";
+export { PptxViewer } from "./pptx-viewer";
 export type {
   FitMode,
   ListRenderOptions,
@@ -9,7 +9,7 @@ export type {
   SearchHighlightOptions,
   ThumbnailRenderOptions,
   ViewerOptions,
-} from "./api/pptx-viewer";
+} from "./pptx-viewer";
 
 export { applyEdit } from "./edit/operations";
 export type {

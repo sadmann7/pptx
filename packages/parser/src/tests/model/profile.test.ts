@@ -2,7 +2,7 @@
  * CPU profiling harness (not a real test). Skipped unless PROFILE=1.
  *
  * Usage:
- *   $env:PROFILE="1"; pnpm -F "@diceui/pptx-parser" exec vitest run src/tests/profile.test.ts; $env:PROFILE=$null
+ *   $env:PROFILE="1"; pnpm -F "@diceui/pptx-parser" exec vitest run src/tests/model/profile.test.ts; $env:PROFILE=$null
  *
  * Captures a V8 CPU profile around the hot pipeline stage and prints the top
  * functions by self time, aggregated per function, filtered to package code.
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { DECK_SPECS, generateDeck } from "./bench-decks";
+import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
 interface ProfileRow {
   name: string;

@@ -8,7 +8,7 @@ import { parseTheme } from "../../model/theme";
 import { parseXml } from "../../ooxml/xml-parser";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildCustomPptx, CustomPptxOptions } from "../helpers/fixture-extras";
+import { buildCustomPptx, CustomPptxOptions } from "../fixtures/fixture-extras";
 
 const A_NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
 const P_NS =

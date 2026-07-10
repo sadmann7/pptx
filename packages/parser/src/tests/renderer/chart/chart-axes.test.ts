@@ -8,7 +8,7 @@ import {
 } from "../../../renderer/chart/axes";
 import { parseOoxmlBoolElement } from "../../../renderer/chart/bool-helpers";
 import type { RenderContext } from "../../../renderer/render-context";
-import { parseChartFragment, createChartTestContext } from "../../helpers/chart-pptx";
+import { parseChartFragment, createChartTestContext } from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildRichPptx, RichPptxOptions, tinyPngBytes } from "../helpers/rich-pptx";
+import { buildRichPptx, RichPptxOptions, tinyPngBytes } from "../fixtures/rich-pptx";
 
 async function renderWith(options: RichPptxOptions): Promise<HTMLElement> {
   const buffer = await buildRichPptx(options);

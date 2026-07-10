@@ -8,7 +8,7 @@ import {
   PREDEFINED_STYLE_COUNT,
 } from "../../renderer/predefined-table-styles";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { buildCustomPptx } from "../helpers/fixture-extras";
+import { buildCustomPptx } from "../fixtures/fixture-extras";
 
 const MEDIUM_STYLE_2_ACCENT1 = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}";
 const THEMED_STYLE_2_ACCENT1 = "{D113A9D2-9D6B-4929-AA2D-F23B5EE8CBE7}";

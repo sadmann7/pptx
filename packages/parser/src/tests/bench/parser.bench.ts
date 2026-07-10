@@ -26,7 +26,7 @@ import { buildTextIndex, searchText } from "../../model/text-search";
 import type { PptxFiles } from "../../ooxml/zip-parser";
 import { parseZip } from "../../ooxml/zip-parser";
 import { renderSlide } from "../../renderer/slide-renderer";
-import { DECK_SPECS, generateDeck } from "./bench-decks";
+import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
 interface Workload {
   buffer: ArrayBuffer;

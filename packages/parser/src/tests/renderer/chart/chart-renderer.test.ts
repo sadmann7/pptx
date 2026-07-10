@@ -18,7 +18,7 @@ import {
   createChartTestContext,
   parseChartFragment,
   seriesXml,
-} from "../../helpers/chart-pptx";
+} from "../../fixtures/chart-pptx";
 
 const OFFICE_ACCENTS = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
 

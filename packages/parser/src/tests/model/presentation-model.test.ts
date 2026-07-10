@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
 import type { PptxFiles } from "../../ooxml/zip-parser";
 import { parseZip, RECOMMENDED_ZIP_LIMITS } from "../../ooxml/zip-parser";
-import { buildPptxWithShapes } from "../helpers/minimal-pptx";
+import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const SHAPE = `<p:sp>
 <p:nvSpPr><p:cNvPr id="2" name="Blue Rect"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>

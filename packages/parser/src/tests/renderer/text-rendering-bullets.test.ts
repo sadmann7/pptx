@@ -9,7 +9,7 @@ import {
   paragraphsOf,
   renderTextBox,
   spansOf,
-} from "../helpers/text-rendering-helpers";
+} from "../fixtures/text-rendering-helpers";
 
 /** The bullet span is prepended before the run spans. */
 function bulletOf(paragraph: HTMLElement): HTMLElement | undefined {
