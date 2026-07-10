@@ -1,4 +1,4 @@
-import * as React from "react";
+﻿import * as React from "react";
 
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
@@ -113,7 +113,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
       mediaUrlCache,
       // Editable presentations (loaded with readOnly: false) get PowerPoint-style
       // dashed outlines and prompt text on empty placeholders.
-      placeholderPrompts: presentation.pkg != null,
+      placeholderPrompts: presentation.sourcePackage != null,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },

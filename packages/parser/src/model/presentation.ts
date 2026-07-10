@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Top-level presentation builder — assembles all parsed components
  * (themes, masters, layouts, slides) into a single PresentationData structure.
  */
@@ -66,7 +66,8 @@ export interface PresentationData {
    * Retained source package for round-trip save. Present when the zip was
    * parsed with `keepPackage: true`. Use `writePptx()` to produce a .pptx.
    */
-  pkg?: PptxPackage;
+  /** Retained source PPTX package for round-trip save. Present when parsed with `keepPackage: true`. Use `writePptx()` to produce a .pptx. */
+  sourcePackage?: PptxPackage;
 }
 
 export interface BuildPresentationOptions {
@@ -163,11 +164,11 @@ export function buildPresentation(
   files: PptxFiles,
   options: BuildPresentationOptions = {},
 ): PresentationData {
-  const pkg = files.pkg;
+  const sourcePackage = files.sourcePackage;
 
   // --- Parse presentation root ---
   const presRoot = parseXml(files.presentation);
-  pkg?.registerXmlRoot("ppt/presentation.xml", presRoot);
+  sourcePackage?.registerXmlRoot("ppt/presentation.xml", presRoot);
   const presRels = parseRels(files.presentationRels);
 
   // --- Slide size ---
@@ -185,7 +186,7 @@ export function buildPresentation(
   const themes = new Map<string, ThemeData>();
   for (const [themePath, themeXml] of files.themes) {
     const themeRoot = parseXml(themeXml);
-    pkg?.registerXmlRoot(themePath, themeRoot);
+    sourcePackage?.registerXmlRoot(themePath, themeRoot);
     themes.set(themePath, parseTheme(themeRoot));
   }
 
@@ -195,7 +196,7 @@ export function buildPresentation(
 
   for (const [masterPath, masterXml] of files.slideMasters) {
     const masterRoot = parseXml(masterXml);
-    pkg?.registerXmlRoot(masterPath, masterRoot);
+    sourcePackage?.registerXmlRoot(masterPath, masterRoot);
     const masterData = parseMaster(masterRoot);
 
     // Find theme relationship for this master
@@ -219,7 +220,7 @@ export function buildPresentation(
 
   for (const [layoutPath, layoutXml] of files.slideLayouts) {
     const layoutRoot = parseXml(layoutXml);
-    pkg?.registerXmlRoot(layoutPath, layoutRoot);
+    sourcePackage?.registerXmlRoot(layoutPath, layoutRoot);
     const layoutData = parseLayout(layoutRoot);
 
     // Find master relationship for this layout
@@ -244,7 +245,7 @@ export function buildPresentation(
   const chartColorStyles = new Map<string, SafeXmlNode>();
   for (const [chartPath, chartXml] of files.charts) {
     const chartRoot = parseXml(chartXml);
-    pkg?.registerXmlRoot(chartPath, chartRoot);
+    sourcePackage?.registerXmlRoot(chartPath, chartRoot);
     if (chartRoot.exists()) {
       charts.set(chartPath, chartRoot);
     }
@@ -260,7 +261,7 @@ export function buildPresentation(
       const chartStyleXml = files.chartStyles?.get(chartStylePath);
       if (chartStyleXml) {
         const chartStyleRoot = parseXml(chartStyleXml);
-        pkg?.registerXmlRoot(chartStylePath, chartStyleRoot);
+        sourcePackage?.registerXmlRoot(chartStylePath, chartStyleRoot);
         if (chartStyleRoot.exists()) chartStyles.set(chartPath, chartStyleRoot);
       }
     }
@@ -271,7 +272,7 @@ export function buildPresentation(
       const chartColorStyleXml = files.chartColors?.get(chartColorStylePath);
       if (chartColorStyleXml) {
         const chartColorStyleRoot = parseXml(chartColorStyleXml);
-        pkg?.registerXmlRoot(chartColorStylePath, chartColorStyleRoot);
+        sourcePackage?.registerXmlRoot(chartColorStylePath, chartColorStyleRoot);
         if (chartColorStyleRoot.exists()) chartColorStyles.set(chartPath, chartColorStyleRoot);
       }
     }
@@ -283,7 +284,7 @@ export function buildPresentation(
       files.themeOverrides?.get(themeOverridePath) ?? files.themes.get(themeOverridePath);
     if (!themeOverrideXml) continue;
     const themeOverrideRoot = parseXml(themeOverrideXml);
-    pkg?.registerXmlRoot(themeOverridePath, themeOverrideRoot);
+    sourcePackage?.registerXmlRoot(themeOverridePath, themeOverrideRoot);
     if (themeOverrideRoot.exists()) {
       chartThemes.set(chartPath, parseTheme(themeOverrideRoot));
     }
@@ -349,7 +350,7 @@ export function buildPresentation(
       slideData = createLazySlide(slideXml, i, slideRels, slidePath);
     } else {
       const slideRoot = parseXml(slideXml);
-      pkg?.registerXmlRoot(slidePath, slideRoot);
+      sourcePackage?.registerXmlRoot(slidePath, slideRoot);
       slideData = parseSlide(slideRoot, i, slideRels, slidePath, files.diagramDrawings);
     }
 
@@ -367,7 +368,7 @@ export function buildPresentation(
   let tableStyles: SafeXmlNode | undefined;
   if (files.tableStyles) {
     const tsRoot = parseXml(files.tableStyles);
-    pkg?.registerXmlRoot("ppt/tableStyles.xml", tsRoot);
+    sourcePackage?.registerXmlRoot("ppt/tableStyles.xml", tsRoot);
     if (tsRoot.exists()) {
       tableStyles = tsRoot;
     }
@@ -398,7 +399,7 @@ export function buildPresentation(
     isWps,
     fonts: files.fonts,
     embeddedFonts: embeddedFonts.length > 0 ? embeddedFonts : undefined,
-    pkg,
+    sourcePackage,
   };
 
   // --- Resolve placeholder position inheritance ---
@@ -621,7 +622,7 @@ function resolveSlidePlaceholderInheritance(pres: PresentationData, slide: Slide
 export function materializeSlideNodes(pres: PresentationData, slide: SlideData): void {
   const slideRoot = materializeSlideData(slide, pres.diagramDrawings);
   if (slideRoot) {
-    pres.pkg?.registerXmlRoot(slide.id, slideRoot);
+    pres.sourcePackage?.registerXmlRoot(slide.id, slideRoot);
   }
   resolveSlidePlaceholderInheritance(pres, slide);
 }

@@ -1,4 +1,4 @@
-import * as React from "react";
+﻿import * as React from "react";
 
 import type { Position, SetTextBodyParagraph, ShapeNodeData, SlideNode } from "@diceui/pptx-parser";
 
@@ -347,7 +347,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
 
-  if (!presentation?.pkg || !slide || !slideId) return null;
+  if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   // --- DOM helpers ---
 
@@ -1525,7 +1525,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const onRedoRef = React.useRef(onRedo);
   onRedoRef.current = onRedo;
 
-  const editable = presentation?.pkg != null;
+  const editable = presentation?.sourcePackage != null;
 
   React.useEffect(() => {
     if (!editable) return;

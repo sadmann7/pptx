@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shape renderer — converts ShapeNodeData into positioned HTML/SVG elements.
  */
 
@@ -2250,7 +2250,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   if (
     node.textBody &&
     node.textBody.paragraphs.length > 0 &&
-    (hasVisibleText(node.textBody) || ctx.presentation.pkg !== undefined)
+    (hasVisibleText(node.textBody) || ctx.presentation.sourcePackage !== undefined)
   ) {
     const warpedText = renderWarpedTextBody(node, ctx);
     if (warpedText) {

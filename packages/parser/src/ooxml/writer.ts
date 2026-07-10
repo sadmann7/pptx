@@ -1,4 +1,4 @@
-/**
+﻿/**
  * .pptx writer — writes a presentation opened with `keepPackage: true` back
  * to an OOXML package. Untouched parts round-trip byte-for-byte; parts marked
  * dirty on the retained package are re-serialized from their live XML.
@@ -18,11 +18,11 @@ export async function writePptx(
   presentation: PresentationData,
   options?: PptxSaveOptions,
 ): Promise<Uint8Array> {
-  if (!presentation.pkg) {
+  if (!presentation.sourcePackage) {
     throw new Error(
       "writePptx: presentation was parsed without package retention. " +
         "Parse the zip with { keepPackage: true } to enable saving.",
     );
   }
-  return presentation.pkg.save(options);
+  return presentation.sourcePackage.save(options);
 }

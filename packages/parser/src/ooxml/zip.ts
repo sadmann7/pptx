@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PPTX zip archive parser.
  * Extracts and categorizes all files from a .pptx (which is a zip archive).
  */
@@ -31,8 +31,8 @@ export interface PptxFiles {
   chartColors: Map<string, string>; // ppt/charts/colors*.xml
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
   fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
-  /** Retained source package for round-trip save. Present when parsed with `keepPackage: true`. */
-  pkg?: PptxPackage;
+  /** Retained source PPTX package for round-trip save. Present when parsed with `keepPackage: true`. */
+  sourcePackage?: PptxPackage;
 }
 
 export interface ZipParseOptions {
@@ -42,7 +42,7 @@ export interface ZipParseOptions {
    */
   onProgress?: (done: number, total: number) => void;
   /**
-   * Retain the source archive as a {@link PptxPackage} on `PptxFiles.pkg`
+   * Retain the source archive as a {@link PptxPackage} on `PptxFiles.sourcePackage`
    * so the presentation can be written back to a .pptx after editing.
    * Uncategorized parts stay compressed in memory. @default false
    */
@@ -596,7 +596,7 @@ async function parseZipInternal(
   }
 
   if (options.keepPackage) {
-    result.pkg = new PptxPackage(zip);
+    result.sourcePackage = new PptxPackage(zip);
   }
 
   return result;

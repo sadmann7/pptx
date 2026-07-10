@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   EditOperation,
   EditResult,
   FontInjectionHandle,
@@ -695,7 +695,7 @@ export function createStore(): Store {
     if (!presentation || status !== "ready") {
       throw new Error("PresentationStore.edit: no presentation is loaded");
     }
-    if (!presentation.pkg) {
+    if (!presentation.sourcePackage) {
       throw new Error(
         "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load()",
       );
@@ -751,7 +751,7 @@ export function createStore(): Store {
     if (!presentation) {
       throw new Error("PresentationStore.save: no presentation is loaded");
     }
-    if (!presentation.pkg) {
+    if (!presentation.sourcePackage) {
       throw new Error(
         "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
       );

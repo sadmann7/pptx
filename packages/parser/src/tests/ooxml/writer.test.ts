@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Round-trip tests for package retention (`keepPackage`) and `writePptx()`.
  *
  * The core guarantee under test: opening a deck and saving it without edits
@@ -82,7 +82,7 @@ describe("writePptx", () => {
     const textEl = shape.source.child("txBody").child("p").child("r").child("t").element;
     expect(textEl).not.toBeNull();
     textEl!.textContent = "After edit";
-    presentation.pkg!.markDirty(slide.id);
+    presentation.sourcePackage!.markDirty(slide.id);
 
     const saved = await writePptx(presentation);
 
@@ -115,14 +115,14 @@ describe("writePptx", () => {
     });
 
     const slide = presentation.slides[0];
-    expect(presentation.pkg!.getXmlRoot(slide.id)).toBeUndefined();
+    expect(presentation.sourcePackage!.getXmlRoot(slide.id)).toBeUndefined();
 
     materializeSlideNodes(presentation, slide);
-    expect(presentation.pkg!.getXmlRoot(slide.id)).toBeDefined();
+    expect(presentation.sourcePackage!.getXmlRoot(slide.id)).toBeDefined();
 
     const textEl = slide.nodes[0].source.child("txBody").child("p").child("r").child("t").element;
     textEl!.textContent = "Lazy edited";
-    presentation.pkg!.markDirty(slide.id);
+    presentation.sourcePackage!.markDirty(slide.id);
 
     const saved = await writePptx(presentation);
     const slideXml = decode((await zipEntries(saved)).get("ppt/slides/slide1.xml")!);
@@ -132,11 +132,11 @@ describe("writePptx", () => {
   it("supports raw part replacement and deletion via the package", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Raw ops"));
     const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
-    const pkg = presentation.pkg!;
+    const sourcePackage = presentation.sourcePackage!;
 
-    pkg.setEntry("docProps/custom.xml", "<custom/>");
-    expect(pkg.deleteEntry("ppt/tableStyles.xml")).toBe(false); // fixture has none
-    expect(pkg.deleteEntry("ppt/theme/theme1.xml")).toBe(true);
+    sourcePackage.setEntry("docProps/custom.xml", "<custom/>");
+    expect(sourcePackage.deleteEntry("ppt/tableStyles.xml")).toBe(false); // fixture has none
+    expect(sourcePackage.deleteEntry("ppt/theme/theme1.xml")).toBe(true);
 
     const entries = await zipEntries(await writePptx(presentation));
     expect(decode(entries.get("docProps/custom.xml")!)).toBe("<custom/>");
@@ -148,7 +148,7 @@ describe("writePptx", () => {
     const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
 
     // Rels parts are parsed into RelEntry maps, not retained XML documents.
-    expect(() => presentation.pkg!.markDirty("ppt/_rels/presentation.xml.rels")).toThrow(
+    expect(() => presentation.sourcePackage!.markDirty("ppt/_rels/presentation.xml.rels")).toThrow(
       /no XML document/,
     );
   });

@@ -1,4 +1,4 @@
-import type { ECharts } from "echarts";
+﻿import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "./media/pdf";
 import { buildPresentation, PresentationData } from "./model/presentation";
@@ -41,7 +41,7 @@ export interface ViewerOptions {
   /** Parse slide shape/table/chart nodes on demand instead of during model build. Default `false`. */
   lazySlides?: boolean;
   /**
-   * Retain the source package on the presentation (`presentationData.pkg`) so
+   * Retain the source package on the presentation (`presentationData.sourcePackage`) so
    * it can be written back to a .pptx via `writePptx()`. Default `false`.
    */
   keepPackage?: boolean;

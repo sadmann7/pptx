@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Edit operations for presentations opened with `keepPackage: true`.
  *
  * Every operation follows the same contract:
@@ -212,13 +212,13 @@ const SLIDE_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/re
 const SLIDE_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml";
 
 function requirePkg(pres: PresentationData): PptxPackage {
-  if (!pres.pkg) {
+  if (!pres.sourcePackage) {
     throw new Error(
       "applyEdit: presentation was parsed without package retention. " +
         "Parse the zip with { keepPackage: true } to enable editing.",
     );
   }
-  return pres.pkg;
+  return pres.sourcePackage;
 }
 
 function findSlide(pres: PresentationData, slideId: string): SlideData {
@@ -262,7 +262,7 @@ function reindexSlides(pres: PresentationData): void {
 const RUN_LOCAL_NAMES = new Set(["r", "br", "tab", "fld"]);
 
 function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditResult {
-  const pkg = requirePkg(pres);
+  const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
@@ -301,14 +301,14 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   const prevText = run.text;
   tEl.textContent = op.text;
   run.text = op.text;
-  pkg.markDirty(slide.id);
+  sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
       tEl.textContent = prevText;
       run.text = prevText;
-      pkg.markDirty(slide.id);
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
@@ -318,7 +318,7 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
 // ---------------------------------------------------------------------------
 
 function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): EditResult {
-  const pkg = requirePkg(pres);
+  const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
@@ -470,7 +470,7 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
   // Update the typed model.
   textBody.paragraphs = newParagraphs;
-  pkg.markDirty(slide.id);
+  sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
@@ -486,7 +486,7 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
       }
       // Restore model.
       textBody.paragraphs = prevParagraphs;
-      pkg.markDirty(slide.id);
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
@@ -564,7 +564,7 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
 }
 
 function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOperation): EditResult {
-  const pkg = requirePkg(pres);
+  const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
@@ -633,7 +633,7 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
     group.childExtent = { ...node.size };
   }
 
-  pkg.markDirty(slide.id);
+  sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
@@ -654,7 +654,7 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
       node.rotation = prevModel.rotation;
       node.flipH = prevModel.flipH;
       node.flipV = prevModel.flipV;
-      pkg.markDirty(slide.id);
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
@@ -675,7 +675,7 @@ const AFTER_FILL_LOCAL_NAMES = new Set([
 ]);
 
 function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): EditResult {
-  const pkg = requirePkg(pres);
+  const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
@@ -722,7 +722,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
 
   const prevFill = shape.fill;
   shape.fill = new SafeXmlNode(solidFillEl);
-  pkg.markDirty(slide.id);
+  sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
@@ -733,7 +733,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
         insertChild(spPrEl, oldFillEl, ref);
       }
       shape.fill = prevFill;
-      pkg.markDirty(slide.id);
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
@@ -743,7 +743,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
 // ---------------------------------------------------------------------------
 
 function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditResult {
-  const pkg = requirePkg(pres);
+  const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
@@ -756,14 +756,14 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
 
   const modelIndex = slide.nodes.indexOf(node);
   slide.nodes.splice(modelIndex, 1);
-  pkg.markDirty(slide.id);
+  sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
       insertChild(parentEl, el, domRef);
       slide.nodes.splice(modelIndex, 0, node);
-      pkg.markDirty(slide.id);
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
@@ -773,7 +773,7 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
 // ---------------------------------------------------------------------------
 
 interface SlideListContext {
-  pkg: PptxPackage;
+  sourcePackage: PptxPackage;
   lstNode: SafeXmlNode;
   lstEl: Element;
   relsText: string;
@@ -781,8 +781,8 @@ interface SlideListContext {
 }
 
 async function loadSlideListContext(pres: PresentationData): Promise<SlideListContext> {
-  const pkg = requirePkg(pres);
-  const presRoot = pkg.getXmlRoot(PRESENTATION_PATH);
+  const sourcePackage = requirePkg(pres);
+  const presRoot = sourcePackage.getXmlRoot(PRESENTATION_PATH);
   if (!presRoot?.exists()) {
     throw new Error("applyEdit: presentation.xml is not registered on the package");
   }
@@ -791,8 +791,8 @@ async function loadSlideListContext(pres: PresentationData): Promise<SlideListCo
   if (!lstEl) {
     throw new Error("applyEdit: unsupported package — presentation.xml has no sldIdLst");
   }
-  const relsText = (await pkg.readText(PRESENTATION_RELS_PATH)) ?? "";
-  return { pkg, lstNode, lstEl, relsText, rels: parseRels(relsText) };
+  const relsText = (await sourcePackage.readText(PRESENTATION_RELS_PATH)) ?? "";
+  return { sourcePackage, lstNode, lstEl, relsText, rels: parseRels(relsText) };
 }
 
 /** Locate the p:sldId element referencing the given slide part. */
@@ -837,7 +837,7 @@ async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): P
     el.remove();
     const remaining = sldIdElements(ctx).filter((e) => e !== el);
     insertChild(ctx.lstEl, el, remaining[targetIndex] ?? null);
-    ctx.pkg.markDirty(PRESENTATION_PATH);
+    ctx.sourcePackage.markDirty(PRESENTATION_PATH);
   };
 
   moveTo(toIndex);
@@ -858,9 +858,9 @@ async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): P
 
 // --- duplicateSlide ----------------------------------------------------------
 
-function nextSlidePartPath(pkg: PptxPackage): string {
+function nextSlidePartPath(sourcePackage: PptxPackage): string {
   let max = 0;
-  for (const path of pkg.paths()) {
+  for (const path of sourcePackage.paths()) {
     const match = /^ppt\/slides\/slide(\d+)\.xml$/.exec(path);
     if (match) max = Math.max(max, Number(match[1]));
   }
@@ -891,25 +891,25 @@ async function applyDuplicateSlide(
   op: DuplicateSlideOperation,
 ): Promise<EditResult> {
   const ctx = await loadSlideListContext(pres);
-  const { pkg } = ctx;
+  const { sourcePackage } = ctx;
   const source = findSlide(pres, op.slideId);
   const sourceIndex = pres.slides.indexOf(source);
   const { el: sourceSldIdEl } = findSldIdEntry(ctx, op.slideId);
 
-  const newPath = nextSlidePartPath(pkg);
+  const newPath = nextSlidePartPath(sourcePackage);
   const newRelsPath = relsPathFor(newPath);
 
-  const slideText = await pkg.readText(source.id);
+  const slideText = await sourcePackage.readText(source.id);
   if (slideText === undefined) {
     throw new Error(`applyEdit: slide part "${source.id}" is missing from the package`);
   }
-  const slideRelsText = await pkg.readText(relsPathFor(source.id));
-  const ctText = (await pkg.readText(CONTENT_TYPES_PATH)) ?? "";
+  const slideRelsText = await sourcePackage.readText(relsPathFor(source.id));
+  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
   // --- Package parts ---
-  pkg.setEntry(newPath, slideText);
+  sourcePackage.setEntry(newPath, slideText);
   if (slideRelsText !== undefined) {
-    pkg.setEntry(newRelsPath, slideRelsText);
+    sourcePackage.setEntry(newRelsPath, slideRelsText);
   }
 
   // --- [Content_Types].xml: add an Override for the new part ---
@@ -922,7 +922,7 @@ async function applyDuplicateSlide(
   overrideEl.setAttribute("PartName", `/${newPath}`);
   overrideEl.setAttribute("ContentType", sourceOverride?.attr("ContentType") ?? SLIDE_CONTENT_TYPE);
   insertChild(ctRootEl, overrideEl, null);
-  pkg.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
+  sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
 
   // --- presentation.xml.rels: relationship for the new part ---
   const newRId = nextRelId(ctx.rels);
@@ -933,18 +933,18 @@ async function applyDuplicateSlide(
   relEl.setAttribute("Type", SLIDE_REL_TYPE);
   relEl.setAttribute("Target", newPath.replace(/^ppt\//, ""));
   insertChild(relsRootEl, relEl, null);
-  pkg.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
+  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
 
   // --- presentation.xml: sldId entry directly after the source slide ---
   const sldIdEl = ctx.lstEl.ownerDocument.createElementNS(P_NS, "p:sldId");
   sldIdEl.setAttribute("id", String(nextSldIdNumber(ctx)));
   sldIdEl.setAttributeNS(R_NS, "r:id", newRId);
   insertChild(ctx.lstEl, sldIdEl, sourceSldIdEl.nextElementSibling);
-  pkg.markDirty(PRESENTATION_PATH);
+  sourcePackage.markDirty(PRESENTATION_PATH);
 
   // --- Model: parse the copy through the regular slide pipeline ---
   const newRoot = parseXml(slideText);
-  pkg.registerXmlRoot(newPath, newRoot);
+  sourcePackage.registerXmlRoot(newPath, newRoot);
   const newRels = parseRels(slideRelsText ?? "");
   const newSlide = parseSlide(newRoot, sourceIndex + 1, newRels, newPath, pres.diagramDrawings);
   if (newSlide.layoutIndex) {
@@ -958,12 +958,12 @@ async function applyDuplicateSlide(
     affectedSlideIds: [newPath],
     createdSlideId: newPath,
     undo: () => {
-      pkg.deleteEntry(newPath);
-      if (slideRelsText !== undefined) pkg.deleteEntry(newRelsPath);
-      pkg.setEntry(CONTENT_TYPES_PATH, ctText);
-      pkg.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
+      sourcePackage.deleteEntry(newPath);
+      if (slideRelsText !== undefined) sourcePackage.deleteEntry(newRelsPath);
+      sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
+      sourcePackage.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
       removeChild(sldIdEl);
-      pkg.markDirty(PRESENTATION_PATH);
+      sourcePackage.markDirty(PRESENTATION_PATH);
       pres.slides.splice(pres.slides.indexOf(newSlide), 1);
       reindexSlides(pres);
     },
@@ -981,22 +981,22 @@ async function applyDeleteSlide(
   }
 
   const ctx = await loadSlideListContext(pres);
-  const { pkg } = ctx;
+  const { sourcePackage } = ctx;
   const slide = findSlide(pres, op.slideId);
   const slideIndex = pres.slides.indexOf(slide);
   const { el: sldIdEl, rId } = findSldIdEntry(ctx, op.slideId);
   const slideRelsPath = relsPathFor(slide.id);
 
   // Snapshots for undo.
-  const slideBytes = await pkg.readBytes(slide.id);
-  const slideRelsBytes = await pkg.readBytes(slideRelsPath);
-  const slideXmlRoot = pkg.getXmlRoot(slide.id);
-  const ctText = (await pkg.readText(CONTENT_TYPES_PATH)) ?? "";
+  const slideBytes = await sourcePackage.readBytes(slide.id);
+  const slideRelsBytes = await sourcePackage.readBytes(slideRelsPath);
+  const slideXmlRoot = sourcePackage.getXmlRoot(slide.id);
+  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
   // --- presentation.xml ---
   const sldIdRef = sldIdEl.nextElementSibling;
   removeChild(sldIdEl);
-  pkg.markDirty(PRESENTATION_PATH);
+  sourcePackage.markDirty(PRESENTATION_PATH);
 
   // --- presentation.xml.rels ---
   const relsRoot = parseXml(ctx.relsText);
@@ -1005,7 +1005,7 @@ async function applyDeleteSlide(
   if (relNode?.element) {
     removeChild(relNode.element);
   }
-  pkg.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
+  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
 
   // --- [Content_Types].xml ---
   const ctRoot = parseXml(ctText);
@@ -1015,12 +1015,12 @@ async function applyDeleteSlide(
     .find((o) => o.attr("PartName") === `/${slide.id}`);
   if (overrideNode?.element) {
     removeChild(overrideNode.element);
-    pkg.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
+    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
   }
 
   // --- Parts (media stays; shared and harmless when orphaned) ---
-  pkg.deleteEntry(slide.id);
-  pkg.deleteEntry(slideRelsPath);
+  sourcePackage.deleteEntry(slide.id);
+  sourcePackage.deleteEntry(slideRelsPath);
 
   // --- Model ---
   pres.slides.splice(slideIndex, 1);
@@ -1029,14 +1029,14 @@ async function applyDeleteSlide(
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      if (slideBytes) pkg.setEntry(slide.id, slideBytes);
-      if (slideRelsBytes) pkg.setEntry(slideRelsPath, slideRelsBytes);
+      if (slideBytes) sourcePackage.setEntry(slide.id, slideBytes);
+      if (slideRelsBytes) sourcePackage.setEntry(slideRelsPath, slideRelsBytes);
       // Re-attach the live XML document so the restored slide stays editable.
-      if (slideXmlRoot) pkg.registerXmlRoot(slide.id, slideXmlRoot);
-      pkg.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
-      pkg.setEntry(CONTENT_TYPES_PATH, ctText);
+      if (slideXmlRoot) sourcePackage.registerXmlRoot(slide.id, slideXmlRoot);
+      sourcePackage.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
+      sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
       insertChild(ctx.lstEl, sldIdEl, sldIdRef);
-      pkg.markDirty(PRESENTATION_PATH);
+      sourcePackage.markDirty(PRESENTATION_PATH);
       pres.slides.splice(slideIndex, 0, slide);
       reindexSlides(pres);
     },

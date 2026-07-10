@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 /**
  * Tests for applyEdit(): every operation mutates the part XML, keeps the
  * typed model in sync, and survives a save → reopen round trip through the
@@ -279,7 +279,7 @@ describe("moveSlide", () => {
       toIndex: 0,
     });
     expect(result.affectedSlideIds).toEqual([]);
-    expect(pres.pkg!.isDirty("ppt/presentation.xml")).toBe(false);
+    expect(pres.sourcePackage!.isDirty("ppt/presentation.xml")).toBe(false);
   });
 });
 
