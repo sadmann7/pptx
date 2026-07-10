@@ -14,6 +14,12 @@ import {
   writePptx,
 } from "@diceui/pptx-parser";
 
+import { DEFAULT_PRESENTATION_STATE } from "./constant";
+
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 4;
+export const DEFAULT_ZOOM_STEP = 0.25;
+
 export type SidePadding = {
   top: number;
   right: number;
@@ -35,16 +41,6 @@ export function normalizePadding(padding: AutoFitPadding | undefined = 0): SideP
     left: padding?.left ?? 0,
   };
 }
-
-const INITIAL_STATE: PresentationState = {
-  status: "idle",
-  presentation: null,
-  activeSlideId: null,
-  zoom: 1,
-  progress: 0,
-  error: null,
-  revision: 0,
-};
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
@@ -243,7 +239,7 @@ export interface PresentationStore {
 
   /**
    * Set the zoom level directly.
-   * Clamped to `[0.1, 4]`.
+   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`.
    *
    * @default 1
    */
@@ -367,7 +363,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function createPresentationStore(): PresentationStore {
-  let state: PresentationState = { ...INITIAL_STATE };
+  let state: PresentationState = { ...DEFAULT_PRESENTATION_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
   let fontInjection: FontInjectionHandle | undefined;
@@ -434,7 +430,7 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
+    replaceState({ ...DEFAULT_PRESENTATION_STATE, status: "loading", progress: 0 });
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
     // model above). The budget grows once font bytes are known after unzip;
@@ -610,16 +606,16 @@ export function createPresentationStore(): PresentationStore {
 
   function setZoom(zoom: number): void {
     if (!Number.isFinite(zoom)) return;
-    const clamped = clamp(zoom, 0.1, 4);
+    const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
     if (Object.is(clamped, state.zoom)) return;
     setState({ zoom: clamped });
   }
 
-  function zoomIn(step = 0.25): void {
+  function zoomIn(step = DEFAULT_ZOOM_STEP): void {
     setZoom(state.zoom + step);
   }
 
-  function zoomOut(step = 0.25): void {
+  function zoomOut(step = DEFAULT_ZOOM_STEP): void {
     setZoom(state.zoom - step);
   }
 
@@ -642,7 +638,7 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...INITIAL_STATE });
+    replaceState({ ...DEFAULT_PRESENTATION_STATE });
   }
 
   // --- Editing ---

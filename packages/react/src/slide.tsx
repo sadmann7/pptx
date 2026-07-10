@@ -3,6 +3,7 @@ import * as React from "react";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 
+import { TYPOGRAPHY_RESET_STYLE } from "./constant";
 import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
@@ -148,15 +149,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
           transform: `scale(${zoom})`,
           position: "relative",
           overflow: "hidden",
-          // Reset inherited typography; .prose (and similar) sets font/color via inheritance which not-prose cannot block.
-          fontSize: "initial",
-          lineHeight: "normal",
-          color: "initial",
-          fontFamily: "initial",
-          fontWeight: "normal",
-          letterSpacing: "normal",
-          textDecoration: "none",
-          textTransform: "none",
+          ...TYPOGRAPHY_RESET_STYLE,
         }}
       />
       {children && (

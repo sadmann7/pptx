@@ -13,6 +13,7 @@ import * as React from "react";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { renderSlide } from "@diceui/pptx-parser";
 
+import { TYPOGRAPHY_RESET_STYLE, VISUALLY_HIDDEN_STYLE } from "./constant";
 import { usePresentation, usePresentationStore } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
@@ -28,18 +29,6 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
  * scrolling never reveals a pending placeholder.
  */
 const IO_ROOT_MARGIN = "200px 0px";
-
-const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  padding: "0",
-  margin: "-1px",
-  overflow: "hidden",
-  clipPath: "inset(50%)",
-  whiteSpace: "nowrap",
-  borderWidth: 0,
-};
 
 type FocusIntent = "first" | "last" | "prev" | "next";
 
@@ -793,13 +782,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               overflow: "hidden",
               pointerEvents: "none",
               contain: "layout style paint",
-              // Same inheritance reset as the main slide container.
-              fontSize: "initial",
-              lineHeight: "normal",
-              color: "initial",
-              fontFamily: "initial",
-              fontWeight: "normal",
-              letterSpacing: "normal",
+              ...TYPOGRAPHY_RESET_STYLE,
             },
           },
           thumbnailItemPreviewProps,

@@ -2,18 +2,9 @@ import * as React from "react";
 
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 
+import { DEFAULT_PRESENTATION_STATE } from "./constant";
 import type { AutoFitPadding, PresentationState, PresentationStore } from "./store";
 import { createPresentationStore } from "./store";
-
-const SERVER_SNAPSHOT: PresentationState = {
-  status: "idle",
-  presentation: null,
-  activeSlideId: null,
-  zoom: 1,
-  progress: 0,
-  error: null,
-  revision: 0,
-};
 
 export const Context = React.createContext<PresentationStore | null>(null);
 
@@ -134,11 +125,16 @@ export interface UsePresentationResult {
  */
 export function usePresentation(): UsePresentationResult {
   const store = usePresentationStore("usePresentation");
-  const presentation = useStoreSelector(store, (s) => s.presentation, SERVER_SNAPSHOT.presentation);
-  const status = useStoreSelector(store, (s) => s.status, SERVER_SNAPSHOT.status);
-  const error = useStoreSelector(store, (s) => s.error, SERVER_SNAPSHOT.error);
-  const progress = useStoreSelector(store, (s) => s.progress, SERVER_SNAPSHOT.progress);
-  const revision = useStoreSelector(store, (s) => s.revision, SERVER_SNAPSHOT.revision);
+  const presentation = useStoreSelector(
+    store,
+    (s) => s.presentation,
+    DEFAULT_PRESENTATION_STATE.presentation,
+  );
+  const status = useStoreSelector(store, (s) => s.status, DEFAULT_PRESENTATION_STATE.status);
+  const error = useStoreSelector(store, (s) => s.error, DEFAULT_PRESENTATION_STATE.error);
+  const progress = useStoreSelector(store, (s) => s.progress, DEFAULT_PRESENTATION_STATE.progress);
+  const revision = useStoreSelector(store, (s) => s.revision, DEFAULT_PRESENTATION_STATE.revision);
+
   return { presentation, status, error, progress, revision };
 }
 
@@ -194,9 +190,7 @@ export function useSlide(): UseSlideResult {
   // Stable object ref that only changes on new file load, not on slide navigation.
   const presentation = useStoreSelector(store, (s) => s.presentation, null);
 
-  // Derive the rest synchronously from the two stable subscribed values.
-  const index =
-    presentation && slideId ? presentation.slides.findIndex((s) => s.id === slideId) : -1;
+  const index = slideId ? store.getSlideIndex(slideId) : -1;
   const slide = index >= 0 ? (presentation?.slides[index] ?? null) : null;
   const total = presentation?.slides.length ?? 0;
 
@@ -224,14 +218,14 @@ export interface UseZoomResult {
   /**
    * Increase zoom by `step`.
    *
-   * @default step 0.1
+   * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
    * Decrease zoom by `step`.
    *
-   * @default step 0.1
+   * @default step 0.25
    */
   zoomOut: (step?: number) => void;
 
