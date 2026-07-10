@@ -1,14 +1,16 @@
-/*
+/**
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
+ * @remarks
  * Derived from mtx-decompressor v1.4.2
- * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR,
- * MPL-2.0). Optimized for @diceui/pptx-parser:
- *  - triplet encodings as flat typed arrays (no object field loads)
- *  - bulk table copies instead of per-byte reads
- *  - reusable per-glyph scratch buffers instead of per-glyph allocations
+ * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR, MPL-2.0).
+ * Optimized for `@diceui/pptx-parser`:
+ * - Triplet encodings as flat typed arrays (no object field loads)
+ * - Bulk table copies instead of per-byte reads
+ * - Reusable per-glyph scratch buffers instead of per-glyph allocations
+ *
  * Output is byte-identical to the original.
  */
 

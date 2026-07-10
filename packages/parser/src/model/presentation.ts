@@ -100,20 +100,6 @@ function relsPathFor(filePath: string): string {
 }
 
 /**
- * Extract ordered slide rId list from presentation.xml.
- * Reads `p:sldIdLst > p:sldId` elements and returns their r:id attributes in order.
- */
-function _getSlideOrder(presRoot: SafeXmlNode): string[] {
-  const sldIdLst = presRoot.child("sldIdLst");
-  const rIds: string[] = [];
-  for (const sldId of sldIdLst.children("sldId")) {
-    const rId = sldId.attr("id") ?? sldId.attr("r:id");
-    if (rId) rIds.push(rId);
-  }
-  return rIds;
-}
-
-/**
  * Detect WPS (Kingsoft Office / WPS Office) by checking for known markers
  * in the presentation XML string.
  */

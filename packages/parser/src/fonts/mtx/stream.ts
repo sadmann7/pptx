@@ -1,8 +1,9 @@
-/*
+/**
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
+ * @remarks
  * Derived from mtx-decompressor v1.4.2
  * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR,
  * MPL-2.0). Optimized for @diceui/pptx-parser: geometric buffer growth and
