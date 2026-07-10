@@ -8,6 +8,11 @@ dist
 build
 *.tsbuildinfo
 
+# Next.js
+.next/
+out/
+next-env.d.ts
+
 # Generated files
 apps/web/src/routeTree.gen.ts
 
@@ -49,6 +54,13 @@ coverage
 
 # Misc
 *.tgz
+*.pem
 .cache
 tmp
 temp
+
+# Deployment
+.vercel
+
+# Fumadocs
+.source
