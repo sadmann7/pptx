@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { createPresentationStore } from "../store";
+import { createStore } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
 let fixture: ArrayBuffer;
@@ -10,14 +10,14 @@ beforeAll(async () => {
 });
 
 async function loadedStore() {
-  const store = createPresentationStore();
+  const store = createStore();
   await store.load(fixture);
   return store;
 }
 
 describe("initial state", () => {
   it("starts idle with no presentation", () => {
-    const store = createPresentationStore();
+    const store = createStore();
     const state = store.getState();
     expect(state.status).toBe("idle");
     expect(state.presentation).toBeNull();
@@ -43,13 +43,13 @@ describe("load", () => {
   });
 
   it("honors a numeric defaultSlideIndex", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture, { defaultSlideIndex: 2 });
     expect(store.getActiveSlideIndex()).toBe(2);
   });
 
   it("honors a defaultSlideIndex resolver and clamps out-of-range values", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture, { defaultSlideIndex: (slides) => slides.length - 1 });
     expect(store.getActiveSlideIndex()).toBe(FIXTURE_SLIDE_COUNT - 1);
 
@@ -58,7 +58,7 @@ describe("load", () => {
   });
 
   it("sets error state when the input is not a valid pptx", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await expect(store.load(new ArrayBuffer(16))).rejects.toThrow();
     const state = store.getState();
     expect(state.status).toBe("error");
@@ -66,7 +66,7 @@ describe("load", () => {
   });
 
   it("rejects a superseded load with AbortError and keeps the newest result", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     const first = store.load(fixture);
     const second = store.load(fixture, { defaultSlideIndex: 1 });
 
@@ -79,7 +79,7 @@ describe("load", () => {
 
 describe("lazy slides", () => {
   it("parses only the active slide during load by default", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture);
     const slides = store.getState().presentation!.slides;
 
@@ -90,7 +90,7 @@ describe("lazy slides", () => {
   });
 
   it("materializes the start slide when defaultSlideIndex targets it", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture, { defaultSlideIndex: 2 });
     const slides = store.getState().presentation!.slides;
 
@@ -99,7 +99,7 @@ describe("lazy slides", () => {
   });
 
   it("materializes the target slide before navigation is observable", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture);
 
     let nodesAtNotify = -1;
@@ -115,7 +115,7 @@ describe("lazy slides", () => {
   });
 
   it("parses all slides eagerly with lazy: false", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture, { lazy: false });
     for (const slide of store.getState().presentation!.slides) {
       expect(slide.nodesMaterialized).toBe(true);

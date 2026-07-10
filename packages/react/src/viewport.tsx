@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { usePresentationStore, useZoom } from "./context";
+import { useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding } from "./store";
@@ -55,7 +55,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 ) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
-  const store = usePresentationStore("PresentationViewport");
+  const store = useStoreContext("PresentationViewport");
   const { zoom } = useZoom();
 
   React.useEffect(() => {

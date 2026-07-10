@@ -5,8 +5,8 @@ import type { SlideData } from "@diceui/pptx-parser";
 import { Context } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
-import type { PresentationStore, PreviewInput } from "./store";
-import { createPresentationStore } from "./store";
+import type { PreviewInput, Store } from "./store";
+import { createStore } from "./store";
 
 export interface RootState {
   /**
@@ -83,7 +83,7 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
    * }}
    * ```
    */
-  onLoad?: (store: PresentationStore) => void;
+  onLoad?: (store: Store) => void;
 
   /**
    * Event handler called when parsing fails.
@@ -108,9 +108,9 @@ export function Root({
 }: RootProps) {
   const contextStore = React.useContext(Context);
 
-  const internalStoreRef = React.useRef<PresentationStore | null>(null);
+  const internalStoreRef = React.useRef<Store | null>(null);
   if (contextStore === null && internalStoreRef.current === null) {
-    internalStoreRef.current = createPresentationStore();
+    internalStoreRef.current = createStore();
   }
 
   const store = contextStore ?? internalStoreRef.current;

@@ -10,7 +10,7 @@
 import type { ShapeNodeData } from "@diceui/pptx-parser";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { createPresentationStore, PresentationStore } from "../store";
+import { createStore, Store } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
 let fixture: ArrayBuffer;
@@ -19,14 +19,14 @@ beforeAll(async () => {
   fixture = await buildMinimalPptx();
 });
 
-async function editableStore(): Promise<PresentationStore> {
-  const store = createPresentationStore();
+async function editableStore(): Promise<Store> {
+  const store = createStore();
   // embedFonts off: the fixture has none, and the font pipeline needs workers.
   await store.load(fixture, { readOnly: false, embedFonts: false });
   return store;
 }
 
-function slideText(store: PresentationStore, index: number): string | undefined {
+function slideText(store: Store, index: number): string | undefined {
   const slide = store.getState().presentation?.slides[index];
   const shape = slide?.nodes.find((n) => n.nodeType === "shape") as ShapeNodeData | undefined;
   return shape?.textBody?.paragraphs[0]?.runs[0]?.text;
@@ -34,14 +34,14 @@ function slideText(store: PresentationStore, index: number): string | undefined 
 
 describe("store.edit", () => {
   it("rejects when no presentation is loaded", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await expect(
       store.edit({ type: "deleteSlide", slideId: "ppt/slides/slide1.xml" }),
     ).rejects.toThrow(/no presentation/);
   });
 
   it("rejects when the deck was loaded without readOnly: false", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(fixture, { embedFonts: false });
     const slideId = store.getState().presentation!.slides[0].id;
     await expect(
@@ -96,7 +96,7 @@ describe("store.edit", () => {
     });
 
     const bytes = await store.save();
-    const reopened = createPresentationStore();
+    const reopened = createStore();
     await reopened.load(bytes.slice().buffer as ArrayBuffer, { embedFonts: false });
     expect(slideText(reopened, 0)).toBe("Persisted");
   });

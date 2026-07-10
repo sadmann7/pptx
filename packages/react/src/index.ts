@@ -8,16 +8,23 @@ export type * from "./slide";
 export type * from "./thumbnail-list";
 export type * from "./viewport";
 
-export { useCreatePresentationStore, usePresentation, useSlide, useZoom } from "./context";
+export {
+  useCreateStore as useCreatePresentationStore,
+  usePresentation,
+  useSlide,
+  useSlideIndex,
+  useSlideRevision,
+  useZoom,
+} from "./context";
 export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
 
 export type { ComponentRenderFn, RenderProp } from "./render";
 
 export type {
   AutoFitPadding,
-  PresentationState,
+  StoreState as PresentationState,
   PresentationStatus,
-  PresentationStore,
+  Store as PresentationStore,
   PreviewInput,
   SidePadding,
 } from "./store";

@@ -14,33 +14,11 @@ import {
   writePptx,
 } from "@diceui/pptx-parser";
 
-import { DEFAULT_PRESENTATION_STATE } from "./constant";
+import { DEFAULT_STORE_STATE } from "./constant";
 
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 4;
 export const DEFAULT_ZOOM_STEP = 0.25;
-
-export type SidePadding = {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-};
-
-/** Uniform padding or per-side values, like Floating UI's `Padding` / Radix `collisionPadding`. */
-export type AutoFitPadding = number | Partial<SidePadding>;
-
-export function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
-  if (typeof padding === "number") {
-    return { top: padding, right: padding, bottom: padding, left: padding };
-  }
-  return {
-    top: padding?.top ?? 0,
-    right: padding?.right ?? 0,
-    bottom: padding?.bottom ?? 0,
-    left: padding?.left ?? 0,
-  };
-}
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
@@ -49,6 +27,20 @@ const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError")
 // expensive the other phases are per byte relative to that baseline.
 const READ_COST_PER_BYTE = 0.05;
 const FONT_DECODE_COST_PER_BYTE = 20;
+
+export interface SidePadding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export type AutoFitPadding = number | Partial<SidePadding>;
+
+interface HistoryEntry {
+  op: EditOperation;
+  result: EditResult;
+}
 
 /** Accepted input formats for `store.load()` and the `file` prop. */
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
@@ -64,7 +56,7 @@ export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 
 /** Full snapshot of the presentation viewer state. */
-export interface PresentationState {
+export interface StoreState {
   /** Current lifecycle status. */
   status: PresentationStatus;
 
@@ -108,9 +100,9 @@ export interface PresentationState {
 }
 
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
-export interface PresentationStore {
+export interface Store {
   /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
-  getState: () => PresentationState;
+  getState: () => StoreState;
   /**
    * Subscribe to state changes.
    *
@@ -358,23 +350,31 @@ async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
   throw new Error("Unsupported input type");
 }
 
+function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
+  if (typeof padding === "number") {
+    return { top: padding, right: padding, bottom: padding, left: padding };
+  }
+
+  return {
+    top: padding?.top ?? 0,
+    right: padding?.right ?? 0,
+    bottom: padding?.bottom ?? 0,
+    left: padding?.left ?? 0,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function createPresentationStore(): PresentationStore {
-  let state: PresentationState = { ...DEFAULT_PRESENTATION_STATE };
+export function createStore(): Store {
+  let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
   let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
-  // --- Edit history ---
-  interface HistoryEntry {
-    op: EditOperation;
-    result: EditResult;
-  }
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
   let slideRevisionById = new Map<string, number>();
@@ -392,7 +392,7 @@ export function createPresentationStore(): PresentationStore {
   }
 
   function setState(
-    next: Partial<PresentationState> | ((current: PresentationState) => Partial<PresentationState>),
+    next: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
   ): void {
     const patch = typeof next === "function" ? next(state) : next;
     state = { ...state, ...patch };
@@ -400,13 +400,13 @@ export function createPresentationStore(): PresentationStore {
     emit();
   }
 
-  function replaceState(next: PresentationState): void {
+  function replaceState(next: StoreState): void {
     state = next;
     rebuildSlideIndex(next.presentation);
     emit();
   }
 
-  function getState(): PresentationState {
+  function getState(): StoreState {
     return state;
   }
 
@@ -430,7 +430,7 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...DEFAULT_PRESENTATION_STATE, status: "loading", progress: 0 });
+    replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
     // model above). The budget grows once font bytes are known after unzip;
@@ -638,10 +638,8 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...DEFAULT_PRESENTATION_STATE });
+    replaceState({ ...DEFAULT_STORE_STATE });
   }
-
-  // --- Editing ---
 
   function clearEditHistory(): void {
     undoStack = [];

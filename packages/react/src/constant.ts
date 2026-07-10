@@ -1,9 +1,9 @@
-import type { PresentationState } from "./store";
+import type { StoreState } from "./store";
 
 /**
  *  Idle state shared by the store's initial value and the ssr snapshot.
  */
-export const DEFAULT_PRESENTATION_STATE: PresentationState = {
+export const DEFAULT_STORE_STATE: StoreState = {
   status: "idle",
   presentation: null,
   activeSlideId: null,

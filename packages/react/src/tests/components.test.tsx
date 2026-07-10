@@ -4,8 +4,8 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { Presentation } from "../index";
-import type { PresentationStore } from "../store";
-import { createPresentationStore } from "../store";
+import type { Store } from "../store";
+import { createStore } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
 let fixture: ArrayBuffer;
@@ -14,19 +14,19 @@ beforeAll(async () => {
   fixture = await buildMinimalPptx();
 });
 
-async function loadedStore(): Promise<PresentationStore> {
-  const store = createPresentationStore();
+async function loadedStore(): Promise<Store> {
+  const store = createStore();
   await store.load(fixture);
   return store;
 }
 
-function withStore(store: PresentationStore, ui: React.ReactNode) {
+function withStore(store: Store, ui: React.ReactNode) {
   return render(<Presentation.Provider store={store}>{ui}</Presentation.Provider>);
 }
 
 describe("Presentation.Loading", () => {
   it("renders only while loading, with progress via render function", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     // Kick off a load without awaiting: status flips to "loading" synchronously.
     const pending = store.load(fixture);
 
@@ -40,7 +40,7 @@ describe("Presentation.Loading", () => {
   });
 
   it("renders nothing when idle", () => {
-    const store = createPresentationStore();
+    const store = createStore();
     const { container } = withStore(store, <Presentation.Loading>busy</Presentation.Loading>);
     expect(container.textContent).toBe("");
   });
@@ -48,7 +48,7 @@ describe("Presentation.Loading", () => {
 
 describe("Presentation.Error", () => {
   it("renders the error via render function after a failed load", async () => {
-    const store = createPresentationStore();
+    const store = createStore();
     await store.load(new ArrayBuffer(8)).catch(() => undefined);
 
     withStore(
@@ -81,7 +81,7 @@ describe("Presentation.Slide", () => {
   });
 
   it("keeps the wrapper mounted with data-status=idle before load", () => {
-    const store = createPresentationStore();
+    const store = createStore();
     withStore(store, <Presentation.Slide data-testid="slide" />);
     expect(screen.getByTestId("slide").getAttribute("data-status")).toBe("idle");
   });
@@ -131,7 +131,7 @@ describe("Presentation.ThumbnailList", () => {
   });
 
   it("renders nothing before the presentation is ready", () => {
-    const store = createPresentationStore();
+    const store = createStore();
     const { container } = withStore(store, <Presentation.ThumbnailList />);
     expect(container.querySelectorAll("button")).toHaveLength(0);
   });

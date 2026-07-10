@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { Position, SetTextBodyParagraph, ShapeNodeData, SlideNode } from "@diceui/pptx-parser";
 
-import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
+import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
@@ -306,7 +306,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   { render, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
   forwardedRef,
 ) {
-  const store = usePresentationStore(SELECTION_NAME);
+  const store = useStoreContext(SELECTION_NAME);
   const { presentation } = usePresentation();
   const { slide, slideId } = useSlide();
   const { zoom } = useZoom();
@@ -327,11 +327,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // Edit revision of the active slide. A bump means SlideImpl will replace
   // the slide DOM in its effect; the text-mode repair effect below uses this
   // to re-attach contentEditable to the fresh DOM.
-  const slideRevision = React.useSyncExternalStore(
-    store.subscribe,
-    () => (slideId != null ? store.getSlideRevision(slideId) : 0),
-    () => 0,
-  );
+  const slideRevision = useSlideRevision(store, slideId);
 
   const selectedIds: string[] =
     state.mode === "selected" || state.mode === "move"
@@ -1519,7 +1515,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   { onUndo, onRedo, ...props },
   forwardedRef,
 ) {
-  const store = usePresentationStore(SELECTION_NAME);
+  const store = useStoreContext(SELECTION_NAME);
   const { presentation } = usePresentation();
   const { slideId } = useSlide();
 

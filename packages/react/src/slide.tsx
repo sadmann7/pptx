@@ -4,7 +4,7 @@ import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-pars
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 
 import { TYPOGRAPHY_RESET_STYLE } from "./constant";
-import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
+import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
@@ -48,15 +48,11 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   const { presentation, status } = usePresentation();
   const { slide, index } = useSlide();
   const { zoom } = useZoom();
-  const store = usePresentationStore(SLIDE_NAME);
+  const store = useStoreContext(SLIDE_NAME);
 
   // Bumped when an edit/undo/redo touches this slide; re-renders the content.
   const slideId = slide?.id;
-  const revision = React.useSyncExternalStore(
-    store.subscribe,
-    () => (slideId !== undefined ? store.getSlideRevision(slideId) : 0),
-    () => 0,
-  );
+  const revision = useSlideRevision(store, slideId);
 
   const slideContent =
     presentation && slide ? (

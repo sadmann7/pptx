@@ -1,13 +1,11 @@
-import * as React from "react";
-
 import { act, render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { UsePresentationResult, UseSlideResult, UseZoomResult } from "../context";
 import { usePresentation, useSlide, useZoom } from "../context";
 import { Presentation } from "../index";
-import type { PresentationStore } from "../store";
-import { createPresentationStore } from "../store";
+import type { Store } from "../store";
+import { createStore } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
 let fixture: ArrayBuffer;
@@ -18,12 +16,12 @@ beforeAll(async () => {
 
 /** Renders probes for all three hooks inside a Provider with a loaded store. */
 async function renderHooks(): Promise<{
-  store: PresentationStore;
+  store: Store;
   presentation: () => UsePresentationResult;
   slide: () => UseSlideResult;
   zoom: () => UseZoomResult;
 }> {
-  const store = createPresentationStore();
+  const store = createStore();
   await store.load(fixture);
 
   const latest: {
