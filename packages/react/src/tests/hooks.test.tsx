@@ -65,7 +65,7 @@ describe("usePresentation", () => {
       usePresentation();
       return null;
     }
-    expect(() => render(<Naked />)).toThrow(/must be used inside/);
+    expect(() => render(<Naked />)).toThrow(/must be used within/);
   });
 });
 
