@@ -1618,7 +1618,7 @@ function SelectionBox({
         width: rect.w * zoom,
         height: rect.h * zoom,
         transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
-        boxShadow: `0 0 0 ${isTextMode ? "2" : "1.5"}px var(--pptx-selection, #2563eb)`,
+        boxShadow: `0 0 0 ${isTextMode ? "2" : "1.5"}px var(--presentation-selection, #2563eb)`,
         cursor: isTextMode ? "text" : "move",
         pointerEvents: "none",
       }}
@@ -1637,7 +1637,7 @@ function SelectionBox({
               marginLeft: -4.5,
               marginTop: -4.5,
               background: "#fff",
-              border: "1.5px solid var(--pptx-selection, #2563eb)",
+              border: "1.5px solid var(--presentation-selection, #2563eb)",
               borderRadius: 2,
               cursor: HANDLE_CURSORS[direction],
               pointerEvents: "auto",
@@ -1676,8 +1676,8 @@ function MarqueeBox({
         top,
         width,
         height,
-        border: "1px solid var(--pptx-selection, #2563eb)",
-        background: "color-mix(in srgb, var(--pptx-selection, #2563eb) 10%, transparent)",
+        border: "1px solid var(--presentation-selection, #2563eb)",
+        background: "color-mix(in srgb, var(--presentation-selection, #2563eb) 10%, transparent)",
         pointerEvents: "none",
       }}
     />

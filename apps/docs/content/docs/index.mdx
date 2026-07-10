@@ -1,13 +1,34 @@
 ---
-title: Hello World
-description: Your first document
+title: Introduction
+description: Composable components for viewing and editing PowerPoint presentations.
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+This is a library for viewing and editing PowerPoint presentations in the browser.
 
-## What is Next?
+<PresentationDemo />
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## Features
+
+- **Rendering**: Shapes, preset and custom geometries, gradients, pattern fills, shadows, tables, charts, images, and embedded fonts.
+- **Editing**: Move, resize (with aspect-ratio lock), multi-select, marquee, inline text editing, and full undo/redo.
+- **Keyboard shortcuts**: Ctrl+Z/Y, arrow nudge, Delete, Escape, Ctrl+A matching PowerPoint behavior.
+- **Embedded fonts**: Decodes and registers ODTTF/MTX fonts from the PPTX so slides render with the original typefaces.
+- **Thumbnail strip**: Virtualized slide list with lazy rendering and a shared render queue so large decks never block the main thread.
+- **Auto-fit zoom**: Slide scales to fill the viewport and re-fits on window resize.
+- **Lossless save**: Round-trips untouched parts byte-for-byte; only edited slides are re-serialized.
+- **Composable API**: Primitive components you assemble like shadcn/ui. Bring your own layout and styles.
+
+## Packages
+
+| Package               | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `@diceui/pptx`        | React component library                                      |
+| `@diceui/pptx-parser` | Core OOXML parser and DOM renderer (no framework dependency) |
+
+## Architecture
+
+The library is split into two layers:
+
+**Parser** (`@diceui/pptx-parser`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, and rendering each slide to a plain DOM tree. It has no React dependency.
+
+**React** (`@diceui/pptx`) wraps the parser with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.

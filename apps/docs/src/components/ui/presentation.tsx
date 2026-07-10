@@ -1,7 +1,6 @@
 "use client";
 
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -12,8 +11,8 @@ function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props
 function Presentation({ className, ...props }: PresentationPrimitive.Root.Props) {
   return (
     <PresentationPrimitive.Root
-      data-slot="presentation-root"
-      className={cn("flex gap-4 overflow-hidden", className)}
+      data-slot="presentation"
+      className={cn("flex overflow-hidden", className)}
       {...props}
     />
   );
@@ -39,41 +38,21 @@ function PresentationViewport({ className, ...props }: PresentationPrimitive.Vie
   );
 }
 
-function PresentationSlide(props: PresentationPrimitive.Slide.Props) {
-  return <PresentationPrimitive.Slide data-slot="presentation-slide" {...props} />;
+function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.Props) {
+  return (
+    <PresentationPrimitive.Slide
+      data-slot="presentation-slide"
+      className={cn("border", className)}
+      {...props}
+    />
+  );
 }
 
 function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
-      className={cn("[--pptx-selection:var(--ring)]", className)}
-      onUndo={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Undo failed";
-        toast.error(errorMessage);
-      }}
-      onRedo={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Redo failed";
-        toast.error(errorMessage);
-      }}
-      onNodeDelete={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Could not delete shape";
-        toast.error(errorMessage);
-      }}
-      onNodeTransform={(_, error) => {
-        if (!error) return;
-        const errorMessage =
-          error instanceof Error ? error.message : "Could not move or resize shape";
-        toast.error(errorMessage);
-      }}
-      onTextChange={(_, error) => {
-        if (!error) return;
-        const errorMessage = error instanceof Error ? error.message : "Text edit failed";
-        toast.error(errorMessage);
-      }}
+      className={cn("[--presentation-selection:var(--ring)]", className)}
       {...props}
     />
   );
@@ -154,7 +133,7 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative flex w-full cursor-pointer gap-1.5 rounded-md p-1.5 outline-none hover:bg-accent",
+        "relative flex w-full cursor-pointer gap-1.5 rounded-md border p-1.5 outline-none hover:bg-accent",
         "ring-2 ring-transparent transition-[color,ring] duration-100 focus:ring-ring data-active:bg-accent",
         className,
       )}

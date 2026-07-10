@@ -1,0 +1,165 @@
+---
+title: Components
+description: API reference for all Presentation primitives.
+---
+
+## Root [#root]
+
+The outermost component. Creates an internal store (or inherits one from `Presentation.Provider`), loads the file, and provides context to all descendants.
+
+```tsx
+import * as Presentation from "@diceui/pptx";
+
+<Presentation.Root file={file} readOnly={false} onLoad={(store) => {}}>
+  {/* children */}
+</Presentation.Root>;
+```
+
+<AutoTypeTable path="types/presentation.ts" name="RootProps" />
+
+---
+
+## Viewport [#viewport]
+
+Scrollable container that centers the slide and optionally auto-fits it to fill the available space.
+
+```tsx
+<Presentation.Viewport autoFit autoFitPadding={32}>
+  <Presentation.Slide />
+</Presentation.Viewport>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
+
+---
+
+## Slide [#slide]
+
+Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
+
+```tsx
+<Presentation.Slide>
+  <Presentation.Selection />
+</Presentation.Slide>
+```
+
+The wrapper carries a `data-status` attribute matching the current load status:
+
+```css
+[data-status="loading"] {
+  opacity: 0.5;
+}
+```
+
+<AutoTypeTable path="types/presentation.ts" name="SlideProps" />
+
+---
+
+## Selection [#selection]
+
+PowerPoint-style editing overlay. Enables drag-to-move, resize, inline text editing, multi-select, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
+
+Must be placed inside `Presentation.Slide`.
+
+```tsx
+<Presentation.Slide>
+  <Presentation.Selection
+    onUndo={(status) => status === "empty" && toast.error("Nothing to undo")}
+    onRedo={(status, error) => {
+      if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+      else if (status === "empty") toast.error("Nothing to redo");
+    }}
+    onNodeDelete={(id, error) => error && toast.error("Could not delete")}
+    onNodeTransform={(id, error) => error && toast.error("Could not move")}
+    onTextChange={(id, error) => error && toast.error("Text edit failed")}
+  />
+</Presentation.Slide>
+```
+
+### Interaction model [#selection-interactions]
+
+| Action                                 | Behavior                         |
+| -------------------------------------- | -------------------------------- |
+| Click text box / placeholder           | Select + enter text edit mode    |
+| Click regular shape                    | Select                           |
+| Double-click regular shape             | Enter text edit mode             |
+| Type while shape selected              | Enter text edit mode             |
+| Drag shape                             | Move                             |
+| Drag border of text box (in text mode) | Move while keeping text mode     |
+| Drag resize handle                     | Resize                           |
+| Shift + drag corner handle             | Resize preserving aspect ratio   |
+| Ctrl/Cmd + A                           | Select all                       |
+| Shift / Ctrl + click                   | Toggle shape in/out of selection |
+| Drag empty canvas                      | Marquee select                   |
+| Delete / Backspace                     | Delete selected                  |
+| Arrow keys                             | Nudge (1 px; Shift = 10 px)      |
+| Ctrl/Cmd + Z                           | Undo                             |
+| Ctrl/Cmd + Y or Ctrl + Shift + Z       | Redo                             |
+| Escape                                 | Exit text mode → deselect        |
+
+### Theming [#selection-theming]
+
+Control the accent color with a CSS variable:
+
+```css
+--presentation-selection: #2563eb; /* default */
+```
+
+```tsx
+<Presentation.Selection className="[--presentation-selection:var(--ring)]" />
+```
+
+<AutoTypeTable path="types/presentation.ts" name="SelectionProps" />
+
+---
+
+## ThumbnailList [#thumbnail-list]
+
+Virtualized slide strip. Thumbnails are rendered lazily as they scroll into view. Keyboard navigation (↑/↓, Home, End) uses roving focus.
+
+```tsx
+<Presentation.ThumbnailList loop />
+```
+
+### Custom layout [#thumbnail-list-custom]
+
+Pass a render function to `children` for full control over each item:
+
+```tsx
+<Presentation.ThumbnailList>
+  {({ slides }) =>
+    slides.map((slide) => (
+      <Presentation.ThumbnailItem key={slide.id}>
+        <Presentation.ThumbnailItemPreview />
+        <Presentation.ThumbnailItemNumber />
+      </Presentation.ThumbnailItem>
+    ))
+  }
+</Presentation.ThumbnailList>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="ThumbnailListProps" />
+
+---
+
+## Loading [#loading]
+
+Renders its children only while the presentation is in the `"loading"` state.
+
+```tsx
+<Presentation.Loading>{(progress) => <span>Loading {progress}%</span>}</Presentation.Loading>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="LoadingProps" />
+
+---
+
+## Error [#error]
+
+Renders its children only when the presentation fails to parse.
+
+```tsx
+<Presentation.Error>{(err) => <span>{err.message}</span>}</Presentation.Error>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="ErrorProps" />

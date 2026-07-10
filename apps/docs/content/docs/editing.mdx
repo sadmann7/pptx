@@ -1,0 +1,140 @@
+---
+title: Editing
+description: Move, resize, and edit text in presentations.
+---
+
+Editing requires two things: loading the presentation with `readOnly={false}`, and placing `Presentation.Selection` inside `Presentation.Slide`.
+
+```tsx
+<Presentation.Root file={file} readOnly={false}>
+  <Presentation.Viewport autoFit>
+    <Presentation.Slide>
+      <Presentation.Selection />
+    </Presentation.Slide>
+  </Presentation.Viewport>
+</Presentation.Root>
+```
+
+## What you can do
+
+- **Move** shapes by dragging them
+- **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock aspect ratio)
+- **Edit text** inline: single-click a text box, double-click or start typing on any shape
+- **Multi-select** with Shift/Ctrl+click, Ctrl+A, or drag a marquee on empty canvas
+- **Undo / redo** with Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y)
+- **Delete** selected shapes with Delete or Backspace
+- **Nudge** with arrow keys (1 px; Shift for 10 px)
+
+## Handling edit events
+
+Each edit callback receives `(status, error?)` for undo/redo — where `status` is `"success" | "empty"` — and `(nodeId, error?)` for node events. Check `error` to show a toast or log failures:
+
+```tsx
+<Presentation.Selection
+  onUndo={(status) => {
+    if (status === "empty") toast.error("Nothing to undo");
+  }}
+  onRedo={(status, error) => {
+    if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+    else if (status === "empty") toast.error("Nothing to redo");
+  }}
+  onNodeTransform={(nodeId, error) => {
+    if (error) toast.error("Could not move shape");
+  }}
+  onNodeDelete={(nodeId, error) => {
+    if (error) toast.error("Could not delete shape");
+  }}
+  onTextChange={(nodeId, error) => {
+    if (error) toast.error("Text edit failed");
+  }}
+/>
+```
+
+## Programmatic edits
+
+Use `store.edit()` to apply changes from outside the UI (for example, from a toolbar button). Edit operations have full undo/redo support.
+
+```tsx
+import { useCreatePresentationStore } from "@diceui/pptx";
+
+const store = useCreatePresentationStore();
+
+// Change a shape's fill color
+await store.edit({
+  type: "setSolidFill",
+  slideId,
+  nodeId,
+  color: "#ef4444",
+});
+
+// Move a shape
+await store.edit({
+  type: "setNodeTransform",
+  slideId,
+  nodeId,
+  x: 100,
+  y: 200,
+  width: 400,
+  height: 300,
+});
+
+// Edit text
+await store.edit({
+  type: "setTextBody",
+  slideId,
+  nodeId,
+  paragraphs: [
+    {
+      runs: [{ text: "Hello world" }],
+    },
+  ],
+});
+```
+
+## Batch operations
+
+Group multiple edits into a single undoable step with `"batch"`:
+
+```tsx
+await store.edit({
+  type: "batch",
+  ops: [
+    { type: "deleteNode", slideId, nodeId: "2" },
+    { type: "deleteNode", slideId, nodeId: "3" },
+  ],
+});
+```
+
+## Saving
+
+Call `store.save()` to get the edited presentation as a `Uint8Array`, then trigger a download:
+
+```tsx
+async function onSave() {
+  const bytes = await store.save();
+  const blob = new Blob([bytes], {
+    type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "edited.pptx";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+```
+
+The saved file round-trips all untouched parts byte-for-byte. Only slides that were edited are re-serialized.
+
+## Undo / redo stack
+
+The store maintains a linear undo/redo history:
+
+```tsx
+store.canUndo(); // true if there is something to undo
+store.canRedo(); // true if there is something to redo
+store.undo(); // reverts the last edit; navigates to the affected slide
+store.redo(); // re-applies the last undone edit
+```
+
+Cross-slide edits navigate to the affected slide automatically on undo/redo.

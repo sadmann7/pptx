@@ -1,0 +1,41 @@
+---
+title: Installation
+description: Install @diceui/pptx and its peer dependencies.
+---
+
+## Install the package
+
+```package-install
+@diceui/pptx
+```
+
+## shadcn/ui
+
+If you are using shadcn/ui, you can also install it as a pre-built component via the shadcn CLI:
+
+```package-install
+npx shadcn@latest add "@diceui/pptx"
+```
+
+```
+PresentationProvider
+└── Presentation
+    ├── PresentationThumbnailList
+    │   └── PresentationThumbnailItem
+    │       ├── PresentationThumbnailItemNumber
+    │       └── PresentationThumbnailItemPreview
+    └── PresentationContent
+        ├── PresentationLoading
+        ├── PresentationError
+        └── PresentationViewport
+            └── PresentationSlide
+                └── PresentationSelection
+```
+
+## Parser only
+
+If you don't use React and only need the OOXML parser and renderer:
+
+```package-install
+@diceui/pptx-parser
+```
