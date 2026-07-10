@@ -992,8 +992,8 @@ export class PptxViewer extends EventTarget {
       handle.element.style.transformOrigin = "top left";
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(index, handle.element);
-    } catch (e) {
-      this.emitSlideError(index, e);
+    } catch (err) {
+      this.emitSlideError(index, err);
       wrapper.style.background = "#fff3f3";
       wrapper.style.display = "flex";
       wrapper.style.alignItems = "center";
@@ -1001,7 +1001,7 @@ export class PptxViewer extends EventTarget {
       wrapper.style.border = "2px dashed #ff6b6b";
       wrapper.style.color = "#cc0000";
       wrapper.style.fontSize = "14px";
-      wrapper.textContent = `Slide ${index + 1}: Render Error - ${e instanceof Error ? e.message : String(e)}`;
+      wrapper.textContent = `Slide ${index + 1}: Render Error - ${err instanceof Error ? err.message : String(err)}`;
     }
   }
 
@@ -1221,8 +1221,8 @@ export class PptxViewer extends EventTarget {
       handle.element.style.transformOrigin = "top left";
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(this.currentSlide, handle.element);
-    } catch (e) {
-      this.emitSlideError(this.currentSlide, e);
+    } catch (err) {
+      this.emitSlideError(this.currentSlide, err);
       wrapper.style.background = "#fff3f3";
       wrapper.style.display = "flex";
       wrapper.style.alignItems = "center";
@@ -1230,7 +1230,7 @@ export class PptxViewer extends EventTarget {
       wrapper.style.border = "2px dashed #ff6b6b";
       wrapper.style.color = "#cc0000";
       wrapper.style.fontSize = "14px";
-      wrapper.textContent = `Slide ${this.currentSlide + 1}: Render Error - ${e instanceof Error ? e.message : String(e)}`;
+      wrapper.textContent = `Slide ${this.currentSlide + 1}: Render Error - ${err instanceof Error ? err.message : String(err)}`;
     }
 
     this.container.appendChild(wrapper);

@@ -71,10 +71,10 @@ import {
   applyDefaultTextColors,
   applyLegendGridMargins,
   applyNiceAxisRange,
-  type ChartPixelSize,
   extractChartDefaultFontSize,
   niceAxisInterval,
   niceAxisMax,
+  type ChartPixelSize,
 } from "./chart/post-process";
 import { parseExplosion, parseSeries } from "./chart/series";
 import { markerSizeToPx } from "./chart/style";
@@ -2653,8 +2653,8 @@ function initChart(
       }
     });
     ro.observe(container);
-  } catch (e) {
-    console.warn("Failed to initialize ECharts:", e);
+  } catch (err) {
+    console.warn("Failed to initialize ECharts:", err);
     container.style.display = "flex";
     container.style.alignItems = "center";
     container.style.justifyContent = "center";

@@ -183,9 +183,9 @@ async function applyBatch(presentation: PresentationData, op: BatchOperation): P
     for (const subOp of op.operations) {
       results.push(await applyEdit(presentation, subOp));
     }
-  } catch (error) {
+  } catch (err) {
     for (const result of results.reverse()) result.undo();
-    throw error;
+    throw err;
   }
 
   const affected = new Set<string>();
