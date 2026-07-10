@@ -4,8 +4,8 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip-parser";
-import { renderSlide } from "../../renderer/slide-renderer";
+import { parseZip } from "../../ooxml/zip";
+import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 async function renderShapes(shapesXml: string): Promise<HTMLElement> {

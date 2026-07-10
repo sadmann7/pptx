@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { parseLayout } from "../../model/layout";
 import { parseMaster } from "../../model/master";
-import type { BaseNodeData } from "../../model/nodes/base-node";
+import type { BaseNodeData } from "../../model/nodes/base";
 import { buildPresentation, resolveNodePlaceholderInheritance } from "../../model/presentation";
 import { parseTheme } from "../../model/theme";
-import { parseXml } from "../../ooxml/xml-parser";
-import { parseZip } from "../../ooxml/zip-parser";
-import { renderSlide } from "../../renderer/slide-renderer";
+import { parseXml } from "../../ooxml/xml";
+import { parseZip } from "../../ooxml/zip";
+import { renderSlide } from "../../renderer/slide";
 import { buildCustomPptx, CustomPptxOptions } from "../fixtures/fixture-extras";
 
 const A_NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';

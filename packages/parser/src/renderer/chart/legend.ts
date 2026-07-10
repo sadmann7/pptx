@@ -1,8 +1,8 @@
 import type * as echarts from "echarts";
 
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
-import { parseOoxmlBoolElement } from "./bool-helpers";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
+import { parseOoxmlBoolElement } from "./boolean";
 import { numToPct } from "./layout";
 import { extractTxPrStyle } from "./text";
 import {
@@ -10,7 +10,7 @@ import {
   EXPLICIT_FONT_SIZE,
   hasExplicitFontSize,
   type LegendInfo,
-} from "./types";
+} from "./type";
 
 type LegendDataItem =
   | string

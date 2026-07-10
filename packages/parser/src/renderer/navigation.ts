@@ -1,5 +1,5 @@
-import { isExternalTargetMode, type RelEntry, resolveRelTarget } from "../ooxml/rel-parser";
-import type { RenderContext } from "./render-context";
+import { isExternalTargetMode, type RelEntry, resolveRelTarget } from "../ooxml/rel";
+import type { RenderContext } from "./context";
 
 function dirname(path: string): string {
   const normalized = path.replace(/\\/g, "/");

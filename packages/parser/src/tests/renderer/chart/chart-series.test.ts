@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { parseExplosion, parseSeries } from "../../../renderer/chart/series";
-import type { RenderContext } from "../../../renderer/render-context";
+import type { RenderContext } from "../../../renderer/context";
 import { parseChartFragment, createChartTestContext, seriesXml } from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { normalizePreviewInput, PptxViewer } from "../../pptx-viewer";
+import { normalizePreviewInput, PptxViewer } from "../../viewer";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 

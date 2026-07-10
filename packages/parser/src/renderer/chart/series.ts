@@ -1,6 +1,6 @@
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
-import { parseOoxmlBoolElement } from "./bool-helpers";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
+import { parseOoxmlBoolElement } from "./boolean";
 import {
   extractFormatCode,
   extractNumericValues,
@@ -14,7 +14,7 @@ import {
   extractSeriesLineWidth,
   markerSizeToPx,
 } from "./style";
-import type { SeriesData } from "./types";
+import type { SeriesData } from "./type";
 
 function extractSeriesName(txNode: SafeXmlNode): string {
   const strRef = txNode.child("strRef");

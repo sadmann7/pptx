@@ -8,7 +8,7 @@ import {
   extractTxPrStyle,
   getChartThemeFontFamily,
 } from "../../../renderer/chart/text";
-import type { RenderContext } from "../../../renderer/render-context";
+import type { RenderContext } from "../../../renderer/context";
 import { parseChartFragment, createChartTestContext } from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;

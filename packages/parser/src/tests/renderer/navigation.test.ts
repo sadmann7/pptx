@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import type { RenderContext } from "../../renderer/context";
 import {
   resolveSlideJumpIndex,
   resolveSlideNavigationIndex,
   slideJumpTitle,
 } from "../../renderer/navigation";
-import type { RenderContext } from "../../renderer/render-context";
 
 /** Minimal structural RenderContext: navigation only reads slide + presentation.slides. */
 function ctxAt(currentIndex: number, slideCount = 4): RenderContext {

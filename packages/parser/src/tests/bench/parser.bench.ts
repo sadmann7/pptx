@@ -23,9 +23,9 @@ import {
 } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
 import { buildTextIndex, searchText } from "../../model/text-search";
-import type { PptxFiles } from "../../ooxml/zip-parser";
-import { parseZip } from "../../ooxml/zip-parser";
-import { renderSlide } from "../../renderer/slide-renderer";
+import type { PptxFiles } from "../../ooxml/zip";
+import { parseZip } from "../../ooxml/zip";
+import { renderSlide } from "../../renderer/slide";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
 interface Workload {

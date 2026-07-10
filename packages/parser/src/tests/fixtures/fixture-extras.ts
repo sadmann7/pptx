@@ -47,7 +47,7 @@ function contentTypesFor(slideCount: number): string {
   return (
     XML_DECL +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="rel" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 <Default Extension="xml" ContentType="application/xml"/>
 <Default Extension="png" ContentType="image/png"/>
 <Default Extension="fntdata" ContentType="application/x-fontdata"/>

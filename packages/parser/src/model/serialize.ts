@@ -3,17 +3,17 @@
  * Strips all SafeXmlNode references and re-parses group children.
  */
 
-import type { RelEntry } from "../ooxml/rel-parser";
-import { SafeXmlNode } from "../ooxml/xml-parser";
+import type { RelEntry } from "../ooxml/rel";
+import { SafeXmlNode } from "../ooxml/xml";
 import type { LayoutData } from "./layout";
 import type { MasterData } from "./master";
-import { BaseNodeData } from "./nodes/base-node";
-import { ChartNodeData } from "./nodes/chart-node";
-import { GroupNodeData } from "./nodes/group-node";
-import { parseRenderableChild } from "./nodes/node-parser";
-import { PicNodeData } from "./nodes/picture-node";
-import { ShapeNodeData, TextBody } from "./nodes/shape-node";
-import { TableCell, TableNodeData, TableRow } from "./nodes/table-node";
+import { BaseNodeData } from "./nodes/base";
+import { ChartNodeData } from "./nodes/chart";
+import { GroupNodeData } from "./nodes/group";
+import { parseRenderableChild } from "./nodes/parser";
+import { PicNodeData } from "./nodes/picture";
+import { ShapeNodeData, TextBody } from "./nodes/shape";
+import { TableCell, TableNodeData, TableRow } from "./nodes/table";
 import {
   materializeSlideNodes,
   PresentationData,

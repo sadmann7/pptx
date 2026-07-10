@@ -9,9 +9,9 @@
 import JSZip from "jszip";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseXml, SafeXmlNode } from "../../ooxml/xml-parser";
-import { parseZip } from "../../ooxml/zip-parser";
-import { createRenderContext, RenderContext } from "../../renderer/render-context";
+import { parseXml, SafeXmlNode } from "../../ooxml/xml";
+import { parseZip } from "../../ooxml/zip";
+import { createRenderContext, RenderContext } from "../../renderer/context";
 import { buildPptxWithShapes } from "./minimal-pptx";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';

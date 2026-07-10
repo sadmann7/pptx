@@ -5,14 +5,14 @@
 
 import type { MediaResolver } from "../media/resolve";
 import type { PptxPackage } from "../ooxml/package";
-import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel-parser";
-import { emuToPx } from "../ooxml/units";
-import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
-import { PptxFiles } from "../ooxml/zip-parser";
+import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
+import { emuToPx } from "../ooxml/unit";
+import { parseXml, SafeXmlNode } from "../ooxml/xml";
+import { PptxFiles } from "../ooxml/zip";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
 import { MasterData, parseMaster } from "./master";
-import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base-node";
-import type { GroupNodeData } from "./nodes/group-node";
+import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base";
+import type { GroupNodeData } from "./nodes/group";
 import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
 import { parseTheme, ThemeData } from "./theme";
 

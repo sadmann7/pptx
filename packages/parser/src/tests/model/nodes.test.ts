@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import type { GroupNodeData } from "../../model/nodes/group-node";
-import type { PicNodeData } from "../../model/nodes/picture-node";
+import type { GroupNodeData } from "../../model/nodes/group";
+import type { PicNodeData } from "../../model/nodes/picture";
 import type { PresentationData } from "../../model/presentation";
 import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip-parser";
-import { renderSlide } from "../../renderer/slide-renderer";
+import { parseZip } from "../../ooxml/zip";
+import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const GROUPED_SHAPES = `<p:grpSp>

@@ -14,7 +14,7 @@
 
 import JSZip from "jszip";
 
-import { SafeXmlNode } from "./xml-parser";
+import { SafeXmlNode } from "./xml";
 
 const DEFAULT_XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 

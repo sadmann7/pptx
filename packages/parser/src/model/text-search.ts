@@ -1,12 +1,12 @@
-import type { RelEntry } from "../ooxml/rel-parser";
-import type { SafeXmlNode } from "../ooxml/xml-parser";
+import type { RelEntry } from "../ooxml/rel";
+import type { SafeXmlNode } from "../ooxml/xml";
 import type { LayoutData } from "./layout";
 import type { MasterData } from "./master";
-import type { BaseNodeData, NodeType, Position, Size } from "./nodes/base-node";
-import type { GroupNodeData } from "./nodes/group-node";
-import { isPlaceholderNode, parseRenderableChild } from "./nodes/node-parser";
-import type { ShapeNodeData, TextBody } from "./nodes/shape-node";
-import type { TableCell, TableNodeData } from "./nodes/table-node";
+import type { BaseNodeData, NodeType, Position, Size } from "./nodes/base";
+import type { GroupNodeData } from "./nodes/group";
+import { isPlaceholderNode, parseRenderableChild } from "./nodes/parser";
+import type { ShapeNodeData, TextBody } from "./nodes/shape";
+import type { TableCell, TableNodeData } from "./nodes/table";
 import {
   materializeSlideNodes,
   type PresentationData,

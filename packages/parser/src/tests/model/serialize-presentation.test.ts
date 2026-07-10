@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
-import { parseZip } from "../../ooxml/zip-parser";
+import { parseZip } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const SHAPES = `<p:sp>

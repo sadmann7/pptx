@@ -5,8 +5,8 @@
  * against in-memory fixtures produced by `buildPptxWithShapes` — no mocks.
  */
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip-parser";
-import { renderSlide, type SlideRendererOptions } from "../../renderer/slide-renderer";
+import { parseZip } from "../../ooxml/zip";
+import { renderSlide, type SlideRendererOptions } from "../../renderer/slide";
 import { buildPptxWithShapes } from "./minimal-pptx";
 
 /** Render arbitrary spTree shapes XML through the full pipeline. */

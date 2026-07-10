@@ -1,11 +1,11 @@
-import { parseOoxmlBool } from "../../ooxml/booleans";
-import { emuToPx } from "../../ooxml/units";
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { cssFontFamilyStack, resolveThemeFontStack } from "../font-resolver";
-import { RenderContext } from "../render-context";
-import { resolveColor } from "../style-resolver";
+import { parseOoxmlBool } from "../../ooxml/boolean";
+import { emuToPx } from "../../ooxml/unit";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
+import { cssFontFamilyStack, resolveThemeFontStack } from "../font";
+import { resolveColor } from "../style";
 import { resolveColorToHex } from "./style";
-import { type ChartTextStyle, EXPLICIT_FONT_SIZE } from "./types";
+import { type ChartTextStyle, EXPLICIT_FONT_SIZE } from "./type";
 
 type EChartsTextStyle = ChartTextStyle & {
   fontWeight?: "normal" | "bold" | "bolder" | "lighter" | number;

@@ -1,7 +1,7 @@
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
 import { resolveColorToHex } from "./style";
-import { CHART_ACCENT_KEYS } from "./types";
+import { CHART_ACCENT_KEYS } from "./type";
 
 function parseChartColorMapOverride(chartXml: SafeXmlNode): Map<string, string> | undefined {
   const clrMapOvr = chartXml.child("clrMapOvr");

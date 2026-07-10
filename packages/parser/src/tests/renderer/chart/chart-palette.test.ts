@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { parseXml } from "../../../ooxml/xml-parser";
+import { parseXml } from "../../../ooxml/xml";
 import { extractBackgroundColors, extractChartFrameStyle } from "../../../renderer/chart/frame";
 import {
   buildChartPalette,
@@ -8,7 +8,7 @@ import {
   getVaryColorPointPalette,
   parseChartStyleId,
 } from "../../../renderer/chart/palette";
-import type { RenderContext } from "../../../renderer/render-context";
+import type { RenderContext } from "../../../renderer/context";
 import {
   parseChartFragment,
   chartSpaceXml,

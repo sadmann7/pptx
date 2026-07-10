@@ -3,12 +3,12 @@
  * with typed node objects for each shape on the slide.
  */
 
-import { parseOoxmlBool } from "../ooxml/booleans";
-import { RelEntry } from "../ooxml/rel-parser";
-import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
-import { parseRenderableChild, type RenderableNode } from "./nodes/node-parser";
+import { parseOoxmlBool } from "../ooxml/boolean";
+import { RelEntry } from "../ooxml/rel";
+import { parseXml, SafeXmlNode } from "../ooxml/xml";
+import { parseRenderableChild, type RenderableNode } from "./nodes/parser";
 
-export { parseOleFrameAsPicture } from "./nodes/node-parser";
+export { parseOleFrameAsPicture } from "./nodes/parser";
 
 export type SlideNode = RenderableNode;
 

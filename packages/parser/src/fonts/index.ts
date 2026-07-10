@@ -6,7 +6,7 @@
  * inject embedded fonts — e.g. via a dynamic `import("@diceui/pptx-parser/fonts")`.
  */
 
-export { decodeEmbeddedFont } from "./font-decode";
-export { deobfuscateFont } from "./font-deobfuscate";
-export { collectPriorityTypefaces, injectEmbeddedFonts } from "./font-injector";
-export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./font-injector";
+export { decodeEmbeddedFont } from "./decode";
+export { deobfuscateFont } from "./deobfuscate";
+export { collectPriorityTypefaces, injectEmbeddedFonts } from "./injector";
+export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./injector";

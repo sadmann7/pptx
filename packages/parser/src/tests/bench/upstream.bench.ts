@@ -27,7 +27,7 @@ import {
 import {
   parseZip as ourParseZip,
   parseZipLazyMedia as ourParseZipLazyMedia,
-} from "../../ooxml/zip-parser";
+} from "../../ooxml/zip";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
 const mediumBuffer = await generateDeck(DECK_SPECS.medium);
