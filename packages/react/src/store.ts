@@ -130,9 +130,9 @@ export interface Store {
    * try {
    *   const presentation = await store.load(file);
    *   console.log("slides:", presentation.slides.length);
-   * } catch (err) {
-   *   if (err instanceof DOMException && err.name === "AbortError") return;
-   *   console.error(err);
+   * } catch (error) {
+   *   if (error instanceof DOMException && err.name === "AbortError") return;
+   *   console.error(error);
    * }
    * ```
    */
@@ -492,7 +492,7 @@ export function createStore(): Store {
 
       // Decode embedded fonts while still "loading" and wait for all of them,
       // so no font can swap in after slides are visible (no FOUT). The font
-      // pipeline is a lazily imported chunk — decks without embedded fonts
+      // pipeline is a lazily imported chunk; decks without embedded fonts
       // (or embedFonts: false) never fetch it.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
         const { collectPriorityTypefaces, injectEmbeddedFonts } =
@@ -532,12 +532,12 @@ export function createStore(): Store {
       });
 
       return presentation;
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      const error = err instanceof Error ? err : new Error(String(err));
-      setState({ status: "error", error });
-      throw error;
+      const typedError = error instanceof Error ? error : new Error(String(error));
+      setState({ status: "error", error: typedError });
+      throw typedError;
     }
   }
 

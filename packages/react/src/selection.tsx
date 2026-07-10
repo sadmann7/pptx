@@ -35,7 +35,7 @@ const HANDLE_CURSORS: Record<HandleDirection, string> = {
   w: "ew-resize",
 };
 
-// Internal discriminated union — not part of the public API.
+// Internal discriminated union: not part of the public API.
 type InternalState =
   | { mode: "idle" }
   | { mode: "selected"; nodeIds: string[] }
@@ -162,7 +162,7 @@ function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   ) as HTMLElement[];
 
   // After destructive edits the paragraph divs may be gone, leaving run
-  // spans (or bare text) directly in the container — treat the container
+  // spans (or bare text) directly in the container; treat the container
   // itself as a single implicit paragraph in that case.
   const paraDivs = children.filter((el) => el.dataset.pptxR === undefined);
   const effectiveDivs =
@@ -300,7 +300,7 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Shift/Ctrl+click toggles shapes in and out of the selection.
  * - Drag on empty canvas → marquee-select fully enclosed shapes.
  * - Ctrl/Cmd+A selects every shape on the slide.
- * - Arrow keys nudge, Delete removes — applied to the whole selection.
+ * - Arrow keys nudge, Delete removes: applied to the whole selection.
  */
 const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
   { render, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
@@ -364,7 +364,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   function textContainerOf(shapeEl: HTMLElement): HTMLElement | null {
     // Empty placeholders also render a prompt overlay ("Click to add text")
-    // whose paragraphs carry data-pptx-p; skip it — only the real text
+    // whose paragraphs carry data-pptx-p; skip it: only the real text
     // container is editable.
     for (const para of Array.from(shapeEl.querySelectorAll<HTMLElement>("[data-pptx-p]"))) {
       if (para.closest("[data-pptx-placeholder-prompt]")) continue;
@@ -458,7 +458,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       textElHtml: textEl?.outerHTML.slice(0, 200),
     });
     if (!textEl) {
-      // No editable text container (e.g. decorative shape) — fall back to
+      // No editable text container (e.g. decorative shape): fall back to
       // selection instead of leaving the previous mode (move) active.
       setState({ mode: "selected", nodeIds: [nodeId] });
       return;
@@ -486,7 +486,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     // Hide the placeholder prompt overlay ("Click to add text") while
-    // editing — it paints above the real text container and would cover
+    // editing; it paints above the real text container and would cover
     // freshly typed text. The commit re-render restores or drops it.
     const prompt = shapeEl ? placeholderPromptOf(shapeEl) : null;
     if (prompt) prompt.style.display = "none";
@@ -542,7 +542,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   /**
    * Place the caret inside the last styled run span of `scope`. Typed text
    * must land inside a `[data-pptx-r]` span to inherit the run's font and
-   * color — a bare text node at the container/paragraph level renders with
+   * color: a bare text node at the container/paragraph level renders with
    * unstyled defaults (e.g. black text on a dark slide → invisible typing).
    * Returns false when the scope has no run spans.
    */
@@ -558,7 +558,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       target = document.createTextNode("");
       last.appendChild(target);
     }
-    // Note: Chrome cannot keep the caret inside an empty text node — the
+    // Note: Chrome cannot keep the caret inside an empty text node; the
     // first keystroke would escape into the parent div and lose the run's
     // styling. The beforeinput interceptor (onDocBeforeInput) handles that
     // case by inserting the typed text into the span itself.
@@ -585,7 +585,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * Empty paragraphs are rendered with a placeholder `<br>` to preserve their
    * line height; once real text is inserted the `<br>` would push it onto a
    * second line. Remove it, but only when the paragraph holds nothing except
-   * the just-inserted text — `<br>`s in paragraphs with other content are
+   * the just-inserted text; `<br>`s in paragraphs with other content are
    * genuine line breaks.
    */
   function removePlaceholderBreak(from: Node, insertedText: string): void {
@@ -602,7 +602,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * Intercept text insertion when the browser would drop it outside a styled
    * run span. Chrome cannot keep the caret inside an empty text node (the
    * keystroke escapes into the parent div), and destructive edits like
-   * select-all + delete remove the run spans entirely — in both cases typed
+   * select-all + delete remove the run spans entirely; in both cases typed
    * text would render with unstyled defaults (e.g. near-white → invisible).
    * Instead of the default insertion we place the text into the run span at
    * the caret, or into a clone of the span captured on entering text mode.
@@ -634,7 +634,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         textNode.insertData(offset, data);
         setCaret(textNode, offset + data.length);
       } else {
-        // Empty span — append a text node so the text stays inside.
+        // Empty span: append a text node so the text stays inside.
         let textNode = runSpan.lastChild;
         if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
           textNode = document.createTextNode("");
@@ -649,7 +649,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     // Caret is on a bare div (run spans destroyed, or the shape never had
-    // any — e.g. a plain rectangle you just started typing into): wrap the
+    // any, e.g. a plain rectangle you just started typing into: wrap the
     // insertion in a clone of the template span when one was captured, else
     // a plain span that inherits the paragraph's styling. Read-back emits it
     // without a sourceRun and the edit falls back to paragraph defaults.
@@ -892,7 +892,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // Clicked a different shape: exit text and start interacting with it
         // in the same gesture (PowerPoint: you can immediately drag another
         // shape while editing). preventDefault stops the browser's default
-        // mousedown focus change from blurring the overlay — without it,
+        // mousedown focus change from blurring the overlay; without it,
         // typing right after this click would go nowhere.
         e.preventDefault();
         commitTextEdits(cur);
@@ -915,7 +915,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         doExitTextMode(cur, null);
       }
       // Else clicked inside the same shape but outside the text container
-      // (e.g. shape padding area) — stay in text mode.
+      // (e.g. shape padding area); stay in text mode.
     }
 
     function onDocKeyDown(e: KeyboardEvent): void {
@@ -1031,7 +1031,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
     // Prevent the browser's default mousedown behavior. Without this, a drag
     // silently extends a text selection across the slide, and the NEXT press
-    // inside that selection starts a native drag-and-drop of the selection —
+    // inside that selection starts a native drag-and-drop of the selection;
     // the pointer stream is cancelled (not-allowed cursor, no pointerup) and
     // the gesture goes dead.
     event.preventDefault();
@@ -1064,7 +1064,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     // Pressing a shape that is already part of the selection drags the whole
     // selection; anything else starts a fresh single-shape gesture. On
-    // pointer-up we check if the user actually dragged — if not (a click),
+    // pointer-up we check if the user actually dragged; if not (a click),
     // text shapes enter text mode and non-text shapes get selected.
     const nodeIds = selectedIds.includes(nodeId) ? selectedIds : [nodeId];
     setState({
@@ -1132,7 +1132,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
-    // No button held — not a drag. Guard against stale-state moves that can
+    // No button held: not a drag. Guard against stale-state moves that can
     // occur between setState({ mode: "selected" }) in onPointerUp and the
     // React re-render that creates a fresh closure.
     if (event.buttons === 0) return;
@@ -1484,7 +1484,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   );
 });
 
-/** True when a key event originates in an element with its own undo stack —
+/** True when a key event originates in an element with its own undo stack;
  * our text-mode contentEditable or any host-app input. Their Ctrl+Z must
  * reach the browser's native undo, not the presentation history. */
 function isNativeUndoTarget(target: EventTarget | null): boolean {
@@ -1502,7 +1502,7 @@ function isNativeUndoTarget(target: EventTarget | null): boolean {
  * slide changes, React unmounts and remounts `SelectionImpl`, naturally
  * resetting its local state (selection, text-editing refs). Shape IDs are
  * reused across slides, so a stale selection would otherwise bleed onto the
- * new slide — the key swap is the React-idiomatic way to scope local state
+ * new slide; the key swap is the React-idiomatic way to scope local state
  * to the current context without effect-driven resets.
  *
  * Undo/redo shortcuts are handled here, at document level, rather than in

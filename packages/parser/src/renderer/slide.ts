@@ -449,8 +449,8 @@ export function renderSlide(
     // Render background
     try {
       renderBackground(ctx, container);
-    } catch (err) {
-      options?.onNodeError?.("__background__", err);
+    } catch (error) {
+      options?.onNodeError?.("__background__", error);
     }
 
     // --- Render master template shapes (behind layout and slide) ---
@@ -512,8 +512,8 @@ export function renderSlide(
         // template shapes are not part of the slide's editable content.
         el.setAttribute("data-pptx-node-id", node.id);
         container.appendChild(el);
-      } catch (err) {
-        options?.onNodeError?.(node.id, err);
+      } catch (error) {
+        options?.onNodeError?.(node.id, error);
         const placeholder = createErrorPlaceholder(node);
         placeholder.setAttribute("data-pptx-node-id", node.id);
         container.appendChild(placeholder);

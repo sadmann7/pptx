@@ -44,8 +44,8 @@ export async function GET(request: Request) {
         fonts,
       },
     );
-  } catch (err) {
-    console.error("Error generating OG image:", err);
+  } catch (error) {
+    console.error("Error generating OG image:", error);
     return new Response("Failed to generate OG image", { status: 500 });
   }
 }

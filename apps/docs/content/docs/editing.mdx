@@ -27,7 +27,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 
 ## Handling edit events
 
-Each edit callback receives `(status, error?)` for undo/redo — where `status` is `"success" | "empty"` — and `(nodeId, error?)` for node events. Check `error` to show a toast or log failures:
+Each edit callback receives `(status, error?)` for undo/redo (where `status` is `"success" | "empty"`) and `(nodeId, error?)` for node events. Check `error` to show a toast or log failures:
 
 ```tsx
 <Presentation.Selection

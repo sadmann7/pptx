@@ -1,4 +1,4 @@
-// Types for AutoTypeTable — exposes component-specific props only,
+﻿// Types for AutoTypeTable: exposes component-specific props only,
 // with inherited HTML element props stripped out.
 //
 // Usage in MDX:

@@ -127,8 +127,8 @@ self.onmessage = async (e) => {
     } finally {
       doc.destroy();
     }
-  } catch (err) {
-    self.postMessage({ id, error: String(err) });
+  } catch (error) {
+    self.postMessage({ id, error: String(error) });
   }
 };
 `;

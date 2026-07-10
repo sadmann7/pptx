@@ -2654,8 +2654,8 @@ function initChart(
       }
     });
     ro.observe(container);
-  } catch (err) {
-    console.warn("Failed to initialize ECharts:", err);
+  } catch (error) {
+    console.warn("Failed to initialize ECharts:", error);
     container.style.display = "flex";
     container.style.alignItems = "center";
     container.style.justifyContent = "center";

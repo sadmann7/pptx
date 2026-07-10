@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
  *
  * The keyboard-navigation model (tab-stop management, focus-intent mapping,
@@ -183,7 +183,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  * Renders nothing until the presentation is `"ready"`.
  *
  * All slide buttons are mounted immediately (cheap empty containers).
- * Thumbnail content is rendered lazily — each preview uses an
+ * Thumbnail content is rendered lazily; each preview uses an
  * IntersectionObserver with a generous `rootMargin` so content fills in
  * before the element scrolls into view. For normal scrolling the transition
  * is invisible; rapid drag may briefly reveal a pending placeholder.
@@ -591,7 +591,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * Uses an IntersectionObserver with a 200 px rootMargin so `renderThumbnail()`
  * is called slightly before the element scrolls into view. For normal
  * scrolling the thumbnail is always ready before it's visible. Rapid
- * scrollbar drag may briefly show a pending placeholder — the same
+ * scrollbar drag may briefly show a pending placeholder; the same
  * behaviour as the reference vanilla implementation.
  *
  * Rendered DOM is kept in the list's handle cache: scrolling back re-attaches
@@ -740,7 +740,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     React.useEffect(() => {
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
-      if (!slideHandleRef.current) return; // not visible — IO handles it
+      if (!slideHandleRef.current) return; // not visible; IO handles it
 
       const oldHandle = slideHandleRef.current;
       oldHandle.element.remove();
