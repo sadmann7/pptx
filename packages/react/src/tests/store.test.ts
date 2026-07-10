@@ -193,6 +193,16 @@ describe("zoom", () => {
     store.fitTo(660, 380, 10);
     expect(store.getState().zoom).toBeCloseTo(0.5, 9);
   });
+
+  it("fitTo supports per-side padding objects", async () => {
+    const store = await loadedStore();
+    // 1280x720 slide; horizontal padding is the limiting axis.
+    store.fitTo(680, 400, { left: 80, right: 80 });
+    expect(store.getState().zoom).toBeCloseTo(0.40625, 9);
+    // Vertical padding is the limiting axis.
+    store.fitTo(1280, 400, { top: 40, bottom: 40 });
+    expect(store.getState().zoom).toBeCloseTo(0.4444444444, 9);
+  });
 });
 
 describe("reset and subscriptions", () => {

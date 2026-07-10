@@ -14,6 +14,28 @@ import {
   writePptx,
 } from "@diceui/pptx-parser";
 
+export type SidePadding = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
+/** Uniform padding or per-side values, like Floating UI's `Padding` / Radix `collisionPadding`. */
+export type AutoFitPadding = number | Partial<SidePadding>;
+
+export function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
+  if (typeof padding === "number") {
+    return { top: padding, right: padding, bottom: padding, left: padding };
+  }
+  return {
+    top: padding?.top ?? 0,
+    right: padding?.right ?? 0,
+    bottom: padding?.bottom ?? 0,
+    left: padding?.left ?? 0,
+  };
+}
+
 const INITIAL_STATE: PresentationState = {
   status: "idle",
   presentation: null,
@@ -249,7 +271,7 @@ export interface PresentationStore {
    * store.fitTo(containerWidth, containerHeight, 32);
    * ```
    */
-  fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
+  fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
 
   /**
    * Returns the 0-based index of a slide by its stable id, or `-1` if not found.
@@ -601,11 +623,16 @@ export function createPresentationStore(): PresentationStore {
     setZoom(state.zoom - step);
   }
 
-  function fitTo(containerWidth: number, containerHeight: number, padding = 0): void {
+  function fitTo(
+    containerWidth: number,
+    containerHeight: number,
+    padding: AutoFitPadding = 0,
+  ): void {
     const { presentation } = state;
     if (!presentation) return;
-    const availW = containerWidth - padding * 2;
-    const availH = containerHeight - padding * 2;
+    const { top, right, bottom, left } = normalizePadding(padding);
+    const availW = containerWidth - left - right;
+    const availH = containerHeight - top - bottom;
     if (availW <= 0 || availH <= 0) return;
     setZoom(Math.min(availW / presentation.width, availH / presentation.height));
   }

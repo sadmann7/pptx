@@ -14,10 +14,12 @@ export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./con
 export type { ComponentRenderFn, RenderProp } from "./render";
 
 export type {
+  AutoFitPadding,
   PresentationState,
   PresentationStatus,
   PresentationStore,
   PreviewInput,
+  SidePadding,
 } from "./store";
 
 export type {

@@ -27,7 +27,7 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0 });
+    store.load(file, { defaultSlideIndex: 0, readOnly: false });
   }
 
   return (
@@ -40,7 +40,7 @@ export default function PgPage() {
       </div>
       <PresentationProvider store={store}>
         <PresentationDebug />
-        <EditToolbar store={store} />
+        <PresentationToolbar store={store} />
         <Presentation className="flex-1">
           <PresentationThumbnailList />
           <PresentationContent>
@@ -66,11 +66,6 @@ interface ThumbnailPerfDetail {
   backlog: number;
 }
 
-/**
- * Temporary instrumentation readout: the thumbnail list dispatches a
- * `pptx:thumbnail-perf` CustomEvent after each render-queue drain frame
- * (dev builds only). Shows renders completed, avg/max frame cost, backlog.
- */
 function useThumbnailPerf(): ThumbnailPerfDetail | null {
   const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
 
@@ -106,7 +101,6 @@ function ThumbnailPerfReadout() {
   );
 }
 
-/** Locate the first editable text run on the active slide. */
 function findFirstTextRun(
   presentation: PresentationData,
   slideId: string,
@@ -122,11 +116,11 @@ function findFirstTextRun(
   return null;
 }
 
-/**
- * Temporary editing testbed until the interactive editor UI exists:
- * exercises `store.edit()`, undo/redo, and `store.save()` end to end.
- */
-function EditToolbar({ store }: { store: PresentationStore }) {
+interface PresentationToolbarProps {
+  store: PresentationStore;
+}
+
+function PresentationToolbar({ store }: PresentationToolbarProps) {
   const { status } = usePresentation();
   const { slideId } = useSlide();
 

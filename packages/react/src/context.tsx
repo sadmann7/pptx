@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { PresentationData, SlideData } from "@diceui/pptx-parser";
 
-import type { PresentationState, PresentationStore } from "./store";
+import type { AutoFitPadding, PresentationState, PresentationStore } from "./store";
 import { createPresentationStore } from "./store";
 
 const SERVER_SNAPSHOT: PresentationState = {
@@ -241,9 +241,9 @@ export interface UseZoomResult {
    *
    * @param containerWidth - Available width in pixels.
    * @param containerHeight - Available height in pixels.
-   * @param padding - Padding on all sides in pixels. Defaults to `24`.
+   * @param padding - Uniform padding or per-side values in pixels.
    */
-  fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
+  fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
 }
 
 /**
@@ -261,6 +261,9 @@ export function useZoom(): UseZoomResult {
     setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
-    fitTo: React.useCallback((w: number, h: number, p?: number) => store.fitTo(w, h, p), [store]),
+    fitTo: React.useCallback(
+      (w: number, h: number, padding?: AutoFitPadding) => store.fitTo(w, h, padding),
+      [store],
+    ),
   };
 }
