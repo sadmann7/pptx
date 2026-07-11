@@ -1,7 +1,7 @@
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
 import { extractChartLineStyle, resolveColorToHex } from "./style";
-import type { ChartFrameStyle } from "./types";
+import type { ChartFrameStyle } from "./type";
 
 export function extractBackgroundColors(
   chartXml: SafeXmlNode,

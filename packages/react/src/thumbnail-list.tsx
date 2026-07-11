@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
  *
  * The keyboard-navigation model (tab-stop management, focus-intent mapping,
@@ -13,41 +13,38 @@ import * as React from "react";
 import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { renderSlide } from "@diceui/pptx-parser";
 
-import { usePresentation, usePresentationStore } from "./context";
+import { TYPOGRAPHY_RESET_STYLE, VISUALLY_HIDDEN_STYLE } from "./constant";
+import {
+  usePresentation,
+  useSlideIndex,
+  useSlideRevision,
+  useStoreContext,
+  useStoreSelector,
+} from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 
-const THUMBNAIL_LIST_NAME = "PresentationThumbnailList";
-const THUMBNAIL_ITEM_NAME = "PresentationThumbnailItem";
-const THUMBNAIL_ITEM_PREVIEW_NAME = "PresentationThumbnailItemPreview";
-const THUMBNAIL_ITEM_NUMBER_NAME = "PresentationThumbnailItemNumber";
+const THUMBNAIL_LIST_NAME = "Presentation.ThumbnailList";
+const THUMBNAIL_ITEM_NAME = "Presentation.ThumbnailItem";
+const THUMBNAIL_ITEM_PREVIEW_NAME = "Presentation.ThumbnailItemPreview";
+const THUMBNAIL_ITEM_NUMBER_NAME = "Presentation.ThumbnailItemNumber";
 
 /**
  * IntersectionObserver rootMargin applied when observing each preview frame.
  * Pre-renders thumbnails this many px before they scroll into view so normal
  * scrolling never reveals a pending placeholder.
  */
-const IO_ROOT_MARGIN = "200px 0px";
+const INTERSECTION_OBSERVER_ROOT_MARGIN = "200px 0px";
 
-const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  padding: "0",
-  margin: "-1px",
-  overflow: "hidden",
-  clipPath: "inset(50%)",
-  whiteSpace: "nowrap",
-  borderWidth: 0,
-};
-
-type FocusIntent = "first" | "last" | "prev" | "next";
-
-/** Cached rendered thumbnail plus the edit revision it was rendered at. */
+/**
+ * Cached rendered thumbnail plus the edit revision it was rendered at.
+ */
 interface CachedThumbnail {
-  handle: SlideHandle;
+  slideHandle: SlideHandle;
   revision: number;
 }
+
+type FocusIntent = "first" | "last" | "prev" | "next";
 
 const MAP_KEY_TO_INTENT: Record<string, FocusIntent> = {
   ArrowUp: "prev",
@@ -186,7 +183,7 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
  * Renders nothing until the presentation is `"ready"`.
  *
  * All slide buttons are mounted immediately (cheap empty containers).
- * Thumbnail content is rendered lazily — each preview uses an
+ * Thumbnail content is rendered lazily; each preview uses an
  * IntersectionObserver with a generous `rootMargin` so content fills in
  * before the element scrolls into view. For normal scrolling the transition
  * is invisible; rapid drag may briefly reveal a pending placeholder.
@@ -197,15 +194,15 @@ export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "c
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList({ render, children, loop = false, ...thumbnailListProps }, forwardedRef) {
     const { presentation, status } = usePresentation();
-    const store = usePresentationStore(THUMBNAIL_LIST_NAME);
+    const store = useStoreContext(THUMBNAIL_LIST_NAME);
 
     const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
     const isClickFocusRef = React.useRef(false);
+    const autoFocusedPresentationRef = React.useRef<object | null>(null);
     const loopRef = React.useRef(loop);
     loopRef.current = loop;
 
-    // --- Roving tab stop (mini external store) ---
-    // A ref + listener set, NOT React state: state would flow through the
+    // A ref and listener set, not react state: state would flow through the
     // context value and re-render every memoized item on each focus change,
     // when only two items (the old and new tab stop) actually need to update.
     const currentTabStopIdRef = React.useRef<string | null>(null);
@@ -234,55 +231,57 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       for (const callback of tabStopListenersRef.current) callback();
     }, []);
 
-    // --- Shared caches, keyed by presentation identity ---
+    // Shared caches, keyed by presentation identity
     const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
     if (!mediaCacheRef.current || mediaCacheRef.current.key !== presentation) {
       mediaCacheRef.current = { key: presentation ?? {}, cache: new Map() };
     }
     const mediaUrlCache = mediaCacheRef.current.cache;
 
-    const handleCacheRef = React.useRef<{
+    const slideHandleCacheRef = React.useRef<{
       key: object;
       cache: Map<string, CachedThumbnail>;
     } | null>(null);
-    if (!handleCacheRef.current || handleCacheRef.current.key !== presentation) {
-      handleCacheRef.current = { key: presentation ?? {}, cache: new Map() };
+    if (!slideHandleCacheRef.current || slideHandleCacheRef.current.key !== presentation) {
+      slideHandleCacheRef.current = { key: presentation ?? {}, cache: new Map() };
     }
-    const slideHandleCache = handleCacheRef.current.cache;
+    const slideHandleCache = slideHandleCacheRef.current.cache;
 
     React.useEffect(() => {
-      const handles = slideHandleCache;
+      const slideHandles = slideHandleCache;
       const media = mediaUrlCache;
       return () => {
-        for (const entry of handles.values()) entry.handle.dispose();
-        handles.clear();
+        for (const entry of slideHandles.values()) entry.slideHandle.dispose();
+        slideHandles.clear();
         for (const url of media.values()) URL.revokeObjectURL(url);
         media.clear();
       };
     }, [slideHandleCache, mediaUrlCache]);
 
-    // --- Shared ResizeObserver ---
+    // Shared ResizeObserver used to observe the size of the thumbnail list
     const resizeCallbacksRef = React.useRef(new Map<Element, (width: number) => void>());
-    const sharedRORef = React.useRef<ResizeObserver | null>(null);
-    if (!sharedRORef.current && typeof ResizeObserver !== "undefined") {
-      sharedRORef.current = new ResizeObserver((entries) => {
+    const sharedResizeObserverRef = React.useRef<ResizeObserver | null>(null);
+    if (!sharedResizeObserverRef.current && typeof ResizeObserver !== "undefined") {
+      sharedResizeObserverRef.current = new ResizeObserver((entries) => {
         for (const entry of entries) {
           resizeCallbacksRef.current.get(entry.target)?.(entry.contentRect.width);
         }
       });
     }
 
-    const observeResize = React.useCallback((el: Element, cb: (width: number) => void) => {
-      resizeCallbacksRef.current.set(el, cb);
-      sharedRORef.current?.observe(el);
-      return () => {
-        resizeCallbacksRef.current.delete(el);
-        sharedRORef.current?.unobserve(el);
-      };
-    }, []);
+    const observeResize = React.useCallback(
+      (element: Element, callback: (width: number) => void) => {
+        resizeCallbacksRef.current.set(element, callback);
+        sharedResizeObserverRef.current?.observe(element);
+        return () => {
+          resizeCallbacksRef.current.delete(element);
+          sharedResizeObserverRef.current?.unobserve(element);
+        };
+      },
+      [],
+    );
 
-    // --- Central render queue ---
-    // Batches renderThumbnail() calls that arrive simultaneously (e.g. initial
+    // Batch renderThumbnail() calls that arrive simultaneously (e.g. initial
     // viewport fills, rapid scroll) and drains them within an ~8ms per-frame
     // budget so no single commit blocks the main thread.
     const renderQueueRef = React.useRef<Array<() => void>>([]);
@@ -315,8 +314,8 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     React.useEffect(() => {
       return () => {
-        sharedRORef.current?.disconnect();
-        sharedRORef.current = null;
+        sharedResizeObserverRef.current?.disconnect();
+        sharedResizeObserverRef.current = null;
         if (drainRafRef.current !== null) {
           cancelAnimationFrame(drainRafRef.current);
           drainRafRef.current = null;
@@ -325,14 +324,9 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       };
     }, []);
 
-    const activeSlideId = React.useSyncExternalStore(
-      store.subscribe,
-      () => store.getState().activeSlideId,
-      () => null,
-    );
+    const activeSlideId = useStoreSelector(store, (s) => s.activeSlideId, null);
 
-    // Auto-focus the active (or first) thumbnail ONCE per presentation load.
-    const autoFocusedPresentationRef = React.useRef<object | null>(null);
+    // Auto-focus the active (or first) thumbnail once per presentation load.
     React.useEffect(() => {
       if (!presentation || autoFocusedPresentationRef.current === presentation) return;
       autoFocusedPresentationRef.current = presentation;
@@ -377,9 +371,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     if (status !== "ready" || !presentation) return null;
 
     const total = presentation.slides.length;
-    const activeIndex = activeSlideId
-      ? presentation.slides.findIndex((s) => s.id === activeSlideId)
-      : -1;
+    const activeIndex = activeSlideId ? store.getSlideIndex(activeSlideId) : -1;
 
     const state: ThumbnailListState = { total, activeSlideId, activeIndex };
 
@@ -446,13 +438,19 @@ export namespace ThumbnailList {
 }
 
 export interface ThumbnailItemState {
-  /** Stable id of the slide this item represents (`SlideData.id`). */
+  /**
+   * Stable id of the slide this item represents (`SlideData.id`).
+   */
   slideId: string;
 
-  /** `true` when this item's slide is the currently active slide. */
+  /**
+   * `true` when this item's slide is the currently active slide.
+   */
   isActive: boolean;
 
-  /** 0-based position of this slide in the presentation. */
+  /**
+   * 0-based position of this slide in the presentation.
+   */
   displayIndex: number;
 }
 
@@ -469,26 +467,14 @@ export const ThumbnailItem = React.memo(
     { slideId, children, render, ...thumbnailItemProps },
     forwardedRef,
   ) {
-    const store = usePresentationStore(THUMBNAIL_ITEM_NAME);
+    const store = useStoreContext(THUMBNAIL_ITEM_NAME);
     const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_NAME);
 
-    const isActive = React.useSyncExternalStore(
-      store.subscribe,
-      () => store.getState().activeSlideId === slideId,
-      () => false,
-    );
+    const isActive = useStoreSelector(store, (s) => s.activeSlideId === slideId, false);
 
-    const displayIndex = React.useSyncExternalStore(
-      store.subscribe,
-      () => store.getSlideIndex(slideId),
-      () => -1,
-    );
+    const displayIndex = useSlideIndex(store, slideId);
 
-    const setSize = React.useSyncExternalStore(
-      store.subscribe,
-      () => store.getState().presentation?.slides.length ?? 0,
-      () => 0,
-    );
+    const setSize = useStoreSelector(store, (s) => s.presentation?.slides.length ?? 0, 0);
 
     const { onItemRegister, onItemUnregister } = rovingContext;
     const registerRef = React.useCallback(
@@ -584,9 +570,14 @@ export namespace ThumbnailItem {
 }
 
 export interface ThumbnailItemPreviewState {
-  /** Stable id of the slide being rendered. */
+  /**
+   * Stable id of the slide being rendered.
+   */
   slideId: string;
-  /** CSS scale factor (container width / presentation width). `0` before measured. */
+
+  /**
+   * CSS scale factor (container width / presentation width). `0` before measured.
+   */
   scale: number;
 }
 
@@ -600,7 +591,7 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
  * Uses an IntersectionObserver with a 200 px rootMargin so `renderThumbnail()`
  * is called slightly before the element scrolls into view. For normal
  * scrolling the thumbnail is always ready before it's visible. Rapid
- * scrollbar drag may briefly show a pending placeholder — the same
+ * scrollbar drag may briefly show a pending placeholder; the same
  * behaviour as the reference vanilla implementation.
  *
  * Rendered DOM is kept in the list's handle cache: scrolling back re-attaches
@@ -612,7 +603,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
     const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_PREVIEW_NAME);
     const { presentation } = usePresentation();
-    const store = usePresentationStore(THUMBNAIL_ITEM_PREVIEW_NAME);
+    const store = useStoreContext(THUMBNAIL_ITEM_PREVIEW_NAME);
 
     const itemPreviewRef = React.useRef<HTMLDivElement>(null);
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
@@ -621,17 +612,13 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     const slideIndex = store.getSlideIndex(itemContext.slideId);
     const slide = presentation?.slides[slideIndex] ?? null;
-    const pWidth = presentation?.width ?? 1;
-    const pHeight = presentation?.height ?? 1;
+    const presentationWidth = presentation?.width ?? 1;
+    const presentationHeight = presentation?.height ?? 1;
 
     // Edit revision of this slide; a bump means the cached miniature is
     // stale. Kept in a ref so the IO effect doesn't tear down on every edit
     // (that detach→re-attach gap is what causes the thumbnail flash).
-    const revision = React.useSyncExternalStore(
-      store.subscribe,
-      () => store.getSlideRevision(itemContext.slideId),
-      () => 0,
-    );
+    const revision = useSlideRevision(store, itemContext.slideId);
     const revisionRef = React.useRef(revision);
     revisionRef.current = revision;
 
@@ -639,67 +626,62 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     const [containerWidth, setContainerWidth] = React.useState(0);
     const hasRenderPropRef = React.useRef(false);
     hasRenderPropRef.current = render != null;
-    const pWidthRef = React.useRef(pWidth);
-    pWidthRef.current = pWidth;
-    const scale = containerWidth > 0 ? containerWidth / pWidth : 0;
+    const presentationWidthRef = React.useRef(presentationWidth);
+    presentationWidthRef.current = presentationWidth;
+    const scale = containerWidth > 0 ? containerWidth / presentationWidth : 0;
 
     React.useLayoutEffect(() => {
-      const el = itemPreviewRef.current;
-      if (el && el.offsetWidth > 0) {
-        widthRef.current = el.offsetWidth;
-        if (hasRenderPropRef.current) setContainerWidth(el.offsetWidth);
+      const itemPreviewElement = itemPreviewRef.current;
+      if (itemPreviewElement && itemPreviewElement.offsetWidth > 0) {
+        widthRef.current = itemPreviewElement.offsetWidth;
+        if (hasRenderPropRef.current) setContainerWidth(itemPreviewElement.offsetWidth);
       }
     }, []);
 
     React.useEffect(() => {
-      const el = itemPreviewRef.current;
-      if (!el) return;
-      return observeResize(el, (width) => {
+      const itemPreviewElement = itemPreviewRef.current;
+      if (!itemPreviewElement) return;
+      return observeResize(itemPreviewElement, (width) => {
         widthRef.current = width;
-        const nextScale = width > 0 ? width / pWidthRef.current : 0;
+        const nextScale = width > 0 ? width / presentationWidthRef.current : 0;
         if (slideHandleRef.current && nextScale > 0)
           slideHandleRef.current.element.style.transform = `scale(${nextScale})`;
         if (hasRenderPropRef.current) setContainerWidth(width);
       });
     }, [observeResize]);
 
-    // IO-GATED RENDER MODEL.
-    //
     // The IntersectionObserver fires when this preview enters/leaves the
     // rootMargin zone (200px around the scroll container). On entry:
     //   - Cache hit  → re-attach synchronously (zero pending flash)
     //   - Cache miss → enqueue renderThumbnail() on the budgeted queue
     // On exit: detach DOM, keep handle in cache for instant re-attach.
-    //
-    // Unlike the old IO approach this does NOT use entry.boundingClientRect
-    // (which was 0 in React 18 Strict Mode during the simulated remount).
-    // We only use entry.isIntersecting, which is set correctly immediately.
     React.useEffect(() => {
-      const el = itemPreviewRef.current;
-      if (!el || !presentation || !slide) return;
+      const itemPreviewElement = itemPreviewRef.current;
+      if (!itemPreviewElement || !presentation || !slide) return;
       if (typeof IntersectionObserver === "undefined") return;
 
-      const attach = (element: HTMLDivElement, handle: SlideHandle) => {
-        if (slideHandleRef.current === handle) return; // already attached
-        const currentScale = widthRef.current > 0 ? widthRef.current / pWidthRef.current : 0;
-        if (currentScale > 0) handle.element.style.transform = `scale(${currentScale})`;
-        element.appendChild(handle.element);
-        slideHandleRef.current = handle;
+      const attach = (element: HTMLDivElement, slideHandle: SlideHandle) => {
+        if (slideHandleRef.current === slideHandle) return; // already attached
+        const currentScale =
+          widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
+        if (currentScale > 0) slideHandle.element.style.transform = `scale(${currentScale})`;
+        element.appendChild(slideHandle.element);
+        slideHandleRef.current = slideHandle;
         hasRenderedRef.current = true;
         delete element.dataset.pending;
       };
 
       const detach = (element: HTMLDivElement) => {
-        const handle = slideHandleRef.current;
+        const slideHandle = slideHandleRef.current;
         slideHandleRef.current = null;
-        handle?.element.remove();
+        slideHandle?.element.remove();
         hasRenderedRef.current = false;
         element.dataset.pending = "";
       };
 
       let cancelRender: (() => void) | null = null;
 
-      const io = new IntersectionObserver(
+      const intersectionObserver = new IntersectionObserver(
         (entries) => {
           const entry = entries[entries.length - 1]; // latest state wins
           if (!entry) return;
@@ -713,21 +695,21 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
             const cached = slideHandleCache.get(slide.id);
             if (cached && cached.revision === revisionRef.current) {
-              attach(element, cached.handle);
+              attach(element, cached.slideHandle);
             } else {
               if (cached) {
-                // Rendered under an older edit revision — discard.
-                cached.handle.dispose();
+                // Discard because it was rendered under an older edit revision.
+                cached.slideHandle.dispose();
                 slideHandleCache.delete(slide.id);
               }
               cancelRender = scheduleRender(() => {
                 cancelRender = null;
-                const el2 = itemPreviewRef.current;
-                if (!el2 || slideHandleRef.current) return;
-                const handle = renderSlide(presentation, slide, { mediaUrlCache });
-                handle.element.style.transformOrigin = "top left";
-                slideHandleCache.set(slide.id, { handle, revision: revisionRef.current });
-                attach(el2, handle);
+                const mountedElement = itemPreviewRef.current;
+                if (!mountedElement || slideHandleRef.current) return;
+                const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+                slideHandle.element.style.transformOrigin = "top left";
+                slideHandleCache.set(slide.id, { slideHandle, revision: revisionRef.current });
+                attach(mountedElement, slideHandle);
               });
             }
           } else {
@@ -736,17 +718,17 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             detach(element);
           }
         },
-        { rootMargin: IO_ROOT_MARGIN },
+        { rootMargin: INTERSECTION_OBSERVER_ROOT_MARGIN },
       );
 
-      io.observe(el);
+      intersectionObserver.observe(itemPreviewElement);
 
       return () => {
-        io.disconnect();
+        intersectionObserver.disconnect();
         cancelRender?.();
         cancelRender = null;
-        const element = itemPreviewRef.current;
-        if (element) detach(element);
+        const itemPreviewElement = itemPreviewRef.current;
+        if (itemPreviewElement) detach(itemPreviewElement);
       };
     }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender]);
 
@@ -754,11 +736,11 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     // without tearing down the IntersectionObserver (the detach→re-attach
     // gap was the cause of the thumbnail flash on every edit). Only fires
     // when the slide is currently visible/attached; off-screen slides are
-    // re-rendered on demand by the IO callback using revisionRef.
+    // re-rendered on demand by the IntersectionObserver callback using revisionRef.
     React.useEffect(() => {
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
-      if (!slideHandleRef.current) return; // not visible — IO handles it
+      if (!slideHandleRef.current) return; // not visible; IO handles it
 
       const oldHandle = slideHandleRef.current;
       oldHandle.element.remove();
@@ -766,13 +748,14 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       slideHandleRef.current = null;
       slideHandleCache.delete(slide.id);
 
-      const handle = renderSlide(presentation, slide, { mediaUrlCache });
-      handle.element.style.transformOrigin = "top left";
-      const currentScale = widthRef.current > 0 ? widthRef.current / pWidthRef.current : 0;
-      if (currentScale > 0) handle.element.style.transform = `scale(${currentScale})`;
-      element.appendChild(handle.element);
-      slideHandleRef.current = handle;
-      slideHandleCache.set(slide.id, { handle, revision });
+      const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+      slideHandle.element.style.transformOrigin = "top left";
+      const currentScale =
+        widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
+      if (currentScale > 0) slideHandle.element.style.transform = `scale(${currentScale})`;
+      element.appendChild(slideHandle.element);
+      slideHandleRef.current = slideHandle;
+      slideHandleCache.set(slide.id, { slideHandle, revision });
     }, [revision]);
 
     return renderElement(
@@ -789,17 +772,11 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             inert: true,
             style: {
               width: "100%",
-              aspectRatio: `${pWidth} / ${pHeight}`,
+              aspectRatio: `${presentationWidth} / ${presentationHeight}`,
               overflow: "hidden",
               pointerEvents: "none",
               contain: "layout style paint",
-              // Same inheritance reset as the main slide container.
-              fontSize: "initial",
-              lineHeight: "normal",
-              color: "initial",
-              fontFamily: "initial",
-              fontWeight: "normal",
-              letterSpacing: "normal",
+              ...TYPOGRAPHY_RESET_STYLE,
             },
           },
           thumbnailItemPreviewProps,

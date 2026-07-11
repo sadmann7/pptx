@@ -1,8 +1,9 @@
 import * as React from "react";
 
-import { usePresentationStore, useZoom } from "./context";
+import { useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
+import type { AutoFitPadding } from "./store";
 
 export interface ViewportState {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
@@ -18,12 +19,21 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    */
   autoFit?: boolean;
   /**
-   * Padding (in pixels) applied on all sides when fitting the slide.
+   * Padding (in pixels) reserved around the slide when fitting.
    * Only used when `autoFit` is `true`.
+   *
+   * A number applies the same padding on all sides. An object sets
+   * per-side values (missing sides default to `0`), like Radix/Base UI
+   * `collisionPadding`.
+   *
+   * @example
+   * autoFitPadding={32}
+   * autoFitPadding={{ top: 48, bottom: 16 }}
+   * autoFitPadding={{ top: 8, right: 16, bottom: 8, left: 16 }}
    *
    * @default 0
    */
-  autoFitPadding?: number;
+  autoFitPadding?: AutoFitPadding;
   /**
    * Replace the viewport container element.
    * - ReactElement: cloned with composed props
@@ -45,7 +55,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 ) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
-  const store = usePresentationStore("PresentationViewport");
+  const store = useStoreContext("PresentationViewport");
   const { zoom } = useZoom();
 
   React.useEffect(() => {

@@ -1,23 +1,21 @@
-import * as React from "react";
-
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { usePresentationStore } from "../context";
+import { useStoreContext } from "../context";
 import { Presentation } from "../index";
-import type { PresentationStore } from "../store";
-import { createPresentationStore } from "../store";
+import type { Store } from "../store";
+import { createStore } from "../store";
 import { buildMinimalPptx } from "./minimal-pptx";
 
 /** Captures the store visible at its position in the tree. */
-function StoreProbe({ onStore }: { onStore: (store: PresentationStore) => void }) {
-  onStore(usePresentationStore("StoreProbe"));
+function StoreProbe({ onStore }: { onStore: (store: Store) => void }) {
+  onStore(useStoreContext("StoreProbe"));
   return null;
 }
 
 describe("Presentation.Root store resolution", () => {
   it("creates an internal store when no Provider is present", () => {
-    let captured: PresentationStore | null = null;
+    let captured: Store | null = null;
     render(
       <Presentation.Root>
         <StoreProbe onStore={(s) => (captured = s)} />
@@ -28,7 +26,7 @@ describe("Presentation.Root store resolution", () => {
   });
 
   it("keeps the same internal store across re-renders", () => {
-    const seen = new Set<PresentationStore>();
+    const seen = new Set<Store>();
     const ui = (
       <Presentation.Root>
         <StoreProbe onStore={(s) => seen.add(s)} />
@@ -40,8 +38,8 @@ describe("Presentation.Root store resolution", () => {
   });
 
   it("inherits the store from Presentation.Provider", () => {
-    const store = createPresentationStore();
-    let captured: PresentationStore | null = null;
+    const store = createStore();
+    let captured: Store | null = null;
     render(
       <Presentation.Provider store={store}>
         <Presentation.Root>
@@ -53,9 +51,9 @@ describe("Presentation.Root store resolution", () => {
   });
 
   it("exposes the provider store to components outside Root", () => {
-    const store = createPresentationStore();
-    let outside: PresentationStore | null = null;
-    let inside: PresentationStore | null = null;
+    const store = createStore();
+    let outside: Store | null = null;
+    let inside: Store | null = null;
     render(
       <Presentation.Provider store={store}>
         <StoreProbe onStore={(s) => (outside = s)} />
@@ -72,7 +70,7 @@ describe("Presentation.Root store resolution", () => {
 describe("Presentation.Root file prop", () => {
   it("loads the file into the internal store and calls onLoad", async () => {
     const fixture = await buildMinimalPptx();
-    let loaded: PresentationStore | null = null;
+    let loaded: Store | null = null;
     render(<Presentation.Root file={fixture} onLoad={(store) => (loaded = store)} />);
 
     await waitFor(() => expect(loaded).not.toBeNull());
@@ -88,7 +86,7 @@ describe("Presentation.Root file prop", () => {
   });
 
   it("does not touch a provider store when file is omitted", () => {
-    const store = createPresentationStore();
+    const store = createStore();
     render(
       <Presentation.Provider store={store}>
         <Presentation.Root />
@@ -99,7 +97,7 @@ describe("Presentation.Root file prop", () => {
 
   it("loads through a provider store when file is passed", async () => {
     const fixture = await buildMinimalPptx();
-    const store = createPresentationStore();
+    const store = createStore();
     render(
       <Presentation.Provider store={store}>
         <Presentation.Root file={fixture} />

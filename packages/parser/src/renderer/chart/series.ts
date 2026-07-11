@@ -1,12 +1,12 @@
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
+import { parseOoxmlBoolElement } from "./boolean";
 import {
   extractFormatCode,
   extractNumericValues,
   extractNumericValuesWithBlanks,
   extractStringValues,
 } from "./format";
-import { parseOoxmlBoolElement } from "./ooxml";
 import {
   extractDataPointStyles,
   extractSeriesColor,
@@ -14,7 +14,7 @@ import {
   extractSeriesLineWidth,
   markerSizeToPx,
 } from "./style";
-import type { SeriesData } from "./types";
+import type { SeriesData } from "./type";
 
 function extractSeriesName(txNode: SafeXmlNode): string {
   const strRef = txNode.child("strRef");

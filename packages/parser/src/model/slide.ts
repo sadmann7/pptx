@@ -1,14 +1,14 @@
-/**
- * Slide parser — converts a slide XML into a structured SlideData
+﻿/**
+ * Parses a slide XML into a structured SlideData
  * with typed node objects for each shape on the slide.
  */
 
-import { parseOoxmlBool } from "../ooxml/booleans";
-import { RelEntry } from "../ooxml/rel-parser";
-import { parseXml, SafeXmlNode } from "../ooxml/xml-parser";
-import { parseRenderableChild, type RenderableNode } from "./node-parser";
+import { parseOoxmlBool } from "../ooxml/boolean";
+import { RelEntry } from "../ooxml/rel";
+import { parseXml, SafeXmlNode } from "../ooxml/xml";
+import { parseRenderableChild, type RenderableNode } from "./nodes/parser";
 
-export { parseOleFrameAsPicture } from "./node-parser";
+export { parseOleFrameAsPicture } from "./nodes/parser";
 
 export type SlideNode = RenderableNode;
 
@@ -17,7 +17,7 @@ export interface SlideData {
    * Stable unique identifier for this slide.
    * Derived from the slide's file path inside the PPTX ZIP
    * (e.g. `"ppt/slides/slide3.xml"`). Stable across reorders,
-   * insertions, and deletions — safe to use as a React key or
+   * insertions, and deletions. Safe to use as a React key or
    * navigation target.
    */
   id: string;

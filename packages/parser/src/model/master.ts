@@ -1,10 +1,10 @@
-/**
- * Slide master parser — extracts color map, background, text styles,
+﻿/**
+ * Extracts color map, background, text styles,
  * and placeholder shapes from a p:sldMaster XML.
  */
 
-import { emuToPx } from "../ooxml/units";
-import { SafeXmlNode } from "../ooxml/xml-parser";
+import { emuToPx } from "../ooxml/unit";
+import { SafeXmlNode } from "../ooxml/xml";
 import type { PlaceholderEntry } from "./layout";
 
 export interface MasterData {
@@ -20,7 +20,7 @@ export interface MasterData {
   /** Placeholders with slide-space absolute transforms when nested in groups. */
   placeholderEntries?: PlaceholderEntry[];
   spTree: SafeXmlNode;
-  rels: Map<string, import("../ooxml/rel-parser").RelEntry>;
+  rels: Map<string, import("../ooxml/rel").RelEntry>;
 }
 
 /**

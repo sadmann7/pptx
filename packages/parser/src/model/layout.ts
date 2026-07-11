@@ -1,11 +1,11 @@
-/**
- * Slide layout parser — extracts color map override, background,
+﻿/**
+ * Extracts color map override, background,
  * and placeholder shapes from a p:sldLayout XML.
  */
 
-import { parseOoxmlBool } from "../ooxml/booleans";
-import { emuToPx } from "../ooxml/units";
-import { SafeXmlNode } from "../ooxml/xml-parser";
+import { parseOoxmlBool } from "../ooxml/boolean";
+import { emuToPx } from "../ooxml/unit";
+import { SafeXmlNode } from "../ooxml/xml";
 
 export interface PlaceholderXfrm {
   position: { x: number; y: number };
@@ -23,7 +23,7 @@ export interface LayoutData {
   background?: SafeXmlNode;
   placeholders: PlaceholderEntry[];
   spTree: SafeXmlNode;
-  rels: Map<string, import("../ooxml/rel-parser").RelEntry>;
+  rels: Map<string, import("../ooxml/rel").RelEntry>;
   /** When false, shapes from the slide master should NOT be rendered on this layout. */
   showMasterSp: boolean;
 }

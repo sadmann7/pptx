@@ -1,14 +1,15 @@
-import * as React from "react";
+﻿import * as React from "react";
 
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
 import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
 
-import { usePresentation, usePresentationStore, useSlide, useZoom } from "./context";
+import { TYPOGRAPHY_RESET_STYLE } from "./constant";
+import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
 
-const SLIDE_NAME = "PresentationSlide";
+const SLIDE_NAME = "Presentation.Slide";
 
 export interface SlideState {
   /**
@@ -47,15 +48,11 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   const { presentation, status } = usePresentation();
   const { slide, index } = useSlide();
   const { zoom } = useZoom();
-  const store = usePresentationStore(SLIDE_NAME);
+  const store = useStoreContext(SLIDE_NAME);
 
   // Bumped when an edit/undo/redo touches this slide; re-renders the content.
   const slideId = slide?.id;
-  const revision = React.useSyncExternalStore(
-    store.subscribe,
-    () => (slideId !== undefined ? store.getSlideRevision(slideId) : 0),
-    () => 0,
-  );
+  const revision = useSlideRevision(store, slideId);
 
   const slideContent =
     presentation && slide ? (
@@ -116,7 +113,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
       mediaUrlCache,
       // Editable presentations (loaded with readOnly: false) get PowerPoint-style
       // dashed outlines and prompt text on empty placeholders.
-      placeholderPrompts: presentation.pkg != null,
+      placeholderPrompts: presentation.sourcePackage != null,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },
@@ -148,15 +145,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
           transform: `scale(${zoom})`,
           position: "relative",
           overflow: "hidden",
-          // Reset inherited typography; .prose (and similar) sets font/color via inheritance which not-prose cannot block.
-          fontSize: "initial",
-          lineHeight: "normal",
-          color: "initial",
-          fontFamily: "initial",
-          fontWeight: "normal",
-          letterSpacing: "normal",
-          textDecoration: "none",
-          textTransform: "none",
+          ...TYPOGRAPHY_RESET_STYLE,
         }}
       />
       {children && (

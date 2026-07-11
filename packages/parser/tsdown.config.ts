@@ -5,6 +5,6 @@ export default defineConfig({
   format: ["esm"],
   dts: true,
   clean: true,
-  deps: { neverBundle: ["jszip", "echarts", "mtx-decompressor"] },
+  deps: { neverBundle: ["jszip", "echarts"] },
   publint: false,
 });

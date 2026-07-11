@@ -1,16 +1,20 @@
-/*
+/**
+ * @license
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * Derived from mtx-decompressor v1.4.2
  * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR,
- * MPL-2.0). Optimized for @diceui/pptx-parser; output is byte-identical
+ * MPL-2.0).
+ *
+ * @remarks
+ * Optimized for @diceui/pptx-parser; output is byte-identical
  * to the original.
  */
 
-import { parseCTF } from "./ctf";
 import type { CtfContainer, CtfTable } from "./ctf";
+import { parseCTF } from "./ctf";
 import { lzcompDecompress } from "./lzcomp";
 import { MtxStream } from "./stream";
 

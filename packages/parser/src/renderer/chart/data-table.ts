@@ -1,7 +1,7 @@
-import { SafeXmlNode } from "../../ooxml/xml-parser";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { parseOoxmlBoolValue } from "./boolean";
 import { formatValue } from "./format";
-import { parseOoxmlBoolValue } from "./ooxml";
-import type { DataTableInfo } from "./types";
+import type { DataTableInfo } from "./type";
 
 export function parseDataTable(plotArea: SafeXmlNode): { showKeys: boolean } | undefined {
   const dTable = plotArea.child("dTable");

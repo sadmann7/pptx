@@ -1,12 +1,12 @@
 import type * as echarts from "echarts";
 
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { parseOoxmlBoolElement } from "./ooxml";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { parseOoxmlBoolElement } from "./boolean";
 import {
   DEFAULT_CHART_FOREGROUND_COLOR,
   hasExplicitFontSize,
   type MutableAxisOption,
-} from "./types";
+} from "./type";
 
 type RadarTextContainer = {
   name?: {

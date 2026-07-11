@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   EditOperation,
   EditResult,
   FontInjectionHandle,
@@ -14,15 +14,11 @@ import {
   writePptx,
 } from "@diceui/pptx-parser";
 
-const INITIAL_STATE: PresentationState = {
-  status: "idle",
-  presentation: null,
-  activeSlideId: null,
-  zoom: 1,
-  progress: 0,
-  error: null,
-  revision: 0,
-};
+import { DEFAULT_STORE_STATE } from "./constant";
+
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 4;
+export const DEFAULT_ZOOM_STEP = 0.25;
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
@@ -31,6 +27,20 @@ const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError")
 // expensive the other phases are per byte relative to that baseline.
 const READ_COST_PER_BYTE = 0.05;
 const FONT_DECODE_COST_PER_BYTE = 20;
+
+export interface SidePadding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export type AutoFitPadding = number | Partial<SidePadding>;
+
+interface HistoryEntry {
+  op: EditOperation;
+  result: EditResult;
+}
 
 /** Accepted input formats for `store.load()` and the `file` prop. */
 export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
@@ -46,7 +56,7 @@ export type PreviewInput = ArrayBuffer | Uint8Array | Blob | File;
 export type PresentationStatus = "idle" | "loading" | "ready" | "error";
 
 /** Full snapshot of the presentation viewer state. */
-export interface PresentationState {
+export interface StoreState {
   /** Current lifecycle status. */
   status: PresentationStatus;
 
@@ -90,9 +100,9 @@ export interface PresentationState {
 }
 
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
-export interface PresentationStore {
+export interface Store {
   /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
-  getState: () => PresentationState;
+  getState: () => StoreState;
   /**
    * Subscribe to state changes.
    *
@@ -120,9 +130,9 @@ export interface PresentationStore {
    * try {
    *   const presentation = await store.load(file);
    *   console.log("slides:", presentation.slides.length);
-   * } catch (err) {
-   *   if (err instanceof DOMException && err.name === "AbortError") return;
-   *   console.error(err);
+   * } catch (error) {
+   *   if (error instanceof DOMException && error.name === "AbortError") return;
+   *   console.error(error);
    * }
    * ```
    */
@@ -221,7 +231,7 @@ export interface PresentationStore {
 
   /**
    * Set the zoom level directly.
-   * Clamped to `[0.1, 4]`.
+   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`.
    *
    * @default 1
    */
@@ -249,7 +259,7 @@ export interface PresentationStore {
    * store.fitTo(containerWidth, containerHeight, 32);
    * ```
    */
-  fitTo: (containerWidth: number, containerHeight: number, padding?: number) => void;
+  fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
 
   /**
    * Returns the 0-based index of a slide by its stable id, or `-1` if not found.
@@ -340,23 +350,31 @@ async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
   throw new Error("Unsupported input type");
 }
 
+function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
+  if (typeof padding === "number") {
+    return { top: padding, right: padding, bottom: padding, left: padding };
+  }
+
+  return {
+    top: padding?.top ?? 0,
+    right: padding?.right ?? 0,
+    bottom: padding?.bottom ?? 0,
+    left: padding?.left ?? 0,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function createPresentationStore(): PresentationStore {
-  let state: PresentationState = { ...INITIAL_STATE };
+export function createStore(): Store {
+  let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
   let fontInjection: FontInjectionHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
-  // --- Edit history ---
-  interface HistoryEntry {
-    op: EditOperation;
-    result: EditResult;
-  }
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
   let slideRevisionById = new Map<string, number>();
@@ -374,7 +392,7 @@ export function createPresentationStore(): PresentationStore {
   }
 
   function setState(
-    next: Partial<PresentationState> | ((current: PresentationState) => Partial<PresentationState>),
+    next: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
   ): void {
     const patch = typeof next === "function" ? next(state) : next;
     state = { ...state, ...patch };
@@ -382,13 +400,13 @@ export function createPresentationStore(): PresentationStore {
     emit();
   }
 
-  function replaceState(next: PresentationState): void {
+  function replaceState(next: StoreState): void {
     state = next;
     rebuildSlideIndex(next.presentation);
     emit();
   }
 
-  function getState(): PresentationState {
+  function getState(): StoreState {
     return state;
   }
 
@@ -412,7 +430,7 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...INITIAL_STATE, status: "loading", progress: 0 });
+    replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
     // model above). The budget grows once font bytes are known after unzip;
@@ -474,7 +492,7 @@ export function createPresentationStore(): PresentationStore {
 
       // Decode embedded fonts while still "loading" and wait for all of them,
       // so no font can swap in after slides are visible (no FOUT). The font
-      // pipeline is a lazily imported chunk — decks without embedded fonts
+      // pipeline is a lazily imported chunk; decks without embedded fonts
       // (or embedFonts: false) never fetch it.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
         const { collectPriorityTypefaces, injectEmbeddedFonts } =
@@ -514,12 +532,12 @@ export function createPresentationStore(): PresentationStore {
       });
 
       return presentation;
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      const error = err instanceof Error ? err : new Error(String(err));
-      setState({ status: "error", error });
-      throw error;
+      const typedError = error instanceof Error ? error : new Error(String(error));
+      setState({ status: "error", error: typedError });
+      throw typedError;
     }
   }
 
@@ -588,24 +606,29 @@ export function createPresentationStore(): PresentationStore {
 
   function setZoom(zoom: number): void {
     if (!Number.isFinite(zoom)) return;
-    const clamped = clamp(zoom, 0.1, 4);
+    const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
     if (Object.is(clamped, state.zoom)) return;
     setState({ zoom: clamped });
   }
 
-  function zoomIn(step = 0.25): void {
+  function zoomIn(step = DEFAULT_ZOOM_STEP): void {
     setZoom(state.zoom + step);
   }
 
-  function zoomOut(step = 0.25): void {
+  function zoomOut(step = DEFAULT_ZOOM_STEP): void {
     setZoom(state.zoom - step);
   }
 
-  function fitTo(containerWidth: number, containerHeight: number, padding = 0): void {
+  function fitTo(
+    containerWidth: number,
+    containerHeight: number,
+    padding: AutoFitPadding = 0,
+  ): void {
     const { presentation } = state;
     if (!presentation) return;
-    const availW = containerWidth - padding * 2;
-    const availH = containerHeight - padding * 2;
+    const { top, right, bottom, left } = normalizePadding(padding);
+    const availW = containerWidth - left - right;
+    const availH = containerHeight - top - bottom;
     if (availW <= 0 || availH <= 0) return;
     setZoom(Math.min(availW / presentation.width, availH / presentation.height));
   }
@@ -615,10 +638,8 @@ export function createPresentationStore(): PresentationStore {
     fontInjection?.dispose();
     fontInjection = undefined;
     clearEditHistory();
-    replaceState({ ...INITIAL_STATE });
+    replaceState({ ...DEFAULT_STORE_STATE });
   }
-
-  // --- Editing ---
 
   function clearEditHistory(): void {
     undoStack = [];
@@ -674,7 +695,7 @@ export function createPresentationStore(): PresentationStore {
     if (!presentation || status !== "ready") {
       throw new Error("PresentationStore.edit: no presentation is loaded");
     }
-    if (!presentation.pkg) {
+    if (!presentation.sourcePackage) {
       throw new Error(
         "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load()",
       );
@@ -730,7 +751,7 @@ export function createPresentationStore(): PresentationStore {
     if (!presentation) {
       throw new Error("PresentationStore.save: no presentation is loaded");
     }
-    if (!presentation.pkg) {
+    if (!presentation.sourcePackage) {
       throw new Error(
         "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
       );

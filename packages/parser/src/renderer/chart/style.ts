@@ -1,10 +1,10 @@
 import { graphic } from "echarts/core";
 
-import { ptToPx } from "../../ooxml/units";
-import { SafeXmlNode } from "../../ooxml/xml-parser";
-import { RenderContext } from "../render-context";
-import { resolveColor, resolveLineStyle } from "../style-resolver";
-import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./types";
+import { ptToPx } from "../../ooxml/unit";
+import { SafeXmlNode } from "../../ooxml/xml";
+import { RenderContext } from "../context";
+import { resolveColor, resolveLineStyle } from "../style";
+import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./type";
 
 export function resolveColorToHex(fillNode: SafeXmlNode, ctx: RenderContext): string | undefined {
   try {

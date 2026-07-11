@@ -1,5 +1,6 @@
 /**
- * Media utilities — MIME type detection, path resolution, and blob URL management.
+ * Media helpers: MIME-type detection, relative-path resolution,
+ * and blob URL lifetime management.
  */
 
 export interface ResolvedMedia {
