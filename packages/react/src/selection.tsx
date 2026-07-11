@@ -1,44 +1,32 @@
 import * as React from "react";
 
-import type {
-  NodePosition,
-  SetTextBodyParagraph,
-  ShapeNodeData,
-  SlideNode,
-} from "@diceui/pptx-core";
+import type { NodePosition, ShapeNodeData, SlideNode } from "@diceui/pptx-core";
+import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
+import type { HandleDirection, Rect } from "./selection-geometry";
+import {
+  DRAG_THRESHOLD,
+  HANDLE_CURSORS,
+  HANDLE_DIRECTIONS,
+  nodeRect,
+  resizeRect,
+} from "./selection-geometry";
+import { cleanText, readBackTextBody, textBodyChanged } from "./selection-text";
 
 const SELECTION_NAME = "Presentation.Selection";
 
-/** Temporary debug logging for inline text editing. */
+/** Hitbox width (screen px) of the border move strips shown while editing text. */
+const BORDER_GRAB_SIZE = 10;
+
 const DEBUG_TEXT_EDIT = false;
 
 function debugLog(...args: unknown[]): void {
   if (!DEBUG_TEXT_EDIT) return;
   console.debug("[pptx-selection]", ...args);
 }
-
-/** Minimum shape size (slide px) a resize can shrink to. */
-const MIN_SIZE = 8;
-/** Screen-px movement before a pointer-down becomes a drag instead of a click. */
-const DRAG_THRESHOLD = 3;
-
-const HANDLE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-type HandleDirection = (typeof HANDLE_DIRECTIONS)[number];
-
-const HANDLE_CURSORS: Record<HandleDirection, string> = {
-  nw: "nwse-resize",
-  n: "ns-resize",
-  ne: "nesw-resize",
-  e: "ew-resize",
-  se: "nwse-resize",
-  s: "ns-resize",
-  sw: "nesw-resize",
-  w: "ew-resize",
-};
 
 type InternalState =
   | { mode: "idle" }
@@ -83,179 +71,6 @@ type InternalState =
       /** The text container element that has contentEditable. */
       editingElement: HTMLElement;
     };
-
-interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
-
-/**
- * Apply a resize drag (slide-px deltas) to the original rect, clamped to
- * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
- * dimensions proportionally around the opposite corner, like PowerPoint.
- */
-function resizeRect(
-  origin: Rect,
-  handle: HandleDirection,
-  dx: number,
-  dy: number,
-  lockAspect = false,
-): Rect {
-  let { x, y, w, h } = origin;
-
-  if (handle.includes("e")) w = origin.w + dx;
-  if (handle.includes("s")) h = origin.h + dy;
-  if (handle.includes("w")) {
-    w = origin.w - dx;
-    x = origin.x + dx;
-  }
-  if (handle.includes("n")) {
-    h = origin.h - dy;
-    y = origin.y + dy;
-  }
-
-  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
-    // Follow the axis the pointer changed most (relative to the shape) and
-    // derive the other from the original aspect ratio.
-    let scale =
-      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
-    // Keep both dimensions at or above the minimum size.
-    scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
-    w = origin.w * scale;
-    h = origin.h * scale;
-    // Re-anchor so the opposite corner stays put.
-    if (handle.includes("w")) x = origin.x + origin.w - w;
-    if (handle.includes("n")) y = origin.y + origin.h - h;
-    return { x, y, w, h };
-  }
-
-  if (w < MIN_SIZE) {
-    if (handle.includes("w")) x = origin.x + origin.w - MIN_SIZE;
-    w = MIN_SIZE;
-  }
-  if (h < MIN_SIZE) {
-    if (handle.includes("n")) y = origin.y + origin.h - MIN_SIZE;
-    h = MIN_SIZE;
-  }
-
-  return { x, y, w, h };
-}
-
-function nodeRect(node: SlideNode): Rect {
-  return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
-}
-
-// ---------------------------------------------------------------------------
-// DOM read-back: contentEditable → setTextBody payload
-// ---------------------------------------------------------------------------
-
-/**
- * Walk the edited contentEditable container and produce a `setTextBody`
- * paragraphs payload. Uses `data-pptx-p` / `data-pptx-r` to map back to
- * source paragraph and run indices for style inheritance.
- */
-function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
-  const paragraphs: SetTextBodyParagraph[] = [];
-
-  const children = Array.from(container.children).filter(
-    (el) => el instanceof HTMLElement,
-  ) as HTMLElement[];
-
-  // After destructive edits the paragraph divs may be gone, leaving run
-  // spans (or bare text) directly in the container; treat the container
-  // itself as a single implicit paragraph in that case.
-  const paraDivs = children.filter((el) => el.dataset.pptxR === undefined);
-  const effectiveDivs =
-    paraDivs.length > 0 && paraDivs.length === children.length ? paraDivs : [container];
-  let lastSourceP = 0;
-
-  for (const paraDiv of effectiveDivs) {
-    const srcPStr = paraDiv.dataset?.pptxP;
-    const sourceParagraphIndex = srcPStr !== undefined ? Number(srcPStr) : lastSourceP;
-    lastSourceP = sourceParagraphIndex;
-
-    const runs = readRunsFromParagraphDiv(paraDiv, sourceParagraphIndex);
-    paragraphs.push({ sourceParagraphIndex, runs });
-  }
-
-  return paragraphs;
-}
-
-/**
- * Strip zero-width spaces: line-height spacer spans from the renderer must
- * not reach the model.
- */
-function cleanText(raw: string | null | undefined): string {
-  return (raw ?? "").replace(/\u200B/g, "");
-}
-
-function readRunsFromParagraphDiv(
-  paraDiv: HTMLElement,
-  defaultSourceP: number,
-): SetTextBodyParagraph["runs"] {
-  const runs: SetTextBodyParagraph["runs"] = [];
-  let lastSourceR: [number, number] | undefined;
-
-  for (const child of Array.from(paraDiv.childNodes)) {
-    if (child instanceof HTMLElement && child.dataset.pptxBullet !== undefined) {
-      continue;
-    }
-
-    if (child instanceof HTMLElement && child.dataset.pptxR !== undefined) {
-      const runIdx = Number(child.dataset.pptxR);
-      const sourceRun: [number, number] = [defaultSourceP, runIdx];
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun });
-        lastSourceR = sourceRun;
-      }
-    } else if (child instanceof HTMLBRElement) {
-      // Browsers insert <br> for empty paragraphs; skip.
-    } else if (child.nodeType === Node.TEXT_NODE) {
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun: lastSourceR });
-      }
-    } else if (child instanceof HTMLElement) {
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun: lastSourceR });
-      }
-    }
-  }
-
-  if (runs.length === 0) {
-    runs.push({ text: "", sourceRun: lastSourceR });
-  }
-
-  return runs;
-}
-
-/** Compare the read-back paragraphs to the model to detect changes. */
-function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
-  if (node.nodeType !== "shape") return false;
-  const shape = node as ShapeNodeData;
-  const paragraphs = shape.textBody?.paragraphs;
-  if (!paragraphs) return false;
-  if (paragraphs.length !== readBack.length) return true;
-  for (let i = 0; i < paragraphs.length; i++) {
-    // Compare concatenated text, not run-by-run: a paragraph with no runs
-    // reads back as a single empty run, which is not a real change (plain
-    // shapes render an empty editable paragraph before any typing happens).
-    const origText = paragraphs[i].runs.map((r) => r.text ?? "").join("");
-    const newText = readBack[i].runs.map((r) => r.text).join("");
-    if (origText !== newText) return true;
-  }
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 
 /** The current interaction state of the edit layer. */
 export interface SelectionState {
@@ -353,32 +168,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
-  // --- DOM helpers ---
-
   function slideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
   }
 
   function shapeElement(nodeId: string): HTMLElement | null {
     return (
-      slideWrapper()?.querySelector<HTMLElement>(`[data-pptx-node-id="${CSS.escape(nodeId)}"]`) ??
-      null
+      slideWrapper()?.querySelector<HTMLElement>(
+        `[${PPTX_ATTRS.nodeId}="${CSS.escape(nodeId)}"]`,
+      ) ?? null
     );
   }
 
   function textContainerOf(shapeEl: HTMLElement): HTMLElement | null {
     // Empty placeholders also render a prompt overlay ("Click to add text")
-    // whose paragraphs carry data-pptx-p; skip it: only the real text
-    // container is editable.
-    for (const para of Array.from(shapeEl.querySelectorAll<HTMLElement>("[data-pptx-p]"))) {
-      if (para.closest("[data-pptx-placeholder-prompt]")) continue;
+    // whose paragraphs carry the paragraph attribute; skip it: only the real
+    // text container is editable.
+    for (const para of Array.from(
+      shapeEl.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
+    )) {
+      if (para.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
       return para.parentElement;
     }
     return null;
   }
 
   function placeholderPromptOf(shapeEl: HTMLElement): HTMLElement | null {
-    return shapeEl.querySelector<HTMLElement>("[data-pptx-placeholder-prompt]");
+    return shapeEl.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
   }
 
   /**
@@ -405,8 +221,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     for (const el of document.elementsFromPoint(clientX, clientY)) {
       if (root.contains(el)) continue;
       if (!wrapper.contains(el)) continue;
-      const nodeElement = (el as HTMLElement).closest<HTMLElement>("[data-pptx-node-id]");
-      if (nodeElement) return nodeElement.getAttribute("data-pptx-node-id");
+      const nodeElement = (el as HTMLElement).closest<HTMLElement>(`[${PPTX_ATTRS.nodeId}]`);
+      if (nodeElement) return nodeElement.getAttribute(PPTX_ATTRS.nodeId);
     }
     return null;
   }
@@ -444,8 +260,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
-  // --- Text editing helpers ---
-
   function enterTextMode(
     nodeId: string,
     clientX?: number,
@@ -479,7 +293,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // When the DOM has no run spans left (e.g. re-entering a box that was
     // cleared without a re-render), keep the template captured earlier for
     // this shape instead of discarding it.
-    const templateSource = textElement.querySelector<HTMLElement>("[data-pptx-r]");
+    const templateSource = textElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.run}]`);
     if (templateSource) {
       runTemplateRef.current = {
         nodeId,
@@ -545,13 +359,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * Place the caret inside the last styled run span of `scope`. Typed text
-   * must land inside a `[data-pptx-r]` span to inherit the run's font and
+   * must land inside a run span (`PPTX_ATTRS.run`) to inherit the run's font and
    * color: a bare text node at the container/paragraph level renders with
    * unstyled defaults (e.g. black text on a dark slide → invisible typing).
    * Returns false when the scope has no run spans.
    */
   function snapCaretIntoRun(scope: HTMLElement): boolean {
-    const runs = scope.querySelectorAll<HTMLElement>("[data-pptx-r]");
+    const runs = scope.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`);
     const last = runs[runs.length - 1];
     if (!last) return false;
     const sel = window.getSelection();
@@ -594,7 +408,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    */
   function removePlaceholderBreak(from: Node, insertedText: string): void {
     const el = from instanceof Element ? (from as HTMLElement) : from.parentElement;
-    const para = el?.closest<HTMLElement>("[data-pptx-p]");
+    const para = el?.closest<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
     if (!para) return;
     if (cleanText(para.textContent) !== cleanText(insertedText)) return;
     for (const child of Array.from(para.children)) {
@@ -628,7 +442,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!anchor || !sel?.isCollapsed || !editingElement.contains(anchor)) return false;
 
     const anchorEl = anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
-    const runSpan = anchorEl?.closest<HTMLElement>("[data-pptx-r]");
+    const runSpan = anchorEl?.closest<HTMLElement>(`[${PPTX_ATTRS.run}]`);
 
     if (runSpan) {
       if (anchor.nodeType === Node.TEXT_NODE && (anchor.textContent ?? "").length > 0) {
@@ -663,14 +477,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       : document.createElement("span");
     const textNode = document.createTextNode(data);
     span.appendChild(textNode);
-    if (anchorEl?.closest("[data-pptx-p]")) {
+    if (anchorEl?.closest(`[${PPTX_ATTRS.paragraph}]`)) {
       sel.getRangeAt(0).insertNode(span);
     } else {
       // Caret sits at the container level (e.g. caret fallback when all run
       // spans were destroyed): inserting there would land the span *below*
       // the paragraph div, on its own line. Append into the last paragraph
       // instead.
-      const paras = editingElement.querySelectorAll<HTMLElement>("[data-pptx-p]");
+      const paras = editingElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
       const lastPara = paras[paras.length - 1];
       if (lastPara) lastPara.appendChild(span);
       else sel.getRangeAt(0).insertNode(span);
@@ -682,11 +496,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   function interceptTextInsertion(
-    e: InputEvent,
+    event: InputEvent,
     editingElement: HTMLElement,
     nodeId: string,
   ): void {
-    if (e.inputType !== "insertText" || !e.data) return;
+    if (event.inputType !== "insertText" || !event.data) return;
     const sel = window.getSelection();
     const anchor = sel?.anchorNode;
     if (!anchor || !sel.isCollapsed || !editingElement.contains(anchor)) return;
@@ -700,13 +514,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       anchor.nodeType === Node.TEXT_NODE &&
       (anchor.textContent ?? "").length > 0 &&
       anchorEl &&
-      (anchorEl.closest("[data-pptx-r]") || anchorEl.tagName === "SPAN")
+      (anchorEl.closest(`[${PPTX_ATTRS.run}]`) || anchorEl.tagName === "SPAN")
     ) {
       return;
     }
 
-    if (insertTextAtCaret(editingElement, nodeId, e.data)) {
-      e.preventDefault();
+    if (insertTextAtCaret(editingElement, nodeId, event.data)) {
+      event.preventDefault();
     }
   }
 
@@ -721,7 +535,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!anchor || !sel?.isCollapsed || !editingElement.contains(anchor)) return;
     if (anchor.nodeType !== Node.TEXT_NODE) return;
     const anchorEl = anchor.parentElement;
-    if (!anchorEl || anchorEl.closest("[data-pptx-r]")) return;
+    if (!anchorEl || anchorEl.closest(`[${PPTX_ATTRS.run}]`)) return;
 
     const template = runTemplateFor(nodeId);
     if (!template) return;
@@ -745,7 +559,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // No run spans: prefer the end of the last paragraph div over the
       // container itself so typing lands on the paragraph's line rather
       // than a new line below it.
-      const paras = textElement.querySelectorAll<HTMLElement>("[data-pptx-p]");
+      const paras = textElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
       const target = paras[paras.length - 1] ?? textElement;
       const range = document.createRange();
       range.selectNodeContents(target);
@@ -761,33 +575,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     try {
       const sel = window.getSelection();
       if (!sel) return;
-      // Standard API (Firefox, newer Chrome/Safari).
-      const docWithCaret = document as Document & {
-        caretNodePositionFromPoint?: (
-          x: number,
-          y: number,
-        ) => { offsetNode: Node; offset: number } | null;
-      };
-      if (docWithCaret.caretNodePositionFromPoint) {
-        const pos = docWithCaret.caretNodePositionFromPoint(clientX, clientY);
-        if (pos) {
-          const range = document.createRange();
-          range.setStart(pos.offsetNode, pos.offset);
-          range.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(range);
-          fixupCaretAnchor(sel);
-          return;
-        }
-      }
-      // Legacy WebKit API.
-      if (document.caretRangeFromPoint) {
-        const range = document.caretRangeFromPoint(clientX, clientY);
-        if (range) {
-          sel.removeAllRanges();
-          sel.addRange(range);
-          fixupCaretAnchor(sel);
-        }
+      const pos = document.caretPositionFromPoint(clientX, clientY);
+      if (pos) {
+        const range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        fixupCaretAnchor(sel);
       }
     } catch {
       // Ignore caret placement failures.
@@ -804,7 +599,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (anchor.nodeType === Node.TEXT_NODE) return;
     const el = anchor as HTMLElement;
     // Prefer a run in the paragraph under the caret, else anywhere in scope.
-    const paraDiv = el.closest?.("[data-pptx-p]") as HTMLElement | null;
+    const paraDiv = el.closest?.(`[${PPTX_ATTRS.paragraph}]`) as HTMLElement | null;
     snapCaretIntoRun(paraDiv ?? el);
   }
 
@@ -871,31 +666,30 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
-  // --- Document-level listeners for text mode ---
   // When in text mode the overlay has pointerEvents: none, so we must listen
   // on the document for clicks-outside and Escape.
   React.useEffect(() => {
     if (!isTextMode) return;
 
-    function onDocPointerDown(e: PointerEvent): void {
+    function onDocPointerDown(event: PointerEvent): void {
       const cur = stateRef.current;
       if (cur.mode !== "text") return;
 
       // Click inside the editing element → let contentEditable handle it.
-      if (cur.editingElement.contains(e.target as Node)) return;
+      if (cur.editingElement.contains(event.target as Node)) return;
 
       // Clicks on the overlay's own children (border move strips) are
       // handled by their own handlers.
-      if (rootRef.current?.contains(e.target as Node)) return;
+      if (rootRef.current?.contains(event.target as Node)) return;
 
       // Click on another shape?
       const wrapper = rootRef.current?.parentElement?.parentElement;
       if (!wrapper) return;
-      const target = e.target as HTMLElement;
-      const nodeElement = target.closest?.("[data-pptx-node-id]") as HTMLElement | null;
+      const target = event.target as HTMLElement;
+      const nodeElement = target.closest?.(`[${PPTX_ATTRS.nodeId}]`) as HTMLElement | null;
       const hitNodeId =
         nodeElement && wrapper.contains(nodeElement)
-          ? nodeElement.getAttribute("data-pptx-node-id")
+          ? nodeElement.getAttribute(PPTX_ATTRS.nodeId)
           : null;
 
       if (hitNodeId && hitNodeId !== cur.nodeId) {
@@ -904,16 +698,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // shape while editing). preventDefault stops the browser's default
         // mousedown focus change from blurring the overlay; without it,
         // typing right after this click would go nowhere.
-        e.preventDefault();
+        event.preventDefault();
         commitTextEdits(cur);
-        rootRef.current?.setPointerCapture(e.pointerId);
+        rootRef.current?.setPointerCapture(event.pointerId);
         rootRef.current?.focus({ preventScroll: true });
         setState({
           mode: "move",
           nodeIds: [hitNodeId],
           primaryId: hitNodeId,
-          startX: e.clientX,
-          startY: e.clientY,
+          startX: event.clientX,
+          startY: event.clientY,
           dx: 0,
           dy: 0,
           moved: false,
@@ -921,36 +715,36 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       } else if (!hitNodeId) {
         // Clicked empty area: exit text, deselect. preventDefault keeps the
         // overlay focused so undo/redo shortcuts still work afterwards.
-        e.preventDefault();
+        event.preventDefault();
         doExitTextMode(cur, null);
       }
       // Else clicked inside the same shape but outside the text container
       // (e.g. shape padding area); stay in text mode.
     }
 
-    function onDocKeyDown(e: KeyboardEvent): void {
+    function onDocKeyDown(event: KeyboardEvent): void {
       const cur = stateRef.current;
       if (cur.mode !== "text") return;
 
-      if (e.key === "Escape") {
-        e.preventDefault();
+      if (event.key === "Escape") {
+        event.preventDefault();
         // Escape → select the shape (PowerPoint behavior).
         doExitTextMode(cur);
         return;
       }
     }
 
-    function onDocBeforeInput(e: Event): void {
+    function onDocBeforeInput(event: Event): void {
       const cur = stateRef.current;
       if (cur.mode !== "text") return;
-      interceptTextInsertion(e as InputEvent, cur.editingElement, cur.nodeId);
+      interceptTextInsertion(event as InputEvent, cur.editingElement, cur.nodeId);
     }
 
-    function onDocInput(e: Event): void {
+    function onDocInput(event: Event): void {
       const cur = stateRef.current;
       if (cur.mode !== "text") return;
       repairRunStyling(cur.editingElement, cur.nodeId);
-      const target = e.target as HTMLElement;
+      const target = event.target as HTMLElement;
       const sel = window.getSelection();
       const anchorNode = sel?.anchorNode;
       const anchorEl =
@@ -966,7 +760,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       debugLog("input event", {
         typedContent: cur.editingElement.textContent?.slice(0, 80),
         anchorTag: anchorEl?.tagName,
-        anchorIsRunSpan: anchorEl?.dataset?.pptxR !== undefined,
+        anchorIsRunSpan: anchorEl?.dataset?.[PPTX_DATASET.run] !== undefined,
         anchorRect: rect
           ? `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}`
           : null,
@@ -975,7 +769,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         opacity: cs?.opacity,
         visibility: cs?.visibility,
         onTopAtAnchor: onTop
-          ? `${onTop.tagName} ${(onTop as HTMLElement).dataset?.pptxNodeId ?? ""}`
+          ? `${onTop.tagName} ${(onTop as HTMLElement).dataset?.[PPTX_DATASET.nodeId] ?? ""}`
           : null,
         anchorHtml: anchorEl?.outerHTML.slice(0, 200),
         targetIsEditingEl: target === cur.editingElement,
@@ -1542,17 +1336,17 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   React.useEffect(() => {
     if (!editable) return;
 
-    function onDocKeyDown(e: KeyboardEvent): void {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      if (isNativeUndoTarget(e.target)) return;
-      const key = e.key.toLowerCase();
+    function onDocKeyDown(event: KeyboardEvent): void {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (isNativeUndoTarget(event.target)) return;
+      const key = event.key.toLowerCase();
 
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
         const success = store.undo();
         onUndoRef.current?.(success ? "success" : "empty");
-      } else if (key === "y" || (key === "z" && e.shiftKey)) {
-        e.preventDefault();
+      } else if (key === "y" || (key === "z" && event.shiftKey)) {
+        event.preventDefault();
         store.redo().then(
           (success) => onRedoRef.current?.(success ? "success" : "empty"),
           (error) => onRedoRef.current?.("empty", error),
@@ -1568,13 +1362,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   return <SelectionImpl key={slideId} ref={forwardedRef} {...props} />;
 });
-
-// ---------------------------------------------------------------------------
-// SelectionBox (internal)
-// ---------------------------------------------------------------------------
-
-/** Hitbox width (screen px) of the border move strips shown while editing text. */
-const BORDER_GRAB_SIZE = 10;
 
 interface SelectionBoxProps {
   node: SlideNode;
@@ -1658,14 +1445,13 @@ function SelectionBox({
   );
 }
 
-/** Rubber-band rectangle drawn while drag-selecting on empty canvas. */
-function MarqueeBox({
-  state,
-  rootElement,
-}: {
+interface MarqueeBoxProps {
   state: Extract<InternalState, { mode: "marquee" }>;
   rootElement: HTMLElement | null;
-}) {
+}
+
+/** Rubber-band rectangle drawn while drag-selecting on empty canvas. */
+function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
   // State coords are viewport-relative; the overlay is our positioning context.
   const origin = rootElement?.getBoundingClientRect();
   if (!origin) return null;
@@ -1692,16 +1478,16 @@ function MarqueeBox({
   );
 }
 
+interface BorderMoveStripsProps {
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+}
+
 /**
  * Invisible grab strips straddling the shape border while editing text.
  * Dragging them moves the shape (PowerPoint: grab the frame to move).
  * The hitbox extends both inward and outward from the border line.
  */
-function BorderMoveStrips({
-  onPointerDown,
-}: {
-  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
-}) {
+function BorderMoveStrips({ onPointerDown }: BorderMoveStripsProps) {
   const half = BORDER_GRAB_SIZE / 2;
   const strips: React.CSSProperties[] = [
     { left: -half, right: -half, top: -half, height: BORDER_GRAB_SIZE },
@@ -1709,6 +1495,7 @@ function BorderMoveStrips({
     { left: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
     { right: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
   ];
+
   return (
     <>
       {strips.map((style, i) => (

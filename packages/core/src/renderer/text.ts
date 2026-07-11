@@ -14,6 +14,7 @@ import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import { isAllowedExternalUrl } from "../utils/url";
 import { RenderContext } from "./context";
+import { PPTX_DATASET } from "./dom-attributes";
 import { cssFontFamilyStack, resolveThemeFont } from "./font";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveColorToCss, resolveFill } from "./style";
@@ -807,7 +808,7 @@ export function renderTextBody(
 
   for (const [paragraphIndex, paragraph] of textBody.paragraphs.entries()) {
     const paraDiv = document.createElement("div");
-    paraDiv.dataset.pptxP = String(paragraphIndex);
+    paraDiv.dataset[PPTX_DATASET.paragraph] = String(paragraphIndex);
     paraDiv.style.width = "100%";
     paraDiv.style.minWidth = "0px";
     paraDiv.style.maxWidth = "100%";
@@ -1007,7 +1008,7 @@ export function renderTextBody(
 
     if (bulletPrefix) {
       const bulletSpan = document.createElement("span");
-      bulletSpan.dataset.pptxBullet = "";
+      bulletSpan.dataset[PPTX_DATASET.bullet] = "";
       bulletSpan.contentEditable = "false";
       bulletSpan.textContent = bulletPrefix + " ";
       const marginLeft = merged.marginLeft;
@@ -1186,7 +1187,7 @@ export function renderTextBody(
         element = document.createElement("span");
       }
 
-      element.dataset.pptxR = String(runIndex);
+      element.dataset[PPTX_DATASET.run] = String(runIndex);
 
       // Preserve consecutive spaces by alternating with &nbsp; so they survive
       // HTML whitespace collapse without being stretched by text-align:justify.

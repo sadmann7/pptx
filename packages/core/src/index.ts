@@ -57,6 +57,7 @@ export type {
 
 // Headless single-slide rendering
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf";
+export { PPTX_ATTRS, PPTX_DATASET } from "./renderer/dom-attributes";
 export { renderSlide, renderThumbnail } from "./renderer/slide";
 export type { SlideHandle, SlideRendererOptions, ThumbnailRendererOptions } from "./renderer/slide";
 

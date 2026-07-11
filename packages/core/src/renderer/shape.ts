@@ -19,6 +19,7 @@ import { SafeXmlNode } from "../ooxml/xml";
 import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
 import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../utils/url";
 import { RenderContext } from "./context";
+import { PPTX_ATTRS } from "./dom-attributes";
 import { cssFontFamilyStack, resolveThemeFontStack } from "./font";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import {
@@ -141,7 +142,7 @@ function renderPlaceholderPrompt(
   ctx: RenderContext,
   wrapper: HTMLElement,
 ): void {
-  wrapper.setAttribute("data-pptx-placeholder-empty", "true");
+  wrapper.setAttribute(PPTX_ATTRS.placeholderEmpty, "true");
   wrapper.style.outline = "1px dashed rgba(148, 163, 184, 0.9)";
   wrapper.style.outlineOffset = "-1px";
 
@@ -161,7 +162,7 @@ function renderPlaceholderPrompt(
   if (paragraphs.length === 0) return;
 
   const container = document.createElement("div");
-  container.setAttribute("data-pptx-placeholder-prompt", "true");
+  container.setAttribute(PPTX_ATTRS.placeholderPrompt, "true");
   container.style.position = "absolute";
   if (node.textBoxBounds) {
     container.style.left = `${node.textBoxBounds.x}px`;

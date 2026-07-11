@@ -23,6 +23,7 @@ import { SafeXmlNode } from "../ooxml/xml";
 import { renderBackground } from "./background";
 import { renderChart } from "./chart";
 import { createRenderContext, RenderContext } from "./context";
+import { PPTX_ATTRS } from "./dom-attributes";
 import { renderGroup } from "./group";
 import { renderImage } from "./image";
 import { renderShape } from "./shape";
@@ -510,12 +511,12 @@ export function renderSlide(
         const el = renderNode(node, ctx);
         // Only slide-level (editable) nodes are stamped; master/layout
         // template shapes are not part of the slide's editable content.
-        el.setAttribute("data-pptx-node-id", node.id);
+        el.setAttribute(PPTX_ATTRS.nodeId, node.id);
         container.appendChild(el);
       } catch (error) {
         options?.onNodeError?.(node.id, error);
         const placeholder = createErrorPlaceholder(node);
-        placeholder.setAttribute("data-pptx-node-id", node.id);
+        placeholder.setAttribute(PPTX_ATTRS.nodeId, node.id);
         container.appendChild(placeholder);
       }
     }
