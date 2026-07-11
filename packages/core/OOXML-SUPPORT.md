@@ -1,6 +1,6 @@
 # OOXML (ECMA-376) Support Tracker
 
-Feature-level support status of `@diceui/pptx-parser` against **ECMA-376 5th
+Feature-level support status of `@diceui/pptx-core` against **ECMA-376 5th
 edition** (PresentationML + DrawingML). The spec is freely available from
 [Ecma International](https://ecma-international.org/publications-and-standards/standards/ecma-376/)
 (Part 1 PDF plus the DrawingML geometry and schema archives).

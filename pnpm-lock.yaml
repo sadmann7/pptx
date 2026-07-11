@@ -171,7 +171,7 @@ importers:
 
   packages/config: {}
 
-  packages/parser:
+  packages/core:
     dependencies:
       echarts:
         specifier: ^6.0.0
@@ -216,9 +216,9 @@ importers:
 
   packages/react:
     dependencies:
-      '@diceui/pptx-parser':
+      '@diceui/pptx-core':
         specifier: workspace:*
-        version: link:../parser
+        version: link:../core
     devDependencies:
       '@pptx/config':
         specifier: workspace:*

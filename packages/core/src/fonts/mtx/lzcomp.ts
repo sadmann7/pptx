@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,7 +8,7 @@
  * Derived from mtx-decompressor v1.4.2
  * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR, MPL-2.0).
  *
- * Optimized for @diceui/pptx-parser:
+ * Optimized for @diceui/pptx-core:
  * - Adaptive Huffman trees as flat typed arrays (no per-node objects)
  * - Bit reader inlined into the decoder without per-bit error dispatch
  * - Non-RLE output taken directly from the LZ window (the original wrote

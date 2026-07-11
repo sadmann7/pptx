@@ -1,8 +1,8 @@
-﻿/**
+/**
  * CPU profiling harness (not a real test). Skipped unless PROFILE=1.
  *
  * Usage:
- *   $env:PROFILE="1"; pnpm -F "@diceui/pptx-parser" exec vitest run src/tests/model/profile.test.ts; $env:PROFILE=$null
+ *   $env:PROFILE="1"; pnpm -F "@diceui/pptx-core" exec vitest run src/tests/model/profile.test.ts; $env:PROFILE=$null
  *
  * Captures a V8 CPU profile around the hot pipeline stage and prints the top
  * functions by self time, aggregated per function, filtered to package code.

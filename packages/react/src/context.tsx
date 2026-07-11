@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { PresentationData, SlideData } from "@diceui/pptx-parser";
+import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
 import type { AutoFitPadding, Store, StoreState } from "./store";

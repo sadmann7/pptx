@@ -90,7 +90,7 @@ export type { SlideData, SlideNode } from "./model/slide";
 export type { ThemeData } from "./model/theme";
 export type { PptxFiles } from "./ooxml/zip";
 
-// Embedded font support lives in a separate entry ("@diceui/pptx-parser/fonts")
+// Embedded font support lives in a separate entry ("@diceui/pptx-core/fonts")
 // so the decode pipeline is only loaded when actually used. Only the handle
 // type is re-exported here for consumers typing against the API.
 export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./fonts/injector";

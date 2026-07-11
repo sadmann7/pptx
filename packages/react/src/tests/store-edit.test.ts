@@ -7,7 +7,7 @@
  * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
  * slide-level edit operations depend on.
  */
-import type { ShapeNodeData } from "@diceui/pptx-parser";
+import type { ShapeNodeData } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { createStore, Store } from "../store";

@@ -1,7 +1,7 @@
-﻿import * as React from "react";
+import * as React from "react";
 
-import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { materializeSlideNodes, renderSlide } from "@diceui/pptx-parser";
+import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
+import { materializeSlideNodes, renderSlide } from "@diceui/pptx-core";
 
 import { TYPOGRAPHY_RESET_STYLE } from "./constant";
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";

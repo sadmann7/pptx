@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
  *
  * The keyboard-navigation model (tab-stop management, focus-intent mapping,
@@ -10,8 +10,8 @@
 
 import * as React from "react";
 
-import type { SlideData, SlideHandle } from "@diceui/pptx-parser";
-import { renderSlide } from "@diceui/pptx-parser";
+import type { SlideData, SlideHandle } from "@diceui/pptx-core";
+import { renderSlide } from "@diceui/pptx-core";
 
 import { TYPOGRAPHY_RESET_STYLE, VISUALLY_HIDDEN_STYLE } from "./constant";
 import {

@@ -1,7 +1,7 @@
-﻿/**
+/**
  * Stage-level benchmarks for the parse/render pipeline.
  *
- * Run with: pnpm -F "@diceui/pptx-parser" bench
+ * Run with: pnpm -F "@diceui/pptx-core" bench
  *
  * Each stage is measured in isolation against pre-built inputs so the numbers
  * attribute time to the right phase:

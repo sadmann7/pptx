@@ -6,7 +6,7 @@
  * @remarks
  * Derived from mtx-decompressor v1.4.2
  * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR, MPL-2.0).
- * Optimized for `@diceui/pptx-parser`:
+ * Optimized for `@diceui/pptx-core`:
  * - Triplet encodings as flat typed arrays (no object field loads)
  * - Bulk table copies instead of per-byte reads
  * - Reusable per-glyph scratch buffers instead of per-glyph allocations

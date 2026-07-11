@@ -2,14 +2,14 @@
 
 Composable primitives for rendering and editing PowerPoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
 
-`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-parser` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
+`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-core` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
 
 ## Packages
 
-| Package                                    | Description                                                  | Bundle               |
-| ------------------------------------------ | ------------------------------------------------------------ | -------------------- |
-| [`@diceui/pptx-parser`](./packages/parser) | Core OOXML parser and DOM renderer (no framework dependency) | 729 KB / 161 KB gzip |
-| [`@diceui/pptx`](./packages/react)         | React component library built on top of the parser           | 85 KB / 22 KB gzip   |
+| Package                                | Description                                                | Bundle               |
+| -------------------------------------- | ---------------------------------------------------------- | -------------------- |
+| [`@diceui/pptx-core`](./packages/core) | Framework-agnostic PPTX engine (parse, render, edit, save) | 729 KB / 161 KB gzip |
+| [`@diceui/pptx`](./packages/react)     | React component library built on top of the core           | 85 KB / 22 KB gzip   |
 
 ## Quick start
 
@@ -17,8 +17,8 @@ Composable primitives for rendering and editing PowerPoint presentations. Suppor
 # React
 npm install @diceui/pptx
 
-# Parser only (no React dependency)
-npm install @diceui/pptx-parser
+# Core only (no React dependency)
+npm install @diceui/pptx-core
 ```
 
 ### Viewer
@@ -57,10 +57,10 @@ export function Editor({ file }: { file: File }) {
 }
 ```
 
-### Parser only (no React)
+### Core only (no React)
 
 ```ts
-import { parsePptx, renderSlide } from "@diceui/pptx-parser";
+import { parsePptx, renderSlide } from "@diceui/pptx-core";
 
 const presentation = await parsePptx(arrayBuffer);
 const slide = presentation.slides[0];
@@ -132,7 +132,7 @@ const { zoom, setZoom } = useZoom();
 const store = useCreatePresentationStore({ file });
 ```
 
-## Edit operations (parser)
+## Edit operations (core)
 
 All mutations go through `store.edit(operation)` and support undo/redo via `store.undo()` / `store.redo()`.
 
@@ -166,19 +166,19 @@ pptx/
 ├── apps/
 │   └── docs/              # Next.js docs + interactive playground
 └── packages/
-    ├── parser/            # @diceui/pptx-parser (OOXML parser, renderer, edit ops)
+    ├── core/              # @diceui/pptx-core (OOXML parse, render, edit, save)
     ├── react/             # @diceui/pptx (React primitives)
     └── config/            # Shared TypeScript / build config
 ```
 
 ## OOXML support
 
-See [`packages/parser/OOXML-SUPPORT.md`](./packages/parser/OOXML-SUPPORT.md) for a detailed feature matrix against ECMA-376.
+See [`packages/core/OOXML-SUPPORT.md`](./packages/core/OOXML-SUPPORT.md) for a detailed feature matrix against ECMA-376.
 
 ## Credits
 
 - **[pptx-renderer](https://github.com/aiden0z/pptx-renderer)** (Apache-2.0): the parser was originally derived from this work and has been substantially modified, extended, and refactored.
-- **[mtx-decompressor](https://github.com/ChristopherVR/mtx-decompressor)** (MPL-2.0): the embedded font decoder (`packages/parser/src/fonts/mtx/`) is derived from this library and optimized for our use case.
+- **[mtx-decompressor](https://github.com/ChristopherVR/mtx-decompressor)** (MPL-2.0): the embedded font decoder (`packages/core/src/fonts/mtx/`) is derived from this library and optimized for our use case.
 
 ## License
 

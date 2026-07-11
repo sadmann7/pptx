@@ -1,18 +1,18 @@
-﻿import type {
+import type {
   EditOperation,
   EditResult,
   FontInjectionHandle,
   PptxSaveOptions,
   PresentationData,
   SlideData,
-} from "@diceui/pptx-parser";
+} from "@diceui/pptx-core";
 import {
   applyEdit,
   buildPresentation,
   materializeSlideNodes,
   parseZipLazyMedia,
   writePptx,
-} from "@diceui/pptx-parser";
+} from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
 
@@ -496,7 +496,7 @@ export function createStore(): Store {
       // (or embedFonts: false) never fetch it.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
         const { collectPriorityTypefaces, injectEmbeddedFonts } =
-          await import("@diceui/pptx-parser/fonts");
+          await import("@diceui/pptx-core/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
         // Expand the progress budget by the now-known decode workload.
