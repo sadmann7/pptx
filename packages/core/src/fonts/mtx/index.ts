@@ -9,7 +9,7 @@
  * MPL-2.0).
  *
  * @remarks
- * Optimized for @diceui/pptx-parser; output is byte-identical
+ * Optimized for @diceui/pptx-core; output is byte-identical
  * to the original.
  */
 

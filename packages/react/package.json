@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@diceui/pptx-parser": "workspace:*"
+    "@diceui/pptx-core": "workspace:*"
   },
   "devDependencies": {
     "@pptx/config": "workspace:*",

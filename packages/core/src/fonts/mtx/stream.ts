@@ -6,7 +6,7 @@
  * @remarks
  * Derived from mtx-decompressor v1.4.2
  * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR,
- * MPL-2.0). Optimized for @diceui/pptx-parser: geometric buffer growth and
+ * MPL-2.0). Optimized for @diceui/pptx-core: geometric buffer growth and
  * bulk copies; behavior is byte-identical to the original.
  */
 

@@ -1,7 +1,7 @@
-﻿/**
+/**
  * Head-to-head benchmark: our parser vs @aiden0z/pptx-renderer@1.2.3.
  *
- * Run with: pnpm -F "@diceui/pptx-parser" bench
+ * Run with: pnpm -F "@diceui/pptx-core" bench
  *
  * Both sides receive the identical ArrayBuffer produced by generateDeck(),
  * so the comparison is purely parser throughput, not fixture differences.

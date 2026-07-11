@@ -11,7 +11,7 @@ alwaysApply: false
 All tests and test fixtures live in `src/tests/` inside each package, never co-located next to source files.
 
 ```text
-packages/parser/src/tests/
+packages/core/src/tests/
   minimal-pptx.ts          # fixture builder (not a test)
   presets.test.ts
   text-renderer.test.ts

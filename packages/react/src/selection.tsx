@@ -1,6 +1,6 @@
-﻿import * as React from "react";
+import * as React from "react";
 
-import type { Position, SetTextBodyParagraph, ShapeNodeData, SlideNode } from "@diceui/pptx-parser";
+import type { Position, SetTextBodyParagraph, ShapeNodeData, SlideNode } from "@diceui/pptx-core";
 
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";

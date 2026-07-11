@@ -20,15 +20,15 @@ This is a library for viewing and editing PowerPoint presentations in the browse
 
 ## Packages
 
-| Package               | Description                                                  |
-| --------------------- | ------------------------------------------------------------ |
-| `@diceui/pptx`        | React component library                                      |
-| `@diceui/pptx-parser` | Core OOXML parser and DOM renderer (no framework dependency) |
+| Package             | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `@diceui/pptx`      | React component library                                    |
+| `@diceui/pptx-core` | Framework-agnostic PPTX engine (parse, render, edit, save) |
 
 ## Architecture
 
 The library is split into two layers:
 
-**Parser** (`@diceui/pptx-parser`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, and rendering each slide to a plain DOM tree. It has no React dependency.
+**Core** (`@diceui/pptx-core`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, rendering each slide to a plain DOM tree, and applying typed edit operations. It has no React dependency.
 
-**React** (`@diceui/pptx`) wraps the parser with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.
+**React** (`@diceui/pptx`) wraps the core with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.

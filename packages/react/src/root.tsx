@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { SlideData } from "@diceui/pptx-parser";
+import type { SlideData } from "@diceui/pptx-core";
 
 import { Context } from "./context";
 import type { RenderProp } from "./render";

@@ -44,4 +44,4 @@ export type {
   SetTextBodyParagraph,
   SetTextBodyRun,
   SetTextRunOperation,
-} from "@diceui/pptx-parser";
+} from "@diceui/pptx-core";

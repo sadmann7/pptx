@@ -17,7 +17,16 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: ["pptx", "pptx-viewer", "pptx-parser", "powerpoint", "presentation", "slides"],
+  keywords: [
+    "pptx",
+    "pptx-viewer",
+    "pptx-core",
+    "pptx-parser",
+    "pptx-renderer",
+    "powerpoint",
+    "presentation",
+    "slides",
+  ],
   authors: [
     {
       name: "sadmann7",
