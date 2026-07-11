@@ -11,7 +11,7 @@ import {
   DRAG_THRESHOLD,
   HANDLE_CURSORS,
   HANDLE_DIRECTIONS,
-  nodeRect,
+  getNodeRect,
   resizeRect,
 } from "./selection-geometry";
 import { cleanText, readBackTextBody, textBodyChanged } from "./selection-text";
@@ -790,7 +790,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stateRef is stable
   }, [isTextMode]);
 
-  // --- Text-mode repair after slide re-renders ---
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
   // detaching our contentEditable element: typed text would go into the
   // detached tree and never appear on screen. SlideImpl is a parent, so its
@@ -811,8 +810,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- repair keyed on revision only
   }, [slideRevision]);
 
-  // --- Overlay pointer events (non-text modes) ---
-
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || isTextMode) return;
 
@@ -825,7 +822,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       y: event.clientY,
       target: (event.target as HTMLElement)?.tagName,
       targetHandle: (event.target as HTMLElement)?.dataset?.resizeHandle,
-      selectedRect: selectedNode ? nodeRect(selectedNode) : null,
+      selectedRect: selectedNode ? getNodeRect(selectedNode) : null,
       selectedDomRect: selShapeEl
         ? (() => {
             const r = selShapeEl.getBoundingClientRect();
@@ -987,7 +984,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       };
       const contained = slide!.nodes
         .filter((n) => {
-          const r = nodeRect(n);
+          const r = getNodeRect(n);
           return (
             r.x >= box.x && r.y >= box.y && r.x + r.w <= box.x + box.w && r.y + r.h <= box.y + box.h
           );
@@ -1073,10 +1070,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         dy,
         lockAspect,
         hasSelectedNode: Boolean(selectedNode),
-        baseRect: selectedNode ? nodeRect(selectedNode) : null,
+        baseRect: selectedNode ? getNodeRect(selectedNode) : null,
       });
       if (selectedNode && (dx !== 0 || dy !== 0)) {
-        const next = resizeRect(nodeRect(selectedNode), handle, dx, dy, lockAspect);
+        const next = resizeRect(getNodeRect(selectedNode), handle, dx, dy, lockAspect);
         commitEdit(
           () =>
             store.edit({
@@ -1381,7 +1378,7 @@ function SelectionBox({
   onHandlePointerDown,
   onBorderPointerDown,
 }: SelectionBoxProps) {
-  let rect = nodeRect(node);
+  let rect = getNodeRect(node);
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
   } else if (state.mode === "resize") {

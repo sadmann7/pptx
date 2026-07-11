@@ -86,6 +86,6 @@ export function resizeRect(
   return { x, y, w, h };
 }
 
-export function nodeRect(node: SlideNode): Rect {
+export function getNodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
