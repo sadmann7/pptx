@@ -35,7 +35,7 @@ export interface PptxFiles {
   sourcePackage?: PptxPackage;
 }
 
-export interface ZipParseOptions {
+export interface PptxReadOptions {
   /**
    * Called after each zip entry has been read and categorized.
    * `done` counts processed entries, `total` is the number of entries.
@@ -47,9 +47,15 @@ export interface ZipParseOptions {
    * Uncategorized parts stay compressed in memory. @default false
    */
   keepPackage?: boolean;
+  /**
+   * Index media entries for on-demand decoding instead of inflating them during read.
+   * When true, `PptxFiles.media` stays empty until `mediaResolver.resolve()` is called.
+   * @default false
+   */
+  lazyMedia?: boolean;
 }
 
-export interface ZipParseLimits {
+export interface PptxReadLimits {
   /** Maximum number of non-directory entries in the zip archive. */
   maxEntries?: number;
   /** Maximum uncompressed size for any single entry (bytes). */
@@ -62,16 +68,16 @@ export interface ZipParseLimits {
   maxConcurrency?: number;
 }
 
-export const RECOMMENDED_ZIP_LIMITS = Object.freeze({
+export const RECOMMENDED_PPTX_READ_LIMITS = Object.freeze({
   maxEntries: 4_000,
   maxEntryUncompressedBytes: 32 * 1024 * 1024,
   maxTotalUncompressedBytes: 256 * 1024 * 1024,
   maxMediaBytes: 192 * 1024 * 1024,
   maxConcurrency: 8,
-}) satisfies Required<ZipParseLimits>;
+}) satisfies Required<PptxReadLimits>;
 
 function throwZipLimitExceeded(reason: string): never {
-  throw new Error(`PPTX zip limit exceeded: ${reason}`);
+  throw new Error(`PPTX read limit exceeded: ${reason}`);
 }
 
 function isMediaPath(path: string): boolean {
@@ -100,8 +106,8 @@ function textByteLength(text: string): number {
   return new TextEncoder().encode(text).byteLength;
 }
 
-interface ZipLimitState {
-  limits: ZipParseLimits;
+interface PptxReadLimitState {
+  limits: PptxReadLimits;
   knownSizeByPath: Map<string, number>;
   knownTotalBytes: number;
   knownMediaBytes: number;
@@ -122,7 +128,7 @@ class ZipLazyMediaResolver implements MediaResolver {
   constructor(
     private readonly entries: Map<string, LazyMediaEntry>,
     private readonly media: Map<string, Uint8Array>,
-    private readonly state: ZipLimitState,
+    private readonly state: PptxReadLimitState,
     readonly totalBytes: number,
   ) {
     this.totalCount = new Set(Array.from(entries.values(), (entry) => entry.path)).size;
@@ -176,7 +182,7 @@ class ZipLazyMediaResolver implements MediaResolver {
   }
 }
 
-function validateDecodedEntrySize(path: string, size: number, state: ZipLimitState): void {
+function validateDecodedEntrySize(path: string, size: number, state: PptxReadLimitState): void {
   if (
     state.limits.maxEntryUncompressedBytes !== undefined &&
     size > state.limits.maxEntryUncompressedBytes
@@ -213,7 +219,7 @@ function validateDecodedEntrySize(path: string, size: number, state: ZipLimitSta
 async function readZipTextEntry(
   path: string,
   file: JSZipObject,
-  state: ZipLimitState,
+  state: PptxReadLimitState,
 ): Promise<string> {
   const text = await file.async("string");
   validateDecodedEntrySize(path, textByteLength(text), state);
@@ -223,7 +229,7 @@ async function readZipTextEntry(
 async function readZipBinaryEntry(
   path: string,
   file: JSZipObject,
-  state: ZipLimitState,
+  state: PptxReadLimitState,
 ): Promise<Uint8Array> {
   const bytes = await file.async("uint8array");
   validateDecodedEntrySize(path, bytes.byteLength, state);
@@ -233,7 +239,7 @@ async function readZipBinaryEntry(
 async function countUncategorizedEntryIfNeeded(
   path: string,
   file: JSZipObject,
-  state: ZipLimitState,
+  state: PptxReadLimitState,
 ): Promise<void> {
   if (state.knownSizeByPath.has(path)) return;
   if (
@@ -268,41 +274,23 @@ async function mapWithConcurrency<T>(
 }
 
 /**
- * Parse a .pptx file buffer and extract all relevant files, categorized by type.
+ * Read a .pptx file buffer and extract all relevant parts, categorized by type.
  */
-export async function parseZip(
+export async function readPptx(
   buffer: ArrayBuffer,
-  limits: ZipParseLimits = {},
-  options: ZipParseOptions = {},
+  limits: PptxReadLimits = {},
+  options: PptxReadOptions = {},
 ): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, {
-    lazyMedia: false,
+  return readPptxInternal(buffer, limits, {
+    lazyMedia: options.lazyMedia ?? false,
     onProgress: options.onProgress,
     keepPackage: options.keepPackage,
   });
 }
 
-/**
- * Parse a .pptx file while indexing media entries for on-demand decoding.
- *
- * This preserves the same XML categorisation as parseZip(), but leaves
- * PptxFiles.media empty until mediaResolver.resolve(target) is called.
- */
-export async function parseZipLazyMedia(
+async function readPptxInternal(
   buffer: ArrayBuffer,
-  limits: ZipParseLimits = {},
-  options: ZipParseOptions = {},
-): Promise<PptxFiles> {
-  return parseZipInternal(buffer, limits, {
-    lazyMedia: true,
-    onProgress: options.onProgress,
-    keepPackage: options.keepPackage,
-  });
-}
-
-async function parseZipInternal(
-  buffer: ArrayBuffer,
-  limits: ZipParseLimits,
+  limits: PptxReadLimits,
   options: {
     lazyMedia: boolean;
     onProgress?: (done: number, total: number) => void;
@@ -379,7 +367,7 @@ async function parseZipInternal(
     fonts: new Map(),
   };
 
-  const limitState: ZipLimitState = {
+  const limitState: PptxReadLimitState = {
     limits,
     knownSizeByPath,
     knownTotalBytes,

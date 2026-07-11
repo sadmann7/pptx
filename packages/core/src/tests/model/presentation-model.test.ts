@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
+import { buildPresentation, materializeAllSlides } from "../../model/presentation";
 import type { PptxFiles } from "../../ooxml/zip";
-import { parseZip, RECOMMENDED_ZIP_LIMITS } from "../../ooxml/zip";
+import { readPptx, RECOMMENDED_PPTX_READ_LIMITS } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const SHAPE = `<p:sp>
@@ -20,10 +20,10 @@ let files: PptxFiles;
 
 beforeAll(async () => {
   buffer = await buildPptxWithShapes(SHAPE);
-  files = await parseZip(buffer);
+  files = await readPptx(buffer);
 });
 
-describe("parseZip", () => {
+describe("readPptx", () => {
   it("extracts all package parts", () => {
     expect(files.presentation).toContain("<p:presentation");
     expect(files.slides.size).toBe(1);
@@ -32,17 +32,17 @@ describe("parseZip", () => {
   });
 
   it("rejects non-zip input", async () => {
-    await expect(parseZip(new ArrayBuffer(32))).rejects.toThrow();
+    await expect(readPptx(new ArrayBuffer(32))).rejects.toThrow();
   });
 
   it("enforces entry-count limits", async () => {
-    await expect(parseZip(buffer, { maxEntries: 2 })).rejects.toThrow(/entries|limit/i);
+    await expect(readPptx(buffer, { maxEntries: 2 })).rejects.toThrow(/entries|limit/i);
   });
 
   it("enforces uncompressed-size limits", async () => {
-    await expect(parseZip(buffer, { maxEntryUncompressedBytes: 16 })).rejects.toThrow();
+    await expect(readPptx(buffer, { maxEntryUncompressedBytes: 16 })).rejects.toThrow();
     // Recommended limits comfortably admit the fixture.
-    await expect(parseZip(buffer, RECOMMENDED_ZIP_LIMITS)).resolves.toBeDefined();
+    await expect(readPptx(buffer, RECOMMENDED_PPTX_READ_LIMITS)).resolves.toBeDefined();
   });
 });
 
@@ -67,7 +67,7 @@ describe("buildPresentation", () => {
 
   it("materializes slide nodes with parsed geometry and adjustments", () => {
     const pres = buildPresentation(files);
-    materializeAllSlideNodes(pres);
+    materializeAllSlides(pres);
     const nodes = pres.slides[0].nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const shape = nodes.find((n) => n.nodeType === "shape");

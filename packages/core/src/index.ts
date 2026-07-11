@@ -1,14 +1,13 @@
-// New primary exports (v2 API)
 export { PptxViewer } from "./viewer";
 export type {
   FitMode,
   ListRenderOptions,
+  PptxSource,
   PptxViewerEventMap,
-  PreviewInput,
+  PptxViewerOptions,
   SearchHighlightHandle,
   SearchHighlightOptions,
   ThumbnailRenderOptions,
-  ViewerOptions,
 } from "./viewer";
 
 export { applyEdit } from "./edit/operation";
@@ -31,14 +30,10 @@ export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 export { PptxPackage } from "./ooxml/package";
 export type { PptxSaveOptions } from "./ooxml/package";
 export { writePptx } from "./ooxml/writer";
-export { parseZip, parseZipLazyMedia, RECOMMENDED_ZIP_LIMITS } from "./ooxml/zip";
-export type { ZipParseLimits, ZipParseOptions } from "./ooxml/zip";
+export { readPptx, RECOMMENDED_PPTX_READ_LIMITS } from "./ooxml/zip";
+export type { PptxReadLimits, PptxReadOptions } from "./ooxml/zip";
 
-export {
-  buildPresentation,
-  materializeAllSlideNodes,
-  materializeSlideNodes,
-} from "./model/presentation";
+export { buildPresentation, materializeAllSlides, materializeSlide } from "./model/presentation";
 export type {
   BuildPresentationOptions,
   EmbeddedFontEntry,
@@ -68,15 +63,15 @@ export type { SlideHandle, SlideRendererOptions, ThumbnailRendererOptions } from
 // Model types
 export type {
   BaseNodeData,
-  HlinkAction,
+  HyperlinkAction,
+  NodePosition,
+  NodeSize,
   NodeType,
   PlaceholderInfo,
-  Position,
-  Size,
 } from "./model/nodes/base";
 export type { ChartNodeData } from "./model/nodes/chart";
 export type { GroupNodeData } from "./model/nodes/group";
-export type { CropRect, PicNodeData } from "./model/nodes/picture";
+export type { CropRect, PictureNodeData } from "./model/nodes/picture";
 export type {
   LineEndInfo,
   ShapeNodeData,
@@ -90,7 +85,5 @@ export type { SlideData, SlideNode } from "./model/slide";
 export type { ThemeData } from "./model/theme";
 export type { PptxFiles } from "./ooxml/zip";
 
-// Embedded font support lives in a separate entry ("@diceui/pptx-core/fonts")
-// so the decode pipeline is only loaded when actually used. Only the handle
-// type is re-exported here for consumers typing against the API.
+// Font decode lives in "@diceui/pptx-core/fonts"; only the handle type is re-exported here.
 export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./fonts/injector";

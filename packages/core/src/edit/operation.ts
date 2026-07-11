@@ -11,10 +11,10 @@
  * must be applied in reverse order (a standard LIFO undo stack).
  */
 
-import type { Position, Size } from "../model/nodes/base";
+import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
-import { materializeSlideNodes, PresentationData } from "../model/presentation";
+import { materializeSlide, PresentationData } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
 import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
@@ -52,9 +52,9 @@ export interface SetNodeTransformOperation {
   slideId: string;
   nodeId: string;
   /** New position in px (96 DPI slide space). */
-  position?: Position;
+  position?: NodePosition;
   /** New size in px. */
-  size?: Size;
+  size?: NodeSize;
   /** New rotation in degrees. */
   rotation?: number;
   flipH?: boolean;
@@ -228,7 +228,7 @@ function findSlide(pres: PresentationData, slideId: string): SlideData {
 }
 
 function findNode(pres: PresentationData, slide: SlideData, nodeId: string): SlideNode {
-  materializeSlideNodes(pres, slide);
+  materializeSlide(pres, slide);
   const node = slide.nodes.find((n) => n.id === nodeId);
   if (!node) {
     throw new Error(`applyEdit: no top-level node "${nodeId}" on slide "${slide.id}"`);
@@ -952,7 +952,7 @@ async function applyDuplicateSlide(
   }
   pres.slides.splice(sourceIndex + 1, 0, newSlide);
   reindexSlides(pres);
-  materializeSlideNodes(pres, newSlide);
+  materializeSlide(pres, newSlide);
 
   return {
     affectedSlideIds: [newPath],

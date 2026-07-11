@@ -5,7 +5,7 @@
  *
  * Each stage is measured in isolation against pre-built inputs so the numbers
  * attribute time to the right phase:
- *   parseZip          : unzip + part extraction
+ *   readPptx          : unzip + part extraction
  *   buildPresentation : XML parsing + model construction
  *   materialize       : node materialization + placeholder inheritance
  *   renderSlide       : DOM/SVG generation for one slide
@@ -18,13 +18,13 @@ import { bench, describe } from "vitest";
 import type { PresentationData } from "../../model/presentation";
 import {
   buildPresentation,
-  materializeAllSlideNodes,
-  materializeSlideNodes,
+  materializeAllSlides,
+  materializeSlide,
 } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
 import { buildTextIndex, searchText } from "../../model/text-search";
 import type { PptxFiles } from "../../ooxml/zip";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
@@ -37,9 +37,9 @@ interface Workload {
 
 async function prepare(spec: (typeof DECK_SPECS)[keyof typeof DECK_SPECS]): Promise<Workload> {
   const buffer = await generateDeck(spec);
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
-  materializeAllSlideNodes(presentation);
+  materializeAllSlides(presentation);
   return { buffer, files, presentation };
 }
 
@@ -47,15 +47,15 @@ const small = await prepare(DECK_SPECS.small);
 const medium = await prepare(DECK_SPECS.medium);
 const large = await prepare(DECK_SPECS.large);
 
-describe("parseZip", () => {
+describe("readPptx", () => {
   bench("small (5 slides)", async () => {
-    await parseZip(small.buffer);
+    await readPptx(small.buffer);
   });
   bench("medium (20 slides)", async () => {
-    await parseZip(medium.buffer);
+    await readPptx(medium.buffer);
   });
   bench("large (100 slides)", async () => {
-    await parseZip(large.buffer);
+    await readPptx(large.buffer);
   });
 });
 
@@ -71,16 +71,16 @@ describe("buildPresentation", () => {
   });
 });
 
-describe("materializeAllSlideNodes", () => {
+describe("materializeAllSlides", () => {
   // Materialization caches per slide object, so rebuild the model each round;
   // the rebuild cost is reported separately above and subtracted mentally.
   bench("medium (incl. rebuild)", () => {
     const pres = buildPresentation(medium.files);
-    materializeAllSlideNodes(pres);
+    materializeAllSlides(pres);
   });
   bench("large (incl. rebuild)", () => {
     const pres = buildPresentation(large.files);
-    materializeAllSlideNodes(pres);
+    materializeAllSlides(pres);
   });
 });
 
@@ -97,22 +97,22 @@ describe("renderSlide", () => {
 
 describe("end-to-end load (buffer → materialized model)", () => {
   bench("medium", async () => {
-    const files = await parseZip(medium.buffer);
+    const files = await readPptx(medium.buffer);
     const pres = buildPresentation(files);
-    for (const slide of pres.slides) materializeSlideNodes(pres, slide);
+    for (const slide of pres.slides) materializeSlide(pres, slide);
   });
 });
 
 describe("time-to-first-slide (buffer → first slide ready)", () => {
   bench("large eager (parse all slides up front)", async () => {
-    const files = await parseZip(large.buffer);
+    const files = await readPptx(large.buffer);
     const pres = buildPresentation(files);
-    materializeSlideNodes(pres, pres.slides[0]);
+    materializeSlide(pres, pres.slides[0]);
   });
   bench("large lazy (parse only first slide)", async () => {
-    const files = await parseZip(large.buffer);
+    const files = await readPptx(large.buffer);
     const pres = buildPresentation(files, { lazy: true });
-    materializeSlideNodes(pres, pres.slides[0]);
+    materializeSlide(pres, pres.slides[0]);
   });
 });
 

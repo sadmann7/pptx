@@ -1,5 +1,5 @@
 ﻿/**
- * Parses p:pic elements (images, video and audio placeholders) into PicNodeData.
+ * Parses p:pic elements (images, video and audio placeholders) into PictureNodeData.
  */
 
 import { SafeXmlNode } from "../../ooxml/xml";
@@ -12,7 +12,7 @@ export interface CropRect {
   right: number;
 }
 
-export interface PicNodeData extends BaseNodeData {
+export interface PictureNodeData extends BaseNodeData {
   nodeType: "picture";
   blipEmbed?: string;
   blipLink?: string;
@@ -34,9 +34,9 @@ export interface PicNodeData extends BaseNodeData {
 const CROP_DIVISOR = 100000;
 
 /**
- * Parse a picture XML node (`p:pic`) into PicNodeData.
+ * Parse a picture XML node (`p:pic`) into PictureNodeData.
  */
-export function parsePicNode(picNode: SafeXmlNode): PicNodeData {
+export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const base = parseBaseProps(picNode);
 
   // --- Blip fill ---

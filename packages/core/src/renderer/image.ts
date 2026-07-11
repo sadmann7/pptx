@@ -1,5 +1,5 @@
 ﻿/**
- * Renders PicNodeData (images, video, audio) as positioned HTML elements.
+ * Renders PictureNodeData (images, video, audio) as positioned HTML elements.
  *
  * Handles EMF extraction, async blob URL resolution, crop/fit transforms,
  * and SVG shape clip paths.
@@ -15,7 +15,7 @@ import {
   getOrCreateBlobUrl,
   resolveMediaPath,
 } from "../media/resolve";
-import { PicNodeData } from "../model/nodes/picture";
+import { PictureNodeData } from "../model/nodes/picture";
 import { isExternalTargetMode, RelEntry } from "../ooxml/rel";
 import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
@@ -71,7 +71,7 @@ function resolveImageRelUrl(rel: RelEntry, ctx: RenderContext): string | undefin
  * - Crop via CSS clip-path
  * - Rotation and flip transforms
  */
-export function renderImage(node: PicNodeData, ctx: RenderContext): HTMLElement {
+export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.style.position = "absolute";
   wrapper.style.left = `${node.position.x}px`;
@@ -180,7 +180,7 @@ export function renderImage(node: PicNodeData, ctx: RenderContext): HTMLElement 
 }
 
 function renderResolvedImage(
-  node: PicNodeData,
+  node: PictureNodeData,
   ctx: RenderContext,
   wrapper: HTMLElement,
   mediaPath: string,
@@ -202,7 +202,7 @@ function renderResolvedImage(
 }
 
 function renderImageUrl(
-  node: PicNodeData,
+  node: PictureNodeData,
   ctx: RenderContext,
   wrapper: HTMLElement,
   url: string,
@@ -338,7 +338,7 @@ function applyImageFillRect(img: HTMLImageElement, fillRect: FillRectBox): void 
   img.style.height = `${fillRect.height}%`;
 }
 
-function getPictureGeometryClipPath(node: PicNodeData): string | undefined {
+function getPictureGeometryClipPath(node: PictureNodeData): string | undefined {
   const sourceCustomGeometry = node.source.child("spPr").child("custGeom");
   const customGeometry =
     node.customGeometry ?? (sourceCustomGeometry.exists() ? sourceCustomGeometry : undefined);
@@ -359,7 +359,7 @@ function getPictureGeometryClipPath(node: PicNodeData): string | undefined {
   return d || undefined;
 }
 
-function getClipTransform(node: PicNodeData): string | undefined {
+function getClipTransform(node: PictureNodeData): string | undefined {
   if (node.flipH && node.flipV) return `translate(${node.size.w} ${node.size.h}) scale(-1 -1)`;
   if (node.flipH) return `translate(${node.size.w} 0) scale(-1 1)`;
   if (node.flipV) return `translate(0 ${node.size.h}) scale(1 -1)`;
@@ -367,7 +367,7 @@ function getClipTransform(node: PicNodeData): string | undefined {
 }
 
 function renderClippedSvgImage(
-  node: PicNodeData,
+  node: PictureNodeData,
   wrapper: HTMLElement,
   url: string,
   clipPathD: string,
@@ -435,7 +435,7 @@ function renderClippedSvgImage(
 
 function applyPictureShapeProperties(
   wrapper: HTMLElement,
-  node: PicNodeData,
+  node: PictureNodeData,
   ctx: RenderContext,
 ): void {
   applyPictureFill(wrapper, node, ctx);
@@ -444,7 +444,7 @@ function applyPictureShapeProperties(
   applyPictureHyperlink(wrapper, node, ctx);
 }
 
-function applyPictureFill(wrapper: HTMLElement, node: PicNodeData, ctx: RenderContext): void {
+function applyPictureFill(wrapper: HTMLElement, node: PictureNodeData, ctx: RenderContext): void {
   const spPr = node.source.child("spPr");
   const fillCss = resolveFill(spPr, ctx);
   if (!fillCss) return;
@@ -485,7 +485,11 @@ function clearCssFillBackground(el: HTMLElement): void {
   el.style.backgroundSize = "";
 }
 
-function applyPictureOutline(wrapper: HTMLElement, node: PicNodeData, ctx: RenderContext): void {
+function applyPictureOutline(
+  wrapper: HTMLElement,
+  node: PictureNodeData,
+  ctx: RenderContext,
+): void {
   const lnRef = node.source.child("style").child("lnRef");
   const lineIsNoFill = node.line?.child("noFill").exists() ?? false;
   if (lineIsNoFill) return;
@@ -508,7 +512,11 @@ function applyPictureOutline(wrapper: HTMLElement, node: PicNodeData, ctx: Rende
   wrapper.style.border = `${style.width}px ${style.dash} ${style.color}`;
 }
 
-function applyPictureEffects(wrapper: HTMLElement, node: PicNodeData, ctx: RenderContext): void {
+function applyPictureEffects(
+  wrapper: HTMLElement,
+  node: PictureNodeData,
+  ctx: RenderContext,
+): void {
   const effectLst = node.source.child("spPr").child("effectLst");
   if (!effectLst.exists()) return;
 
@@ -535,7 +543,7 @@ function applyPictureEffects(wrapper: HTMLElement, node: PicNodeData, ctx: Rende
 
 function applyPictureOuterShadow(
   wrapper: HTMLElement,
-  node: PicNodeData,
+  node: PictureNodeData,
   outerShdw: SafeXmlNode,
   ctx: RenderContext,
 ): void {
@@ -595,7 +603,7 @@ function applyPictureGlow(wrapper: HTMLElement, glow: SafeXmlNode, ctx: RenderCo
 
 function applyPictureSoftEdge(
   wrapper: HTMLElement,
-  node: PicNodeData,
+  node: PictureNodeData,
   softEdge: SafeXmlNode,
 ): void {
   const radiusPx = emuToPx(softEdge.numAttr("rad") ?? 0);
@@ -644,7 +652,11 @@ function applyPictureReflection(wrapper: HTMLElement, reflection: SafeXmlNode): 
   (wrapper.style as any).webkitBoxReflect = reflectValue;
 }
 
-function applyPictureHyperlink(wrapper: HTMLElement, node: PicNodeData, ctx: RenderContext): void {
+function applyPictureHyperlink(
+  wrapper: HTMLElement,
+  node: PictureNodeData,
+  ctx: RenderContext,
+): void {
   if (!node.hlinkClick || !ctx.onNavigate) return;
 
   const { action, rId } = node.hlinkClick;
@@ -703,7 +715,7 @@ function resolveBlipOpacity(blip: SafeXmlNode): number {
 /**
  * Render a video element inside the wrapper.
  */
-function renderVideo(node: PicNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
+function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
   // Try to get video URL from mediaRId
   const videoUrl = resolveMediaUrl(node.mediaRId, ctx);
 
@@ -757,7 +769,7 @@ function renderVideo(node: PicNodeData, ctx: RenderContext, wrapper: HTMLElement
 /**
  * Render an audio element inside the wrapper.
  */
-function renderAudio(node: PicNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
+function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
   const audioUrl = resolveMediaUrl(node.mediaRId, ctx);
 
   if (audioUrl) {
@@ -870,7 +882,7 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
  */
 function renderEmf(
   data: Uint8Array,
-  node: PicNodeData,
+  node: PictureNodeData,
   ctx: RenderContext,
   wrapper: HTMLElement,
   mediaPath: string,
@@ -902,7 +914,7 @@ function renderEmf(
 function renderEmfPdf(
   pdfData: Uint8Array,
   wrapper: HTMLElement,
-  node: PicNodeData,
+  node: PictureNodeData,
   ctx: RenderContext,
   mediaPath: string,
 ): void {

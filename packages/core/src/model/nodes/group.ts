@@ -5,12 +5,12 @@
 
 import { emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
-import { BaseNodeData, parseBaseProps, Position, Size } from "./base";
+import { BaseNodeData, parseBaseProps, NodePosition, NodeSize } from "./base";
 
 export interface GroupNodeData extends BaseNodeData {
   nodeType: "group";
-  childOffset: Position;
-  childExtent: Size;
+  childOffset: NodePosition;
+  childExtent: NodeSize;
   /** @internal Raw XML nodes, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   children: SafeXmlNode[];
 }
@@ -31,11 +31,11 @@ export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
   const chOff = xfrm.child("chOff");
   const chExt = xfrm.child("chExt");
 
-  const childOffset: Position = chOff.exists()
+  const childOffset: NodePosition = chOff.exists()
     ? { x: emuToPx(chOff.numAttr("x") ?? 0), y: emuToPx(chOff.numAttr("y") ?? 0) }
     : { x: 0, y: 0 };
 
-  const childExtent: Size = (() => {
+  const childExtent: NodeSize = (() => {
     if (!chExt.exists()) return { w: base.size.w, h: base.size.h };
     const cx = chExt.numAttr("cx");
     const cy = chExt.numAttr("cy");

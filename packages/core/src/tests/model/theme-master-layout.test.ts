@@ -6,7 +6,7 @@ import type { BaseNodeData } from "../../model/nodes/base";
 import { buildPresentation, resolveNodePlaceholderInheritance } from "../../model/presentation";
 import { parseTheme } from "../../model/theme";
 import { parseXml } from "../../ooxml/xml";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildCustomPptx, CustomPptxOptions } from "../fixtures/fixture-extras";
 
@@ -24,7 +24,7 @@ function textShape(rPrChildrenXml: string, text: string): string {
 
 async function renderCustomSlide(options: CustomPptxOptions): Promise<HTMLElement> {
   const buffer = await buildCustomPptx(options);
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   return renderSlide(presentation, presentation.slides[0]).element;
 }

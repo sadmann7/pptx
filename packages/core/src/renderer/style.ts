@@ -339,7 +339,7 @@ function resolvePatternFill(
     bg = colorToCss(color, alpha);
   }
 
-  // Size of pattern tile in px
+  // Pattern tile size in px
   const s = 8;
 
   // Helper: returns CSS `background` shorthand with repeating pattern layer(s) over bg color.

@@ -13,10 +13,10 @@ import { BaseNodeData } from "../model/nodes/base";
 import { ChartNodeData } from "../model/nodes/chart";
 import { GroupNodeData } from "../model/nodes/group";
 import { isPlaceholderNode, parseRenderableChild } from "../model/nodes/parser";
-import { PicNodeData } from "../model/nodes/picture";
+import { PictureNodeData } from "../model/nodes/picture";
 import { ShapeNodeData } from "../model/nodes/shape";
 import { TableNodeData } from "../model/nodes/table";
-import { materializeSlideNodes, PresentationData } from "../model/presentation";
+import { materializeSlide, PresentationData } from "../model/presentation";
 import { SlideData } from "../model/slide";
 import type { RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
@@ -84,7 +84,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "shape":
       return renderShape(node as ShapeNodeData, ctx);
     case "picture":
-      return renderImage(node as PicNodeData, ctx);
+      return renderImage(node as PictureNodeData, ctx);
     case "table":
       return renderTable(node as TableNodeData, ctx);
     case "group":
@@ -294,7 +294,7 @@ export function renderThumbnail(
   slide: SlideData,
   options?: ThumbnailRendererOptions,
 ): SlideHandle {
-  materializeSlideNodes(presentation, slide);
+  materializeSlide(presentation, slide);
 
   const isSharedCache = !!options?.mediaUrlCache;
 
@@ -412,7 +412,7 @@ export function renderSlide(
   slide: SlideData,
   options?: SlideRendererOptions,
 ): SlideHandle {
-  materializeSlideNodes(presentation, slide);
+  materializeSlide(presentation, slide);
 
   const isSharedCache = !!options?.mediaUrlCache;
   const chartInstances = options?.chartInstances ?? new Set<ECharts>();

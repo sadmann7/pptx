@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 const SHAPES = `<p:sp>
@@ -19,7 +19,7 @@ let presentation: PresentationData;
 
 beforeAll(async () => {
   const buffer = await buildPptxWithShapes(SHAPES);
-  presentation = buildPresentation(await parseZip(buffer));
+  presentation = buildPresentation(await readPptx(buffer));
 });
 
 describe("serializePresentation", () => {

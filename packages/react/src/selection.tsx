@@ -1,6 +1,11 @@
 import * as React from "react";
 
-import type { Position, SetTextBodyParagraph, ShapeNodeData, SlideNode } from "@diceui/pptx-core";
+import type {
+  NodePosition,
+  SetTextBodyParagraph,
+  ShapeNodeData,
+  SlideNode,
+} from "@diceui/pptx-core";
 
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
@@ -388,7 +393,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /** Convert viewport (client) coordinates to slide-space px. */
-  function clientToSlide(clientX: number, clientY: number): Position {
+  function clientToSlide(clientX: number, clientY: number): NodePosition {
     const wrapperRect = slideWrapper()?.getBoundingClientRect();
     if (!wrapperRect) return { x: 0, y: 0 };
     return { x: (clientX - wrapperRect.left) / zoom, y: (clientY - wrapperRect.top) / zoom };
@@ -755,13 +760,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (!sel) return;
       // Standard API (Firefox, newer Chrome/Safari).
       const docWithCaret = document as Document & {
-        caretPositionFromPoint?: (
+        caretNodePositionFromPoint?: (
           x: number,
           y: number,
         ) => { offsetNode: Node; offset: number } | null;
       };
-      if (docWithCaret.caretPositionFromPoint) {
-        const pos = docWithCaret.caretPositionFromPoint(clientX, clientY);
+      if (docWithCaret.caretNodePositionFromPoint) {
+        const pos = docWithCaret.caretNodePositionFromPoint(clientX, clientY);
         if (pos) {
           const range = document.createRange();
           range.setStart(pos.offsetNode, pos.offset);
@@ -1323,7 +1328,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /** Move every given node by `delta`, as a single undoable edit. */
-  function nudge(nodes: SlideNode[], delta: Position): void {
+  function nudge(nodes: SlideNode[], delta: NodePosition): void {
     if (nodes.length === 0) return;
     const ops = nodes.map((node) => ({
       type: "setNodeTransform" as const,
@@ -1422,7 +1427,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     const step = event.shiftKey ? 10 : 1;
-    const arrows: Record<string, Position> = {
+    const arrows: Record<string, NodePosition> = {
       ArrowLeft: { x: -step, y: 0 },
       ArrowRight: { x: step, y: 0 },
       ArrowUp: { x: 0, y: -step },
@@ -1593,7 +1598,7 @@ function SelectionBox({
   const showHandles =
     showResizeHandles && node.rotation === 0 && state.mode !== "move" && !isTextMode;
 
-  const handlePositions: Record<HandleDirection, React.CSSProperties> = {
+  const handleNodePositions: Record<HandleDirection, React.CSSProperties> = {
     nw: { left: 0, top: 0 },
     n: { left: "50%", top: 0 },
     ne: { left: "100%", top: 0 },
@@ -1627,7 +1632,7 @@ function SelectionBox({
             onPointerDown={(event) => onHandlePointerDown(event, direction)}
             style={{
               position: "absolute",
-              ...handlePositions[direction],
+              ...handleNodePositions[direction],
               width: 9,
               height: 9,
               marginLeft: -4.5,

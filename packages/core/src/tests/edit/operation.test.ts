@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 /**
  * Tests for applyEdit(): every operation mutates the part XML, keeps the
  * typed model in sync, and survives a save → reopen round trip through the
@@ -15,7 +15,7 @@ import { applyEdit } from "../../edit/operation";
 import type { ShapeNodeData } from "../../model/nodes/shape";
 import { buildPresentation, PresentationData } from "../../model/presentation";
 import { writePptx } from "../../ooxml/writer";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
 
 function textShape(id: number, text: string, extraSpPr = ""): string {
@@ -37,12 +37,12 @@ function shapeWithoutXfrm(id: number): string {
 
 async function openEditable(slides: string[]): Promise<PresentationData> {
   const buffer = await buildCustomPptx({ slides });
-  return buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+  return buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
 }
 
 async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
   const saved = await writePptx(pres);
-  return buildPresentation(await parseZip(saved.slice().buffer));
+  return buildPresentation(await readPptx(saved.slice().buffer));
 }
 
 async function savedPartText(pres: PresentationData, path: string): Promise<string> {
@@ -61,7 +61,7 @@ function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): Sh
 describe("applyEdit guards", () => {
   it("rejects presentations parsed without keepPackage", async () => {
     const buffer = await buildCustomPptx({ slides: [textShape(2, "x")] });
-    const pres = buildPresentation(await parseZip(buffer));
+    const pres = buildPresentation(await readPptx(buffer));
     await expect(
       applyEdit(pres, {
         type: "setTextRun",

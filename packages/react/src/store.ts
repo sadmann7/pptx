@@ -9,8 +9,8 @@ import type {
 import {
   applyEdit,
   buildPresentation,
-  materializeSlideNodes,
-  parseZipLazyMedia,
+  materializeSlide,
+  readPptx,
   writePptx,
 } from "@diceui/pptx-core";
 
@@ -458,7 +458,8 @@ export function createStore(): Store {
       workDone = readUnits;
       reportProgress();
 
-      const files = await parseZipLazyMedia(buffer, undefined, {
+      const files = await readPptx(buffer, undefined, {
+        lazyMedia: true,
         keepPackage: options?.readOnly === false,
         onProgress: (done, total) => {
           workDone = readUnits + zipUnits * (done / total);
@@ -488,7 +489,7 @@ export function createStore(): Store {
 
       // The active slide's nodes must be reliable the moment the store
       // reports "ready", even in lazy mode.
-      if (startSlide) materializeSlideNodes(presentation, startSlide);
+      if (startSlide) materializeSlide(presentation, startSlide);
 
       // Decode embedded fonts while still "loading" and wait for all of them,
       // so no font can swap in after slides are visible (no FOUT). The font
@@ -568,7 +569,7 @@ export function createStore(): Store {
     // Materialize the target before subscribers observe the navigation
     // (lazy mode); no-op when already materialized.
     const target = presentation.slides[index];
-    if (target) materializeSlideNodes(presentation, target);
+    if (target) materializeSlide(presentation, target);
 
     setState({ activeSlideId: slideId });
   }
@@ -685,7 +686,7 @@ export function createStore(): Store {
     const activeSlide = activeSlideId
       ? presentation.slides[slideIndexById.get(activeSlideId) ?? -1]
       : undefined;
-    if (activeSlide) materializeSlideNodes(presentation, activeSlide);
+    if (activeSlide) materializeSlide(presentation, activeSlide);
 
     setState({ activeSlideId, revision: state.revision + 1 });
   }

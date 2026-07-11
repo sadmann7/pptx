@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
 
@@ -42,7 +42,7 @@ async function renderFirstSlide(slideXml: string, placeholderPrompts: boolean) {
     slides: [slideXml],
     layoutShapesXml: LAYOUT_SHAPES,
   });
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   return renderSlide(presentation, presentation.slides[0], { placeholderPrompts }).element;
 }

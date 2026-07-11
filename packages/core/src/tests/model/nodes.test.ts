@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { GroupNodeData } from "../../model/nodes/group";
-import type { PicNodeData } from "../../model/nodes/picture";
+import type { PictureNodeData } from "../../model/nodes/picture";
 import type { PresentationData } from "../../model/presentation";
-import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { buildPresentation, materializeAllSlides } from "../../model/presentation";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
@@ -61,8 +61,8 @@ let presentation: PresentationData;
 
 beforeAll(async () => {
   const buffer = await buildPptxWithShapes(GROUPED_SHAPES + PICTURE + VIDEO);
-  presentation = buildPresentation(await parseZip(buffer));
-  materializeAllSlideNodes(presentation);
+  presentation = buildPresentation(await readPptx(buffer));
+  materializeAllSlides(presentation);
 });
 
 describe("group nodes", () => {
@@ -90,7 +90,7 @@ describe("group nodes", () => {
 describe("picture nodes", () => {
   it("parses blip embed, crop, and clip geometry", () => {
     const pic = presentation.slides[0].nodes.find(
-      (n): n is PicNodeData => n.nodeType === "picture" && !n.isVideo,
+      (n): n is PictureNodeData => n.nodeType === "picture" && !n.isVideo,
     );
     expect(pic).toBeDefined();
     expect(pic!.blipEmbed).toBe("rId9");
@@ -100,7 +100,7 @@ describe("picture nodes", () => {
 
   it("detects video placeholders with their media relationship", () => {
     const video = presentation.slides[0].nodes.find(
-      (n): n is PicNodeData => n.nodeType === "picture" && n.isVideo === true,
+      (n): n is PictureNodeData => n.nodeType === "picture" && n.isVideo === true,
     );
     expect(video).toBeDefined();
     expect(video!.mediaRId).toBe("rId10");

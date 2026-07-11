@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
@@ -27,7 +27,7 @@ ${rowsXml}
 </a:graphicData></a:graphic>
 </p:graphicFrame>`);
 
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   const handle = renderSlide(presentation, presentation.slides[0]);
   const table = handle.element.querySelector("table");

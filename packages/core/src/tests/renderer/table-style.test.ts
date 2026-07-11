@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import {
   getAllPredefinedStyleIds,
@@ -102,7 +102,7 @@ async function renderStyledTable(
       options.includeTableStylesPart === false ? {} : { "ppt/tableStyles.xml": EMPTY_TABLE_STYLES },
   });
 
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   const handle = renderSlide(presentation, presentation.slides[0]);
   const table = handle.element.querySelector("table");

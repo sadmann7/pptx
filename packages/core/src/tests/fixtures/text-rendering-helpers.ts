@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Shared helpers for the text-rendering test suites.
  *
- * All helpers run the REAL pipeline (parseZip → buildPresentation → renderSlide)
+ * All helpers run the REAL pipeline (readPptx → buildPresentation → renderSlide)
  * against in-memory fixtures produced by `buildPptxWithShapes` (no mocks).
  */
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide, type SlideRendererOptions } from "../../renderer/slide";
 import { buildPptxWithShapes } from "./minimal-pptx";
 
@@ -15,7 +15,7 @@ export async function renderShapes(
   options?: SlideRendererOptions,
 ): Promise<HTMLElement> {
   const buffer = await buildPptxWithShapes(shapesXml);
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   return renderSlide(presentation, presentation.slides[0], options).element;
 }
