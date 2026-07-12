@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
-import { materializeSlide, renderSlide } from "@diceui/pptx-core";
+import { materializeSlide, PPTX_ATTRS, renderSlide } from "@diceui/pptx-core";
 
 import { TYPOGRAPHY_RESET_STYLE } from "./constant";
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
@@ -11,6 +11,20 @@ import type { PresentationStatus } from "./store";
 import { useLazyRef } from "./use-lazy-ref";
 
 const SLIDE_NAME = "Presentation.Slide";
+
+function buildNodeSnapshot(slide: SlideData) {
+  const map = new Map<string, { x: number; y: number; w: number; h: number; rotation: number }>();
+  for (const node of slide.nodes) {
+    map.set(node.id, {
+      x: node.position.x,
+      y: node.position.y,
+      w: node.size.w,
+      h: node.size.h,
+      rotation: node.rotation,
+    });
+  }
+  return map;
+}
 
 export interface SlideState {
   /**
@@ -98,22 +112,55 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCacheRef = useLazyRef(() => new Map<string, string>());
+  const nodeSnapshotRef =
+    React.useRef<Map<string, { x: number; y: number; w: number; h: number; rotation: number }>>(
+      null,
+    );
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
+    if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
+
+    // Try to patch positions in-place instead of a full rebuild.
+    // Safe when: same slide handle, same node set, and only transforms changed.
+    if (slideHandleRef.current && nodeSnapshotRef.current) {
+      const prevSnapshot = nodeSnapshotRef.current;
+      const canPatch =
+        slide.nodes.length === prevSnapshot.size &&
+        slide.nodes.every((node) => {
+          const prev = prevSnapshot.get(node.id);
+          if (!prev) return false;
+          return (
+            prev.w === node.size.w && prev.h === node.size.h && prev.rotation === node.rotation
+          );
+        });
+
+      if (canPatch) {
+        for (const node of slide.nodes) {
+          const el = container.querySelector<HTMLElement>(
+            `[${PPTX_ATTRS.nodeId}="${CSS.escape(node.id)}"]`,
+          );
+          if (el) {
+            el.style.left = `${node.position.x}px`;
+            el.style.top = `${node.position.y}px`;
+          }
+        }
+        nodeSnapshotRef.current = buildNodeSnapshot(slide);
+        return;
+      }
+    }
+
+    // Full rebuild required.
     if (slideHandleRef.current) {
       slideHandleRef.current.dispose();
       slideHandleRef.current = null;
     }
     container.innerHTML = "";
 
-    if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache: mediaUrlCacheRef.current,
-      // Editable presentations (loaded with readOnly: false) get PowerPoint-style
-      // dashed outlines and prompt text on empty placeholders.
       placeholderPrompts: presentation.sourcePackage != null,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
@@ -122,14 +169,17 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
 
     container.appendChild(slideHandle.element);
     slideHandleRef.current = slideHandle;
+    nodeSnapshotRef.current = buildNodeSnapshot(slide);
+  }, [presentation, slide, revision]);
 
+  React.useEffect(() => {
     return () => {
       if (slideHandleRef.current) {
         slideHandleRef.current.dispose();
         slideHandleRef.current = null;
       }
     };
-  }, [presentation, slide, revision]);
+  }, []);
 
   const { width, height } = presentation;
 
