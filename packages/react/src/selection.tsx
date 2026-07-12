@@ -16,8 +16,38 @@ const SELECTION_NAME = "Presentation.Selection";
 
 const ENABLE_DEBUG_LOG = false;
 
-/** Hitbox width (screen px) of the border move strips shown while editing text. */
-const BORDER_GRAB_SIZE = 10;
+/** Screen-px thickness of the selection-frame grab hitboxes shown while editing text. */
+const FRAME_GRAB_SIZE = 10;
+
+const FRAME_GRAB_INSET = FRAME_GRAB_SIZE / 2;
+
+/** Top, bottom, left, and right frame grab hitboxes straddling the selection border. */
+const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
+  {
+    left: -FRAME_GRAB_INSET,
+    right: -FRAME_GRAB_INSET,
+    top: -FRAME_GRAB_INSET,
+    height: FRAME_GRAB_SIZE,
+  },
+  {
+    left: -FRAME_GRAB_INSET,
+    right: -FRAME_GRAB_INSET,
+    bottom: -FRAME_GRAB_INSET,
+    height: FRAME_GRAB_SIZE,
+  },
+  {
+    left: -FRAME_GRAB_INSET,
+    top: FRAME_GRAB_INSET,
+    bottom: FRAME_GRAB_INSET,
+    width: FRAME_GRAB_SIZE,
+  },
+  {
+    right: -FRAME_GRAB_INSET,
+    top: FRAME_GRAB_INSET,
+    bottom: FRAME_GRAB_INSET,
+    width: FRAME_GRAB_SIZE,
+  },
+];
 
 /** Minimum shape size (slide px) a resize can shrink to. */
 export const MIN_SIZE = 8;
@@ -1621,7 +1651,7 @@ function SelectionBox({
             }}
           />
         ))}
-      {isTextMode && <BorderMoveStrips onPointerDown={onBorderPointerDown} />}
+      {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
     </div>
   );
 }
@@ -1661,29 +1691,21 @@ function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
   );
 }
 
-interface BorderMoveStripsProps {
+interface FrameGrabHitboxesProps {
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
 /**
- * Invisible grab strips straddling the shape border while editing text.
+ * Invisible grab hitboxes straddling the selection frame while editing text.
  * Dragging them moves the shape (PowerPoint: grab the frame to move).
- * The hitbox extends both inward and outward from the border line.
+ * Each hitbox extends both inward and outward from the border line.
  */
-function BorderMoveStrips({ onPointerDown }: BorderMoveStripsProps) {
-  const half = BORDER_GRAB_SIZE / 2;
-  const strips: React.CSSProperties[] = [
-    { left: -half, right: -half, top: -half, height: BORDER_GRAB_SIZE },
-    { left: -half, right: -half, bottom: -half, height: BORDER_GRAB_SIZE },
-    { left: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
-    { right: -half, top: half, bottom: half, width: BORDER_GRAB_SIZE },
-  ];
-
+function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
   return (
     <>
-      {strips.map((style, i) => (
+      {FRAME_GRAB_HITBOXES.map((style, index) => (
         <div
-          key={i}
+          key={index}
           data-border-move=""
           onPointerDown={onPointerDown}
           style={{
