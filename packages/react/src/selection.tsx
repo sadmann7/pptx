@@ -12,20 +12,23 @@ import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom }
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
-// ---------------------------------------------------------------------------
-// Geometry
-// ---------------------------------------------------------------------------
+const SELECTION_NAME = "Presentation.Selection";
+
+const ENABLE_DEBUG_LOG = false;
+
+/** Hitbox width (screen px) of the border move strips shown while editing text. */
+const BORDER_GRAB_SIZE = 10;
 
 /** Minimum shape size (slide px) a resize can shrink to. */
-const MIN_SIZE = 8;
+export const MIN_SIZE = 8;
 
 /** Screen-px movement before a pointer-down becomes a drag instead of a click. */
-const DRAG_THRESHOLD = 3;
+export const DRAG_THRESHOLD = 3;
 
-const HANDLE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-type HandleDirection = (typeof HANDLE_DIRECTIONS)[number];
+const GRIP_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+export type GripDirection = (typeof GRIP_DIRECTIONS)[number];
 
-const HANDLE_CURSORS: Record<HandleDirection, string> = {
+const GRIP_CURSORS: Record<GripDirection, string> = {
   nw: "nwse-resize",
   n: "ns-resize",
   ne: "nesw-resize",
@@ -36,76 +39,92 @@ const HANDLE_CURSORS: Record<HandleDirection, string> = {
   w: "ew-resize",
 };
 
-interface Rect {
+export interface Rect {
   x: number;
   y: number;
   w: number;
   h: number;
 }
 
-const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
+const CORNER_GRIPS: ReadonlySet<GripDirection> = new Set(["nw", "ne", "se", "sw"]);
+
+function debugLog(...args: unknown[]): void {
+  if (!ENABLE_DEBUG_LOG) return;
+  console.debug("[pptx-selection]", ...args);
+}
+
+/**
+ * True when a key event originates in an element with its own undo stack;
+ * our text-mode contentEditable or any host-app input. Their Ctrl+Z must
+ * reach the browser's native undo, not the presentation history.
+ */
+function getIsNativeUndoTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
 
 /**
  * Apply a resize drag (slide-px deltas) to the original rect, clamped to
  * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
  * dimensions proportionally around the opposite corner, like PowerPoint.
  */
-function resizeRect(
+export function resizeRect(
   origin: Rect,
-  handle: HandleDirection,
+  grip: GripDirection,
   dx: number,
   dy: number,
   lockAspect = false,
 ): Rect {
   let { x, y, w, h } = origin;
 
-  if (handle.includes("e")) w = origin.w + dx;
-  if (handle.includes("s")) h = origin.h + dy;
-  if (handle.includes("w")) {
+  if (grip.includes("e")) w = origin.w + dx;
+  if (grip.includes("s")) h = origin.h + dy;
+  if (grip.includes("w")) {
     w = origin.w - dx;
     x = origin.x + dx;
   }
-  if (handle.includes("n")) {
+  if (grip.includes("n")) {
     h = origin.h - dy;
     y = origin.y + dy;
   }
 
-  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
+  if (lockAspect && CORNER_GRIPS.has(grip) && origin.w > 0 && origin.h > 0) {
     let scale =
       Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
     scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
     w = origin.w * scale;
     h = origin.h * scale;
-    if (handle.includes("w")) x = origin.x + origin.w - w;
-    if (handle.includes("n")) y = origin.y + origin.h - h;
+    if (grip.includes("w")) x = origin.x + origin.w - w;
+    if (grip.includes("n")) y = origin.y + origin.h - h;
     return { x, y, w, h };
   }
 
   if (w < MIN_SIZE) {
-    if (handle.includes("w")) x = origin.x + origin.w - MIN_SIZE;
+    if (grip.includes("w")) x = origin.x + origin.w - MIN_SIZE;
     w = MIN_SIZE;
   }
   if (h < MIN_SIZE) {
-    if (handle.includes("n")) y = origin.y + origin.h - MIN_SIZE;
+    if (grip.includes("n")) y = origin.y + origin.h - MIN_SIZE;
     h = MIN_SIZE;
   }
 
   return { x, y, w, h };
 }
 
-function getNodeRect(node: SlideNode): Rect {
+export function getNodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
-
-// ---------------------------------------------------------------------------
-// Text read-back
-// ---------------------------------------------------------------------------
 
 /**
  * Strip zero-width spaces: line-height spacer spans from the renderer must
  * not reach the model.
  */
-function cleanText(raw: string | null | undefined): string {
+export function cleanText(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\u200B/g, "");
 }
 
@@ -114,7 +133,7 @@ function cleanText(raw: string | null | undefined): string {
  * paragraphs payload. Uses the paragraph/run data attributes (see
  * `PPTX_ATTRS`) to map back to source indices for style inheritance.
  */
-function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
+export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
 
   const children = Array.from(container.children).filter(
@@ -180,8 +199,10 @@ function readRunsFromParagraphDiv(
   return runs;
 }
 
-/** Compare the read-back paragraphs to the model to detect changes. */
-function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
+/**
+ * Compare the read-back paragraphs to the model to detect changes.
+ */
+export function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
   if (node.nodeType !== "shape") return false;
   const shape = node as ShapeNodeData;
   const paragraphs = shape.textBody?.paragraphs;
@@ -193,30 +214,6 @@ function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boo
     if (origText !== newText) return true;
   }
   return false;
-}
-
-// Re-export for tests
-export {
-  cleanText,
-  DRAG_THRESHOLD,
-  getNodeRect,
-  MIN_SIZE,
-  readBackTextBody,
-  resizeRect,
-  textBodyChanged,
-};
-export type { HandleDirection, Rect };
-
-const SELECTION_NAME = "Presentation.Selection";
-
-/** Hitbox width (screen px) of the border move strips shown while editing text. */
-const BORDER_GRAB_SIZE = 10;
-
-const DEBUG_TEXT_EDIT = false;
-
-function debugLog(...args: unknown[]): void {
-  if (!DEBUG_TEXT_EDIT) return;
-  console.debug("[pptx-selection]", ...args);
 }
 
 type InternalState =
@@ -248,12 +245,12 @@ type InternalState =
   | {
       mode: "resize";
       nodeId: string;
-      handle: HandleDirection;
+      grip: GripDirection;
       startX: number;
       startY: number;
       dx: number;
       dy: number;
-      /** Shift held during the drag: corner handles keep the aspect ratio. */
+      /** Shift held during the drag: corner grips keep the aspect ratio. */
       lockAspect: boolean;
     }
   | {
@@ -359,13 +356,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
-  function slideWrapper(): HTMLElement | null {
+  function getSlideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
   }
 
-  function shapeElement(nodeId: string): HTMLElement | null {
+  function getShapeElement(nodeId: string): HTMLElement | null {
     return (
-      slideWrapper()?.querySelector<HTMLElement>(
+      getSlideWrapper()?.querySelector<HTMLElement>(
         `[${PPTX_ATTRS.nodeId}="${CSS.escape(nodeId)}"]`,
       ) ?? null
     );
@@ -394,20 +391,20 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * native drag-and-drop, cancelling our pointer stream mid-resize/move.
    */
   function clearDocumentSelection(): void {
-    const sel = document.getSelection();
-    if (sel && !sel.isCollapsed) sel.removeAllRanges();
+    const selection = document.getSelection();
+    if (selection && !selection.isCollapsed) selection.removeAllRanges();
   }
 
   /** Convert viewport (client) coordinates to slide-space px. */
   function clientToSlide(clientX: number, clientY: number): NodePosition {
-    const wrapperRect = slideWrapper()?.getBoundingClientRect();
+    const wrapperRect = getSlideWrapper()?.getBoundingClientRect();
     if (!wrapperRect) return { x: 0, y: 0 };
     return { x: (clientX - wrapperRect.left) / zoom, y: (clientY - wrapperRect.top) / zoom };
   }
 
   function hitTest(clientX: number, clientY: number): string | null {
     const root = rootRef.current;
-    const wrapper = slideWrapper();
+    const wrapper = getSlideWrapper();
     if (!root || !wrapper) return null;
     for (const el of document.elementsFromPoint(clientX, clientY)) {
       if (root.contains(el)) continue;
@@ -457,7 +454,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     clientY?: number,
     insertText?: string,
   ): void {
-    const shapeEl = shapeElement(nodeId);
+    const shapeEl = getShapeElement(nodeId);
     const textElement = shapeEl ? textContainerOf(shapeEl) : null;
     debugLog("enterTextMode", {
       nodeId,
@@ -802,7 +799,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // Un-hide the placeholder prompt hidden by enterTextMode. When the edit
     // commits, the re-render rebuilds the shape anyway; when nothing changed
     // (no re-render), the prompt must come back by hand.
-    const shapeEl = shapeElement(nodeId);
+    const shapeEl = getShapeElement(nodeId);
     const prompt = shapeEl ? placeholderPromptOf(shapeEl) : null;
     if (prompt) prompt.style.display = "";
 
@@ -1003,7 +1000,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (event.button !== 0 || isTextMode) return;
 
     const nodeId = hitTest(event.clientX, event.clientY);
-    const selShapeEl = selectedNode ? shapeElement(selectedNode.id) : null;
+    const selShapeEl = selectedNode ? getShapeElement(selectedNode.id) : null;
     debugLog("root pointerdown", {
       hit: nodeId,
       mode: state.mode,
@@ -1069,11 +1066,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
-  function onHandlePointerDown(
-    event: React.PointerEvent<HTMLDivElement>,
-    handle: HandleDirection,
-  ): void {
-    debugLog("handle pointerdown", { handle, mode: state.mode, button: event.button });
+  function onGripPointerDown(event: React.PointerEvent<HTMLDivElement>, grip: GripDirection): void {
+    debugLog("grip pointerdown", { grip, mode: state.mode, button: event.button });
     // Resize handles only render for a single selection.
     if (event.button !== 0 || !isSoloSelection || isTextMode) return;
     event.stopPropagation();
@@ -1084,7 +1078,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     setState({
       mode: "resize",
       nodeId: selectedIds[0],
-      handle,
+      grip,
       startX: event.clientX,
       startY: event.clientY,
       dx: 0,
@@ -1142,7 +1136,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > DRAG_THRESHOLD;
       if (moved) {
         for (const id of state.nodeIds) {
-          const el = shapeElement(id);
+          const el = getShapeElement(id);
           if (el) el.style.translate = `${dx}px ${dy}px`;
         }
       }
@@ -1213,7 +1207,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             ),
           () => {
             for (const id of nodeIds) {
-              const el = shapeElement(id);
+              const el = getShapeElement(id);
               if (el) el.style.translate = "";
             }
           },
@@ -1230,7 +1224,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       } else {
         // Click (no drag). Clear any stray preview translate.
         for (const id of nodeIds) {
-          const el = shapeElement(id);
+          const el = getShapeElement(id);
           if (el) el.style.translate = "";
         }
 
@@ -1250,11 +1244,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         }
       }
     } else if (state.mode === "resize") {
-      const { nodeId, handle, dx, dy, lockAspect } = state;
+      const { nodeId, grip, dx, dy, lockAspect } = state;
       setState({ mode: "selected", nodeIds: [nodeId] });
       debugLog("resize pointerup", {
         nodeId,
-        handle,
+        grip,
         dx,
         dy,
         lockAspect,
@@ -1262,7 +1256,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         baseRect: selectedNode ? getNodeRect(selectedNode) : null,
       });
       if (selectedNode && (dx !== 0 || dy !== 0)) {
-        const next = resizeRect(getNodeRect(selectedNode), handle, dx, dy, lockAspect);
+        const next = resizeRect(getNodeRect(selectedNode), grip, dx, dy, lockAspect);
         commitEdit(
           () =>
             store.edit({
@@ -1280,7 +1274,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /** Double click on a regular shape with text → edit with caret at point. */
+  /**
+   * Double click on a regular shape with text → edit with caret at point.
+   */
   function onDoubleClick(event: React.MouseEvent<HTMLDivElement>): void {
     debugLog("double click", { isTextMode });
     if (isTextMode) return;
@@ -1290,8 +1286,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /** Native drag-and-drop of slide content (images, stale text selections)
-   * cancels our pointer gestures; block it while the overlay is interactive. */
+  /**
+   * Native drag-and-drop of slide content (images, stale text selections)
+   * cancels our pointer gestures; block it while the overlay is interactive.
+   */
   function onDragStart(event: React.DragEvent<HTMLDivElement>): void {
     debugLog("dragstart blocked", { target: (event.target as HTMLElement)?.tagName });
     event.preventDefault();
@@ -1301,7 +1299,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     debugLog("pointercancel", { mode: state.mode });
     if (state.mode === "move") {
       for (const id of state.nodeIds) {
-        const el = shapeElement(id);
+        const el = getShapeElement(id);
         if (el) el.style.translate = "";
       }
       setState({ mode: "selected", nodeIds: state.nodeIds });
@@ -1312,7 +1310,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /** Move every given node by `delta`, as a single undoable edit. */
+  /**
+   * Move every given node by `delta`, as a single undoable edit.
+   */
   function nudge(nodes: SlideNode[], delta: NodePosition): void {
     if (nodes.length === 0) return;
     const ops = nodes.map((node) => ({
@@ -1451,8 +1451,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   node={node}
                   state={state}
                   zoom={zoom}
-                  showResizeHandles={isSoloSelection}
-                  onHandlePointerDown={onHandlePointerDown}
+                  showResizeGrips={isSoloSelection}
+                  onGripPointerDown={onGripPointerDown}
                   onBorderPointerDown={onBorderPointerDown}
                 />
               ))}
@@ -1475,19 +1475,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     },
   );
 });
-
-/** True when a key event originates in an element with its own undo stack;
- * our text-mode contentEditable or any host-app input. Their Ctrl+Z must
- * reach the browser's native undo, not the presentation history. */
-function isNativeUndoTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.tagName === "SELECT"
-  );
-}
 
 /**
  * Thin outer wrapper that keys the inner component by `slideId`. When the
@@ -1524,7 +1511,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
     function onDocKeyDown(event: KeyboardEvent): void {
       if (!(event.ctrlKey || event.metaKey)) return;
-      if (isNativeUndoTarget(event.target)) return;
+      if (getIsNativeUndoTarget(event.target)) return;
       const key = event.key.toLowerCase();
 
       if (key === "z" && !event.shiftKey) {
@@ -1553,9 +1540,9 @@ interface SelectionBoxProps {
   node: SlideNode;
   state: InternalState;
   zoom: number;
-  /** False in a multi-selection: boxes render without resize handles. */
-  showResizeHandles: boolean;
-  onHandlePointerDown: (event: React.PointerEvent<HTMLDivElement>, handle: HandleDirection) => void;
+  /** False in a multi-selection: boxes render without resize grips. */
+  showResizeGrips: boolean;
+  onGripPointerDown: (event: React.PointerEvent<HTMLDivElement>, grip: GripDirection) => void;
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
@@ -1563,22 +1550,21 @@ function SelectionBox({
   node,
   state,
   zoom,
-  showResizeHandles,
-  onHandlePointerDown,
+  showResizeGrips,
+  onGripPointerDown,
   onBorderPointerDown,
 }: SelectionBoxProps) {
   let rect = getNodeRect(node);
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
   } else if (state.mode === "resize") {
-    rect = resizeRect(rect, state.handle, state.dx, state.dy, state.lockAspect);
+    rect = resizeRect(rect, state.grip, state.dx, state.dy, state.lockAspect);
   }
 
   const isTextMode = state.mode === "text";
-  const showHandles =
-    showResizeHandles && node.rotation === 0 && state.mode !== "move" && !isTextMode;
+  const showGrips = showResizeGrips && node.rotation === 0 && state.mode !== "move" && !isTextMode;
 
-  const handleNodePositions: Record<HandleDirection, React.CSSProperties> = {
+  const gripPositions: Record<GripDirection, React.CSSProperties> = {
     nw: { left: 0, top: 0 },
     n: { left: "50%", top: 0 },
     ne: { left: "100%", top: 0 },
@@ -1604,15 +1590,15 @@ function SelectionBox({
         pointerEvents: "none",
       }}
     >
-      {showHandles &&
-        HANDLE_DIRECTIONS.map((direction) => (
+      {showGrips &&
+        GRIP_DIRECTIONS.map((direction) => (
           <div
             key={direction}
-            data-resize-handle={direction}
-            onPointerDown={(event) => onHandlePointerDown(event, direction)}
+            data-resize-grip={direction}
+            onPointerDown={(event) => onGripPointerDown(event, direction)}
             style={{
               position: "absolute",
-              ...handleNodePositions[direction],
+              ...gripPositions[direction],
               width: 9,
               height: 9,
               marginLeft: -4.5,
@@ -1620,7 +1606,7 @@ function SelectionBox({
               background: "#fff",
               border: "1.5px solid var(--presentation-selection, #2563eb)",
               borderRadius: 2,
-              cursor: HANDLE_CURSORS[direction],
+              cursor: GRIP_CURSORS[direction],
               pointerEvents: "auto",
               touchAction: "none",
             }}
@@ -1636,7 +1622,9 @@ interface MarqueeBoxProps {
   rootElement: HTMLElement | null;
 }
 
-/** Rubber-band rectangle drawn while drag-selecting on empty canvas. */
+/**
+ * Rubber-band rectangle drawn while drag-selecting on empty canvas.
+ */
 function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
   // State coords are viewport-relative; the overlay is our positioning context.
   const origin = rootElement?.getBoundingClientRect();

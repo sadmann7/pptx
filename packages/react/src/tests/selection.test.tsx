@@ -6,7 +6,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
-import type { HandleDirection, Rect } from "../selection";
+import type { GripDirection, Rect } from "../selection";
 import {
   MIN_SIZE,
   cleanText,
@@ -119,8 +119,8 @@ describe("resizeRect", () => {
 
   describe("zero deltas", () => {
     it("returns same rect when dx=0 dy=0 for any handle", () => {
-      const handles: HandleDirection[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
-      for (const h of handles) {
+      const grips: GripDirection[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+      for (const h of grips) {
         expect(resizeRect(origin, h, 0, 0)).toEqual(origin);
       }
     });
