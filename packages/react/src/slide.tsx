@@ -96,9 +96,10 @@ interface SlideImplProps {
 function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
-  const mediaUrlCache = React.useRef(new Map<string, string>()).current;
+  const mediaUrlCacheRef = React.useRef<Map<string, string>>(null);
+  if (mediaUrlCacheRef.current === null) mediaUrlCacheRef.current = new Map();
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -110,7 +111,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
-      mediaUrlCache,
+      mediaUrlCache: mediaUrlCacheRef.current!,
       // Editable presentations (loaded with readOnly: false) get PowerPoint-style
       // dashed outlines and prompt text on empty placeholders.
       placeholderPrompts: presentation.sourcePackage != null,
@@ -128,7 +129,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
         slideHandleRef.current = null;
       }
     };
-  }, [presentation, slide, mediaUrlCache, revision]);
+  }, [presentation, slide, revision]);
 
   const { width, height } = presentation;
 

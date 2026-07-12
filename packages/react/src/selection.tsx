@@ -14,7 +14,7 @@ import { mergeRefs, renderElement } from "./render";
 
 const SELECTION_NAME = "Presentation.Selection";
 
-const ENABLE_DEBUG_LOG = false;
+const ENABLE_DEBUG_LOG = true;
 
 /** Screen-px thickness of the selection-frame grab hitboxes shown while editing text. */
 const FRAME_GRAB_SIZE = 10;
@@ -469,12 +469,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     onFailure?: (error: unknown) => void,
   ): void {
     action().then(onSuccess, (err) => {
+      console.warn("[pptx] edit failed:", err);
       onRollback?.();
-      if (onFailure) {
-        onFailure(err);
-      } else {
-        console.warn("[pptx] edit failed:", err);
-      }
+      onFailure?.(err);
     });
   }
 
@@ -1173,7 +1170,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (moved) {
         for (const id of state.nodeIds) {
           const shapeElement = getShapeElement(id);
-          if (shapeElement) shapeElement.style.translate = `${dx}px ${dy}px`;
+          const node = slide?.nodes.find((n) => n.id === id);
+          if (shapeElement && node) {
+            shapeElement.style.left = `${node.position.x + dx}px`;
+            shapeElement.style.top = `${node.position.y + dy}px`;
+          }
         }
       }
       setState({ ...state, dx, dy, moved });
@@ -1247,13 +1248,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           () => {
             for (const id of nodeIds) {
               const shapeElement = getShapeElement(id);
-              if (shapeElement) shapeElement.style.translate = "";
+              const node = slide?.nodes.find((n) => n.id === id);
+              if (shapeElement && node) {
+                shapeElement.style.left = `${node.position.x}px`;
+                shapeElement.style.top = `${node.position.y}px`;
+              }
             }
           },
           () => {
             for (const id of nodeIds) onNodeTransform?.(id);
-            // Border drag from text mode: return to editing so the user can
-            // keep typing right where they left off (PowerPoint behavior).
             if (resumeText) resumeTextEditing(primaryId);
           },
           (error) => {
@@ -1261,10 +1264,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           },
         );
       } else {
-        // Click (no drag). Clear any stray preview translate.
+        // Click (no drag). Reset any stray left/top offset.
         for (const id of nodeIds) {
           const shapeElement = getShapeElement(id);
-          if (shapeElement) shapeElement.style.translate = "";
+          const node = slide?.nodes.find((n) => n.id === id);
+          if (shapeElement && node) {
+            shapeElement.style.left = `${node.position.x}px`;
+            shapeElement.style.top = `${node.position.y}px`;
+          }
         }
 
         // Text boxes / placeholders → edit immediately. Everything else
@@ -1339,7 +1346,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (state.mode === "move") {
       for (const id of state.nodeIds) {
         const shapeElement = getShapeElement(id);
-        if (shapeElement) shapeElement.style.translate = "";
+        const node = slide?.nodes.find((n) => n.id === id);
+        if (shapeElement && node) {
+          shapeElement.style.left = `${node.position.x}px`;
+          shapeElement.style.top = `${node.position.y}px`;
+        }
       }
       setState({ mode: "selected", nodeIds: state.nodeIds });
     } else if (state.mode === "resize") {
