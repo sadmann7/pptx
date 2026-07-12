@@ -1,20 +1,211 @@
 import * as React from "react";
 
-import type { NodePosition, ShapeNodeData, SlideNode } from "@diceui/pptx-core";
+import type {
+  NodePosition,
+  SetTextBodyParagraph,
+  ShapeNodeData,
+  SlideNode,
+} from "@diceui/pptx-core";
 import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
-import type { HandleDirection, Rect } from "./selection-geometry";
-import {
+
+// ---------------------------------------------------------------------------
+// Geometry
+// ---------------------------------------------------------------------------
+
+/** Minimum shape size (slide px) a resize can shrink to. */
+const MIN_SIZE = 8;
+
+/** Screen-px movement before a pointer-down becomes a drag instead of a click. */
+const DRAG_THRESHOLD = 3;
+
+const HANDLE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+type HandleDirection = (typeof HANDLE_DIRECTIONS)[number];
+
+const HANDLE_CURSORS: Record<HandleDirection, string> = {
+  nw: "nwse-resize",
+  n: "ns-resize",
+  ne: "nesw-resize",
+  e: "ew-resize",
+  se: "nwse-resize",
+  s: "ns-resize",
+  sw: "nesw-resize",
+  w: "ew-resize",
+};
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
+
+/**
+ * Apply a resize drag (slide-px deltas) to the original rect, clamped to
+ * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
+ * dimensions proportionally around the opposite corner, like PowerPoint.
+ */
+function resizeRect(
+  origin: Rect,
+  handle: HandleDirection,
+  dx: number,
+  dy: number,
+  lockAspect = false,
+): Rect {
+  let { x, y, w, h } = origin;
+
+  if (handle.includes("e")) w = origin.w + dx;
+  if (handle.includes("s")) h = origin.h + dy;
+  if (handle.includes("w")) {
+    w = origin.w - dx;
+    x = origin.x + dx;
+  }
+  if (handle.includes("n")) {
+    h = origin.h - dy;
+    y = origin.y + dy;
+  }
+
+  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
+    let scale =
+      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
+    scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
+    w = origin.w * scale;
+    h = origin.h * scale;
+    if (handle.includes("w")) x = origin.x + origin.w - w;
+    if (handle.includes("n")) y = origin.y + origin.h - h;
+    return { x, y, w, h };
+  }
+
+  if (w < MIN_SIZE) {
+    if (handle.includes("w")) x = origin.x + origin.w - MIN_SIZE;
+    w = MIN_SIZE;
+  }
+  if (h < MIN_SIZE) {
+    if (handle.includes("n")) y = origin.y + origin.h - MIN_SIZE;
+    h = MIN_SIZE;
+  }
+
+  return { x, y, w, h };
+}
+
+function getNodeRect(node: SlideNode): Rect {
+  return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
+}
+
+// ---------------------------------------------------------------------------
+// Text read-back
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip zero-width spaces: line-height spacer spans from the renderer must
+ * not reach the model.
+ */
+function cleanText(raw: string | null | undefined): string {
+  return (raw ?? "").replace(/\u200B/g, "");
+}
+
+/**
+ * Walk the edited contentEditable container and produce a `setTextBody`
+ * paragraphs payload. Uses the paragraph/run data attributes (see
+ * `PPTX_ATTRS`) to map back to source indices for style inheritance.
+ */
+function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
+  const paragraphs: SetTextBodyParagraph[] = [];
+
+  const children = Array.from(container.children).filter(
+    (el) => el instanceof HTMLElement,
+  ) as HTMLElement[];
+
+  const paraDivs = children.filter((el) => el.dataset[PPTX_DATASET.run] === undefined);
+  const effectiveDivs =
+    paraDivs.length > 0 && paraDivs.length === children.length ? paraDivs : [container];
+  let lastSourceP = 0;
+
+  for (const paraDiv of effectiveDivs) {
+    const srcPStr = paraDiv.dataset?.[PPTX_DATASET.paragraph];
+    const sourceParagraphIndex = srcPStr !== undefined ? Number(srcPStr) : lastSourceP;
+    lastSourceP = sourceParagraphIndex;
+
+    const runs = readRunsFromParagraphDiv(paraDiv, sourceParagraphIndex);
+    paragraphs.push({ sourceParagraphIndex, runs });
+  }
+
+  return paragraphs;
+}
+
+function readRunsFromParagraphDiv(
+  paraDiv: HTMLElement,
+  defaultSourceP: number,
+): SetTextBodyParagraph["runs"] {
+  const runs: SetTextBodyParagraph["runs"] = [];
+  let lastSourceR: [number, number] | undefined;
+
+  for (const child of Array.from(paraDiv.childNodes)) {
+    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.bullet] !== undefined) {
+      continue;
+    }
+
+    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.run] !== undefined) {
+      const runIdx = Number(child.dataset[PPTX_DATASET.run]);
+      const sourceRun: [number, number] = [defaultSourceP, runIdx];
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun });
+        lastSourceR = sourceRun;
+      }
+    } else if (child instanceof HTMLBRElement) {
+      // Browsers insert <br> for empty paragraphs; skip.
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun: lastSourceR });
+      }
+    } else if (child instanceof HTMLElement) {
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun: lastSourceR });
+      }
+    }
+  }
+
+  if (runs.length === 0) {
+    runs.push({ text: "", sourceRun: lastSourceR });
+  }
+
+  return runs;
+}
+
+/** Compare the read-back paragraphs to the model to detect changes. */
+function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
+  if (node.nodeType !== "shape") return false;
+  const shape = node as ShapeNodeData;
+  const paragraphs = shape.textBody?.paragraphs;
+  if (!paragraphs) return false;
+  if (paragraphs.length !== readBack.length) return true;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const origText = paragraphs[i].runs.map((r) => r.text ?? "").join("");
+    const newText = readBack[i].runs.map((r) => r.text).join("");
+    if (origText !== newText) return true;
+  }
+  return false;
+}
+
+// Re-export for tests
+export {
+  cleanText,
   DRAG_THRESHOLD,
-  HANDLE_CURSORS,
-  HANDLE_DIRECTIONS,
   getNodeRect,
+  MIN_SIZE,
+  readBackTextBody,
   resizeRect,
-} from "./selection-geometry";
-import { cleanText, readBackTextBody, textBodyChanged } from "./selection-text";
+  textBodyChanged,
+};
+export type { HandleDirection, Rect };
 
 const SELECTION_NAME = "Presentation.Selection";
 
