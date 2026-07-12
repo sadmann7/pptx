@@ -8,6 +8,7 @@ import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom }
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
+import { useLazyRef } from "./use-lazy-ref";
 
 const SLIDE_NAME = "Presentation.Slide";
 
@@ -96,8 +97,7 @@ interface SlideImplProps {
 function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
-  const mediaUrlCacheRef = React.useRef<Map<string, string>>(null);
-  if (mediaUrlCacheRef.current === null) mediaUrlCacheRef.current = new Map();
+  const mediaUrlCacheRef = useLazyRef(() => new Map<string, string>());
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -111,7 +111,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
-      mediaUrlCache: mediaUrlCacheRef.current!,
+      mediaUrlCache: mediaUrlCacheRef.current,
       // Editable presentations (loaded with readOnly: false) get PowerPoint-style
       // dashed outlines and prompt text on empty placeholders.
       placeholderPrompts: presentation.sourcePackage != null,

@@ -23,6 +23,7 @@ import {
 } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
+import { useLazyRef } from "./use-lazy-ref";
 
 const THUMBNAIL_LIST_NAME = "Presentation.ThumbnailList";
 const THUMBNAIL_ITEM_NAME = "Presentation.ThumbnailItem";
@@ -92,7 +93,7 @@ interface ThumbnailRovingContextValue {
    * Register with the list-level shared ResizeObserver.
    * Returns a cleanup function that unregisters the element.
    */
-  observeResize: (el: Element, cb: (width: number) => void) => () => void;
+  observeResize: (element: Element, cb: (width: number) => void) => () => void;
   /**
    * Enqueue a `renderThumbnail()` call, drained FIFO per animation frame
    * within an ~8ms budget so no single frame blocks the main thread.
@@ -196,7 +197,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const { presentation, status } = usePresentation();
     const store = useStoreContext(THUMBNAIL_LIST_NAME);
 
-    const itemsRef = React.useRef<Map<string, HTMLButtonElement>>(new Map());
+    const itemsRef = useLazyRef(() => new Map<string, HTMLButtonElement>());
     const isClickFocusRef = React.useRef(false);
     const autoFocusedPresentationRef = React.useRef<object | null>(null);
     const loopRef = React.useRef(loop);
@@ -206,7 +207,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // context value and re-render every memoized item on each focus change,
     // when only two items (the old and new tab stop) actually need to update.
     const currentTabStopIdRef = React.useRef<string | null>(null);
-    const tabStopListenersRef = React.useRef(new Set<() => void>());
+    const tabStopListenersRef = useLazyRef(() => new Set<() => void>());
 
     const getEffectiveTabStopId = React.useCallback(
       () => currentTabStopIdRef.current ?? store.getState().activeSlideId,
@@ -259,32 +260,30 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     }, [slideHandleCache, mediaUrlCache]);
 
     // Shared ResizeObserver used to observe the size of the thumbnail list
-    const resizeCallbacksRef = React.useRef(new Map<Element, (width: number) => void>());
-    const sharedResizeObserverRef = React.useRef<ResizeObserver | null>(null);
-    if (!sharedResizeObserverRef.current && typeof ResizeObserver !== "undefined") {
-      sharedResizeObserverRef.current = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          resizeCallbacksRef.current.get(entry.target)?.(entry.contentRect.width);
-        }
-      });
-    }
-
-    const observeResize = React.useCallback(
-      (element: Element, callback: (width: number) => void) => {
-        resizeCallbacksRef.current.set(element, callback);
-        sharedResizeObserverRef.current?.observe(element);
-        return () => {
-          resizeCallbacksRef.current.delete(element);
-          sharedResizeObserverRef.current?.unobserve(element);
-        };
-      },
-      [],
+    const resizeCallbacksRef = useLazyRef(() => new Map<Element, (width: number) => void>());
+    const sharedResizeObserverRef = useLazyRef(() =>
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              resizeCallbacksRef.current.get(entry.target)?.(entry.contentRect.width);
+            }
+          })
+        : null,
     );
+
+    const observeResize = React.useCallback((element: Element, cb: (width: number) => void) => {
+      resizeCallbacksRef.current.set(element, cb);
+      sharedResizeObserverRef.current?.observe(element);
+      return () => {
+        resizeCallbacksRef.current.delete(element);
+        sharedResizeObserverRef.current?.unobserve(element);
+      };
+    }, []);
 
     // Batch renderThumbnail() calls that arrive simultaneously (e.g. initial
     // viewport fills, rapid scroll) and drains them within an ~8ms per-frame
     // budget so no single commit blocks the main thread.
-    const renderQueueRef = React.useRef<Array<() => void>>([]);
+    const renderQueueRef = useLazyRef<Array<() => void>>(() => []);
     const drainRafRef = React.useRef<number | null>(null);
 
     const drainRenderQueue = React.useCallback(function drain() {
