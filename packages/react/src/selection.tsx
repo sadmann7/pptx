@@ -573,16 +573,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   function placeCaretAtPoint(clientX: number, clientY: number): void {
     try {
-      const sel = window.getSelection();
-      if (!sel) return;
-      const pos = document.caretPositionFromPoint(clientX, clientY);
-      if (pos) {
+      const selection = window.getSelection();
+      if (!selection) return;
+      const position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
         const range = document.createRange();
-        range.setStart(pos.offsetNode, pos.offset);
+        range.setStart(position.offsetNode, position.offset);
         range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        fixupCaretAnchor(sel);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        fixupCaretAnchor(selection);
       }
     } catch {
       // Ignore caret placement failures.
@@ -593,14 +593,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * If a point-placed caret anchored on an element (not a text node inside a
    * run span), snap it into the nearest run so typing inherits run styling.
    */
-  function fixupCaretAnchor(sel: Selection): void {
-    const anchor = sel.anchorNode;
-    if (!anchor) return;
-    if (anchor.nodeType === Node.TEXT_NODE) return;
-    const el = anchor as HTMLElement;
+  function fixupCaretAnchor(selection: Selection): void {
+    const anchor = selection.anchorNode;
+    if (!(anchor instanceof HTMLElement)) return;
     // Prefer a run in the paragraph under the caret, else anywhere in scope.
-    const paraDiv = el.closest?.(`[${PPTX_ATTRS.paragraph}]`) as HTMLElement | null;
-    snapCaretIntoRun(paraDiv ?? el);
+    const paraDiv = anchor.closest<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
+    snapCaretIntoRun(paraDiv ?? anchor);
   }
 
   /** Tear down contentEditable and commit the edited text if it changed. */
