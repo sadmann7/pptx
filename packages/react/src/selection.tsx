@@ -14,7 +14,7 @@ import { mergeRefs, renderElement } from "./render";
 
 const SELECTION_NAME = "Presentation.Selection";
 
-const ENABLE_DEBUG_LOG = true;
+const ENABLE_DEBUG_LOG = false;
 
 /** Screen-px thickness of the selection-frame grab hitboxes shown while editing text. */
 const FRAME_GRAB_SIZE = 10;
@@ -1168,10 +1168,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         state.moved ||
         Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > DRAG_THRESHOLD;
       if (moved) {
-        for (const id of state.nodeIds) {
-          const shapeElement = getShapeElement(id);
-          const node = slide?.nodes.find((n) => n.id === id);
-          if (shapeElement && node) {
+        for (const node of selectedNodes) {
+          const shapeElement = getShapeElement(node.id);
+          if (shapeElement) {
             shapeElement.style.left = `${node.position.x + dx}px`;
             shapeElement.style.top = `${node.position.y + dy}px`;
           }
@@ -1246,10 +1245,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   },
             ),
           () => {
-            for (const id of nodeIds) {
-              const shapeElement = getShapeElement(id);
-              const node = slide?.nodes.find((n) => n.id === id);
-              if (shapeElement && node) {
+            for (const node of movingNodes) {
+              const shapeElement = getShapeElement(node.id);
+              if (shapeElement) {
                 shapeElement.style.left = `${node.position.x}px`;
                 shapeElement.style.top = `${node.position.y}px`;
               }
@@ -1265,10 +1263,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         );
       } else {
         // Click (no drag). Reset any stray left/top offset.
-        for (const id of nodeIds) {
-          const shapeElement = getShapeElement(id);
-          const node = slide?.nodes.find((n) => n.id === id);
-          if (shapeElement && node) {
+        for (const node of selectedNodes) {
+          const shapeElement = getShapeElement(node.id);
+          if (shapeElement) {
             shapeElement.style.left = `${node.position.x}px`;
             shapeElement.style.top = `${node.position.y}px`;
           }
@@ -1344,10 +1341,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function onPointerCancel(): void {
     debugLog("pointercancel", { mode: state.mode });
     if (state.mode === "move") {
-      for (const id of state.nodeIds) {
-        const shapeElement = getShapeElement(id);
-        const node = slide?.nodes.find((n) => n.id === id);
-        if (shapeElement && node) {
+      for (const node of selectedNodes) {
+        const shapeElement = getShapeElement(node.id);
+        if (shapeElement) {
           shapeElement.style.left = `${node.position.x}px`;
           shapeElement.style.top = `${node.position.y}px`;
         }

@@ -1,9 +1,11 @@
 import * as React from "react";
 
-function useLazyRef<T>(fn: () => T): React.RefObject<T> {
-  const ref = React.useRef<T | null>(null);
+const UNINITIALIZED: unique symbol = Symbol("useLazyRef.uninitialized");
 
-  if (ref.current === null) {
+function useLazyRef<T>(fn: () => T): React.RefObject<T> {
+  const ref = React.useRef<T | typeof UNINITIALIZED>(UNINITIALIZED);
+
+  if (ref.current === UNINITIALIZED) {
     ref.current = fn();
   }
 
