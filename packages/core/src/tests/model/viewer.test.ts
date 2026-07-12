@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { normalizePreviewInput, PptxViewer } from "../../viewer";
+import { normalizePptxSource, PptxViewer } from "../../viewer";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
@@ -259,23 +259,23 @@ describe("PptxViewer destroy", () => {
   });
 });
 
-describe("normalizePreviewInput", () => {
+describe("normalizePptxSource", () => {
   it("passes ArrayBuffers through unchanged", async () => {
     const buffer = new ArrayBuffer(8);
-    await expect(normalizePreviewInput(buffer)).resolves.toBe(buffer);
+    await expect(normalizePptxSource(buffer)).resolves.toBe(buffer);
   });
 
   it("copies Uint8Array views into standalone buffers", async () => {
     const backing = new Uint8Array([1, 2, 3, 4, 5, 6]);
     const view = backing.subarray(2, 5);
-    const result = await normalizePreviewInput(view);
+    const result = await normalizePptxSource(view);
     expect(result.byteLength).toBe(3);
     expect(new Uint8Array(result)).toEqual(new Uint8Array([3, 4, 5]));
   });
 
   it("reads Blobs via arrayBuffer()", async () => {
     const blob = new Blob([new Uint8Array([7, 8, 9])]);
-    const result = await normalizePreviewInput(blob);
+    const result = await normalizePptxSource(blob);
     expect(new Uint8Array(result)).toEqual(new Uint8Array([7, 8, 9]));
   });
 });

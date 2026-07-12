@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
 import { buildTextIndex, searchPresentation, searchText } from "../../model/text-search";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
 function textShape(id: number, text: string): string {
@@ -23,7 +23,7 @@ beforeAll(async () => {
   const buffer = await buildPptxWithShapes(
     textShape(2, "Revenue grew 40 percent") + textShape(3, "revenue outlook for Q3"),
   );
-  presentation = buildPresentation(await parseZip(buffer));
+  presentation = buildPresentation(await readPptx(buffer));
 });
 
 describe("buildTextIndex", () => {

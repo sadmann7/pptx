@@ -13,16 +13,17 @@ import { BaseNodeData } from "../model/nodes/base";
 import { ChartNodeData } from "../model/nodes/chart";
 import { GroupNodeData } from "../model/nodes/group";
 import { isPlaceholderNode, parseRenderableChild } from "../model/nodes/parser";
-import { PicNodeData } from "../model/nodes/picture";
+import { PictureNodeData } from "../model/nodes/picture";
 import { ShapeNodeData } from "../model/nodes/shape";
 import { TableNodeData } from "../model/nodes/table";
-import { materializeSlideNodes, PresentationData } from "../model/presentation";
+import { materializeSlide, PresentationData } from "../model/presentation";
 import { SlideData } from "../model/slide";
 import type { RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import { renderBackground } from "./background";
 import { renderChart } from "./chart";
 import { createRenderContext, RenderContext } from "./context";
+import { PPTX_ATTRS } from "./dom-attributes";
 import { renderGroup } from "./group";
 import { renderImage } from "./image";
 import { renderShape } from "./shape";
@@ -84,7 +85,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "shape":
       return renderShape(node as ShapeNodeData, ctx);
     case "picture":
-      return renderImage(node as PicNodeData, ctx);
+      return renderImage(node as PictureNodeData, ctx);
     case "table":
       return renderTable(node as TableNodeData, ctx);
     case "group":
@@ -294,7 +295,7 @@ export function renderThumbnail(
   slide: SlideData,
   options?: ThumbnailRendererOptions,
 ): SlideHandle {
-  materializeSlideNodes(presentation, slide);
+  materializeSlide(presentation, slide);
 
   const isSharedCache = !!options?.mediaUrlCache;
 
@@ -412,7 +413,7 @@ export function renderSlide(
   slide: SlideData,
   options?: SlideRendererOptions,
 ): SlideHandle {
-  materializeSlideNodes(presentation, slide);
+  materializeSlide(presentation, slide);
 
   const isSharedCache = !!options?.mediaUrlCache;
   const chartInstances = options?.chartInstances ?? new Set<ECharts>();
@@ -510,12 +511,12 @@ export function renderSlide(
         const el = renderNode(node, ctx);
         // Only slide-level (editable) nodes are stamped; master/layout
         // template shapes are not part of the slide's editable content.
-        el.setAttribute("data-pptx-node-id", node.id);
+        el.setAttribute(PPTX_ATTRS.nodeId, node.id);
         container.appendChild(el);
       } catch (error) {
         options?.onNodeError?.(node.id, error);
         const placeholder = createErrorPlaceholder(node);
-        placeholder.setAttribute("data-pptx-node-id", node.id);
+        placeholder.setAttribute(PPTX_ATTRS.nodeId, node.id);
         container.appendChild(placeholder);
       }
     }

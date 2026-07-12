@@ -5,14 +5,14 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 import { buildRichPptx } from "../fixtures/rich-pptx";
 
 async function renderShapes(shapesXml: string): Promise<HTMLElement> {
   const buffer = await buildPptxWithShapes(shapesXml);
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   return renderSlide(presentation, presentation.slides[0]).element;
 }
@@ -166,7 +166,7 @@ describe("theme effect references (a:effectRef)", () => {
 <a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef>
 </p:style>`),
     });
-    const files = await parseZip(buffer);
+    const files = await readPptx(buffer);
     const presentation = buildPresentation(files);
     const element = renderSlide(presentation, presentation.slides[0]).element;
 

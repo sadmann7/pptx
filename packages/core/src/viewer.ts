@@ -10,8 +10,8 @@ import {
   type TextSearchOptions,
   type TextSearchResult,
 } from "./model/text-search";
-import type { ZipParseLimits } from "./ooxml/zip";
-import { parseZip, parseZipLazyMedia } from "./ooxml/zip";
+import type { PptxReadLimits } from "./ooxml/zip";
+import { readPptx } from "./ooxml/zip";
 import type { SlideHandle } from "./renderer/slide";
 import { renderSlide as renderSlideInternal } from "./renderer/slide";
 import { isAllowedExternalUrl } from "./utils/url";
@@ -20,9 +20,9 @@ export type { SlideHandle } from "./renderer/slide";
 
 export type FitMode = "contain" | "none";
 
-export type PreviewInput = ArrayBuffer | Uint8Array | Blob;
+export type PptxSource = ArrayBuffer | Uint8Array | Blob;
 
-export interface ViewerOptions {
+export interface PptxViewerOptions {
   width?: number;
   /** Scaling mode. contain = fit container width, none = use intrinsic slide size. */
   fitMode?: FitMode;
@@ -35,7 +35,7 @@ export interface ViewerOptions {
    */
   scrollContainer?: HTMLElement;
   /** Optional ZIP parsing limits for controlling resource usage and DoS surface. */
-  zipLimits?: ZipParseLimits;
+  readLimits?: PptxReadLimits;
   /** Decode embedded media on demand instead of during ZIP parsing. Default `false`. */
   lazyMedia?: boolean;
   /** Parse slide shape/table/chart nodes on demand instead of during model build. Default `false`. */
@@ -116,7 +116,7 @@ export interface PptxViewerEventMap {
 
 export class PptxViewer extends EventTarget {
   protected container: HTMLElement;
-  private viewerOptions: ViewerOptions;
+  private viewerOptions: PptxViewerOptions;
   private presentation: PresentationData | null = null;
   private mediaUrlCache = new Map<string, string>();
   private chartInstances = new Set<ECharts>();
@@ -147,7 +147,7 @@ export class PptxViewer extends EventTarget {
     showSlideLabels: false,
   };
 
-  constructor(container: HTMLElement, options?: ViewerOptions) {
+  constructor(container: HTMLElement, options?: PptxViewerOptions) {
     super();
     this.container = container;
     this.viewerOptions = options ?? {};
@@ -274,7 +274,7 @@ export class PptxViewer extends EventTarget {
   // -----------------------------------------------------------------------
 
   async open(
-    input: PreviewInput,
+    input: PptxSource,
     options?: {
       renderMode?: "list" | "slide";
       listOptions?: ListRenderOptions;
@@ -295,14 +295,15 @@ export class PptxViewer extends EventTarget {
     // Clean up previous state
     this.destroy();
 
-    const buffer = await normalizePreviewInput(input);
+    const buffer = await normalizePptxSource(input);
     checkAborted();
 
     const useLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
-    const zipOptions = { keepPackage: this.viewerOptions.keepPackage };
-    const files = useLazyMedia
-      ? await parseZipLazyMedia(buffer, this.viewerOptions.zipLimits, zipOptions)
-      : await parseZip(buffer, this.viewerOptions.zipLimits, zipOptions);
+    const readOptions = {
+      keepPackage: this.viewerOptions.keepPackage,
+      lazyMedia: useLazyMedia,
+    };
+    const files = await readPptx(buffer, this.viewerOptions.readLimits, readOptions);
     checkAborted();
 
     const useLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
@@ -328,9 +329,9 @@ export class PptxViewer extends EventTarget {
   // -----------------------------------------------------------------------
 
   static async open(
-    input: PreviewInput,
+    input: PptxSource,
     container: HTMLElement,
-    options?: ViewerOptions & {
+    options?: PptxViewerOptions & {
       renderMode?: "list" | "slide";
       listOptions?: ListRenderOptions;
       signal?: AbortSignal;
@@ -1287,7 +1288,7 @@ export class PptxViewer extends EventTarget {
 // Standalone helper (shared with Renderer.ts)
 // -----------------------------------------------------------------------
 
-export async function normalizePreviewInput(input: PreviewInput): Promise<ArrayBuffer> {
+export async function normalizePptxSource(input: PptxSource): Promise<ArrayBuffer> {
   if (input instanceof ArrayBuffer) return input;
   if (input instanceof Uint8Array) {
     const bytes = new Uint8Array(input.byteLength);

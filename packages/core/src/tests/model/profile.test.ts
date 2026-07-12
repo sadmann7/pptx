@@ -13,8 +13,8 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildPresentation, materializeAllSlideNodes } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { buildPresentation, materializeAllSlides } from "../../model/presentation";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
@@ -94,7 +94,7 @@ function printTop(label: string, rows: ProfileRow[], limit = 30): void {
 describe.skipIf(!process.env.PROFILE)("cpu profile", () => {
   it("profiles buildPresentation (large deck)", async () => {
     const buffer = await generateDeck(DECK_SPECS.large);
-    const files = await parseZip(buffer);
+    const files = await readPptx(buffer);
     // Warm up JIT
     buildPresentation(files);
 
@@ -109,9 +109,9 @@ describe.skipIf(!process.env.PROFILE)("cpu profile", () => {
 
   it("profiles renderSlide (medium deck, all slides)", async () => {
     const buffer = await generateDeck(DECK_SPECS.medium);
-    const files = await parseZip(buffer);
+    const files = await readPptx(buffer);
     const pres = buildPresentation(files);
-    materializeAllSlideNodes(pres);
+    materializeAllSlides(pres);
     renderSlide(pres, pres.slides[0]).dispose(); // warm up
 
     const rows = await captureProfile(() => {

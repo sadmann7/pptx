@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Round-trip tests for package retention (`keepPackage`) and `writePptx()`.
  *
  * The core guarantee under test: opening a deck and saving it without edits
@@ -8,10 +8,10 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
-import { buildPresentation, materializeSlideNodes } from "../../model/presentation";
+import { buildPresentation, materializeSlide } from "../../model/presentation";
 import { serializePresentation } from "../../model/serialize";
 import { writePptx } from "../../ooxml/writer";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 import { buildRichPptx, tinyPngBytes } from "../fixtures/rich-pptx";
 
@@ -40,7 +40,7 @@ function decode(bytes: Uint8Array): string {
 describe("writePptx", () => {
   it("throws when the presentation was parsed without keepPackage", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Hello"));
-    const presentation = buildPresentation(await parseZip(buffer));
+    const presentation = buildPresentation(await readPptx(buffer));
     await expect(writePptx(presentation)).rejects.toThrow(/keepPackage/);
   });
 
@@ -50,7 +50,7 @@ describe("writePptx", () => {
       binaryParts: { "ppt/media/image1.png": tinyPngBytes() },
       extraContentTypesXml: '<Default Extension="png" ContentType="image/png"/>',
     });
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
 
     const saved = await writePptx(presentation);
 
@@ -65,17 +65,17 @@ describe("writePptx", () => {
 
   it("reopens the saved output as an identical presentation", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Stable"));
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
 
     const saved = await writePptx(presentation);
-    const reopened = buildPresentation(await parseZip(saved.slice().buffer));
+    const reopened = buildPresentation(await readPptx(saved.slice().buffer));
 
     expect(serializePresentation(reopened)).toEqual(serializePresentation(presentation));
   });
 
   it("re-serializes a dirty slide from its mutated XML and passes other parts through", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Before edit"));
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
 
     const slide = presentation.slides[0];
     const shape = slide.nodes[0];
@@ -103,21 +103,21 @@ describe("writePptx", () => {
     }
 
     // The edit is visible when the saved file is opened again.
-    const reopened = buildPresentation(await parseZip(saved.slice().buffer));
+    const reopened = buildPresentation(await readPptx(saved.slice().buffer));
     const serialized = serializePresentation(reopened);
     expect(JSON.stringify(serialized)).toContain("After edit");
   });
 
   it("registers lazily materialized slide XML so lazy decks stay editable", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Lazy text"));
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }), {
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }), {
       lazy: true,
     });
 
     const slide = presentation.slides[0];
     expect(presentation.sourcePackage!.getXmlRoot(slide.id)).toBeUndefined();
 
-    materializeSlideNodes(presentation, slide);
+    materializeSlide(presentation, slide);
     expect(presentation.sourcePackage!.getXmlRoot(slide.id)).toBeDefined();
 
     const textEl = slide.nodes[0].source.child("txBody").child("p").child("r").child("t").element;
@@ -131,7 +131,7 @@ describe("writePptx", () => {
 
   it("supports raw part replacement and deletion via the package", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "Raw ops"));
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
     const sourcePackage = presentation.sourcePackage!;
 
     sourcePackage.setEntry("docProps/custom.xml", "<custom/>");
@@ -145,7 +145,7 @@ describe("writePptx", () => {
 
   it("rejects markDirty for parts without a registered XML document", async () => {
     const buffer = await buildPptxWithShapes(textShape(2, "No doc"));
-    const presentation = buildPresentation(await parseZip(buffer, {}, { keepPackage: true }));
+    const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
 
     // Rels parts are parsed into RelEntry maps, not retained XML documents.
     expect(() => presentation.sourcePackage!.markDirty("ppt/_rels/presentation.xml.rels")).toThrow(

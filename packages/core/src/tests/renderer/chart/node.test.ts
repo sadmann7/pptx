@@ -3,10 +3,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { ChartNodeData } from "../../../model/nodes/chart";
 import { parseChartNode } from "../../../model/nodes/chart";
 import type { PresentationData } from "../../../model/presentation";
-import { buildPresentation, materializeAllSlideNodes } from "../../../model/presentation";
+import { buildPresentation, materializeAllSlides } from "../../../model/presentation";
 import type { RelEntry } from "../../../ooxml/rel";
 import { parseXml } from "../../../ooxml/xml";
-import { parseZip } from "../../../ooxml/zip";
+import { readPptx } from "../../../ooxml/zip";
 import { BAR_CHART_XML, buildPptxWithChart } from "../../fixtures/chart-pptx";
 
 const CHART_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";
@@ -26,8 +26,8 @@ describe("chart node via full pipeline", () => {
 
   beforeAll(async () => {
     const buffer = await buildPptxWithChart(BAR_CHART_XML);
-    presentation = buildPresentation(await parseZip(buffer));
-    materializeAllSlideNodes(presentation);
+    presentation = buildPresentation(await readPptx(buffer));
+    materializeAllSlides(presentation);
   });
 
   it("parses the chart graphicFrame into a chart node", () => {

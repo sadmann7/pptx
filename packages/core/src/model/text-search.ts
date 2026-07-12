@@ -2,13 +2,13 @@ import type { RelEntry } from "../ooxml/rel";
 import type { SafeXmlNode } from "../ooxml/xml";
 import type { LayoutData } from "./layout";
 import type { MasterData } from "./master";
-import type { BaseNodeData, NodeType, Position, Size } from "./nodes/base";
+import type { BaseNodeData, NodeType, NodePosition, NodeSize } from "./nodes/base";
 import type { GroupNodeData } from "./nodes/group";
 import { isPlaceholderNode, parseRenderableChild } from "./nodes/parser";
 import type { ShapeNodeData, TextBody } from "./nodes/shape";
 import type { TableCell, TableNodeData } from "./nodes/table";
 import {
-  materializeSlideNodes,
+  materializeSlide,
   type PresentationData,
   resolveNodePlaceholderInheritance,
 } from "./presentation";
@@ -16,7 +16,7 @@ import type { SlideNode } from "./slide";
 
 export type SearchTextKind = "shape" | "table-cell";
 
-export interface TextBounds extends Position, Size {}
+export interface TextBounds extends NodePosition, NodeSize {}
 
 export interface TextIndexOptions {
   includeShapes?: boolean;
@@ -153,24 +153,24 @@ const getGroupChildTransform = (
   if (rotationSwapsAxes(child.rotation)) {
     const rotatedBBoxX = child.position.x + (child.size.w - child.size.h) / 2;
     const rotatedBBoxY = child.position.y + (child.size.h - child.size.w) / 2;
-    const nextSize = {
+    const nextNodeSize = {
       w: child.size.w * scaleY,
       h: child.size.h * scaleX,
     };
-    const nextPosition = {
-      x: (rotatedBBoxX - group.childOffset.x) * scaleX - (nextSize.w - nextSize.h) / 2,
-      y: (rotatedBBoxY - group.childOffset.y) * scaleY - (nextSize.h - nextSize.w) / 2,
+    const nextNodePosition = {
+      x: (rotatedBBoxX - group.childOffset.x) * scaleX - (nextNodeSize.w - nextNodeSize.h) / 2,
+      y: (rotatedBBoxY - group.childOffset.y) * scaleY - (nextNodeSize.h - nextNodeSize.w) / 2,
     };
     const childScaleX = parentTransform.scaleX * scaleY;
     const childScaleY = parentTransform.scaleY * scaleX;
     return {
       offsetX:
         parentTransform.offsetX +
-        (group.position.x + nextPosition.x) * parentTransform.scaleX -
+        (group.position.x + nextNodePosition.x) * parentTransform.scaleX -
         child.position.x * childScaleX,
       offsetY:
         parentTransform.offsetY +
-        (group.position.y + nextPosition.y) * parentTransform.scaleY -
+        (group.position.y + nextNodePosition.y) * parentTransform.scaleY -
         child.position.y * childScaleY,
       scaleX: childScaleX,
       scaleY: childScaleY,
@@ -327,7 +327,7 @@ export const buildTextIndex = (
   const entries: TextIndexEntry[] = [];
 
   presentation.slides.forEach((slide, slideIndex) => {
-    materializeSlideNodes(presentation, slide);
+    materializeSlide(presentation, slide);
 
     const layoutPath = presentation.slideToLayout.get(slide.index) || slide.layoutIndex;
     const layout = presentation.layouts.get(layoutPath);

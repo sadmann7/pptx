@@ -1,16 +1,16 @@
-﻿/**
+/**
  * In-memory .pptx fixture builders for chart tests.
  *
  * Extends the minimal single-slide package from `minimal-pptx.ts` with a chart
  * part (ppt/charts/chart1.xml), the slide relationship pointing at it, and the
  * [Content_Types].xml override so chart graphicFrames flow through the real
- * parse pipeline (`parseZip` → `buildPresentation` → `renderSlide`).
+ * parse pipeline (`readPptx` → `buildPresentation` → `renderSlide`).
  */
 import JSZip from "jszip";
 
 import { buildPresentation } from "../../model/presentation";
 import { parseXml, SafeXmlNode } from "../../ooxml/xml";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { createRenderContext, RenderContext } from "../../renderer/context";
 import { buildPptxWithShapes } from "./minimal-pptx";
 
@@ -158,6 +158,6 @@ export function parseChartFragment(xml: string): SafeXmlNode {
  */
 export async function createChartTestContext(): Promise<RenderContext> {
   const buffer = await buildPptxWithShapes("");
-  const presentation = buildPresentation(await parseZip(buffer));
+  const presentation = buildPresentation(await readPptx(buffer));
   return createRenderContext(presentation, presentation.slides[0]);
 }

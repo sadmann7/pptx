@@ -1,9 +1,9 @@
-﻿import type * as echarts from "echarts";
+import type * as echarts from "echarts";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../../model/presentation";
 import { parseXml } from "../../../ooxml/xml";
-import { parseZip } from "../../../ooxml/zip";
+import { readPptx } from "../../../ooxml/zip";
 import { parseChartXml } from "../../../renderer/chart";
 import { parseDataLabels, parsePointDataLabelOverrides } from "../../../renderer/chart/data-label";
 import { buildDataTableElement, parseDataTable } from "../../../renderer/chart/data-table";
@@ -507,7 +507,7 @@ describe("renderChart via renderSlide (happy-dom)", () => {
   // detached slide deterministically produces the DOM scaffolding only.
   it("positions the chart wrapper and builds the custom legend overlay", async () => {
     const buffer = await buildPptxWithChart(BAR_CHART_XML);
-    const presentation = buildPresentation(await parseZip(buffer));
+    const presentation = buildPresentation(await readPptx(buffer));
     const handle = renderSlide(presentation, presentation.slides[0]);
     await handle.ready;
 
@@ -531,7 +531,7 @@ describe("renderChart via renderSlide (happy-dom)", () => {
 
   it("renders a placeholder when the chart part is missing from the package", async () => {
     const buffer = await buildPptxWithChart(BAR_CHART_XML, { omitChartPart: true });
-    const presentation = buildPresentation(await parseZip(buffer));
+    const presentation = buildPresentation(await readPptx(buffer));
     const handle = renderSlide(presentation, presentation.slides[0]);
     await handle.ready;
 

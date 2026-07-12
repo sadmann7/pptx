@@ -11,7 +11,7 @@ import type { PptxSaveOptions } from "./package";
  * Serialize a presentation back to a .pptx archive.
  *
  * Requires the presentation to have been parsed with `keepPackage: true`
- * (see `ZipParseOptions.keepPackage`), which retains the source package for
+ * (see `PptxReadOptions.keepPackage`), which retains the source package for
  * round-trip fidelity.
  */
 export async function writePptx(

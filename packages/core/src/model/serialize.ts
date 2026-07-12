@@ -11,11 +11,11 @@ import { BaseNodeData } from "./nodes/base";
 import { ChartNodeData } from "./nodes/chart";
 import { GroupNodeData } from "./nodes/group";
 import { parseRenderableChild } from "./nodes/parser";
-import { PicNodeData } from "./nodes/picture";
+import { PictureNodeData } from "./nodes/picture";
 import { ShapeNodeData, TextBody } from "./nodes/shape";
 import { TableCell, TableNodeData, TableRow } from "./nodes/table";
 import {
-  materializeSlideNodes,
+  materializeSlide,
   PresentationData,
   resolveNodePlaceholderInheritance,
 } from "./presentation";
@@ -153,7 +153,7 @@ function serializeNode(
       break;
     }
     case "picture": {
-      const p = node as PicNodeData;
+      const p = node as PictureNodeData;
       base.blipEmbed = p.blipEmbed;
       break;
     }
@@ -208,7 +208,7 @@ export function serializePresentation(pres: PresentationData): SerializedPresent
     height: pres.height,
     slideCount: pres.slides.length,
     slides: pres.slides.map((slide, i) => {
-      materializeSlideNodes(pres, slide);
+      materializeSlide(pres, slide);
 
       const layoutPath = pres.slideToLayout.get(slide.index) || slide.layoutIndex;
       const layout = pres.layouts.get(layoutPath);

@@ -3,13 +3,13 @@ import { parseXml, SafeXmlNode } from "../../ooxml/xml";
 import { parseBaseProps } from "./base";
 import { ChartNodeData, parseChartNode } from "./chart";
 import { GroupNodeData, parseGroupNode } from "./group";
-import { parsePicNode, PicNodeData } from "./picture";
+import { parsePicNode, PictureNodeData } from "./picture";
 import { parseShapeNode, ShapeNodeData } from "./shape";
 import { parseTableNode, TableNodeData } from "./table";
 
 export type RenderableNode =
   | ShapeNodeData
-  | PicNodeData
+  | PictureNodeData
   | TableNodeData
   | GroupNodeData
   | ChartNodeData;
@@ -83,7 +83,7 @@ function findOleFallbackPic(graphicFrame: SafeXmlNode): SafeXmlNode | null {
   return null;
 }
 
-export function parseOleFrameAsPicture(graphicFrame: SafeXmlNode): PicNodeData | undefined {
+export function parseOleFrameAsPicture(graphicFrame: SafeXmlNode): PictureNodeData | undefined {
   const pic = findOleFallbackPic(graphicFrame);
   if (!pic) return undefined;
 

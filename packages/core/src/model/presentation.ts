@@ -11,7 +11,7 @@ import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import { PptxFiles } from "../ooxml/zip";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
 import { MasterData, parseMaster } from "./master";
-import { BaseNodeData, PlaceholderInfo, Position, Size } from "./nodes/base";
+import { BaseNodeData, PlaceholderInfo, NodePosition, NodeSize } from "./nodes/base";
 import type { GroupNodeData } from "./nodes/group";
 import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
 import { parseTheme, ThemeData } from "./theme";
@@ -441,7 +441,7 @@ function parseEmbeddedFontList(
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder Position Inheritance
+// Placeholder inheritance
 // ---------------------------------------------------------------------------
 
 /**
@@ -469,7 +469,7 @@ function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
 /**
  * Extract xfrm position/size from a raw placeholder XML node.
  */
-function getPhXfrm(phNode: SafeXmlNode): { position: Position; size: Size } | undefined {
+function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSize } | undefined {
   // Try spPr > xfrm first (most shapes), then direct xfrm (graphic frames).
   const spPrXfrm = phNode.child("spPr").child("xfrm");
   const xfrm = spPrXfrm.exists() ? spPrXfrm : phNode.child("xfrm");
@@ -605,7 +605,7 @@ function resolveSlidePlaceholderInheritance(pres: PresentationData, slide: Slide
   slide.placeholderInheritanceResolved = true;
 }
 
-export function materializeSlideNodes(pres: PresentationData, slide: SlideData): void {
+export function materializeSlide(pres: PresentationData, slide: SlideData): void {
   const slideRoot = materializeSlideData(slide, pres.diagramDrawings);
   if (slideRoot) {
     pres.sourcePackage?.registerXmlRoot(slide.id, slideRoot);
@@ -613,9 +613,9 @@ export function materializeSlideNodes(pres: PresentationData, slide: SlideData):
   resolveSlidePlaceholderInheritance(pres, slide);
 }
 
-export function materializeAllSlideNodes(pres: PresentationData): void {
+export function materializeAllSlides(pres: PresentationData): void {
   for (const slide of pres.slides) {
-    materializeSlideNodes(pres, slide);
+    materializeSlide(pres, slide);
   }
 }
 
@@ -646,9 +646,9 @@ interface PlaceholderInheritanceOptions {
 }
 
 function toGroupChildXfrm(
-  xfrm: { position: Position; size: Size },
+  xfrm: { position: NodePosition; size: NodeSize },
   group: GroupNodeData,
-): { position: Position; size: Size } {
+): { position: NodePosition; size: NodeSize } {
   const scaleX = group.childExtent.w > 0 ? group.size.w / group.childExtent.w : 1;
   const scaleY = group.childExtent.h > 0 ? group.size.h / group.childExtent.h : 1;
   if (scaleX === 0 || scaleY === 0) return xfrm;
@@ -666,9 +666,9 @@ function toGroupChildXfrm(
 }
 
 function resolveInheritedXfrm(
-  xfrm: { position: Position; size: Size },
+  xfrm: { position: NodePosition; size: NodeSize },
   options: PlaceholderInheritanceOptions,
-): { position: Position; size: Size } {
+): { position: NodePosition; size: NodeSize } {
   return options.parentGroup ? toGroupChildXfrm(xfrm, options.parentGroup) : xfrm;
 }
 

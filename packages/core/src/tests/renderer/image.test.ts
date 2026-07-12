@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
-import { parseZip } from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildRichPptx, tinyPngBytes } from "../fixtures/rich-pptx";
 
@@ -20,7 +20,7 @@ async function renderPicture(picXml: string): Promise<HTMLElement> {
     extraSlideRelsXml: IMAGE_REL,
     binaryParts: { "ppt/media/image1.png": tinyPngBytes() },
   });
-  const files = await parseZip(buffer);
+  const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
   return renderSlide(presentation, presentation.slides[0]).element;
 }
@@ -64,7 +64,7 @@ describe("basic picture rendering", () => {
       extraSlideRelsXml: IMAGE_REL,
       binaryParts: { "ppt/media/image1.png": tinyPngBytes() },
     });
-    const files = await parseZip(buffer);
+    const files = await readPptx(buffer);
     const presentation = buildPresentation(files);
     const cache = new Map<string, string>();
     const first = renderSlide(presentation, presentation.slides[0], {

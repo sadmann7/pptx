@@ -60,9 +60,10 @@ export function Editor({ file }: { file: File }) {
 ### Core only (no React)
 
 ```ts
-import { parsePptx, renderSlide } from "@diceui/pptx-core";
+import { buildPresentation, readPptx, renderSlide } from "@diceui/pptx-core";
 
-const presentation = await parsePptx(arrayBuffer);
+const files = await readPptx(arrayBuffer);
+const presentation = buildPresentation(files);
 const slide = presentation.slides[0];
 const handle = renderSlide(presentation, slide);
 

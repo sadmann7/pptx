@@ -8,12 +8,12 @@ import { SafeXmlNode } from "../../ooxml/xml";
 
 export type NodeType = "shape" | "picture" | "table" | "group" | "chart" | "unknown";
 
-export interface Position {
+export interface NodePosition {
   x: number;
   y: number;
 }
 
-export interface Size {
+export interface NodeSize {
   w: number;
   h: number;
 }
@@ -24,7 +24,7 @@ export interface PlaceholderInfo {
 }
 
 /** Shape-level hyperlink click action (from cNvPr > a:hlinkClick). */
-export interface HlinkAction {
+export interface HyperlinkAction {
   /** Action URI, e.g. "ppaction://hlinksldjump", "ppaction://hlinkpres", or empty for URL links. */
   action?: string;
   /** Relationship ID for the target (slide, URL, etc.). */
@@ -37,14 +37,14 @@ export interface BaseNodeData {
   id: string;
   name: string;
   nodeType: NodeType;
-  position: Position;
-  size: Size;
+  position: NodePosition;
+  size: NodeSize;
   rotation: number;
   flipH: boolean;
   flipV: boolean;
   placeholder?: PlaceholderInfo;
   /** Shape-level hyperlink/click action (action buttons, clickable shapes). */
-  hlinkClick?: HlinkAction;
+  hlinkClick?: HyperlinkAction;
   /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   source: SafeXmlNode;
 }
@@ -127,12 +127,12 @@ export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeTyp
   const off = xfrm.child("off");
   const ext = xfrm.child("ext");
 
-  const position: Position = {
+  const position: NodePosition = {
     x: emuToPx(off.numAttr("x") ?? 0),
     y: emuToPx(off.numAttr("y") ?? 0),
   };
 
-  const size: Size = {
+  const size: NodeSize = {
     w: emuToPx(ext.numAttr("cx") ?? 0),
     h: emuToPx(ext.numAttr("cy") ?? 0),
   };
@@ -145,7 +145,7 @@ export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeTyp
   const placeholder = parsePlaceholder(nvPr);
 
   // --- Shape-level hyperlink action (cNvPr > a:hlinkClick) ---
-  let hlinkClick: HlinkAction | undefined;
+  let hlinkClick: HyperlinkAction | undefined;
   const hlinkNode = cNvPr.child("hlinkClick");
   if (hlinkNode.exists()) {
     hlinkClick = {

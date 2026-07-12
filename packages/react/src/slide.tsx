@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
-import { materializeSlideNodes, renderSlide } from "@diceui/pptx-core";
+import { materializeSlide, renderSlide } from "@diceui/pptx-core";
 
 import { TYPOGRAPHY_RESET_STYLE } from "./constant";
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
@@ -108,7 +108,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
     }
     container.innerHTML = "";
 
-    if (!slide.nodesMaterialized) materializeSlideNodes(presentation, slide);
+    if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache,
       // Editable presentations (loaded with readOnly: false) get PowerPoint-style

@@ -12,14 +12,14 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 
 ## Package structure (Part 2, OPC)
 
-| Feature                                                         | Status | Notes                                                             |
-| --------------------------------------------------------------- | ------ | ----------------------------------------------------------------- |
-| ZIP container + `[Content_Types].xml`                           | ✅     | `ooxml/zip-parser.ts`; zip-bomb limits (`RECOMMENDED_ZIP_LIMITS`) |
-| Relationships (`.rels`, internal/external, URI-encoded targets) | ✅     | `ooxml/rel-parser.ts`                                             |
-| Lazy media loading                                              | ✅     | `parseZipLazyMedia` defers media inflation                        |
-| Presentation / slides / layouts / masters / themes parts        | ✅     | Full inheritance chain slide → layout → master → theme            |
-| Notes slides / notes masters                                    | ❌     | Parts are ignored                                                 |
-| Handout masters, comments, custom shows                         | ❌     |                                                                   |
+| Feature                                                         | Status | Notes                                                        |
+| --------------------------------------------------------------- | ------ | ------------------------------------------------------------ |
+| ZIP container + `[Content_Types].xml`                           | ✅     | `ooxml/zip.ts`; read limits (`RECOMMENDED_PPTX_READ_LIMITS`) |
+| Relationships (`.rels`, internal/external, URI-encoded targets) | ✅     | `ooxml/rel-parser.ts`                                        |
+| Lazy media loading                                              | ✅     | `readPptx({ lazyMedia: true })` defers media inflation       |
+| Presentation / slides / layouts / masters / themes parts        | ✅     | Full inheritance chain slide → layout → master → theme       |
+| Notes slides / notes masters                                    | ❌     | Parts are ignored                                            |
+| Handout masters, comments, custom shows                         | ❌     |                                                              |
 
 ## Slides & inheritance (Part 1 §19)
 

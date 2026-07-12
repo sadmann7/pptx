@@ -22,46 +22,43 @@ import { bench, describe } from "vitest";
 
 import {
   buildPresentation as ourBuild,
-  materializeSlideNodes as ourMaterialize,
+  materializeSlide as ourMaterialize,
 } from "../../model/presentation";
-import {
-  parseZip as ourParseZip,
-  parseZipLazyMedia as ourParseZipLazyMedia,
-} from "../../ooxml/zip";
+import { readPptx } from "../../ooxml/zip";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 
 const mediumBuffer = await generateDeck(DECK_SPECS.medium);
 const largeBuffer = await generateDeck(DECK_SPECS.large);
 
 // Pre-parse files for stages that only benchmark a single step
-const mediumFilesOurs = await ourParseZip(mediumBuffer);
-const largeFilesOurs = await ourParseZip(largeBuffer);
+const mediumFilesOurs = await readPptx(mediumBuffer);
+const largeFilesOurs = await readPptx(largeBuffer);
 const mediumFilesUpstream = await upstreamParseZip(mediumBuffer);
 const largeFilesUpstream = await upstreamParseZip(largeBuffer);
 
-// ─── parseZip ────────────────────────────────────────────────────────────────
+// ─── readPptx ────────────────────────────────────────────────────────────────
 
-describe("parseZip: medium (20 slides)", () => {
+describe("readPptx: medium (20 slides)", () => {
   bench("ours", async () => {
-    await ourParseZip(mediumBuffer);
+    await readPptx(mediumBuffer);
   });
   bench("upstream", async () => {
     await upstreamParseZip(mediumBuffer);
   });
 });
 
-describe("parseZip: large (100 slides)", () => {
+describe("readPptx: large (100 slides)", () => {
   bench("ours", async () => {
-    await ourParseZip(largeBuffer);
+    await readPptx(largeBuffer);
   });
   bench("upstream", async () => {
     await upstreamParseZip(largeBuffer);
   });
 });
 
-describe("parseZipLazyMedia: large (100 slides)", () => {
+describe("readPptx lazyMedia: large (100 slides)", () => {
   bench("ours", async () => {
-    await ourParseZipLazyMedia(largeBuffer);
+    await readPptx(largeBuffer, {}, { lazyMedia: true });
   });
   bench("upstream", async () => {
     await upstreamParseZipLazyMedia(largeBuffer);
@@ -92,7 +89,7 @@ describe("buildPresentation: large", () => {
 
 describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {
-    const files = await ourParseZip(mediumBuffer);
+    const files = await readPptx(mediumBuffer);
     const pres = ourBuild(files, { lazy: true });
     ourMaterialize(pres, pres.slides[0]);
   });
@@ -105,7 +102,7 @@ describe("time-to-first-slide: medium", () => {
 
 describe("time-to-first-slide: large", () => {
   bench("ours", async () => {
-    const files = await ourParseZip(largeBuffer);
+    const files = await readPptx(largeBuffer);
     const pres = ourBuild(files, { lazy: true });
     ourMaterialize(pres, pres.slides[0]);
   });
