@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "license": "Apache-2.0",
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -14,12 +15,12 @@
   "publishConfig": {
     "exports": {
       ".": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
       },
       "./fonts": {
-        "import": "./dist/fonts/index.js",
-        "types": "./dist/fonts/index.d.ts"
+        "types": "./dist/fonts/index.d.mts",
+        "import": "./dist/fonts/index.mjs"
       }
     }
   },
