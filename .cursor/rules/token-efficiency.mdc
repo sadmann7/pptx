@@ -1,41 +1,71 @@
 ---
-description: Token efficiency and subagent discipline
-globs: 
+description: Token-efficient execution and subagent discipline
+globs:
 alwaysApply: true
 ---
+
 # Token Efficiency
 
 ## Subagent Discipline
 
-- **Do NOT spawn subagents (Task tool) unless the user explicitly asks or the task genuinely requires parallel exploration of 3+ independent areas.**
-- A single agent with sequential tool calls is almost always sufficient. Prefer it.
-- When subagents ARE needed, use the lightest model that can handle the job:
+- Do not spawn subagents unless:
+  - the user explicitly requests them, or
+  - the task contains multiple independent workstreams that materially benefit from parallel exploration.
+- Prefer direct file searches, targeted reads, and sequential tool calls for normal tasks.
+- Do not spawn subagents for simple file discovery, code searches, isolated edits, or straightforward implementation.
+- When model selection is supported, use the lightest model appropriate for each subtask:
+  - `composer-2.5-fast` for file discovery, targeted exploration, and simple mechanical work
+  - medium reasoning for normal implementation and debugging
+  - high reasoning only for difficult debugging, architectural analysis, or explicitly requested deep investigation
+- Never spawn more than 3 subagents in parallel unless the user explicitly requests more.
+- Do not allow subagents to spawn additional subagents.
+- Give each subagent a concrete, bounded task with a clear expected output.
 
-  - `composer-2.5-fast` for exploration, file searches, simple edits
-  - Medium-thinking models for implementation tasks
-  - Only use high-thinking models when the user explicitly requests or the task involves complex architectural reasoning
-- Never spawn more than 3 subagents in parallel unless the user explicitly asks for more.
-- Never let a subagent spawn its own subagents (no recursive spawning).
+## Planning and Stop Points
 
-## Stop Points
+- Write a plan and request feedback before implementation when:
+  - requirements are materially ambiguous,
+  - the change introduces or alters architecture or public APIs,
+  - multiple valid approaches have meaningful tradeoffs, or
+  - the work is difficult to reverse.
+- Do not require approval merely because a change touches several files.
+- For clear, low-risk tasks, proceed directly with implementation.
+- If the user explicitly asks to complete the task end-to-end, continue through implementation and verification without unnecessary approval checkpoints.
+- Stop before creating a PR, deploying, publishing, sending messages, or performing other external actions unless the user requested them.
+- If essential information is missing, ask the smallest number of focused clarifying questions needed to proceed.
+- Otherwise, make reasonable low-risk assumptions and state them briefly.
 
-- For large tasks (3+ files, new features, refactors): **write a plan first, then stop and ask for feedback** before implementing.
-- After implementing, stop and present what was done. Don't keep going into testing, PR creation, or follow-up tasks unless asked.
-- If a task is ambiguous, ask ONE clarifying question rather than guessing and building the wrong thing.
+## Verification
+
+- Treat relevant testing, type-checking, linting, and focused validation as part of implementation.
+- Run the smallest useful verification first.
+- Do not run unrelated test suites or perform unrelated cleanup.
+- If verification is expensive, explain what should be run and ask before proceeding.
+- After implementation and verification, summarize the changes and stop.
 
 ## Tool Call Efficiency
 
-- Batch independent tool calls in a single message (parallel reads, parallel searches).
-- Don't re-read files you've already read in this conversation unless they've been modified.
-- Use `Grep` with specific patterns over broad `Task/explore` subagents when you know what you're looking for.
-- Use `Glob` for file discovery instead of spawning an explore agent.
+- Batch independent reads and searches when possible.
+- Prefer targeted searches over broad repository exploration.
+- Use specific grep patterns when the target is known.
+- Use glob/file discovery tools before broader exploration.
+- Do not reread unchanged files without a concrete reason.
+- After editing, reread only the relevant changed sections when needed for verification.
+- Avoid repeating searches that have already produced sufficient context.
+- Keep tool output focused and avoid retrieving substantially more content than needed.
 
-## When the User Says "keep going" or "do it all"
+## Scope Discipline
 
-Even with broad permission, break work into checkpoints:
+- Implement only what the user requested and what is necessary to make it work correctly.
+- Do not expand into unrelated refactoring, cleanup, documentation, or feature work.
+- Do not continue polishing after the requested result has been implemented and verified.
+- Before starting a potentially long autonomous task, identify a clear completion condition.
 
-1. Plan → confirm
-2. Implement core logic → confirm
-3. Wire up / integrate → confirm
+## Broad Instructions
 
-This prevents runaway token burn on misdirected work.
+When the user says “keep going,” “finish it,” or “do it all”:
+
+- Treat that as permission to complete the requested scope without repeated confirmation.
+- Continue through implementation and relevant verification.
+- Use internal checkpoints to control scope, but do not interrupt the user at every checkpoint.
+- Stop once the requested outcome is complete and verified.
