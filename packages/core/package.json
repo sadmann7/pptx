@@ -42,12 +42,12 @@
     }
   },
   "scripts": {
-    "bench": "vitest bench --run",
     "build": "tsdown",
-    "lint": "oxlint",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
+    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

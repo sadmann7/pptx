@@ -36,10 +36,10 @@
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "oxlint",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

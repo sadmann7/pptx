@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "generate:content": "fumadocs-mdx",
     "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "generate:content": "fumadocs-mdx",
     "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
     "shadcn": "pnpm dlx shadcn@latest"
   },
   "dependencies": {

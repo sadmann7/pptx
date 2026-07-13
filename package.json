@@ -8,19 +8,19 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
+    "dev:web": "turbo -F web dev",
     "build": "turbo build",
+    "test": "turbo test",
     "lint": "turbo lint",
     "lint:fix": "oxlint --fix",
-    "test": "turbo test",
     "typecheck": "turbo typecheck",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "check": "turbo lint typecheck --affected && pnpm format:check",
+    "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo build --filter=!docs && changeset publish",
-    "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
-    "dev:web": "turbo -F web dev"
+    "release": "turbo build --filter=!docs && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
