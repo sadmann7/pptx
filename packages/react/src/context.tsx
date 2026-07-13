@@ -5,6 +5,7 @@ import type { PresentationData, SlideData } from "@diceui/pptx-core";
 import { DEFAULT_STORE_STATE } from "./constant";
 import type { AutoFitPadding, Store, StoreState } from "./store";
 import { createStore } from "./store";
+import { useLazyRef } from "./use-lazy-ref";
 
 export const Context = React.createContext<Store | null>(null);
 
@@ -56,11 +57,7 @@ export namespace Provider {
  * ```
  */
 export function useCreateStore(): Store {
-  const ref = React.useRef<Store | null>(null);
-  if (ref.current === null) {
-    ref.current = createStore();
-  }
-  return ref.current;
+  return useLazyRef(createStore).current;
 }
 
 /**
