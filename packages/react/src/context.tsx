@@ -105,6 +105,18 @@ export function useSlideRevision(store: Store, slideId: string | null | undefine
 }
 
 /**
+ * Subscribes to a slide's content revision (`store.getSlideContentRevision`):
+ * bumped by content edits but not by transform-only moves.
+ */
+export function useSlideContentRevision(store: Store, slideId: string | null | undefined): number {
+  return React.useSyncExternalStore(
+    store.subscribe,
+    () => (slideId != null ? store.getSlideContentRevision(slideId) : 0),
+    () => 0,
+  );
+}
+
+/**
  * Subscribes to a slide's 0-based index (`store.getSlideIndex`).
  */
 export function useSlideIndex(store: Store, slideId: string): number {

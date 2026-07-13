@@ -4,7 +4,14 @@ import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core
 import { materializeSlide, PPTX_ATTRS, renderSlide } from "@diceui/pptx-core";
 
 import { TYPOGRAPHY_RESET_STYLE } from "./constant";
-import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
+import {
+  usePresentation,
+  useSlide,
+  useSlideContentRevision,
+  useSlideRevision,
+  useStoreContext,
+  useZoom,
+} from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
@@ -68,10 +75,17 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   // Bumped when an edit/undo/redo touches this slide; re-renders the content.
   const slideId = slide?.id;
   const revision = useSlideRevision(store, slideId);
+  const contentRevision = useSlideContentRevision(store, slideId);
 
   const slideContent =
     presentation && slide ? (
-      <SlideImpl presentation={presentation} slide={slide} zoom={zoom} revision={revision}>
+      <SlideImpl
+        presentation={presentation}
+        slide={slide}
+        zoom={zoom}
+        revision={revision}
+        contentRevision={contentRevision}
+      >
         {children}
       </SlideImpl>
     ) : null;
@@ -105,10 +119,19 @@ interface SlideImplProps {
   zoom: number;
   /** Edit revision of this slide; a change forces a fresh render. */
   revision: number;
+  /** Content revision: unchanged when only node transforms were edited. */
+  contentRevision: number;
   children?: React.ReactNode;
 }
 
-function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplProps) {
+function SlideImpl({
+  presentation,
+  slide,
+  zoom,
+  revision,
+  contentRevision,
+  children,
+}: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCacheRef = useLazyRef(() => new Map<string, string>());
@@ -116,6 +139,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
     React.useRef<Map<string, { x: number; y: number; w: number; h: number; rotation: number }>>(
       null,
     );
+  const contentRevisionRef = React.useRef<number>(null);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -124,8 +148,13 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
     // Try to patch positions in-place instead of a full rebuild.
-    // Safe when: same slide handle, same node set, and only transforms changed.
-    if (slideHandleRef.current && nodeSnapshotRef.current) {
+    // Safe when: same slide handle, node content unchanged (contentRevision),
+    // and node sizes/rotations unchanged (a resize needs SVG/text re-layout).
+    if (
+      slideHandleRef.current &&
+      nodeSnapshotRef.current &&
+      contentRevisionRef.current === contentRevision
+    ) {
       const prevSnapshot = nodeSnapshotRef.current;
       const canPatch =
         slide.nodes.length === prevSnapshot.size &&
@@ -148,6 +177,7 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
           }
         }
         nodeSnapshotRef.current = buildNodeSnapshot(slide);
+        contentRevisionRef.current = contentRevision;
         return;
       }
     }
@@ -170,7 +200,8 @@ function SlideImpl({ presentation, slide, zoom, revision, children }: SlideImplP
     container.appendChild(slideHandle.element);
     slideHandleRef.current = slideHandle;
     nodeSnapshotRef.current = buildNodeSnapshot(slide);
-  }, [presentation, slide, revision]);
+    contentRevisionRef.current = contentRevision;
+  }, [presentation, slide, revision, contentRevision]);
 
   React.useEffect(() => {
     return () => {

@@ -241,6 +241,17 @@ function getMeasurementHost(): HTMLElement {
   // Full containment: mutations inside the host cannot invalidate layout,
   // style, or paint of the rest of the document.
   host.style.contain = "strict";
+  // Neutralise inherited page typography (Tailwind base, .prose, ...) so text
+  // measured here has the same metrics as in the final mount point, which
+  // applies the same reset. Without this, autofit computes a scale from the
+  // host's inherited line-height/fonts, and the post-mount re-measure pass
+  // corrects it after first paint - a visible flash.
+  host.style.fontSize = "initial";
+  host.style.fontFamily = "initial";
+  host.style.fontWeight = "normal";
+  host.style.lineHeight = "normal";
+  host.style.letterSpacing = "normal";
+  host.style.textTransform = "none";
   document.body.appendChild(host);
   measurementHost = host;
   return host;
