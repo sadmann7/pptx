@@ -3,15 +3,13 @@ packages:
   - packages/*
 
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - fumadocs-core
-  - fumadocs-mdx
-  - fumadocs-ui
 
 allowBuilds:
   esbuild: true
   msw: true
   sharp: true
+overrides:
+  zod: "catalog:"
 catalog:
   "@tailwindcss/postcss": ^4.3.2
   "@testing-library/dom": ^10.4.1
