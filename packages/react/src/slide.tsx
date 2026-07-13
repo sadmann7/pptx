@@ -3,7 +3,6 @@ import * as React from "react";
 import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
 import { materializeSlide, PPTX_ATTRS, renderSlide } from "@diceui/pptx-core";
 
-import { TYPOGRAPHY_RESET_STYLE } from "./constant";
 import {
   usePresentation,
   useSlide,
@@ -227,7 +226,6 @@ function SlideImpl({
           transform: `scale(${zoom})`,
           position: "relative",
           overflow: "hidden",
-          ...TYPOGRAPHY_RESET_STYLE,
         }}
       />
       {children && (

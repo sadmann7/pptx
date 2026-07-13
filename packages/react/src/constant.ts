@@ -29,18 +29,3 @@ export const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
   whiteSpace: "nowrap",
   borderWidth: 0,
 };
-
-/**
- * Resets inherited typography so host-page styles (e.g. `.prose`, Tailwind
- * base) don't bleed into rendered slide content.
- */
-export const TYPOGRAPHY_RESET_STYLE: React.CSSProperties = {
-  fontSize: "initial",
-  fontFamily: "initial",
-  fontWeight: "normal",
-  lineHeight: "normal",
-  color: "initial",
-  letterSpacing: "normal",
-  textDecoration: "none",
-  textTransform: "none",
-};

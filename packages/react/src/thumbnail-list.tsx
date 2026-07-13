@@ -13,7 +13,7 @@ import * as React from "react";
 import type { SlideData, SlideHandle } from "@diceui/pptx-core";
 import { renderSlide } from "@diceui/pptx-core";
 
-import { TYPOGRAPHY_RESET_STYLE, VISUALLY_HIDDEN_STYLE } from "./constant";
+import { VISUALLY_HIDDEN_STYLE } from "./constant";
 import {
   usePresentation,
   useSlideIndex,
@@ -770,7 +770,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               overflow: "hidden",
               pointerEvents: "none",
               contain: "layout style paint",
-              ...TYPOGRAPHY_RESET_STYLE,
             },
           },
           thumbnailItemPreviewProps,
