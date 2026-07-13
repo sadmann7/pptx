@@ -1,7 +1,7 @@
 {
   "name": "@diceui/pptx-core",
   "version": "0.1.0",
-  "description": "Framework-agnostic PPTX engine: parse, render, edit, and save PowerPoint presentations in the browser.",
+  "description": "Parse, render, edit, and save PowerPoint presentations in the browser.",
   "keywords": [
     "editor",
     "ooxml",
@@ -9,6 +9,7 @@
     "pptx",
     "presentation",
     "renderer",
+    "slides",
     "viewer"
   ],
   "license": "Apache-2.0",
@@ -50,11 +51,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "echarts": "^6.0.0",
-    "jszip": "^3.10.1"
+    "echarts": "^6.1.0",
+    "jszip": "catalog:"
   },
   "devDependencies": {
-    "@aiden0z/pptx-renderer": "^1.2.3",
+    "@aiden0z/pptx-renderer": "^1.2.4",
     "@pptx/config": "workspace:*",
     "@types/jsdom": "^28.0.3",
     "@types/node": "catalog:",

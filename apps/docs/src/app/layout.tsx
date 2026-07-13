@@ -20,12 +20,14 @@ export const metadata: Metadata = {
   keywords: [
     "pptx",
     "pptx-viewer",
-    "pptx-core",
-    "pptx-parser",
+    "pptx-editor",
     "pptx-renderer",
+    "pptx-parser",
+    "pptx-core",
     "powerpoint",
     "presentation",
     "slides",
+    "ooxml",
   ],
   authors: [
     {

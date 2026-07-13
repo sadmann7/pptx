@@ -398,7 +398,7 @@ export function lzcompDecompress(data: Uint8Array, size: number, version: number
   // common non-RLE case the output IS the window tail; no second buffer.
   const rle = usingRunLength ? new RleSink(outLen) : null;
 
-  for (let pos = 0; pos < outLen; ) {
+  for (let pos = 0; pos < outLen;) {
     const symbol = symEcoder.readSymbol();
     let value: number;
     if (symbol < 256) {
