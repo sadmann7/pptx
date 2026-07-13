@@ -16,5 +16,16 @@ Copyright (c) ChristopherVR
 Licensed under the Mozilla Public License, Version 2.0.
 The packages/core/src/fonts/mtx directory contains code derived from this
 work; those files remain under the MPL-2.0 (see the license headers in each
-file). A copy of the MPL-2.0 is available at https://mozilla.org/MPL/2.0/.
+file).
 -------------------------------------------------------------------------------
+LibreOffice
+https://www.libreoffice.org/
+Copyright (c) The Document Foundation and contributors
+
+Licensed under the Mozilla Public License, Version 2.0.
+The file packages/core/src/renderer/table-style.ts contains predefined table
+style data derived from LibreOffice's predefined-table-styles.cxx.
+-------------------------------------------------------------------------------
+
+A copy of the MPL-2.0 is available at LICENSES/MPL-2.0.txt and at
+https://mozilla.org/MPL/2.0/.
