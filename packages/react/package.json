@@ -1,15 +1,15 @@
 {
   "name": "@diceui/pptx",
   "version": "0.1.0",
-  "description": "Composable React primitives for rendering and editing PowerPoint presentations.",
+  "description": "Composable primitives for viewing and editing PowerPoint presentations in the browser.",
   "keywords": [
     "editor",
-    "headless",
     "ooxml",
     "powerpoint",
     "pptx",
     "presentation",
-    "react",
+    "renderer",
+    "slides",
     "viewer"
   ],
   "license": "Apache-2.0",
@@ -36,10 +36,10 @@
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "oxlint",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -53,8 +53,8 @@
     "@types/react-dom": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
-    "jsdom": "^29.1.1",
-    "jszip": "^3.10.1",
+    "jsdom": "catalog:",
+    "jszip": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tsdown": "catalog:",

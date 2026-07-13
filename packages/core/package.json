@@ -1,7 +1,7 @@
 {
   "name": "@diceui/pptx-core",
   "version": "0.1.0",
-  "description": "Framework-agnostic PPTX engine: parse, render, edit, and save PowerPoint presentations in the browser.",
+  "description": "Parse, render, edit, and save PowerPoint presentations in the browser.",
   "keywords": [
     "editor",
     "ooxml",
@@ -9,6 +9,7 @@
     "pptx",
     "presentation",
     "renderer",
+    "slides",
     "viewer"
   ],
   "license": "Apache-2.0",
@@ -41,26 +42,26 @@
     }
   },
   "scripts": {
-    "bench": "vitest bench --run",
     "build": "tsdown",
-    "lint": "oxlint",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
+    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "echarts": "^6.0.0",
-    "jszip": "^3.10.1"
+    "echarts": "^6.1.0",
+    "jszip": "catalog:"
   },
   "devDependencies": {
-    "@aiden0z/pptx-renderer": "^1.2.3",
+    "@aiden0z/pptx-renderer": "^1.2.4",
     "@pptx/config": "workspace:*",
-    "@types/jsdom": "^28.0.3",
+    "@types/jsdom": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
-    "jsdom": "^29.1.1",
+    "jsdom": "catalog:",
     "mtx-decompressor": "^1.4.2",
     "tsdown": "catalog:",
     "typescript": "catalog:",
