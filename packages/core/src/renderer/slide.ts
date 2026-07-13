@@ -246,6 +246,21 @@ function getMeasurementHost(): HTMLElement {
   return host;
 }
 
+/**
+ * Resets inherited typography such as Tailwind's base styles
+ * or `.prose`, keeping text metrics and autofit consistent after mounting.
+ */
+function resetTypography(container: HTMLElement): void {
+  container.style.fontSize = "initial";
+  container.style.fontFamily = "initial";
+  container.style.fontWeight = "normal";
+  container.style.lineHeight = "normal";
+  container.style.color = "initial";
+  container.style.letterSpacing = "normal";
+  container.style.textDecoration = "none";
+  container.style.textTransform = "none";
+}
+
 function temporarilyConnectForMeasurement(container: HTMLElement): () => void {
   if (container.isConnected) return () => undefined;
 
@@ -310,6 +325,7 @@ export function renderThumbnail(
   container.style.height = `${presentation.height}px`;
   container.style.overflow = "hidden";
   container.style.backgroundColor = "#FFFFFF";
+  resetTypography(container);
 
   // No measurement host: skip the temporarilyConnectForMeasurement call
   // that renderSlide uses for text autofit. This avoids two full-document
@@ -442,6 +458,7 @@ export function renderSlide(
   container.style.height = `${presentation.height}px`;
   container.style.overflow = "hidden";
   container.style.backgroundColor = "#FFFFFF";
+  resetTypography(container);
 
   ctx.measurementRoot = container;
   const restoreMeasurementMount = temporarilyConnectForMeasurement(container);

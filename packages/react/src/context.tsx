@@ -3,9 +3,9 @@ import * as React from "react";
 import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
+import { useLazyRef } from "./hook";
 import type { AutoFitPadding, Store, StoreState } from "./store";
 import { createStore } from "./store";
-import { useLazyRef } from "./use-lazy-ref";
 
 export const Context = React.createContext<Store | null>(null);
 
@@ -100,6 +100,18 @@ export function useSlideRevision(store: Store, slideId: string | null | undefine
   return React.useSyncExternalStore(
     store.subscribe,
     () => (slideId != null ? store.getSlideRevision(slideId) : 0),
+    () => 0,
+  );
+}
+
+/**
+ * Subscribes to a slide's content revision (`store.getSlideContentRevision`):
+ * bumped by content edits but not by transform-only moves.
+ */
+export function useSlideContentRevision(store: Store, slideId: string | null | undefined): number {
+  return React.useSyncExternalStore(
+    store.subscribe,
+    () => (slideId != null ? store.getSlideContentRevision(slideId) : 0),
     () => 0,
   );
 }

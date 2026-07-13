@@ -16,17 +16,20 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["transit"]
     },
     "test": {
       "dependsOn": ["^build"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["transit"]
     },
     "docs#typecheck": {
-      "dependsOn": ["^typecheck", "docs#generate:content"]
+      "dependsOn": ["transit", "docs#generate:content"]
     },
     "check": {
       "dependsOn": ["lint", "typecheck"]

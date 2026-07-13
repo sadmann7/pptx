@@ -328,6 +328,14 @@ export interface Store {
    * selectors.
    */
   getSlideRevision: (slideId: string) => number;
+
+  /**
+   * Returns the content revision of a slide: like `getSlideRevision`, but
+   * NOT bumped by transform-only edits (`setNodeTransform` moves/resizes).
+   * Views can compare this against a previous value to know whether a
+   * revision bump requires a full re-render or just a position patch.
+   */
+  getSlideContentRevision: (slideId: string) => number;
 }
 
 async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
@@ -378,6 +386,7 @@ export function createStore(): Store {
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
   let slideRevisionById = new Map<string, number>();
+  let slideContentRevisionById = new Map<string, number>();
 
   function rebuildSlideIndex(presentation: PresentationData | null): void {
     slideIndexById = new Map();
@@ -646,10 +655,22 @@ export function createStore(): Store {
     undoStack = [];
     redoStack = [];
     slideRevisionById = new Map();
+    slideContentRevisionById = new Map();
   }
 
   function getSlideRevision(slideId: string): number {
     return slideRevisionById.get(slideId) ?? 0;
+  }
+
+  function getSlideContentRevision(slideId: string): number {
+    return slideContentRevisionById.get(slideId) ?? 0;
+  }
+
+  /** `true` when the operation only changes node transforms (position/size/rotation). */
+  function isTransformOnly(op: EditOperation): boolean {
+    if (op.type === "setNodeTransform") return true;
+    if (op.type === "batch") return op.operations.every(isTransformOnly);
+    return false;
   }
 
   /**
@@ -662,12 +683,16 @@ export function createStore(): Store {
     affectedSlideIds: string[],
     prevActiveIndex: number,
     navigateToFirstAffected = false,
+    transformOnly = false,
   ): void {
     const { presentation } = state;
     if (!presentation) return;
 
     for (const slideId of affectedSlideIds) {
       slideRevisionById.set(slideId, getSlideRevision(slideId) + 1);
+      if (!transformOnly) {
+        slideContentRevisionById.set(slideId, getSlideContentRevision(slideId) + 1);
+      }
     }
     rebuildSlideIndex(presentation);
 
@@ -706,7 +731,7 @@ export function createStore(): Store {
     const result = await applyEdit(presentation, op);
     undoStack.push({ op, result });
     redoStack = [];
-    commitEdit(result.affectedSlideIds, prevActiveIndex);
+    commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
     return result;
   }
 
@@ -721,7 +746,7 @@ export function createStore(): Store {
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
-    commitEdit(affected, prevActiveIndex, true);
+    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op));
     return true;
   }
 
@@ -735,7 +760,7 @@ export function createStore(): Store {
     // Re-apply the original operation; it captures fresh undo state.
     const result = await applyEdit(presentation, entry.op);
     undoStack.push({ op: entry.op, result });
-    commitEdit(result.affectedSlideIds, prevActiveIndex, true);
+    commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
     return true;
   }
 
@@ -785,5 +810,6 @@ export function createStore(): Store {
     canRedo,
     save,
     getSlideRevision,
+    getSlideContentRevision,
   };
 }
