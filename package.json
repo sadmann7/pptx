@@ -15,7 +15,7 @@
     "typecheck": "turbo typecheck",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
-    "check": "turbo lint typecheck && pnpm format",
+    "check": "turbo lint typecheck --affected && pnpm format:check",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo build --filter=!docs && changeset publish",
