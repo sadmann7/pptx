@@ -180,6 +180,7 @@ See [`packages/core/OOXML-SUPPORT.md`](./packages/core/OOXML-SUPPORT.md) for a d
 
 - **[pptx-renderer](https://github.com/aiden0z/pptx-renderer)** (Apache-2.0): the parser was originally derived from this work and has been substantially modified, extended, and refactored.
 - **[mtx-decompressor](https://github.com/ChristopherVR/mtx-decompressor)** (MPL-2.0): the embedded font decoder (`packages/core/src/fonts/mtx/`) is derived from this library and optimized for our use case.
+- **[LibreOffice](https://www.libreoffice.org/)** (MPL-2.0): the predefined table style data (`packages/core/src/renderer/table-style.ts`) is derived from `predefined-table-styles.cxx`.
 
 ## License
 

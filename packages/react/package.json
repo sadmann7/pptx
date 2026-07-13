@@ -1,7 +1,23 @@
 {
   "name": "@diceui/pptx",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Composable React primitives for rendering and editing PowerPoint presentations.",
+  "keywords": [
+    "editor",
+    "headless",
+    "ooxml",
+    "powerpoint",
+    "pptx",
+    "presentation",
+    "react",
+    "viewer"
+  ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sadmann7/pptx.git",
+    "directory": "packages/react"
+  },
   "files": [
     "dist"
   ],
@@ -13,8 +29,8 @@
   "publishConfig": {
     "exports": {
       ".": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
       }
     }
   },

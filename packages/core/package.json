@@ -1,9 +1,26 @@
 {
   "name": "@diceui/pptx-core",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Framework-agnostic PPTX engine: parse, render, edit, and save PowerPoint presentations in the browser.",
+  "keywords": [
+    "editor",
+    "ooxml",
+    "powerpoint",
+    "pptx",
+    "presentation",
+    "renderer",
+    "viewer"
+  ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sadmann7/pptx.git",
+    "directory": "packages/core"
+  },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE",
+    "LICENSES"
   ],
   "type": "module",
   "sideEffects": false,
@@ -14,12 +31,12 @@
   "publishConfig": {
     "exports": {
       ".": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
       },
       "./fonts": {
-        "import": "./dist/fonts/index.js",
-        "types": "./dist/fonts/index.d.ts"
+        "types": "./dist/fonts/index.d.mts",
+        "import": "./dist/fonts/index.mjs"
       }
     }
   },
