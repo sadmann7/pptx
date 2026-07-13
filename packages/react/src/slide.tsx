@@ -12,10 +12,10 @@ import {
   useStoreContext,
   useZoom,
 } from "./context";
+import { useLazyRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PresentationStatus } from "./store";
-import { useLazyRef } from "./use-lazy-ref";
 
 const SLIDE_NAME = "Presentation.Slide";
 

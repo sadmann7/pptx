@@ -21,9 +21,9 @@ import {
   useStoreContext,
   useStoreSelector,
 } from "./context";
+import { useLatestRef, useLazyRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
-import { useLazyRef } from "./use-lazy-ref";
 
 const THUMBNAIL_LIST_NAME = "Presentation.ThumbnailList";
 const THUMBNAIL_ITEM_NAME = "Presentation.ThumbnailItem";
@@ -200,8 +200,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const itemsRef = useLazyRef(() => new Map<string, HTMLButtonElement>());
     const isClickFocusRef = React.useRef(false);
     const autoFocusedPresentationRef = React.useRef<object | null>(null);
-    const loopRef = React.useRef(loop);
-    loopRef.current = loop;
 
     // A ref and listener set, not react state: state would flow through the
     // context value and re-render every memoized item on each focus change,
@@ -618,15 +616,12 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     // stale. Kept in a ref so the IO effect doesn't tear down on every edit
     // (that detach→re-attach gap is what causes the thumbnail flash).
     const revision = useSlideRevision(store, itemContext.slideId);
-    const revisionRef = React.useRef(revision);
-    revisionRef.current = revision;
+    const revisionRef = useLatestRef(revision);
 
     const widthRef = React.useRef(0);
     const [containerWidth, setContainerWidth] = React.useState(0);
-    const hasRenderPropRef = React.useRef(false);
-    hasRenderPropRef.current = render != null;
-    const presentationWidthRef = React.useRef(presentationWidth);
-    presentationWidthRef.current = presentationWidth;
+    const hasRenderPropRef = useLatestRef(render != null);
+    const presentationWidthRef = useLatestRef(presentationWidth);
     const scale = containerWidth > 0 ? containerWidth / presentationWidth : 0;
 
     React.useLayoutEffect(() => {

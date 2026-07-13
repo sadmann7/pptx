@@ -3,9 +3,9 @@ import * as React from "react";
 import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
+import { useLazyRef } from "./hook";
 import type { AutoFitPadding, Store, StoreState } from "./store";
 import { createStore } from "./store";
-import { useLazyRef } from "./use-lazy-ref";
 
 export const Context = React.createContext<Store | null>(null);
 

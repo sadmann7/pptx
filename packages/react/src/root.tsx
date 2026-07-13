@@ -3,6 +3,7 @@ import * as React from "react";
 import type { SlideData } from "@diceui/pptx-core";
 
 import { Context } from "./context";
+import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { PreviewInput, Store } from "./store";
@@ -119,14 +120,9 @@ export function Root({
     throw new Error("`Presentation.Root` failed to resolve a store");
   }
 
-  const onLoadRef = React.useRef(onLoad);
-  onLoadRef.current = onLoad;
-
-  const onErrorRef = React.useRef(onError);
-  onErrorRef.current = onError;
-
-  const defaultSlideIndexRef = React.useRef(defaultSlideIndex);
-  defaultSlideIndexRef.current = defaultSlideIndex;
+  const onLoadRef = useLatestRef(onLoad);
+  const onErrorRef = useLatestRef(onError);
+  const defaultSlideIndexRef = useLatestRef(defaultSlideIndex);
 
   React.useEffect(() => {
     // `undefined` means the file API is not in use: Root leaves the store

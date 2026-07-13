@@ -9,6 +9,7 @@ import type {
 import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
 import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
+import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
@@ -352,8 +353,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
   // Stable refs for document-level listeners (avoids stale closures).
-  const stateRef = React.useRef(state);
-  stateRef.current = state;
+  const stateRef = useLatestRef(state);
 
   // Shallow clone of a styled run span, captured per shape on entering text
   // mode. When the browser destroys all run spans (select-all + delete),
@@ -1545,10 +1545,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const { slideId } = useSlide();
 
   // Refs keep the effect bound once while callbacks stay fresh.
-  const onUndoRef = React.useRef(onUndo);
-  onUndoRef.current = onUndo;
-  const onRedoRef = React.useRef(onRedo);
-  onRedoRef.current = onRedo;
+  const onUndoRef = useLatestRef(onUndo);
+  const onRedoRef = useLatestRef(onRedo);
 
   const editable = presentation?.sourcePackage != null;
 
