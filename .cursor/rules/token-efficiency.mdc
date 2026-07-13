@@ -1,0 +1,41 @@
+---
+description: Token efficiency and subagent discipline
+globs: 
+alwaysApply: true
+---
+# Token Efficiency
+
+## Subagent Discipline
+
+- **Do NOT spawn subagents (Task tool) unless the user explicitly asks or the task genuinely requires parallel exploration of 3+ independent areas.**
+- A single agent with sequential tool calls is almost always sufficient. Prefer it.
+- When subagents ARE needed, use the lightest model that can handle the job:
+
+  - `composer-2.5-fast` for exploration, file searches, simple edits
+  - Medium-thinking models for implementation tasks
+  - Only use high-thinking models when the user explicitly requests or the task involves complex architectural reasoning
+- Never spawn more than 3 subagents in parallel unless the user explicitly asks for more.
+- Never let a subagent spawn its own subagents (no recursive spawning).
+
+## Stop Points
+
+- For large tasks (3+ files, new features, refactors): **write a plan first, then stop and ask for feedback** before implementing.
+- After implementing, stop and present what was done. Don't keep going into testing, PR creation, or follow-up tasks unless asked.
+- If a task is ambiguous, ask ONE clarifying question rather than guessing and building the wrong thing.
+
+## Tool Call Efficiency
+
+- Batch independent tool calls in a single message (parallel reads, parallel searches).
+- Don't re-read files you've already read in this conversation unless they've been modified.
+- Use `Grep` with specific patterns over broad `Task/explore` subagents when you know what you're looking for.
+- Use `Glob` for file discovery instead of spawning an explore agent.
+
+## When the User Says "keep going" or "do it all"
+
+Even with broad permission, break work into checkpoints:
+
+1. Plan → confirm
+2. Implement core logic → confirm
+3. Wire up / integrate → confirm
+
+This prevents runaway token burn on misdirected work.
