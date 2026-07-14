@@ -140,6 +140,7 @@ function SlideImpl({
       null,
     );
   const contentRevisionRef = React.useRef<number>(null);
+  const renderedSlideIdRef = React.useRef<string>(null);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -148,11 +149,16 @@ function SlideImpl({
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
     // Try to patch positions in-place instead of a full rebuild.
-    // Safe when: same slide handle, node content unchanged (contentRevision),
-    // and node sizes/rotations unchanged (a resize needs SVG/text re-layout).
+    // Safe when: same slide as the one currently rendered, node content
+    // unchanged (contentRevision), and node sizes/rotations unchanged
+    // (a resize needs SVG/text re-layout). The slide id check matters:
+    // different slides can have structurally identical node snapshots
+    // (e.g. one full-bleed picture per slide), which would otherwise
+    // skip the rebuild when navigating between them.
     if (
       slideHandleRef.current &&
       nodeSnapshotRef.current &&
+      renderedSlideIdRef.current === slide.id &&
       contentRevisionRef.current === contentRevision
     ) {
       const prevSnapshot = nodeSnapshotRef.current;
@@ -178,6 +184,7 @@ function SlideImpl({
         }
         nodeSnapshotRef.current = buildNodeSnapshot(slide);
         contentRevisionRef.current = contentRevision;
+        renderedSlideIdRef.current = slide.id;
         return;
       }
     }
@@ -201,6 +208,7 @@ function SlideImpl({
     slideHandleRef.current = slideHandle;
     nodeSnapshotRef.current = buildNodeSnapshot(slide);
     contentRevisionRef.current = contentRevision;
+    renderedSlideIdRef.current = slide.id;
   }, [presentation, slide, revision, contentRevision]);
 
   React.useEffect(() => {
