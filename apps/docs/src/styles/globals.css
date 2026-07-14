@@ -161,8 +161,4 @@ html > body[data-scroll-locked] {
   * {
     @apply border-border outline-ring/50;
   }
-
-  html {
-    @apply font-sans;
-  }
 }

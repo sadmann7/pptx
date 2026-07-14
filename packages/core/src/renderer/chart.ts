@@ -80,7 +80,7 @@ import {
   type ChartPixelSize,
 } from "./chart/post-process";
 import { parseExplosion, parseSeries } from "./chart/series";
-import { markerSizeToPx } from "./chart/style";
+import { extractChartLineStyle, markerSizeToPx } from "./chart/style";
 import {
   chartTextStyleToEChartsTextStyle,
   extractTitleRichText,
@@ -145,6 +145,8 @@ type BarDataItem =
 interface GridOptionExtended extends echarts.GridComponentOption {
   backgroundColor?: string;
   show?: boolean;
+  borderColor?: string;
+  borderWidth?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -2460,9 +2462,22 @@ export function parseChartXml(
     }
     if (plotAreaBg) {
       if (option.grid) {
-        // Apply plot area background via grid (for cartesian charts)
-        (option.grid as GridOptionExtended).backgroundColor = plotAreaBg;
-        (option.grid as GridOptionExtended).show = true;
+        // Apply plot area background via grid (for cartesian charts).
+        // Showing the grid also enables its default #ccc 1px border, which
+        // PowerPoint only draws when the plot area declares a line.
+        const grid = option.grid as GridOptionExtended;
+        grid.backgroundColor = plotAreaBg;
+        grid.show = true;
+        const plotAreaLine = extractChartLineStyle(
+          chart.child("plotArea").child("spPr").child("ln"),
+          chartCtx,
+        );
+        if (plotAreaLine) {
+          grid.borderColor = plotAreaLine.color;
+          grid.borderWidth = plotAreaLine.width;
+        } else {
+          grid.borderWidth = 0;
+        }
       } else {
         const graphic = buildPlotAreaBackgroundGraphic(chart, plotAreaBg, chartSize);
         if (graphic) prependGraphicOption(option, graphic);
