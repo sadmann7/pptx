@@ -173,7 +173,7 @@ export interface Store {
        *
        * @default true
        */
-      lazy?: boolean;
+      lazySlides?: boolean;
 
       /**
        * When `true`, fonts embedded in the PPTX are decoded and registered
@@ -428,7 +428,7 @@ export function createStore(): Store {
     input: PreviewInput,
     options?: {
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
-      lazy?: boolean;
+      lazySlides?: boolean;
       embedFonts?: boolean;
       readOnly?: boolean;
     },
@@ -469,7 +469,7 @@ export function createStore(): Store {
 
       const files = await readPptx(buffer, {
         lazyMedia: true,
-        keepPackage: options?.readOnly === false,
+        keepSourcePackage: options?.readOnly === false,
         onProgress: (done, total) => {
           workDone = readUnits + zipUnits * (done / total);
           reportProgress();
@@ -481,7 +481,7 @@ export function createStore(): Store {
 
       // Lazy by default: per-slide node parsing is deferred until a slide
       // is rendered, keeping load time flat for large decks.
-      const presentation = buildPresentation(files, { lazy: options?.lazy ?? true });
+      const presentation = buildPresentation(files, { lazySlides: options?.lazySlides ?? true });
       if (gen !== loadGeneration) throw ABORT_ERROR;
 
       const defaultSlideIndex = options?.defaultSlideIndex;

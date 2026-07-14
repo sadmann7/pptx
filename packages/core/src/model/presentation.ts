@@ -64,9 +64,9 @@ export interface PresentationData {
   embeddedFonts?: EmbeddedFontEntry[];
   /**
    * Retained source package for round-trip save. Present when the zip was
-   * parsed with `keepPackage: true`. Use `writePptx()` to produce a .pptx.
+   * parsed with `keepSourcePackage: true`. Use `writePptx()` to produce a .pptx.
    */
-  /** Retained source PPTX package for round-trip save. Present when parsed with `keepPackage: true`. Use `writePptx()` to produce a .pptx. */
+  /** Retained source PPTX package for round-trip save. Present when parsed with `keepSourcePackage: true`. Use `writePptx()` to produce a .pptx. */
   sourcePackage?: PptxPackage;
 }
 
@@ -77,7 +77,7 @@ export interface BuildPresentationOptions {
    *
    * @default false
    */
-  lazy?: boolean;
+  lazySlides?: boolean;
 }
 
 /**
@@ -332,7 +332,7 @@ export function buildPresentation(
     const slideRels = slideRelsXml ? parseRels(slideRelsXml) : new Map<string, RelEntry>();
 
     let slideData: SlideData;
-    if (options.lazy) {
+    if (options.lazySlides) {
       slideData = createLazySlide(slideXml, i, slideRels, slidePath);
     } else {
       const slideRoot = parseXml(slideXml);
@@ -389,7 +389,7 @@ export function buildPresentation(
   };
 
   // --- Resolve placeholder position inheritance ---
-  if (!options.lazy) {
+  if (!options.lazySlides) {
     resolvePlaceholderInheritance(result);
   }
 

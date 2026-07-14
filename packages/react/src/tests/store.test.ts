@@ -116,7 +116,7 @@ describe("lazy slides", () => {
 
   it("parses all slides eagerly with lazy: false", async () => {
     const store = createStore();
-    await store.load(fixture, { lazy: false });
+    await store.load(fixture, { lazySlides: false });
     for (const slide of store.getState().presentation!.slides) {
       expect(slide.nodesMaterialized).toBe(true);
       expect(slide.nodes.length).toBeGreaterThan(0);

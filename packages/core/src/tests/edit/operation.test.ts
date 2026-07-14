@@ -37,7 +37,7 @@ function shapeWithoutXfrm(id: number): string {
 
 async function openEditable(slides: string[]): Promise<PresentationData> {
   const buffer = await buildCustomPptx({ slides });
-  return buildPresentation(await readPptx(buffer, { keepPackage: true }));
+  return buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 }
 
 async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
@@ -59,7 +59,7 @@ function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): Sh
 }
 
 describe("applyEdit guards", () => {
-  it("rejects presentations parsed without keepPackage", async () => {
+  it("rejects presentations parsed without keepSourcePackage", async () => {
     const buffer = await buildCustomPptx({ slides: [textShape(2, "x")] });
     const pres = buildPresentation(await readPptx(buffer));
     await expect(
@@ -71,7 +71,7 @@ describe("applyEdit guards", () => {
         runIndex: 0,
         text: "y",
       }),
-    ).rejects.toThrow(/keepPackage/);
+    ).rejects.toThrow(/keepSourcePackage/);
   });
 
   it("rejects unknown slide and node ids", async () => {

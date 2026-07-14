@@ -1,5 +1,5 @@
 ﻿/**
- * Edit operations for presentations opened with `keepPackage: true`.
+ * Edit operations for presentations opened with `keepSourcePackage: true`.
  *
  * Every operation follows the same contract:
  *   1. mutate the live part XML (the same documents `writePptx()` saves),
@@ -215,7 +215,7 @@ function requirePkg(pres: PresentationData): PptxPackage {
   if (!pres.sourcePackage) {
     throw new Error(
       "applyEdit: presentation was parsed without package retention. " +
-        "Parse the zip with { keepPackage: true } to enable editing.",
+        "Parse the zip with { keepSourcePackage: true } to enable editing.",
     );
   }
   return pres.sourcePackage;

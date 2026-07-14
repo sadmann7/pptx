@@ -44,7 +44,7 @@ export interface PptxViewerOptions {
    * Retain the source package on the presentation (`presentationData.sourcePackage`) so
    * it can be written back to a .pptx via `writePptx()`. Default `false`.
    */
-  keepPackage?: boolean;
+  keepSourcePackage?: boolean;
   /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. Use `false` to disable. */
   pdfjs?: PdfjsConfig;
   onSlideChange?: (index: number) => void;
@@ -298,17 +298,17 @@ export class PptxViewer extends EventTarget {
     const buffer = await normalizePptxSource(input);
     checkAborted();
 
-    const useLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
+    const enableLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
     const files = await readPptx(buffer, {
       limits: this.viewerOptions.readLimits,
-      keepPackage: this.viewerOptions.keepPackage,
-      lazyMedia: useLazyMedia,
+      keepSourcePackage: this.viewerOptions.keepSourcePackage,
+      lazyMedia: enableLazyMedia,
     });
     checkAborted();
 
-    const useLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
-    const presentation = useLazySlides
-      ? buildPresentation(files, { lazy: true })
+    const enableLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
+    const presentation = enableLazySlides
+      ? buildPresentation(files, { lazySlides: true })
       : buildPresentation(files);
     checkAborted();
 

@@ -111,7 +111,7 @@ describe("time-to-first-slide (buffer → first slide ready)", () => {
   });
   bench("large lazy (parse only first slide)", async () => {
     const files = await readPptx(large.buffer);
-    const pres = buildPresentation(files, { lazy: true });
+    const pres = buildPresentation(files, { lazySlides: true });
     materializeSlide(pres, pres.slides[0]);
   });
 });

@@ -53,7 +53,7 @@ describe("store.edit", () => {
         runIndex: 0,
         text: "x",
       }),
-    ).rejects.toThrow(/keepPackage|readOnly/);
+    ).rejects.toThrow(/keepSourcePackage|readOnly/);
   });
 
   it("applies an edit, bumps revisions, and notifies subscribers", async () => {
