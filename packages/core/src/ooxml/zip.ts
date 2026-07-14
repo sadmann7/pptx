@@ -37,6 +37,13 @@ export interface PptxFiles {
 
 export interface PptxReadOptions {
   /**
+   * Resource limits enforced while reading the archive
+   * (entry counts, uncompressed sizes, concurrency).
+   * See {@link RECOMMENDED_PPTX_READ_LIMITS} for sensible defaults
+   * when parsing untrusted input. @default no limits
+   */
+  limits?: PptxReadLimits;
+  /**
    * Called after each zip entry has been read and categorized.
    * `done` counts processed entries, `total` is the number of entries.
    */
@@ -278,10 +285,9 @@ async function mapWithConcurrency<T>(
  */
 export async function readPptx(
   buffer: ArrayBuffer,
-  limits: PptxReadLimits = {},
   options: PptxReadOptions = {},
 ): Promise<PptxFiles> {
-  return readPptxInternal(buffer, limits, {
+  return readPptxInternal(buffer, options.limits ?? {}, {
     lazyMedia: options.lazyMedia ?? false,
     onProgress: options.onProgress,
     keepPackage: options.keepPackage,

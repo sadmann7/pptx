@@ -37,7 +37,7 @@ function shapeWithoutXfrm(id: number): string {
 
 async function openEditable(slides: string[]): Promise<PresentationData> {
   const buffer = await buildCustomPptx({ slides });
-  return buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
+  return buildPresentation(await readPptx(buffer, { keepPackage: true }));
 }
 
 async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {

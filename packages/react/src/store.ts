@@ -467,7 +467,7 @@ export function createStore(): Store {
       workDone = readUnits;
       reportProgress();
 
-      const files = await readPptx(buffer, undefined, {
+      const files = await readPptx(buffer, {
         lazyMedia: true,
         keepPackage: options?.readOnly === false,
         onProgress: (done, total) => {

@@ -299,11 +299,11 @@ export class PptxViewer extends EventTarget {
     checkAborted();
 
     const useLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
-    const readOptions = {
+    const files = await readPptx(buffer, {
+      limits: this.viewerOptions.readLimits,
       keepPackage: this.viewerOptions.keepPackage,
       lazyMedia: useLazyMedia,
-    };
-    const files = await readPptx(buffer, this.viewerOptions.readLimits, readOptions);
+    });
     checkAborted();
 
     const useLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;

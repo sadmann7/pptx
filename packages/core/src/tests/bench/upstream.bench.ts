@@ -58,7 +58,7 @@ describe("readPptx: large (100 slides)", () => {
 
 describe("readPptx lazyMedia: large (100 slides)", () => {
   bench("ours", async () => {
-    await readPptx(largeBuffer, {}, { lazyMedia: true });
+    await readPptx(largeBuffer, { lazyMedia: true });
   });
   bench("upstream", async () => {
     await upstreamParseZipLazyMedia(largeBuffer);

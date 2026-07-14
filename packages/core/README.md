@@ -44,7 +44,7 @@ Load with `keepPackage: true` to retain the source archive, then apply typed edi
 ```ts
 import { applyEdit, buildPresentation, readPptx, writePptx } from "@diceui/pptx-core";
 
-const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
+const presentation = buildPresentation(await readPptx(buffer, { keepPackage: true }));
 
 const result = await applyEdit(presentation, {
   type: "setTextRun",
