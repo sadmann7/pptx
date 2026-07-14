@@ -36,15 +36,29 @@ function isCachePointInRange(idx: number | undefined, pointLimit: number): idx i
   );
 }
 
+/**
+ * Locate the point-list container for a data reference. Handles both the
+ * cached-reference forms (`strRef/strCache`, `numRef/numCache`) and the
+ * literal forms (`strLit`, `numLit`) used when the chart has no backing
+ * spreadsheet; both share the same ptCount/pt structure.
+ */
+function findStringCache(refNode: SafeXmlNode): SafeXmlNode {
+  if (refNode.child("strRef").exists()) return refNode.child("strRef").child("strCache");
+  if (refNode.child("strCache").exists()) return refNode.child("strCache");
+  return refNode.child("strLit");
+}
+
+function findNumericCache(refNode: SafeXmlNode): SafeXmlNode {
+  if (refNode.child("numRef").exists()) return refNode.child("numRef").child("numCache");
+  if (refNode.child("numCache").exists()) return refNode.child("numCache");
+  return refNode.child("numLit");
+}
+
 export function extractStringValues(refNode: SafeXmlNode): string[] {
-  const cache = refNode.child("strRef").exists()
-    ? refNode.child("strRef").child("strCache")
-    : refNode.child("strCache");
+  const cache = findStringCache(refNode);
 
   if (!cache.exists()) {
-    const numCache = refNode.child("numRef").exists()
-      ? refNode.child("numRef").child("numCache")
-      : refNode.child("numCache");
+    const numCache = findNumericCache(refNode);
     if (numCache.exists()) {
       return extractNumericValuesAsStrings(numCache);
     }
@@ -66,9 +80,7 @@ export function extractStringValues(refNode: SafeXmlNode): string[] {
 }
 
 export function extractFormatCode(refNode: SafeXmlNode): string | undefined {
-  const cache = refNode.child("numRef").exists()
-    ? refNode.child("numRef").child("numCache")
-    : refNode.child("numCache");
+  const cache = findNumericCache(refNode);
 
   if (!cache.exists()) return undefined;
 
@@ -198,9 +210,7 @@ interface NumericValuesWithBlanks {
 }
 
 export function extractNumericValuesWithBlanks(refNode: SafeXmlNode): NumericValuesWithBlanks {
-  const cache = refNode.child("numRef").exists()
-    ? refNode.child("numRef").child("numCache")
-    : refNode.child("numCache");
+  const cache = findNumericCache(refNode);
 
   if (!cache.exists()) return { values: [], blankIndices: new Set() };
 

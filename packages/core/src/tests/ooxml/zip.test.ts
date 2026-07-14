@@ -58,6 +58,27 @@ describe("readPptx media and auxiliary parts", () => {
     expect([...files.themes.keys()]).toEqual(["ppt/theme/theme1.xml"]);
   });
 
+  it("categorizes chart parts nested outside ppt/charts (e.g. ppt/slides/charts)", async () => {
+    const chartXml = `<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"/>`;
+    const relsXml = `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`;
+    const files = await readPptx(
+      await buildCustomPptx({
+        extraFiles: {
+          "ppt/slides/charts/chart1.xml": chartXml,
+          "ppt/slides/charts/_rels/chart1.xml.rels": relsXml,
+          "ppt/slides/charts/style1.xml": "<cs:chartStyle/>",
+          "ppt/slides/charts/colors1.xml": "<cs:colorStyle/>",
+        },
+      }),
+    );
+    expect(files.charts.get("ppt/slides/charts/chart1.xml")).toBe(chartXml);
+    expect(files.chartRels?.get("ppt/slides/charts/_rels/chart1.xml.rels")).toBe(relsXml);
+    expect(files.chartStyles.has("ppt/slides/charts/style1.xml")).toBe(true);
+    expect(files.chartColors.has("ppt/slides/charts/colors1.xml")).toBe(true);
+    // Slide categorization must not swallow the nested chart parts.
+    expect(files.slides.has("ppt/slides/charts/chart1.xml")).toBe(false);
+  });
+
   it("leaves uncategorized parts (e.g. notesSlides) out of the result", async () => {
     const files = await readPptx(
       await buildCustomPptx({

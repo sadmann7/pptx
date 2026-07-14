@@ -14,6 +14,7 @@ import {
   ScatterChart,
 } from "echarts/charts";
 import {
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   TitleComponent,
@@ -30,6 +31,7 @@ use([
   ScatterChart,
   CandlestickChart,
   CustomChart,
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   TitleComponent,
