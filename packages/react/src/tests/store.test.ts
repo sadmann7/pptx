@@ -114,7 +114,7 @@ describe("lazy slides", () => {
     expect(nodesAtNotify).toBeGreaterThan(0);
   });
 
-  it("parses all slides eagerly with lazy: false", async () => {
+  it("parses all slides eagerly with lazySlides: false", async () => {
     const store = createStore();
     await store.load(fixture, { lazySlides: false });
     for (const slide of store.getState().presentation!.slides) {
