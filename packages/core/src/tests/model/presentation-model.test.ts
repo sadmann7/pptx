@@ -36,13 +36,13 @@ describe("readPptx", () => {
   });
 
   it("enforces entry-count limits", async () => {
-    await expect(readPptx(buffer, { maxEntries: 2 })).rejects.toThrow(/entries|limit/i);
+    await expect(readPptx(buffer, { limits: { maxEntries: 2 } })).rejects.toThrow(/entries|limit/i);
   });
 
   it("enforces uncompressed-size limits", async () => {
-    await expect(readPptx(buffer, { maxEntryUncompressedBytes: 16 })).rejects.toThrow();
+    await expect(readPptx(buffer, { limits: { maxEntryUncompressedBytes: 16 } })).rejects.toThrow();
     // Recommended limits comfortably admit the fixture.
-    await expect(readPptx(buffer, RECOMMENDED_PPTX_READ_LIMITS)).resolves.toBeDefined();
+    await expect(readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS })).resolves.toBeDefined();
   });
 });
 

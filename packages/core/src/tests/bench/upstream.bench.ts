@@ -58,7 +58,7 @@ describe("readPptx: large (100 slides)", () => {
 
 describe("readPptx lazyMedia: large (100 slides)", () => {
   bench("ours", async () => {
-    await readPptx(largeBuffer, {}, { lazyMedia: true });
+    await readPptx(largeBuffer, { lazyMedia: true });
   });
   bench("upstream", async () => {
     await upstreamParseZipLazyMedia(largeBuffer);
@@ -90,7 +90,7 @@ describe("buildPresentation: large", () => {
 describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {
     const files = await readPptx(mediumBuffer);
-    const pres = ourBuild(files, { lazy: true });
+    const pres = ourBuild(files, { lazySlides: true });
     ourMaterialize(pres, pres.slides[0]);
   });
   bench("upstream", async () => {
@@ -103,7 +103,7 @@ describe("time-to-first-slide: medium", () => {
 describe("time-to-first-slide: large", () => {
   bench("ours", async () => {
     const files = await readPptx(largeBuffer);
-    const pres = ourBuild(files, { lazy: true });
+    const pres = ourBuild(files, { lazySlides: true });
     ourMaterialize(pres, pres.slides[0]);
   });
   bench("upstream", async () => {

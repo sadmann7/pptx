@@ -86,7 +86,7 @@ describe("readPptx media and auxiliary parts", () => {
 
 describe("readPptx lazyMedia", () => {
   it("leaves media empty and exposes a resolver with totals", async () => {
-    const files = await readPptx(await pptxWithMedia(), {}, { lazyMedia: true });
+    const files = await readPptx(await pptxWithMedia(), { lazyMedia: true });
     expect(files.media.size).toBe(0);
     expect(files.mediaResolver).toBeDefined();
     expect(files.mediaResolver?.totalCount).toBe(2);
@@ -96,7 +96,7 @@ describe("readPptx lazyMedia", () => {
   });
 
   it("decodes entries on demand and populates the shared media map", async () => {
-    const files = await readPptx(await pptxWithMedia(), {}, { lazyMedia: true });
+    const files = await readPptx(await pptxWithMedia(), { lazyMedia: true });
     const resolved = await files.mediaResolver?.resolve("../media/image1.png");
     expect(resolved?.mediaPath).toBe("ppt/media/image1.png");
     expect(resolved?.data).toEqual(PNG);
@@ -108,7 +108,7 @@ describe("readPptx lazyMedia", () => {
   });
 
   it("serves repeat and concurrent resolves from the cache", async () => {
-    const files = await readPptx(await pptxWithMedia(), {}, { lazyMedia: true });
+    const files = await readPptx(await pptxWithMedia(), { lazyMedia: true });
     const [a, b] = await Promise.all([
       files.mediaResolver!.resolve("../media/image1.png"),
       files.mediaResolver!.resolve("../media/image1.png"),
@@ -123,14 +123,14 @@ describe("readPptx lazyMedia", () => {
   });
 
   it("resolves undefined for unknown targets", async () => {
-    const files = await readPptx(await pptxWithMedia(), {}, { lazyMedia: true });
+    const files = await readPptx(await pptxWithMedia(), { lazyMedia: true });
     await expect(files.mediaResolver!.resolve("../media/missing.png")).resolves.toBeUndefined();
   });
 
   it("otherwise categorizes XML parts exactly like eager readPptx", async () => {
     const buffer = await pptxWithMedia();
     const eager = await readPptx(buffer);
-    const lazy = await readPptx(buffer, {}, { lazyMedia: true });
+    const lazy = await readPptx(buffer, { lazyMedia: true });
     expect([...lazy.slides.keys()]).toEqual([...eager.slides.keys()]);
     expect(lazy.presentation).toBe(eager.presentation);
     expect(lazy.contentTypes).toBe(eager.contentTypes);
@@ -142,16 +142,18 @@ describe("readPptx limits", () => {
     const buffer = await buildCustomPptx({
       extraFiles: { "ppt/media/big.png": fakePngBytes(1024) },
     });
-    await expect(readPptx(buffer, { maxMediaBytes: 512 })).rejects.toThrow(/media bytes/);
+    await expect(readPptx(buffer, { limits: { maxMediaBytes: 512 } })).rejects.toThrow(
+      /media bytes/,
+    );
   });
 
   it("enforces maxMediaBytes up front in lazy mode via zip directory sizes", async () => {
     const buffer = await buildCustomPptx({
       extraFiles: { "ppt/media/big.png": fakePngBytes(1024) },
     });
-    await expect(readPptx(buffer, { maxMediaBytes: 512 }, { lazyMedia: true })).rejects.toThrow(
-      /media bytes/,
-    );
+    await expect(
+      readPptx(buffer, { limits: { maxMediaBytes: 512 }, lazyMedia: true }),
+    ).rejects.toThrow(/media bytes/);
   });
 
   it("counts media across multiple entries against maxMediaBytes", async () => {
@@ -162,30 +164,36 @@ describe("readPptx limits", () => {
       },
     });
     // Each entry fits alone but not together.
-    await expect(readPptx(buffer, { maxMediaBytes: 400 })).rejects.toThrow(/media bytes/);
-    await expect(readPptx(buffer, { maxMediaBytes: 600 })).resolves.toBeDefined();
+    await expect(readPptx(buffer, { limits: { maxMediaBytes: 400 } })).rejects.toThrow(
+      /media bytes/,
+    );
+    await expect(readPptx(buffer, { limits: { maxMediaBytes: 600 } })).resolves.toBeDefined();
   });
 
   it("admits the fixture under RECOMMENDED_PPTX_READ_LIMITS in both modes", async () => {
     const buffer = await pptxWithMedia();
-    await expect(readPptx(buffer, RECOMMENDED_PPTX_READ_LIMITS)).resolves.toBeDefined();
-    const lazy = await readPptx(buffer, RECOMMENDED_PPTX_READ_LIMITS, { lazyMedia: true });
+    await expect(readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS })).resolves.toBeDefined();
+    const lazy = await readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS, lazyMedia: true });
     const resolved = await lazy.mediaResolver?.resolve("../media/image1.png");
     expect(resolved?.data).toEqual(PNG);
   });
 
   it("rejects invalid maxConcurrency values", async () => {
     const buffer = await buildCustomPptx();
-    await expect(readPptx(buffer, { maxConcurrency: 0 })).rejects.toThrow(/maxConcurrency/);
-    await expect(readPptx(buffer, { maxConcurrency: 1.5 })).rejects.toThrow(/maxConcurrency/);
-    await expect(readPptx(buffer, { maxConcurrency: 1 })).resolves.toBeDefined();
+    await expect(readPptx(buffer, { limits: { maxConcurrency: 0 } })).rejects.toThrow(
+      /maxConcurrency/,
+    );
+    await expect(readPptx(buffer, { limits: { maxConcurrency: 1.5 } })).rejects.toThrow(
+      /maxConcurrency/,
+    );
+    await expect(readPptx(buffer, { limits: { maxConcurrency: 1 } })).resolves.toBeDefined();
   });
 
   it("enforces maxEntryUncompressedBytes against media entries", async () => {
     const buffer = await buildCustomPptx({
       extraFiles: { "ppt/media/big.png": fakePngBytes(2048) },
     });
-    await expect(readPptx(buffer, { maxEntryUncompressedBytes: 1024 })).rejects.toThrow(
+    await expect(readPptx(buffer, { limits: { maxEntryUncompressedBytes: 1024 } })).rejects.toThrow(
       /maxEntryUncompressedBytes/,
     );
   });

@@ -39,12 +39,12 @@ viewer.goTo(2);
 
 ## Edit and save
 
-Load with `keepPackage: true` to retain the source archive, then apply typed edit operations and write back a `.pptx` that round-trips everything the parser doesn't model (animations, comments, vendor extensions):
+Load with `keepSourcePackage: true` to retain the source archive, then apply typed edit operations and write back a `.pptx` that round-trips everything the parser doesn't model (animations, comments, vendor extensions):
 
 ```ts
 import { applyEdit, buildPresentation, readPptx, writePptx } from "@diceui/pptx-core";
 
-const presentation = buildPresentation(await readPptx(buffer, {}, { keepPackage: true }));
+const presentation = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 
 const result = await applyEdit(presentation, {
   type: "setTextRun",

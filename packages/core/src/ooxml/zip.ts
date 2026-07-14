@@ -31,11 +31,18 @@ export interface PptxFiles {
   chartColors: Map<string, string>; // ppt/charts/colors*.xml
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
   fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
-  /** Retained source PPTX package for round-trip save. Present when parsed with `keepPackage: true`. */
+  /** Retained source PPTX package for round-trip save. Present when parsed with `keepSourcePackage: true`. */
   sourcePackage?: PptxPackage;
 }
 
 export interface PptxReadOptions {
+  /**
+   * Resource limits enforced while reading the archive
+   * (entry counts, uncompressed sizes, concurrency).
+   * See {@link RECOMMENDED_PPTX_READ_LIMITS} for sensible defaults
+   * when parsing untrusted input. @default no limits
+   */
+  limits?: PptxReadLimits;
   /**
    * Called after each zip entry has been read and categorized.
    * `done` counts processed entries, `total` is the number of entries.
@@ -46,7 +53,7 @@ export interface PptxReadOptions {
    * so the presentation can be written back to a .pptx after editing.
    * Uncategorized parts stay compressed in memory. @default false
    */
-  keepPackage?: boolean;
+  keepSourcePackage?: boolean;
   /**
    * Index media entries for on-demand decoding instead of inflating them during read.
    * When true, `PptxFiles.media` stays empty until `mediaResolver.resolve()` is called.
@@ -278,13 +285,12 @@ async function mapWithConcurrency<T>(
  */
 export async function readPptx(
   buffer: ArrayBuffer,
-  limits: PptxReadLimits = {},
   options: PptxReadOptions = {},
 ): Promise<PptxFiles> {
-  return readPptxInternal(buffer, limits, {
+  return readPptxInternal(buffer, options.limits ?? {}, {
     lazyMedia: options.lazyMedia ?? false,
     onProgress: options.onProgress,
-    keepPackage: options.keepPackage,
+    keepSourcePackage: options.keepSourcePackage,
   });
 }
 
@@ -294,7 +300,7 @@ async function readPptxInternal(
   options: {
     lazyMedia: boolean;
     onProgress?: (done: number, total: number) => void;
-    keepPackage?: boolean;
+    keepSourcePackage?: boolean;
   },
 ): Promise<PptxFiles> {
   const maxConcurrency = limits.maxConcurrency ?? 8;
@@ -583,7 +589,7 @@ async function readPptxInternal(
     );
   }
 
-  if (options.keepPackage) {
+  if (options.keepSourcePackage) {
     result.sourcePackage = new PptxPackage(zip);
   }
 

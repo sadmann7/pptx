@@ -1,5 +1,5 @@
 ﻿/**
- * Writes a presentation (opened with `keepPackage: true`) back to a .pptx
+ * Writes a presentation (opened with `keepSourcePackage: true`) back to a .pptx
  * OOXML package. Untouched parts round-trip byte-for-byte; parts marked
  * dirty on the retained sourcePackage are re-serialized from their live XML.
  */
@@ -10,8 +10,8 @@ import type { PptxSaveOptions } from "./package";
 /**
  * Serialize a presentation back to a .pptx archive.
  *
- * Requires the presentation to have been parsed with `keepPackage: true`
- * (see `PptxReadOptions.keepPackage`), which retains the source package for
+ * Requires the presentation to have been parsed with `keepSourcePackage: true`
+ * (see `PptxReadOptions.keepSourcePackage`), which retains the source package for
  * round-trip fidelity.
  */
 export async function writePptx(
@@ -21,7 +21,7 @@ export async function writePptx(
   if (!presentation.sourcePackage) {
     throw new Error(
       "writePptx: presentation was parsed without package retention. " +
-        "Parse the zip with { keepPackage: true } to enable saving.",
+        "Parse the zip with { keepSourcePackage: true } to enable saving.",
     );
   }
   return presentation.sourcePackage.save(options);
