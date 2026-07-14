@@ -97,7 +97,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     {
       state: { zoom },
       ref: [viewportRef, forwardedRef],
-      props: [viewportProps],
+      props: [{ role: "region" }, viewportProps],
     },
   );
 });

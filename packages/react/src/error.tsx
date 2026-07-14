@@ -50,7 +50,7 @@ export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error
     {
       state: { error },
       ref: forwardedRef,
-      props: [{ children: resolvedChildren }, errorProps],
+      props: [{ role: "alert", children: resolvedChildren }, errorProps],
     },
   );
 });
