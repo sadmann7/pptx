@@ -9,14 +9,6 @@ import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
 
-/**
- * Ref to the nearest `<Presentation.Root>` element. Used to scope document-level
- * shortcuts (e.g. undo/redo) to the active presentation tree.
- */
-export const RootElementContext = React.createContext<React.RefObject<HTMLElement | null> | null>(
-  null,
-);
-
 export interface ProviderProps {
   /** The `PresentationStore` to make available to descendants. */
   store: Store;
