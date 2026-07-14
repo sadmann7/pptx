@@ -1,12 +1,21 @@
 export * as Presentation from "./primitive";
 
-export type * from "./error";
-export type * from "./loading";
-export type * from "./root";
-export type * from "./selection";
-export type * from "./slide";
-export type * from "./thumbnail-list";
-export type * from "./viewport";
+export type { ErrorProps, ErrorState } from "./error";
+export type { LoadingProps, LoadingState } from "./loading";
+export type { RootProps, RootState } from "./root";
+export type { SelectionProps, SelectionState } from "./selection";
+export type { SlideProps, SlideState } from "./slide";
+export type {
+  ThumbnailItemNumberProps,
+  ThumbnailItemPreviewProps,
+  ThumbnailItemPreviewState,
+  ThumbnailItemProps,
+  ThumbnailItemState,
+  ThumbnailListProps,
+  ThumbnailListRenderState,
+  ThumbnailListState,
+} from "./thumbnail-list";
+export type { ViewportProps, ViewportState } from "./viewport";
 
 export {
   useCreateStore as useCreatePresentationStore,
