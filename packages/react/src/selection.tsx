@@ -1482,7 +1482,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           role: "application",
           "data-pptx-selection": "",
           "data-mode": state.mode,
-          tabIndex: -1,
+          tabIndex: 0,
           onPointerDown,
           onPointerMove,
           onPointerUp,

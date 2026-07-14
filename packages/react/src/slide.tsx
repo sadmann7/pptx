@@ -97,7 +97,6 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
       ref: forwardedRef,
       props: [
         {
-          role: "region",
           "aria-busy": status === "loading",
           "data-status": status,
           style: {
