@@ -196,6 +196,12 @@ let sharedParser: DOMParser | undefined;
  */
 export function parseXml(xmlString: string): SafeXmlNode {
   sharedParser ??= new DOMParser();
+  // Some generators (e.g. Open XML SDK) write a UTF-8 BOM into XML parts.
+  // JSZip's string decoder keeps it as a leading U+FEFF, which strict
+  // DOMParser implementations reject, so strip it before parsing.
+  if (xmlString.charCodeAt(0) === 0xfeff) {
+    xmlString = xmlString.slice(1);
+  }
   const doc = sharedParser.parseFromString(xmlString, "application/xml");
 
   // Check for parser errors: DOMParser returns a parsererror document on

@@ -31,6 +31,12 @@ describe("parseXml", () => {
     const root = parseXml("<oops <<<");
     expect(root.exists()).toBe(false);
   });
+
+  it("strips a leading UTF-8 BOM before parsing", () => {
+    const root = parseXml(`\uFEFF${SLIDE_XML}`);
+    expect(root.exists()).toBe(true);
+    expect(root.localName).toBe("sld");
+  });
 });
 
 describe("SafeXmlNode", () => {
