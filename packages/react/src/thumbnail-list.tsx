@@ -403,7 +403,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
             props: [
               {
                 role: "listbox",
-                "aria-label": "Slide thumbnails",
                 "aria-orientation": "vertical",
                 tabIndex: hasTabStop ? -1 : 0,
                 onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
@@ -508,7 +507,6 @@ export const ThumbnailItem = React.memo(
                 type: "button",
                 role: "option",
                 "aria-selected": isActive,
-                "aria-label": `Slide ${displayIndex + 1}`,
                 "aria-posinset": displayIndex + 1,
                 "aria-setsize": setSize,
                 "data-active": isActive || undefined,
@@ -807,7 +805,6 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
         ref: forwardedRef,
         props: [
           {
-            "aria-hidden": "true",
             "data-active": itemContext.isActive || undefined,
             style: { userSelect: "none" },
             children: children ?? itemContext.displayIndex + 1,

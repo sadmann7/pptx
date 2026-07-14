@@ -122,7 +122,7 @@ describe("Presentation.ThumbnailList", () => {
     const options = screen.getAllByRole("option");
     expect(options).toHaveLength(FIXTURE_SLIDE_COUNT);
     expect(options[0].getAttribute("aria-selected")).toBe("true");
-    expect(options[0].getAttribute("aria-label")).toBe("Slide 1");
+    expect(options[0].textContent).toBe("1");
 
     act(() => options[2].click());
     expect(store.getActiveSlideIndex()).toBe(2);
