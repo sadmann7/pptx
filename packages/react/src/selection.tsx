@@ -1479,9 +1479,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       ref: mergeRefs(rootRef, forwardedRef),
       props: [
         {
+          role: "application",
           "data-pptx-selection": "",
           "data-mode": state.mode,
-          tabIndex: -1,
+          tabIndex: 0,
           onPointerDown,
           onPointerMove,
           onPointerUp,
@@ -1638,6 +1639,7 @@ function SelectionBox({
         GRIP_DIRECTIONS.map((direction) => (
           <div
             key={direction}
+            aria-hidden="true"
             data-resize-grip={direction}
             onPointerDown={(event) => onGripPointerDown(event, direction)}
             style={{
@@ -1711,6 +1713,7 @@ function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
       {FRAME_GRAB_HITBOXES.map((style, index) => (
         <div
           key={index}
+          aria-hidden="true"
           data-border-move=""
           onPointerDown={onPointerDown}
           style={{
