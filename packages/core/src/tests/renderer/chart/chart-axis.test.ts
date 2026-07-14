@@ -75,6 +75,29 @@ describe("parseAxes", () => {
     expect(parseAxes(plotArea, ctx).valueAxis.deleted).toBe(true);
   });
 
+  it("marks axis lines hidden when spPr declares a noFill line", () => {
+    const plotArea = parseChartFragment(`<c:plotArea>
+<c:valAx><c:axId val="2"/><c:spPr><a:ln w="0"><a:noFill/></a:ln></c:spPr></c:valAx>
+<c:catAx><c:axId val="1"/><c:spPr><a:ln><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln></c:spPr></c:catAx>
+</c:plotArea>`).child("plotArea");
+    const { valueAxis, categoryAxis } = parseAxes(plotArea, ctx);
+    expect(valueAxis.lineHidden).toBe(true);
+    expect(valueAxis.lineColor).toBeUndefined();
+    expect(categoryAxis.lineHidden).toBe(false);
+    expect(categoryAxis.lineColor).toBe("#FF0000");
+  });
+
+  it("hides the axis line and ticks for a noFill axis line", () => {
+    const plotArea = parseChartFragment(`<c:plotArea>
+<c:valAx><c:axId val="2"/><c:spPr><a:ln w="0"><a:noFill/></a:ln></c:spPr></c:valAx>
+</c:plotArea>`).child("plotArea");
+    const { valueAxis } = parseAxes(plotArea, ctx);
+    const axisDef: Record<string, unknown> = {};
+    applyAxisInfo(axisDef, valueAxis, "value");
+    expect(axisDef.axisLine).toMatchObject({ show: false });
+    expect(axisDef.axisTick).toMatchObject({ show: false });
+  });
+
   it("returns defaults when the axis node is absent", () => {
     const plotArea = parseChartFragment("<c:plotArea/>").child("plotArea");
     const { valueAxis } = parseAxes(plotArea, ctx);

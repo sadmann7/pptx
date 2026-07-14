@@ -109,6 +109,32 @@ ${axesXml("111111111", "222222222", `<c:numFmt formatCode="0%" sourceLinked="0"/
     expect(formatter(0.5)).toBe("50%");
   });
 
+  it("fills the plot area via grid without the default border for a noFill line", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "S", ["A"], [1])}
+</c:barChart>
+<c:spPr><a:solidFill><a:srgbClr val="1C1C1C"/></a:solidFill><a:ln w="0"><a:noFill/></a:ln></c:spPr>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    expect(option.grid.show).toBe(true);
+    expect(option.grid.backgroundColor).toBe("#1C1C1C");
+    expect(option.grid.borderWidth).toBe(0);
+  });
+
+  it("draws the plot area border when the plot area declares a solid line", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "S", ["A"], [1])}
+</c:barChart>
+<c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="12700"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln></c:spPr>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    expect(option.grid.borderColor).toBe("#FF0000");
+    // 12700 EMU = 1pt = 1.333px
+    expect(option.grid.borderWidth).toBeCloseTo(1.333, 3);
+  });
+
   it("stacks series and widens bars for stacked grouping", () => {
     const xml = chartSpaceXml(`<c:plotArea>
 <c:barChart><c:barDir val="col"/><c:grouping val="stacked"/>

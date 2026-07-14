@@ -59,6 +59,10 @@ function extractAxisLineColor(ax: SafeXmlNode, ctx: RenderContext): string | und
   return resolveColorToHex(fill, ctx);
 }
 
+function isAxisLineHidden(ax: SafeXmlNode): boolean {
+  return ax.child("spPr").child("ln").child("noFill").exists();
+}
+
 function extractMajorGridlineStyle(
   ax: SafeXmlNode,
   ctx: RenderContext,
@@ -113,7 +117,8 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
   const labelColor = txStyle?.color ?? extractAxisLabelColor(ax, ctx);
   const labelFontSize = txStyle?.fontSize;
   const implicitAxisColor = legacyOfficeImplicitAxisColor(ctx);
-  const lineColor = extractAxisLineColor(ax, ctx) ?? implicitAxisColor;
+  const lineHidden = isAxisLineHidden(ax);
+  const lineColor = lineHidden ? undefined : (extractAxisLineColor(ax, ctx) ?? implicitAxisColor);
   const majorGridlineStyle = hasMajorGridlines
     ? (extractMajorGridlineStyle(ax, ctx) ??
       (implicitAxisColor
@@ -135,6 +140,7 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
     labelColor,
     labelFontSize,
     lineColor,
+    lineHidden,
     majorGridlineStyle,
   };
 }
@@ -252,7 +258,7 @@ export function applyAxisInfo(
     axisDef.axisLabel = { ...(axisDef.axisLabel as object), show: false };
   }
 
-  if (info.majorTickMark === "none") {
+  if (info.majorTickMark === "none" || info.lineHidden) {
     const existingTick = (axisDef.axisTick as Record<string, unknown>) || {};
     axisDef.axisTick = { ...existingTick, show: false };
   } else if (!info.deleted) {
@@ -328,7 +334,10 @@ export function applyAxisInfo(
     axisDef.axisLabel = { ...existingLabel, fontSize: info.labelFontSize };
   }
 
-  if (info.lineColor || !info.deleted) {
+  if (info.lineHidden) {
+    const existingLine = (axisDef.axisLine as Record<string, unknown>) || {};
+    axisDef.axisLine = { ...existingLine, show: false };
+  } else if (info.lineColor || !info.deleted) {
     const existingLine = (axisDef.axisLine as Record<string, unknown>) || {};
     const existingLineStyle = (existingLine.lineStyle as Record<string, unknown>) || {};
     const color =

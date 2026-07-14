@@ -525,8 +525,12 @@ async function readPptxInternal(
       return;
     }
 
+    // Chart parts canonically live in ppt/charts/, but the location is
+    // relationship-defined, and some generators (e.g. Open XML SDK) nest them
+    // per-slide (ppt/slides/charts/chart1.xml), so match any depth under ppt/.
+
     // --- Chart Rels ---
-    if (/^ppt\/charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
+    if (/^ppt\/(?:[^/]+\/)*charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       if (result.chartRels) {
         setPathMapEntry(
           result.chartRels,
@@ -538,7 +542,11 @@ async function readPptxInternal(
     }
 
     // --- Charts ---
-    if (/^ppt\/charts\/(?!style[^/]*\.xml$)(?!colors[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
+    if (
+      /^ppt\/(?:[^/]+\/)*charts\/(?!style[^/]*\.xml$)(?!colors[^/]*\.xml$)[^/]+\.xml$/.test(
+        normalizedPath,
+      )
+    ) {
       setPathMapEntry(
         result.charts,
         normalizedPath,
@@ -548,7 +556,7 @@ async function readPptxInternal(
     }
 
     // --- Chart Styles ---
-    if (/^ppt\/charts\/style[^/]*\.xml$/.test(normalizedPath)) {
+    if (/^ppt\/(?:[^/]+\/)*charts\/style[^/]*\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.chartStyles,
         normalizedPath,
@@ -558,7 +566,7 @@ async function readPptxInternal(
     }
 
     // --- Chart Colors ---
-    if (/^ppt\/charts\/colors[^/]*\.xml$/.test(normalizedPath)) {
+    if (/^ppt\/(?:[^/]+\/)*charts\/colors[^/]*\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.chartColors,
         normalizedPath,

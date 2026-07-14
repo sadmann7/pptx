@@ -23,6 +23,19 @@ describe("parseSeries", () => {
     expect(series[0].blankIndices?.size).toBe(0);
   });
 
+  it("extracts categories and values from strLit/numLit literal data", () => {
+    const barChart = parseChartFragment(`<c:barChart><c:ser>
+<c:idx val="0"/><c:order val="0"/><c:tx><c:v>Matches</c:v></c:tx>
+<c:cat><c:strLit><c:ptCount val="2"/><c:pt idx="0"><c:v>GROUP</c:v></c:pt><c:pt idx="1"><c:v>KNOCKOUT</c:v></c:pt></c:strLit></c:cat>
+<c:val><c:numLit><c:formatCode>General</c:formatCode><c:ptCount val="2"/><c:pt idx="0"><c:v>72</c:v></c:pt><c:pt idx="1"><c:v>32</c:v></c:pt></c:numLit></c:val>
+</c:ser></c:barChart>`).child("barChart");
+    const [s] = parseSeries(barChart, ctx);
+    expect(s.name).toBe("Matches");
+    expect(s.categories).toEqual(["GROUP", "KNOCKOUT"]);
+    expect(s.values).toEqual([72, 32]);
+    expect(s.formatCode).toBe("General");
+  });
+
   it("sorts series by c:order, not document order", () => {
     const barChart = parseChartFragment(`<c:barChart>
 <c:ser><c:idx val="1"/><c:order val="1"/><c:tx><c:v>Second</c:v></c:tx></c:ser>
