@@ -28,9 +28,30 @@ const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtur
 const BOM = "\uFEFF";
 
 const RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
+const CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types";
 const REL_TYPE_BASE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
+
+/**
+ * Valid [Content_Types].xml (the shared fixture helper declares a "rel"
+ * Default instead of "rels", which real PowerPoint rejects as corrupt; the
+ * ground-truth oracle needs decks PowerPoint will open cleanly).
+ */
+function contentTypesXml(slideCount: number, chartParts: string[] = []): string {
+  const slideOverrides = Array.from(
+    { length: slideCount },
+    (_, i) =>
+      `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
+  ).join("");
+  const chartOverrides = chartParts
+    .map(
+      (part) =>
+        `<Override PartName="${part}" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`,
+    )
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Types xmlns="${CT_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>${slideOverrides}${chartOverrides}<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/></Types>`;
+}
 
 function rectWithText(id: number, color: string, text: string, offY = 914400): string {
   return `<p:sp>
@@ -164,6 +185,7 @@ async function buildBasic(): Promise<ArrayBuffer> {
       rectWithText(2, "0070C0", "Slide two"),
       rectWithText(2, "00B050", "Slide three"),
     ],
+    contentTypesXml: contentTypesXml(3),
   });
 }
 
@@ -198,6 +220,10 @@ async function buildBomRels(): Promise<ArrayBuffer> {
 async function buildNestedCharts(): Promise<ArrayBuffer> {
   return buildCustomPptx({
     slides: [chartGraphicFrame(3, "rId2"), chartGraphicFrame(3, "rId2")],
+    contentTypesXml: contentTypesXml(2, [
+      "/ppt/slides/charts/chart1.xml",
+      "/ppt/slides/charts/chart2.xml",
+    ]),
     extraFiles: {
       "ppt/slides/charts/chart1.xml": doughnutChartXml(),
       "ppt/slides/charts/chart2.xml": barChartXml(),
@@ -210,6 +236,7 @@ async function buildNestedCharts(): Promise<ArrayBuffer> {
 async function buildTablesGroups(): Promise<ArrayBuffer> {
   return buildCustomPptx({
     slides: [tableFrame(2), groupWithChildren(2)],
+    contentTypesXml: contentTypesXml(2),
   });
 }
 

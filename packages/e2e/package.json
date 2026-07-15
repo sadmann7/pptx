@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "fixtures": "tsx scripts/generate-fixtures.ts",
+    "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
+    "test:oracle-update": "cross-env ORACLE_UPDATE=1 playwright test oracle",
     "harness": "vite --port 5000 --strictPort",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -18,7 +20,10 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "catalog:",
+    "cross-env": "^10.1.0",
     "jszip": "catalog:",
+    "sharp": "^0.35.3",
+    "ssim.js": "^3.5.0",
     "tsx": "^4.20.7",
     "typescript": "catalog:",
     "vite": "^7.3.6"
