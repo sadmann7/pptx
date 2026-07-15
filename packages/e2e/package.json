@@ -1,0 +1,26 @@
+{
+  "name": "@diceui/pptx-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser end-to-end tests for the PPTX renderer (Playwright + Vite harness).",
+  "type": "module",
+  "scripts": {
+    "fixtures": "tsx scripts/generate-fixtures.ts",
+    "harness": "vite --port 5000 --strictPort",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:update": "playwright test --update-snapshots",
+    "report": "playwright show-report"
+  },
+  "dependencies": {
+    "@diceui/pptx-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "catalog:",
+    "jszip": "catalog:",
+    "tsx": "^4.20.7",
+    "typescript": "catalog:",
+    "vite": "^7.3.6"
+  }
+}
