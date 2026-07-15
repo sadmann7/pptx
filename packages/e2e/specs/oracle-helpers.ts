@@ -54,12 +54,16 @@ export async function ssimAgainstGroundTruth(
 }
 
 // ---------------------------------------------------------------------------
-// Score baselines: one JSON file per (deck, slide, browser) so parallel
+// Score baselines: one JSON file per (deck, slide, browser, OS) so parallel
 // workers never write the same file, and diffs stay reviewable.
+//
+// Platform is part of the key because text rendering differs per OS (Linux
+// lacks Calibri and antialiases differently), shifting SSIM by ~0.01-0.03
+// even when the renderer is unchanged.
 // ---------------------------------------------------------------------------
 
 function baselinePath(deck: string, slide: number, project: string): string {
-  return join(BASELINES_DIR, `${deck}-${slide}-${project}.json`);
+  return join(BASELINES_DIR, process.platform, `${deck}-${slide}-${project}.json`);
 }
 
 export function readScoreBaseline(deck: string, slide: number, project: string): number | null {
@@ -74,7 +78,7 @@ export function writeScoreBaseline(
   project: string,
   score: number,
 ): void {
-  mkdirSync(BASELINES_DIR, { recursive: true });
+  mkdirSync(join(BASELINES_DIR, process.platform), { recursive: true });
   writeFileSync(
     baselinePath(deck, slide, project),
     `${JSON.stringify({ ssim: Number(score.toFixed(4)) }, null, 2)}\n`,
