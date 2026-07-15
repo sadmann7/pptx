@@ -22,6 +22,21 @@ test.describe("BOM-prefixed relationship parts (Open XML SDK output)", () => {
   });
 });
 
+test.describe("tables and groups deck", () => {
+  test("renders the table with unequal grid column widths", async ({ page }) => {
+    await openSlide(page, "tables-groups.pptx", 0);
+
+    await expect(slideContainer(page)).toContainText("Matches");
+    await expect(slideContainer(page)).toHaveScreenshot("tables-groups-table.png");
+  });
+
+  test("renders group children scaled by chExt", async ({ page }) => {
+    await openSlide(page, "tables-groups.pptx", 1);
+
+    await expect(slideContainer(page)).toHaveScreenshot("tables-groups-group.png");
+  });
+});
+
 test.describe("charts nested under ppt/slides/charts/ with literal data", () => {
   // Regressions covered:
   // - chart parts at non-standard depths were not categorized ("Chart not found")

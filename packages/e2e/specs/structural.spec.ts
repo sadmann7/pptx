@@ -55,6 +55,44 @@ test.describe("BOM deck structure", () => {
   });
 });
 
+test.describe("tables and groups deck structure", () => {
+  // Regression: table columns were sized from the frame ext instead of the
+  // per-column w values in tblGrid.
+  test("parses table grid column widths and cell text", async ({ page }) => {
+    await openSlide(page, "tables-groups.pptx", 0);
+    const structure = await getStructure(page);
+
+    const [table] = structure.slides[0].nodes;
+    expect(table.nodeType).toBe("table");
+    // tblGrid: 4572000/3048000/1524000 EMU, not the even 320/320/320 split
+    // a frame-ext-based fallback would produce.
+    expect(table.columns).toEqual([480, 320, 160]);
+
+    expect(table.rows).toHaveLength(2);
+    expect(table.rows?.[0].cells.map((cell) => cell.text)).toEqual(["Stage", "Matches", "Days"]);
+    expect(table.rows?.[1].cells.map((cell) => cell.text)).toEqual(["Group", "72", "16"]);
+  });
+
+  test("parses group children through chOff/chExt coordinate space", async ({ page }) => {
+    await openSlide(page, "tables-groups.pptx", 1);
+    const structure = await getStructure(page);
+
+    const [group] = structure.slides[1].nodes;
+    expect(group.nodeType).toBe("group");
+    expect(group.position).toEqual({ x: 96, y: 96 });
+    expect(group.size).toEqual({ w: 384, h: 192 });
+
+    // Children keep child-space coordinates in the model; the 2x chExt scale
+    // is applied at render time.
+    expect(group.children).toHaveLength(2);
+    const [first, second] = group.children ?? [];
+    expect(first.nodeType).toBe("shape");
+    expect(first.position).toEqual({ x: 0, y: 0 });
+    expect(first.size).toEqual({ w: 96, h: 96 });
+    expect(second.position).toEqual({ x: 96, y: 0 });
+  });
+});
+
 test.describe("nested charts deck structure", () => {
   test("resolves chart nodes to their nested part paths", async ({ page }) => {
     await openSlide(page, "nested-charts.pptx");

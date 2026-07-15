@@ -12,6 +12,10 @@
  *                       literal data and noFill axis/plot-area lines
  *                       (regressions: chart categorization, literal data, ECharts
  *                       default axis lines and grid border)
+ * - tables-groups.pptx  slide 1: table with unequal tblGrid column widths
+ *                       (regression: columns sized from frame ext instead of
+ *                       per-column w); slide 2: nested groups exercising child
+ *                       coordinate remapping (chOff/chExt scaling)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -93,6 +97,66 @@ function barChartXml(): string {
 </c:plotArea><c:plotVisOnly val="1"/></c:chart></c:chartSpace>`;
 }
 
+/**
+ * Table with deliberately unequal column widths (480/320/160 px) so a renderer
+ * that ignores tblGrid and splits the frame evenly produces a visible diff.
+ */
+function tableFrame(id: number): string {
+  const cell = (text: string, fill: string) =>
+    `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="1400"/><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr><a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></a:tcPr></a:tc>`;
+  const header = `<a:tr h="914400">${cell("Stage", "4472C4")}${cell("Matches", "4472C4")}${cell("Days", "4472C4")}</a:tr>`;
+  const data = `<a:tr h="914400">${cell("Group", "E7E6E6")}${cell("72", "E7E6E6")}${cell("16", "E7E6E6")}</a:tr>`;
+  return `<p:graphicFrame>
+<p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="914400" y="914400"/><a:ext cx="9144000" cy="1828800"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+<a:tbl>
+<a:tblPr firstRow="1"/>
+<a:tblGrid><a:gridCol w="4572000"/><a:gridCol w="3048000"/><a:gridCol w="1524000"/></a:tblGrid>
+${header}
+${data}
+</a:tbl>
+</a:graphicData></a:graphic>
+</p:graphicFrame>`;
+}
+
+function plainRect(
+  id: number,
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  color: string,
+): string {
+  return `<p:sp>
+<p:nvSpPr><p:cNvPr id="${id}" name="Rect ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+<p:spPr>
+<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+<a:solidFill><a:srgbClr val="${color}"/></a:solidFill>
+</p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></p:txBody>
+</p:sp>`;
+}
+
+/**
+ * Group at (96,96) sized 384x192 px whose child space is half that
+ * (chExt 1828800x914400), so children render at 2x scale.
+ */
+function groupWithChildren(id: number): string {
+  return `<p:grpSp>
+<p:nvGrpSpPr><p:cNvPr id="${id}" name="Group ${id}"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr>
+<a:xfrm>
+<a:off x="914400" y="914400"/><a:ext cx="3657600" cy="1828800"/>
+<a:chOff x="0" y="0"/><a:chExt cx="1828800" cy="914400"/>
+</a:xfrm>
+</p:grpSpPr>
+${plainRect(id + 1, 0, 0, 914400, 914400, "C00000")}
+${plainRect(id + 2, 914400, 0, 914400, 914400, "00B050")}
+</p:grpSp>`;
+}
+
 async function buildBasic(): Promise<ArrayBuffer> {
   return buildCustomPptx({
     slides: [
@@ -143,6 +207,12 @@ async function buildNestedCharts(): Promise<ArrayBuffer> {
   });
 }
 
+async function buildTablesGroups(): Promise<ArrayBuffer> {
+  return buildCustomPptx({
+    slides: [tableFrame(2), groupWithChildren(2)],
+  });
+}
+
 async function main(): Promise<void> {
   mkdirSync(FIXTURES_DIR, { recursive: true });
 
@@ -150,6 +220,7 @@ async function main(): Promise<void> {
     ["basic.pptx", buildBasic()],
     ["bom-rels.pptx", buildBomRels()],
     ["nested-charts.pptx", buildNestedCharts()],
+    ["tables-groups.pptx", buildTablesGroups()],
   ];
 
   for (const [name, bufferPromise] of decks) {
