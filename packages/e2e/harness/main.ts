@@ -8,11 +8,12 @@
  *   window.__renderError  error message when load/render failed
  *   window.__slideCount   number of slides in the loaded deck
  *   window.__showSlide(i) re-renders another slide of the loaded deck
+ *   window.__getStructure() serialized presentation structure (for structural specs)
  *
  * Query params: ?file=<fixture>.pptx&slide=<0-based index>
  */
-import type { PresentationData, SlideHandle } from "@diceui/pptx-core";
-import { buildPresentation, readPptx, renderSlide } from "@diceui/pptx-core";
+import type { PresentationData, SerializedPresentation, SlideHandle } from "@diceui/pptx-core";
+import { buildPresentation, readPptx, renderSlide, serializePresentation } from "@diceui/pptx-core";
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ declare global {
     __slideWidth?: number;
     __slideHeight?: number;
     __showSlide?: (index: number) => Promise<void>;
+    __getStructure?: () => SerializedPresentation;
   }
 }
 
@@ -81,6 +83,10 @@ async function main(): Promise<void> {
     window.__slideWidth = presentation.width;
     window.__slideHeight = presentation.height;
     window.__showSlide = showSlide;
+    window.__getStructure = () => {
+      if (!presentation) throw new Error("no presentation loaded");
+      return serializePresentation(presentation);
+    };
 
     await showSlide(slideIndex);
   } catch (error) {
