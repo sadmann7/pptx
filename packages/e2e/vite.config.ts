@@ -2,15 +2,17 @@ import { defineConfig } from "vite";
 
 /**
  * Serves the test harness page at / and the generated fixture decks
- * (fixtures/*.pptx) as static files at /fixtures/*.
+ * (fixtures/*.pptx) as static files at the server root (e.g. /basic.pptx).
  */
 export default defineConfig({
   root: "harness",
   publicDir: "../fixtures",
   server: {
     fs: {
-      // Allow serving workspace package sources (@diceui/pptx-core resolves to src/).
-      allow: ["../.."],
+      // Paths are relative to the "harness" root. ".." covers this package
+      // (incl. node_modules/.vite prebundled deps); "../../core" covers the
+      // @diceui/pptx-core sources the workspace alias resolves to.
+      allow: ["..", "../../core"],
     },
   },
 });
