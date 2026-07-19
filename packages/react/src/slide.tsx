@@ -196,9 +196,13 @@ function SlideImpl({
     }
     container.innerHTML = "";
 
+    const isEditable = presentation.sourcePackage != null;
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache: mediaUrlCacheRef.current,
-      placeholderPrompts: presentation.sourcePackage != null,
+      placeholderPrompts: isEditable,
+      // Editing surface: keep shapes dragged past the slide edge visible
+      // (PowerPoint pasteboard behavior) instead of clipping at the bounds.
+      clipContent: !isEditable,
       onNodeError: (nodeId, error) => {
         console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },
@@ -234,7 +238,9 @@ function SlideImpl({
           transformOrigin: "top left",
           transform: `scale(${zoom})`,
           position: "relative",
-          overflow: "hidden",
+          // In edit mode the inner slide container unclips (pasteboard
+          // behavior), so this wrapper must not reintroduce the clip.
+          overflow: presentation.sourcePackage != null ? "visible" : "hidden",
         }}
       />
       {children && (
