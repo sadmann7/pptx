@@ -1,12 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { createStore } from "../store";
-import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { loadFixture } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
-  fixture = await buildMinimalPptx();
+  fixture = await loadFixture();
 });
 
 async function loadedStore() {

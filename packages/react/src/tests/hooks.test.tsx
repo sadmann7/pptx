@@ -6,12 +6,13 @@ import { usePresentation, useSlide, useZoom } from "../context";
 import { Presentation } from "../index";
 import type { Store } from "../store";
 import { createStore } from "../store";
-import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { loadFixture } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
-  fixture = await buildMinimalPptx();
+  fixture = await loadFixture();
 });
 
 /** Renders probes for all three hooks inside a Provider with a loaded store. */
