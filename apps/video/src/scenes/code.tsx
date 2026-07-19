@@ -1,86 +1,76 @@
+import type { CSSProperties } from "react";
+
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
-import { theme } from "../theme";
+import { GlassCodeBlock } from "../components/remocn/glass-code-block";
+import { SceneBg } from "../components/scene-bg";
+import { geistMono, geistSans } from "../fonts";
 
-const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+const FONT_VARS = {
+  "--font-geist-sans": geistSans,
+  "--font-geist-mono": geistMono,
+} as CSSProperties;
 
-const CODE_LINES: { text: string; indent: number }[] = [
-  { text: 'import { Presentation } from "@diceui/pptx";', indent: 0 },
-  { text: "", indent: 0 },
-  { text: "export function Viewer({ file }: { file: File }) {", indent: 0 },
-  { text: "return (", indent: 1 },
-  { text: "<Presentation.Root file={file}>", indent: 2 },
-  { text: "<Presentation.Viewport autoFit>", indent: 3 },
-  { text: "<Presentation.Slide />", indent: 4 },
-  { text: "</Presentation.Viewport>", indent: 3 },
-  { text: "<Presentation.ThumbnailList />", indent: 3 },
-  { text: "</Presentation.Root>", indent: 2 },
-  { text: ");", indent: 1 },
-  { text: "}", indent: 0 },
-];
+const CODE = `import { Presentation } from "@diceui/pptx";
 
-/** Frames between consecutive line reveals. */
-const LINE_STAGGER = 5;
+export function Viewer({ file }) {
+  return (
+    <Presentation.Root file={file}>
+      <Presentation.Viewport autoFit>
+        <Presentation.Slide />
+      </Presentation.Viewport>
+      <Presentation.ThumbnailList />
+    </Presentation.Root>
+  );
+}`;
 
 export function CodeScene() {
   const frame = useCurrentFrame();
 
+  const titleOpacity = interpolate(frame, [0, 18], [0, 1], {
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+  const titleY = interpolate(frame, [0, 18], [20, 0], {
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-      <div
+    <AbsoluteFill style={FONT_VARS}>
+      <SceneBg />
+      <AbsoluteFill
         style={{
-          fontSize: 44,
-          fontWeight: 600,
-          color: theme.text,
-          marginBottom: 40,
-          opacity: interpolate(frame, [0, 20], [0, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 48,
         }}
       >
-        Composable primitives, one import
-      </div>
-      <div
-        style={{
-          background: theme.surface,
-          border: `1px solid ${theme.border}`,
-          borderRadius: 16,
-          padding: "40px 56px",
-          fontFamily: theme.fontMono,
-          fontSize: 28,
-          lineHeight: 1.7,
-          color: theme.text,
-          opacity: interpolate(frame, [5, 25], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
-          translate: `0px ${interpolate(frame, [5, 25], [30, 0], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          })}px`,
-        }}
-      >
-        {CODE_LINES.map((line, index) => (
-          <div
-            key={index}
-            style={{
-              paddingLeft: line.indent * 32,
-              minHeight: "1.7em",
-              opacity: interpolate(
-                frame,
-                [20 + index * LINE_STAGGER, 30 + index * LINE_STAGGER],
-                [0, 1],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-              ),
-            }}
-          >
-            {line.text}
-          </div>
-        ))}
-      </div>
+        <div
+          style={{
+            fontSize: 44,
+            fontFamily: geistSans,
+            fontWeight: 600,
+            color: "#fafafa",
+            letterSpacing: "-0.01em",
+            opacity: titleOpacity,
+            transform: `translateY(${titleY}px)`,
+          }}
+        >
+          One import. Composable primitives.
+        </div>
+
+        <GlassCodeBlock
+          title="viewer.tsx"
+          code={CODE}
+          width={820}
+          height={500}
+          fontSize={18}
+          staggerFrames={3}
+          aura
+        />
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 }

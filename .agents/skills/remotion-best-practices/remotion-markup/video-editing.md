@@ -38,22 +38,13 @@ Keep the markup like this:
 ```tsx
 <TransitionSeries name="Video timeline">
   <TransitionSeries.Sequence name="Clip 1" durationInFrames={39}>
-    <Video
-      src="https://remotion.media/video.mp4"
-      trimBefore={0}
-    />
+    <Video src="https://remotion.media/video.mp4" trimBefore={0} />
   </TransitionSeries.Sequence>
   <TransitionSeries.Sequence name="Clip 2" durationInFrames={45}>
-    <Video
-      src="https://remotion.media/video.webm"
-      trimBefore={8}
-    />
+    <Video src="https://remotion.media/video.webm" trimBefore={8} />
   </TransitionSeries.Sequence>
   <TransitionSeries.Sequence name="Clip 3" durationInFrames={43}>
-    <Video
-      src="https://remotion.media/video.mp4"
-      trimBefore={60}
-    />
+    <Video src="https://remotion.media/video.mp4" trimBefore={60} />
   </TransitionSeries.Sequence>
 </TransitionSeries>
 ```

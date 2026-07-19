@@ -22,29 +22,32 @@ Choose the component that describes the annotation: `<Highlight>`, `<Circle>`, `
 Drive `progress` from `useCurrentFrame()` so the annotation is deterministic and synchronized with the video:
 
 ```tsx
-import {Circle, Highlight} from '@remotion/rough-notation';
-import {interpolate, useCurrentFrame} from 'remotion';
+import { Circle, Highlight } from "@remotion/rough-notation";
+import { interpolate, useCurrentFrame } from "remotion";
 
 export const TextAnnotations: React.FC = () => {
   const frame = useCurrentFrame();
 
   return (
-    <div style={{fontSize: 80}}>
-      This is{' '}
+    <div style={{ fontSize: 80 }}>
+      This is{" "}
       <Highlight
         color="rgba(255, 236, 79, 0.62)"
         progress={interpolate(frame, [15, 40], [0, 1], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
         })}
       >
         important
       </Highlight>
-      , and this is{' '}
-      <Circle color="#2563eb" progress={interpolate(frame, [15, 40], [0, 1], {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp',
-      })}>
+      , and this is{" "}
+      <Circle
+        color="#2563eb"
+        progress={interpolate(frame, [15, 40], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })}
+      >
         connected
       </Circle>
       .

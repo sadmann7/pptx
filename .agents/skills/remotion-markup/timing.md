@@ -119,26 +119,16 @@ Use an ease-out Bézier curve for enter animations (starts fast, decelerates int
 When multiple properties share the same timing and do not need Studio keyframe editing (e.g. a slide-in panel and a video shift), avoid duplicating the full interpolation for each property. Instead, create a single normalized progress value (0 to 1) and derive each property from it:
 
 ```tsx
-const slideIn = interpolate(
-  frame,
-  [slideInStart, slideInStart + slideInDuration],
-  [0, 1],
-  {
-    easing: Easing.bezier(0.22, 1, 0.36, 1),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  },
-);
-const slideOut = interpolate(
-  frame,
-  [slideOutStart, slideOutStart + slideOutDuration],
-  [0, 1],
-  {
-    easing: Easing.bezier(0.333, 0, 0.667, 0),
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  },
-);
+const slideIn = interpolate(frame, [slideInStart, slideInStart + slideInDuration], [0, 1], {
+  easing: Easing.bezier(0.22, 1, 0.36, 1),
+  extrapolateLeft: "clamp",
+  extrapolateRight: "clamp",
+});
+const slideOut = interpolate(frame, [slideOutStart, slideOutStart + slideOutDuration], [0, 1], {
+  easing: Easing.bezier(0.333, 0, 0.667, 0),
+  extrapolateLeft: "clamp",
+  extrapolateRight: "clamp",
+});
 const progress = slideIn - slideOut;
 
 // Derive multiple properties from the same progress

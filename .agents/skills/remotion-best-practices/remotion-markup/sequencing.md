@@ -28,7 +28,7 @@ export const Subtitle = () => {
 };
 
 const Main = () => {
-  const {fps} = useVideoConfig();
+  const { fps } = useVideoConfig();
 
   return (
     <AbsoluteFill>
@@ -43,7 +43,7 @@ const Main = () => {
       </Sequence>
     </AbsoluteFill>
   );
-}
+};
 ```
 
 This will by default wrap the component in an absolute fill element.  

@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { CSSProperties } from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
 import { Presentation } from "@diceui/pptx";
@@ -8,94 +9,129 @@ import {
   delayRender,
   Easing,
   interpolate,
+  Sequence,
   staticFile,
   useCurrentFrame,
 } from "remotion";
 
-import { theme } from "../theme";
+import { Drift } from "../components/drift";
+import { SceneBg } from "../components/scene-bg";
+import { geistSans } from "../fonts";
 
-const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+const FONT_VARS = {
+  "--font-geist-sans": geistSans,
+} as CSSProperties;
 
-/** How long each slide stays on screen before advancing. */
-const FRAMES_PER_SLIDE = 80;
+interface DeckEntry {
+  file: string;
+  label: string;
+  slideIndex: number;
+}
 
-/**
- * The real library rendering a real deck: this scene mounts
- * `@diceui/pptx` and drives slide navigation from the video timeline,
- * so what the video shows is the actual renderer output, not a mockup.
- */
-export function ShowcaseScene() {
+const DECKS: DeckEntry[] = [
+  { file: "demo.pptx", label: "Editorial Forest", slideIndex: 0 },
+  { file: "sakura-chroma.pptx", label: "Sakura Chroma", slideIndex: 0 },
+  { file: "retro-windows.pptx", label: "Retro Windows", slideIndex: 0 },
+  { file: "cobalt-grid.pptx", label: "Cobalt Grid", slideIndex: 0 },
+  { file: "bold-poster.pptx", label: "Bold Poster", slideIndex: 0 },
+  { file: "playful.pptx", label: "Playful", slideIndex: 0 },
+];
+
+const FRAMES_PER_DECK = 55;
+export const SHOWCASE_FRAMES = DECKS.length * FRAMES_PER_DECK;
+
+function SingleDeckShowcase({ entry }: { entry: DeckEntry }) {
   const frame = useCurrentFrame();
-
-  const [deck, setDeck] = React.useState<ArrayBuffer | null>(null);
+  const [data, setData] = React.useState<ArrayBuffer | null>(null);
   const storeRef = React.useRef<PresentationStore | null>(null);
-  const [loadHandle] = React.useState(() => delayRender("load demo.pptx"));
+  const [handle] = React.useState(() => delayRender(`load ${entry.file}`));
 
   React.useEffect(() => {
     let cancelled = false;
-    fetch(staticFile("demo.pptx"))
-      .then((response) => response.arrayBuffer())
-      .then((buffer) => {
-        if (!cancelled) setDeck(buffer);
+    fetch(staticFile(entry.file))
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        if (!cancelled) setData(buf);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [entry.file]);
 
-  // Drive navigation from the timeline: the store is an external system,
-  // so syncing it to the current frame belongs in an effect.
-  const slideIndex = Math.floor(frame / FRAMES_PER_SLIDE);
-  React.useEffect(() => {
-    storeRef.current?.goToIndex(slideIndex);
-  }, [slideIndex]);
+  const enterDuration = 18;
+  const opacity = interpolate(frame, [0, enterDuration], [0, 1], {
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+  const scale = interpolate(frame, [0, enterDuration], [0.88, 1], {
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
 
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-      <div
-        style={{
-          opacity: interpolate(frame, [0, 20], [0, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
-          scale: `${interpolate(frame, [0, 20], [0.94, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          })}`,
-          borderRadius: 16,
-          overflow: "hidden",
-          border: `1px solid ${theme.border}`,
-          boxShadow: "0 40px 120px rgba(0, 0, 0, 0.6)",
-        }}
-      >
-        {deck && (
-          <Presentation.Root
-            file={deck}
-            onLoad={(store) => {
-              storeRef.current = store;
-              store.goToIndex(slideIndex);
-              continueRender(loadHandle);
+    <AbsoluteFill style={FONT_VARS}>
+      <SceneBg />
+      <Drift grow={0.03}>
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              opacity,
+              transform: `scale(${scale})`,
+              borderRadius: 14,
+              overflow: "hidden",
+              boxShadow: "0 40px 100px rgba(0,0,0,0.6)",
             }}
           >
-            <Presentation.Viewport autoFit style={{ width: 1440, height: 810, overflow: "hidden" }}>
-              <Presentation.Slide />
-            </Presentation.Viewport>
-          </Presentation.Root>
-        )}
-      </div>
-      <div
-        style={{
-          marginTop: 36,
-          fontSize: 30,
-          color: theme.muted,
-          opacity: interpolate(frame, [10, 30], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-        }}
-      >
-        A real .pptx, rendered live by the library
-      </div>
+            {data && (
+              <Presentation.Root
+                file={data}
+                onLoad={(store) => {
+                  storeRef.current = store;
+                  if (entry.slideIndex > 0) store.goToIndex(entry.slideIndex);
+                  continueRender(handle);
+                }}
+              >
+                <Presentation.Viewport
+                  autoFit
+                  style={{ width: 1440, height: 810, overflow: "hidden" }}
+                >
+                  <Presentation.Slide />
+                </Presentation.Viewport>
+              </Presentation.Root>
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: 28,
+              fontSize: 18,
+              fontFamily: geistSans,
+              fontWeight: 500,
+              color: "#71717a",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              opacity: interpolate(frame, [10, 25], [0, 1], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }),
+            }}
+          >
+            {entry.label}
+          </div>
+        </AbsoluteFill>
+      </Drift>
+    </AbsoluteFill>
+  );
+}
+
+export function ShowcaseScene() {
+  return (
+    <AbsoluteFill>
+      {DECKS.map((entry, i) => (
+        <Sequence key={entry.file} from={i * FRAMES_PER_DECK} durationInFrames={FRAMES_PER_DECK}>
+          <SingleDeckShowcase entry={entry} />
+        </Sequence>
+      ))}
     </AbsoluteFill>
   );
 }

@@ -1,51 +1,78 @@
+import type { CSSProperties } from "react";
+
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
-import { theme } from "../theme";
+import { SoftBlurIn } from "../components/remocn/soft-blur-in";
+import { SceneBg } from "../components/scene-bg";
+import { geistMono, geistSans } from "../fonts";
 
-const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+const FONT_VARS = {
+  "--font-geist-sans": geistSans,
+  "--font-geist-mono": geistMono,
+} as CSSProperties;
 
 export function OutroScene() {
   const frame = useCurrentFrame();
 
+  const installOpacity = interpolate(frame, [18, 36], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+  const installY = interpolate(frame, [18, 36], [14, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+
+  const urlOpacity = interpolate(frame, [30, 48], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-      <div
+    <AbsoluteFill style={FONT_VARS}>
+      <SceneBg />
+      <AbsoluteFill
         style={{
-          fontSize: 72,
-          fontWeight: 700,
-          color: theme.text,
-          letterSpacing: "-0.02em",
-          opacity: interpolate(frame, [0, 20], [0, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
-          scale: `${interpolate(frame, [0, 20], [0.94, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          })}`,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 36,
         }}
       >
-        @diceui/<span style={{ color: theme.accent }}>pptx</span>
-      </div>
-      <div
-        style={{
-          marginTop: 44,
-          padding: "20px 44px",
-          borderRadius: 12,
-          background: theme.surface,
-          border: `1px solid ${theme.border}`,
-          fontFamily: theme.fontMono,
-          fontSize: 32,
-          color: theme.text,
-          opacity: interpolate(frame, [15, 35], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
-        }}
-      >
-        <span style={{ color: theme.muted }}>$</span> pnpm add @diceui/pptx
-      </div>
+        <SoftBlurIn text="@diceui/pptx" fontSize={88} fontWeight={700} color="#fafafa" />
+
+        <div
+          style={{
+            padding: "16px 40px",
+            borderRadius: 10,
+            background: "rgba(24, 24, 27, 0.8)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            fontFamily: geistMono,
+            fontSize: 28,
+            color: "#fafafa",
+            opacity: installOpacity,
+            transform: `translateY(${installY}px)`,
+          }}
+        >
+          <span style={{ color: "#71717a" }}>$</span> pnpm add @diceui/pptx
+        </div>
+
+        <div
+          style={{
+            fontSize: 20,
+            fontFamily: geistSans,
+            fontWeight: 500,
+            color: "#71717a",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            opacity: urlOpacity,
+          }}
+        >
+          Open source &middot; diceui.com
+        </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 }

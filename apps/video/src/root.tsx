@@ -1,3 +1,4 @@
+import "./index.css";
 import { Composition } from "remotion";
 
 import { Demo, DEMO_DURATION_IN_FRAMES, FPS } from "./demo";

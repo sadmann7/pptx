@@ -96,7 +96,7 @@ For inline content, use `layout="none"`.
 
 ```tsx
 const Main = () => {
-  const {fps} = useVideoConfig();
+  const { fps } = useVideoConfig();
 
   return (
     <AbsoluteFill>
@@ -111,7 +111,7 @@ const Main = () => {
       </Sequence>
     </AbsoluteFill>
   );
-}
+};
 
 export const Title = () => {
   const frame = useCurrentFrame();

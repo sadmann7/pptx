@@ -107,11 +107,7 @@ const CaptionedContent: React.FC = () => {
         }
 
         return (
-          <Sequence
-            key={index}
-            from={startFrame}
-            durationInFrames={durationInFrames}
-          >
+          <Sequence key={index} from={startFrame} durationInFrames={durationInFrames}>
             <CaptionPage page={page} />
           </Sequence>
         );
@@ -153,14 +149,10 @@ const CaptionPage: React.FC<{ page: TikTokPage }> = ({ page }) => {
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
       <div style={{ fontSize: 80, fontWeight: "bold", whiteSpace: "pre" }}>
         {page.tokens.map((token) => {
-          const isActive =
-            token.fromMs <= absoluteTimeMs && token.toMs > absoluteTimeMs;
+          const isActive = token.fromMs <= absoluteTimeMs && token.toMs > absoluteTimeMs;
 
           return (
-            <span
-              key={token.fromMs}
-              style={{ color: isActive ? HIGHLIGHT_COLOR : "white" }}
-            >
+            <span key={token.fromMs} style={{ color: isActive ? HIGHLIGHT_COLOR : "white" }}>
               {token.text}
             </span>
           );

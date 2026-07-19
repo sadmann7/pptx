@@ -1,75 +1,48 @@
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
+import type { CSSProperties } from "react";
 
-import { theme } from "../theme";
+import { AbsoluteFill, Sequence } from "remotion";
 
-const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+import { ShortSlideRight } from "../components/remocn/short-slide-right";
+import { SceneBg } from "../components/scene-bg";
+import { geistSans } from "../fonts";
 
-const FEATURES = [
-  "Client-side rendering, no server round-trips",
-  "Editing with drag, resize, and text, plus undo/redo",
-  "Shapes, tables, charts, groups, and themes",
-  "Headless primitives that compose like Radix",
+const FONT_VARS = {
+  "--font-geist-sans": geistSans,
+} as CSSProperties;
+
+const SNAPS = [
+  "Shapes, text, tables, charts, themes.",
+  "Drag, resize, text editing, undo/redo.",
+  "Headless primitives. Your design system.",
+  "Client-side only. No server needed.",
 ];
 
-/** Frames between consecutive feature reveals. */
-const ITEM_STAGGER = 14;
+const SNAP_FRAMES = 25;
 
 export function FeaturesScene() {
-  const frame = useCurrentFrame();
-
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-      <div
-        style={{
-          fontSize: 44,
-          fontWeight: 600,
-          color: theme.text,
-          marginBottom: 56,
-          opacity: interpolate(frame, [0, 20], [0, 1], {
-            extrapolateRight: "clamp",
-            easing: EASE_OUT,
-          }),
-        }}
-      >
-        Built for the web
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        {FEATURES.map((feature, index) => (
-          <div
-            key={feature}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 24,
-              fontSize: 34,
-              color: theme.text,
-              opacity: interpolate(
-                frame,
-                [15 + index * ITEM_STAGGER, 35 + index * ITEM_STAGGER],
-                [0, 1],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE_OUT },
-              ),
-              translate: `${interpolate(
-                frame,
-                [15 + index * ITEM_STAGGER, 35 + index * ITEM_STAGGER],
-                [40, 0],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE_OUT },
-              )}px 0px`,
-            }}
-          >
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 7,
-                background: theme.accent,
-                flexShrink: 0,
-              }}
-            />
-            {feature}
-          </div>
-        ))}
-      </div>
+    <AbsoluteFill style={FONT_VARS}>
+      <SceneBg />
+      {/* First claim lands hard */}
+      <Sequence from={0} durationInFrames={SNAP_FRAMES} layout="none">
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+          <ShortSlideRight text={SNAPS[0]!} fontSize={56} fontWeight={600} color="#fafafa" />
+        </AbsoluteFill>
+      </Sequence>
+
+      {/* Subsequent claims swap in */}
+      {SNAPS.slice(1).map((snap, i) => (
+        <Sequence
+          key={snap}
+          from={(i + 1) * SNAP_FRAMES}
+          durationInFrames={SNAP_FRAMES}
+          layout="none"
+        >
+          <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+            <ShortSlideRight text={snap} fontSize={56} fontWeight={600} color="#fafafa" />
+          </AbsoluteFill>
+        </Sequence>
+      ))}
     </AbsoluteFill>
   );
 }

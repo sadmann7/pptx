@@ -8,8 +8,8 @@ metadata:
 Use `@remotion/player` when the user wants an interactive preview in React.
 
 ```tsx
-import {Player} from '@remotion/player';
-import {MyVideo} from './remotion/MyVideo';
+import { Player } from "@remotion/player";
+import { MyVideo } from "./remotion/MyVideo";
 
 export const App: React.FC = () => {
   return (

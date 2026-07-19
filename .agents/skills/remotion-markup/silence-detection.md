@@ -20,6 +20,7 @@ npx remotion ffmpeg -i public/video.mov -map 0:a -af loudnorm=print_format=json 
 ```
 
 As output you will get:
+
 - `input_i`: Integrated loudness (dB) — the overall perceived volume
 - `input_thresh`: EBU R128 gating threshold (dB) — the level below which audio is considered too quiet to count toward loudness measurement
 
@@ -32,6 +33,7 @@ npx remotion ffmpeg -i public/video.mov -map 0:a -af "silencedetect=noise=${THRE
 ```
 
 Parameters:
+
 - `noise`: The threshold below which audio is considered silent. Use `input_thresh` from step 1.
 - `d`: Minimum silence duration in seconds. `0.5` is a good default.
 
@@ -67,5 +69,5 @@ const { fps } = useVideoConfig();
   src={staticFile("video.mov")}
   trimBefore={Math.floor(leadingEnd * fps)}
   trimAfter={Math.ceil(trailingStart * fps)}
-/>
+/>;
 ```
