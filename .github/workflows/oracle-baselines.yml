@@ -1,0 +1,46 @@
+name: Record PowerPoint oracle baselines
+
+# Manually triggered. The oracle is real PowerPoint output (the committed
+# ground-truth PNGs); this runs the oracle specs in update mode on the Linux
+# runner and uploads the recorded SSIM baselines as an artifact. Review the
+# scores (compare against specs/oracle-baselines/win32/), then commit them
+# to specs/oracle-baselines/linux/ so the oracle gates on Linux CI too.
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: 3
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    name: Record Linux baselines
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - uses: ./.github/setup
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox
+        working-directory: packages/e2e
+
+      - name: Record baselines
+        run: pnpm test:oracle-update
+        working-directory: packages/e2e
+
+      - name: Print recorded scores
+        run: |
+          for f in specs/oracle-baselines/linux/*.json; do
+            echo "$(basename "$f"): $(cat "$f")"
+          done
+        working-directory: packages/e2e
+
+      - name: Upload baselines artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-baselines-linux
+          path: packages/e2e/specs/oracle-baselines/linux/
+          retention-days: 14

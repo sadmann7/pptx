@@ -1,0 +1,13 @@
+/* Deterministic canvas: no default margins, no inherited typography. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
+#slide-container {
+  /* Sized by the harness script to the native slide dimensions. */
+  position: relative;
+  overflow: hidden;
+}
