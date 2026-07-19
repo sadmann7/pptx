@@ -443,13 +443,25 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
 
-  if (!presentation?.sourcePackage || !slide || !slideId) return null;
-
   // Pasteboard hit area: shapes dragged past the slide edge render unclipped
   // in edit mode, but a surface sized to the slide (`inset: 0`) would never
   // receive pointerdowns over their off-slide portion. Extend the surface to
   // cover every node's bounds so those shapes stay clickable and draggable.
-  const pasteboard = getPasteboardOverhang(slide.nodes, presentation.width, presentation.height);
+  //
+  // Memoized because this component re-renders on every pointermove during
+  // drags. Nodes are mutated in place, so the node array is not a usable
+  // dependency; `slideRevision` bumps on every committed geometry edit and is
+  // the correct cache key.
+  const pasteboard = React.useMemo(
+    () =>
+      slide && presentation
+        ? getPasteboardOverhang(slide.nodes, presentation.width, presentation.height)
+        : { left: 0, top: 0, right: 0, bottom: 0 },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes mutate in place; revision is the change signal
+    [slide, slideRevision, presentation],
+  );
+
+  if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   function getSlideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
