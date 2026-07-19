@@ -16,7 +16,7 @@ import {
   textBodyChanged,
 } from "../selection";
 import { createStore, type Store } from "../store";
-import { buildMinimalPptx } from "./minimal-pptx";
+import { loadFixture } from "./test-utils";
 
 // ===========================================================================
 // Unit tests: selection-utils (geometry + text read-back)
@@ -315,7 +315,7 @@ describe("textBodyChanged", () => {
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
-  fixture = await buildMinimalPptx();
+  fixture = await loadFixture();
 });
 
 async function editableStore(): Promise<Store> {
