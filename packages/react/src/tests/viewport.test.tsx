@@ -91,6 +91,19 @@ describe("Presentation.Viewport", () => {
       expect(store.getActiveSlideIndex()).toBe(0);
     });
 
+    it("ignores shift+wheel (horizontal scroll gesture)", async () => {
+      const store = await loadedStore();
+      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+
+      const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+      // happy-dom's WheelEvent constructor drops modifier keys from the init.
+      Object.defineProperty(event, "shiftKey", { value: true });
+      act(() => {
+        screen.getByTestId("viewport").dispatchEvent(event);
+      });
+      expect(store.getActiveSlideIndex()).toBe(0);
+    });
+
     it("does not navigate when the prop is off", async () => {
       const store = await loadedStore();
       withStore(store, <Presentation.Viewport data-testid="viewport" />);

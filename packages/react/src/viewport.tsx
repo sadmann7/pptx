@@ -5,6 +5,13 @@ import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding } from "./store";
 
+/**
+ * Ignore wheel events for this long after a wheel-triggered navigation.
+ * Trackpads emit a burst of momentum events for one physical gesture;
+ * without a cooldown a single flick would skip through several slides.
+ */
+const WHEEL_NAVIGATION_COOLDOWN_MS = 300;
+
 export interface ViewportState {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
@@ -62,13 +69,6 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Native `<div>` props are composed (not overwritten) with internals.
  * Place `<Presentation.Slide>` inside to render the current slide.
  */
-/**
- * Ignore wheel events for this long after a wheel-triggered navigation.
- * Trackpads emit a burst of momentum events for one physical gesture;
- * without a cooldown a single flick would skip through several slides.
- */
-const WHEEL_NAVIGATION_COOLDOWN_MS = 300;
-
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   { autoFit = false, autoFitPadding = 0, scrollNavigation = false, render, ...viewportProps },
   forwardedRef,
@@ -142,8 +142,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ctrl+wheel is the browser/user pinch-zoom gesture; leave it alone.
-      if (event.deltaY === 0 || event.ctrlKey) return;
+      // Ctrl+wheel = pinch-zoom, shift+wheel = horizontal scroll; leave both alone.
+      if (event.deltaY === 0 || event.ctrlKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
       const scroller = findScroller(event.target);
