@@ -20,6 +20,14 @@ const BASELINES_DIR = join(SPECS_DIR, "oracle-baselines");
 /** Score drops beyond this tolerance fail the oracle spec. */
 export const SCORE_TOLERANCE = 0.01;
 
+/**
+ * Absolute floor, independent of baselines. Catches catastrophic breakage
+ * (blank slide, missing chart) even on platforms with no recorded baseline
+ * or with a badly-recorded one. Our worst honest score today is ~0.86
+ * (nested-charts doughnut), so 0.8 leaves headroom without hiding disasters.
+ */
+export const SCORE_FLOOR = 0.8;
+
 interface RawImage {
   data: Uint8ClampedArray;
   width: number;

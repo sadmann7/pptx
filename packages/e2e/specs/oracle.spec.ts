@@ -24,6 +24,7 @@ import {
   GROUND_TRUTH_DIR,
   isUpdateMode,
   readScoreBaseline,
+  SCORE_FLOOR,
   SCORE_TOLERANCE,
   ssimAgainstGroundTruth,
   writeScoreBaseline,
@@ -56,6 +57,12 @@ for (const { deck, slides } of DECKS) {
           writeScoreBaseline(deck, slide, project, score);
           return;
         }
+
+        // Absolute floor applies on every platform, baseline or not.
+        expect(
+          score,
+          `SSIM vs PowerPoint fell below the absolute floor ${SCORE_FLOOR} — the slide is likely blank or badly broken`,
+        ).toBeGreaterThanOrEqual(SCORE_FLOOR);
 
         const baseline = readScoreBaseline(deck, slide, project);
         // Baselines are platform-specific (font/antialiasing differences move
