@@ -154,6 +154,23 @@ export function cleanText(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\u200B/g, "");
 }
 
+function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
+  // Empty placeholders also render a prompt overlay ("Click to add text")
+  // whose paragraphs carry the paragraph attribute; skip it: only the real
+  // text container is editable.
+  for (const paragraphElement of Array.from(
+    shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
+  )) {
+    if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
+    return paragraphElement.parentElement;
+  }
+  return null;
+}
+
+function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
+  return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
+}
+
 /**
  * Walk the edited contentEditable container and produce a `setTextBody`
  * paragraphs payload. Uses the paragraph/run data attributes (see
@@ -421,23 +438,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         `[${PPTX_ATTRS.nodeId}="${CSS.escape(nodeId)}"]`,
       ) ?? null
     );
-  }
-
-  function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
-    // Empty placeholders also render a prompt overlay ("Click to add text")
-    // whose paragraphs carry the paragraph attribute; skip it: only the real
-    // text container is editable.
-    for (const paragraphElement of Array.from(
-      shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
-    )) {
-      if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
-      return paragraphElement.parentElement;
-    }
-    return null;
-  }
-
-  function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
-    return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
   }
 
   /**
