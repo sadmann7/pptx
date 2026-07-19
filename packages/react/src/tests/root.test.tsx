@@ -5,7 +5,7 @@ import { useStoreContext } from "../context";
 import { Presentation } from "../index";
 import type { Store } from "../store";
 import { createStore } from "../store";
-import { buildMinimalPptx } from "./minimal-pptx";
+import { loadFixture } from "./test-utils";
 
 /** Captures the store visible at its position in the tree. */
 function StoreProbe({ onStore }: { onStore: (store: Store) => void }) {
@@ -69,7 +69,7 @@ describe("Presentation.Root store resolution", () => {
 
 describe("Presentation.Root file prop", () => {
   it("loads the file into the internal store and calls onLoad", async () => {
-    const fixture = await buildMinimalPptx();
+    const fixture = await loadFixture();
     let loaded: Store | null = null;
     render(<Presentation.Root file={fixture} onLoad={(store) => (loaded = store)} />);
 
@@ -96,7 +96,7 @@ describe("Presentation.Root file prop", () => {
   });
 
   it("loads through a provider store when file is passed", async () => {
-    const fixture = await buildMinimalPptx();
+    const fixture = await loadFixture();
     const store = createStore();
     render(
       <Presentation.Provider store={store}>
