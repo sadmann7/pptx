@@ -386,6 +386,31 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
+  // Pasteboard hit area: shapes dragged past the slide edge render unclipped
+  // in edit mode, but a surface sized to the slide (`inset: 0`) would never
+  // receive pointerdowns over their off-slide portion. Extend the surface to
+  // cover every node's bounds so those shapes stay clickable and draggable.
+  const pasteboard = { left: 0, top: 0, right: 0, bottom: 0 };
+  for (const node of slide.nodes) {
+    let { x, y, w, h } = getNodeRect(node);
+    if (node.rotation !== 0) {
+      // Axis-aligned bounds of the rotated rect (rotation is about center).
+      const radians = (node.rotation * Math.PI) / 180;
+      const halfW = (Math.abs(Math.cos(radians)) * w + Math.abs(Math.sin(radians)) * h) / 2;
+      const halfH = (Math.abs(Math.sin(radians)) * w + Math.abs(Math.cos(radians)) * h) / 2;
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      x = cx - halfW;
+      y = cy - halfH;
+      w = halfW * 2;
+      h = halfH * 2;
+    }
+    pasteboard.left = Math.max(pasteboard.left, -x);
+    pasteboard.top = Math.max(pasteboard.top, -y);
+    pasteboard.right = Math.max(pasteboard.right, x + w - presentation.width);
+    pasteboard.bottom = Math.max(pasteboard.bottom, y + h - presentation.height);
+  }
+
   function getSlideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
   }
@@ -1492,17 +1517,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           onDragStart,
           children: (
             <>
-              {selectedNodes.map((node) => (
-                <SelectionBox
-                  key={node.id}
-                  node={node}
-                  state={state}
-                  zoom={zoom}
-                  showResizeGrips={isSoloSelection}
-                  onGripPointerDown={onGripPointerDown}
-                  onBorderPointerDown={onBorderPointerDown}
-                />
-              ))}
+              {/*
+               * Slide-origin frame: the root extends into the pasteboard, so
+               * selection boxes (positioned in slide coordinates) need a
+               * positioning context whose origin is the slide's top-left.
+               */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: pasteboard.left * zoom,
+                  top: pasteboard.top * zoom,
+                  width: presentation.width * zoom,
+                  height: presentation.height * zoom,
+                  pointerEvents: "none",
+                }}
+              >
+                {selectedNodes.map((node) => (
+                  <SelectionBox
+                    key={node.id}
+                    node={node}
+                    state={state}
+                    zoom={zoom}
+                    showResizeGrips={isSoloSelection}
+                    onGripPointerDown={onGripPointerDown}
+                    onBorderPointerDown={onBorderPointerDown}
+                  />
+                ))}
+              </div>
               {state.mode === "marquee" && (
                 <MarqueeBox state={state} rootElement={rootRef.current} />
               )}
@@ -1510,7 +1551,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           ),
           style: {
             position: "absolute",
-            inset: 0,
+            // Negative insets extend the event surface over the pasteboard
+            // wherever shapes overflow the slide (see `pasteboard` above).
+            left: -pasteboard.left * zoom,
+            top: -pasteboard.top * zoom,
+            right: -pasteboard.right * zoom,
+            bottom: -pasteboard.bottom * zoom,
             // In text mode let clicks through to the contentEditable element.
             pointerEvents: isTextMode ? "none" : "auto",
             outline: "none",
