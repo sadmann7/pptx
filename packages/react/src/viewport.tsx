@@ -5,6 +5,13 @@ import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding } from "./store";
 
+/**
+ * Ignore wheel events for this long after a wheel-triggered navigation.
+ * Trackpads emit a burst of momentum events for one physical gesture;
+ * without a cooldown a single flick would skip through several slides.
+ */
+const WHEEL_NAVIGATION_COOLDOWN_MS = 300;
+
 export interface ViewportState {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
@@ -18,6 +25,19 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default false
    */
   autoFit?: boolean;
+  /**
+   * When `true`, the mouse wheel navigates between slides like PowerPoint:
+   * scrolling past the end of the current slide's scroll range advances to
+   * the next slide, scrolling past the start goes back to the previous one.
+   * When the slide fits the viewport (nothing to scroll), any wheel tick
+   * navigates.
+   *
+   * Off by default: it captures wheel events, which is undesirable when the
+   * viewer is embedded in a scrollable page.
+   *
+   * @default false
+   */
+  scrollNavigation?: boolean;
   /**
    * Padding (in pixels) reserved around the slide when fitting.
    * Only used when `autoFit` is `true`.
@@ -50,7 +70,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Place `<Presentation.Slide>` inside to render the current slide.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
-  { autoFit = false, autoFitPadding = 0, render, ...viewportProps },
+  { autoFit = false, autoFitPadding = 0, scrollNavigation = false, render, ...viewportProps },
   forwardedRef,
 ) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -90,6 +110,78 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       resizeObserver.disconnect();
     };
   }, [autoFit, autoFitPadding, store]);
+
+  // PowerPoint-style wheel navigation: scroll within the slide first; once
+  // the scroll container hits its boundary in the wheel direction (or there
+  // is nothing to scroll), a wheel tick changes slides. External system
+  // (native wheel events, non-passive for preventDefault), so an effect is
+  // the right tool.
+  React.useEffect(() => {
+    if (!scrollNavigation || !viewportRef.current) return;
+
+    const viewportElement = viewportRef.current;
+    let cooldownUntil = 0;
+
+    /**
+     * Nearest vertically scrollable element between the event target and the
+     * viewport (inclusive). This is normally the `Presentation.Slide`
+     * wrapper (`overflow: auto`), but resolving it dynamically keeps the
+     * behavior correct with custom `render` layouts.
+     */
+    function findScroller(from: EventTarget | null): HTMLElement | null {
+      let element = from instanceof HTMLElement ? from : null;
+      while (element) {
+        if (element.scrollHeight > element.clientHeight + 1) {
+          const { overflowY } = getComputedStyle(element);
+          if (overflowY === "auto" || overflowY === "scroll") return element;
+        }
+        if (element === viewportElement) break;
+        element = element.parentElement;
+      }
+      return null;
+    }
+
+    function onWheel(event: WheelEvent): void {
+      // Ctrl+wheel = pinch-zoom, shift+wheel = horizontal scroll; leave both alone.
+      if (event.deltaY === 0 || event.ctrlKey || event.shiftKey) return;
+
+      const goingDown = event.deltaY > 0;
+      const scroller = findScroller(event.target);
+      if (scroller) {
+        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+        const atTop = scroller.scrollTop <= 0;
+        // Not at the boundary yet: let the browser scroll the slide.
+        if (goingDown ? !atBottom : !atTop) return;
+      }
+
+      if (event.timeStamp < cooldownUntil) {
+        // Momentum tail of the gesture that just navigated: swallow it so it
+        // neither chains to the page nor immediately scrolls the new slide.
+        event.preventDefault();
+        return;
+      }
+
+      if (goingDown ? !store.canGoNext() : !store.canGoPrev()) return;
+
+      event.preventDefault();
+      cooldownUntil = event.timeStamp + WHEEL_NAVIGATION_COOLDOWN_MS;
+      if (goingDown) store.next();
+      else store.prev();
+
+      if (scroller) {
+        // Start the new slide from the edge you entered it from (top when
+        // going forward, bottom when going back), like PowerPoint. Deferred
+        // one frame so the new slide's content height is in place.
+        requestAnimationFrame(() => {
+          scroller.scrollTop = goingDown ? 0 : scroller.scrollHeight;
+        });
+      }
+    }
+
+    // Non-passive: we call preventDefault to stop scroll chaining to the page.
+    viewportElement.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewportElement.removeEventListener("wheel", onWheel);
+  }, [scrollNavigation, store]);
 
   return renderElement(
     "div",

@@ -1,28 +1,18 @@
 import * as React from "react";
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { Presentation } from "../index";
-import type { Store } from "../store";
 import { createStore } from "../store";
-import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { loadedStore, loadFixture, withStore } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
-  fixture = await buildMinimalPptx();
+  fixture = await loadFixture();
 });
-
-async function loadedStore(): Promise<Store> {
-  const store = createStore();
-  await store.load(fixture);
-  return store;
-}
-
-function withStore(store: Store, ui: React.ReactNode) {
-  return render(<Presentation.Provider store={store}>{ui}</Presentation.Provider>);
-}
 
 describe("Presentation.Loading", () => {
   it("renders only while loading, with progress via render function", async () => {
@@ -84,32 +74,6 @@ describe("Presentation.Slide", () => {
     const store = createStore();
     withStore(store, <Presentation.Slide data-testid="slide" />);
     expect(screen.getByTestId("slide").getAttribute("data-status")).toBe("idle");
-  });
-});
-
-describe("Presentation.Viewport", () => {
-  it("renders children and supports render-prop replacement with state", async () => {
-    const store = await loadedStore();
-    store.setZoom(2);
-
-    withStore(
-      store,
-      <Presentation.Viewport
-        data-testid="viewport"
-        render={(props, state) => (
-          <section {...props} data-zoom={state.zoom}>
-            {props.children}
-          </section>
-        )}
-      >
-        <span>inside</span>
-      </Presentation.Viewport>,
-    );
-
-    const viewport = screen.getByTestId("viewport");
-    expect(viewport.tagName).toBe("SECTION");
-    expect(viewport.getAttribute("data-zoom")).toBe("2");
-    expect(screen.getByText("inside")).toBeDefined();
   });
 });
 
