@@ -146,12 +146,71 @@ export function getNodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
 
+export interface PasteboardOverhang {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * How far the slide's nodes overhang each slide edge, in slide-space px.
+ * Zero on every side when all shapes sit within the slide bounds. Used to
+ * size the pasteboard area around the slide in edit mode: both the visible
+ * margin (so off-slide shapes stay scrollable into view) and the selection
+ * event surface (so they stay clickable).
+ */
+export function getPasteboardOverhang(
+  nodes: SlideNode[],
+  slideWidth: number,
+  slideHeight: number,
+): PasteboardOverhang {
+  const overhang = { left: 0, top: 0, right: 0, bottom: 0 };
+  for (const node of nodes) {
+    let { x, y, w, h } = getNodeRect(node);
+    if (node.rotation !== 0) {
+      // Axis-aligned bounds of the rotated rect (rotation is about center).
+      const radians = (node.rotation * Math.PI) / 180;
+      const halfW = (Math.abs(Math.cos(radians)) * w + Math.abs(Math.sin(radians)) * h) / 2;
+      const halfH = (Math.abs(Math.sin(radians)) * w + Math.abs(Math.cos(radians)) * h) / 2;
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      x = cx - halfW;
+      y = cy - halfH;
+      w = halfW * 2;
+      h = halfH * 2;
+    }
+    overhang.left = Math.max(overhang.left, -x);
+    overhang.top = Math.max(overhang.top, -y);
+    overhang.right = Math.max(overhang.right, x + w - slideWidth);
+    overhang.bottom = Math.max(overhang.bottom, y + h - slideHeight);
+  }
+  return overhang;
+}
+
 /**
  * Strip zero-width spaces: line-height spacer spans from the renderer must
  * not reach the model.
  */
 export function cleanText(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\u200B/g, "");
+}
+
+function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
+  // Empty placeholders also render a prompt overlay ("Click to add text")
+  // whose paragraphs carry the paragraph attribute; skip it: only the real
+  // text container is editable.
+  for (const paragraphElement of Array.from(
+    shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
+  )) {
+    if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
+    return paragraphElement.parentElement;
+  }
+  return null;
+}
+
+function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
+  return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
 }
 
 /**
@@ -384,6 +443,24 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
 
+  // Pasteboard hit area: shapes dragged past the slide edge render unclipped
+  // in edit mode, but a surface sized to the slide (`inset: 0`) would never
+  // receive pointerdowns over their off-slide portion. Extend the surface to
+  // cover every node's bounds so those shapes stay clickable and draggable.
+  //
+  // Memoized because this component re-renders on every pointermove during
+  // drags. Nodes are mutated in place, so the node array is not a usable
+  // dependency; `slideRevision` bumps on every committed geometry edit and is
+  // the correct cache key.
+  const pasteboard = React.useMemo(
+    () =>
+      slide && presentation
+        ? getPasteboardOverhang(slide.nodes, presentation.width, presentation.height)
+        : { left: 0, top: 0, right: 0, bottom: 0 },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes mutate in place; revision is the change signal
+    [slide, slideRevision, presentation],
+  );
+
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   function getSlideWrapper(): HTMLElement | null {
@@ -396,23 +473,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         `[${PPTX_ATTRS.nodeId}="${CSS.escape(nodeId)}"]`,
       ) ?? null
     );
-  }
-
-  function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
-    // Empty placeholders also render a prompt overlay ("Click to add text")
-    // whose paragraphs carry the paragraph attribute; skip it: only the real
-    // text container is editable.
-    for (const paragraphElement of Array.from(
-      shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
-    )) {
-      if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
-      return paragraphElement.parentElement;
-    }
-    return null;
-  }
-
-  function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
-    return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
   }
 
   /**
@@ -1492,17 +1552,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           onDragStart,
           children: (
             <>
-              {selectedNodes.map((node) => (
-                <SelectionBox
-                  key={node.id}
-                  node={node}
-                  state={state}
-                  zoom={zoom}
-                  showResizeGrips={isSoloSelection}
-                  onGripPointerDown={onGripPointerDown}
-                  onBorderPointerDown={onBorderPointerDown}
-                />
-              ))}
+              {/*
+               * Slide-origin frame: the root extends into the pasteboard, so
+               * selection boxes (positioned in slide coordinates) need a
+               * positioning context whose origin is the slide's top-left.
+               */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: pasteboard.left * zoom,
+                  top: pasteboard.top * zoom,
+                  width: presentation.width * zoom,
+                  height: presentation.height * zoom,
+                  pointerEvents: "none",
+                }}
+              >
+                {selectedNodes.map((node) => (
+                  <SelectionBox
+                    key={node.id}
+                    node={node}
+                    state={state}
+                    zoom={zoom}
+                    showResizeGrips={isSoloSelection}
+                    onGripPointerDown={onGripPointerDown}
+                    onBorderPointerDown={onBorderPointerDown}
+                  />
+                ))}
+              </div>
               {state.mode === "marquee" && (
                 <MarqueeBox state={state} rootElement={rootRef.current} />
               )}
@@ -1510,7 +1586,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           ),
           style: {
             position: "absolute",
-            inset: 0,
+            // Negative insets extend the event surface over the pasteboard
+            // wherever shapes overflow the slide (see `pasteboard` above).
+            left: -pasteboard.left * zoom,
+            top: -pasteboard.top * zoom,
+            right: -pasteboard.right * zoom,
+            bottom: -pasteboard.bottom * zoom,
             // In text mode let clicks through to the contentEditable element.
             pointerEvents: isTextMode ? "none" : "auto",
             outline: "none",

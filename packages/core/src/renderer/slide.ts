@@ -54,6 +54,12 @@ export interface SlideRendererOptions {
    * Intended for edit mode; default `false`.
    */
   placeholderPrompts?: boolean;
+  /**
+   * Clip node content to the slide bounds (default `true`).
+   * Set `false` in editing surfaces so shapes dragged past the slide edge
+   * stay visible, like PowerPoint's pasteboard.
+   */
+  clipContent?: boolean;
 }
 
 /**
@@ -456,7 +462,7 @@ export function renderSlide(
   container.style.position = "relative";
   container.style.width = `${presentation.width}px`;
   container.style.height = `${presentation.height}px`;
-  container.style.overflow = "hidden";
+  container.style.overflow = options?.clipContent === false ? "visible" : "hidden";
   container.style.backgroundColor = "#FFFFFF";
   resetTypography(container);
 
