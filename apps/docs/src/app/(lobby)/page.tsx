@@ -1,6 +1,6 @@
+import { Button } from "@pptx/ui/components/button";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/site";
 
 export default function IndexPage() {

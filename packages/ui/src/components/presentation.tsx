@@ -1,8 +1,9 @@
 "use client";
 
-import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import type * as React from "react";
 
-import { cn } from "@/lib/utils";
+import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { cn } from "@pptx/ui/lib/utils";
 
 function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
   return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;

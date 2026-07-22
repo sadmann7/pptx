@@ -2,7 +2,8 @@ import { Composition } from "remotion";
 
 import { Demo, DEMO_DURATION_IN_FRAMES } from "@/demo";
 
-import "./index.css";
+import "@pptx/ui/globals.css";
+
 import { LaunchFilm } from "@/launch-film";
 
 const video = { width: 1920, height: 1080, fps: 30 } as const;

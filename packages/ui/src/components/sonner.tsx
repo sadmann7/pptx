@@ -1,5 +1,7 @@
 "use client";
 
+import type * as React from "react";
+
 import {
   CircleCheckIcon,
   InfoIcon,

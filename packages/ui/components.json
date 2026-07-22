@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": false,
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@pptx/ui/components",
+    "utils": "@pptx/ui/lib/utils",
+    "ui": "@pptx/ui/components",
+    "lib": "@pptx/ui/lib",
+    "hooks": "@pptx/ui/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

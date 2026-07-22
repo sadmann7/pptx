@@ -13,7 +13,8 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@pptx/ui/*": ["../../packages/ui/src/*"]
     }
   },
   "include": ["src", "remotion.config.ts"]
