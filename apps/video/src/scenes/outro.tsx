@@ -2,9 +2,9 @@ import type { CSSProperties } from "react";
 
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
-import { SoftBlurIn } from "../components/remocn/soft-blur-in";
-import { SceneBg } from "../components/scene-bg";
-import { geistMono, geistSans } from "../fonts";
+import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
+import { SceneBg } from "@/components/scene-bg";
+import { geistMono, geistSans } from "@/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

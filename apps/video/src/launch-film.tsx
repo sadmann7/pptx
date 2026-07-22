@@ -2,6 +2,9 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
 
+import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
+import { geistSans } from "@/fonts";
+
 const C = {
   ink: "#070806",
   panel: "#11130f",
@@ -25,7 +28,7 @@ const fadeWindow = (frame: number, duration: number, edge = 16) =>
   interpolate(frame, [0, edge, duration - edge, duration], [0, 1, 1, 0], clamp);
 
 const font: CSSProperties = {
-  fontFamily: 'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontFamily: geistSans,
 };
 
 function Noise() {
@@ -708,49 +711,50 @@ function CanvasFlythroughScene({ duration = 240 }: { duration?: number }) {
 
 function TitleCard({ outro = false, duration }: { outro?: boolean; duration: number }) {
   const frame = useCurrentFrame();
-  const enter = progress(frame, 0, 28);
   const opacity = fadeWindow(frame, duration, 14);
+
+  const taglineOpacity = progress(frame, 25, 45);
+  const taglineY = interpolate(frame, [25, 45], [16, 0], {
+    ...clamp,
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+
   return (
     <AbsoluteFill>
       <Backdrop />
-      <div
+      <AbsoluteFill
         style={{
           ...font,
-          color: C.white,
-          position: "absolute",
-          left: 140,
-          top: 215,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 28,
           opacity,
-          transform: `translateY(${interpolate(enter, [0, 1], [70, 0])}px)`,
         }}
       >
-        <DiceMark />
-        <h1
+        <SoftBlurIn
+          text={outro ? "The web can open .pptx" : "PowerPoint in the Browser"}
+          fontSize={96}
+          fontWeight={700}
+          color={C.white}
+        />
+
+        <div
           style={{
-            fontSize: 108,
-            lineHeight: 0.9,
-            letterSpacing: -7,
-            margin: "70px 0 40px",
+            fontSize: 24,
+            fontFamily: geistSans,
+            fontWeight: 500,
+            color: C.muted,
+            letterSpacing: "0.04em",
+            opacity: taglineOpacity,
+            transform: `translateY(${taglineY}px)`,
           }}
         >
-          {outro ? (
-            <>
-              THE WEB
-              <br />
-              CAN OPEN <span style={{ color: C.acid }}>.PPTX</span>
-            </>
-          ) : (
-            <>
-              A NEW WAY
-              <br />
-              TO BUILD WITH <span style={{ color: C.acid }}>.PPTX</span>
-            </>
-          )}
-        </h1>
-        <p style={{ fontSize: 27, color: C.muted, margin: 0 }}>
-          {outro ? "Viewer. Editor. React primitives." : "@diceui/pptx · coming soon"}
-        </p>
-      </div>
+          {outro
+            ? "Viewer · Editor · React primitives"
+            : "@diceui/pptx — parse, render, and edit .pptx in React"}
+        </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 }

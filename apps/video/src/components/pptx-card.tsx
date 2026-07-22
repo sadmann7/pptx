@@ -5,7 +5,7 @@ import type { PresentationStore } from "@diceui/pptx";
 import { Presentation } from "@diceui/pptx";
 import { continueRender, delayRender, staticFile } from "remotion";
 
-import { geistSans } from "../fonts";
+import { geistSans } from "@/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

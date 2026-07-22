@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
-import { geistSans } from "../fonts";
-import { theme } from "../theme";
+import { geistSans } from "@/fonts";
+import { theme } from "@/theme";
 
 const C = {
   panel: "rgba(10, 10, 10, 0.85)",

@@ -2,9 +2,9 @@ import type { CSSProperties } from "react";
 
 import { AbsoluteFill, Sequence } from "remotion";
 
-import { ShortSlideRight } from "../components/remocn/short-slide-right";
-import { SceneBg } from "../components/scene-bg";
-import { geistSans } from "../fonts";
+import { ShortSlideRight } from "@/components/remocn/short-slide-right";
+import { SceneBg } from "@/components/scene-bg";
+import { geistSans } from "@/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

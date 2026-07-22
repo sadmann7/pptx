@@ -2,9 +2,9 @@ import type { CSSProperties } from "react";
 
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
-import { GlassCodeBlock } from "../components/remocn/glass-code-block";
-import { SceneBg } from "../components/scene-bg";
-import { geistMono, geistSans } from "../fonts";
+import { GlassCodeBlock } from "@/components/remocn/glass-code-block";
+import { SceneBg } from "@/components/scene-bg";
+import { geistMono, geistSans } from "@/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

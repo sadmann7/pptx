@@ -13,10 +13,10 @@ import {
   useCurrentFrame,
 } from "remotion";
 
-import type { CursorKeyframe } from "../components/cursor";
-import { Cursor } from "../components/cursor";
-import { SceneBg } from "../components/scene-bg";
-import { geistSans } from "../fonts";
+import type { CursorKeyframe } from "@/components/cursor";
+import { Cursor } from "@/components/cursor";
+import { SceneBg } from "@/components/scene-bg";
+import { geistSans } from "@/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,
