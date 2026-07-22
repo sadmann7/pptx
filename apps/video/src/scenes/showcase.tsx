@@ -58,61 +58,67 @@ interface CameraPreset {
 const PRESETS: CameraPreset[] = [
   // Dolly in + slight left pan
   {
-    rotateY: -16, rotateX: 5,
-    panX: [140, 90], panY: [0, -15],
+    rotateY: -16,
+    rotateX: 5,
+    panX: [140, 90],
+    panY: [0, -15],
     dolly: [0.95, 1.05],
     driftRotateY: [-16, -12],
     originX: 55,
   },
   // Right tilt, slow truck right
   {
-    rotateY: 18, rotateX: -4,
-    panX: [-130, -60], panY: [10, -5],
+    rotateY: 18,
+    rotateX: -4,
+    panX: [-130, -60],
+    panY: [10, -5],
     dolly: [1.0, 1.08],
     driftRotateY: [18, 14],
     originX: 42,
   },
   // Subtle tilt, dolly out + drift up
   {
-    rotateY: -12, rotateX: 6,
-    panX: [80, 120], panY: [20, -20],
+    rotateY: -12,
+    rotateX: 6,
+    panX: [80, 120],
+    panY: [20, -20],
     dolly: [1.06, 0.98],
     driftRotateY: [-12, -15],
     originX: 54,
   },
   // Right tilt, truck left
   {
-    rotateY: 20, rotateX: -3,
-    panX: [-80, -160], panY: [-10, 10],
+    rotateY: 20,
+    rotateX: -3,
+    panX: [-80, -160],
+    panY: [-10, 10],
     dolly: [0.98, 1.06],
     driftRotateY: [20, 16],
     originX: 40,
   },
   // Gentle left, dolly in close
   {
-    rotateY: -14, rotateX: 4,
-    panX: [100, 60], panY: [15, -10],
+    rotateY: -14,
+    rotateX: 4,
+    panX: [100, 60],
+    panY: [15, -10],
     dolly: [0.96, 1.1],
     driftRotateY: [-14, -10],
     originX: 56,
   },
   // Right, slow drift
   {
-    rotateY: 15, rotateX: -5,
-    panX: [-100, -50], panY: [-5, -20],
+    rotateY: 15,
+    rotateX: -5,
+    panX: [-100, -50],
+    panY: [-5, -20],
     dolly: [1.02, 1.08],
     driftRotateY: [15, 12],
     originX: 44,
   },
 ];
 
-function SingleDeckShowcase({
-  entry,
-  presetIndex,
-}: {
-  entry: DeckEntry;
-  presetIndex: number;
-}) {
+function SingleDeckShowcase({ entry, presetIndex }: { entry: DeckEntry; presetIndex: number }) {
   const frame = useCurrentFrame();
   const [data, setData] = React.useState<ArrayBuffer | null>(null);
   const storeRef = React.useRef<PresentationStore | null>(null);
@@ -261,11 +267,7 @@ export function ShowcaseScene() {
   return (
     <AbsoluteFill>
       {DECKS.map((entry, i) => (
-        <Sequence
-          key={entry.file}
-          from={i * FRAMES_PER_DECK}
-          durationInFrames={FRAMES_PER_DECK}
-        >
+        <Sequence key={entry.file} from={i * FRAMES_PER_DECK} durationInFrames={FRAMES_PER_DECK}>
           <SingleDeckShowcase entry={entry} presetIndex={i} />
         </Sequence>
       ))}

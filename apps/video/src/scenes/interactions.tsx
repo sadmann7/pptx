@@ -1,6 +1,6 @@
 import * as React from "react";
-
 import type { CSSProperties } from "react";
+
 import type { PresentationStore } from "@diceui/pptx";
 import { Presentation } from "@diceui/pptx";
 import {
