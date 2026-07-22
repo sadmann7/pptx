@@ -4,7 +4,6 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill } from "remotion";
 
-import { whipPan } from "./components/whip-pan";
 import { geistMono, geistSans } from "./fonts";
 import { CodeScene } from "./scenes/code";
 import { FeaturesScene } from "./scenes/features";
@@ -22,11 +21,10 @@ const CODE = 140;
 const FEATURES = 100;
 const OUTRO = 80;
 
-const T_WHIP = 20;
 const T_FADE = 14;
 
 export const DEMO_DURATION_IN_FRAMES =
-  INTRO + SHOWCASE + INTERACTIONS + CODE + FEATURES + OUTRO - T_WHIP - T_FADE * 4;
+  INTRO + SHOWCASE + INTERACTIONS + CODE + FEATURES + OUTRO - T_FADE * 5;
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,
@@ -42,8 +40,8 @@ export function Demo() {
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition
-          presentation={whipPan({ direction: "left" })}
-          timing={linearTiming({ durationInFrames: T_WHIP })}
+          presentation={fade()}
+          timing={linearTiming({ durationInFrames: T_FADE })}
         />
 
         <TransitionSeries.Sequence name="Showcase" durationInFrames={SHOWCASE}>

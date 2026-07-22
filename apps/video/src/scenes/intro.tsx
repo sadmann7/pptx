@@ -35,21 +35,25 @@ export function IntroScene() {
           gap: 28,
         }}
       >
-        <SoftBlurIn text="@diceui/pptx" fontSize={108} fontWeight={700} color="#fafafa" />
+        <SoftBlurIn
+          text="PowerPoint in the Browser"
+          fontSize={96}
+          fontWeight={700}
+          color="#fafafa"
+        />
 
         <div
           style={{
-            fontSize: 28,
+            fontSize: 26,
             fontFamily: geistSans,
             fontWeight: 500,
             color: "#a1a1aa",
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
+            letterSpacing: "0.04em",
             opacity: taglineOpacity,
             transform: `translateY(${taglineY}px)`,
           }}
         >
-          PowerPoint in the browser
+          Render, edit, and compose .pptx files with React
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
