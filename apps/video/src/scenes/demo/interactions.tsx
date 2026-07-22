@@ -16,7 +16,7 @@ import {
 import type { CursorKeyframe } from "@/components/cursor";
 import { Cursor } from "@/components/cursor";
 import { SceneBg } from "@/components/scene-bg";
-import { geistSans } from "@/fonts";
+import { geistSans } from "@/lib/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

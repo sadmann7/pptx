@@ -1,7 +1,5 @@
 "use client";
 
-import type * as React from "react";
-
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
 import { cn } from "@pptx/ui/lib/utils";
 

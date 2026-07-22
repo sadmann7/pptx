@@ -4,7 +4,7 @@ import { AbsoluteFill, Sequence } from "remotion";
 
 import { ShortSlideRight } from "@/components/remocn/short-slide-right";
 import { SceneBg } from "@/components/scene-bg";
-import { geistSans } from "@/fonts";
+import { geistSans } from "@/lib/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

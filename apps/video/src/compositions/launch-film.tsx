@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
 
 import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
-import { geistSans } from "@/fonts";
+import { geistSans } from "@/lib/fonts";
 
 const C = {
   ink: "#070806",

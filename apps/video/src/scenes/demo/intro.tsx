@@ -4,7 +4,7 @@ import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
 import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
 import { SceneBg } from "@/components/scene-bg";
-import { geistSans } from "@/fonts";
+import { geistSans } from "@/lib/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,

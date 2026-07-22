@@ -4,14 +4,14 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill } from "remotion";
 
-import { geistMono, geistSans } from "@/fonts";
-import { CANVAS_FLYTHROUGH_FRAMES, CanvasFlythroughScene } from "@/scenes/canvas-flythrough";
-import { CodeScene } from "@/scenes/code";
-import { FeaturesScene } from "@/scenes/features";
-import { INTERACTION_FRAMES, InteractionScene } from "@/scenes/interactions";
-import { IntroScene } from "@/scenes/intro";
-import { OutroScene } from "@/scenes/outro";
-import { PERSPECTIVE_DRIFT_FRAMES, PerspectiveDriftScene } from "@/scenes/perspective-drift";
+import { geistMono, geistSans } from "@/lib/fonts";
+import { CANVAS_FLYTHROUGH_FRAMES, CanvasFlythroughScene } from "@/scenes/demo/canvas-flythrough";
+import { CodeScene } from "@/scenes/demo/code";
+import { FeaturesScene } from "@/scenes/demo/features";
+import { INTERACTION_FRAMES, InteractionScene } from "@/scenes/demo/interactions";
+import { IntroScene } from "@/scenes/demo/intro";
+import { OutroScene } from "@/scenes/demo/outro";
+import { PERSPECTIVE_DRIFT_FRAMES, PerspectiveDriftScene } from "@/scenes/demo/perspective-drift";
 
 export const FPS = 30;
 

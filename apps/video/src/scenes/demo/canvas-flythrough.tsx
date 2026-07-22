@@ -12,7 +12,7 @@ import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
 import { PptxCard } from "@/components/pptx-card";
 import { SceneBg } from "@/components/scene-bg";
-import { geistSans } from "@/fonts";
+import { geistSans } from "@/lib/fonts";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const ease = Easing.bezier(0.22, 1, 0.36, 1);

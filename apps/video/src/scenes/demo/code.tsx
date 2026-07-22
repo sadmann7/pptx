@@ -4,7 +4,7 @@ import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 
 import { GlassCodeBlock } from "@/components/remocn/glass-code-block";
 import { SceneBg } from "@/components/scene-bg";
-import { geistMono, geistSans } from "@/fonts";
+import { geistMono, geistSans } from "@/lib/fonts";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,
