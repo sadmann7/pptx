@@ -6,12 +6,12 @@
   "type": "module",
   "scripts": {
     "fixtures": "tsx scripts/generate-fixtures.ts",
-    "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
-    "test:oracle-update": "cross-env ORACLE_UPDATE=1 playwright test oracle",
     "harness": "vite --port 5000 --strictPort",
+    "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:update": "playwright test --update-snapshots",
+    "test:oracle-update": "cross-env ORACLE_UPDATE=1 playwright test oracle",
     "report": "playwright show-report"
   },
   "dependencies": {

@@ -18,6 +18,7 @@
     "format:check": "oxfmt --check",
     "check": "turbo lint typecheck --affected && pnpm format",
     "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
+    "shadcn": "pnpm --filter @pptx/ui shadcn",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo build --filter=!docs && changeset publish"

@@ -43,10 +43,10 @@
   },
   "scripts": {
     "build": "tsdown",
+    "bench": "vitest bench --run",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "bench": "vitest bench --run",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
