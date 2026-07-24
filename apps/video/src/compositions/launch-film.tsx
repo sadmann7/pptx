@@ -162,7 +162,7 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
             bottom: 64,
             textAlign: "center",
             color: C.white,
-            fontSize: 44,
+            fontSize: 52,
             fontWeight: 800,
             letterSpacing: -1.2,
             opacity: progress(frame, 12, 34),
@@ -176,7 +176,7 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
   );
 }
 
-function TitleCard({ outro = false, duration }: { outro?: boolean; duration: number }) {
+function TitleCard({ duration }: { duration: number }) {
   const frame = useCurrentFrame();
   const opacity = fadeWindow(frame, duration, 14);
 
@@ -192,11 +192,75 @@ function TitleCard({ outro = false, duration }: { outro?: boolean; duration: num
         }}
       >
         <SoftBlurIn
-          text={outro ? "The web can open .pptx" : "PowerPoint in the Browser"}
+          text="PowerPoint in the Browser"
           fontSize={96}
           fontWeight={800}
           color={C.white}
         />
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+const SNAPS = [
+  "Parse. Render. Edit. Re-export.",
+  "Tables, charts, shapes, images.",
+  "TypeScript-first. Zero runtime.",
+  "Works with any React framework.",
+];
+
+const SNAP_BEAT = 60;
+const FEATURES_DURATION = SNAPS.length * SNAP_BEAT;
+
+function SnapCard({ text, duration }: { text: string; duration: number }) {
+  const frame = useCurrentFrame();
+  const opacity = fadeWindow(frame, duration, 14);
+
+  return (
+    <AbsoluteFill
+      style={{
+        ...font,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity,
+      }}
+    >
+      <SoftBlurIn text={text} fontSize={72} fontWeight={600} color={C.white} />
+    </AbsoluteFill>
+  );
+}
+
+function FeaturesScene() {
+  return (
+    <AbsoluteFill>
+      <Backdrop />
+      {SNAPS.map((snap, i) => (
+        <Sequence key={snap} from={i * SNAP_BEAT} durationInFrames={SNAP_BEAT} layout="none">
+          <SnapCard text={snap} duration={SNAP_BEAT} />
+        </Sequence>
+      ))}
+    </AbsoluteFill>
+  );
+}
+
+const CTA_DURATION = 90;
+
+function CtaScene({ duration }: { duration: number }) {
+  const frame = useCurrentFrame();
+  const opacity = fadeWindow(frame, duration, 14);
+
+  return (
+    <AbsoluteFill>
+      <Backdrop />
+      <AbsoluteFill
+        style={{
+          ...font,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity,
+        }}
+      >
+        <SoftBlurIn text="npm i @diceui/pptx" fontSize={80} fontWeight={700} color={C.white} />
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -207,7 +271,8 @@ const OVERLAP = 8;
 
 export function LaunchFilm() {
   const spotlightStart = 75 - OVERLAP;
-  const outroStart = spotlightStart + SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP);
+  const featuresStart = spotlightStart + SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP);
+  const ctaStart = featuresStart + FEATURES_DURATION - OVERLAP;
 
   return (
     <AbsoluteFill style={{ background: C.ink }}>
@@ -224,11 +289,20 @@ export function LaunchFilm() {
           <SpotlightScene spotlight={spotlight} duration={SPOTLIGHT_DURATION} />
         </Sequence>
       ))}
-      <Sequence from={outroStart} durationInFrames={90} premountFor={20}>
-        <TitleCard outro duration={90} />
+      <Sequence from={featuresStart} durationInFrames={FEATURES_DURATION} premountFor={20}>
+        <FeaturesScene />
+      </Sequence>
+      <Sequence from={ctaStart} durationInFrames={CTA_DURATION} premountFor={20}>
+        <CtaScene duration={CTA_DURATION} />
       </Sequence>
     </AbsoluteFill>
   );
 }
 
-export const LAUNCH_DURATION = 75 - 8 + 5 * (110 - 8) + 90;
+export const LAUNCH_DURATION =
+  75 -
+  OVERLAP +
+  SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP) +
+  FEATURES_DURATION -
+  OVERLAP +
+  CTA_DURATION;
