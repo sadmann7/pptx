@@ -12,6 +12,8 @@
   },
   "iconLibrary": "lucide",
   "rtl": false,
+  "menuColor": "default",
+  "menuAccent": "subtle",
   "aliases": {
     "components": "@pptx/ui/components",
     "utils": "@pptx/ui/lib/utils",
@@ -19,7 +21,7 @@
     "lib": "@pptx/ui/lib",
     "hooks": "@pptx/ui/hooks"
   },
-  "menuColor": "default",
-  "menuAccent": "subtle",
-  "registries": {}
+  "registries": {
+    "@remocn": "https://www.remocn.dev/r/{name}.json"
+  }
 }

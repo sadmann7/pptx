@@ -1,9 +1,12 @@
 import type { CSSProperties } from "react";
 
+import { BlurOutUp } from "@pptx/ui/components/remocn/blur-out-up";
+import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
+import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
+import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
 
 import { PptxCard } from "@/components/pptx-card";
-import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
 import { geistSans } from "@/lib/fonts";
 
 const C = {
@@ -153,23 +156,10 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
           </div>
         </div>
 
-        <div
-          style={{
-            ...font,
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 64,
-            textAlign: "center",
-            color: C.white,
-            fontSize: 52,
-            fontWeight: 800,
-            letterSpacing: -1.2,
-            opacity: progress(frame, 12, 34),
-            transform: `translateY(${interpolate(progress(frame, 12, 34), [0, 1], [22, 0])}px)`,
-          }}
-        >
-          {spotlight.caption}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 24, height: 100 }}>
+          <Sequence from={10} durationInFrames={duration - 10} layout="none">
+            <BlurOutUp text={spotlight.caption} fontSize={52} fontWeight={800} color={C.white} />
+          </Sequence>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -206,29 +196,10 @@ const SNAPS = [
   "Parse. Render. Edit. Re-export.",
   "Tables, charts, shapes, images.",
   "TypeScript-first. Zero runtime.",
-  "Works with any React framework.",
 ];
 
-const SNAP_BEAT = 60;
+const SNAP_BEAT = 55;
 const FEATURES_DURATION = SNAPS.length * SNAP_BEAT;
-
-function SnapCard({ text, duration }: { text: string; duration: number }) {
-  const frame = useCurrentFrame();
-  const opacity = fadeWindow(frame, duration, 14);
-
-  return (
-    <AbsoluteFill
-      style={{
-        ...font,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity,
-      }}
-    >
-      <SoftBlurIn text={text} fontSize={72} fontWeight={600} color={C.white} />
-    </AbsoluteFill>
-  );
-}
 
 function FeaturesScene() {
   return (
@@ -236,7 +207,7 @@ function FeaturesScene() {
       <Backdrop />
       {SNAPS.map((snap, i) => (
         <Sequence key={snap} from={i * SNAP_BEAT} durationInFrames={SNAP_BEAT} layout="none">
-          <SnapCard text={snap} duration={SNAP_BEAT} />
+          <FocusBlurResolve text={snap} fontSize={72} fontWeight={600} color={C.white} />
         </Sequence>
       ))}
     </AbsoluteFill>
@@ -245,31 +216,25 @@ function FeaturesScene() {
 
 const CTA_DURATION = 90;
 
-function CtaScene({ duration }: { duration: number }) {
-  const frame = useCurrentFrame();
-  const opacity = fadeWindow(frame, duration, 14);
-
+function CtaScene() {
   return (
     <AbsoluteFill>
       <Backdrop />
-      <AbsoluteFill
-        style={{
-          ...font,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity,
-        }}
-      >
-        <SoftBlurIn text="npm i @diceui/pptx" fontSize={80} fontWeight={700} color={C.white} />
-      </AbsoluteFill>
+      <Typewriter
+        text="npm i @diceui/pptx"
+        fontSize={80}
+        fontWeight={700}
+        color={C.white}
+        charsPerSecond={16}
+      />
     </AbsoluteFill>
   );
 }
 
-const SPOTLIGHT_DURATION = 110;
+const SPOTLIGHT_DURATION = 85;
 const OVERLAP = 8;
 
-export function LaunchFilm() {
+export function Launch() {
   const spotlightStart = 75 - OVERLAP;
   const featuresStart = spotlightStart + SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP);
   const ctaStart = featuresStart + FEATURES_DURATION - OVERLAP;
@@ -293,7 +258,7 @@ export function LaunchFilm() {
         <FeaturesScene />
       </Sequence>
       <Sequence from={ctaStart} durationInFrames={CTA_DURATION} premountFor={20}>
-        <CtaScene duration={CTA_DURATION} />
+        <CtaScene />
       </Sequence>
     </AbsoluteFill>
   );

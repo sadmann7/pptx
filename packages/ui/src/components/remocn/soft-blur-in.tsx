@@ -1,3 +1,5 @@
+"use client";
+
 import { Easing, interpolate, useCurrentFrame } from "remotion";
 
 export interface SoftBlurInProps {
