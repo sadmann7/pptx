@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 
-import { BlurOutUp } from "@pptx/ui/components/remocn/blur-out-up";
 import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
 import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
@@ -82,6 +81,7 @@ interface Spotlight {
   file: string;
   slideIndex: number;
   caption: string;
+  description: string;
 }
 
 const SPOTLIGHTS: Spotlight[] = [
@@ -89,37 +89,57 @@ const SPOTLIGHTS: Spotlight[] = [
     file: "editorial-forest.pptx",
     slideIndex: 1,
     caption: "Pixel-perfect rendering",
+    description: "Every shape, gradient, and layout lands exactly where PowerPoint put it.",
   },
   {
     file: "sakura-chroma.pptx",
     slideIndex: 0,
     caption: "Gradients, shapes & effects",
+    description: "Linear fills, radial blends, shadows, and transparency. All preserved.",
   },
   {
     file: "bold-poster.pptx",
     slideIndex: 0,
     caption: "Typography that holds up",
+    description: "Font weights, spacing, and text boxes render faithfully in the browser.",
   },
   {
     file: "emerald-editorial.pptx",
     slideIndex: 1,
     caption: "Complex layouts, intact",
-  },
-  {
-    file: "biennale-yellow.pptx",
-    slideIndex: 0,
-    caption: "Any theme, any style",
+    description: "Grouped shapes, nested containers, and multi-column slides stay intact.",
   },
 ];
 
-function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duration: number }) {
+function SpotlightScene({
+  spotlight,
+  duration,
+  index,
+}: {
+  spotlight: Spotlight;
+  duration: number;
+  index: number;
+}) {
   const frame = useCurrentFrame();
-  const t = progress(frame, 0, duration - 1);
-  const intro = progress(frame, 0, 26);
-  const opacity = fadeWindow(frame, duration, 12);
+  const intro = progress(frame, 0, 28);
+  const captionIntro = progress(frame, 10, 38);
+  const descIntro = progress(frame, 18, 46);
+  const opacity = fadeWindow(frame, duration, 14);
 
-  const cardW = 1360;
+  const isLeft = index % 2 === 0;
+
+  const cardW = 1050;
   const cardH = (cardW / SLIDE_W) * SLIDE_H;
+  const cardMargin = 80;
+  const cardX = isLeft ? cardMargin : 1920 - cardW - cardMargin;
+  const cardSlideX = interpolate(intro, [0, 1], [isLeft ? -30 : 30, 0]);
+  const cardSlideY = interpolate(intro, [0, 1], [16, 0]);
+  const cardScale = interpolate(intro, [0, 1], [0.97, 1]);
+
+  const captionX = isLeft ? cardMargin + cardW + 60 : 0;
+  const captionW = 1920 - cardW - cardMargin - 60;
+  const captionSlide = interpolate(captionIntro, [0, 1], [20, 0]);
+  const descSlide = interpolate(descIntro, [0, 1], [14, 0]);
 
   return (
     <AbsoluteFill>
@@ -128,15 +148,15 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
         <div
           style={{
             position: "absolute",
-            left: (1920 - cardW) / 2,
-            top: (1080 - cardH) / 2 - 24,
+            left: cardX,
+            top: (1080 - cardH) / 2,
             width: cardW,
             height: cardH,
             borderRadius: 12,
             overflow: "hidden",
-            boxShadow: "0 60px 130px rgba(0,0,0,.55)",
-            transformStyle: "preserve-3d",
-            transform: `perspective(1900px) translate3d(${interpolate(t, [0, 1], [26, -26])}px, ${interpolate(t, [0, 1], [14, -10])}px, 0) rotateX(${interpolate(t, [0, 1], [1.8, -0.8])}deg) rotateY(${interpolate(t, [0, 1], [-4, 2])}deg) scale(${interpolate(intro, [0, 1], [0.95, 1])})`,
+            boxShadow: "0 40px 100px rgba(0,0,0,.45)",
+            opacity: intro,
+            transform: `translate(${cardSlideX}px, ${cardSlideY}px) scale(${cardScale})`,
           }}
         >
           <div
@@ -156,10 +176,48 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
           </div>
         </div>
 
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 44, height: 100 }}>
-          <Sequence from={10} durationInFrames={duration - 10} layout="none">
-            <BlurOutUp text={spotlight.caption} fontSize={52} fontWeight={800} color={C.white} />
-          </Sequence>
+        <div
+          style={{
+            position: "absolute",
+            left: captionX,
+            top: 0,
+            width: captionW,
+            height: 1080,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "0 40px",
+            textAlign: isLeft ? "left" : "right",
+          }}
+        >
+          <span
+            style={{
+              ...font,
+              fontSize: 52,
+              fontWeight: 800,
+              color: C.white,
+              letterSpacing: -1.2,
+              lineHeight: 1.15,
+              opacity: captionIntro,
+              transform: `translateY(${captionSlide}px)`,
+            }}
+          >
+            {spotlight.caption}
+          </span>
+          <span
+            style={{
+              ...font,
+              fontSize: 22,
+              fontWeight: 400,
+              color: C.muted,
+              lineHeight: 1.5,
+              marginTop: 16,
+              opacity: descIntro,
+              transform: `translateY(${descSlide}px)`,
+            }}
+          >
+            {spotlight.description}
+          </span>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -251,7 +309,7 @@ export function Launch() {
           durationInFrames={SPOTLIGHT_DURATION}
           premountFor={30}
         >
-          <SpotlightScene spotlight={spotlight} duration={SPOTLIGHT_DURATION} />
+          <SpotlightScene spotlight={spotlight} duration={SPOTLIGHT_DURATION} index={index} />
         </Sequence>
       ))}
       <Sequence from={featuresStart} durationInFrames={FEATURES_DURATION} premountFor={20}>
