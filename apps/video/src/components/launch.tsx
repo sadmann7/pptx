@@ -129,7 +129,7 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
           style={{
             position: "absolute",
             left: (1920 - cardW) / 2,
-            top: (1080 - cardH) / 2 - 56,
+            top: (1080 - cardH) / 2 - 24,
             width: cardW,
             height: cardH,
             borderRadius: 12,
@@ -156,7 +156,7 @@ function SpotlightScene({ spotlight, duration }: { spotlight: Spotlight; duratio
           </div>
         </div>
 
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 24, height: 100 }}>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 44, height: 100 }}>
           <Sequence from={10} durationInFrames={duration - 10} layout="none">
             <BlurOutUp text={spotlight.caption} fontSize={52} fontWeight={800} color={C.white} />
           </Sequence>
