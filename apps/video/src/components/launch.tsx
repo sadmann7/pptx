@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
 import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
+import { linearTiming, TransitionSeries } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
 
 import { PptxCard } from "@/components/pptx-card";
@@ -24,9 +26,6 @@ const ease = Easing.bezier(0.22, 1, 0.36, 1);
 
 const progress = (frame: number, from: number, to: number) =>
   interpolate(frame, [from, to], [0, 1], { ...clamp, easing: ease });
-
-const fadeWindow = (frame: number, duration: number, edge = 16) =>
-  interpolate(frame, [0, edge, duration - edge, duration], [0, 1, 1, 0], clamp);
 
 const font: CSSProperties = {
   fontFamily: geistSans,
@@ -123,20 +122,23 @@ const SPOTLIGHTS: Spotlight[] = [
   },
 ];
 
-function SpotlightScene({
-  spotlight,
-  duration,
-  index,
-}: {
-  spotlight: Spotlight;
-  duration: number;
-  index: number;
-}) {
+const SPOTLIGHT_DURATION = 85;
+
+function SpotlightScene({ spotlight, index }: { spotlight: Spotlight; index: number }) {
   const frame = useCurrentFrame();
   const intro = progress(frame, 0, 28);
   const captionIntro = progress(frame, 10, 38);
   const descIntro = progress(frame, 18, 46);
-  const opacity = fadeWindow(frame, duration, 14);
+
+  // Fade content out before the hard cut so the next spotlight's entrance
+  // doesn't overlap with lingering visuals from this one.
+  const exitFade = interpolate(
+    frame,
+    [SPOTLIGHT_DURATION - 12, SPOTLIGHT_DURATION - 2],
+    [1, 0],
+    clamp,
+  );
+  const contentOpacity = Math.min(intro, exitFade);
 
   const isLeft = index % 2 === 0;
 
@@ -156,7 +158,7 @@ function SpotlightScene({
   return (
     <AbsoluteFill>
       <Backdrop />
-      <AbsoluteFill style={{ opacity }}>
+      <AbsoluteFill style={{ opacity: contentOpacity }}>
         <div
           style={{
             position: "absolute",
@@ -167,7 +169,6 @@ function SpotlightScene({
             borderRadius: 12,
             overflow: "hidden",
             boxShadow: "0 40px 100px rgba(0,0,0,.45)",
-            opacity: intro,
             transform: `translate(${cardSlideX}px, ${cardSlideY}px) scale(${cardScale})`,
           }}
         >
@@ -205,11 +206,11 @@ function SpotlightScene({
           <span
             style={{
               ...font,
-              fontSize: 52,
+              fontSize: 64,
               fontWeight: 800,
               color: C.white,
-              letterSpacing: -1.2,
-              lineHeight: 1.15,
+              letterSpacing: -1.6,
+              lineHeight: 1.12,
               opacity: captionIntro,
               transform: `translateY(${captionSlide}px)`,
             }}
@@ -219,11 +220,11 @@ function SpotlightScene({
           <span
             style={{
               ...font,
-              fontSize: 22,
+              fontSize: 28,
               fontWeight: 400,
               color: C.muted,
               lineHeight: 1.5,
-              marginTop: 16,
+              marginTop: 18,
               opacity: descIntro,
               transform: `translateY(${descSlide}px)`,
             }}
@@ -236,9 +237,15 @@ function SpotlightScene({
   );
 }
 
-function TitleCard({ duration }: { duration: number }) {
+// ── Title ───────────────────────────────────────────────────────────────────
+
+const TITLE_DURATION = 60;
+
+function TitleCard() {
   const frame = useCurrentFrame();
-  const opacity = fadeWindow(frame, duration, 14);
+  // Fade content out before the crossfade so the blur-in text doesn't
+  // ghost into the first spotlight.
+  const exitFade = interpolate(frame, [TITLE_DURATION - 14, TITLE_DURATION - 4], [1, 0], clamp);
 
   return (
     <AbsoluteFill>
@@ -248,12 +255,12 @@ function TitleCard({ duration }: { duration: number }) {
           ...font,
           alignItems: "center",
           justifyContent: "center",
-          opacity,
+          opacity: exitFade,
         }}
       >
         <SoftBlurIn
-          text="PowerPoint in the Browser"
-          fontSize={96}
+          text="PowerPoint in the browser."
+          fontSize={104}
           fontWeight={800}
           color={C.white}
         />
@@ -261,6 +268,8 @@ function TitleCard({ duration }: { duration: number }) {
     </AbsoluteFill>
   );
 }
+
+// ── Features snaps ──────────────────────────────────────────────────────────
 
 const SNAPS = [
   "Parse. Render. Edit. Re-export.",
@@ -277,12 +286,14 @@ function FeaturesScene() {
       <Backdrop />
       {SNAPS.map((snap, i) => (
         <Sequence key={snap} from={i * SNAP_BEAT} durationInFrames={SNAP_BEAT} layout="none">
-          <FocusBlurResolve text={snap} fontSize={72} fontWeight={600} color={C.white} />
+          <FocusBlurResolve text={snap} fontSize={84} fontWeight={600} color={C.white} />
         </Sequence>
       ))}
     </AbsoluteFill>
   );
 }
+
+// ── CTA ─────────────────────────────────────────────────────────────────────
 
 const CTA_DURATION = 90;
 
@@ -301,43 +312,57 @@ function CtaScene() {
   );
 }
 
-const SPOTLIGHT_DURATION = 85;
-const OVERLAP = 8;
+// ── Composition ─────────────────────────────────────────────────────────────
+
+const FADE_DURATION = 12;
+const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
+
+const SPOTLIGHTS_TOTAL = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
 
 export function Launch() {
-  const spotlightStart = 75 - OVERLAP;
-  const featuresStart = spotlightStart + SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP);
-  const ctaStart = featuresStart + FEATURES_DURATION - OVERLAP;
-
   return (
-    <AbsoluteFill style={{ background: C.ink }}>
-      <Sequence from={0} durationInFrames={75} premountFor={20}>
-        <TitleCard duration={75} />
-      </Sequence>
-      {SPOTLIGHTS.map((spotlight, index) => (
-        <Sequence
-          key={spotlight.caption}
-          from={spotlightStart + index * (SPOTLIGHT_DURATION - OVERLAP)}
-          durationInFrames={SPOTLIGHT_DURATION}
-          premountFor={30}
-        >
-          <SpotlightScene spotlight={spotlight} duration={SPOTLIGHT_DURATION} index={index} />
-        </Sequence>
-      ))}
-      <Sequence from={featuresStart} durationInFrames={FEATURES_DURATION} premountFor={20}>
+    <TransitionSeries>
+      <TransitionSeries.Sequence durationInFrames={TITLE_DURATION}>
+        <TitleCard />
+      </TransitionSeries.Sequence>
+
+      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
+
+      {/* All spotlights in one sequence — hard cuts between them, each
+          manages its own entrance/exit fade internally. */}
+      <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
+        <AbsoluteFill>
+          {SPOTLIGHTS.map((spotlight, index) => (
+            <Sequence
+              key={`${spotlight.file}-${spotlight.slideIndex}`}
+              from={index * SPOTLIGHT_DURATION}
+              durationInFrames={SPOTLIGHT_DURATION}
+            >
+              <SpotlightScene spotlight={spotlight} index={index} />
+            </Sequence>
+          ))}
+        </AbsoluteFill>
+      </TransitionSeries.Sequence>
+
+      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
+
+      <TransitionSeries.Sequence durationInFrames={FEATURES_DURATION}>
         <FeaturesScene />
-      </Sequence>
-      <Sequence from={ctaStart} durationInFrames={CTA_DURATION} premountFor={20}>
+      </TransitionSeries.Sequence>
+
+      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
+
+      <TransitionSeries.Sequence durationInFrames={CTA_DURATION}>
         <CtaScene />
-      </Sequence>
-    </AbsoluteFill>
+      </TransitionSeries.Sequence>
+    </TransitionSeries>
   );
 }
 
+const SECTION_FADES = 3;
 export const LAUNCH_DURATION =
-  75 -
-  OVERLAP +
-  SPOTLIGHTS.length * (SPOTLIGHT_DURATION - OVERLAP) +
-  FEATURES_DURATION -
-  OVERLAP +
-  CTA_DURATION;
+  TITLE_DURATION +
+  SPOTLIGHTS_TOTAL +
+  FEATURES_DURATION +
+  CTA_DURATION -
+  SECTION_FADES * FADE_DURATION;
