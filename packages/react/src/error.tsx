@@ -4,9 +4,11 @@ import { usePresentation } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 
+type GlobalError = globalThis.Error;
+
 export interface ErrorState {
   /** The error thrown during parsing. */
-  error: Error;
+  error: GlobalError;
 }
 
 export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"> {
@@ -20,7 +22,7 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
    * </Presentation.Error>
    * ```
    */
-  children?: React.ReactNode | ((error: Error) => React.ReactNode);
+  children?: React.ReactNode | ((error: GlobalError) => React.ReactNode);
 
   /**
    * Replace the wrapper element.

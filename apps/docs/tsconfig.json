@@ -18,7 +18,8 @@
     "noUncheckedIndexedAccess": false,
     "paths": {
       "@/*": ["./src/*"],
-      "collections/*": ["./.source/*"]
+      "collections/*": ["./.source/*"],
+      "@pptx/ui/*": ["../../packages/ui/src/*"]
     },
     "plugins": [
       {

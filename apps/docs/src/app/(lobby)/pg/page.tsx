@@ -4,10 +4,9 @@ import * as React from "react";
 
 import type { PresentationData, PresentationStore } from "@diceui/pptx";
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@pptx/ui/components/button";
+import { Input } from "@pptx/ui/components/input";
+import { Label } from "@pptx/ui/components/label";
 import {
   Presentation,
   PresentationContent,
@@ -18,7 +17,7 @@ import {
   PresentationSlide,
   PresentationThumbnailList,
   PresentationViewport,
-} from "@/components/ui/presentation";
+} from "@pptx/ui/components/presentation";
 
 export default function PgPage() {
   const id = React.useId();

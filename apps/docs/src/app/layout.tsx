@@ -1,13 +1,13 @@
 import type * as React from "react";
 
+import { Toaster } from "@pptx/ui/components/sonner";
+import { cn } from "@pptx/ui/lib/utils";
 import type { Metadata, Viewport } from "next";
 
 import { Providers } from "@/components/providers";
 import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { Toaster } from "@/components/ui/sonner";
 import { fontMono, fontSans } from "@/lib/fonts";
 import { siteConfig } from "@/lib/site";
-import { cn } from "@/lib/utils";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {

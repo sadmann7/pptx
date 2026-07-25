@@ -18,6 +18,7 @@
     "format:check": "oxfmt --check",
     "check": "turbo lint typecheck --affected && pnpm format",
     "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
+    "shadcn": "pnpm --filter @pptx/ui shadcn",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo build --filter=!docs && changeset publish"
@@ -27,8 +28,9 @@
     "@pptx/config": "workspace:*",
     "@types/node": "catalog:",
     "oxfmt": "^0.58.0",
-    "oxlint": "^1.73.0",
+    "oxlint": "catalog:",
     "rimraf": "^6.1.3",
+    "tsx": "^4.22.4",
     "turbo": "^2.10.4",
     "typescript": "catalog:"
   },

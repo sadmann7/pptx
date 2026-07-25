@@ -16,7 +16,7 @@
     ]
   },
   "sortTailwindcss": {
-    "stylesheet": "./apps/docs/src/styles/globals.css",
+    "stylesheet": "./packages/ui/src/styles/globals.css",
     "functions": ["cn"]
   }
 }

@@ -1,0 +1,32 @@
+{
+  "name": "video",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio --no-open --port 3001",
+    "render": "remotion render launch out/launch.mp4",
+    "still": "remotion still launch out/frame.png",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@diceui/pptx": "workspace:*",
+    "@pptx/ui": "workspace:*",
+    "@remotion/cli": "4.0.491",
+    "@remotion/google-fonts": "4.0.491",
+    "@remotion/tailwind-v4": "4.0.491",
+    "@remotion/transitions": "4.0.491",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "remotion": "catalog:",
+    "tailwindcss": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}
