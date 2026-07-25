@@ -114,6 +114,24 @@ export interface PptxViewerEventMap {
   nodeerror: CustomEvent<{ nodeId: string; error: unknown }>;
 }
 
+/**
+ * Scale a rendered slide element to its display size.
+ *
+ * Uses `zoom` rather than `transform: scale()`: a transform rasterises the
+ * slide at its intrinsic size, so at a fractional scale every hairline lands
+ * between device pixels and is spread across two of them at partial coverage,
+ * which leaves table rules and thin shape outlines washed out and tinted by
+ * whatever they sit on. `zoom` scales at layout time, so those lines snap to
+ * whole device pixels and stay crisp, the way PowerPoint draws them.
+ *
+ * Client rects are reported in the same post-zoom coordinates a transform
+ * produced, so overlays that map slide coordinates by multiplying by the scale
+ * keep working unchanged.
+ */
+export function applySlideScale(element: HTMLElement, scale: number): void {
+  element.style.setProperty("zoom", String(scale));
+}
+
 export class PptxViewer extends EventTarget {
   protected container: HTMLElement;
   private viewerOptions: PptxViewerOptions;
@@ -494,8 +512,7 @@ export class PptxViewer extends EventTarget {
     });
 
     if (scale !== undefined && scale !== 1) {
-      handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = "top left";
+      applySlideScale(handle.element, scale);
     }
 
     container.appendChild(handle.element);
@@ -519,8 +536,8 @@ export class PptxViewer extends EventTarget {
 
   /**
    * Render a scaled preview of a slide into an external container.
-   * The slide is still laid out at intrinsic size and then transformed, so this
-   * avoids thumbnail-only reflow differences.
+   * The slide is laid out from the same intrinsic geometry and only scaled, so
+   * this avoids thumbnail-only reflow differences.
    */
   renderThumbnailToContainer(
     index: number,
@@ -576,7 +593,7 @@ export class PptxViewer extends EventTarget {
    * Draw a node-level overlay for a text search result.
    *
    * The overlay uses result bounds in intrinsic slide coordinates and is
-   * transformed together with the rendered slide. It does not modify slide text.
+   * scaled together with the rendered slide. It does not modify slide text.
    */
   async highlightSearchResult(
     result: TextSearchResult,
@@ -989,8 +1006,7 @@ export class PptxViewer extends EventTarget {
       });
 
       this.slideHandles.set(index, handle);
-      handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = "top left";
+      applySlideScale(handle.element, scale);
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(index, handle.element);
     } catch (error) {
@@ -1218,8 +1234,7 @@ export class PptxViewer extends EventTarget {
         chartInstances: this.chartInstances,
       });
       this.slideHandles.set(this.currentSlide, handle);
-      handle.element.style.transform = `scale(${scale})`;
-      handle.element.style.transformOrigin = "top left";
+      applySlideScale(handle.element, scale);
       wrapper.appendChild(handle.element);
       this.emitSlideRendered(this.currentSlide, handle.element);
     } catch (error) {
@@ -1270,7 +1285,7 @@ export class PptxViewer extends EventTarget {
       // The slide element is the first child of the wrapper
       const slideEl = wrapper.firstElementChild as HTMLElement | null;
       if (slideEl) {
-        slideEl.style.transform = `scale(${newScale})`;
+        applySlideScale(slideEl, newScale);
       }
     }
   }

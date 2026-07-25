@@ -1,0 +1,21 @@
+{
+  "name": "@pptx/visual",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "shoot": "node shoot.mjs",
+    "probe": "node probe.mjs",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@diceui/pptx-core": "workspace:*",
+    "@pptx/config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "playwright": "^1.61.1",
+    "typescript": "catalog:",
+    "vite": "^7.3.1"
+  }
+}

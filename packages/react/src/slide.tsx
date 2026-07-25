@@ -272,8 +272,9 @@ function SlideImpl({
           style={{
             width,
             height,
-            transformOrigin: "top left",
-            transform: `scale(${zoom})`,
+            // Layout-time scaling (see applySlideScale): keeps hairlines on
+            // whole device pixels instead of smearing them at fractional zoom.
+            zoom,
             position: "relative",
             // In edit mode the inner slide container unclips (pasteboard
             // behavior), so this wrapper must not reintroduce the clip.

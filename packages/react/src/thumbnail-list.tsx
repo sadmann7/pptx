@@ -11,7 +11,7 @@
 import * as React from "react";
 
 import type { SlideData, SlideHandle } from "@diceui/pptx-core";
-import { renderSlide } from "@diceui/pptx-core";
+import { applySlideScale, renderSlide } from "@diceui/pptx-core";
 
 import { VISUALLY_HIDDEN_STYLE } from "./constant";
 import {
@@ -637,7 +637,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         widthRef.current = width;
         const nextScale = width > 0 ? width / presentationWidthRef.current : 0;
         if (slideHandleRef.current && nextScale > 0)
-          slideHandleRef.current.element.style.transform = `scale(${nextScale})`;
+          applySlideScale(slideHandleRef.current.element, nextScale);
         if (hasRenderPropRef.current) setContainerWidth(width);
       });
     }, [observeResize]);
@@ -656,7 +656,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         if (slideHandleRef.current === slideHandle) return; // already attached
         const currentScale =
           widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
-        if (currentScale > 0) slideHandle.element.style.transform = `scale(${currentScale})`;
+        if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
         element.appendChild(slideHandle.element);
         slideHandleRef.current = slideHandle;
         hasRenderedRef.current = true;
@@ -699,7 +699,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
                 const mountedElement = itemPreviewRef.current;
                 if (!mountedElement || slideHandleRef.current) return;
                 const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-                slideHandle.element.style.transformOrigin = "top left";
                 slideHandleCache.set(slide.id, { slideHandle, revision: revisionRef.current });
                 attach(mountedElement, slideHandle);
               });
@@ -741,10 +740,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       slideHandleCache.delete(slide.id);
 
       const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-      slideHandle.element.style.transformOrigin = "top left";
       const currentScale =
         widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
-      if (currentScale > 0) slideHandle.element.style.transform = `scale(${currentScale})`;
+      if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
       element.appendChild(slideHandle.element);
       slideHandleRef.current = slideHandle;
       slideHandleCache.set(slide.id, { slideHandle, revision });
