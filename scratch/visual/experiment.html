@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        background: #efe9d9; /* slide background */
+      }
+      .wrap {
+        transform: scale(0.853);
+        transform-origin: top left;
+        width: 600px;
+      }
+      table {
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 600px;
+      }
+      td {
+        height: 40px;
+        padding: 0;
+      }
+      .dark {
+        background-color: #0f0f0f;
+      }
+      .light {
+        background-color: #efe9d9;
+      }
+      /* variant A: plain collapsed borders (current behaviour) */
+      #a td {
+        border: 1.333333px solid #000;
+      }
+      /* variant B: collapsed borders, table painted on an opaque backdrop */
+      #b {
+        background-color: #0f0f0f;
+      }
+      #b td {
+        border: 1.333333px solid #000;
+      }
+      /* variant C: separate borders, one owner per shared edge */
+      #c {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      #c td {
+        border: 0 solid #000;
+        border-right-width: 1.333333px;
+        border-bottom-width: 1.333333px;
+      }
+      #c td:first-child {
+        border-left-width: 1.333333px;
+      }
+      #c tr:first-child td {
+        border-top-width: 1.333333px;
+      }
+      /* variant D: separate borders + fill bled under the seam via box-shadow */
+      #d {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      #d td {
+        border: 0 solid #000;
+        border-right-width: 1.333333px;
+        border-bottom-width: 1.333333px;
+      }
+      #d td:first-child {
+        border-left-width: 1.333333px;
+      }
+      #d tr:first-child td {
+        border-top-width: 1.333333px;
+      }
+      #d td.dark {
+        box-shadow: 0 0 0 1px #0f0f0f;
+      }
+      #d td.light {
+        box-shadow: 0 0 0 1px #efe9d9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <table id="a">
+        <tr>
+          <td class="dark"></td>
+          <td class="dark"></td>
+        </tr>
+        <tr>
+          <td class="light"></td>
+          <td class="light"></td>
+        </tr>
+      </table>
+      <table id="b">
+        <tr>
+          <td class="dark"></td>
+          <td class="dark"></td>
+        </tr>
+        <tr>
+          <td class="light"></td>
+          <td class="light"></td>
+        </tr>
+      </table>
+      <table id="c">
+        <tr>
+          <td class="dark"></td>
+          <td class="dark"></td>
+        </tr>
+        <tr>
+          <td class="light"></td>
+          <td class="light"></td>
+        </tr>
+      </table>
+      <table id="d">
+        <tr>
+          <td class="dark"></td>
+          <td class="dark"></td>
+        </tr>
+        <tr>
+          <td class="light"></td>
+          <td class="light"></td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -18,12 +18,27 @@
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 
 // ---------------------------------------------------------------------------
-// UUID → (styleName, accent) map: 74 entries across 11 style groups
+// UUID → (styleName, accent) map: 74 entries across 13 style groups
 // ---------------------------------------------------------------------------
 
+/** "No Style, No Grid": text styling only, no fills and no borders. */
+export const NO_STYLE_NO_GRID = "{2D5ABB26-0587-4C30-8999-92F81FD0307C}";
+
+/**
+ * "No Style, Table Grid": a plain 1pt tx1 grid on every cell edge and no fills.
+ * PowerPoint renders tables that reference no table style this way, so it also
+ * serves as the fallback for an absent `a:tableStyleId`.
+ */
+export const NO_STYLE_TABLE_GRID = "{5940675A-B579-460E-94D1-54222C63F5DA}";
+
 const styleIdMap = new Map<string, [string, string]>([
+  // The two "No Style" pseudo-styles that head the Themed-Style groups
+  // (MS-OE376 §5.1.6.10). They are not themed at all: one draws nothing, the
+  // other draws only a plain tx1 grid.
+  [NO_STYLE_NO_GRID, ["No-Style-No-Grid", ""]],
+  [NO_STYLE_TABLE_GRID, ["No-Style-Table-Grid", ""]],
+
   // Themed-Style-1
-  ["{2D5ABB26-0587-4C30-8999-92F81FD0307C}", ["Themed-Style-1", ""]],
   ["{3C2FFA5D-87B4-456A-9821-1D502468CF0F}", ["Themed-Style-1", "accent1"]],
   ["{284E427A-3D55-4303-BF80-6455036E1DE7}", ["Themed-Style-1", "accent2"]],
   ["{69C7853C-536D-4A76-A0AE-DD22124D55A5}", ["Themed-Style-1", "accent3"]],
@@ -32,7 +47,6 @@ const styleIdMap = new Map<string, [string, string]>([
   ["{08FB837D-C827-4EFA-A057-4D05807E0F7C}", ["Themed-Style-1", "accent6"]],
 
   // Themed-Style-2
-  ["{5940675A-B579-460E-94D1-54222C63F5DA}", ["Themed-Style-2", ""]],
   ["{D113A9D2-9D6B-4929-AA2D-F23B5EE8CBE7}", ["Themed-Style-2", "accent1"]],
   ["{18603FDC-E32A-4AB5-989C-0864C3EAD2B8}", ["Themed-Style-2", "accent2"]],
   ["{306799F8-075E-4A3A-A7F6-7FBC6576F1A4}", ["Themed-Style-2", "accent3"]],
@@ -175,130 +189,125 @@ function stylePart(
 // Style group XML generators
 // ---------------------------------------------------------------------------
 
+/** "No Style, No Grid": tcTxStyle only — nothing is painted. */
+function noStyleNoGrid(_accent: string, styleId: string): string {
+  return wrapTblStyle(styleId, "No-Style-No-Grid", stylePart("wholeTbl", { textColor: "tx1" }));
+}
+
+/** "No Style, Table Grid": 1pt tx1 line on all six edges, no fill, no banding. */
+function noStyleTableGrid(_accent: string, styleId: string): string {
+  return wrapTblStyle(
+    styleId,
+    "No-Style-Table-Grid",
+    stylePart("wholeTbl", {
+      textColor: "tx1",
+      borders: {
+        left: borderLn("tx1"),
+        right: borderLn("tx1"),
+        top: borderLn("tx1"),
+        bottom: borderLn("tx1"),
+        insideH: borderLn("tx1"),
+        insideV: borderLn("tx1"),
+      },
+    }),
+  );
+}
+
 function themedStyle1(accent: string, styleId: string): string {
-  const hasAccent = accent !== "";
-  const accentVal = hasAccent ? accent : "tx1";
+  const accentVal = accent;
   const parts: string[] = [];
 
-  if (hasAccent) {
-    // wholeTbl: text=dk1, borders=accent on all sides
-    const allBorders: Record<string, string> = {
-      left: borderLn(accentVal),
-      right: borderLn(accentVal),
-      top: borderLn(accentVal),
-      bottom: borderLn(accentVal),
-      insideH: borderLn(accentVal),
-      insideV: borderLn(accentVal),
-    };
-    parts.push(stylePart("wholeTbl", { textColor: "dk1", borders: allBorders }));
+  // wholeTbl: text=dk1, borders=accent on all sides
+  const allBorders: Record<string, string> = {
+    left: borderLn(accentVal),
+    right: borderLn(accentVal),
+    top: borderLn(accentVal),
+    bottom: borderLn(accentVal),
+    insideH: borderLn(accentVal),
+    insideV: borderLn(accentVal),
+  };
+  parts.push(stylePart("wholeTbl", { textColor: "dk1", borders: allBorders }));
 
-    // band1H/V: accent + alpha(40000)
-    const bandFill = fillSolid(accentVal, `alpha val="40000"`);
-    parts.push(stylePart("band1H", { fill: bandFill }));
-    parts.push(stylePart("band1V", { fill: bandFill }));
+  // band1H/V: accent + alpha(40000)
+  const bandFill = fillSolid(accentVal, `alpha val="40000"`);
+  parts.push(stylePart("band1H", { fill: bandFill }));
+  parts.push(stylePart("band1V", { fill: bandFill }));
 
-    // firstRow: text=lt1, bold, fill=accent, borders=accent (+ bottom=lt1)
-    parts.push(
-      stylePart("firstRow", {
-        textColor: "lt1",
-        bold: true,
-        fill: fillSolid(accentVal),
-        borders: {
-          left: borderLn(accentVal),
-          right: borderLn(accentVal),
-          top: borderLn(accentVal),
-          bottom: borderLn("lt1"),
-        },
-      }),
-    );
+  // firstRow: text=lt1, bold, fill=accent, borders=accent (+ bottom=lt1)
+  parts.push(
+    stylePart("firstRow", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+      borders: {
+        left: borderLn(accentVal),
+        right: borderLn(accentVal),
+        top: borderLn(accentVal),
+        bottom: borderLn("lt1"),
+      },
+    }),
+  );
 
-    // lastRow: bold, borders=accent
-    parts.push(
-      stylePart("lastRow", {
-        bold: true,
-        borders: {
-          left: borderLn(accentVal),
-          right: borderLn(accentVal),
-          top: borderLn(accentVal),
-          bottom: borderLn(accentVal),
-        },
-      }),
-    );
+  // lastRow: bold, borders=accent
+  parts.push(
+    stylePart("lastRow", {
+      bold: true,
+      borders: {
+        left: borderLn(accentVal),
+        right: borderLn(accentVal),
+        top: borderLn(accentVal),
+        bottom: borderLn(accentVal),
+      },
+    }),
+  );
 
-    // firstCol/lastCol: bold, borders=accent (+ insideH)
-    const colBorders: Record<string, string> = {
-      left: borderLn(accentVal),
-      right: borderLn(accentVal),
-      top: borderLn(accentVal),
-      bottom: borderLn(accentVal),
-      insideH: borderLn(accentVal),
-    };
-    parts.push(stylePart("firstCol", { bold: true, borders: colBorders }));
-    parts.push(stylePart("lastCol", { bold: true, borders: colBorders }));
-  } else {
-    // No accent: text=tx1, band with alpha
-    parts.push(stylePart("wholeTbl", { textColor: "tx1" }));
-    const bandFill = fillSolid("tx1", `alpha val="40000"`);
-    parts.push(stylePart("band1H", { fill: bandFill }));
-    parts.push(stylePart("band1V", { fill: bandFill }));
-  }
+  // firstCol/lastCol: bold, borders=accent (+ insideH)
+  const colBorders: Record<string, string> = {
+    left: borderLn(accentVal),
+    right: borderLn(accentVal),
+    top: borderLn(accentVal),
+    bottom: borderLn(accentVal),
+    insideH: borderLn(accentVal),
+  };
+  parts.push(stylePart("firstCol", { bold: true, borders: colBorders }));
+  parts.push(stylePart("lastCol", { bold: true, borders: colBorders }));
 
   return wrapTblStyle(styleId, "Themed-Style-1", parts.join(""));
 }
 
 function themedStyle2(accent: string, styleId: string): string {
-  const hasAccent = accent !== "";
+  const accentVal = accent;
   const parts: string[] = [];
 
-  if (hasAccent) {
-    const accentVal = accent;
-    // tblBg: accent fill
-    const tblBg = `<a:tblBg><a:fillRef idx="1"><a:schemeClr val="${accentVal}"/></a:fillRef></a:tblBg>`;
+  // tblBg: accent fill
+  const tblBg = `<a:tblBg><a:fillRef idx="1"><a:schemeClr val="${accentVal}"/></a:fillRef></a:tblBg>`;
 
-    // wholeTbl: text=lt1, outer borders=accent+tint(50000)
-    const outerBorders: Record<string, string> = {
-      left: borderLn(accentVal, `tint val="50000"`),
-      right: borderLn(accentVal, `tint val="50000"`),
-      top: borderLn(accentVal, `tint val="50000"`),
-      bottom: borderLn(accentVal, `tint val="50000"`),
-    };
-    parts.push(stylePart("wholeTbl", { textColor: "lt1", borders: outerBorders }));
+  // wholeTbl: text=lt1, outer borders=accent+tint(50000)
+  const outerBorders: Record<string, string> = {
+    left: borderLn(accentVal, `tint val="50000"`),
+    right: borderLn(accentVal, `tint val="50000"`),
+    top: borderLn(accentVal, `tint val="50000"`),
+    bottom: borderLn(accentVal, `tint val="50000"`),
+  };
+  parts.push(stylePart("wholeTbl", { textColor: "lt1", borders: outerBorders }));
 
-    // band1H/V: lt1 + alpha(20000)
-    const bandFill = fillSolid("lt1", `alpha val="20000"`);
-    parts.push(stylePart("band1H", { fill: bandFill }));
-    parts.push(stylePart("band1V", { fill: bandFill }));
+  // band1H/V: lt1 + alpha(20000)
+  const bandFill = fillSolid("lt1", `alpha val="20000"`);
+  parts.push(stylePart("band1H", { fill: bandFill }));
+  parts.push(stylePart("band1V", { fill: bandFill }));
 
-    // firstRow: text=lt1, bold, bottom border=lt1
-    parts.push(
-      stylePart("firstRow", { textColor: "lt1", bold: true, borders: { bottom: borderLn("lt1") } }),
-    );
-    // lastRow: bold, top border=lt1
-    parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn("lt1") } }));
-    // firstCol: bold, right border=lt1
-    parts.push(stylePart("firstCol", { bold: true, borders: { right: borderLn("lt1") } }));
-    // lastCol: bold, left border=lt1
-    parts.push(stylePart("lastCol", { bold: true, borders: { left: borderLn("lt1") } }));
+  // firstRow: text=lt1, bold, bottom border=lt1
+  parts.push(
+    stylePart("firstRow", { textColor: "lt1", bold: true, borders: { bottom: borderLn("lt1") } }),
+  );
+  // lastRow: bold, top border=lt1
+  parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn("lt1") } }));
+  // firstCol: bold, right border=lt1
+  parts.push(stylePart("firstCol", { bold: true, borders: { right: borderLn("lt1") } }));
+  // lastCol: bold, left border=lt1
+  parts.push(stylePart("lastCol", { bold: true, borders: { left: borderLn("lt1") } }));
 
-    return wrapTblStyle(styleId, "Themed-Style-2", tblBg + parts.join(""));
-  } else {
-    // No accent: text=tx1 (implicit), outer borders=tx1+tint(50000), inside borders=tx1
-    const outerBorders: Record<string, string> = {
-      left: borderLn("tx1", `tint val="50000"`),
-      right: borderLn("tx1", `tint val="50000"`),
-      top: borderLn("tx1", `tint val="50000"`),
-      bottom: borderLn("tx1", `tint val="50000"`),
-      insideH: borderLn("tx1"),
-      insideV: borderLn("tx1"),
-    };
-    parts.push(stylePart("wholeTbl", { borders: outerBorders }));
-
-    const bandFill = fillSolid("tx1", `alpha val="20000"`);
-    parts.push(stylePart("band1H", { fill: bandFill }));
-    parts.push(stylePart("band1V", { fill: bandFill }));
-
-    return wrapTblStyle(styleId, "Themed-Style-2", parts.join(""));
-  }
+  return wrapTblStyle(styleId, "Themed-Style-2", tblBg + parts.join(""));
 }
 
 function lightStyle1(accent: string, styleId: string): string {
@@ -759,6 +768,8 @@ function wrapTblStyle(styleId: string, styleName: string, innerXml: string): str
 // ---------------------------------------------------------------------------
 
 const styleGenerators: Record<string, (accent: string, styleId: string) => string> = {
+  "No-Style-No-Grid": noStyleNoGrid,
+  "No-Style-Table-Grid": noStyleTableGrid,
   "Themed-Style-1": themedStyle1,
   "Themed-Style-2": themedStyle2,
   "Light-Style-1": lightStyle1,
