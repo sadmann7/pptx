@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import { applyEdit } from "../../edit/operation";
 import type { ShapeNodeData } from "../../model/nodes/shape";
+import type { TableNodeData } from "../../model/nodes/table";
 import { buildPresentation, PresentationData } from "../../model/presentation";
 import { writePptx } from "../../ooxml/writer";
 import { readPptx } from "../../ooxml/zip";
@@ -33,6 +34,24 @@ function shapeWithoutXfrm(id: number): string {
 <p:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
 <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></p:txBody>
 </p:sp>`;
+}
+
+/** 2x2 table, 480x96px: grid columns 120px + 360px, rows 48px each. */
+function tableFrame(id: number): string {
+  const cell = (text: string) =>
+    `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
+  return `<p:graphicFrame>
+<p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="914400" y="914400"/><a:ext cx="4572000" cy="914400"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+<a:tbl>
+<a:tblPr firstRow="1"/>
+<a:tblGrid><a:gridCol w="1143000"/><a:gridCol w="3429000"/></a:tblGrid>
+<a:tr h="457200">${cell("A")}${cell("B")}</a:tr>
+<a:tr h="457200">${cell("C")}${cell("D")}</a:tr>
+</a:tbl>
+</a:graphicData></a:graphic>
+</p:graphicFrame>`;
 }
 
 async function openEditable(slides: string[]): Promise<PresentationData> {
@@ -56,6 +75,12 @@ function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): Sh
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
   if (!node || node.nodeType !== "shape") throw new Error(`shape ${nodeId} not found`);
   return node as ShapeNodeData;
+}
+
+function tableOn(pres: PresentationData, slideIndex: number, nodeId: string): TableNodeData {
+  const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
+  if (!node || node.nodeType !== "table") throw new Error(`table ${nodeId} not found`);
+  return node;
 }
 
 describe("applyEdit guards", () => {
@@ -168,6 +193,57 @@ describe("setNodeTransform", () => {
     // The created xfrm is removed again; spPr starts with prstGeom as before.
     expect(undoneXml).toContain("<p:spPr><a:prstGeom");
     expect(shapeOn(pres, 0, "2").position).toEqual({ x: 0, y: 0 });
+  });
+
+  it("scales a table's grid so the table matches its new frame", async () => {
+    // A table's rendered size comes from the grid (sum of gridCol widths and
+    // tr heights), not the frame extent, so resizing the frame alone left the
+    // table at its old size while the selection box shrank around it.
+    const pres = await openEditable([tableFrame(2)]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "setNodeTransform",
+      slideId,
+      nodeId: "2",
+      size: { w: 240, h: 48 }, // half the original 480x96
+    });
+
+    const table = tableOn(pres, 0, "2");
+    expect(table.size).toEqual({ w: 240, h: 48 });
+    expect(table.columns).toEqual([60, 180]);
+    expect(table.rows.map((row) => row.height)).toEqual([24, 24]);
+
+    const slideXml = await savedPartText(pres, "ppt/slides/slide1.xml");
+    expect(slideXml).toContain('<a:gridCol w="571500"/><a:gridCol w="1714500"/>');
+    expect(slideXml).toContain('<a:tr h="228600">');
+
+    const reopened = await saveAndReopen(pres);
+    expect(tableOn(reopened, 0, "2").columns).toEqual([60, 180]);
+    expect(tableOn(reopened, 0, "2").rows.map((row) => row.height)).toEqual([24, 24]);
+
+    result.undo();
+    expect(tableOn(pres, 0, "2").columns).toEqual([120, 360]);
+    expect(tableOn(pres, 0, "2").rows.map((row) => row.height)).toEqual([48, 48]);
+    const undoneXml = await savedPartText(pres, "ppt/slides/slide1.xml");
+    expect(undoneXml).toContain('<a:gridCol w="1143000"/><a:gridCol w="3429000"/>');
+    expect(undoneXml).toContain('<a:tr h="457200">');
+  });
+
+  it("moving a table leaves its grid untouched", async () => {
+    const pres = await openEditable([tableFrame(2)]);
+
+    await applyEdit(pres, {
+      type: "setNodeTransform",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      position: { x: 10, y: 20 },
+    });
+
+    const table = tableOn(pres, 0, "2");
+    expect(table.position).toEqual({ x: 10, y: 20 });
+    expect(table.columns).toEqual([120, 360]);
+    expect(table.rows.map((row) => row.height)).toEqual([48, 48]);
   });
 
   it("sets and clears flips", async () => {

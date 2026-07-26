@@ -61,6 +61,26 @@ describe("table sizing", () => {
     expect(wrapper.style.height).toBe("96px");
   });
 
+  it("resolves the node size from the grid so overlays match the render", async () => {
+    const buffer = await buildPptxWithShapes(`<p:graphicFrame>
+<p:nvGraphicFramePr><p:cNvPr id="4" name="Table"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="914400" y="914400"/><a:ext cx="3000000" cy="3000000"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+<a:tbl>
+<a:tblPr/>
+<a:tblGrid><a:gridCol w="4572000"/><a:gridCol w="4572000"/></a:tblGrid>
+<a:tr h="457200">${tableCell("A")}${tableCell("B")}</a:tr>
+<a:tr h="457200">${tableCell("C")}${tableCell("D")}</a:tr>
+</a:tbl>
+</a:graphicData></a:graphic>
+</p:graphicFrame>`);
+
+    const presentation = buildPresentation(await readPptx(buffer));
+    const node = presentation.slides[0].nodes[0];
+    expect(node.nodeType).toBe("table");
+    expect(node.size).toEqual({ w: 960, h: 96 });
+  });
+
   it("keeps proportional column widths from the grid", async () => {
     const wrapper = await renderTableFrame(
       `<a:ext cx="3000000" cy="3000000"/>`,
