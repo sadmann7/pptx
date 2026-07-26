@@ -3,7 +3,7 @@ import { act } from "react";
 import type { SlideNode } from "@diceui/pptx-core";
 import { PPTX_DATASET } from "@diceui/pptx-core";
 import { fireEvent, render, waitFor } from "@testing-library/react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
 import type { GripDirection, Rect } from "../selection";
@@ -562,12 +562,27 @@ const PAST_SLIDE = 90_000;
  */
 let hitTarget: HTMLElement | null = null;
 
+/** Set when the stub below is ours to remove again. */
+let stubbedHitTest = false;
+
 beforeAll(() => {
-  document.elementsFromPoint ??= () => (hitTarget ? [hitTarget] : []);
+  // Typed as always present, but happy-dom does not implement it.
+  if (typeof document.elementsFromPoint === "function") return;
+  document.elementsFromPoint = () => (hitTarget ? [hitTarget] : []);
+  stubbedHitTest = true;
 });
 
-beforeEach(() => {
+// The suite runs with `isolate: false`, so `document` is shared with the other
+// test files in this worker: clean up after the last test, not just before the
+// next one, or a stale target follows them.
+afterEach(() => {
   hitTarget = null;
+});
+
+afterAll(() => {
+  if (!stubbedHitTest) return;
+  Reflect.deleteProperty(document, "elementsFromPoint");
+  stubbedHitTest = false;
 });
 
 function band(
