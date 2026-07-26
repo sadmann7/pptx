@@ -1,5 +1,5 @@
 /**
- * Smoke specs for the real decks (specs/decks.ts).
+ * Smoke specs for the exported decks (specs/decks.ts).
  *
  * The oracle scores these decks against PowerPoint, but SSIM is a blunt
  * instrument: a dropped image on a busy slide, or a shape that renders as an
@@ -9,10 +9,10 @@
  */
 import { expect, type Page, test } from "@playwright/test";
 
-import { REAL_DECKS } from "./decks";
+import { EXPORTED_DECKS } from "./decks";
 import { getStructure, openSlide, slideContainer } from "./utils";
 
-// One test covers a whole deck, so it pays for nine harness loads of a real
+// One test covers a whole deck, so it pays for nine harness loads of a full
 // presentation and runs past the default 30s once the rest of the suite is
 // competing for the CPU.
 test.describe.configure({ timeout: 120_000 });
@@ -55,8 +55,8 @@ async function brokenMedia(page: Page): Promise<string[]> {
   });
 }
 
-for (const { name, slides } of REAL_DECKS) {
-  test.describe(`real deck: ${name}`, () => {
+for (const { name, slides } of EXPORTED_DECKS) {
+  test.describe(`exported deck: ${name}`, () => {
     test("renders every slide with content and no failures", async ({ page }) => {
       const failures: string[] = [];
       page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
