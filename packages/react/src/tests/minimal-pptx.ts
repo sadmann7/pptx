@@ -1,7 +1,11 @@
 /**
  * Builds a minimal, spec-valid .pptx in memory for store/component tests.
- * Three blank-layout slides, each containing one rect shape, 12192000x6858000
+ * Three blank-layout slides, each containing two rect shapes, 12192000x6858000
  * EMU slide size (16:9, 1280x720 px at 96 DPI).
+ *
+ * Two shapes rather than one so multi-selection has something to select: at
+ * 9525 EMU per px they land at (128,128,288x192) and (500,300,200x100), which
+ * are disjoint, so a band can enclose either one or both.
  */
 import JSZip from "jszip";
 
@@ -147,6 +151,15 @@ function slideXml(index: number): string {
 <a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>
 </p:spPr>
 <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US"/><a:t>Slide ${index}</a:t></a:r></a:p></p:txBody>
+</p:sp>
+<p:sp>
+<p:nvSpPr><p:cNvPr id="3" name="Rect ${index} B"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+<p:spPr>
+<a:xfrm><a:off x="4762500" y="2857500"/><a:ext cx="1905000" cy="952500"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+<a:solidFill><a:srgbClr val="ED7D31"/></a:solidFill>
+</p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US"/><a:t>B</a:t></a:r></a:p></p:txBody>
 </p:sp>
 </p:spTree>
 </p:cSld>
