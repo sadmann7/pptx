@@ -221,14 +221,17 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           unsubscribeStore();
         };
       },
-      [store],
+      [store, tabStopListenersRef],
     );
 
-    const setCurrentTabStopId = React.useCallback((slideId: string | null) => {
-      if (currentTabStopIdRef.current === slideId) return;
-      currentTabStopIdRef.current = slideId;
-      for (const callback of tabStopListenersRef.current) callback();
-    }, []);
+    const setCurrentTabStopId = React.useCallback(
+      (slideId: string | null) => {
+        if (currentTabStopIdRef.current === slideId) return;
+        currentTabStopIdRef.current = slideId;
+        for (const callback of tabStopListenersRef.current) callback();
+      },
+      [tabStopListenersRef],
+    );
 
     // Shared caches, keyed by presentation identity
     const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
@@ -269,14 +272,17 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         : null,
     );
 
-    const observeResize = React.useCallback((element: Element, cb: (width: number) => void) => {
-      resizeCallbacksRef.current.set(element, cb);
-      sharedResizeObserverRef.current?.observe(element);
-      return () => {
-        resizeCallbacksRef.current.delete(element);
-        sharedResizeObserverRef.current?.unobserve(element);
-      };
-    }, []);
+    const observeResize = React.useCallback(
+      (element: Element, cb: (width: number) => void) => {
+        resizeCallbacksRef.current.set(element, cb);
+        sharedResizeObserverRef.current?.observe(element);
+        return () => {
+          resizeCallbacksRef.current.delete(element);
+          sharedResizeObserverRef.current?.unobserve(element);
+        };
+      },
+      [resizeCallbacksRef, sharedResizeObserverRef],
+    );
 
     // Batch renderThumbnail() calls that arrive simultaneously (e.g. initial
     // viewport fills, rapid scroll) and drains them within an ~8ms per-frame
@@ -284,17 +290,20 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const renderQueueRef = useLazyRef<Array<() => void>>(() => []);
     const drainRafRef = React.useRef<number | null>(null);
 
-    const drainRenderQueue = React.useCallback(function drain() {
-      drainRafRef.current = null;
-      const queue = renderQueueRef.current;
-      if (queue.length === 0) return;
-      const budgetMs = 8;
-      const frameStart = performance.now();
-      do {
-        queue.shift()?.();
-      } while (queue.length > 0 && performance.now() - frameStart < budgetMs);
-      if (queue.length > 0) drainRafRef.current = requestAnimationFrame(drain);
-    }, []);
+    const drainRenderQueue = React.useCallback(
+      function drain() {
+        drainRafRef.current = null;
+        const queue = renderQueueRef.current;
+        if (queue.length === 0) return;
+        const budgetMs = 8;
+        const frameStart = performance.now();
+        do {
+          queue.shift()?.();
+        } while (queue.length > 0 && performance.now() - frameStart < budgetMs);
+        if (queue.length > 0) drainRafRef.current = requestAnimationFrame(drain);
+      },
+      [renderQueueRef],
+    );
 
     const scheduleRender = React.useCallback(
       (fn: () => void): (() => void) => {
@@ -306,7 +315,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           if (idx !== -1) renderQueueRef.current.splice(idx, 1);
         };
       },
-      [drainRenderQueue],
+      [drainRenderQueue, renderQueueRef],
     );
 
     React.useEffect(() => {
@@ -319,7 +328,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         }
         renderQueueRef.current = [];
       };
-    }, []);
+    }, [sharedResizeObserverRef, renderQueueRef]);
 
     const activeSlideId = useStoreSelector(store, (s) => s.activeSlideId, null);
 
@@ -331,7 +340,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
       const firstItem = activeItem ?? items.values().next().value;
       firstItem?.focus({ preventScroll: true });
-    }, [presentation, activeSlideId]);
+    }, [presentation, activeSlideId, itemsRef]);
 
     const hasTabStop = React.useSyncExternalStore(
       subscribeTabStop,
@@ -344,7 +353,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         subscribeTabStop,
         getEffectiveTabStopId,
         onItemFocus: setCurrentTabStopId,
-        onItemRegister: (slideId, el) => itemsRef.current.set(slideId, el),
+        onItemRegister: (slideId, element) => itemsRef.current.set(slideId, element),
         onItemUnregister: (slideId) => itemsRef.current.delete(slideId),
         itemsRef,
         loop,
@@ -357,6 +366,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         subscribeTabStop,
         getEffectiveTabStopId,
         setCurrentTabStopId,
+        itemsRef,
         loop,
         mediaUrlCache,
         slideHandleCache,
@@ -628,7 +638,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         widthRef.current = itemPreviewElement.offsetWidth;
         if (hasRenderPropRef.current) setContainerWidth(itemPreviewElement.offsetWidth);
       }
-    }, []);
+    }, [hasRenderPropRef]);
 
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
@@ -640,7 +650,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           applySlideScale(slideHandleRef.current.element, nextScale);
         if (hasRenderPropRef.current) setContainerWidth(width);
       });
-    }, [observeResize]);
+    }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
     // The IntersectionObserver fires when this preview enters/leaves the
     // rootMargin zone (200px around the scroll container). On entry:
@@ -675,16 +685,17 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
       const intersectionObserver = new IntersectionObserver(
         (entries) => {
-          const entry = entries[entries.length - 1]; // latest state wins
+          const entry = entries.at(-1); // latest state wins
           if (!entry) return;
           const element = itemPreviewRef.current;
           if (!element) return;
 
-          if (entry.isIntersecting) {
-            // Cancel any pending detach-queued render from a previous cycle.
-            cancelRender?.();
-            cancelRender = null;
+          // Cancel any pending render queued by a previous cycle before either
+          // re-attaching or detaching.
+          cancelRender?.();
+          cancelRender = null;
 
+          if (entry.isIntersecting) {
             const cached = slideHandleCache.get(slide.id);
             if (cached && cached.revision === revisionRef.current) {
               attach(element, cached.slideHandle);
@@ -704,8 +715,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               });
             }
           } else {
-            cancelRender?.();
-            cancelRender = null;
             detach(element);
           }
         },
@@ -718,10 +727,17 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         intersectionObserver.disconnect();
         cancelRender?.();
         cancelRender = null;
-        const itemPreviewElement = itemPreviewRef.current;
-        if (itemPreviewElement) detach(itemPreviewElement);
+        detach(itemPreviewElement);
       };
-    }, [presentation, slide, mediaUrlCache, slideHandleCache, scheduleRender]);
+    }, [
+      presentation,
+      slide,
+      mediaUrlCache,
+      slideHandleCache,
+      scheduleRender,
+      revisionRef,
+      presentationWidthRef,
+    ]);
 
     // Re-render the miniature in place when an edit bumps the revision,
     // without tearing down the IntersectionObserver (the detach→re-attach
@@ -746,6 +762,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       element.appendChild(slideHandle.element);
       slideHandleRef.current = slideHandle;
       slideHandleCache.set(slide.id, { slideHandle, revision });
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision-only: the IO effect above handles presentation and slide changes, and every visual edit bumps revision
     }, [revision]);
 
     return renderElement(

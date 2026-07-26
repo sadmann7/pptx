@@ -122,7 +122,7 @@ interface SlideImplProps {
   zoom: number;
   /** Edit revision of this slide; a change forces a fresh render. */
   revision: number;
-  /** Content revision: unchanged when only node transforms were edited. */
+  /** Content revision that stays unchanged when only node transforms were edited. */
   contentRevision: number;
   children?: React.ReactNode;
 }
@@ -216,7 +216,7 @@ function SlideImpl({
     nodeSnapshotRef.current = buildNodeSnapshot(slide);
     contentRevisionRef.current = contentRevision;
     renderedSlideIdRef.current = slide.id;
-  }, [presentation, slide, revision, contentRevision]);
+  }, [presentation, slide, revision, contentRevision, mediaUrlCacheRef]);
 
   React.useEffect(() => {
     return () => {

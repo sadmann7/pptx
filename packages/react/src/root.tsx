@@ -143,7 +143,7 @@ export function Root({
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
-  }, [store, file, readOnly]);
+  }, [store, file, readOnly, defaultSlideIndexRef, onLoadRef, onErrorRef]);
 
   return (
     <Context.Provider value={store}>

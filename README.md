@@ -165,10 +165,13 @@ pnpm check        # lint + typecheck + format (oxlint + tsc + oxfmt)
 ```text
 pptx/
 ├── apps/
-│   └── docs/              # Next.js docs + interactive playground
+│   ├── docs/              # Next.js docs + interactive playground
+│   └── video/             # Remotion video renderer
 └── packages/
     ├── core/              # @diceui/pptx-core (OOXML parse, render, edit, save)
     ├── react/             # @diceui/pptx (React primitives)
+    ├── ui/                # @pptx/ui (shared shadcn/ui components)
+    ├── e2e/               # @diceui/pptx-e2e (visual regression tests)
     └── config/            # Shared TypeScript / build config
 ```
 

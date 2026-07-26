@@ -20,10 +20,10 @@ import {
   TitleComponent,
   TooltipComponent,
 } from "echarts/components";
-import { graphic, init, use } from "echarts/core";
+import { graphic, init, use as registerCharts } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 
-use([
+registerCharts([
   BarChart,
   LineChart,
   PieChart,

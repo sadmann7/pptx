@@ -401,17 +401,17 @@ export function createStore(): Store {
   }
 
   function setState(
-    next: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
+    update: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
   ): void {
-    const patch = typeof next === "function" ? next(state) : next;
+    const patch = typeof update === "function" ? update(state) : update;
     state = { ...state, ...patch };
     if ("presentation" in patch) rebuildSlideIndex(state.presentation);
     emit();
   }
 
-  function replaceState(next: StoreState): void {
-    state = next;
-    rebuildSlideIndex(next.presentation);
+  function replaceState(nextState: StoreState): void {
+    state = nextState;
+    rebuildSlideIndex(nextState.presentation);
     emit();
   }
 
