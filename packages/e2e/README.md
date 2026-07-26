@@ -50,6 +50,13 @@ Ground-truth PNGs under `fixtures/ground-truth/` come from PowerPoint itself via
 `pnpm oracle:export` (Windows, PowerPoint installed), exported at each deck's
 native slide size.
 
+The SSIM each slide scores against that ground truth is recorded per platform in
+`specs/oracle-baselines/`, since Linux scores lower for want of the decks' fonts
+(~0.015, and 0.06 on the worst slide). Re-record locally with
+`pnpm test:oracle-update`, and for Linux with the `Record PowerPoint oracle
+baselines` workflow, which uploads them as an artifact to review before
+committing.
+
 ## Debugging a rendering bug
 
 Start the harness and open a slide directly:
