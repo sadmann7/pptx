@@ -24,7 +24,7 @@ The Playwright config starts the harness itself, so no dev server is needed.
 | `table-borders`  | border ownership and hairline rasterization at fractional scale      |
 | `navigation`     | switching slides in a loaded deck                                    |
 | `exported-decks` | every slide of an exported deck renders with content and no failures |
-| `oracle`         | SSIM against PNGs exported from real PowerPoint                      |
+| `oracle`         | SSIM and painted coverage against PNGs exported from real PowerPoint |
 
 Structural specs are the cheapest place to pin a parser fix; reach for pixels
 only when the bug is in how something rasterizes.
@@ -50,12 +50,21 @@ Ground-truth PNGs under `fixtures/ground-truth/` come from PowerPoint itself via
 `pnpm oracle:export` (Windows, PowerPoint installed), exported at each deck's
 native slide size.
 
-The SSIM each slide scores against that ground truth is recorded per platform in
+Each slide's scores against that ground truth are recorded per platform in
 `specs/oracle-baselines/`, since Linux scores lower for want of the decks' fonts
 (~0.015, and 0.06 on the worst slide). Re-record locally with
 `pnpm test:oracle-update`, and for Linux with the `Record PowerPoint oracle
 baselines` workflow, which uploads them as an artifact to review before
 committing.
+
+Three numbers are recorded, because SSIM alone scores a _blank_ region higher
+than a _misplaced_ one and so rates some broken renders above correct ones —
+`specs/oracle.ts` explains what each covers. `pnpm faults` is how that claim
+stays honest: it breaks a rendered slide in known ways (hides a text block,
+shrinks one, hides a graphic, shifts everything, recolours a fill) and prints
+which of the three notice, so a tolerance can be sized against real damage
+instead of against the bug that happened to motivate it. Re-run it when
+changing those tolerances; it needs `pnpm harness` running.
 
 ## Debugging a rendering bug
 
