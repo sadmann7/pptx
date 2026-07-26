@@ -56,15 +56,6 @@ export const MIN_SIZE = 8;
 /** Screen-px movement before a pointer-down becomes a drag instead of a click. */
 export const DRAG_THRESHOLD = 3;
 
-/**
- * Whether a press on empty canvas has travelled far enough to be a rubber band
- * rather than a click. Below the threshold nothing about the selection has
- * changed yet, so the band stays invisible and the handles stay up.
- */
-export function isBandDrag(startX: number, startY: number, curX: number, curY: number): boolean {
-  return Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
-}
-
 const GRIP_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 export type GripDirection = (typeof GRIP_DIRECTIONS)[number];
 
@@ -79,6 +70,8 @@ const GRIP_CURSORS: Record<GripDirection, string> = {
   w: "ew-resize",
 };
 
+const CORNER_GRIPS: ReadonlySet<GripDirection> = new Set(["nw", "ne", "se", "sw"]);
+
 export interface Rect {
   x: number;
   y: number;
@@ -86,11 +79,18 @@ export interface Rect {
   h: number;
 }
 
-const CORNER_GRIPS: ReadonlySet<GripDirection> = new Set(["nw", "ne", "se", "sw"]);
-
 function debugLog(...args: unknown[]): void {
   if (!ENABLE_DEBUG_LOG) return;
   console.debug("[pptx-selection]", ...args);
+}
+
+/**
+ * Whether a press on empty canvas has travelled far enough to be a rubber band
+ * rather than a click. Below the threshold nothing about the selection has
+ * changed yet, so the band stays invisible and the handles stay up.
+ */
+export function isBandDrag(startX: number, startY: number, curX: number, curY: number): boolean {
+  return Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
 }
 
 /**

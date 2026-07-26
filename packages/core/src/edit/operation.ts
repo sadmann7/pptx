@@ -238,9 +238,9 @@ function findNode(pres: PresentationData, slide: SlideData, nodeId: string): Sli
 }
 
 function requireElement(node: SafeXmlNode, what: string): Element {
-  const el = node.element;
-  if (!el) throw new Error(`applyEdit: ${what} is missing`);
-  return el;
+  const element = node.element;
+  if (!element) throw new Error(`applyEdit: ${what} is missing`);
+  return element;
 }
 
 /** Update slide indexes and the index-keyed slide→layout map after reordering. */
@@ -292,22 +292,22 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
     throw new Error(`applyEdit: cannot set text on a <a:${runNode.localName}> (break/tab) run`);
   }
 
-  const runEl = requireElement(runNode, "run element");
-  let tEl = runNode.child("t").element;
-  if (!tEl) {
-    tEl = runEl.ownerDocument.createElementNS(A_NS, "a:t");
-    insertChild(runEl, tEl, null);
+  const runElement = requireElement(runNode, "run element");
+  let tElement = runNode.child("t").element;
+  if (!tElement) {
+    tElement = runElement.ownerDocument.createElementNS(A_NS, "a:t");
+    insertChild(runElement, tElement, null);
   }
 
   const prevText = run.text;
-  tEl.textContent = op.text;
+  tElement.textContent = op.text;
   run.text = op.text;
   sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      tEl.textContent = prevText;
+      tElement.textContent = prevText;
       run.text = prevText;
       sourcePackage.markDirty(slide.id);
     },
@@ -334,36 +334,36 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
   // XML: <p:txBody> element containing the live <a:p> elements.
   const txBodyNode = node.source.child("txBody");
-  const txBodyEl = requireElement(txBodyNode, "txBody");
-  const doc = txBodyEl.ownerDocument;
+  const txBodyElement = requireElement(txBodyNode, "txBody");
+  const doc = txBodyElement.ownerDocument;
 
   // Snapshot original <a:p> elements (for undo) and keep them by index for
   // cloning pPr/rPr from source references.
-  const origPEls = Array.from(txBodyEl.getElementsByTagNameNS(A_NS, "p"));
+  const origParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
   const origParagraphs = prevParagraphs;
 
   // Collect source run XML elements indexed by [pIdx][rIdx].
-  const origRunEls: Element[][] = [];
-  for (const pEl of origPEls) {
-    const runEls: Element[] = [];
-    for (const child of Array.from(pEl.children)) {
+  const origRunElements: Element[][] = [];
+  for (const paragraphElement of origParagraphElements) {
+    const runElements: Element[] = [];
+    for (const child of Array.from(paragraphElement.children)) {
       if (RUN_LOCAL_NAMES.has(child.localName)) {
-        runEls.push(child);
+        runElements.push(child);
       }
     }
-    origRunEls.push(runEls);
+    origRunElements.push(runElements);
   }
 
   // Remove existing <a:p> elements from txBody.
-  for (const pEl of origPEls) {
-    removeChild(pEl);
+  for (const paragraphElement of origParagraphElements) {
+    removeChild(paragraphElement);
   }
 
   // Build new <a:p> elements and model paragraphs.
   const newParagraphs: TextParagraph[] = [];
 
   for (const opPara of op.paragraphs) {
-    const pEl = doc.createElementNS(A_NS, "a:p");
+    const paragraphElement = doc.createElementNS(A_NS, "a:p");
 
     // Clone a:pPr from source paragraph.
     let level = 0;
@@ -373,8 +373,8 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
       const srcPara = origParagraphs[opPara.sourceParagraphIndex];
       level = srcPara.level;
       if (srcPara.properties?.element) {
-        pEl.appendChild(srcPara.properties.element.cloneNode(true));
-        pPrNode = new SafeXmlNode(pEl.getElementsByTagNameNS(A_NS, "pPr")[0]);
+        paragraphElement.appendChild(srcPara.properties.element.cloneNode(true));
+        pPrNode = new SafeXmlNode(paragraphElement.getElementsByTagNameNS(A_NS, "pPr")[0]);
       }
       if (srcPara.endParaRPr?.element) {
         endParaRPrNode = new SafeXmlNode(srcPara.endParaRPr.element.cloneNode(true) as Element);
@@ -386,10 +386,10 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     // Resolve default rPr to clone when sourceRun is not specified.
     function resolveDefaultRPr(srcParaIdx: number): Element | null {
       if (srcParaIdx < 0 || srcParaIdx >= origParagraphs.length) return null;
-      const srcRuns = origRunEls[srcParaIdx];
+      const srcRuns = origRunElements[srcParaIdx];
       if (!srcRuns || srcRuns.length === 0) return null;
-      const firstRunEl = srcRuns[0];
-      const rPr = firstRunEl.getElementsByTagNameNS(A_NS, "rPr")[0];
+      const firstRunElement = srcRuns[0];
+      const rPr = firstRunElement.getElementsByTagNameNS(A_NS, "rPr")[0];
       return rPr ?? null;
     }
 
@@ -414,41 +414,41 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
     for (const opRun of opPara.runs) {
       // Resolve the source rPr element to clone styling from.
-      let rPrEl: Element | null = null;
+      let rPrElement: Element | null = null;
       if (opRun.sourceRun) {
         const [srcPI, srcRI] = opRun.sourceRun;
-        const srcRunEl = origRunEls[srcPI]?.[srcRI];
-        if (srcRunEl) {
-          rPrEl = srcRunEl.getElementsByTagNameNS(A_NS, "rPr")[0] ?? null;
+        const srcRunElement = origRunElements[srcPI]?.[srcRI];
+        if (srcRunElement) {
+          rPrElement = srcRunElement.getElementsByTagNameNS(A_NS, "rPr")[0] ?? null;
         }
       } else {
-        rPrEl =
+        rPrElement =
           resolveDefaultRPr(opPara.sourceParagraphIndex) ??
           endParaRPrAsRPr(opPara.sourceParagraphIndex);
       }
 
       // a:br for newlines, a:r for text.
       if (opRun.text === "\n") {
-        const brEl = doc.createElementNS(A_NS, "a:br");
-        if (rPrEl) brEl.appendChild(rPrEl.cloneNode(true));
-        pEl.appendChild(brEl);
+        const brElement = doc.createElementNS(A_NS, "a:br");
+        if (rPrElement) brElement.appendChild(rPrElement.cloneNode(true));
+        paragraphElement.appendChild(brElement);
         runs.push({
           text: "\n",
-          properties: rPrEl
-            ? new SafeXmlNode(brEl.getElementsByTagNameNS(A_NS, "rPr")[0])
+          properties: rPrElement
+            ? new SafeXmlNode(brElement.getElementsByTagNameNS(A_NS, "rPr")[0])
             : undefined,
         });
       } else {
-        const rEl = doc.createElementNS(A_NS, "a:r");
-        if (rPrEl) rEl.appendChild(rPrEl.cloneNode(true));
-        const tEl = doc.createElementNS(A_NS, "a:t");
-        tEl.textContent = opRun.text;
-        rEl.appendChild(tEl);
-        pEl.appendChild(rEl);
+        const rElement = doc.createElementNS(A_NS, "a:r");
+        if (rPrElement) rElement.appendChild(rPrElement.cloneNode(true));
+        const tElement = doc.createElementNS(A_NS, "a:t");
+        tElement.textContent = opRun.text;
+        rElement.appendChild(tElement);
+        paragraphElement.appendChild(rElement);
         runs.push({
           text: opRun.text,
-          properties: rPrEl
-            ? new SafeXmlNode(rEl.getElementsByTagNameNS(A_NS, "rPr")[0])
+          properties: rPrElement
+            ? new SafeXmlNode(rElement.getElementsByTagNameNS(A_NS, "rPr")[0])
             : undefined,
         });
       }
@@ -456,10 +456,10 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
     // Append a:endParaRPr if the source paragraph had one.
     if (endParaRPrNode?.element) {
-      pEl.appendChild(endParaRPrNode.element);
+      paragraphElement.appendChild(endParaRPrNode.element);
     }
 
-    insertChild(txBodyEl, pEl, null);
+    insertChild(txBodyElement, paragraphElement, null);
 
     newParagraphs.push({
       properties: pPrNode,
@@ -477,13 +477,13 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     affectedSlideIds: [slide.id],
     undo: () => {
       // Remove new <a:p> elements.
-      const currentPEls = Array.from(txBodyEl.getElementsByTagNameNS(A_NS, "p"));
-      for (const pEl of currentPEls) {
-        removeChild(pEl);
+      const currentParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
+      for (const paragraphElement of currentParagraphElements) {
+        removeChild(paragraphElement);
       }
       // Restore original <a:p> elements.
-      for (const pEl of origPEls) {
-        insertChild(txBodyEl, pEl, null);
+      for (const paragraphElement of origParagraphElements) {
+        insertChild(txBodyElement, paragraphElement, null);
       }
       // Restore model.
       textBody.paragraphs = prevParagraphs;
@@ -497,9 +497,9 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 // ---------------------------------------------------------------------------
 
 interface XfrmHandle {
-  xfrmEl: Element;
-  offEl: Element;
-  extEl: Element;
+  xfrmElement: Element;
+  offElement: Element;
+  extElement: Element;
   created: boolean;
 }
 
@@ -509,8 +509,8 @@ interface XfrmHandle {
  * them requires writing a new one into the slide part).
  */
 function getOrCreateXfrm(node: SlideNode): XfrmHandle {
-  const sourceEl = requireElement(node.source, "node element");
-  const doc = sourceEl.ownerDocument;
+  const sourceElement = requireElement(node.source, "node element");
+  const doc = sourceElement.ownerDocument;
 
   let container: Element;
   let xfrmQualified: string;
@@ -519,7 +519,7 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
 
   if (node.nodeType === "table" || node.nodeType === "chart") {
     // Graphic frames carry p:xfrm directly, between nvGraphicFramePr and a:graphic.
-    container = sourceEl;
+    container = sourceElement;
     xfrmQualified = "p:xfrm";
     xfrmNs = P_NS;
     insertRef = node.source.child("graphic").element;
@@ -532,36 +532,36 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
     insertRef = container.firstElementChild;
   }
 
-  let xfrmEl: Element | null = null;
+  let xfrmElement: Element | null = null;
   for (const child of container.children) {
     if (child.localName === "xfrm") {
-      xfrmEl = child;
+      xfrmElement = child;
       break;
     }
   }
 
-  const created = xfrmEl === null;
-  if (!xfrmEl) {
-    xfrmEl = doc.createElementNS(xfrmNs, xfrmQualified);
-    insertChild(container, xfrmEl, insertRef);
+  const created = xfrmElement === null;
+  if (!xfrmElement) {
+    xfrmElement = doc.createElementNS(xfrmNs, xfrmQualified);
+    insertChild(container, xfrmElement, insertRef);
   }
 
-  let offEl: Element | null = null;
-  let extEl: Element | null = null;
-  for (const child of xfrmEl.children) {
-    if (child.localName === "off") offEl = child;
-    else if (child.localName === "ext") extEl = child;
+  let offElement: Element | null = null;
+  let extElement: Element | null = null;
+  for (const child of xfrmElement.children) {
+    if (child.localName === "off") offElement = child;
+    else if (child.localName === "ext") extElement = child;
   }
-  if (!offEl) {
-    offEl = doc.createElementNS(A_NS, "a:off");
-    insertChild(xfrmEl, offEl, xfrmEl.firstElementChild);
+  if (!offElement) {
+    offElement = doc.createElementNS(A_NS, "a:off");
+    insertChild(xfrmElement, offElement, xfrmElement.firstElementChild);
   }
-  if (!extEl) {
-    extEl = doc.createElementNS(A_NS, "a:ext");
-    insertChild(xfrmEl, extEl, offEl.nextElementSibling);
+  if (!extElement) {
+    extElement = doc.createElementNS(A_NS, "a:ext");
+    insertChild(xfrmElement, extElement, offElement.nextElementSibling);
   }
 
-  return { xfrmEl, offEl, extEl, created };
+  return { xfrmElement, offElement, extElement, created };
 }
 
 /**
@@ -575,11 +575,11 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
  */
 function scaleTableGrid(table: TableNodeData, size: NodeSize): (() => void) | null {
   const tbl = table.source.child("graphic").child("graphicData").child("tbl");
-  const colEls = tbl.child("tblGrid").children("gridCol");
-  const rowEls = tbl.children("tr");
+  const columnElements = tbl.child("tblGrid").children("gridCol");
+  const rowElements = tbl.children("tr");
 
-  const gridW = colEls.reduce((sum, col) => sum + (col.numAttr("w") ?? 0), 0);
-  const gridH = rowEls.reduce((sum, row) => sum + (row.numAttr("h") ?? 0), 0);
+  const gridW = columnElements.reduce((sum, col) => sum + (col.numAttr("w") ?? 0), 0);
+  const gridH = rowElements.reduce((sum, row) => sum + (row.numAttr("h") ?? 0), 0);
   const scaleX = gridW > 0 ? pxToEmu(size.w) / gridW : 0;
   const scaleY = gridH > 0 ? pxToEmu(size.h) / gridH : 0;
   if (scaleX === 0 && scaleY === 0) return null;
@@ -599,11 +599,11 @@ function scaleTableGrid(table: TableNodeData, size: NodeSize): (() => void) | nu
     return next;
   };
 
-  colEls.forEach((col, index) => {
+  columnElements.forEach((col, index) => {
     const next = scaleAttr(col, "w", scaleX);
     if (next !== null && index < table.columns.length) table.columns[index] = emuToPx(next);
   });
-  rowEls.forEach((row, index) => {
+  rowElements.forEach((row, index) => {
     const next = scaleAttr(row, "h", scaleY);
     if (next !== null && index < table.rows.length) table.rows[index].height = emuToPx(next);
   });
@@ -630,16 +630,16 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
     flipV: node.flipV,
   };
 
-  const { xfrmEl, offEl, extEl, created } = getOrCreateXfrm(node);
+  const { xfrmElement, offElement, extElement, created } = getOrCreateXfrm(node);
 
   const prevAttrs = {
-    x: offEl.getAttribute("x") ?? undefined,
-    y: offEl.getAttribute("y") ?? undefined,
-    cx: extEl.getAttribute("cx") ?? undefined,
-    cy: extEl.getAttribute("cy") ?? undefined,
-    rot: xfrmEl.getAttribute("rot") ?? undefined,
-    flipH: xfrmEl.getAttribute("flipH") ?? undefined,
-    flipV: xfrmEl.getAttribute("flipV") ?? undefined,
+    x: offElement.getAttribute("x") ?? undefined,
+    y: offElement.getAttribute("y") ?? undefined,
+    cx: extElement.getAttribute("cx") ?? undefined,
+    cy: extElement.getAttribute("cy") ?? undefined,
+    rot: xfrmElement.getAttribute("rot") ?? undefined,
+    flipH: xfrmElement.getAttribute("flipH") ?? undefined,
+    flipV: xfrmElement.getAttribute("flipV") ?? undefined,
   };
 
   // A freshly created xfrm must carry the full resolved transform, not just
@@ -648,27 +648,31 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   const size = op.size ?? (created ? node.size : undefined);
 
   if (position) {
-    offEl.setAttribute("x", String(pxToEmu(position.x)));
-    offEl.setAttribute("y", String(pxToEmu(position.y)));
+    offElement.setAttribute("x", String(pxToEmu(position.x)));
+    offElement.setAttribute("y", String(pxToEmu(position.y)));
     node.position = { ...position };
   }
   let undoTableGrid: (() => void) | null = null;
   if (size) {
-    extEl.setAttribute("cx", String(pxToEmu(size.w)));
-    extEl.setAttribute("cy", String(pxToEmu(size.h)));
+    extElement.setAttribute("cx", String(pxToEmu(size.w)));
+    extElement.setAttribute("cy", String(pxToEmu(size.h)));
     if (node.nodeType === "table") undoTableGrid = scaleTableGrid(node as TableNodeData, size);
     node.size = { ...size };
   }
   if (op.rotation !== undefined) {
-    setOrRemoveAttr(xfrmEl, "rot", op.rotation === 0 ? undefined : String(degToAngle(op.rotation)));
+    setOrRemoveAttr(
+      xfrmElement,
+      "rot",
+      op.rotation === 0 ? undefined : String(degToAngle(op.rotation)),
+    );
     node.rotation = op.rotation;
   }
   if (op.flipH !== undefined) {
-    setOrRemoveAttr(xfrmEl, "flipH", op.flipH ? "1" : undefined);
+    setOrRemoveAttr(xfrmElement, "flipH", op.flipH ? "1" : undefined);
     node.flipH = op.flipH;
   }
   if (op.flipV !== undefined) {
-    setOrRemoveAttr(xfrmEl, "flipV", op.flipV ? "1" : undefined);
+    setOrRemoveAttr(xfrmElement, "flipV", op.flipV ? "1" : undefined);
     node.flipV = op.flipV;
   }
 
@@ -676,15 +680,15 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   // extent so children keep rendering 1:1.
   if (created && node.nodeType === "group") {
     const group = node as GroupNodeData;
-    const doc = xfrmEl.ownerDocument;
+    const doc = xfrmElement.ownerDocument;
     const chOff = doc.createElementNS(A_NS, "a:chOff");
-    chOff.setAttribute("x", offEl.getAttribute("x") ?? "0");
-    chOff.setAttribute("y", offEl.getAttribute("y") ?? "0");
+    chOff.setAttribute("x", offElement.getAttribute("x") ?? "0");
+    chOff.setAttribute("y", offElement.getAttribute("y") ?? "0");
     const chExt = doc.createElementNS(A_NS, "a:chExt");
-    chExt.setAttribute("cx", extEl.getAttribute("cx") ?? "0");
-    chExt.setAttribute("cy", extEl.getAttribute("cy") ?? "0");
-    insertChild(xfrmEl, chOff, extEl.nextElementSibling);
-    insertChild(xfrmEl, chExt, chOff.nextElementSibling);
+    chExt.setAttribute("cx", extElement.getAttribute("cx") ?? "0");
+    chExt.setAttribute("cy", extElement.getAttribute("cy") ?? "0");
+    insertChild(xfrmElement, chOff, extElement.nextElementSibling);
+    insertChild(xfrmElement, chExt, chOff.nextElementSibling);
     group.childOffset = { ...node.position };
     group.childExtent = { ...node.size };
   }
@@ -696,15 +700,15 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
     undo: () => {
       undoTableGrid?.();
       if (created) {
-        removeChild(xfrmEl);
+        removeChild(xfrmElement);
       } else {
-        setOrRemoveAttr(offEl, "x", prevAttrs.x);
-        setOrRemoveAttr(offEl, "y", prevAttrs.y);
-        setOrRemoveAttr(extEl, "cx", prevAttrs.cx);
-        setOrRemoveAttr(extEl, "cy", prevAttrs.cy);
-        setOrRemoveAttr(xfrmEl, "rot", prevAttrs.rot);
-        setOrRemoveAttr(xfrmEl, "flipH", prevAttrs.flipH);
-        setOrRemoveAttr(xfrmEl, "flipV", prevAttrs.flipV);
+        setOrRemoveAttr(offElement, "x", prevAttrs.x);
+        setOrRemoveAttr(offElement, "y", prevAttrs.y);
+        setOrRemoveAttr(extElement, "cx", prevAttrs.cx);
+        setOrRemoveAttr(extElement, "cy", prevAttrs.cy);
+        setOrRemoveAttr(xfrmElement, "rot", prevAttrs.rot);
+        setOrRemoveAttr(xfrmElement, "flipH", prevAttrs.flipH);
+        setOrRemoveAttr(xfrmElement, "flipV", prevAttrs.flipV);
       }
       node.position = prevModel.position;
       node.size = prevModel.size;
@@ -747,23 +751,23 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   }
   const color = colorMatch[1].toUpperCase();
 
-  const spPrEl = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
-  const doc = spPrEl.ownerDocument;
+  const spPrElement = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
+  const doc = spPrElement.ownerDocument;
 
-  let oldFillEl: Element | null = null;
-  for (const child of spPrEl.children) {
+  let oldFillElement: Element | null = null;
+  for (const child of spPrElement.children) {
     if (FILL_LOCAL_NAMES.includes(child.localName)) {
-      oldFillEl = child;
+      oldFillElement = child;
       break;
     }
   }
 
   let insertRef: Element | null = null;
-  if (oldFillEl) {
-    insertRef = oldFillEl.nextElementSibling;
-    removeChild(oldFillEl);
+  if (oldFillElement) {
+    insertRef = oldFillElement.nextElementSibling;
+    removeChild(oldFillElement);
   } else {
-    for (const child of spPrEl.children) {
+    for (const child of spPrElement.children) {
       if (AFTER_FILL_LOCAL_NAMES.has(child.localName)) {
         insertRef = child;
         break;
@@ -771,23 +775,23 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
     }
   }
 
-  const solidFillEl = doc.createElementNS(A_NS, "a:solidFill");
-  const srgbEl = doc.createElementNS(A_NS, "a:srgbClr");
-  srgbEl.setAttribute("val", color);
-  solidFillEl.appendChild(srgbEl);
-  insertChild(spPrEl, solidFillEl, insertRef);
+  const solidFillElement = doc.createElementNS(A_NS, "a:solidFill");
+  const srgbElement = doc.createElementNS(A_NS, "a:srgbClr");
+  srgbElement.setAttribute("val", color);
+  solidFillElement.appendChild(srgbElement);
+  insertChild(spPrElement, solidFillElement, insertRef);
 
   const prevFill = shape.fill;
-  shape.fill = new SafeXmlNode(solidFillEl);
+  shape.fill = new SafeXmlNode(solidFillElement);
   sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      const ref = solidFillEl.nextElementSibling;
-      removeChild(solidFillEl);
-      if (oldFillEl) {
-        insertChild(spPrEl, oldFillEl, ref);
+      const ref = solidFillElement.nextElementSibling;
+      removeChild(solidFillElement);
+      if (oldFillElement) {
+        insertChild(spPrElement, oldFillElement, ref);
       }
       shape.fill = prevFill;
       sourcePackage.markDirty(slide.id);
@@ -804,12 +808,13 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
-  const el = requireElement(node.source, "node element");
-  const parentEl = el.parentElement;
-  if (!parentEl) throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide`);
+  const element = requireElement(node.source, "node element");
+  const parentElement = element.parentElement;
+  if (!parentElement)
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide`);
 
-  const domRef = el.nextElementSibling;
-  removeChild(el);
+  const domRef = element.nextElementSibling;
+  removeChild(element);
 
   const modelIndex = slide.nodes.indexOf(node);
   slide.nodes.splice(modelIndex, 1);
@@ -818,7 +823,7 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      insertChild(parentEl, el, domRef);
+      insertChild(parentElement, element, domRef);
       slide.nodes.splice(modelIndex, 0, node);
       sourcePackage.markDirty(slide.id);
     },
@@ -832,7 +837,7 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
 interface SlideListContext {
   sourcePackage: PptxPackage;
   lstNode: SafeXmlNode;
-  lstEl: Element;
+  lstElement: Element;
   relsText: string;
   rels: Map<string, RelEntry>;
 }
@@ -844,22 +849,22 @@ async function loadSlideListContext(pres: PresentationData): Promise<SlideListCo
     throw new Error("applyEdit: presentation.xml is not registered on the package");
   }
   const lstNode = presRoot.child("sldIdLst");
-  const lstEl = lstNode.element;
-  if (!lstEl) {
+  const lstElement = lstNode.element;
+  if (!lstElement) {
     throw new Error("applyEdit: unsupported package: presentation.xml has no sldIdLst");
   }
   const relsText = (await sourcePackage.readText(PRESENTATION_RELS_PATH)) ?? "";
-  return { sourcePackage, lstNode, lstEl, relsText, rels: parseRels(relsText) };
+  return { sourcePackage, lstNode, lstElement, relsText, rels: parseRels(relsText) };
 }
 
 /** Locate the p:sldId element referencing the given slide part. */
-function findSldIdEntry(ctx: SlideListContext, slideId: string): { el: Element; rId: string } {
+function findSldIdEntry(ctx: SlideListContext, slideId: string): { element: Element; rId: string } {
   for (const sldId of ctx.lstNode.children("sldId")) {
     const rId = sldId.attr("r:id");
     if (!rId) continue;
     const rel = ctx.rels.get(rId);
     if (rel && resolveRelTarget("ppt", rel.target) === slideId) {
-      return { el: requireElement(sldId, "sldId element"), rId };
+      return { element: requireElement(sldId, "sldId element"), rId };
     }
   }
   throw new Error(`applyEdit: slide "${slideId}" not found in presentation.xml sldIdLst`);
@@ -888,12 +893,12 @@ async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): P
     return { affectedSlideIds: [], undo: () => {} };
   }
 
-  const { el } = findSldIdEntry(ctx, op.slideId);
+  const { element } = findSldIdEntry(ctx, op.slideId);
 
   const moveTo = (targetIndex: number) => {
-    el.remove();
-    const remaining = sldIdElements(ctx).filter((e) => e !== el);
-    insertChild(ctx.lstEl, el, remaining[targetIndex] ?? null);
+    element.remove();
+    const remaining = sldIdElements(ctx).filter((e) => e !== element);
+    insertChild(ctx.lstElement, element, remaining[targetIndex] ?? null);
     ctx.sourcePackage.markDirty(PRESENTATION_PATH);
   };
 
@@ -951,7 +956,7 @@ async function applyDuplicateSlide(
   const { sourcePackage } = ctx;
   const source = findSlide(pres, op.slideId);
   const sourceIndex = pres.slides.indexOf(source);
-  const { el: sourceSldIdEl } = findSldIdEntry(ctx, op.slideId);
+  const { element: sourceSldIdElement } = findSldIdEntry(ctx, op.slideId);
 
   const newPath = nextSlidePartPath(sourcePackage);
   const newRelsPath = relsPathFor(newPath);
@@ -971,32 +976,35 @@ async function applyDuplicateSlide(
 
   // --- [Content_Types].xml: add an Override for the new part ---
   const ctRoot = parseXml(ctText);
-  const ctRootEl = requireElement(ctRoot, "[Content_Types].xml root");
+  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
   const sourceOverride = ctRoot
     .children("Override")
     .find((o) => o.attr("PartName") === `/${source.id}`);
-  const overrideEl = ctRootEl.ownerDocument.createElementNS(CT_NS, "Override");
-  overrideEl.setAttribute("PartName", `/${newPath}`);
-  overrideEl.setAttribute("ContentType", sourceOverride?.attr("ContentType") ?? SLIDE_CONTENT_TYPE);
-  insertChild(ctRootEl, overrideEl, null);
-  sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
+  const overrideElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Override");
+  overrideElement.setAttribute("PartName", `/${newPath}`);
+  overrideElement.setAttribute(
+    "ContentType",
+    sourceOverride?.attr("ContentType") ?? SLIDE_CONTENT_TYPE,
+  );
+  insertChild(ctRootElement, overrideElement, null);
+  sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
 
   // --- presentation.xml.rels: relationship for the new part ---
   const newRId = nextRelId(ctx.rels);
   const relsRoot = parseXml(ctx.relsText);
-  const relsRootEl = requireElement(relsRoot, "presentation rels root");
-  const relEl = relsRootEl.ownerDocument.createElementNS(RELS_NS, "Relationship");
-  relEl.setAttribute("Id", newRId);
-  relEl.setAttribute("Type", SLIDE_REL_TYPE);
-  relEl.setAttribute("Target", newPath.replace(/^ppt\//, ""));
-  insertChild(relsRootEl, relEl, null);
-  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
+  const relsRootElement = requireElement(relsRoot, "presentation rels root");
+  const relElement = relsRootElement.ownerDocument.createElementNS(RELS_NS, "Relationship");
+  relElement.setAttribute("Id", newRId);
+  relElement.setAttribute("Type", SLIDE_REL_TYPE);
+  relElement.setAttribute("Target", newPath.replace(/^ppt\//, ""));
+  insertChild(relsRootElement, relElement, null);
+  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
   // --- presentation.xml: sldId entry directly after the source slide ---
-  const sldIdEl = ctx.lstEl.ownerDocument.createElementNS(P_NS, "p:sldId");
-  sldIdEl.setAttribute("id", String(nextSldIdNumber(ctx)));
-  sldIdEl.setAttributeNS(R_NS, "r:id", newRId);
-  insertChild(ctx.lstEl, sldIdEl, sourceSldIdEl.nextElementSibling);
+  const sldIdElement = ctx.lstElement.ownerDocument.createElementNS(P_NS, "p:sldId");
+  sldIdElement.setAttribute("id", String(nextSldIdNumber(ctx)));
+  sldIdElement.setAttributeNS(R_NS, "r:id", newRId);
+  insertChild(ctx.lstElement, sldIdElement, sourceSldIdElement.nextElementSibling);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
   // --- Model: parse the copy through the regular slide pipeline ---
@@ -1019,7 +1027,7 @@ async function applyDuplicateSlide(
       if (slideRelsText !== undefined) sourcePackage.deleteEntry(newRelsPath);
       sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
       sourcePackage.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
-      removeChild(sldIdEl);
+      removeChild(sldIdElement);
       sourcePackage.markDirty(PRESENTATION_PATH);
       pres.slides.splice(pres.slides.indexOf(newSlide), 1);
       reindexSlides(pres);
@@ -1041,7 +1049,7 @@ async function applyDeleteSlide(
   const { sourcePackage } = ctx;
   const slide = findSlide(pres, op.slideId);
   const slideIndex = pres.slides.indexOf(slide);
-  const { el: sldIdEl, rId } = findSldIdEntry(ctx, op.slideId);
+  const { element: sldIdElement, rId } = findSldIdEntry(ctx, op.slideId);
   const slideRelsPath = relsPathFor(slide.id);
 
   // Snapshots for undo.
@@ -1051,28 +1059,28 @@ async function applyDeleteSlide(
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
   // --- presentation.xml ---
-  const sldIdRef = sldIdEl.nextElementSibling;
-  removeChild(sldIdEl);
+  const sldIdRef = sldIdElement.nextElementSibling;
+  removeChild(sldIdElement);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
   // --- presentation.xml.rels ---
   const relsRoot = parseXml(ctx.relsText);
-  const relsRootEl = requireElement(relsRoot, "presentation rels root");
+  const relsRootElement = requireElement(relsRoot, "presentation rels root");
   const relNode = relsRoot.children("Relationship").find((r) => r.attr("Id") === rId);
   if (relNode?.element) {
     removeChild(relNode.element);
   }
-  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootEl, ctx.relsText));
+  sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
   // --- [Content_Types].xml ---
   const ctRoot = parseXml(ctText);
-  const ctRootEl = requireElement(ctRoot, "[Content_Types].xml root");
+  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
   const overrideNode = ctRoot
     .children("Override")
     .find((o) => o.attr("PartName") === `/${slide.id}`);
   if (overrideNode?.element) {
     removeChild(overrideNode.element);
-    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootEl, ctText));
+    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
   }
 
   // --- Parts (media stays; shared and harmless when orphaned) ---
@@ -1092,7 +1100,7 @@ async function applyDeleteSlide(
       if (slideXmlRoot) sourcePackage.registerXmlRoot(slide.id, slideXmlRoot);
       sourcePackage.setEntry(PRESENTATION_RELS_PATH, ctx.relsText);
       sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
-      insertChild(ctx.lstEl, sldIdEl, sldIdRef);
+      insertChild(ctx.lstElement, sldIdElement, sldIdRef);
       sourcePackage.markDirty(PRESENTATION_PATH);
       pres.slides.splice(slideIndex, 0, slide);
       reindexSlides(pres);
