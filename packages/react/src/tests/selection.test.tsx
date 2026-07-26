@@ -10,10 +10,13 @@ import type { GripDirection, Rect } from "../selection";
 import {
   MIN_SIZE,
   cleanText,
+  constrainMove,
   getNodeRect,
+  mergeSelection,
   readBackTextBody,
   resizeRect,
   textBodyChanged,
+  toggleSelection,
 } from "../selection";
 import { createStore, type Store } from "../store";
 import { loadFixture } from "./test-utils";
@@ -124,6 +127,66 @@ describe("resizeRect", () => {
         expect(resizeRect(origin, h, 0, 0)).toEqual(origin);
       }
     });
+  });
+});
+
+describe("constrainMove", () => {
+  it("passes both deltas through when unlocked", () => {
+    expect(constrainMove(30, -12)).toEqual({ x: 30, y: -12 });
+  });
+
+  it("drops the vertical delta when the drag is mostly horizontal", () => {
+    expect(constrainMove(40, 9, true)).toEqual({ x: 40, y: 0 });
+    expect(constrainMove(-40, -9, true)).toEqual({ x: -40, y: 0 });
+  });
+
+  it("drops the horizontal delta when the drag is mostly vertical", () => {
+    expect(constrainMove(9, 40, true)).toEqual({ x: 0, y: 40 });
+    expect(constrainMove(-9, -40, true)).toEqual({ x: 0, y: -40 });
+  });
+
+  it("keeps the horizontal delta on an exact diagonal", () => {
+    expect(constrainMove(25, -25, true)).toEqual({ x: 25, y: 0 });
+  });
+
+  it("stays put when locked with no movement", () => {
+    expect(constrainMove(0, 0, true)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("mergeSelection", () => {
+  it("replaces the selection when there is no base", () => {
+    expect(mergeSelection([], ["b", "c"])).toEqual(["b", "c"]);
+  });
+
+  it("appends newly enclosed ids after the base selection", () => {
+    expect(mergeSelection(["a"], ["b", "c"])).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps already selected shapes instead of toggling them out", () => {
+    expect(mergeSelection(["a", "b"], ["b"])).toEqual(["a", "b"]);
+  });
+
+  it("keeps the base selection when the band enclosed nothing", () => {
+    expect(mergeSelection(["a", "b"], [])).toEqual(["a", "b"]);
+  });
+});
+
+describe("toggleSelection", () => {
+  it("adds a shape that is not selected yet", () => {
+    expect(toggleSelection(["a"], "b")).toEqual(["a", "b"]);
+  });
+
+  it("takes an already selected shape back out", () => {
+    expect(toggleSelection(["a", "b"], "a")).toEqual(["b"]);
+  });
+
+  it("empties the selection when the last shape is toggled out", () => {
+    expect(toggleSelection(["a"], "a")).toEqual([]);
+  });
+
+  it("selects the shape when nothing was selected", () => {
+    expect(toggleSelection([], "a")).toEqual(["a"]);
   });
 });
 

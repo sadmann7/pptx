@@ -328,8 +328,8 @@ export function Launch() {
 
       <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
 
-      {/* All spotlights in one sequence — hard cuts between them, each
-          manages its own entrance/exit fade internally. */}
+      {/* All spotlights in one sequence with hard cuts between them, each
+          managing its own entrance/exit fade internally. */}
       <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
         <AbsoluteFill>
           {SPOTLIGHTS.map((spotlight, index) => (
