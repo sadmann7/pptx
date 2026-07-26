@@ -17,9 +17,11 @@ $e2eDir = Split-Path -Parent $PSScriptRoot
 $fixturesDir = Join-Path $e2eDir "fixtures"
 $groundTruthDir = Join-Path $fixturesDir "ground-truth"
 
-# Native pixel size of the fixture decks (12192000 x 6858000 EMU at 96dpi).
-$exportWidth = 1280
-$exportHeight = 720
+# Slides export at their own native pixel size: the oracle resizes both images
+# to the ground truth's dimensions, so exporting every deck at one hardcoded
+# size would stretch the decks that aren't 16:9 at 96dpi and score them against
+# a distorted reference. PowerPoint reports the slide size in points.
+$pointsToPixels = 96 / 72
 
 $decks = Get-ChildItem -Path $fixturesDir -Filter "*.pptx" -File
 if ($decks.Count -eq 0) {
@@ -50,12 +52,15 @@ try {
             if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
             New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
+            $exportWidth = [int][math]::Round($presentation.PageSetup.SlideWidth * $pointsToPixels)
+            $exportHeight = [int][math]::Round($presentation.PageSetup.SlideHeight * $pointsToPixels)
+
             $slideCount = $presentation.Slides.Count
             for ($i = 1; $i -le $slideCount; $i++) {
                 $outPath = Join-Path $outDir ("slide-{0}.png" -f ($i - 1))
                 $presentation.Slides.Item($i).Export($outPath, "PNG", $exportWidth, $exportHeight)
             }
-            Write-Host "Exported $deckName ($slideCount slides)"
+            Write-Host "Exported $deckName ($slideCount slides at ${exportWidth}x${exportHeight})"
         }
         catch {
             $failed += "$($deck.Name): export failed ($($_.Exception.Message))"
