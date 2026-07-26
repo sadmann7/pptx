@@ -19,6 +19,7 @@ import { expect, test } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { ALL_DECKS } from "./decks";
 import {
   GROUND_TRUTH_DIR,
   isUpdateMode,
@@ -30,14 +31,7 @@ import {
 } from "./oracle";
 import { openSlide, slideContainer } from "./utils";
 
-const DECKS: Array<{ deck: string; slides: number }> = [
-  { deck: "basic", slides: 3 },
-  { deck: "bom-rels", slides: 1 },
-  { deck: "nested-charts", slides: 2 },
-  { deck: "tables-groups", slides: 2 },
-];
-
-for (const { deck, slides } of DECKS) {
+for (const { name: deck, slides } of ALL_DECKS) {
   test.describe(`oracle: ${deck}`, () => {
     for (let slide = 0; slide < slides; slide++) {
       test(`slide ${slide + 1} matches PowerPoint output`, async ({ page }, testInfo) => {
