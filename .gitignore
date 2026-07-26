@@ -6,11 +6,11 @@ node_modules
 # Build outputs
 dist
 build
+out
 *.tsbuildinfo
 
 # Next.js
 .next/
-out/
 next-env.d.ts
 
 # Generated files
@@ -51,6 +51,12 @@ lerna-debug.log*
 # Testing
 coverage
 .nyc_output
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+packages/e2e/decks/
 
 # Misc
 *.tgz
