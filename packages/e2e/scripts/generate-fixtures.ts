@@ -16,6 +16,13 @@
  *                       (regression: columns sized from frame ext instead of
  *                       per-column w); slide 2: nested groups exercising child
  *                       coordinate remapping (chOff/chExt scaling)
+ * - table-borders.pptx  slide 1: unstyled table over contrasting cell fills,
+ *                       which PowerPoint paints with the built-in "No Style,
+ *                       Table Grid" hairline grid; slide 2: per-cell tcPr
+ *                       borders whose outer edges disagree
+ *                       (regressions: missing grid on styleless tables, grid
+ *                       lines washing out or notching where they meet at
+ *                       fractional scale)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -141,6 +148,94 @@ ${data}
 </p:graphicFrame>`;
 }
 
+/**
+ * 3x3 table, 320x96 px per cell, at (96, 96) px.
+ *
+ * Shared by both border slides so a spec can address a grid line by arithmetic
+ * on those numbers. The bottom row and right column are deliberately textless:
+ * a pixel scan along their centre lines crosses grid lines and cell fills only.
+ */
+const BORDER_TABLE_GEOMETRY = {
+  x: 96,
+  y: 96,
+  colWidth: 320,
+  rowHeight: 96,
+  cols: 3,
+  rows: 3,
+};
+
+function borderTableFrame(id: number, rows: string[]): string {
+  const { x, y, colWidth, rowHeight, cols } = BORDER_TABLE_GEOMETRY;
+  const emu = (px: number) => Math.round((px / 96) * 914400);
+  const gridCols = Array.from({ length: cols }, () => `<a:gridCol w="${emu(colWidth)}"/>`).join("");
+  const body = rows.map((cells) => `<a:tr h="${emu(rowHeight)}">${cells}</a:tr>`).join("");
+  return `<p:graphicFrame>
+<p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(colWidth * cols)}" cy="${emu(rowHeight * rows.length)}"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+<a:tbl>
+<a:tblPr/>
+<a:tblGrid>${gridCols}</a:tblGrid>
+${body}
+</a:tbl>
+</a:graphicData></a:graphic>
+</p:graphicFrame>`;
+}
+
+function borderCell(text: string, fill: string, textColor: string, tcBdr = ""): string {
+  const run = text
+    ? `<a:r><a:rPr lang="en-US" sz="1400"><a:solidFill><a:srgbClr val="${textColor}"/></a:solidFill></a:rPr><a:t>${text}</a:t></a:r>`
+    : "<a:endParaRPr/>";
+  return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p>${run}</a:p></a:txBody><a:tcPr>${tcBdr}<a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></a:tcPr></a:tc>`;
+}
+
+/**
+ * No a:tableStyleId at all, so the grid comes entirely from the built-in
+ * fallback style. Cell fills alternate dark/light: a grid line composited
+ * against the slide background instead of against the cells it separates picks
+ * up the neighbouring fill and is visibly wrong on exactly this arrangement.
+ */
+function styleFallbackGridSlide(): string {
+  const dark = (text: string) => borderCell(text, "1C1C1C", "FFFFFF");
+  const light = (text: string) => borderCell(text, "F2F2F2", "1C1C1C");
+  const blank = () => borderCell("", "FFFFFF", "1C1C1C");
+  return borderTableFrame(2, [
+    `${dark("Stage")}${dark("Matches")}${dark("")}`,
+    `${light("Group")}${light("72")}${light("")}`,
+    `${blank()}${blank()}${blank()}`,
+  ]);
+}
+
+/** A tcPr border line of an explicit width and colour. */
+function tcLine(side: "lnL" | "lnR" | "lnT" | "lnB", widthPt: number, color: string): string {
+  return `<a:${side} w="${Math.round(widthPt * 12700)}" cap="flat"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
+}
+
+/**
+ * Per-cell tcPr borders whose top edges disagree (red over the first column,
+ * green over the rest), so the outline cannot be painted as one rectangle on
+ * the table and has to stay on the cells.
+ */
+function explicitBorderSlide(): string {
+  const cell = (text: string, top: string) =>
+    borderCell(
+      text,
+      "FFFFFF",
+      "1C1C1C",
+      [
+        tcLine("lnT", 1, top),
+        tcLine("lnB", 1, "0070C0"),
+        tcLine("lnL", 1, "0070C0"),
+        tcLine("lnR", 1, "0070C0"),
+      ].join(""),
+    );
+  return borderTableFrame(2, [
+    `${cell("A1", "C00000")}${cell("B1", "00B050")}${cell("C1", "00B050")}`,
+    `${cell("A2", "0070C0")}${cell("B2", "0070C0")}${cell("C2", "0070C0")}`,
+    `${cell("", "0070C0")}${cell("", "0070C0")}${cell("", "0070C0")}`,
+  ]);
+}
+
 function plainRect(
   id: number,
   x: number,
@@ -240,6 +335,13 @@ async function buildTablesGroups(): Promise<ArrayBuffer> {
   });
 }
 
+async function buildTableBorders(): Promise<ArrayBuffer> {
+  return buildCustomPptx({
+    slides: [styleFallbackGridSlide(), explicitBorderSlide()],
+    contentTypesXml: contentTypesXml(2),
+  });
+}
+
 async function main(): Promise<void> {
   mkdirSync(FIXTURES_DIR, { recursive: true });
 
@@ -248,6 +350,7 @@ async function main(): Promise<void> {
     ["bom-rels.pptx", buildBomRels()],
     ["nested-charts.pptx", buildNestedCharts()],
     ["tables-groups.pptx", buildTablesGroups()],
+    ["table-borders.pptx", buildTableBorders()],
   ];
 
   for (const [name, bufferPromise] of decks) {
