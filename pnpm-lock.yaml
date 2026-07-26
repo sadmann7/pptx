@@ -6,69 +6,18 @@ settings:
 
 catalogs:
   default:
-    '@tailwindcss/postcss':
-      specifier: ^4.3.2
-      version: 4.3.2
-    '@testing-library/dom':
-      specifier: ^10.4.1
-      version: 10.4.1
-    '@testing-library/react':
-      specifier: ^16.3.2
-      version: 16.3.2
-    '@types/jsdom':
-      specifier: ^28.0.3
-      version: 28.0.3
     '@types/node':
       specifier: ^26.1.1
       version: 26.1.1
-    '@types/react':
-      specifier: ^19.2.17
-      version: 19.2.17
-    '@types/react-dom':
-      specifier: ^19.2.3
-      version: 19.2.3
-    '@vitest/coverage-v8':
-      specifier: ^4.1.10
-      version: 4.1.10
-    happy-dom:
-      specifier: ^20.10.6
-      version: 20.10.6
-    jsdom:
-      specifier: ^29.1.1
-      version: 29.1.1
     jszip:
       specifier: ^3.10.1
       version: 3.10.1
-    next-themes:
-      specifier: ^0.4.6
-      version: 0.4.6
     oxlint:
       specifier: ^1.73.0
       version: 1.73.0
-    postcss:
-      specifier: ^8.5.17
-      version: 8.5.17
-    react:
-      specifier: ^19.2.6
-      version: 19.2.7
-    react-dom:
-      specifier: ^19.2.6
-      version: 19.2.7
-    remotion:
-      specifier: 4.0.491
-      version: 4.0.491
-    tailwindcss:
-      specifier: ^4.3.2
-      version: 4.3.2
-    tsdown:
-      specifier: ^0.22.5
-      version: 0.22.5
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
-    vitest:
-      specifier: ^4.1.10
-      version: 4.1.10
 
 overrides:
   zod: 4.3.6
@@ -272,8 +221,11 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@blazediff/ssim':
+        specifier: ^1.7.1
+        version: 1.7.1
       '@playwright/test':
-        specifier: ^1.58.2
+        specifier: ^1.61.1
         version: 1.61.1
       '@types/node':
         specifier: 'catalog:'
@@ -284,14 +236,14 @@ importers:
       jszip:
         specifier: 'catalog:'
         version: 3.10.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.73.0
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@26.1.1)
-      ssim.js:
-        specifier: ^3.5.0
-        version: 3.5.0
       tsx:
-        specifier: ^4.20.7
+        specifier: ^4.22.4
         version: 4.22.4
       typescript:
         specifier: 'catalog:'
@@ -509,6 +461,9 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
+
+  '@blazediff/ssim@1.7.1':
+    resolution: {integrity: sha512-CxdtlPLijlp2tbwDavEOlDCtonWroHpXBfp/Ptue8IRTKeKnuDCotWZliH0tFJRYpsORxBUKXAc4vWVBrPUnPw==}
 
   '@bramus/specificity@2.4.2':
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
@@ -4847,9 +4802,6 @@ packages:
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
 
-  ssim.js@3.5.0:
-    resolution: {integrity: sha512-Aj6Jl2z6oDmgYFFbQqK7fght19bXdOxY7Tj03nF+03M9gCBAjeIiO8/PlEGMfKDwYpw4q6iBqVq2YuREorGg/g==}
-
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
@@ -5495,6 +5447,8 @@ snapshots:
       '@types/react': 19.2.17
 
   '@bcoe/v8-coverage@1.0.2': {}
+
+  '@blazediff/ssim@1.7.1': {}
 
   '@bramus/specificity@2.4.2':
     dependencies:
@@ -9877,8 +9831,6 @@ snapshots:
       signal-exit: 4.1.0
 
   sprintf-js@1.0.3: {}
-
-  ssim.js@3.5.0: {}
 
   stackback@0.0.2: {}
 

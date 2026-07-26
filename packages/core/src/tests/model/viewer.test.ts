@@ -67,7 +67,7 @@ describe("PptxViewer.open (list mode)", () => {
     expect(wrapper.style.height).toBe("360px");
 
     const slideEl = wrapper.firstElementChild as HTMLElement;
-    expect(slideEl.style.transform).toBe("scale(0.5)");
+    expect(slideEl.style.getPropertyValue("zoom")).toBe("0.5");
   });
 
   it("re-renders at the new scale after setZoom", async () => {
@@ -79,7 +79,7 @@ describe("PptxViewer.open (list mode)", () => {
     const wrapper = container.querySelector<HTMLElement>("[data-slide-index='0']")
       ?.firstElementChild as HTMLElement;
     expect(wrapper.style.width).toBe("1280px");
-    expect((wrapper.firstElementChild as HTMLElement).style.transform).toBe("scale(1)");
+    expect((wrapper.firstElementChild as HTMLElement).style.getPropertyValue("zoom")).toBe("1");
   });
 
   it("clamps zoom to the 10–400 percent range", async () => {
@@ -185,7 +185,7 @@ describe("PptxViewer external rendering and search", () => {
     const handle = viewer.renderSlideToContainer(1, external, 0.5);
     expect(handle).not.toBeNull();
     expect(external.textContent).toContain("Beta slide");
-    expect(handle!.element.style.transform).toBe("scale(0.5)");
+    expect(handle!.element.style.getPropertyValue("zoom")).toBe("0.5");
 
     // Unlike thumbnail handles, slide handles only release resources; the
     // caller owns DOM removal.

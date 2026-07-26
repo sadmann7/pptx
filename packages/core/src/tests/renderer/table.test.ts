@@ -5,8 +5,18 @@ import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
-function tableCell(text: string): string {
-  return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
+function tableCell(text: string, tcPrXml = "<a:tcPr/>"): string {
+  return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody>${tcPrXml}</a:tc>`;
+}
+
+/** A cell with a solid fill and a 1pt border on all four sides. */
+function borderedCell(text: string, fillHex: string, lineHex = "112233"): string {
+  const ln = (name: string) =>
+    `<a:${name} w="12700"><a:solidFill><a:srgbClr val="${lineHex}"/></a:solidFill></a:${name}>`;
+  return tableCell(
+    text,
+    `<a:tcPr>${ln("lnL")}${ln("lnR")}${ln("lnT")}${ln("lnB")}<a:solidFill><a:srgbClr val="${fillHex}"/></a:solidFill></a:tcPr>`,
+  );
 }
 
 /** Renders a slide with one graphicFrame table and returns the table's wrapper div. */
@@ -74,6 +84,94 @@ describe("table sizing", () => {
 
     expect(wrapper.style.width).toBe("400px");
     expect(wrapper.style.height).toBe("200px");
+  });
+
+  it("paints each shared edge once so borders never straddle two fills", async () => {
+    // Collapsed borders are composited against whatever sits behind the table,
+    // so at fractional zoom a shared edge picks up the slide background and
+    // reads as a different colour depending on the fills it separates.
+    const wrapper = await renderTableFrame(
+      `<a:ext cx="3000000" cy="3000000"/>`,
+      `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,
+      `<a:tr h="457200">${borderedCell("A", "0F0F0F")}${borderedCell("B", "0F0F0F")}</a:tr>
+       <a:tr h="457200">${borderedCell("C", "EFE9D9")}${borderedCell("D", "EFE9D9")}</a:tr>`,
+    );
+
+    const table = wrapper.querySelector("table")!;
+    expect(table.style.borderCollapse).toBe("separate");
+    expect(table.style.borderSpacing).toMatch(/^0(px)?$/);
+
+    const [a, b, c, d] = [...wrapper.querySelectorAll("td")];
+    // The upper/left cell owns each interior edge.
+    expect(a.style.borderRight).toContain("#112233");
+    expect(a.style.borderBottom).toContain("#112233");
+    expect(b.style.borderLeft).toBe("");
+    expect(c.style.borderTop).toBe("");
+    expect(d.style.borderTop).toBe("");
+    expect(d.style.borderLeft).toBe("");
+  });
+
+  it("draws a uniform outline on the table instead of on the boundary cells", async () => {
+    const wrapper = await renderTableFrame(
+      `<a:ext cx="3000000" cy="3000000"/>`,
+      `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,
+      `<a:tr h="457200">${borderedCell("A", "0F0F0F")}${borderedCell("B", "0F0F0F")}</a:tr>
+       <a:tr h="457200">${borderedCell("C", "EFE9D9")}${borderedCell("D", "EFE9D9")}</a:tr>`,
+    );
+
+    const table = wrapper.querySelector("table")!;
+    for (const side of ["borderTop", "borderBottom", "borderLeft", "borderRight"] as const) {
+      expect(table.style[side]).toContain("#112233");
+    }
+    expect(table.style.boxSizing).toBe("border-box");
+
+    const [a, , , d] = [...wrapper.querySelectorAll("td")];
+    expect(a.style.borderTop).toBe("");
+    expect(a.style.borderLeft).toBe("");
+    expect(d.style.borderRight).toBe("");
+    expect(d.style.borderBottom).toBe("");
+  });
+
+  it("leaves an outline edge on its cells when they disagree", async () => {
+    const wrapper = await renderTableFrame(
+      `<a:ext cx="3000000" cy="3000000"/>`,
+      `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,
+      `<a:tr h="457200">${borderedCell("A", "0F0F0F", "112233")}${borderedCell("B", "0F0F0F", "445566")}</a:tr>`,
+    );
+
+    const table = wrapper.querySelector("table")!;
+    expect(table.style.borderTop).toBe("");
+
+    const [a, b] = [...wrapper.querySelectorAll("td")];
+    expect(a.style.borderTop).toContain("#112233");
+    expect(b.style.borderTop).toContain("#445566");
+  });
+
+  it("backs a uniformly filled row with its own colour, and a mixed row with none", async () => {
+    const wrapper = await renderTableFrame(
+      `<a:ext cx="3000000" cy="3000000"/>`,
+      `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,
+      `<a:tr h="457200">${borderedCell("A", "0F0F0F")}${borderedCell("B", "0F0F0F")}</a:tr>
+       <a:tr h="457200">${borderedCell("C", "EFE9D9")}${borderedCell("D", "0F0F0F")}</a:tr>`,
+    );
+
+    const [uniform, mixed] = [...wrapper.querySelectorAll("tr")];
+    expect(uniform.style.backgroundColor.toUpperCase()).toBe("#0F0F0F");
+    expect(mixed.style.backgroundColor).toBe("");
+  });
+
+  it("does not back a row whose cells leave the grid partly uncovered", async () => {
+    // The open band belongs to a vertically merged cell; tinting it would show
+    // through that cell when it has no fill of its own.
+    const wrapper = await renderTableFrame(
+      `<a:ext cx="3000000" cy="3000000"/>`,
+      `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,
+      `<a:tr h="457200"><a:tc rowSpan="2">${""}<a:txBody><a:bodyPr/><a:lstStyle/><a:p/></a:txBody><a:tcPr/></a:tc>${borderedCell("B", "0F0F0F")}</a:tr>
+       <a:tr h="457200"><a:tc vMerge="1"><a:txBody><a:bodyPr/><a:lstStyle/><a:p/></a:txBody><a:tcPr/></a:tc>${borderedCell("D", "0F0F0F")}</a:tr>`,
+    );
+
+    const rows = [...wrapper.querySelectorAll("tr")];
+    expect(rows[1].style.backgroundColor).toBe("");
   });
 
   it("does not clip rows that grow beyond declared heights", async () => {

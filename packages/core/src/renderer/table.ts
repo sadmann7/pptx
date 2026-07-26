@@ -17,7 +17,7 @@ import { hexToRgb } from "../utils/color";
 import { RenderContext } from "./context";
 import { resolveThemeFontStack } from "./font";
 import { resolveColor, resolveFill, resolveLineStyle, resolveThemeFillReference } from "./style";
-import { getPredefinedTableStyle } from "./table-style";
+import { getPredefinedTableStyle, NO_STYLE_TABLE_GRID } from "./table-style";
 import { renderTextBody } from "./text";
 
 function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
@@ -61,12 +61,18 @@ function clearCssFillBackground(el: HTMLElement): void {
 /**
  * Find a table style node by its ID from presentation.tableStyles.
  * tableStyles XML structure: <a:tblStyleLst> <a:tblStyle styleId="{UUID}" ...>
+ *
+ * A table without an <a:tableStyleId> falls back to the built-in "No Style,
+ * Table Grid": PowerPoint paints a plain 1pt tx1 grid for such tables. The
+ * `def` attribute on <a:tblStyleLst> is not used here — it only seeds the style
+ * of newly inserted tables, it is not a render-time fallback.
  */
 function findTableStyle(
   tableStyleId: string | undefined,
   ctx: RenderContext,
 ): SafeXmlNode | undefined {
-  if (!tableStyleId || !ctx.presentation.tableStyles) return undefined;
+  if (!tableStyleId) return getPredefinedTableStyle(NO_STYLE_TABLE_GRID);
+  if (!ctx.presentation.tableStyles) return undefined;
   const tblStyleLst = ctx.presentation.tableStyles;
   for (const style of tblStyleLst.children("tblStyle")) {
     if (style.attr("styleId") === tableStyleId) {
@@ -295,12 +301,15 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
   return false;
 }
 
+/** The four CSS border shorthands of a cell, as resolved from OOXML. */
+type CellBorders = Partial<Record<"top" | "bottom" | "left" | "right", string>>;
+
 /**
- * Apply borders from a table style tcStyle node.
+ * Collect borders from a table style tcStyle node.
  * Structure: <a:tcStyle> <a:tcBdr> <a:top>/<a:bottom>/<a:left>/<a:right> <a:ln>...
  */
-function applyStyleBorders(
-  td: HTMLElement,
+function collectStyleBorders(
+  borders: CellBorders,
   tcStyle: SafeXmlNode,
   ctx: RenderContext,
   rowIdx?: number,
@@ -311,54 +320,54 @@ function applyStyleBorders(
   const tcBdr = tcStyle.child("tcBdr");
   if (!tcBdr.exists()) return;
 
-  const borderMap: Array<[string, "borderTop" | "borderBottom" | "borderLeft" | "borderRight"]> = [
-    ["top", "borderTop"],
-    ["bottom", "borderBottom"],
-    ["left", "borderLeft"],
-    ["right", "borderRight"],
+  const borderMap: Array<[string, "top" | "bottom" | "left" | "right"]> = [
+    ["top", "top"],
+    ["bottom", "bottom"],
+    ["left", "left"],
+    ["right", "right"],
   ];
 
   // Map insideH/insideV to individual cell borders:
-  // insideH → borderBottom for non-last rows, borderTop for non-first rows
-  // insideV → borderRight for non-last cols, borderLeft for non-first cols
+  // insideH → bottom for non-last rows, top for non-first rows
+  // insideV → right for non-last cols, left for non-first cols
   const insideH = tcBdr.child("insideH");
   if (insideH.exists() && rowIdx !== undefined && totalRows !== undefined) {
     if (rowIdx < totalRows - 1) {
-      borderMap.push(["insideH", "borderBottom"]);
+      borderMap.push(["insideH", "bottom"]);
     }
     if (rowIdx > 0) {
-      borderMap.push(["insideH", "borderTop"]);
+      borderMap.push(["insideH", "top"]);
     }
   }
   const insideV = tcBdr.child("insideV");
   if (insideV.exists() && colIdx !== undefined && totalCols !== undefined) {
     if (colIdx < totalCols - 1) {
-      borderMap.push(["insideV", "borderRight"]);
+      borderMap.push(["insideV", "right"]);
     }
     if (colIdx > 0) {
-      borderMap.push(["insideV", "borderLeft"]);
+      borderMap.push(["insideV", "left"]);
     }
   }
 
-  for (const [xmlName, cssProp] of borderMap) {
-    const side = tcBdr.child(xmlName);
-    if (!side.exists()) continue;
+  for (const [xmlName, side] of borderMap) {
+    const sideNode = tcBdr.child(xmlName);
+    if (!sideNode.exists()) continue;
 
     // Direct <a:ln> element
-    const ln = side.child("ln");
+    const ln = sideNode.child("ln");
     if (ln.exists()) {
       const noFill = ln.child("noFill");
       if (noFill.exists()) continue;
 
       const style = resolveLineStyle(ln, ctx);
       if (style.width > 0 && style.color !== "transparent") {
-        td.style[cssProp] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
+        borders[side] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
       }
       continue;
     }
 
     // <a:lnRef>: reference to theme line style (common in table styles)
-    const lnRef = side.child("lnRef");
+    const lnRef = sideNode.child("lnRef");
     if (lnRef.exists()) {
       const idx = lnRef.numAttr("idx") ?? 0;
       if (idx === 0) continue; // idx 0 = no line
@@ -380,7 +389,7 @@ function applyStyleBorders(
           ? `rgba(${hexToRgb(hex).r},${hexToRgb(hex).g},${hexToRgb(hex).b},${alpha.toFixed(3)})`
           : hex;
       if (width > 0) {
-        td.style[cssProp] = `${Math.max(width, 0.5)}px solid ${cssColor}`;
+        borders[side] = `${Math.max(width, 0.5)}px solid ${cssColor}`;
       }
     }
   }
@@ -420,6 +429,80 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
   const directFillCss = resolveFill(tblBg, ctx);
   if (directFillCss) {
     applyCssFillBackground(table, directFillCss);
+  }
+}
+
+/**
+ * Track whether every cell of a row resolved to the same opaque colour.
+ *
+ * Neighbouring cell backgrounds meet on a fractional device pixel once the
+ * slide is scaled, and the anti-aliased seam exposes whatever is behind the
+ * table — on a dark row that reads as a light hairline next to the border.
+ * Painting the shared colour on the row fills that seam; row backgrounds sit
+ * below every cell background and border, so nothing else changes.
+ *
+ * Returns the shared colour, or null once the row is disqualified (a cell with
+ * no fill, a translucent fill, or a gradient/image fill, or differing colours).
+ */
+function mergeRowFill(current: string | null | undefined, td: HTMLElement): string | null {
+  if (current === null) return null;
+
+  const color = td.style.backgroundColor;
+  if (td.style.backgroundImage || !color || color === "transparent" || color.startsWith("rgba(")) {
+    return null;
+  }
+  if (current === undefined) return color;
+  return current === color ? current : null;
+}
+
+/** One edge of the table's outline, collected while the rows are built. */
+type OuterEdge = {
+  tds: HTMLElement[];
+  value: string | undefined;
+  uniform: boolean;
+  span: number;
+};
+
+function createOuterEdge(): OuterEdge {
+  return { tds: [], value: undefined, uniform: true, span: 0 };
+}
+
+function trackOuterEdge(
+  edge: OuterEdge,
+  td: HTMLElement,
+  value: string | undefined,
+  span: number,
+): void {
+  if (edge.tds.length === 0) edge.value = value;
+  else if (edge.value !== value) edge.uniform = false;
+  edge.tds.push(td);
+  edge.span += span;
+}
+
+/**
+ * Move an outline edge from its cells onto the table element.
+ *
+ * Every cell paints its borders as its own rectangles, so two neighbouring
+ * segments of the same outline meet on a fractional device pixel once the slide
+ * is scaled, and their anti-aliased ends do not add up to full coverage. On an
+ * interior grid line the shortfall exposes the neighbouring cell fill and stays
+ * invisible; on the outline it exposes the slide background, so every grid line
+ * reaching the outline leaves a light notch that reads as the line poking
+ * through. One border on the table paints the edge as a single rectangle.
+ *
+ * Only possible when every cell along the edge resolved to the same border and
+ * together they cover it completely (`expectedSpan`).
+ */
+function hoistOuterEdge(
+  table: HTMLElement,
+  edge: OuterEdge,
+  side: "top" | "bottom" | "left" | "right",
+  expectedSpan: number,
+): void {
+  if (!edge.uniform || !edge.value || edge.span !== expectedSpan) return;
+  table.style.setProperty(`border-${side}`, edge.value);
+  for (const td of edge.tds) {
+    td.style.removeProperty(`border-${side}`);
   }
 }
 
@@ -482,7 +565,18 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 
   // Create table element
   const table = document.createElement("table");
-  table.style.borderCollapse = "collapse";
+  // Separate borders (with zero spacing, so the geometry matches the collapsed
+  // model) keep every cell's background covering its whole border box. Under
+  // `collapse` the shared border strip is composited against whatever sits
+  // behind the table instead, so at fractional zoom the anti-aliased line
+  // picks up the slide background and reads as a lighter or darker line
+  // depending on the fills it separates. Each shared edge is therefore painted
+  // exactly once, by the cell that owns it (see the row loop below).
+  table.style.borderCollapse = "separate";
+  table.style.borderSpacing = "0";
+  // The outline may end up on the table itself (see hoistOuterEdge); keep it
+  // inside the frame instead of growing the table past the grid it describes.
+  table.style.boxSizing = "border-box";
   table.style.width = "100%";
   table.style.height = "100%";
   table.style.tableLayout = "fixed";
@@ -507,8 +601,21 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   // Compute total row height so we can express each row as a proportion
   const totalRowHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
 
-  // Render rows
+  // Render rows.
+  //
+  // Shared edges are painted by the cell above/left of them: `bottomEdges`
+  // holds, per grid column, the bottom border of the cell that last covered it,
+  // and `leftEdge` the right border of the previous cell in the row. A cell
+  // drops its own top/left border when the neighbour already paints that edge,
+  // which mirrors the precedence of the collapsed-border model.
   const tbody = document.createElement("tbody");
+  const bottomEdges: (string | undefined)[] = [];
+  const outline = {
+    top: createOuterEdge(),
+    bottom: createOuterEdge(),
+    left: createOuterEdge(),
+    right: createOuterEdge(),
+  };
   let colIdx = 0;
   for (let rowIdx = 0; rowIdx < node.rows.length; rowIdx++) {
     const row = node.rows[rowIdx];
@@ -520,6 +627,11 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     }
 
     colIdx = 0;
+    let leftEdge: string | undefined;
+    // Uniform opaque row fill, used as a backdrop for the sub-pixel seams
+    // between neighbouring cell backgrounds (see mergeRowFill).
+    let rowFill: string | null | undefined;
+    let filledCols = 0;
     for (const cell of row.cells) {
       // Skip merged cells
       if (cell.hMerge || cell.vMerge) {
@@ -544,6 +656,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       }
 
       // Apply table style first (as base), then direct tcPr overrides
+      const borders: CellBorders = {};
       let sections: SafeXmlNode[] = [];
       if (tblStyle) {
         sections = getStyleSections(tblStyle, rowIdx, colIdx, totalRows, totalCols, tblPr);
@@ -552,13 +665,36 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
           const tcStyle = section.child("tcStyle");
           if (tcStyle.exists()) {
             applyStyleFill(td, tcStyle, ctx);
-            applyStyleBorders(td, tcStyle, ctx, rowIdx, colIdx, totalRows, totalCols);
+            collectStyleBorders(borders, tcStyle, ctx, rowIdx, colIdx, totalRows, totalCols);
           }
         }
       }
 
       // Apply direct cell properties (override table style)
-      applyCellProperties(td, cell, ctx);
+      applyCellProperties(td, cell, ctx, borders);
+
+      if (leftEdge !== undefined) delete borders.left;
+      if (bottomEdges[colIdx] !== undefined) delete borders.top;
+      if (borders.top) td.style.borderTop = borders.top;
+      if (borders.bottom) td.style.borderBottom = borders.bottom;
+      if (borders.left) td.style.borderLeft = borders.left;
+      if (borders.right) td.style.borderRight = borders.right;
+
+      if (rowIdx === 0) trackOuterEdge(outline.top, td, borders.top, cell.gridSpan);
+      if (rowIdx + cell.rowSpan === totalRows) {
+        trackOuterEdge(outline.bottom, td, borders.bottom, cell.gridSpan);
+      }
+      if (colIdx === 0) trackOuterEdge(outline.left, td, borders.left, cell.rowSpan);
+      if (colIdx + cell.gridSpan === totalCols) {
+        trackOuterEdge(outline.right, td, borders.right, cell.rowSpan);
+      }
+
+      leftEdge = borders.right;
+      for (let c = colIdx; c < colIdx + cell.gridSpan; c++) {
+        bottomEdges[c] = borders.bottom;
+      }
+      rowFill = mergeRowFill(rowFill, td);
+      filledCols += cell.gridSpan;
 
       // Resolve table style text properties (color, bold, italic from tcTxStyle)
       const textProps =
@@ -596,8 +732,19 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       colIdx += cell.gridSpan;
     }
 
+    // Only rows whose own cells span the full grid can safely carry a backdrop:
+    // a band left to a vertically merged cell would be tinted through it.
+    if (rowFill && filledCols === totalCols) {
+      tr.style.backgroundColor = rowFill;
+    }
+
     tbody.appendChild(tr);
   }
+
+  hoistOuterEdge(table, outline.top, "top", totalCols);
+  hoistOuterEdge(table, outline.bottom, "bottom", totalCols);
+  hoistOuterEdge(table, outline.left, "left", totalRows);
+  hoistOuterEdge(table, outline.right, "right", totalRows);
 
   table.appendChild(tbody);
   wrapper.appendChild(table);
@@ -609,9 +756,15 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 // ---------------------------------------------------------------------------
 
 /**
- * Apply table cell properties (tcPr) to a <td> element.
+ * Apply table cell properties (tcPr) to a <td> element, collecting the cell's
+ * borders into `borders` (they are painted later, once per shared edge).
  */
-function applyCellProperties(td: HTMLElement, cell: TableCell, ctx: RenderContext): void {
+function applyCellProperties(
+  td: HTMLElement,
+  cell: TableCell,
+  ctx: RenderContext,
+  borders: CellBorders,
+): void {
   const tcPr = cell.properties;
 
   if (tcPr?.attr("horzOverflow") === "overflow") {
@@ -643,10 +796,10 @@ function applyCellProperties(td: HTMLElement, cell: TableCell, ctx: RenderContex
     }
 
     // Borders (override table style borders)
-    applyBorder(td, tcPr, "lnT", "borderTop", ctx);
-    applyBorder(td, tcPr, "lnB", "borderBottom", ctx);
-    applyBorder(td, tcPr, "lnL", "borderLeft", ctx);
-    applyBorder(td, tcPr, "lnR", "borderRight", ctx);
+    collectBorder(borders, tcPr, "lnT", "top", ctx);
+    collectBorder(borders, tcPr, "lnB", "bottom", ctx);
+    collectBorder(borders, tcPr, "lnL", "left", ctx);
+    collectBorder(borders, tcPr, "lnR", "right", ctx);
   }
 
   // Margins / Padding
@@ -673,27 +826,27 @@ function applyCellProperties(td: HTMLElement, cell: TableCell, ctx: RenderContex
 }
 
 /**
- * Apply a single border to a <td> element from a line node.
+ * Collect a single cell border from a tcPr line node.
  */
-function applyBorder(
-  td: HTMLElement,
+function collectBorder(
+  borders: CellBorders,
   tcPr: SafeXmlNode,
   lineName: string,
-  cssProp: "borderTop" | "borderBottom" | "borderLeft" | "borderRight",
+  side: "top" | "bottom" | "left" | "right",
   ctx: RenderContext,
 ): void {
   const ln = tcPr.child(lineName);
   if (!ln.exists()) return;
 
-  // Check for noFill: explicitly clear any border set by table style
+  // noFill: the cell explicitly suppresses any border the table style set.
   const noFill = ln.child("noFill");
   if (noFill.exists()) {
-    td.style[cssProp] = "none";
+    delete borders[side];
     return;
   }
 
   const style = resolveLineStyle(ln, ctx);
   if (style.width > 0 && style.color !== "transparent") {
-    td.style[cssProp] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
+    borders[side] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
   }
 }

@@ -2,3 +2,6 @@ node_modules/
 test-results/
 playwright-report/
 blob-report/
+# Ad-hoc decks and screenshots used while debugging a rendering bug.
+decks/
+out/

@@ -8,6 +8,10 @@
     "fixtures": "tsx scripts/generate-fixtures.ts",
     "harness": "vite --port 5000 --strictPort",
     "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
+    "shoot": "tsx scripts/shoot.ts",
+    "probe": "tsx scripts/probe.ts",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:update": "playwright test --update-snapshots",
@@ -18,13 +22,14 @@
     "@diceui/pptx-core": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@blazediff/ssim": "^1.7.1",
+    "@playwright/test": "^1.61.1",
     "@types/node": "catalog:",
     "cross-env": "^10.1.0",
     "jszip": "catalog:",
+    "oxlint": "catalog:",
     "sharp": "^0.35.3",
-    "ssim.js": "^3.5.0",
-    "tsx": "^4.20.7",
+    "tsx": "^4.22.4",
     "typescript": "catalog:",
     "vite": "^7.3.6"
   }

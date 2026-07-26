@@ -1,4 +1,4 @@
-export { PptxViewer } from "./viewer";
+export { applySlideScale, PptxViewer } from "./viewer";
 export type {
   FitMode,
   ListRenderOptions,

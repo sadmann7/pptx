@@ -87,6 +87,7 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 | Grid, spans, merges; sized from grid (frame `ext` ignored per PowerPoint) | ✅     |                                                    |
 | Cell fills, borders, insets, anchors                                      | ✅     |                                                    |
 | Table styles: embedded `tblStyleLst` + all 74 built-in styles             | ✅     | firstRow/lastRow/bandRow/firstCol/lastCol/bandCol  |
+| Table with no `a:tableStyleId`                                            | ✅     | Falls back to built-in "No Style, Table Grid"      |
 | Missing `ppt/tableStyles.xml` part                                        | 🟡     | Built-ins skipped when part absent (`TODO(spec?)`) |
 
 ## Charts (DrawingML Charts §21.2)
