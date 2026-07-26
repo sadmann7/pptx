@@ -456,6 +456,104 @@ describe("Ctrl+A select all", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Marquee selection
+// ---------------------------------------------------------------------------
+
+/**
+ * happy-dom ships no `document.elementsFromPoint`, which `hitTest` needs, so
+ * stub it as empty: every press then lands on empty canvas, which is the
+ * precondition for a band. The flip side is that pressing a *shape* cannot be
+ * simulated here, so Shift+drag on a shape stays manual-only.
+ *
+ * Containment still works, because node rects come from the model while only
+ * the band corners come from the pointer. With layout zeroed, `clientToSlide`
+ * reduces to `client / zoom`, so a band over the origin encloses the whole
+ * slide and one far outside it encloses nothing.
+ */
+const OVER_SLIDE = 100_000;
+const PAST_SLIDE = 90_000;
+
+beforeAll(() => {
+  document.elementsFromPoint ??= () => [];
+});
+
+function band(
+  overlay: HTMLElement,
+  from: number,
+  to: number,
+  modifier: { shiftKey?: boolean } = {},
+): void {
+  act(() => {
+    fireEvent.pointerDown(overlay, {
+      button: 0,
+      clientX: from,
+      clientY: from,
+      pointerId: 1,
+      ...modifier,
+    });
+  });
+  act(() => {
+    fireEvent.pointerMove(overlay, {
+      buttons: 1,
+      clientX: to,
+      clientY: to,
+      pointerId: 1,
+      ...modifier,
+    });
+  });
+  act(() => {
+    fireEvent.pointerUp(overlay, { pointerId: 1, ...modifier });
+  });
+}
+
+describe("marquee selection", () => {
+  it("enters marquee mode on a press over empty canvas", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+    });
+
+    expect(overlay.getAttribute("data-mode")).toBe("marquee");
+  });
+
+  it("selects the shapes a band encloses", async () => {
+    const { overlay } = await renderSelection();
+
+    band(overlay, 0, OVER_SLIDE);
+
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
+  it("clears the selection when a plain band encloses nothing", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+
+    band(overlay, PAST_SLIDE, OVER_SLIDE);
+
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+
+  it("keeps the selection when a Shift band encloses nothing", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    band(overlay, PAST_SLIDE, OVER_SLIDE, { shiftKey: true });
+
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Keyboard shortcuts (Escape, Delete, Arrow, Undo/Redo)
 // ---------------------------------------------------------------------------
 
