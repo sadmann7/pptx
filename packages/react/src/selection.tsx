@@ -176,7 +176,8 @@ export function constrainMove(dx: number, dy: number, lockAxis = false): NodePos
  * would otherwise drop shapes the band swept over.
  */
 export function mergeSelection(baseIds: string[], addedIds: string[]): string[] {
-  return [...baseIds, ...addedIds.filter((id) => !baseIds.includes(id))];
+  const baseIdsSet = new Set(baseIds);
+  return [...baseIds, ...addedIds.filter((id) => !baseIdsSet.has(id))];
 }
 
 /**
@@ -588,8 +589,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes mutate in place; revision is the change signal
     [slide, slideRevision, presentation],
   );
-
-  if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   function getSlideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
@@ -1714,6 +1713,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       nudge(selectedNodes, delta);
     }
   }
+
+  // Bail out below every hook, never above one: returning early before the
+  // effects would change the hook count between renders, which React rejects.
+  if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   return renderElement(
     "div",

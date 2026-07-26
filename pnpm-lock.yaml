@@ -6,18 +6,69 @@ settings:
 
 catalogs:
   default:
+    '@tailwindcss/postcss':
+      specifier: ^4.3.2
+      version: 4.3.2
+    '@testing-library/dom':
+      specifier: ^10.4.1
+      version: 10.4.1
+    '@testing-library/react':
+      specifier: ^16.3.2
+      version: 16.3.2
+    '@types/jsdom':
+      specifier: ^28.0.3
+      version: 28.0.3
     '@types/node':
       specifier: ^26.1.1
       version: 26.1.1
+    '@types/react':
+      specifier: ^19.2.17
+      version: 19.2.17
+    '@types/react-dom':
+      specifier: ^19.2.3
+      version: 19.2.3
+    '@vitest/coverage-v8':
+      specifier: ^4.1.10
+      version: 4.1.10
+    happy-dom:
+      specifier: ^20.10.6
+      version: 20.10.6
+    jsdom:
+      specifier: ^29.1.1
+      version: 29.1.1
     jszip:
       specifier: ^3.10.1
       version: 3.10.1
+    next-themes:
+      specifier: ^0.4.6
+      version: 0.4.6
     oxlint:
       specifier: ^1.73.0
       version: 1.73.0
+    postcss:
+      specifier: ^8.5.17
+      version: 8.5.17
+    react:
+      specifier: ^19.2.6
+      version: 19.2.7
+    react-dom:
+      specifier: ^19.2.6
+      version: 19.2.7
+    remotion:
+      specifier: 4.0.491
+      version: 4.0.491
+    tailwindcss:
+      specifier: ^4.3.2
+      version: 4.3.2
+    tsdown:
+      specifier: ^0.22.5
+      version: 0.22.5
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+    vitest:
+      specifier: ^4.1.10
+      version: 4.1.10
 
 overrides:
   zod: 4.3.6
@@ -86,9 +137,6 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
-      zod:
-        specifier: 4.3.6
-        version: 4.3.6
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 'catalog:'
@@ -150,9 +198,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.2
-      zod:
-        specifier: 4.3.6
-        version: 4.3.6
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

@@ -31,7 +31,12 @@ export function PptxCard({
   React.useEffect(() => {
     let cancelled = false;
     fetch(staticFile(file))
-      .then((r) => r.arrayBuffer())
+      .then((r) => {
+        // fetch resolves on 404, so an unchecked body would fail later as an
+        // unreadable deck instead of a missing file.
+        if (!r.ok) throw new Error(`${file}: ${r.status}`);
+        return r.arrayBuffer();
+      })
       .then((buf) => {
         if (!cancelled) setData(buf);
       })
