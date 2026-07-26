@@ -4,13 +4,15 @@
  * Screenshots and PowerPoint-exported PNGs are decoded with sharp, resized to
  * common dimensions, and scored with SSIM (structural similarity; 1 = pixel
  * identical). Fuzzy scoring is deliberate: fonts, antialiasing, and text
- * metrics legitimately differ between PowerPoint and the browser, so
- * pixel-exact comparison would never pass.
+ * metrics legitimately differ between PowerPoint and the browser, so a
+ * pixel-counting comparison would never pass — SSIM's local windows tolerate a
+ * glyph landing a pixel off while still catching structural breakage.
  */
+
+import ssim from "@blazediff/ssim/ssim";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
-import { ssim } from "ssim.js";
 
 const SPECS_DIR = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 
@@ -23,24 +25,20 @@ export const SCORE_TOLERANCE = 0.01;
 /**
  * Absolute floor, independent of baselines. Catches catastrophic breakage
  * (blank slide, missing chart) even on platforms with no recorded baseline
- * or with a badly-recorded one. Our worst honest score today is ~0.86
- * (nested-charts doughnut), so 0.8 leaves headroom without hiding disasters.
+ * or with a badly-recorded one. Our worst honest score today is ~0.88
+ * (the charts, whose renderer is ECharts rather than PowerPoint's), so 0.8
+ * leaves headroom without hiding disasters.
  */
 export const SCORE_FLOOR = 0.8;
 
-interface RawImage {
-  data: Uint8ClampedArray;
-  width: number;
-  height: number;
-}
-
-async function decodeTo(buffer: Buffer, width: number, height: number): Promise<RawImage> {
-  const { data } = await sharp(buffer)
+/** Decodes to the RGBA bytes the SSIM implementation expects. */
+async function decodeTo(buffer: Buffer, width: number, height: number): Promise<Uint8ClampedArray> {
+  const data = await sharp(buffer)
     .resize(width, height, { fit: "fill" })
     .ensureAlpha()
     .raw()
-    .toBuffer({ resolveWithObject: true });
-  return { data: new Uint8ClampedArray(data), width, height };
+    .toBuffer();
+  return new Uint8ClampedArray(data);
 }
 
 /** SSIM between a Playwright screenshot and a ground-truth PNG (0..1). */
@@ -58,7 +56,7 @@ export async function ssimAgainstGroundTruth(
     decodeTo(groundTruth, width, height),
   ]);
 
-  return ssim(actual, expected).mssim;
+  return ssim(actual, expected, undefined, width, height);
 }
 
 // ---------------------------------------------------------------------------

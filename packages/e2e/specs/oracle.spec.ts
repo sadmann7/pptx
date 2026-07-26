@@ -27,7 +27,7 @@ import {
   SCORE_TOLERANCE,
   ssimAgainstGroundTruth,
   writeScoreBaseline,
-} from "./oracle-utils";
+} from "./oracle";
 import { openSlide, slideContainer } from "./utils";
 
 const DECKS: Array<{ deck: string; slides: number }> = [

@@ -22,13 +22,13 @@
     "@diceui/pptx-core": "workspace:*"
   },
   "devDependencies": {
+    "@blazediff/ssim": "^1.7.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "catalog:",
     "cross-env": "^10.1.0",
     "jszip": "catalog:",
     "oxlint": "catalog:",
     "sharp": "^0.35.3",
-    "ssim.js": "^3.5.0",
     "tsx": "^4.22.4",
     "typescript": "catalog:",
     "vite": "^7.3.6"
