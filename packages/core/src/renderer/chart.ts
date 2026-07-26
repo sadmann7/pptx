@@ -698,6 +698,7 @@ function buildBarChartOption(
   chartNode: SafeXmlNode,
   seriesArr: SeriesData[],
   ctx: RenderContext,
+  chartPalette?: string[],
 ): echarts.EChartsOption {
   const barDir = chartTypeNode.child("barDir").attr("val") || chartTypeNode.attr("barDir") || "col";
   const grouping = chartGrouping(chartTypeNode);
@@ -832,12 +833,16 @@ function buildBarChartOption(
       } as BarDataItem;
     });
 
+    // Resolved here rather than left to ECharts' palette lookup, which colours
+    // by position in the series array — and clustered bars are reordered below.
+    const seriesColor = s.colorHex ?? chartPalette?.[idx % chartPalette.length];
+
     return {
       type: "bar" as const,
       name: s.name,
       data,
       stack: isStacked ? "total" : undefined,
-      itemStyle: s.colorHex ? { color: s.colorHex } : undefined,
+      itemStyle: seriesColor ? { color: seriesColor } : undefined,
       label,
       ...(s.formatCode
         ? {
@@ -858,6 +863,17 @@ function buildBarChartOption(
           : undefined,
     };
   });
+
+  // A horizontal bar chart runs its category axis upwards, and PowerPoint
+  // clusters each category's bars the same way: the first series sits at the
+  // bottom of the cluster, and the legend lists them in that visual order, so
+  // it reads last series first. ECharts puts the first series at the top of the
+  // cluster instead, which lands every bar in the wrong band. Stacked bars are
+  // left alone, since both stack in series order.
+  const clustersUpwards = isHorizontal && !isStacked && !isPercentStacked;
+  const drawOrder = clustersUpwards ? [...series].reverse() : series;
+  const legendNames = seriesArr.map((s) => s.name);
+  const legendOrder = clustersUpwards ? [...legendNames].reverse() : legendNames;
 
   const plotArea = chartNode.child("plotArea");
   const { valueAxis, categoryAxis } = parseAxes(plotArea, ctx, chartTypeNode);
@@ -915,13 +931,7 @@ function buildBarChartOption(
           }
         : {}),
     },
-    legend: buildLegendOption(
-      legendOpt,
-      legendInfo,
-      legendTopPx,
-      seriesArr.map((s) => s.name),
-      legendTextStyle,
-    ),
+    legend: buildLegendOption(legendOpt, legendInfo, legendTopPx, legendOrder, legendTextStyle),
     grid: {
       containLabel,
       left: gridLeft,
@@ -932,7 +942,7 @@ function buildBarChartOption(
     },
     xAxis: isHorizontal ? valueAxisDef : categoryAxisDef,
     yAxis: isHorizontal ? categoryAxisDef : valueAxisDef,
-    series,
+    series: drawOrder,
   } as echarts.EChartsOption;
 }
 
@@ -2150,7 +2160,7 @@ function buildOptionForChartType(
   switch (typeName) {
     case "barChart":
     case "bar3DChart":
-      return buildBarChartOption(chartTypeNode, chartNode, seriesArr, ctx);
+      return buildBarChartOption(chartTypeNode, chartNode, seriesArr, ctx, chartPalette);
     case "lineChart":
     case "line3DChart":
       return buildLineChartOption(chartTypeNode, chartNode, seriesArr, ctx, false, chartPalette);
