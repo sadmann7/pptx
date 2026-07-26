@@ -1713,7 +1713,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const { presentation } = usePresentation();
   const { slideId } = useSlide();
 
-  // Refs keep the effect bound once while callbacks stay fresh.
   const onUndoRef = useLatestRef(onUndo);
   const onRedoRef = useLatestRef(onRedo);
 
