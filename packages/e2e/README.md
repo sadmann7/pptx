@@ -19,7 +19,7 @@ The Playwright config starts the harness itself, so no dev server is needed.
 
 | Spec             | Asserts on                                                           |
 | ---------------- | -------------------------------------------------------------------- |
-| `structural`     | the parsed model: nodes, transforms, text, no pixels involved        |
+| `structural`     | the parsed model: nodes, transforms, text, with no pixels involved   |
 | `render`         | screenshot baselines per browser                                     |
 | `table-borders`  | border ownership and hairline rasterization at fractional scale      |
 | `navigation`     | switching slides in a loaded deck                                    |
@@ -36,7 +36,7 @@ both iterate; add a deck there once its ground truth exists.
 
 The generated decks come from `scripts/generate-fixtures.ts` (`pnpm fixtures`)
 and are committed so runs are deterministic. Each is minimal and targets
-specific regressions, so see the header comment in the generator before adding
+specific regressions, so read the header comment in the generator before adding
 to one.
 
 The exported decks come from an authoring tool, committed as-is. They carry
@@ -58,7 +58,7 @@ baselines` workflow, which uploads them as an artifact to review before
 committing.
 
 Three numbers are recorded, because SSIM alone scores a _blank_ region higher
-than a _misplaced_ one and so rates some broken renders above correct ones —
+than a _misplaced_ one and so rates some broken renders above correct ones.
 `specs/oracle.ts` explains what each covers. `pnpm faults` is how that claim
 stays honest: it breaks a rendered slide in known ways (hides a text block,
 shrinks one, hides a graphic, shifts everything, recolours a fill) and prints

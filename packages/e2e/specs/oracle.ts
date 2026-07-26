@@ -24,9 +24,9 @@
  * A renderer change that collapsed a paragraph into unreadable 8px text
  * therefore *improved* both SSIM numbers while destroying the slide.
  *
- * Its shape was settled by fault injection across six exported slides — hide a
+ * Its shape was settled by fault injection across six exported slides (hide a
  * text block, shrink one to half, hide the largest graphic, shift the slide
- * 8px, recolour the largest shape — which `pnpm faults` re-runs, and which any
+ * 8px, recolour the largest shape), which `pnpm faults` re-runs, and which any
  * change to these tolerances or the grid should be re-checked against:
  *
  * - Proportional, not absolute. Text paints only a few percent of a region, so
@@ -84,7 +84,7 @@ export const INK_TOLERANCE = 0.15;
  *
  * The exported decks set the bar here: their worst slides score ~0.74 on
  * Windows, where line spacing accumulates a few pixels of drift down a
- * paragraph and the charts choose their own axis ticks — both of which SSIM
+ * paragraph and the charts choose their own axis ticks, both of which SSIM
  * penalises across the whole image even though the slide reads correctly.
  * Linux scores ~0.015 lower again (0.06 on the worst slide) for want of the
  * decks' fonts, bottoming out at 0.705, so 0.65 is as high as the floor can
@@ -125,7 +125,7 @@ export interface OracleScore {
 /** A pixel this far from the slide's background tone counts as painted. */
 const INK_THRESHOLD = 24;
 
-/** Grid the ink regions are cut on. Coarse on purpose — see the file header. */
+/** Grid the ink regions are cut on. Coarse on purpose; see the file header. */
 const INK_COLUMNS = 4;
 const INK_ROWS = 3;
 

@@ -195,7 +195,7 @@ for (const { deck, slide } of slides) {
     }, fault);
 
     if (!applied) {
-      console.log(`  ${fault.padEnd(13)} skipped — this slide has nothing to break that way`);
+      console.log(`  ${fault.padEnd(13)} skipped: this slide has nothing to break that way`);
       continue;
     }
 
@@ -207,7 +207,7 @@ for (const { deck, slide } of slides) {
     // A fault that changed no pixels says nothing about the gate, so keep it
     // out of the "missed" column it would otherwise land in.
     if (!fault.startsWith("control") && screenshot.equals(controlShot)) {
-      console.log(`  ${fault.padEnd(13)} no pixel change — the fault did not land on this slide`);
+      console.log(`  ${fault.padEnd(13)} no pixel change: the fault did not land on this slide`);
       continue;
     }
 

@@ -3,7 +3,7 @@
  *
  * Run with `pnpm fixtures`. The generated .pptx files are committed so test
  * runs are deterministic; regenerate only when intentionally changing them.
- * Only the decks listed below are written — the authoring-tool exports sitting
+ * Only the decks listed below are written. The authoring-tool exports sitting
  * alongside them in fixtures/ are left untouched.
  *
  * Decks:

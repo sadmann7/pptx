@@ -5,7 +5,7 @@
  * instrument: a dropped image on a busy slide, or a shape that renders as an
  * empty box, can cost less score than a font substitution and hide under the
  * baseline tolerance. These walk every slide and assert the things a score
- * cannot see — no thrown errors, no empty slide, no unresolved media.
+ * cannot see: no thrown errors, no empty slide, no unresolved media.
  */
 import { expect, type Page, test } from "@playwright/test";
 
