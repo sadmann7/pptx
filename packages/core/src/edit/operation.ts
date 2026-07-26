@@ -14,11 +14,12 @@
 import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
+import type { TableNodeData } from "../model/nodes/table";
 import { materializeSlide, PresentationData } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
 import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
-import { degToAngle, pxToEmu } from "../ooxml/unit";
+import { degToAngle, emuToPx, pxToEmu } from "../ooxml/unit";
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import {
   A_NS,
@@ -563,6 +564,59 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
   return { xfrmEl, offEl, extEl, created };
 }
 
+/**
+ * Scale a table's grid to a new frame size, the way PowerPoint does when you
+ * drag a table's resize handle.
+ *
+ * A table is laid out from its grid (the sum of `a:gridCol/@w` and of
+ * `a:tr/@h`), not from the graphicFrame extent, so writing the extent alone
+ * shrinks the selection box while the table keeps its old size. Returns an undo
+ * closure, or null when there is no scalable grid.
+ */
+function scaleTableGrid(table: TableNodeData, size: NodeSize): (() => void) | null {
+  const tbl = table.source.child("graphic").child("graphicData").child("tbl");
+  const colEls = tbl.child("tblGrid").children("gridCol");
+  const rowEls = tbl.children("tr");
+
+  const gridW = colEls.reduce((sum, col) => sum + (col.numAttr("w") ?? 0), 0);
+  const gridH = rowEls.reduce((sum, row) => sum + (row.numAttr("h") ?? 0), 0);
+  const scaleX = gridW > 0 ? pxToEmu(size.w) / gridW : 0;
+  const scaleY = gridH > 0 ? pxToEmu(size.h) / gridH : 0;
+  if (scaleX === 0 && scaleY === 0) return null;
+
+  const prevColumns = [...table.columns];
+  const prevHeights = table.rows.map((row) => row.height);
+  const restore: (() => void)[] = [];
+
+  const scaleAttr = (node: SafeXmlNode, name: string, scale: number): number | null => {
+    const element = node.element;
+    const current = node.numAttr(name);
+    if (!element || current === undefined || scale === 0) return null;
+    const next = Math.round(current * scale);
+    const prev = element.getAttribute(name) ?? undefined;
+    restore.push(() => setOrRemoveAttr(element, name, prev));
+    element.setAttribute(name, String(next));
+    return next;
+  };
+
+  colEls.forEach((col, index) => {
+    const next = scaleAttr(col, "w", scaleX);
+    if (next !== null && index < table.columns.length) table.columns[index] = emuToPx(next);
+  });
+  rowEls.forEach((row, index) => {
+    const next = scaleAttr(row, "h", scaleY);
+    if (next !== null && index < table.rows.length) table.rows[index].height = emuToPx(next);
+  });
+
+  return () => {
+    for (const undo of restore.reverse()) undo();
+    table.columns = prevColumns;
+    table.rows.forEach((row, index) => {
+      row.height = prevHeights[index];
+    });
+  };
+}
+
 function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
@@ -598,9 +652,11 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
     offEl.setAttribute("y", String(pxToEmu(position.y)));
     node.position = { ...position };
   }
+  let undoTableGrid: (() => void) | null = null;
   if (size) {
     extEl.setAttribute("cx", String(pxToEmu(size.w)));
     extEl.setAttribute("cy", String(pxToEmu(size.h)));
+    if (node.nodeType === "table") undoTableGrid = scaleTableGrid(node as TableNodeData, size);
     node.size = { ...size };
   }
   if (op.rotation !== undefined) {
@@ -638,6 +694,7 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
+      undoTableGrid?.();
       if (created) {
         removeChild(xfrmEl);
       } else {
