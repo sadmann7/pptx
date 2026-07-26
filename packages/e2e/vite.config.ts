@@ -1,8 +1,32 @@
 import { createReadStream, existsSync } from "node:fs";
-import { join } from "node:path";
+import { resolve, sep } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
-const DECKS_DIR = join(import.meta.dirname, "decks");
+const DECKS_DIR = resolve(import.meta.dirname, "decks");
+
+/**
+ * Resolves a request path to a file inside decks/, or undefined.
+ *
+ * The containment check is what makes this safe, rather than any property of
+ * how the request path and the base directory combine: whatever the request
+ * asks for, the file that gets served has to sit under decks/.
+ */
+function resolveDeck(url: string): string | undefined {
+  let requested: string;
+  try {
+    requested = decodeURIComponent(url.split("?")[0]);
+  } catch {
+    // Malformed percent-encoding; not a deck we can serve.
+    return undefined;
+  }
+
+  // Leading slashes would make an absolute path of their own; anything that
+  // still resolves outside decks/ (traversal, a drive letter) fails the check
+  // below rather than being pattern-matched here.
+  const path = resolve(DECKS_DIR, requested.replace(/^[/\\]+/, ""));
+  if (!path.startsWith(DECKS_DIR + sep)) return undefined;
+  return existsSync(path) ? path : undefined;
+}
 
 /**
  * Serves ad-hoc decks from the gitignored decks/ directory at /decks/*.
@@ -17,9 +41,8 @@ function serveLocalDecks(): Plugin {
     apply: "serve",
     configureServer(server) {
       server.middlewares.use("/decks", (req, res, next) => {
-        const name = decodeURIComponent((req.url ?? "").split("?")[0]).replace(/^\//, "");
-        const path = join(DECKS_DIR, name);
-        if (!name || name.includes("..") || !existsSync(path)) return next();
+        const path = resolveDeck(req.url ?? "");
+        if (!path) return next();
         res.setHeader(
           "Content-Type",
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
