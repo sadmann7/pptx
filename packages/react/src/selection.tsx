@@ -176,7 +176,8 @@ export function constrainMove(dx: number, dy: number, lockAxis = false): NodePos
  * would otherwise drop shapes the band swept over.
  */
 export function mergeSelection(baseIds: string[], addedIds: string[]): string[] {
-  return [...baseIds, ...addedIds.filter((id) => !baseIds.includes(id))];
+  const baseIdsSet = new Set(baseIds);
+  return [...baseIds, ...addedIds.filter((id) => !baseIdsSet.has(id))];
 }
 
 /**
@@ -585,11 +586,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       slide && presentation
         ? getPasteboardOverhang(slide.nodes, presentation.width, presentation.height)
         : { left: 0, top: 0, right: 0, bottom: 0 },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes mutate in place; revision is the change signal
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- nodes mutate in place; revision is the change signal
     [slide, slideRevision, presentation],
   );
-
-  if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   function getSlideWrapper(): HTMLElement | null {
     return rootRef.current?.parentElement?.parentElement ?? null;
@@ -1071,6 +1070,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
+  // Document listeners use latest refs to always call the current handler each render.
+  const enterTextModeRef = useLatestRef(enterTextMode);
+  const commitTextEditsRef = useLatestRef(commitTextEdits);
+  const doExitTextModeRef = useLatestRef(doExitTextMode);
+
   // When in text mode the overlay has pointerEvents: none, so we must listen
   // on the document for clicks-outside and Escape.
   React.useEffect(() => {
@@ -1104,7 +1108,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // mousedown focus change from blurring the overlay; without it,
         // typing right after this click would go nowhere.
         event.preventDefault();
-        commitTextEdits(currentState);
+        commitTextEditsRef.current(currentState);
         rootRef.current?.setPointerCapture(event.pointerId);
         rootRef.current?.focus({ preventScroll: true });
         setState({
@@ -1121,7 +1125,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // Clicked empty area: exit text, deselect. preventDefault keeps the
         // overlay focused so undo/redo shortcuts still work afterwards.
         event.preventDefault();
-        doExitTextMode(currentState, null);
+        doExitTextModeRef.current(currentState, null);
       }
       // Else clicked inside the same shape but outside the text container
       // (e.g. shape padding area); stay in text mode.
@@ -1134,7 +1138,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (event.key === "Escape") {
         event.preventDefault();
         // Escape → select the shape (PowerPoint behavior).
-        doExitTextMode(currentState);
+        doExitTextModeRef.current(currentState);
         return;
       }
     }
@@ -1192,8 +1196,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stateRef is stable
-  }, [isTextMode]);
+  }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef]);
 
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
   // detaching our contentEditable element: typed text would go into the
@@ -1211,11 +1214,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       });
       if (currentState.editingElement.isConnected) return;
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
-      enterTextMode(currentState.nodeId);
+      enterTextModeRef.current(currentState.nodeId);
     });
     return () => cancelAnimationFrame(frameId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- repair keyed on revision only
-  }, [slideRevision]);
+  }, [slideRevision, stateRef, enterTextModeRef]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || isTextMode) return;
@@ -1715,6 +1717,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
+  // Bail out below every hook, never above one: returning early before the
+  // effects would change the hook count between renders, which React rejects.
+  if (!presentation?.sourcePackage || !slide || !slideId) return null;
+
   return renderElement(
     "div",
     { render },
@@ -1844,7 +1850,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
     document.addEventListener("keydown", onDocKeyDown);
     return () => document.removeEventListener("keydown", onDocKeyDown);
-  }, [editable, store]);
+  }, [editable, store, onUndoRef, onRedoRef]);
 
   if (!slideId) return null;
 

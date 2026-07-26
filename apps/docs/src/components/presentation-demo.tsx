@@ -23,7 +23,12 @@ export function PresentationDemo() {
 
   React.useEffect(() => {
     fetch("/assets/sample.pptx")
-      .then((res) => res.arrayBuffer())
+      .then((res) => {
+        // fetch resolves on 404, so an unchecked body would reach the parser as
+        // an error page rather than a deck.
+        if (!res.ok) throw new Error(`sample.pptx: ${res.status}`);
+        return res.arrayBuffer();
+      })
       .then((buf) => store.load(buf))
       .catch(() => {
         // Fail silently to avoid blocking the main thread
@@ -38,7 +43,7 @@ export function PresentationDemo() {
   }
 
   return (
-    <div className="not-prose flex h-[560px] flex-col overflow-hidden rounded-lg border">
+    <div className="not-prose flex h-140 flex-col overflow-hidden rounded-lg border">
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Label htmlFor={`${id}-file`} className="shrink-0 text-sm text-muted-foreground">
           Open .pptx
