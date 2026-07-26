@@ -19,7 +19,6 @@ import { expect, test } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { openSlide, slideContainer } from "./helpers";
 import {
   GROUND_TRUTH_DIR,
   isUpdateMode,
@@ -28,7 +27,8 @@ import {
   SCORE_TOLERANCE,
   ssimAgainstGroundTruth,
   writeScoreBaseline,
-} from "./oracle-helpers";
+} from "./oracle-utils";
+import { openSlide, slideContainer } from "./utils";
 
 const DECKS: Array<{ deck: string; slides: number }> = [
   { deck: "basic", slides: 3 },

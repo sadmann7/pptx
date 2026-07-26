@@ -44,15 +44,3 @@ export async function getStructure(page: Page): Promise<SerializedPresentation> 
   if (!structure) throw new Error("harness did not expose a presentation structure");
   return structure;
 }
-
-declare global {
-  interface Window {
-    __renderDone?: boolean;
-    __renderError?: string;
-    __slideCount?: number;
-    __slideWidth?: number;
-    __slideHeight?: number;
-    __showSlide?: (index: number) => Promise<void>;
-    __getStructure?: () => SerializedPresentation;
-  }
-}

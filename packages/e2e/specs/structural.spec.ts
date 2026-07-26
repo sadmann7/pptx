@@ -11,7 +11,7 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { getStructure, openSlide } from "./helpers";
+import { getStructure, openSlide } from "./utils";
 
 test.describe("basic deck structure", () => {
   test("parses dimensions, slides, and shape transforms", async ({ page }) => {

@@ -19,8 +19,8 @@
  */
 import { expect, type Page, test } from "@playwright/test";
 
-import { openSlide, slideContainer } from "./helpers";
 import { colorDistance, formatPixel, type Pixel, readPixels } from "./pixels";
+import { openSlide, slideContainer } from "./utils";
 
 const DECK = "table-borders.pptx";
 const GRID_SLIDE = 0;

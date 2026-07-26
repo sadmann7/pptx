@@ -1,14 +1,8 @@
 /**
  * E2E render harness.
  *
- * Loads a fixture deck and renders one slide, then signals completion via
- * window globals the Playwright specs poll for:
- *
- *   window.__renderDone   true once the slide (incl. async media/charts) settled
- *   window.__renderError  error message when load/render failed
- *   window.__slideCount   number of slides in the loaded deck
- *   window.__showSlide(i) re-renders another slide of the loaded deck
- *   window.__getStructure() serialized presentation structure (for structural specs)
+ * Loads a fixture deck and renders one slide, then signals completion through
+ * the window globals declared in globals.d.ts, which the specs poll.
  *
  * Query params:
  *   file   deck to load, served from fixtures/ (or decks/ for local scratch decks)
@@ -18,7 +12,7 @@
  *          "transform" (the raster-scaling alternative). Hairline rendering
  *          differs between the two, so specs comparing them need both.
  */
-import type { PresentationData, SerializedPresentation, SlideHandle } from "@diceui/pptx-core";
+import type { PresentationData, SlideHandle } from "@diceui/pptx-core";
 import {
   applySlideScale,
   buildPresentation,
@@ -28,18 +22,6 @@ import {
 } from "@diceui/pptx-core";
 
 type ScaleMode = "zoom" | "transform";
-
-declare global {
-  interface Window {
-    __renderDone?: boolean;
-    __renderError?: string;
-    __slideCount?: number;
-    __slideWidth?: number;
-    __slideHeight?: number;
-    __showSlide?: (index: number) => Promise<void>;
-    __getStructure?: () => SerializedPresentation;
-  }
-}
 
 const container = document.getElementById("slide-container") as HTMLDivElement;
 const mediaUrlCache = new Map<string, string>();

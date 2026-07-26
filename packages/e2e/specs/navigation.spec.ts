@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openSlide, slideContainer, waitForRender } from "./helpers";
+import { openSlide, slideContainer, waitForRender } from "./utils";
 
 test.describe("slide navigation", () => {
   // Regression: switching between structurally identical slides skipped the

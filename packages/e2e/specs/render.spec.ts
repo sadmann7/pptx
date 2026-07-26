@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openSlide, slideContainer } from "./helpers";
+import { openSlide, slideContainer } from "./utils";
 
 test.describe("basic deck", () => {
   test("renders the first slide", async ({ page }) => {
