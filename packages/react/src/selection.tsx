@@ -84,6 +84,14 @@ function debugLog(...args: unknown[]): void {
   console.debug("[pptx-selection]", ...args);
 }
 
+/**
+ * Modifiers PowerPoint treats as "extend the selection" rather than "start a
+ * new one", for both clicks and rubber-band drags.
+ */
+function isMultiSelectEvent(event: React.PointerEvent): boolean {
+  return event.shiftKey || event.ctrlKey || event.metaKey;
+}
+
 function getIsNativeUndoTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -140,6 +148,36 @@ export function resizeRect(
   }
 
   return { x, y, w, h };
+}
+
+/**
+ * Apply a move drag (slide-px deltas). With `lockAxis` (Shift held) the
+ * larger delta wins and the other is dropped, so the shape travels straight
+ * along one axis like PowerPoint. Ties keep the horizontal delta.
+ */
+export function constrainMove(dx: number, dy: number, lockAxis = false): NodePosition {
+  if (!lockAxis) return { x: dx, y: dy };
+  return Math.abs(dx) >= Math.abs(dy) ? { x: dx, y: 0 } : { x: 0, y: dy };
+}
+
+/**
+ * Union of an existing selection and the ids a marquee just enclosed, in
+ * selection order. Additive banding only ever grows the selection: unlike
+ * Shift+click it does not toggle an already selected shape back out, which
+ * would otherwise drop shapes the band swept over.
+ */
+export function mergeSelection(baseIds: string[], addedIds: string[]): string[] {
+  return [...baseIds, ...addedIds.filter((id) => !baseIds.includes(id))];
+}
+
+/**
+ * Shift/Ctrl+click semantics: add the shape to the selection, or take it back
+ * out when it is already selected.
+ */
+export function toggleSelection(selectedIds: string[], nodeId: string): string[] {
+  return selectedIds.includes(nodeId)
+    ? selectedIds.filter((id) => id !== nodeId)
+    : [...selectedIds, nodeId];
 }
 
 export function getNodeRect(node: SlideNode): Rect {
@@ -323,6 +361,12 @@ type InternalState =
       moved: boolean;
       /** Move started from text-mode border drag: return to text mode after. */
       resumeText?: boolean;
+      /**
+       * Selection to apply if this gesture turns out to be a click rather than
+       * a drag. Set only for Shift/Ctrl presses, where a click toggles the
+       * shape instead of selecting it or entering text.
+       */
+      clickIds?: string[];
     }
   | {
       /** Rubber-band selection from a drag on empty canvas (client coords). */
@@ -331,6 +375,11 @@ type InternalState =
       startY: number;
       curX: number;
       curY: number;
+      /**
+       * Selection the band extends, captured at pointer-down when Shift/Ctrl
+       * was held. Empty for a plain band, which replaces the selection.
+       */
+      baseIds: string[];
     }
   | {
       mode: "resize";
@@ -395,7 +444,11 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Escape from selection → deselect.
  * - Click a non-text shape → select it.
  * - Shift/Ctrl+click toggles shapes in and out of the selection.
+ * - Shift+drag a shape → move it along one axis only.
+ * - Ctrl+drag a shape duplicates it in PowerPoint; unsupported here, so the
+ *   press only toggles the selection.
  * - Drag on empty canvas → marquee-select fully enclosed shapes.
+ * - Shift/Ctrl+drag on empty canvas → add the enclosed shapes to the selection.
  * - Ctrl/Cmd+A selects every shape on the slide.
  * - Arrow keys nudge, Delete removes: applied to the whole selection.
  */
@@ -430,7 +483,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       ? state.nodeIds
       : state.mode === "resize" || state.mode === "text"
         ? [state.nodeId]
-        : [];
+        : // An additive band keeps its base selection outlined while dragging,
+          // so it stays visible what the band is adding to.
+          state.mode === "marquee"
+          ? state.baseIds
+          : [];
   const selectedNodes: SlideNode[] = slide
     ? selectedIds
         .map((id) => slide.nodes.find((node) => node.id === id))
@@ -1121,23 +1178,25 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (!nodeId) {
       // Empty canvas: start a marquee (rubber-band) selection. A no-drag
-      // click resolves to deselect on pointer-up.
+      // click resolves to deselect on pointer-up. Shift/Ctrl keeps the
+      // current selection so the band adds to it (PowerPoint).
       setState({
         mode: "marquee",
         startX: event.clientX,
         startY: event.clientY,
         curX: event.clientX,
         curY: event.clientY,
+        baseIds: isMultiSelectEvent(event) ? selectedIds : [],
       });
       return;
     }
 
-    // Shift/Ctrl+click toggles the shape in and out of the selection
-    // (PowerPoint multi-select).
-    if (event.shiftKey || event.ctrlKey || event.metaKey) {
-      const nextIds = selectedIds.includes(nodeId)
-        ? selectedIds.filter((id) => id !== nodeId)
-        : [...selectedIds, nodeId];
+    // Ctrl/Cmd+click toggles the shape in and out of the selection, resolved
+    // here rather than on pointer-up: PowerPoint reserves Ctrl+drag for
+    // duplicating a shape, which needs a core edit operation that can add a
+    // node (there is none yet), so this press must not become a move.
+    if (event.ctrlKey || event.metaKey) {
+      const nextIds = toggleSelection(selectedIds, nodeId);
       setState(nextIds.length > 0 ? { mode: "selected", nodeIds: nextIds } : { mode: "idle" });
       return;
     }
@@ -1146,16 +1205,29 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // selection; anything else starts a fresh single-shape gesture. On
     // pointer-up we check if the user actually dragged; if not (a click),
     // text shapes enter text mode and non-text shapes get selected.
-    const nodeIds = selectedIds.includes(nodeId) ? selectedIds : [nodeId];
+    //
+    // Shift leaves both Shift+click (toggle) and Shift+drag (move along one
+    // axis) open, so the gesture starts as a move and pointer-up decides.
+    // Resolving the toggle up front would consume the press and leave the drag
+    // unable to move anything.
+    const additive = event.shiftKey;
     setState({
       mode: "move",
-      nodeIds,
+      nodeIds: additive
+        ? mergeSelection(selectedIds, [nodeId])
+        : selectedIds.includes(nodeId)
+          ? selectedIds
+          : [nodeId],
       primaryId: nodeId,
       startX: event.clientX,
       startY: event.clientY,
       dx: 0,
       dy: 0,
       moved: false,
+      // Precomputed against the selection as it stands now: once the gesture
+      // starts, `nodeIds` has already absorbed this shape and can no longer
+      // tell whether the click should add it or take it back out.
+      clickIds: additive ? toggleSelection(selectedIds, nodeId) : undefined,
     });
   }
 
@@ -1227,16 +1299,20 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const moved =
         state.moved ||
         Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > DRAG_THRESHOLD;
+      // Track Shift live (as with resize) so holding or releasing it mid-drag
+      // locks and unlocks the axis. The constrained deltas are what lands in
+      // state, so pointer-up commits the straight move without re-deriving it.
+      const delta = constrainMove(dx, dy, event.shiftKey);
       if (moved) {
         for (const node of selectedNodes) {
           const shapeElement = getShapeElement(node.id);
           if (shapeElement) {
-            shapeElement.style.left = `${node.position.x + dx}px`;
-            shapeElement.style.top = `${node.position.y + dy}px`;
+            shapeElement.style.left = `${node.position.x + delta.x}px`;
+            shapeElement.style.top = `${node.position.y + delta.y}px`;
           }
         }
       }
-      setState({ ...state, dx, dy, moved });
+      setState({ ...state, dx: delta.x, dy: delta.y, moved });
     } else {
       // Track Shift live so holding/releasing it mid-drag toggles the lock.
       setState({ ...state, dx, dy, lockAspect: event.shiftKey });
@@ -1245,11 +1321,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   function onPointerUp(): void {
     if (state.mode === "marquee") {
-      const { startX, startY, curX, curY } = state;
+      const { startX, startY, curX, curY, baseIds } = state;
       const dragged = Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
       if (!dragged) {
-        // Plain click on empty canvas → deselect.
-        setState({ mode: "idle" });
+        // Plain click on empty canvas → deselect. Held modifiers mean the user
+        // was adding to a selection, so a stray click must not throw it away.
+        setState(baseIds.length > 0 ? { mode: "selected", nodeIds: baseIds } : { mode: "idle" });
         return;
       }
       // PowerPoint selects shapes fully enclosed by the rubber band.
@@ -1272,9 +1349,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           );
         })
         .map((node) => node.id);
-      setState(contained.length > 0 ? { mode: "selected", nodeIds: contained } : { mode: "idle" });
+      const nextIds = mergeSelection(baseIds, contained);
+      setState(nextIds.length > 0 ? { mode: "selected", nodeIds: nextIds } : { mode: "idle" });
     } else if (state.mode === "move") {
-      const { nodeIds, primaryId, dx, dy, moved, resumeText } = state;
+      const { nodeIds, primaryId, dx, dy, moved, resumeText, clickIds } = state;
 
       if (moved && selectedNodes.length > 0) {
         // Actual drag → commit the move (one undoable edit for the whole
@@ -1335,7 +1413,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // (regular shapes, even with text) → select; they edit on
         // double-click or by typing. Clicking a member of a multi-selection
         // without dragging collapses the selection to it (PowerPoint).
-        if (resumeText) {
+        if (clickIds) {
+          // Shift/Ctrl+click: toggle only, never open the caret.
+          setState(
+            clickIds.length > 0 ? { mode: "selected", nodeIds: clickIds } : { mode: "idle" },
+          );
+        } else if (resumeText) {
           // Border click without drag: back to editing (caret at end). The
           // text commit may re-render the slide, so wait for the new DOM.
           resumeTextEditing(primaryId);
@@ -1412,7 +1495,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     } else if (state.mode === "resize") {
       setState({ mode: "selected", nodeIds: [state.nodeId] });
     } else if (state.mode === "marquee") {
-      setState({ mode: "idle" });
+      const { baseIds } = state;
+      setState(baseIds.length > 0 ? { mode: "selected", nodeIds: baseIds } : { mode: "idle" });
     }
   }
 
@@ -1573,7 +1657,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     node={node}
                     state={state}
                     zoom={zoom}
-                    showResizeGrips={isSoloSelection}
+                    // Grips are unreachable mid-band (the pointer is captured)
+                    // and would sit under the rubber band, so only the outline
+                    // of the base selection shows while it is being extended.
+                    showResizeGrips={isSoloSelection && state.mode !== "marquee"}
                     onGripPointerDown={onGripPointerDown}
                     onBorderPointerDown={onBorderPointerDown}
                   />
@@ -1626,7 +1713,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const { presentation } = usePresentation();
   const { slideId } = useSlide();
 
-  // Refs keep the effect bound once while callbacks stay fresh.
   const onUndoRef = useLatestRef(onUndo);
   const onRedoRef = useLatestRef(onRedo);
 

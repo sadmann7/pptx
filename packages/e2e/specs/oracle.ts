@@ -5,7 +5,7 @@
  * common dimensions, and scored with SSIM (structural similarity; 1 = pixel
  * identical). Fuzzy scoring is deliberate: fonts, antialiasing, and text
  * metrics legitimately differ between PowerPoint and the browser, so a
- * pixel-counting comparison would never pass — SSIM's local windows tolerate a
+ * pixel-counting comparison would never pass. SSIM's local windows tolerate a
  * glyph landing a pixel off while still catching structural breakage.
  */
 

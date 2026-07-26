@@ -10,10 +10,13 @@ import type { GripDirection, Rect } from "../selection";
 import {
   MIN_SIZE,
   cleanText,
+  constrainMove,
   getNodeRect,
+  mergeSelection,
   readBackTextBody,
   resizeRect,
   textBodyChanged,
+  toggleSelection,
 } from "../selection";
 import { createStore, type Store } from "../store";
 import { loadFixture } from "./test-utils";
@@ -124,6 +127,66 @@ describe("resizeRect", () => {
         expect(resizeRect(origin, h, 0, 0)).toEqual(origin);
       }
     });
+  });
+});
+
+describe("constrainMove", () => {
+  it("passes both deltas through when unlocked", () => {
+    expect(constrainMove(30, -12)).toEqual({ x: 30, y: -12 });
+  });
+
+  it("drops the vertical delta when the drag is mostly horizontal", () => {
+    expect(constrainMove(40, 9, true)).toEqual({ x: 40, y: 0 });
+    expect(constrainMove(-40, -9, true)).toEqual({ x: -40, y: 0 });
+  });
+
+  it("drops the horizontal delta when the drag is mostly vertical", () => {
+    expect(constrainMove(9, 40, true)).toEqual({ x: 0, y: 40 });
+    expect(constrainMove(-9, -40, true)).toEqual({ x: 0, y: -40 });
+  });
+
+  it("keeps the horizontal delta on an exact diagonal", () => {
+    expect(constrainMove(25, -25, true)).toEqual({ x: 25, y: 0 });
+  });
+
+  it("stays put when locked with no movement", () => {
+    expect(constrainMove(0, 0, true)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("mergeSelection", () => {
+  it("replaces the selection when there is no base", () => {
+    expect(mergeSelection([], ["b", "c"])).toEqual(["b", "c"]);
+  });
+
+  it("appends newly enclosed ids after the base selection", () => {
+    expect(mergeSelection(["a"], ["b", "c"])).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps already selected shapes instead of toggling them out", () => {
+    expect(mergeSelection(["a", "b"], ["b"])).toEqual(["a", "b"]);
+  });
+
+  it("keeps the base selection when the band enclosed nothing", () => {
+    expect(mergeSelection(["a", "b"], [])).toEqual(["a", "b"]);
+  });
+});
+
+describe("toggleSelection", () => {
+  it("adds a shape that is not selected yet", () => {
+    expect(toggleSelection(["a"], "b")).toEqual(["a", "b"]);
+  });
+
+  it("takes an already selected shape back out", () => {
+    expect(toggleSelection(["a", "b"], "a")).toEqual(["b"]);
+  });
+
+  it("empties the selection when the last shape is toggled out", () => {
+    expect(toggleSelection(["a"], "a")).toEqual([]);
+  });
+
+  it("selects the shape when nothing was selected", () => {
+    expect(toggleSelection([], "a")).toEqual(["a"]);
   });
 });
 
@@ -387,6 +450,104 @@ describe("Ctrl+A select all", () => {
       overlay.focus();
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
+
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Marquee selection
+// ---------------------------------------------------------------------------
+
+/**
+ * happy-dom ships no `document.elementsFromPoint`, which `hitTest` needs, so
+ * stub it as empty: every press then lands on empty canvas, which is the
+ * precondition for a band. The flip side is that pressing a *shape* cannot be
+ * simulated here, so Shift+drag on a shape stays manual-only.
+ *
+ * Containment still works, because node rects come from the model while only
+ * the band corners come from the pointer. With layout zeroed, `clientToSlide`
+ * reduces to `client / zoom`, so a band over the origin encloses the whole
+ * slide and one far outside it encloses nothing.
+ */
+const OVER_SLIDE = 100_000;
+const PAST_SLIDE = 90_000;
+
+beforeAll(() => {
+  document.elementsFromPoint ??= () => [];
+});
+
+function band(
+  overlay: HTMLElement,
+  from: number,
+  to: number,
+  modifier: { shiftKey?: boolean } = {},
+): void {
+  act(() => {
+    fireEvent.pointerDown(overlay, {
+      button: 0,
+      clientX: from,
+      clientY: from,
+      pointerId: 1,
+      ...modifier,
+    });
+  });
+  act(() => {
+    fireEvent.pointerMove(overlay, {
+      buttons: 1,
+      clientX: to,
+      clientY: to,
+      pointerId: 1,
+      ...modifier,
+    });
+  });
+  act(() => {
+    fireEvent.pointerUp(overlay, { pointerId: 1, ...modifier });
+  });
+}
+
+describe("marquee selection", () => {
+  it("enters marquee mode on a press over empty canvas", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+    });
+
+    expect(overlay.getAttribute("data-mode")).toBe("marquee");
+  });
+
+  it("selects the shapes a band encloses", async () => {
+    const { overlay } = await renderSelection();
+
+    band(overlay, 0, OVER_SLIDE);
+
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
+  it("clears the selection when a plain band encloses nothing", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+
+    band(overlay, PAST_SLIDE, OVER_SLIDE);
+
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+
+  it("keeps the selection when a Shift band encloses nothing", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    band(overlay, PAST_SLIDE, OVER_SLIDE, { shiftKey: true });
 
     expect(overlay.getAttribute("data-mode")).toBe("selected");
   });

@@ -834,7 +834,7 @@ function buildBarChartOption(
     });
 
     // Resolved here rather than left to ECharts' palette lookup, which colours
-    // by position in the series array — and clustered bars are reordered below.
+    // by position in the series array, and clustered bars are reordered below.
     const seriesColor = s.colorHex ?? chartPalette?.[idx % chartPalette.length];
 
     return {

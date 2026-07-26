@@ -3,8 +3,8 @@
  *
  * Instead of comparing pixels, these assert the parsed/serialized presentation
  * structure against ground truth known from the fixture generator
- * (scripts/generate-fixtures.ts). Catches parser regressions — dropped nodes,
- * wrong transforms, lost text — independent of rendering.
+ * (scripts/generate-fixtures.ts). Catches parser regressions (dropped nodes,
+ * wrong transforms, lost text) independent of rendering.
  *
  * Units: fixtures are authored in EMU; the model converts at 96px/inch
  * (914400 EMU = 96px). The 12192000 x 6858000 slide size becomes 1280 x 720.
