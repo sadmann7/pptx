@@ -64,7 +64,7 @@ function clearCssFillBackground(el: HTMLElement): void {
  *
  * A table without an <a:tableStyleId> falls back to the built-in "No Style,
  * Table Grid": PowerPoint paints a plain 1pt tx1 grid for such tables. The
- * `def` attribute on <a:tblStyleLst> is not used here — it only seeds the style
+ * `def` attribute on <a:tblStyleLst> is not used here: it only seeds the style
  * of newly inserted tables, it is not a render-time fallback.
  */
 function findTableStyle(
@@ -437,7 +437,7 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
  *
  * Neighbouring cell backgrounds meet on a fractional device pixel once the
  * slide is scaled, and the anti-aliased seam exposes whatever is behind the
- * table — on a dark row that reads as a light hairline next to the border.
+ * table, which on a dark row reads as a light hairline next to the border.
  * Painting the shared colour on the row fills that seam; row backgrounds sit
  * below every cell background and border, so nothing else changes.
  *

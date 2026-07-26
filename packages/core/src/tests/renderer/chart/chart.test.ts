@@ -197,6 +197,58 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
     expect(option.yAxis).toMatchObject({ type: "category", data: ["A", "B"] });
     expect(option.xAxis.type).toBe("value");
   });
+
+  it("clusters horizontal bars upward, first series at the bottom, legend to match", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="bar"/><c:grouping val="clustered"/>
+${seriesXml(0, "First", ["A", "B"], [1, 2])}
+${seriesXml(1, "Second", ["A", "B"], [3, 4])}
+</c:barChart>
+</c:plotArea>
+<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    // ECharts draws series[0] at the top of each cluster; PowerPoint puts it at
+    // the bottom, so the drawn order is the reverse of the OOXML order.
+    expect(option.series.map((s: AnyRecord) => s.name)).toEqual(["Second", "First"]);
+    expect(option.legend.data).toEqual(["Second", "First"]);
+  });
+
+  it("keeps series order for vertical and stacked bars", () => {
+    const upright = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "First", ["A"], [1])}
+${seriesXml(1, "Second", ["A"], [2])}
+</c:barChart>
+</c:plotArea>
+<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>`);
+    // Stacked bars stack in series order in both, so reversing would break them.
+    const stacked = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="bar"/><c:grouping val="stacked"/>
+${seriesXml(0, "First", ["A"], [1])}
+${seriesXml(1, "Second", ["A"], [2])}
+</c:barChart>
+</c:plotArea>
+<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>`);
+    for (const xml of [upright, stacked]) {
+      const { option } = parseOption(xml) as AnyRecord;
+      expect(option.series.map((s: AnyRecord) => s.name)).toEqual(["First", "Second"]);
+      expect(option.legend.data).toEqual(["First", "Second"]);
+    }
+  });
+
+  it("pins each series' palette colour so reordering cannot reassign it", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="bar"/><c:grouping val="clustered"/>
+${seriesXml(0, "First", ["A"], [1])}
+${seriesXml(1, "Second", ["A"], [2])}
+</c:barChart>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    const colours = Object.fromEntries(
+      option.series.map((s: AnyRecord) => [s.name, s.itemStyle?.color]),
+    );
+    expect(colours).toEqual({ First: OFFICE_ACCENTS[0], Second: OFFICE_ACCENTS[1] });
+  });
 });
 
 describe("parseChartXml: titles", () => {

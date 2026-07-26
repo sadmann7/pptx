@@ -189,7 +189,7 @@ function stylePart(
 // Style group XML generators
 // ---------------------------------------------------------------------------
 
-/** "No Style, No Grid": tcTxStyle only — nothing is painted. */
+/** "No Style, No Grid": tcTxStyle only, nothing is painted. */
 function noStyleNoGrid(_accent: string, styleId: string): string {
   return wrapTblStyle(styleId, "No-Style-No-Grid", stylePart("wholeTbl", { textColor: "tx1" }));
 }
