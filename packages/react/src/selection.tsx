@@ -445,6 +445,8 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Click a non-text shape → select it.
  * - Shift/Ctrl+click toggles shapes in and out of the selection.
  * - Shift+drag a shape → move it along one axis only.
+ * - Ctrl+drag a shape duplicates it in PowerPoint; unsupported here, so the
+ *   press only toggles the selection.
  * - Drag on empty canvas → marquee-select fully enclosed shapes.
  * - Shift/Ctrl+drag on empty canvas → add the enclosed shapes to the selection.
  * - Ctrl/Cmd+A selects every shape on the slide.
@@ -1189,17 +1191,26 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return;
     }
 
+    // Ctrl/Cmd+click toggles the shape in and out of the selection, resolved
+    // here rather than on pointer-up: PowerPoint reserves Ctrl+drag for
+    // duplicating a shape, which needs a core edit operation that can add a
+    // node (there is none yet), so this press must not become a move.
+    if (event.ctrlKey || event.metaKey) {
+      const nextIds = toggleSelection(selectedIds, nodeId);
+      setState(nextIds.length > 0 ? { mode: "selected", nodeIds: nextIds } : { mode: "idle" });
+      return;
+    }
+
     // Pressing a shape that is already part of the selection drags the whole
     // selection; anything else starts a fresh single-shape gesture. On
     // pointer-up we check if the user actually dragged; if not (a click),
     // text shapes enter text mode and non-text shapes get selected.
     //
-    // A held modifier means both Shift/Ctrl+click (toggle the shape in and out
-    // of the selection) and Shift+drag (move the selection along one axis) are
-    // still possible, so the gesture starts as a move either way and pointer-up
-    // decides. Resolving the toggle here instead would consume the press and
-    // leave a modified drag unable to move anything.
-    const additive = isMultiSelectEvent(event);
+    // Shift leaves both Shift+click (toggle) and Shift+drag (move along one
+    // axis) open, so the gesture starts as a move and pointer-up decides.
+    // Resolving the toggle up front would consume the press and leave the drag
+    // unable to move anything.
+    const additive = event.shiftKey;
     setState({
       mode: "move",
       nodeIds: additive
