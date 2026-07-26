@@ -56,6 +56,15 @@ export const MIN_SIZE = 8;
 /** Screen-px movement before a pointer-down becomes a drag instead of a click. */
 export const DRAG_THRESHOLD = 3;
 
+/**
+ * Whether a press on empty canvas has travelled far enough to be a rubber band
+ * rather than a click. Below the threshold nothing about the selection has
+ * changed yet, so the band stays invisible and the handles stay up.
+ */
+export function isBandDrag(startX: number, startY: number, curX: number, curY: number): boolean {
+  return Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
+}
+
 const GRIP_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 export type GripDirection = (typeof GRIP_DIRECTIONS)[number];
 
@@ -550,6 +559,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
+
+  const isBanding =
+    state.mode === "marquee" && isBandDrag(state.startX, state.startY, state.curX, state.curY);
 
   // Every selected shape previews the scale taken from the dragged shape.
   const grippedNode =
@@ -1385,8 +1397,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function onPointerUp(): void {
     if (state.mode === "marquee") {
       const { startX, startY, curX, curY, baseIds } = state;
-      const dragged = Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
-      if (!dragged) {
+      if (!isBandDrag(startX, startY, curX, curY)) {
         // Plain click on empty canvas → deselect. Held modifiers mean the user
         // was adding to a selection, so a stray click must not throw it away.
         setState(baseIds.length > 0 ? { mode: "selected", nodeIds: baseIds } : { mode: "idle" });
@@ -1750,7 +1761,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     // Grips are unreachable mid-band (the pointer is captured)
                     // and would sit under the rubber band, so only the outline
                     // of the base selection shows while it is being extended.
-                    showResizeGrips={state.mode !== "marquee"}
+                    // Until the band starts, the press is still just a click and
+                    // must not blink the handles of what is already selected.
+                    showResizeGrips={!isBanding}
                     onGripPointerDown={onGripPointerDown}
                     onBorderPointerDown={onBorderPointerDown}
                   />
@@ -1957,7 +1970,7 @@ function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
   const top = Math.min(state.startY, state.curY) - origin.top;
   const width = Math.abs(state.curX - state.startX);
   const height = Math.abs(state.curY - state.startY);
-  if (width + height < DRAG_THRESHOLD) return null;
+  if (!isBandDrag(state.startX, state.startY, state.curX, state.curY)) return null;
 
   return (
     <div

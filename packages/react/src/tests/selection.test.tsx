@@ -718,6 +718,59 @@ describe("multi-selection handles", () => {
     expect(gripCount(container)).toBe(16);
   });
 
+  it("keeps handles up while Shift+clicking empty canvas", async () => {
+    const { overlay, container, shapeElements } = await renderSelection();
+
+    clickShape(overlay, shapeElements[0]);
+    expect(gripCount(container)).toBe(8);
+
+    // A Shift press on empty canvas keeps the selection to add to, so until the
+    // band actually starts the handles must stay put.
+    hitTarget = null;
+    act(() => {
+      fireEvent.pointerDown(overlay, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+        shiftKey: true,
+      });
+    });
+    expect(gripCount(container)).toBe(8);
+
+    act(() => {
+      fireEvent.pointerUp(overlay, { pointerId: 1, shiftKey: true });
+    });
+    expect(gripCount(container)).toBe(8);
+  });
+
+  it("drops the handles once a band is actually under way", async () => {
+    const { overlay, container, shapeElements } = await renderSelection();
+
+    clickShape(overlay, shapeElements[0]);
+    hitTarget = null;
+    act(() => {
+      fireEvent.pointerDown(overlay, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+        shiftKey: true,
+      });
+    });
+    act(() => {
+      fireEvent.pointerMove(overlay, {
+        buttons: 1,
+        clientX: OVER_SLIDE,
+        clientY: OVER_SLIDE,
+        pointerId: 1,
+        shiftKey: true,
+      });
+    });
+
+    expect(gripCount(container)).toBe(0);
+  });
+
   it("drops the handles once a drag is actually under way", async () => {
     const { overlay, container, shapeElements } = await renderSelection();
 
