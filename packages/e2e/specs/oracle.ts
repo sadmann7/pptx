@@ -27,12 +27,15 @@ export const SCORE_TOLERANCE = 0.01;
  * (blank slide, missing chart) even on platforms with no recorded baseline
  * or with a badly-recorded one.
  *
- * The exported decks set the bar here: text-heavy slides score ~0.74 because
- * line spacing accumulates a few pixels of drift down a paragraph, which SSIM
- * penalises across every line even though the slide reads correctly. 0.65
- * clears that while still catching a slide that renders blank or loses a
- * region — those land far lower. Per-slide regressions are caught by the
- * baseline comparison, not by this floor.
+ * The exported decks set the bar here: their worst slides score ~0.74 on
+ * Windows, where line spacing accumulates a few pixels of drift down a
+ * paragraph and the charts choose their own axis ticks — both of which SSIM
+ * penalises across the whole image even though the slide reads correctly.
+ * Linux scores ~0.015 lower again (0.06 on the worst slide) for want of the
+ * decks' fonts, bottoming out at 0.705, so 0.65 is as high as the floor can
+ * sit without turning runner variance into a failure; raising it means fixing
+ * those two gaps first. Per-slide regressions are caught by the baseline
+ * comparison, not by this floor.
  */
 export const SCORE_FLOOR = 0.65;
 
