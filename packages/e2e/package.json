@@ -16,18 +16,24 @@
     "test:headed": "playwright test --headed",
     "test:update": "playwright test --update-snapshots",
     "test:oracle-update": "cross-env ORACLE_UPDATE=1 playwright test oracle",
+    "test:perf": "cross-env PERF=1 playwright test thumbnail-perf --project=chromium",
     "report": "playwright show-report"
   },
   "dependencies": {
+    "@diceui/pptx": "workspace:*",
     "@diceui/pptx-core": "workspace:*"
   },
   "devDependencies": {
     "@blazediff/ssim": "^1.7.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "cross-env": "^10.1.0",
     "jszip": "catalog:",
     "oxlint": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "sharp": "^0.35.3",
     "tsx": "^4.22.4",
     "typescript": "catalog:",

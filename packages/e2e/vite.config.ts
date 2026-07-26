@@ -54,13 +54,17 @@ function serveLocalDecks(): Plugin {
 }
 
 /**
- * Serves the test harness page at / and the generated fixture decks
- * (fixtures/*.pptx) as static files at the server root (e.g. /basic.pptx).
+ * Serves the test harness pages at / (single slide) and /thumbnails.html
+ * (thumbnail list), plus the generated fixture decks (fixtures/*.pptx) as
+ * static files at the server root (e.g. /basic.pptx).
  */
 export default defineConfig({
   root: "harness",
   publicDir: "../fixtures",
   plugins: [serveLocalDecks()],
+  // The thumbnail harness is the only JSX here and needs no refresh tooling,
+  // so esbuild's automatic runtime replaces @vitejs/plugin-react.
+  esbuild: { jsx: "automatic" },
   server: {
     fs: {
       // Paths are relative to the "harness" root. ".." covers this package

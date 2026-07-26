@@ -262,6 +262,9 @@ importers:
 
   packages/e2e:
     dependencies:
+      '@diceui/pptx':
+        specifier: workspace:*
+        version: link:../react
       '@diceui/pptx-core':
         specifier: workspace:*
         version: link:../core
@@ -275,6 +278,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.17)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -284,6 +293,12 @@ importers:
       oxlint:
         specifier: 'catalog:'
         version: 1.73.0
+      react:
+        specifier: 'catalog:'
+        version: 19.2.7
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.7(react@19.2.7)
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@26.1.1)

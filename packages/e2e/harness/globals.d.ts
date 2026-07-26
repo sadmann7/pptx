@@ -18,5 +18,9 @@ declare global {
     /** Re-renders another slide of the already loaded deck. */
     __showSlide?: (index: number) => Promise<void>;
     __getStructure?: () => SerializedPresentation;
+    /** True once the thumbnail harness has a loaded deck mounted. */
+    __thumbnailsReady?: boolean;
+    /** Per-slide render cost, one entry per slide, in ms (thumbnail harness). */
+    __benchRenderModes?: () => { slide: number[]; thumbnail: number[] };
   }
 }
