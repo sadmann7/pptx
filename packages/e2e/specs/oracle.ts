@@ -27,7 +27,7 @@ export const SCORE_TOLERANCE = 0.01;
  * (blank slide, missing chart) even on platforms with no recorded baseline
  * or with a badly-recorded one.
  *
- * The real decks set the bar here: text-heavy slides score ~0.74 today because
+ * The exported decks set the bar here: text-heavy slides score ~0.74 because
  * line spacing accumulates a few pixels of drift down a paragraph, which SSIM
  * penalises across every line even though the slide reads correctly. 0.65
  * clears that while still catching a slide that renders blank or loses a

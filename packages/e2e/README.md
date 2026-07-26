@@ -17,29 +17,29 @@ The Playwright config starts the harness itself, so no dev server is needed.
 
 ## Layers
 
-| Spec            | Asserts on                                                      |
-| --------------- | --------------------------------------------------------------- |
-| `structural`    | the parsed model: nodes, transforms, text — no pixels involved  |
-| `render`        | screenshot baselines per browser                                |
-| `table-borders` | border ownership and hairline rasterization at fractional scale |
-| `navigation`    | switching slides in a loaded deck                               |
-| `real-decks`    | every slide of a real deck renders with content and no failures |
-| `oracle`        | SSIM against PNGs exported from real PowerPoint                 |
+| Spec             | Asserts on                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| `structural`     | the parsed model: nodes, transforms, text — no pixels involved       |
+| `render`         | screenshot baselines per browser                                     |
+| `table-borders`  | border ownership and hairline rasterization at fractional scale      |
+| `navigation`     | switching slides in a loaded deck                                    |
+| `exported-decks` | every slide of an exported deck renders with content and no failures |
+| `oracle`         | SSIM against PNGs exported from real PowerPoint                      |
 
 Structural specs are the cheapest place to pin a parser fix; reach for pixels
 only when the bug is in how something rasterizes.
 
 ## Fixtures
 
-Decks are listed in `specs/decks.ts`, which the oracle and real-deck specs both
-iterate; add a deck there once its ground truth exists.
+Decks are listed in `specs/decks.ts`, which the oracle and exported-deck specs
+both iterate; add a deck there once its ground truth exists.
 
 The generated decks come from `scripts/generate-fixtures.ts` (`pnpm fixtures`)
 and are committed so runs are deterministic. Each is minimal and targets
 specific regressions — see the header comment in the generator before adding to
 one.
 
-The real decks are exports from an authoring tool, committed as-is. They carry
+The exported decks come from an authoring tool, committed as-is. They carry
 the full theme/layout/master chain, images, gradients, charts and mixed text
 that the minimal fixtures deliberately leave out, so they are what catches
 fidelity drift in the parts of the renderer no hand-written fixture reaches.
