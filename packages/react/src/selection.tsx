@@ -184,6 +184,52 @@ export function getNodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
 
+/** Factors a resize drag scaled the dragged shape by, per axis. */
+export interface ResizeScale {
+  x: number;
+  y: number;
+}
+
+/**
+ * How much a resize drag scaled the shape whose handle was grabbed. A side
+ * handle leaves the other axis at 1, and a zero-extent axis cannot define a
+ * factor, so it reports 1 rather than dividing by zero.
+ */
+export function gripScale(
+  origin: Rect,
+  grip: GripDirection,
+  dx: number,
+  dy: number,
+  lockAspect = false,
+): ResizeScale {
+  const next = resizeRect(origin, grip, dx, dy, lockAspect);
+  return {
+    x: origin.w === 0 ? 1 : next.w / origin.w,
+    y: origin.h === 0 ? 1 : next.h / origin.h,
+  };
+}
+
+/**
+ * Scale a rect by the factors the dragged shape was scaled by, anchored at the
+ * edges opposite the grip, matching `resizeRect`.
+ *
+ * PowerPoint resizes every shape in a multi-selection when one shape's handle
+ * is dragged, but it scales each in place: the gaps between them do not scale,
+ * which is why scaling a layout proportionally needs Scale Height/Width in the
+ * Size pane instead. Applied to the dragged shape itself this reproduces
+ * `resizeRect` exactly, clamps included.
+ */
+export function scaleRectFromGrip(rect: Rect, grip: GripDirection, scale: ResizeScale): Rect {
+  const w = Math.max(MIN_SIZE, rect.w * scale.x);
+  const h = Math.max(MIN_SIZE, rect.h * scale.y);
+  return {
+    x: grip.includes("w") ? rect.x + rect.w - w : rect.x,
+    y: grip.includes("n") ? rect.y + rect.h - h : rect.y,
+    w,
+    h,
+  };
+}
+
 export interface PasteboardOverhang {
   left: number;
   top: number;
@@ -383,7 +429,10 @@ type InternalState =
     }
   | {
       mode: "resize";
-      nodeId: string;
+      /** Every node being scaled; one entry for a solo selection. */
+      nodeIds: string[];
+      /** The node whose handle is being dragged; it sets the scale factors. */
+      gripNodeId: string;
       grip: GripDirection;
       startX: number;
       startY: number;
@@ -449,6 +498,8 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  *   press only toggles the selection.
  * - Drag on empty canvas → marquee-select fully enclosed shapes.
  * - Shift/Ctrl+drag on empty canvas → add the enclosed shapes to the selection.
+ * - Every selected shape keeps its own handles, and dragging any one of them
+ *   scales the whole selection, each shape in place.
  * - Ctrl/Cmd+A selects every shape on the slide.
  * - Arrow keys nudge, Delete removes: applied to the whole selection.
  */
@@ -479,9 +530,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const slideRevision = useSlideRevision(store, slideId);
 
   const selectedIds: string[] =
-    state.mode === "selected" || state.mode === "move"
+    state.mode === "selected" || state.mode === "move" || state.mode === "resize"
       ? state.nodeIds
-      : state.mode === "resize" || state.mode === "text"
+      : state.mode === "text"
         ? [state.nodeId]
         : // An additive band keeps its base selection outlined while dragging,
           // so it stays visible what the band is adding to.
@@ -499,6 +550,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
+
+  // Every selected shape previews the scale taken from the dragged shape.
+  const grippedNode =
+    state.mode === "resize" ? selectedNodes.find((node) => node.id === state.gripNodeId) : null;
+  const resizeScale =
+    state.mode === "resize" && grippedNode
+      ? gripScale(getNodeRect(grippedNode), state.grip, state.dx, state.dy, state.lockAspect)
+      : null;
 
   // Pasteboard hit area: shapes dragged past the slide edge render unclipped
   // in edit mode, but a surface sized to the slide (`inset: 0`) would never
@@ -1231,10 +1290,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
-  function onGripPointerDown(event: React.PointerEvent<HTMLDivElement>, grip: GripDirection): void {
-    debugLog("grip pointerdown", { grip, mode: state.mode, button: event.button });
-    // Resize handles only render for a single selection.
-    if (event.button !== 0 || !isSoloSelection || isTextMode) return;
+  function onGripPointerDown(
+    event: React.PointerEvent<HTMLDivElement>,
+    grip: GripDirection,
+    nodeId: string,
+  ): void {
+    debugLog("grip pointerdown", { grip, nodeId, mode: state.mode, button: event.button });
+    if (event.button !== 0 || !selectedIds.includes(nodeId) || isTextMode) return;
     event.stopPropagation();
     // See onPointerDown: stop selection extension / native drag initiation.
     event.preventDefault();
@@ -1242,7 +1304,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.setPointerCapture(event.pointerId);
     setState({
       mode: "resize",
-      nodeId: selectedIds[0],
+      nodeIds: selectedIds,
+      gripNodeId: nodeId,
       grip,
       startX: event.clientX,
       startY: event.clientY,
@@ -1430,31 +1493,57 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         }
       }
     } else if (state.mode === "resize") {
-      const { nodeId, grip, dx, dy, lockAspect } = state;
-      setState({ mode: "selected", nodeIds: [nodeId] });
+      const { nodeIds, gripNodeId, grip, dx, dy, lockAspect } = state;
+      const resizingNodes = selectedNodes;
+      const grippedNode = resizingNodes.find((node) => node.id === gripNodeId) ?? null;
+      setState({ mode: "selected", nodeIds });
       debugLog("resize pointerup", {
-        nodeId,
+        nodeIds,
+        gripNodeId,
         grip,
         dx,
         dy,
         lockAspect,
-        hasSelectedNode: Boolean(selectedNode),
-        baseRect: selectedNode ? getNodeRect(selectedNode) : null,
+        nodeCount: resizingNodes.length,
+        baseRect: grippedNode ? getNodeRect(grippedNode) : null,
       });
-      if (selectedNode && (dx !== 0 || dy !== 0)) {
-        const next = resizeRect(getNodeRect(selectedNode), grip, dx, dy, lockAspect);
+      if (grippedNode && (dx !== 0 || dy !== 0)) {
+        // Dragging one shape's handle scales the whole selection by the factors
+        // that shape was scaled by, each shape anchored in place (PowerPoint).
+        const scale = gripScale(getNodeRect(grippedNode), grip, dx, dy, lockAspect);
+        const transforms = resizingNodes.map((node) => ({
+          nodeId: node.id,
+          rect: scaleRectFromGrip(getNodeRect(node), grip, scale),
+        }));
         commitEdit(
           () =>
-            store.edit({
-              type: "setNodeTransform",
-              slideId: slideId!,
-              nodeId,
-              position: { x: next.x, y: next.y },
-              size: { w: next.w, h: next.h },
-            }),
+            store.edit(
+              transforms.length === 1
+                ? {
+                    type: "setNodeTransform",
+                    slideId: slideId!,
+                    nodeId: transforms[0].nodeId,
+                    position: { x: transforms[0].rect.x, y: transforms[0].rect.y },
+                    size: { w: transforms[0].rect.w, h: transforms[0].rect.h },
+                  }
+                : {
+                    type: "batch",
+                    operations: transforms.map(({ nodeId: id, rect }) => ({
+                      type: "setNodeTransform",
+                      slideId: slideId!,
+                      nodeId: id,
+                      position: { x: rect.x, y: rect.y },
+                      size: { w: rect.w, h: rect.h },
+                    })),
+                  },
+            ),
           undefined,
-          () => onNodeTransform?.(nodeId),
-          (error) => onNodeTransform?.(nodeId, error),
+          () => {
+            for (const id of nodeIds) onNodeTransform?.(id);
+          },
+          (error) => {
+            for (const id of nodeIds) onNodeTransform?.(id, error);
+          },
         );
       }
     }
@@ -1493,7 +1582,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
       setState({ mode: "selected", nodeIds: state.nodeIds });
     } else if (state.mode === "resize") {
-      setState({ mode: "selected", nodeIds: [state.nodeId] });
+      setState({ mode: "selected", nodeIds: state.nodeIds });
     } else if (state.mode === "marquee") {
       const { baseIds } = state;
       setState(baseIds.length > 0 ? { mode: "selected", nodeIds: baseIds } : { mode: "idle" });
@@ -1657,10 +1746,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     node={node}
                     state={state}
                     zoom={zoom}
+                    resizeScale={resizeScale}
                     // Grips are unreachable mid-band (the pointer is captured)
                     // and would sit under the rubber band, so only the outline
                     // of the base selection shows while it is being extended.
-                    showResizeGrips={isSoloSelection && state.mode !== "marquee"}
+                    showResizeGrips={state.mode !== "marquee"}
                     onGripPointerDown={onGripPointerDown}
                     onBorderPointerDown={onBorderPointerDown}
                   />
@@ -1752,9 +1842,15 @@ interface SelectionBoxProps {
   node: SlideNode;
   state: InternalState;
   zoom: number;
-  /** False in a multi-selection: boxes render without resize grips. */
+  /** Scale taken from the dragged shape, applied to every selected shape. */
+  resizeScale: ResizeScale | null;
+  /** False mid-band, when the grips are unreachable anyway. */
   showResizeGrips: boolean;
-  onGripPointerDown: (event: React.PointerEvent<HTMLDivElement>, grip: GripDirection) => void;
+  onGripPointerDown: (
+    event: React.PointerEvent<HTMLDivElement>,
+    grip: GripDirection,
+    nodeId: string,
+  ) => void;
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
@@ -1762,6 +1858,7 @@ function SelectionBox({
   node,
   state,
   zoom,
+  resizeScale,
   showResizeGrips,
   onGripPointerDown,
   onBorderPointerDown,
@@ -1769,23 +1866,16 @@ function SelectionBox({
   let rect = getNodeRect(node);
   if (state.mode === "move" && state.moved) {
     rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
-  } else if (state.mode === "resize") {
-    rect = resizeRect(rect, state.grip, state.dx, state.dy, state.lockAspect);
+  } else if (state.mode === "resize" && resizeScale) {
+    rect = scaleRectFromGrip(rect, state.grip, resizeScale);
   }
 
   const isTextMode = state.mode === "text";
-  const showGrips = showResizeGrips && node.rotation === 0 && state.mode !== "move" && !isTextMode;
-
-  const gripPositions: Record<GripDirection, React.CSSProperties> = {
-    nw: { left: 0, top: 0 },
-    n: { left: "50%", top: 0 },
-    ne: { left: "100%", top: 0 },
-    e: { left: "100%", top: "50%" },
-    se: { left: "100%", top: "100%" },
-    s: { left: "50%", top: "100%" },
-    sw: { left: 0, top: "100%" },
-    w: { left: 0, top: "50%" },
-  };
+  // Handles hide once a drag is actually under way, not merely on pointer-down:
+  // a press that only toggles the selection (Shift+click) would otherwise blink
+  // them off and back on.
+  const isDragging = state.mode === "move" && state.moved;
+  const showGrips = showResizeGrips && node.rotation === 0 && !isDragging && !isTextMode;
 
   return (
     <div
@@ -1802,32 +1892,53 @@ function SelectionBox({
         pointerEvents: "none",
       }}
     >
-      {showGrips &&
-        GRIP_DIRECTIONS.map((direction) => (
-          <div
-            key={direction}
-            aria-hidden="true"
-            data-resize-grip={direction}
-            onPointerDown={(event) => onGripPointerDown(event, direction)}
-            style={{
-              position: "absolute",
-              ...gripPositions[direction],
-              width: 9,
-              height: 9,
-              marginLeft: -4.5,
-              marginTop: -4.5,
-              background: "#fff",
-              border: "1.5px solid var(--presentation-selection, #2563eb)",
-              borderRadius: 2,
-              cursor: GRIP_CURSORS[direction],
-              pointerEvents: "auto",
-              touchAction: "none",
-            }}
-          />
-        ))}
+      {showGrips && (
+        <ResizeGrips onGripPointerDown={(event, grip) => onGripPointerDown(event, grip, node.id)} />
+      )}
       {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
     </div>
   );
+}
+
+const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
+  nw: { left: 0, top: 0 },
+  n: { left: "50%", top: 0 },
+  ne: { left: "100%", top: 0 },
+  e: { left: "100%", top: "50%" },
+  se: { left: "100%", top: "100%" },
+  s: { left: "50%", top: "100%" },
+  sw: { left: 0, top: "100%" },
+  w: { left: 0, top: "50%" },
+};
+
+interface ResizeGripsProps {
+  onGripPointerDown: (event: React.PointerEvent<HTMLDivElement>, grip: GripDirection) => void;
+}
+
+/** The eight handles, positioned against whichever box encloses them. */
+function ResizeGrips({ onGripPointerDown }: ResizeGripsProps) {
+  return GRIP_DIRECTIONS.map((direction) => (
+    <div
+      key={direction}
+      aria-hidden="true"
+      data-resize-grip={direction}
+      onPointerDown={(event) => onGripPointerDown(event, direction)}
+      style={{
+        position: "absolute",
+        ...GRIP_POSITIONS[direction],
+        width: 9,
+        height: 9,
+        marginLeft: -4.5,
+        marginTop: -4.5,
+        background: "#fff",
+        border: "1.5px solid var(--presentation-selection, #2563eb)",
+        borderRadius: 2,
+        cursor: GRIP_CURSORS[direction],
+        pointerEvents: "auto",
+        touchAction: "none",
+      }}
+    />
+  ));
 }
 
 interface MarqueeBoxProps {
