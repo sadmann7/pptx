@@ -10,9 +10,11 @@ import { expect, test } from "@playwright/test";
  * catch "we render it differently than PowerPoint", not just "we render it
  * differently than yesterday".
  *
- * Scores are asserted against committed per-slide baselines
- * (specs/oracle-baselines/) and fail when a score drops by more than the
- * tolerance. To (re)record after an intentional rendering change:
+ * Three measures are asserted against committed per-slide baselines
+ * (specs/oracle-baselines/): whole-image SSIM, the worst tile's SSIM, and each
+ * 4x3 region's painted coverage against PowerPoint's. See oracle.ts for why one
+ * number cannot do this job, and for the fault injection that settled the
+ * third. To (re)record after an intentional rendering change:
  *
  *   ORACLE_UPDATE=1 pnpm test   (or: pnpm test:oracle-update)
  */
@@ -22,11 +24,13 @@ import { join } from "node:path";
 import { ALL_DECKS } from "./decks";
 import {
   GROUND_TRUTH_DIR,
+  INK_TOLERANCE,
   isUpdateMode,
   readScoreBaseline,
   SCORE_FLOOR,
   SCORE_TOLERANCE,
-  ssimAgainstGroundTruth,
+  scoreAgainstGroundTruth,
+  TILE_TOLERANCE,
   writeScoreBaseline,
 } from "./oracle";
 import { openSlide, slideContainer } from "./utils";
@@ -44,7 +48,7 @@ for (const { name: deck, slides } of ALL_DECKS) {
 
         await openSlide(page, `${deck}.pptx`, slide);
         const screenshot = await slideContainer(page).screenshot();
-        const score = await ssimAgainstGroundTruth(screenshot, groundTruthPath);
+        const score = await scoreAgainstGroundTruth(screenshot, groundTruthPath);
 
         const project = testInfo.project.name;
         if (isUpdateMode) {
@@ -54,7 +58,7 @@ for (const { name: deck, slides } of ALL_DECKS) {
 
         // Absolute floor applies on every platform, baseline or not.
         expect(
-          score,
+          score.overall,
           `SSIM vs PowerPoint fell below the absolute floor ${SCORE_FLOOR}: the slide is likely blank or badly broken`,
         ).toBeGreaterThanOrEqual(SCORE_FLOOR);
 
@@ -65,14 +69,36 @@ for (const { name: deck, slides } of ALL_DECKS) {
         test.skip(
           baseline === null,
           `No oracle baseline for ${deck} slide ${slide} (${project}, ${process.platform}). ` +
-            `Measured SSIM: ${score.toFixed(4)}`,
+            `Measured SSIM: ${score.overall.toFixed(4)} whole, ${score.worstTile.toFixed(4)} worst tile`,
         );
         if (baseline === null) return;
 
         expect(
-          score,
-          `SSIM vs PowerPoint dropped below baseline ${baseline} - ${SCORE_TOLERANCE}`,
-        ).toBeGreaterThanOrEqual(baseline - SCORE_TOLERANCE);
+          score.overall,
+          `SSIM vs PowerPoint dropped below baseline ${baseline.overall} - ${SCORE_TOLERANCE}`,
+        ).toBeGreaterThanOrEqual(baseline.overall - SCORE_TOLERANCE);
+
+        expect(
+          score.worstTile,
+          `The worst tile dropped below baseline ${baseline.worstTile} - ${TILE_TOLERANCE}: ` +
+            `some region of the slide regressed even if the slide as a whole still scores well`,
+        ).toBeGreaterThanOrEqual(baseline.worstTile - TILE_TOLERANCE);
+
+        // Per region, not worst-of: a region that permanently sits worst would
+        // otherwise mask a different region losing its content entirely.
+        const worst = score.ink.reduce(
+          (found, drift, region) =>
+            drift - baseline.ink[region] > found.excess
+              ? { region, drift, excess: drift - baseline.ink[region] }
+              : found,
+          { region: -1, drift: 0, excess: -Infinity },
+        );
+        expect(
+          worst.drift,
+          `Region ${worst.region} of the 4x3 grid paints ${worst.drift.toFixed(3)} away from ` +
+            `PowerPoint's coverage against a baseline of ${baseline.ink[worst.region]}: content ` +
+            `there is missing, collapsed, or newly overflowing`,
+        ).toBeLessThanOrEqual(baseline.ink[worst.region] + INK_TOLERANCE);
       });
     }
   });

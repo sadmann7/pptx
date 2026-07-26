@@ -10,6 +10,7 @@
     "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
     "shoot": "tsx scripts/shoot.ts",
     "probe": "tsx scripts/probe.ts",
+    "faults": "tsx scripts/faults.ts",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
