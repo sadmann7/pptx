@@ -31,11 +31,13 @@
   "oxc.enable": true,
   "tailwindCSS.validate": true,
   "tailwindCSS.lint.cssConflict": "ignore",
-  "tailwindCSS.experimental.classRegex": [
-    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-    ["clsx\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
-  ],
+  "tailwindCSS.experimental.configFile": {
+    "apps/docs/src/styles/globals.css": ["apps/docs/**"],
+    "apps/video/src/styles/globals.css": ["apps/video/**"],
+    "packages/ui/src/styles/globals.css": ["packages/ui/**"]
+  },
+  "tailwindCSS.classFunctions": ["cn", "cva", "clsx", "twMerge"],
+  "css.lint.unknownAtRules": "ignore",
   "js/ts.tsdk.path": "node_modules/typescript/lib",
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "files.associations": {
