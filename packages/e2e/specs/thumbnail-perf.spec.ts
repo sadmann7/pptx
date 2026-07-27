@@ -25,16 +25,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DECKS_DIR = join(HERE, "..", "decks");
 /** A committed real-world deck; the perf picture only means something on real content. */
-const SOURCE_DECK = join(
-  HERE,
-  "..",
-  "..",
-  "..",
-  "apps",
-  "video",
-  "public",
-  "tiny-adventure-club.pptx",
-);
+const SOURCE_DECK = join(HERE, "..", "fixtures", "adventure-club-pin-and-paper.pptx");
 const BENCH_DECK = "bench-thumbnails.pptx";
 /** Enough slides that the list scrolls for a while at a realistic speed. */
 const TARGET_SLIDES = 64;

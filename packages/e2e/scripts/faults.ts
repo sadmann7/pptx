@@ -15,7 +15,7 @@ import { chromium } from "@playwright/test";
  *
  * Start the harness first (`pnpm harness`), then:
  *   pnpm faults
- *   pnpm faults --slide tiny-adventure-club:4 --fault hide-text
+ *   pnpm faults --slide adventure-club-pin-and-paper:4 --fault hide-text
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -54,10 +54,10 @@ const FAULTS = [
  */
 const DEFAULT_SLIDES = [
   "the-good-room-soft-editorial:1",
-  "geometry-of-attention:5",
-  "make-something-strange:0",
-  "tiny-adventure-club:4",
-  "internet-with-texture:2",
+  "geometry-of-attention-cartesian:5",
+  "make-something-strange-creative-mode:0",
+  "adventure-club-pin-and-paper:4",
+  "internet-with-texture-broadside:2",
   "pocket-machines-sakura-chroma:3",
 ];
 

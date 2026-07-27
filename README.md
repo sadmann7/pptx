@@ -93,24 +93,26 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 **Interaction model:**
 
-| Action                       | Behavior                       |
-| ---------------------------- | ------------------------------ |
-| Click text box / placeholder | Select + enter text mode       |
-| Click regular shape          | Select                         |
-| Double-click regular shape   | Enter text mode                |
-| Type while shape selected    | Enter text mode                |
-| Drag shape                   | Move                           |
-| Drag border of text box      | Move while keeping text mode   |
-| Drag resize handle           | Resize                         |
-| Shift + drag corner handle   | Resize preserving aspect ratio |
-| Ctrl/Cmd+A                   | Select all                     |
-| Shift/Ctrl+click             | Toggle shape in selection      |
-| Drag empty canvas            | Marquee select                 |
-| Delete / Backspace           | Delete selected shape(s)       |
-| Arrow keys                   | Nudge (1 px; Shift = 10 px)    |
-| Ctrl/Cmd+Z                   | Undo                           |
-| Ctrl/Cmd+Y / Ctrl+Shift+Z    | Redo                           |
-| Escape                       | Deselect / exit text mode      |
+| Action                       | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| Click text box / placeholder | Select + enter text mode                        |
+| Click regular shape          | Select                                          |
+| Double-click regular shape   | Enter text mode                                 |
+| Type while shape selected    | Enter text mode                                 |
+| Drag shape                   | Move                                            |
+| Shift + drag shape           | Move along one axis, the one the drag favors    |
+| Drag border of text box      | Move while keeping text mode                    |
+| Drag resize handle           | Resize, applied to every selected shape         |
+| Shift + drag corner handle   | Resize preserving aspect ratio                  |
+| Ctrl/Cmd+A                   | Select all                                      |
+| Shift/Ctrl+click             | Toggle shape in selection                       |
+| Drag empty canvas            | Marquee select                                  |
+| Shift + drag empty canvas    | Marquee select, adding to the current selection |
+| Delete / Backspace           | Delete selected shape(s)                        |
+| Arrow keys                   | Nudge (1 px; Shift = 10 px)                     |
+| Ctrl/Cmd+Z                   | Undo                                            |
+| Ctrl/Cmd+Y / Ctrl+Shift+Z    | Redo                                            |
+| Escape                       | Deselect / exit text mode                       |
 
 ### `Presentation.ThumbnailList`
 
