@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PPTX Thumbnail Harness</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      #thumbnail-root {
+        height: 100vh;
+        display: flex;
+      }
+
+      /* A pending preview is the skeleton the perf spec counts. */
+      [data-pending] {
+        background: repeating-linear-gradient(
+          45deg,
+          #e5e7eb,
+          #e5e7eb 6px,
+          #f3f4f6 6px,
+          #f3f4f6 12px
+        );
+      }
+    </style>
+  </head>
+  <body>
+    <div id="thumbnail-root"></div>
+    <script type="module" src="./thumbnails.tsx"></script>
+  </body>
+</html>
