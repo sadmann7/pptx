@@ -17,6 +17,9 @@ import { expect, test } from "@playwright/test";
  * third. To (re)record after an intentional rendering change:
  *
  *   ORACLE_UPDATE=1 pnpm test   (or: pnpm test:oracle-update)
+ *
+ * Baselines are per platform, and a platform without them skips before doing
+ * any work, so this whole spec is inert anywhere it has not been recorded.
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -39,6 +42,24 @@ for (const { name: deck, slides } of ALL_DECKS) {
   test.describe(`oracle: ${deck}`, () => {
     for (let slide = 0; slide < slides; slide++) {
       test(`slide ${slide + 1} matches PowerPoint output`, async ({ page }, testInfo) => {
+        const project = testInfo.project.name;
+        const baseline = readScoreBaseline(deck, slide, project);
+
+        // Baselines are platform-specific (font and antialiasing differences
+        // move SSIM by 0.01-0.03), so a platform without recorded ones has
+        // nothing to compare against and skips instead of failing. Record with
+        // "pnpm test:oracle-update" on that OS.
+        //
+        // Skipping here rather than after scoring matters: rendering every
+        // slide and running SSIM over it is this spec's entire cost, and CI
+        // runs on a platform with no baselines, so it was paying that in full
+        // for a result it then threw away. A blank or broken slide is caught
+        // there by exported-decks.spec.ts, which needs no baseline.
+        test.skip(
+          !isUpdateMode && baseline === null,
+          `No oracle baseline for ${deck} slide ${slide} (${project}, ${process.platform})`,
+        );
+
         const groundTruthPath = join(GROUND_TRUTH_DIR, deck, `slide-${slide}.png`);
         if (!existsSync(groundTruthPath)) {
           throw new Error(
@@ -50,28 +71,19 @@ for (const { name: deck, slides } of ALL_DECKS) {
         const screenshot = await slideContainer(page).screenshot();
         const score = await scoreAgainstGroundTruth(screenshot, groundTruthPath);
 
-        const project = testInfo.project.name;
         if (isUpdateMode) {
           writeScoreBaseline(deck, slide, project, score);
           return;
         }
 
-        // Absolute floor applies on every platform, baseline or not.
+        // Absolute floor, in case a baseline was recorded from something
+        // already broken.
         expect(
           score.overall,
           `SSIM vs PowerPoint fell below the absolute floor ${SCORE_FLOOR}: the slide is likely blank or badly broken`,
         ).toBeGreaterThanOrEqual(SCORE_FLOOR);
 
-        const baseline = readScoreBaseline(deck, slide, project);
-        // Baselines are platform-specific (font/antialiasing differences move
-        // SSIM by ~0.01-0.03), so a platform without recorded baselines skips
-        // instead of failing. Record with "pnpm test:oracle-update" on that OS.
-        test.skip(
-          baseline === null,
-          `No oracle baseline for ${deck} slide ${slide} (${project}, ${process.platform}). ` +
-            `Measured SSIM: ${score.overall.toFixed(4)} whole, ${score.worstTile.toFixed(4)} worst tile`,
-        );
-        if (baseline === null) return;
+        if (baseline === null) return; // unreachable: the skip above returned
 
         expect(
           score.overall,
