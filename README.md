@@ -29,7 +29,7 @@ import * as Presentation from "@diceui/pptx";
 export function Viewer({ file }: { file: File }) {
   return (
     <Presentation.Root file={file}>
-      <Presentation.Sidebar />
+      <Presentation.ThumbnailList />
       <Presentation.Viewport>
         <Presentation.Slide />
       </Presentation.Viewport>
@@ -46,7 +46,7 @@ import * as Presentation from "@diceui/pptx";
 export function Editor({ file }: { file: File }) {
   return (
     <Presentation.Root file={file}>
-      <Presentation.Sidebar />
+      <Presentation.ThumbnailList />
       <Presentation.Viewport>
         <Presentation.Slide>
           <Presentation.Selection />
@@ -93,36 +93,46 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 **Interaction model:**
 
-| Action                       | Behavior                       |
-| ---------------------------- | ------------------------------ |
-| Click text box / placeholder | Select + enter text mode       |
-| Click regular shape          | Select                         |
-| Double-click regular shape   | Enter text mode                |
-| Type while shape selected    | Enter text mode                |
-| Drag shape                   | Move                           |
-| Drag border of text box      | Move while keeping text mode   |
-| Drag resize handle           | Resize                         |
-| Shift + drag corner handle   | Resize preserving aspect ratio |
-| Ctrl/Cmd+A                   | Select all                     |
-| Shift/Ctrl+click             | Toggle shape in selection      |
-| Drag empty canvas            | Marquee select                 |
-| Delete / Backspace           | Delete selected shape(s)       |
-| Arrow keys                   | Nudge (1 px; Shift = 10 px)    |
-| Ctrl/Cmd+Z                   | Undo                           |
-| Ctrl/Cmd+Y / Ctrl+Shift+Z    | Redo                           |
-| Escape                       | Deselect / exit text mode      |
+| Action                       | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| Click text box / placeholder | Select + enter text mode                        |
+| Click regular shape          | Select                                          |
+| Double-click regular shape   | Enter text mode                                 |
+| Type while shape selected    | Enter text mode                                 |
+| Drag shape                   | Move                                            |
+| Shift + drag shape           | Move along one axis, the one the drag favors    |
+| Drag border of text box      | Move while keeping text mode                    |
+| Drag resize handle           | Resize, applied to every selected shape         |
+| Shift + drag corner handle   | Resize preserving aspect ratio                  |
+| Ctrl/Cmd+A                   | Select all                                      |
+| Shift/Ctrl+click             | Toggle shape in selection                       |
+| Drag empty canvas            | Marquee select                                  |
+| Shift + drag empty canvas    | Marquee select, adding to the current selection |
+| Delete / Backspace           | Delete selected shape(s)                        |
+| Arrow keys                   | Nudge (1 px; Shift = 10 px)                     |
+| Ctrl/Cmd+Z                   | Undo                                            |
+| Ctrl/Cmd+Y / Ctrl+Shift+Z    | Redo                                            |
+| Escape                       | Deselect / exit text mode                       |
 
 ### `Presentation.ThumbnailList`
 
-Slide strip. Supports virtualized rendering for large decks.
-
-### `Presentation.Toolbar` / `Presentation.Controls`
-
-Pre-built toolbar and slide navigation controls.
+Slide strip. Renders a preview per slide, filling each one as it approaches the viewport so a long deck does not render all at once. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
 
 ### `Presentation.Error` / `Presentation.Loading`
 
 Slot components for custom loading and error states.
+
+### `Presentation.Provider`
+
+Optional. `Root` creates its own store, so this is only needed when you want to own the store and drive it from outside the tree.
+
+```tsx
+const store = useCreatePresentationStore();
+
+<Presentation.Provider store={store}>
+  <Presentation.Root file={file}>{/* ... */}</Presentation.Root>
+</Presentation.Provider>;
+```
 
 ### Hooks
 
@@ -130,7 +140,7 @@ Slot components for custom loading and error states.
 const { presentation, status } = usePresentation();
 const { slide } = useSlide();
 const { zoom, setZoom } = useZoom();
-const store = useCreatePresentationStore({ file });
+const store = useCreatePresentationStore();
 ```
 
 ## Edit operations (core)

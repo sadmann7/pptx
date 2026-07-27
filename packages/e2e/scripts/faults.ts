@@ -15,18 +15,18 @@ import { chromium } from "@playwright/test";
  *
  * Start the harness first (`pnpm harness`), then:
  *   pnpm faults
- *   pnpm faults --slide tiny-adventure-club:4 --fault hide-text
+ *   pnpm faults --slide adventure-club-pin-and-paper:4 --fault hide-text
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
 import {
-  GROUND_TRUTH_DIR,
+  POWERPOINT_DIR,
   INK_TOLERANCE,
   type OracleScore,
   SCORE_TOLERANCE,
-  scoreAgainstGroundTruth,
+  scoreAgainstPowerPoint,
   TILE_TOLERANCE,
 } from "../specs/oracle";
 import { parseArgs } from "./args";
@@ -54,10 +54,10 @@ const FAULTS = [
  */
 const DEFAULT_SLIDES = [
   "the-good-room-soft-editorial:1",
-  "geometry-of-attention:5",
-  "make-something-strange:0",
-  "tiny-adventure-club:4",
-  "internet-with-texture:2",
+  "geometry-of-attention-cartesian:5",
+  "make-something-strange-creative-mode:0",
+  "adventure-club-pin-and-paper:4",
+  "internet-with-texture-broadside:2",
   "pocket-machines-sakura-chroma:3",
 ];
 
@@ -101,11 +101,11 @@ const page = await browser.newPage({
 page.on("pageerror", (error) => console.error("[pageerror]", error.message));
 
 for (const { deck, slide } of slides) {
-  const groundTruthPath = join(GROUND_TRUTH_DIR, deck, `slide-${slide}.png`);
-  if (!existsSync(groundTruthPath)) {
-    throw new Error(`Missing ground truth ${groundTruthPath}. Run "pnpm oracle:export".`);
+  const powerPointPath = join(POWERPOINT_DIR, deck, `slide-${slide}.png`);
+  if (!existsSync(powerPointPath)) {
+    throw new Error(`Missing PowerPoint export ${powerPointPath}. Run "pnpm oracle:export".`);
   }
-  const { width = 0, height = 0 } = await sharp(readFileSync(groundTruthPath)).metadata();
+  const { width = 0, height = 0 } = await sharp(readFileSync(powerPointPath)).metadata();
   let control: OracleScore | undefined;
   let controlShot: Buffer | undefined;
 
@@ -200,7 +200,7 @@ for (const { deck, slide } of slides) {
     }
 
     const screenshot = await page.locator("#slide-container").screenshot();
-    const score = await scoreAgainstGroundTruth(screenshot, groundTruthPath);
+    const score = await scoreAgainstPowerPoint(screenshot, powerPointPath);
     control ??= score;
     controlShot ??= screenshot;
 

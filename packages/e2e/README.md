@@ -32,7 +32,7 @@ only when the bug is in how something rasterizes.
 ## Fixtures
 
 Decks are listed in `specs/decks.ts`, which the oracle and exported-deck specs
-both iterate; add a deck there once its ground truth exists.
+both iterate; add a deck there once PowerPoint's export of it exists.
 
 The generated decks come from `scripts/generate-fixtures.ts` (`pnpm fixtures`)
 and are committed so runs are deterministic. Each is minimal and targets
@@ -46,11 +46,11 @@ fidelity drift in the parts of the renderer no hand-written fixture reaches.
 Hand-written assertions against them would be guesswork, so they are checked
 against PowerPoint's own export instead.
 
-Ground-truth PNGs under `fixtures/ground-truth/` come from PowerPoint itself via
-`pnpm oracle:export` (Windows, PowerPoint installed), exported at each deck's
-native slide size.
+The PNGs under `fixtures/powerpoint/` are PowerPoint's own rendering of each
+slide, produced by `pnpm oracle:export` (Windows, PowerPoint installed) at the
+deck's native slide size. They are what the oracle scores against.
 
-Each slide's scores against that ground truth are recorded per platform in
+Each slide's scores against those PNGs are recorded per platform in
 `specs/oracle-baselines/`, since Linux scores lower for want of the decks' fonts
 (~0.015, and 0.06 on the worst slide). Re-record locally with
 `pnpm test:oracle-update`, and for Linux with the `Record PowerPoint oracle
@@ -85,9 +85,9 @@ pnpm harness
 Then screenshot and inspect it at the pixel level:
 
 ```bash
-pnpm shoot --file decks/customer.pptx --slide 6 --scale 0.86 --select "table td"
-pnpm probe out/decks-customer.pptx-6.png --row 292 --x 350:365
-pnpm probe out/decks-customer.pptx-6.png --crop 340,270,40,30 --zoom 9
+pnpm shoot --file decks/kickflip.pptx --slide 6 --scale 0.86 --select "table td"
+pnpm probe out/decks-kickflip.pptx-6.png --row 292 --x 350:365
+pnpm probe out/decks-kickflip.pptx-6.png --crop 340,270,40,30 --zoom 9
 ```
 
 `--select` prints client rects plus the styles that decide where an edge lands

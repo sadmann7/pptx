@@ -18,8 +18,8 @@ export default defineConfig({
       maxDiffPixelRatio: 0.02,
     },
   },
-  // Baselines are named per-browser but not per-OS: ground truth is defined by
-  // whichever machine generates them (see snapshotPathTemplate without {platform}).
+  // Baselines are named per-browser but not per-OS: whichever machine records
+  // them defines them (see snapshotPathTemplate without {platform}).
   snapshotPathTemplate: "{testDir}/screenshots/{testFilePath}/{arg}-{projectName}{ext}",
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
