@@ -20,7 +20,14 @@ declare global {
     __getStructure?: () => SerializedPresentation;
     /** True once the thumbnail harness has a loaded deck mounted. */
     __thumbnailsReady?: boolean;
-    /** Per-slide render cost, one entry per slide, in ms (thumbnail harness). */
-    __benchRenderModes?: () => { slide: number[]; thumbnail: number[] };
+    /**
+     * Per-slide cost of each render mode, one entry per slide, in ms
+     * (thumbnail harness). Rendering and mounting are separate because the
+     * list pays both and they cost about the same on a detailed slide.
+     */
+    __benchRenderModes?: () => {
+      slide: { render: number[]; mount: number[] };
+      thumbnail: { render: number[]; mount: number[] };
+    };
   }
 }

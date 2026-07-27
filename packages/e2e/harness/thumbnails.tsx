@@ -17,7 +17,7 @@ import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
 import { Presentation, useCreatePresentationStore, usePresentation } from "@diceui/pptx";
-import type { PresentationData, SlideData } from "@diceui/pptx-core";
+import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
 import { renderSlide, renderThumbnail } from "@diceui/pptx-core";
 import { createRoot } from "react-dom/client";
 
@@ -27,26 +27,51 @@ const targetSlides = Number.parseInt(params.get("slides") ?? "0", 10);
 const width = Number.parseInt(params.get("width") ?? "180", 10);
 const height = Number.parseInt(params.get("height") ?? "720", 10);
 
+interface RenderTimings {
+  /** Producing the miniature, which the list does off-document. */
+  render: number[];
+  /** Putting it in the document, which is what forces the layout. */
+  mount: number[];
+}
+
 /**
- * Times one render of every slide, discarding the result.
+ * Times one render of every slide and one mount of what it produced.
  *
- * The container is attached because that is the condition the renderers see in
- * the app: `renderSlide` mounts the subtree to measure text autofit, so a
- * detached timing would miss the forced layouts that dominate its cost.
+ * Both halves are reported because the list pays both, but read the mount
+ * number as a lower bound: it covers inserting the subtree and the layout that
+ * forces, and nothing else. The host is off-screen, so the browser never paints
+ * it, and paint is where the rest of showing a preview goes. Expect the mount
+ * column to look small next to how much filling a preview actually costs
+ * during a scroll.
+ *
+ * The renderers need no help to be measured fairly. `renderSlide` puts a
+ * detached subtree into its own measurement host before reading text metrics,
+ * so its forced layouts happen either way.
  */
 function timeRenders(
   presentation: PresentationData,
-  render: (presentation: PresentationData, slide: SlideData) => { dispose: () => void },
-): number[] {
+  render: (presentation: PresentationData, slide: SlideData) => SlideHandle,
+): RenderTimings {
+  // Off to the side at the size a preview really occupies: laid out in full,
+  // but never painted and never disturbing the list being measured.
   const host = document.createElement("div");
-  host.style.cssText = "position:absolute;top:0;left:0;width:0;height:0;overflow:hidden";
+  host.style.cssText = `position:absolute;top:0;left:-100000px;width:${width}px;height:${height}px;overflow:hidden;pointer-events:none`;
   document.body.appendChild(host);
 
-  const timings: number[] = [];
+  const timings: RenderTimings = { render: [], mount: [] };
   for (const slide of presentation.slides) {
-    const start = performance.now();
+    const renderStart = performance.now();
     const handle = render(presentation, slide);
-    timings.push(performance.now() - start);
+    timings.render.push(performance.now() - renderStart);
+
+    const mountStart = performance.now();
+    host.appendChild(handle.element);
+    // Appending only schedules the layout; reading a geometric property is
+    // what makes it happen here rather than in some later frame.
+    void host.offsetHeight;
+    timings.mount.push(performance.now() - mountStart);
+
+    handle.element.remove();
     handle.dispose();
   }
 

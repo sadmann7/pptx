@@ -8,8 +8,9 @@ import { test } from "@playwright/test";
  *
  * Two things get measured:
  *
- *   1. per-slide render cost, `renderSlide` against `renderThumbnail`, which is
- *      what decides whether a preview can be filled within one frame's budget;
+ *   1. per-slide cost, `renderSlide` against `renderThumbnail`, split into
+ *      rendering the miniature and putting it in the document, which together
+ *      decide whether a preview can be filled within one frame's budget;
  *   2. skeleton exposure during a fast scroll: for every animation frame of the
  *      sweep, how many previews inside the viewport are still `[data-pending]`,
  *      plus how long the list takes to settle once scrolling stops.
@@ -79,17 +80,27 @@ test.describe("thumbnail list scroll performance", () => {
         const list = document.getElementById("thumbnail-list");
         if (!list) throw new Error("missing #thumbnail-list");
 
-        const previews = () =>
-          Array.from(list.querySelectorAll<HTMLElement>("[aria-hidden='true']"));
+        const previews = Array.from(list.querySelectorAll<HTMLElement>("[aria-hidden='true']"));
+
+        // Geometry is read once, here, and the visible range is derived from
+        // the scroll offset afterwards. Measuring each preview's rect every
+        // frame instead would force a layout per preview inside the sweep,
+        // which is enough work to change the number the sweep is reporting.
+        const firstTop = previews[0]?.offsetTop ?? 0;
+        const pitch = (previews[1]?.offsetTop ?? firstTop) - firstTop;
+        const viewportHeight = list.clientHeight;
 
         /** Previews overlapping the scroller viewport, i.e. what the user sees. */
         const visiblePending = () => {
-          const listRect = list.getBoundingClientRect();
+          if (pitch <= 0) return 0;
+          // Preview i sits at firstTop + i * pitch, so the viewport spans the
+          // indices between the two ends of the scrolled window.
+          const top = list.scrollTop - firstTop;
+          const first = Math.max(0, Math.floor(top / pitch));
+          const last = Math.min(previews.length - 1, Math.floor((top + viewportHeight) / pitch));
           let pending = 0;
-          for (const preview of previews()) {
-            const rect = preview.getBoundingClientRect();
-            if (rect.bottom < listRect.top || rect.top > listRect.bottom) continue;
-            if (preview.dataset.pending !== undefined) pending++;
+          for (let index = first; index <= last; index++) {
+            if (previews[index]?.dataset.pending !== undefined) pending++;
           }
           return pending;
         };
@@ -124,15 +135,15 @@ test.describe("thumbnail list scroll performance", () => {
         }
         const settleMs = performance.now() - settleStart;
 
-        const all = previews();
         return {
           frames: measured,
           pendingFrames,
           worstPending,
           meanPending: measured > 0 ? totalPending / measured : 0,
           settleMs,
-          renderedPreviews: all.filter((preview) => preview.dataset.pending === undefined).length,
-          totalPreviews: all.length,
+          renderedPreviews: previews.filter((preview) => preview.dataset.pending === undefined)
+            .length,
+          totalPreviews: previews.length,
         };
       },
       { step: SCROLL_STEP_PX, frames: SCROLL_FRAMES },
@@ -142,14 +153,24 @@ test.describe("thumbnail list scroll performance", () => {
     const worst = (values: number[]) => Math.max(...values);
     const mean = (values: number[]) => (values.length > 0 ? total(values) / values.length : 0);
 
+    /** Both halves of what one preview costs, plus what the whole deck comes to. */
+    const cost = (label: string, timings: { render: number[]; mount: number[] }) => {
+      const both = timings.render.map((value, index) => value + (timings.mount[index] ?? 0));
+      return [
+        `  ${label.padEnd(18)}mean ${mean(both).toFixed(1)}ms   worst ${worst(both).toFixed(1)}ms   deck ${total(both).toFixed(0)}ms`,
+        `    render          mean ${mean(timings.render).toFixed(1)}ms   worst ${worst(timings.render).toFixed(1)}ms`,
+        `    mount           mean ${mean(timings.mount).toFixed(1)}ms   worst ${worst(timings.mount).toFixed(1)}ms`,
+      ];
+    };
+
     console.log(
       [
         "",
         `deck                  ${BENCH_DECK} (${slideCount} slides)`,
         "",
-        "per-slide render cost",
-        `  renderSlide         mean ${mean(renderCost.slide).toFixed(1)}ms   worst ${worst(renderCost.slide).toFixed(1)}ms   deck ${total(renderCost.slide).toFixed(0)}ms`,
-        `  renderThumbnail     mean ${mean(renderCost.thumbnail).toFixed(1)}ms   worst ${worst(renderCost.thumbnail).toFixed(1)}ms   deck ${total(renderCost.thumbnail).toFixed(0)}ms`,
+        "per-slide cost (mount is layout only, the host is never painted)",
+        ...cost("renderSlide", renderCost.slide),
+        ...cost("renderThumbnail", renderCost.thumbnail),
         "",
         `fast scroll (${SCROLL_STEP_PX}px/frame)`,
         `  frames with a visible skeleton   ${sweep.pendingFrames}/${sweep.frames}`,
