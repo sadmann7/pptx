@@ -1205,22 +1205,48 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * survive it out of reach: focus leaves the overlay and `onKeyDown` is a
    * React handler on it, so Escape stops arriving.
    *
+   * Deselecting on release rather than on press is what keeps touch usable.
+   * A scroll begins as a pointerdown on whatever is under the finger, so
+   * acting there would drop the selection every time the deck was scrolled.
+   * The browser fires pointercancel when it takes the gesture over for
+   * scrolling, which distinguishes a scroll from a tap without guessing at a
+   * movement threshold.
+   *
    * Text mode has its own listener above, which commits edits first.
    */
   React.useEffect(() => {
     if (isTextMode) return;
 
+    let pending = false;
+
     function onDocPointerDown(event: PointerEvent): void {
+      pending = false;
       // Primary button only, as in `onPointerDown`; touch and pen report 0.
       if (event.button !== 0) return;
       if (stateRef.current.mode === "idle") return;
       // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
+      pending = true;
+    }
+
+    function onDocPointerUp(): void {
+      if (!pending) return;
+      pending = false;
       setState({ mode: "idle" });
     }
 
+    function onDocPointerCancel(): void {
+      pending = false;
+    }
+
     document.addEventListener("pointerdown", onDocPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("pointerup", onDocPointerUp, true);
+    document.addEventListener("pointercancel", onDocPointerCancel, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDocPointerDown, true);
+      document.removeEventListener("pointerup", onDocPointerUp, true);
+      document.removeEventListener("pointercancel", onDocPointerCancel, true);
+    };
   }, [isTextMode, stateRef]);
 
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
