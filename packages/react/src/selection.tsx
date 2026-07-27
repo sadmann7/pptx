@@ -1213,6 +1213,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (isTextMode) return;
 
     function onDocPointerDown(event: PointerEvent): void {
+      // Primary button only, matching `onPointerDown`. A right or middle click
+      // inside the overlay leaves the selection alone, so one outside should
+      // too, and opening a context menu elsewhere on the page is no reason to
+      // deselect. Touch and pen contacts report button 0, so they still count.
+      if (event.button !== 0) return;
       if (stateRef.current.mode === "idle") return;
       // Presses on the overlay (including drags, which capture the pointer
       // onto it) are the business of its own handlers.

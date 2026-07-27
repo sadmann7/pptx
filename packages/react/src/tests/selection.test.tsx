@@ -860,6 +860,21 @@ describe("pressing outside the overlay", () => {
     expect(overlay.getAttribute("data-mode")).toBe("idle");
   });
 
+  it("keeps the selection on a right click, which only opens a context menu", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+
+    act(() => {
+      fireEvent.pointerDown(document.body, { button: 2 });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
   it("stops the selection outliving the focus it needs to be cleared by hand", async () => {
     const { overlay } = await renderSelection();
 
