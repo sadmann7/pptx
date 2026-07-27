@@ -53,8 +53,12 @@ for (const { name: deck, slides } of ALL_DECKS) {
         // Skipping here rather than after scoring matters: rendering every
         // slide and running SSIM over it is this spec's entire cost, and CI
         // runs on a platform with no baselines, so it was paying that in full
-        // for a result it then threw away. A blank or broken slide is caught
-        // there by exported-decks.spec.ts, which needs no baseline.
+        // for a result it then threw away. The same slides were already being
+        // skipped there, so this changes when we give up, not what is covered.
+        // A blank or broken slide is still caught on every platform, by
+        // exported-decks.spec.ts for the exported decks and by the screenshot
+        // baselines in render.spec.ts and table-borders.spec.ts for the
+        // generated ones. Neither needs an oracle baseline.
         test.skip(
           !isUpdateMode && baseline === null,
           `No oracle baseline for ${deck} slide ${slide} (${project}, ${process.platform})`,
@@ -83,7 +87,9 @@ for (const { name: deck, slides } of ALL_DECKS) {
           `SSIM vs PowerPoint fell below the absolute floor ${SCORE_FLOOR}: the slide is likely blank or badly broken`,
         ).toBeGreaterThanOrEqual(SCORE_FLOOR);
 
-        if (baseline === null) return; // unreachable: the skip above returned
+        // Narrowing only. A null baseline either skipped above or was just
+        // written and returned, so this cannot be reached.
+        if (baseline === null) return;
 
         expect(
           score.overall,
