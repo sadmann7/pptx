@@ -2616,35 +2616,35 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     };
 
     requestAnimationFrame(() => {
-      if (!chartDiv.isConnected) {
-        resolve();
+      // A container with no box yet is not a failure: it may be detached
+      // (rendered ahead of being shown, as slide thumbnails are), inside a
+      // hidden tab, or inside a `content-visibility` subtree the browser is
+      // skipping. In every case the chart is not visible, so initialising it
+      // now would spend an engine instance on something nobody can see. Wait
+      // for a box instead, which is also the moment it first becomes visible.
+      if (chartDiv.isConnected && chartDiv.offsetWidth > 0 && chartDiv.offsetHeight > 0) {
+        finishInit();
         return;
       }
 
-      // Guard against 0-size containers (e.g. hidden tabs); defer until non-zero.
-      if (chartDiv.offsetWidth === 0 || chartDiv.offsetHeight === 0) {
-        if (typeof ResizeObserver === "undefined") {
+      if (typeof ResizeObserver === "undefined") {
+        // Without an observer there is no later signal to wait for, so a
+        // detached container has to be left alone and a connected one is
+        // initialised at whatever size it has.
+        if (chartDiv.isConnected) finishInit();
+        else resolve();
+        return;
+      }
+
+      const sizeObserver = new ResizeObserver((entries) => {
+        const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
+        if (width > 0 && height > 0) {
+          sizeObserver.disconnect();
           finishInit();
-          return;
         }
-
-        const sizeObserver = new ResizeObserver((entries) => {
-          if (!chartDiv.isConnected) {
-            sizeObserver.disconnect();
-            return;
-          }
-          const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
-          if (width > 0 && height > 0) {
-            sizeObserver.disconnect();
-            finishInit();
-          }
-        });
-        sizeObserver.observe(chartDiv);
-        resolve();
-        return;
-      }
-
-      finishInit();
+      });
+      sizeObserver.observe(chartDiv);
+      resolve();
     });
   });
   ctx.asyncTasks?.push(chartReady);
