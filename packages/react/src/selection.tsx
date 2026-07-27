@@ -1199,28 +1199,22 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef]);
 
   /**
-   * A press anywhere outside the overlay deselects, the way clicking off the
-   * canvas does in PowerPoint. The overlay only covers the slide and its
-   * pasteboard, so without this the handles survive a click on the viewport's
-   * margin or anywhere else on the page. They also became unclearable: the
-   * press moved focus off the overlay, and `onKeyDown` is a React handler on
-   * it, so Escape no longer reached anything.
+   * A press outside the overlay deselects, the way clicking off the canvas
+   * does in PowerPoint. The overlay covers only the slide and its pasteboard,
+   * so without this the handles survive a press on the viewport margin, and
+   * survive it out of reach: focus leaves the overlay and `onKeyDown` is a
+   * React handler on it, so Escape stops arriving.
    *
-   * Text mode is excluded because the listener above owns those presses; it
-   * has to commit the edits before deciding what to select next.
+   * Text mode has its own listener above, which commits edits first.
    */
   React.useEffect(() => {
     if (isTextMode) return;
 
     function onDocPointerDown(event: PointerEvent): void {
-      // Primary button only, matching `onPointerDown`. A right or middle click
-      // inside the overlay leaves the selection alone, so one outside should
-      // too, and opening a context menu elsewhere on the page is no reason to
-      // deselect. Touch and pen contacts report button 0, so they still count.
+      // Primary button only, as in `onPointerDown`; touch and pen report 0.
       if (event.button !== 0) return;
       if (stateRef.current.mode === "idle") return;
-      // Presses on the overlay (including drags, which capture the pointer
-      // onto it) are the business of its own handlers.
+      // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
       setState({ mode: "idle" });
     }
