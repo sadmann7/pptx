@@ -322,7 +322,12 @@ const SNAPS = [
   "TypeScript-first. Zero runtime.",
 ];
 
-const SNAP_BEAT = 55;
+/**
+ * Trimmed from 55 so the run keeps the length it had before the crossfades
+ * stopped overlapping it. Each snap used to lose frames to the fade at either
+ * end of the section; giving them back in full read as a drag.
+ */
+const SNAP_BEAT = 47;
 const FEATURES_DURATION = sectionDuration(SNAPS.length * SNAP_BEAT);
 
 function FeaturesScene() {
