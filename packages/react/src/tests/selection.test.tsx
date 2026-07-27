@@ -841,6 +841,46 @@ describe("multi-selection handles", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Pressing outside the overlay
+// ---------------------------------------------------------------------------
+
+describe("pressing outside the overlay", () => {
+  it("clears the selection", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+
+    act(() => {
+      fireEvent.pointerDown(document.body);
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+
+  it("stops the selection outliving the focus it needs to be cleared by hand", async () => {
+    const { overlay } = await renderSelection();
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    // Escape is a React handler on the overlay, so a press that takes focus
+    // elsewhere puts the selection out of the keyboard's reach. It has to be
+    // gone by then rather than merely unreachable.
+    act(() => {
+      fireEvent.pointerDown(document.body);
+      overlay.blur();
+      fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Keyboard shortcuts (Escape, Delete, Arrow, Undo/Redo)
 // ---------------------------------------------------------------------------
 

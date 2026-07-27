@@ -1198,6 +1198,32 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     };
   }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef]);
 
+  /**
+   * A press anywhere outside the overlay deselects, the way clicking off the
+   * canvas does in PowerPoint. The overlay only covers the slide and its
+   * pasteboard, so without this the handles survive a click on the viewport's
+   * margin or anywhere else on the page. They also became unclearable: the
+   * press moved focus off the overlay, and `onKeyDown` is a React handler on
+   * it, so Escape no longer reached anything.
+   *
+   * Text mode is excluded because the listener above owns those presses; it
+   * has to commit the edits before deciding what to select next.
+   */
+  React.useEffect(() => {
+    if (isTextMode) return;
+
+    function onDocPointerDown(event: PointerEvent): void {
+      if (stateRef.current.mode === "idle") return;
+      // Presses on the overlay (including drags, which capture the pointer
+      // onto it) are the business of its own handlers.
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setState({ mode: "idle" });
+    }
+
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
+  }, [isTextMode, stateRef]);
+
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
   // detaching our contentEditable element: typed text would go into the
   // detached tree and never appear on screen. SlideImpl is a parent, so its
