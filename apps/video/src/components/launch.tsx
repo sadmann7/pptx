@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
@@ -23,6 +23,26 @@ const clamp = {
   extrapolateRight: "clamp",
 } as const;
 const ease = Easing.bezier(0.22, 1, 0.36, 1);
+
+/** Length of the crossfade between sections. */
+const FADE_DURATION = 12;
+/** How long a section's content takes to clear the crossfade at either edge. */
+const CONTENT_FADE = 10;
+/**
+ * Held at the head of a section so its content starts once the crossfade has
+ * finished rather than animating behind it. Every section animates its own
+ * entrance, so this waits rather than fading and the gap between sections
+ * stays as short as the crossfade itself.
+ */
+const CONTENT_LEAD = FADE_DURATION;
+
+/**
+ * A section is its content plus the lead-in that clears the incoming
+ * crossfade and the outgoing crossfade it has to be gone by. Sized this way
+ * the content fades out over its own last frames and reaches zero exactly as
+ * the crossfade starts, with no stretch of bare backdrop in between.
+ */
+const sectionDuration = (contentFrames: number) => CONTENT_LEAD + contentFrames + FADE_DURATION;
 
 const progress = (frame: number, from: number, to: number) =>
   interpolate(frame, [from, to], [0, 1], { ...clamp, easing: ease });
@@ -71,6 +91,34 @@ function Backdrop() {
       <Noise />
     </AbsoluteFill>
   );
+}
+
+/**
+ * Fades a section's content out before the crossfade into the next section
+ * begins. Every section paints the same backdrop, so a crossfade has only the
+ * content on top of it to blend: leave content up on both sides and the
+ * outgoing section shows through the incoming one rather than dissolving into
+ * it, which is what put the features text across the last slide.
+ *
+ * Only the exit needs handling here. Content is held back on the way in by
+ * `CONTENT_LEAD`, which keeps it off screen until the crossfade is over.
+ */
+function SceneContent({
+  durationInFrames,
+  fadeOut = true,
+  children,
+}: {
+  durationInFrames: number;
+  fadeOut?: boolean;
+  children: ReactNode;
+}) {
+  const frame = useCurrentFrame();
+  const exitStart = durationInFrames - FADE_DURATION - CONTENT_FADE;
+  const opacity = fadeOut
+    ? interpolate(frame, [exitStart, exitStart + CONTENT_FADE], [1, 0], clamp)
+    : 1;
+
+  return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 }
 
 const SLIDE_W = 960;
@@ -130,8 +178,10 @@ function SpotlightScene({ spotlight, index }: { spotlight: Spotlight; index: num
   const captionIntro = progress(frame, 10, 38);
   const descIntro = progress(frame, 18, 46);
 
-  // Fade content out before the hard cut so the next spotlight's entrance
-  // doesn't overlap with lingering visuals from this one.
+  // Fade content out before the hard cut to the next spotlight so its
+  // entrance doesn't overlap with lingering visuals from this one. The cuts
+  // between spotlights are the only edges this covers; the crossfades at
+  // either end of the run are handled by the enclosing SceneContent.
   const exitFade = interpolate(
     frame,
     [SPOTLIGHT_DURATION - 12, SPOTLIGHT_DURATION - 2],
@@ -157,7 +207,6 @@ function SpotlightScene({ spotlight, index }: { spotlight: Spotlight; index: num
 
   return (
     <AbsoluteFill>
-      <Backdrop />
       <AbsoluteFill style={{ opacity: contentOpacity }}>
         <div
           style={{
@@ -242,29 +291,25 @@ function SpotlightScene({ spotlight, index }: { spotlight: Spotlight; index: num
 const TITLE_DURATION = 60;
 
 function TitleCard() {
-  const frame = useCurrentFrame();
-  // Fade content out before the crossfade so the blur-in text doesn't
-  // ghost into the first spotlight.
-  const exitFade = interpolate(frame, [TITLE_DURATION - 14, TITLE_DURATION - 4], [1, 0], clamp);
-
   return (
     <AbsoluteFill>
       <Backdrop />
-      <AbsoluteFill
-        style={{
-          ...font,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: exitFade,
-        }}
-      >
-        <SoftBlurIn
-          text="PowerPoint in the browser."
-          fontSize={104}
-          fontWeight={800}
-          color={C.white}
-        />
-      </AbsoluteFill>
+      <SceneContent durationInFrames={TITLE_DURATION}>
+        <AbsoluteFill
+          style={{
+            ...font,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <SoftBlurIn
+            text="PowerPoint in the browser."
+            fontSize={104}
+            fontWeight={800}
+            color={C.white}
+          />
+        </AbsoluteFill>
+      </SceneContent>
     </AbsoluteFill>
   );
 }
@@ -278,46 +323,58 @@ const SNAPS = [
 ];
 
 const SNAP_BEAT = 55;
-const FEATURES_DURATION = SNAPS.length * SNAP_BEAT;
+const FEATURES_DURATION = sectionDuration(SNAPS.length * SNAP_BEAT);
 
 function FeaturesScene() {
   return (
     <AbsoluteFill>
       <Backdrop />
-      {SNAPS.map((snap, i) => (
-        <Sequence key={snap} from={i * SNAP_BEAT} durationInFrames={SNAP_BEAT} layout="none">
-          <FocusBlurResolve text={snap} fontSize={84} fontWeight={600} color={C.white} />
-        </Sequence>
-      ))}
+      <SceneContent durationInFrames={FEATURES_DURATION}>
+        {SNAPS.map((snap, i) => (
+          <Sequence
+            key={snap}
+            from={CONTENT_LEAD + i * SNAP_BEAT}
+            durationInFrames={SNAP_BEAT}
+            layout="none"
+          >
+            <FocusBlurResolve text={snap} fontSize={84} fontWeight={600} color={C.white} />
+          </Sequence>
+        ))}
+      </SceneContent>
     </AbsoluteFill>
   );
 }
 
 // ── CTA ─────────────────────────────────────────────────────────────────────
 
-const CTA_DURATION = 90;
+const CTA_DURATION = CONTENT_LEAD + 90;
 
 function CtaScene() {
   return (
     <AbsoluteFill>
       <Backdrop />
-      <Typewriter
-        text="npm i @diceui/pptx"
-        fontSize={80}
-        fontWeight={700}
-        color={C.white}
-        charsPerSecond={16}
-      />
+      {/* Closes the video, so there is no crossfade to clear on the way out. */}
+      <SceneContent durationInFrames={CTA_DURATION} fadeOut={false}>
+        {/* Held past the crossfade so no keystrokes land while it is running. */}
+        <Sequence from={CONTENT_LEAD} layout="none">
+          <Typewriter
+            text="npm i @diceui/pptx"
+            fontSize={80}
+            fontWeight={700}
+            color={C.white}
+            charsPerSecond={16}
+          />
+        </Sequence>
+      </SceneContent>
     </AbsoluteFill>
   );
 }
 
 // ── Composition ─────────────────────────────────────────────────────────────
 
-const FADE_DURATION = 12;
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
-const SPOTLIGHTS_TOTAL = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
+const SPOTLIGHTS_TOTAL = sectionDuration(SPOTLIGHTS.length * SPOTLIGHT_DURATION);
 
 export function Launch() {
   return (
@@ -329,18 +386,22 @@ export function Launch() {
       <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
 
       {/* All spotlights in one sequence with hard cuts between them, each
-          managing its own entrance/exit fade internally. */}
+          managing its own fade across those cuts. The run shares one backdrop
+          so the envelope has only the cards and captions to fade. */}
       <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
         <AbsoluteFill>
-          {SPOTLIGHTS.map((spotlight, index) => (
-            <Sequence
-              key={`${spotlight.file}-${spotlight.slideIndex}`}
-              from={index * SPOTLIGHT_DURATION}
-              durationInFrames={SPOTLIGHT_DURATION}
-            >
-              <SpotlightScene spotlight={spotlight} index={index} />
-            </Sequence>
-          ))}
+          <Backdrop />
+          <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
+            {SPOTLIGHTS.map((spotlight, index) => (
+              <Sequence
+                key={`${spotlight.file}-${spotlight.slideIndex}`}
+                from={CONTENT_LEAD + index * SPOTLIGHT_DURATION}
+                durationInFrames={SPOTLIGHT_DURATION}
+              >
+                <SpotlightScene spotlight={spotlight} index={index} />
+              </Sequence>
+            ))}
+          </SceneContent>
         </AbsoluteFill>
       </TransitionSeries.Sequence>
 

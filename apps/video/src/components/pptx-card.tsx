@@ -1,6 +1,5 @@
 import * as React from "react";
 
-import type { PresentationStore } from "@diceui/pptx";
 import { Presentation } from "@diceui/pptx";
 import { cancelRender, continueRender, delayRender, staticFile } from "remotion";
 
@@ -9,6 +8,35 @@ import { geistSans } from "@/lib/fonts";
 const FONT_VARS = {
   "--font-geist-sans": geistSans,
 } as React.CSSProperties;
+
+/**
+ * Frames to keep looking for the slide before giving up and releasing anyway.
+ * A render that hangs here would fail on Remotion's own delayRender timeout
+ * with nothing pointing at the cause, so a scene rendered slightly early is
+ * the better failure.
+ */
+const SLIDE_WAIT_FRAMES = 120;
+
+/**
+ * Runs `onReady` once the slide is in the DOM and has had a frame to paint.
+ * `Presentation.Slide` marks its wrapper `data-status="ready"` and only fills
+ * it once the deck is parsed, so a wrapper with content is the signal.
+ */
+function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
+  let framesLeft = SLIDE_WAIT_FRAMES;
+
+  const check = () => {
+    const slide = hostRef.current?.querySelector('[data-status="ready"]');
+    if (slide?.firstElementChild || framesLeft <= 0) {
+      requestAnimationFrame(onReady);
+      return;
+    }
+    framesLeft--;
+    requestAnimationFrame(check);
+  };
+
+  check();
+}
 
 export function PptxCard({
   file,
@@ -24,7 +52,7 @@ export function PptxCard({
   style?: React.CSSProperties;
 }) {
   const [data, setData] = React.useState<ArrayBuffer | null>(null);
-  const storeRef = React.useRef<PresentationStore | null>(null);
+  const hostRef = React.useRef<HTMLDivElement>(null);
   const [pptxLoadToken] = React.useState(() => delayRender(`load ${file}`));
   const resolvedRef = React.useRef(false);
 
@@ -52,15 +80,21 @@ export function PptxCard({
   }, [file, pptxLoadToken]);
 
   return (
-    <div style={{ ...FONT_VARS, width, height, ...style }}>
+    <div ref={hostRef} style={{ ...FONT_VARS, width, height, ...style }}>
       {data && (
         <Presentation.Root
           file={data}
-          onLoad={(store) => {
-            storeRef.current = store;
-            if (slideIndex > 0) store.goToIndex(slideIndex);
-            resolvedRef.current = true;
-            continueRender(pptxLoadToken);
+          defaultSlideIndex={slideIndex}
+          onLoad={() => {
+            // Parsing finishing is not the same as the slide being on screen:
+            // `onLoad` runs a commit early, so releasing the handle here lets
+            // Remotion screenshot an empty card on whichever frame this
+            // component mounted on. Wait for the slide, then give it a frame
+            // to paint.
+            waitForSlide(hostRef, () => {
+              resolvedRef.current = true;
+              continueRender(pptxLoadToken);
+            });
           }}
         >
           <Presentation.Viewport autoFit style={{ width, height, overflow: "hidden" }}>
