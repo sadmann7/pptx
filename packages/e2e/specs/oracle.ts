@@ -1,5 +1,5 @@
 /**
- * Node-side image comparison for the ground-truth oracle specs.
+ * Node-side image comparison for the oracle specs.
  *
  * Screenshots and PowerPoint-exported PNGs are decoded with sharp, resized to
  * common dimensions, and scored with SSIM (structural similarity; 1 = pixel
@@ -53,7 +53,7 @@ import sharp from "sharp";
 
 const SPECS_DIR = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 
-export const GROUND_TRUTH_DIR = join(SPECS_DIR, "..", "fixtures", "ground-truth");
+export const POWERPOINT_DIR = join(SPECS_DIR, "..", "fixtures", "powerpoint");
 const BASELINES_DIR = join(SPECS_DIR, "oracle-baselines");
 
 /** Whole-image score drops beyond this tolerance fail the oracle spec. */
@@ -184,19 +184,19 @@ function cropTile(
   return tile;
 }
 
-/** Scores a Playwright screenshot against a ground-truth PNG (0..1 each). */
-export async function scoreAgainstGroundTruth(
+/** Scores a Playwright screenshot against PowerPoint's own PNG (0..1 each). */
+export async function scoreAgainstPowerPoint(
   screenshot: Buffer,
-  groundTruthPath: string,
+  powerPointPath: string,
 ): Promise<OracleScore> {
-  const groundTruth = readFileSync(groundTruthPath);
-  const meta = await sharp(groundTruth).metadata();
+  const powerPointPng = readFileSync(powerPointPath);
+  const meta = await sharp(powerPointPng).metadata();
   const width = meta.width ?? 1280;
   const height = meta.height ?? 720;
 
   const [actual, expected] = await Promise.all([
     decodeTo(screenshot, width, height),
-    decodeTo(groundTruth, width, height),
+    decodeTo(powerPointPng, width, height),
   ]);
 
   const tileWidth = Math.floor(width / TILE_COLUMNS);
@@ -219,7 +219,7 @@ export async function scoreAgainstGroundTruth(
 
   const [actualInk, expectedInk] = await Promise.all([
     inkPerRegion(screenshot, width, height),
-    inkPerRegion(groundTruth, width, height),
+    inkPerRegion(powerPointPng, width, height),
   ]);
   const ink = expectedInk.map((expected, index) =>
     expected < MIN_REGION_INK ? 0 : Math.abs(actualInk[index] - expected) / expected,

@@ -22,11 +22,11 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 import {
-  GROUND_TRUTH_DIR,
+  POWERPOINT_DIR,
   INK_TOLERANCE,
   type OracleScore,
   SCORE_TOLERANCE,
-  scoreAgainstGroundTruth,
+  scoreAgainstPowerPoint,
   TILE_TOLERANCE,
 } from "../specs/oracle";
 import { parseArgs } from "./args";
@@ -101,11 +101,11 @@ const page = await browser.newPage({
 page.on("pageerror", (error) => console.error("[pageerror]", error.message));
 
 for (const { deck, slide } of slides) {
-  const groundTruthPath = join(GROUND_TRUTH_DIR, deck, `slide-${slide}.png`);
-  if (!existsSync(groundTruthPath)) {
-    throw new Error(`Missing ground truth ${groundTruthPath}. Run "pnpm oracle:export".`);
+  const powerPointPath = join(POWERPOINT_DIR, deck, `slide-${slide}.png`);
+  if (!existsSync(powerPointPath)) {
+    throw new Error(`Missing PowerPoint export ${powerPointPath}. Run "pnpm oracle:export".`);
   }
-  const { width = 0, height = 0 } = await sharp(readFileSync(groundTruthPath)).metadata();
+  const { width = 0, height = 0 } = await sharp(readFileSync(powerPointPath)).metadata();
   let control: OracleScore | undefined;
   let controlShot: Buffer | undefined;
 
@@ -200,7 +200,7 @@ for (const { deck, slide } of slides) {
     }
 
     const screenshot = await page.locator("#slide-container").screenshot();
-    const score = await scoreAgainstGroundTruth(screenshot, groundTruthPath);
+    const score = await scoreAgainstPowerPoint(screenshot, powerPointPath);
     control ??= score;
     controlShot ??= screenshot;
 

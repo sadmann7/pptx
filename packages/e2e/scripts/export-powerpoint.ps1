@@ -1,10 +1,10 @@
 # Exports every fixture deck's slides to PNG using real PowerPoint (COM
-# automation), producing the ground truth the oracle specs compare against.
+# automation), producing the PNGs the oracle specs compare against.
 #
 # Run locally on a machine with desktop PowerPoint:
 #   pnpm oracle:export          (from packages/e2e)
 #
-# Output: fixtures/ground-truth/<deck>/slide-<n>.png (1280x720, committed).
+# Output: fixtures/powerpoint/<deck>/slide-<n>.png (1280x720, committed).
 # Rerun only when fixtures change; CI never runs this, it just compares
 # against the committed PNGs.
 #
@@ -15,10 +15,10 @@ $ErrorActionPreference = "Stop"
 
 $e2eDir = Split-Path -Parent $PSScriptRoot
 $fixturesDir = Join-Path $e2eDir "fixtures"
-$groundTruthDir = Join-Path $fixturesDir "ground-truth"
+$powerPointDir = Join-Path $fixturesDir "powerpoint"
 
 # Slides export at their own native pixel size: the oracle resizes both images
-# to the ground truth's dimensions, so exporting every deck at one hardcoded
+# to PowerPoint's dimensions, so exporting every deck at one hardcoded
 # size would stretch the decks that aren't 16:9 at 96dpi and score them against
 # a distorted reference. PowerPoint reports the slide size in points.
 $pointsToPixels = 96 / 72
@@ -35,7 +35,7 @@ $failed = @()
 try {
     foreach ($deck in $decks) {
         $deckName = [System.IO.Path]::GetFileNameWithoutExtension($deck.Name)
-        $outDir = Join-Path $groundTruthDir $deckName
+        $outDir = Join-Path $powerPointDir $deckName
 
         try {
             # WithWindow:=false keeps the export headless-ish; ReadOnly avoids
@@ -83,4 +83,4 @@ if ($failed.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "Ground truth written to $groundTruthDir"
+Write-Host "PowerPoint exports written to $powerPointDir"

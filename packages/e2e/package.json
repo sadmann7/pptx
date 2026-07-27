@@ -7,7 +7,7 @@
   "scripts": {
     "fixtures": "tsx scripts/generate-fixtures.ts",
     "harness": "vite --port 5000 --strictPort",
-    "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-ground-truth.ps1",
+    "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-powerpoint.ps1",
     "shoot": "tsx scripts/shoot.ts",
     "probe": "tsx scripts/probe.ts",
     "faults": "tsx scripts/faults.ts",

@@ -45,7 +45,7 @@ const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 /**
  * Valid [Content_Types].xml (the shared fixture helper declares a "rel"
  * Default instead of "rels", which real PowerPoint rejects as corrupt; the
- * ground-truth oracle needs decks PowerPoint will open cleanly).
+ * oracle needs decks PowerPoint will open cleanly).
  */
 function contentTypesXml(slideCount: number, chartParts: string[] = []): string {
   const slideOverrides = Array.from(
