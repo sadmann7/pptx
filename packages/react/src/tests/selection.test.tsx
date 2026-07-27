@@ -841,6 +841,79 @@ describe("multi-selection handles", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Pressing outside the overlay
+// ---------------------------------------------------------------------------
+
+describe("pressing outside the overlay", () => {
+  /** Selects every shape, leaving the overlay focused and in `selected`. */
+  async function withSelection() {
+    const rendered = await renderSelection();
+
+    act(() => {
+      rendered.overlay.focus();
+      fireEvent.keyDown(rendered.overlay, { key: "a", ctrlKey: true });
+    });
+    expect(rendered.overlay.getAttribute("data-mode")).toBe("selected");
+
+    return rendered;
+  }
+
+  it("clears the selection on a tap outside", async () => {
+    const { overlay } = await withSelection();
+
+    act(() => {
+      fireEvent.pointerDown(document.body);
+      fireEvent.pointerUp(document.body);
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+
+  it("keeps the selection while a scroll gesture is running", async () => {
+    const { overlay } = await withSelection();
+
+    // The press has landed but the gesture is not resolved yet, so nothing
+    // should have happened on the way down.
+    act(() => {
+      fireEvent.pointerDown(document.body);
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+
+    // The browser claims the gesture for scrolling and cancels the pointer,
+    // so no tap ever completes.
+    act(() => {
+      fireEvent.pointerCancel(document.body);
+      fireEvent.pointerUp(document.body);
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
+  it("keeps the selection on a right click, which only opens a context menu", async () => {
+    const { overlay } = await withSelection();
+
+    act(() => {
+      fireEvent.pointerDown(document.body, { button: 2 });
+      fireEvent.pointerUp(document.body, { button: 2 });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
+  it("stops the selection outliving the focus it needs to be cleared by hand", async () => {
+    const { overlay } = await withSelection();
+
+    // Escape is a React handler on the overlay, so a press that takes focus
+    // elsewhere puts the selection out of the keyboard's reach. It has to be
+    // gone by then rather than merely unreachable.
+    act(() => {
+      fireEvent.pointerDown(document.body);
+      fireEvent.pointerUp(document.body);
+      overlay.blur();
+      fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Keyboard shortcuts (Escape, Delete, Arrow, Undo/Redo)
 // ---------------------------------------------------------------------------
 
