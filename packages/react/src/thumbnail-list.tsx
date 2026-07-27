@@ -127,6 +127,22 @@ interface QueuedRender {
 }
 
 /**
+ * A mounted preview, as the list's background pass sees it.
+ *
+ * The pass fills previews rather than rendering slides into a cache, because
+ * putting a rendered miniature into the document is itself expensive on a
+ * detailed slide, often more so than producing it. Doing only half the work
+ * ahead of time leaves the other half to land during the scroll.
+ */
+interface RegisteredPreview {
+  index: number;
+  /** Whether a miniature is mounted in it already. */
+  isFilled: () => boolean;
+  /** Renders the miniature if needed and mounts it. Synchronous and costly. */
+  fill: () => void;
+}
+
+/**
  * True when the slide has a chart node.
  *
  * Only meaningful once the slide has been materialized: until then its nodes
@@ -284,6 +300,11 @@ interface ThumbnailRovingContextValue {
    * list centres its retention window and its background pass on.
    */
   setPreviewVisible: (index: number, isVisible: boolean) => void;
+  /**
+   * Offer a preview to the background pass, which fills it during idle time.
+   * Returns a function that withdraws it.
+   */
+  registerPreview: (slideId: string, preview: RegisteredPreview) => () => void;
   /** Scroller the previews live in, used as the IntersectionObserver root. */
   scrollRootRef: React.RefObject<Element | null>;
 }
@@ -531,6 +552,19 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // retention window and the background pass are centred on these.
     const visibleIndicesRef = useLazyRef(() => new Set<number>());
     const wakePrerenderRef = React.useRef<(() => void) | null>(null);
+    const previewsRef = useLazyRef(() => new Map<string, RegisteredPreview>());
+
+    const registerPreview = React.useCallback(
+      (slideId: string, preview: RegisteredPreview) => {
+        const previews = previewsRef.current;
+        previews.set(slideId, preview);
+        wakePrerenderRef.current?.();
+        return () => {
+          if (previews.get(slideId) === preview) previews.delete(slideId);
+        };
+      },
+      [previewsRef],
+    );
 
     /**
      * Middle of the runway, or the active slide before anything has been
@@ -640,16 +674,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     React.useEffect(() => {
       let idle: IdleHandle | null = null;
 
-      // Read through the store rather than closing over the slide array: a
-      // presentation keeps its identity across edits, so a captured array can
-      // outlive the deck it described.
-      const getSlides = () => store.getState().presentation?.slides ?? [];
-
-      /**
-       * Whether the pass should render this slide: either nothing is cached for
-       * it, or what is cached predates an edit and no preview is showing it (a
-       * preview refreshes its own miniature in place).
-       */
       /**
        * Slides the pass has found to carry a chart and will not touch again.
        * Chart slides can only be recognised once materialized, so this is
@@ -657,71 +681,49 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
        */
       const chartSlideIds = new Set<string>();
 
-      const needsRender = (slide: SlideData): boolean => {
-        const cached = slideHandleCache.get(slide.id);
-        if (!cached) return true;
-        if (cached.revision === store.getSlideRevision(slide.id)) return false;
-        return !retainedPreviewsRef.current.get(slide.id)?.isAttached;
-      };
-
-      const nextIndexToRender = (): number => {
-        const slides = getSlides();
+      const nextPreviewToFill = (): { slideId: string; preview: RegisteredPreview } | null => {
         const focusIndex = getFocusIndex();
-        let considered = 0;
-        for (let step = 0; step < slides.length; step++) {
-          const candidates = step === 0 ? [focusIndex] : [focusIndex - step, focusIndex + step];
-          for (const index of candidates) {
-            const slide = slides[index];
-            if (!slide || chartSlideIds.has(slide.id)) continue;
-            if (considered >= MAX_RETAINED_PREVIEWS) return -1;
-            considered++;
-            if (needsRender(slide)) return index;
-          }
+        let nearest: { slideId: string; preview: RegisteredPreview } | null = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+
+        for (const [slideId, preview] of previewsRef.current) {
+          if (chartSlideIds.has(slideId) || preview.isFilled()) continue;
+          const distance = Math.abs(preview.index - focusIndex);
+          // Past the retention window there is nothing to gain: filling one
+          // there only reclaims something nearer, and the two take turns.
+          if (distance > MAX_RETAINED_PREVIEWS / 2 || distance >= nearestDistance) continue;
+          nearestDistance = distance;
+          nearest = { slideId, preview };
         }
-        return -1;
+        return nearest;
       };
 
-      // What one slide has been costing lately. The pass takes whatever idle
+      // What one preview has been costing lately. The pass takes whatever idle
       // slice the browser offers, which on a busy page is a few milliseconds,
       // so a fixed threshold either starves it or overruns the period; this
       // measures the deck in front of it instead of guessing.
-      let renderCostMs = PRERENDER_COST_GUESS_MS;
+      let fillCostMs = PRERENDER_COST_GUESS_MS;
 
-      const renderAhead = (index: number) => {
+      const fillAhead = (next: { slideId: string; preview: RegisteredPreview }) => {
         const deck = store.getState().presentation;
-        const slide = deck?.slides[index];
+        const slide = deck?.slides[next.preview.index];
         if (!deck || !slide) return;
 
         const startedAt = performance.now();
 
         // Parsing the slide is the only way to find out whether it holds a
         // chart, and it is work the first render would do anyway. Chart slides
-        // stop here: they are the on-demand path's to render.
+        // stop here: they are the on-demand path's to fill.
         materializeSlide(deck, slide);
         if (slideHasChart(slide)) {
-          chartSlideIds.add(slide.id);
+          chartSlideIds.add(next.slideId);
           return;
         }
 
-        slideHandleCache.get(slide.id)?.slideHandle.dispose();
-        const slideHandle = renderSlide(deck, slide, { mediaUrlCache });
-        slideHandleCache.set(slide.id, {
-          slideHandle,
-          revision: store.getSlideRevision(slide.id),
-        });
-        retainPreview(slide.id, {
-          index,
-          hasChart: false,
-          isAttached: false,
-          isVisible: () => false,
-          evict: () => {
-            slideHandleCache.get(slide.id)?.slideHandle.dispose();
-            slideHandleCache.delete(slide.id);
-          },
-        });
+        next.preview.fill();
 
         const cost = performance.now() - startedAt;
-        renderCostMs = Math.max(PRERENDER_MIN_SLICE_MS, renderCostMs * 0.7 + cost * 0.3);
+        fillCostMs = Math.max(PRERENDER_MIN_SLICE_MS, fillCostMs * 0.7 + cost * 0.3);
       };
 
       const schedule = () => {
@@ -740,20 +742,20 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
           return;
         }
 
-        // Always take one slide, then keep going for as long as the slice
-        // lasts. Without that first one the pass deadlocks wherever a slide
+        // Always take one preview, then keep going for as long as the slice
+        // lasts. Without that first one the pass deadlocks wherever a preview
         // costs more than the slice on offer, which is any browser or machine
         // slower than the budget assumes, and those are exactly the ones that
-        // cannot afford to render during the scroll instead.
-        let index = nextIndexToRender();
+        // cannot afford to do the work during the scroll instead.
+        let next = nextPreviewToFill();
         let isFirst = true;
-        while (index !== -1 && (isFirst || timeRemaining() > renderCostMs)) {
-          renderAhead(index);
+        while (next !== null && (isFirst || timeRemaining() > fillCostMs)) {
+          fillAhead(next);
           isFirst = false;
-          index = nextIndexToRender();
+          next = nextPreviewToFill();
         }
         // Nothing left to do: the pass stops until the window moves.
-        if (index !== -1) schedule();
+        if (next !== null) schedule();
       };
 
       wakePrerenderRef.current = schedule;
@@ -768,15 +770,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         idle?.cancel();
         idle = null;
       };
-    }, [
-      store,
-      mediaUrlCache,
-      slideHandleCache,
-      getFocusIndex,
-      retainPreview,
-      renderQueueRef,
-      retainedPreviewsRef,
-    ]);
+    }, [store, getFocusIndex, renderQueueRef, previewsRef]);
 
     // Resolved before the previews' observers are created: child layout effects
     // run ahead of this one, but every passive effect runs after it.
@@ -826,6 +820,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         scheduleRender,
         retainPreview,
         setPreviewVisible,
+        registerPreview,
         scrollRootRef,
       }),
       [
@@ -840,6 +835,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         scheduleRender,
         retainPreview,
         setPreviewVisible,
+        registerPreview,
       ],
     );
 
@@ -1090,6 +1086,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       scheduleRender,
       retainPreview,
       setPreviewVisible,
+      registerPreview,
       scrollRootRef,
     } = rovingContext;
 
@@ -1180,6 +1177,36 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         });
       };
 
+      // Renders the miniature if there isn't a usable one already and puts it
+      // in the document. Both halves are costly on a detailed slide, so this
+      // is what the list's background pass calls during idle time, and what
+      // the observer falls back to for anything the pass hasn't reached.
+      const fill = () => {
+        const element = itemPreviewRef.current;
+        if (!element || slideHandleRef.current) return;
+
+        const cached = slideHandleCache.get(slide.id);
+        if (cached && cached.revision === revisionRef.current) {
+          attach(element, cached.slideHandle);
+          return;
+        }
+        if (cached) {
+          // Discard because it was rendered under an older edit revision.
+          cached.slideHandle.dispose();
+          slideHandleCache.delete(slide.id);
+        }
+
+        const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+        slideHandleCache.set(slide.id, { slideHandle, revision: revisionRef.current });
+        attach(element, slideHandle);
+      };
+
+      const unregister = registerPreview(slide.id, {
+        index: slideIndex,
+        isFilled: () => slideHandleRef.current !== null,
+        fill,
+      });
+
       let cancelRender: (() => void) | null = null;
 
       const intersectionObserver = new IntersectionObserver(
@@ -1188,32 +1215,14 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           if (!entry) return;
           isVisibleRef.current = entry.isIntersecting;
           setPreviewVisible(slideIndex, entry.isIntersecting);
-          if (!entry.isIntersecting) return;
 
           const element = itemPreviewRef.current;
-          if (!element || slideHandleRef.current) return;
+          if (!entry.isIntersecting || !element || slideHandleRef.current) return;
 
           cancelRender?.();
-          cancelRender = null;
-
-          const cached = slideHandleCache.get(slide.id);
-          if (cached && cached.revision === revisionRef.current) {
-            attach(element, cached.slideHandle);
-            return;
-          }
-          if (cached) {
-            // Discard because it was rendered under an older edit revision.
-            cached.slideHandle.dispose();
-            slideHandleCache.delete(slide.id);
-          }
-
           cancelRender = scheduleRender(element, () => {
             cancelRender = null;
-            const mountedElement = itemPreviewRef.current;
-            if (!mountedElement || slideHandleRef.current) return;
-            const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-            slideHandleCache.set(slide.id, { slideHandle, revision: revisionRef.current });
-            attach(mountedElement, slideHandle);
+            fill();
           });
         },
         { root: scrollRootRef.current, rootMargin: INTERSECTION_OBSERVER_ROOT_MARGIN },
@@ -1223,6 +1232,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
       return () => {
         intersectionObserver.disconnect();
+        unregister();
         cancelRender?.();
         cancelRender = null;
         setPreviewVisible(slideIndex, false);
@@ -1242,6 +1252,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       scheduleRender,
       retainPreview,
       setPreviewVisible,
+      registerPreview,
       revisionRef,
       presentationWidthRef,
       scrollRootRef,

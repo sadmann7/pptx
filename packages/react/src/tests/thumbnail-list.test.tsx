@@ -140,21 +140,23 @@ describe("Presentation.ThumbnailList", () => {
     expect(preview?.childElementCount).toBe(1);
   });
 
-  it("renders ahead of the observer so a preview attaches straight from cache", async () => {
+  it("fills a preview ahead of the observer reaching it", async () => {
     const store = await loadedStore();
     const { container, flushFrames } = withObservedStore(store, <Presentation.ThumbnailList />);
     const preview = container.querySelector<HTMLElement>('[aria-hidden="true"]');
 
-    // Nothing has been observed yet, so this is the background pass alone. It
-    // fills the list's cache; mounting still waits on the observer.
+    // Nothing has been observed yet, so this is the background pass alone.
+    // Mounting is as costly as rendering on a detailed slide, so the pass does
+    // both: by the time the observer reaches a preview there is no work left.
     act(() => flushFrames());
-    expect(preview?.dataset.pending).toBe("");
-
-    // A cache hit, so no frame has to be drained for the miniature to appear.
-    act(() => FakeIntersectionObserver.reportAll(true));
 
     expect(preview?.dataset.pending).toBeUndefined();
     expect(preview?.childElementCount).toBe(1);
+
+    const rendered = preview?.firstElementChild;
+    act(() => FakeIntersectionObserver.reportAll(true));
+
+    expect(preview?.firstElementChild).toBe(rendered);
   });
 
   it("renders a preview only once while it stays observed", async () => {
