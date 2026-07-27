@@ -3,6 +3,8 @@
  *
  * Run with `pnpm fixtures`. The generated .pptx files are committed so test
  * runs are deterministic; regenerate only when intentionally changing them.
+ * Only the decks listed below are written. The authoring-tool exports sitting
+ * alongside them in fixtures/ are left untouched.
  *
  * Decks:
  * - basic.pptx          3 slides with distinct colored shapes/text (smoke + navigation)
