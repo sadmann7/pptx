@@ -85,9 +85,9 @@ pnpm harness
 Then screenshot and inspect it at the pixel level:
 
 ```bash
-pnpm shoot --file decks/customer.pptx --slide 6 --scale 0.86 --select "table td"
-pnpm probe out/decks-customer.pptx-6.png --row 292 --x 350:365
-pnpm probe out/decks-customer.pptx-6.png --crop 340,270,40,30 --zoom 9
+pnpm shoot --file decks/kickflip.pptx --slide 6 --scale 0.86 --select "table td"
+pnpm probe out/decks-kickflip.pptx-6.png --row 292 --x 350:365
+pnpm probe out/decks-kickflip.pptx-6.png --crop 340,270,40,30 --zoom 9
 ```
 
 `--select` prints client rects plus the styles that decide where an edge lands
