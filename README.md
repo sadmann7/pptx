@@ -29,7 +29,7 @@ import * as Presentation from "@diceui/pptx";
 export function Viewer({ file }: { file: File }) {
   return (
     <Presentation.Root file={file}>
-      <Presentation.Sidebar />
+      <Presentation.ThumbnailList />
       <Presentation.Viewport>
         <Presentation.Slide />
       </Presentation.Viewport>
@@ -46,7 +46,7 @@ import * as Presentation from "@diceui/pptx";
 export function Editor({ file }: { file: File }) {
   return (
     <Presentation.Root file={file}>
-      <Presentation.Sidebar />
+      <Presentation.ThumbnailList />
       <Presentation.Viewport>
         <Presentation.Slide>
           <Presentation.Selection />
@@ -114,15 +114,23 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 ### `Presentation.ThumbnailList`
 
-Slide strip. Supports virtualized rendering for large decks.
-
-### `Presentation.Toolbar` / `Presentation.Controls`
-
-Pre-built toolbar and slide navigation controls.
+Slide strip. Renders a preview per slide, filling each one as it approaches the viewport so a long deck does not render all at once. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
 
 ### `Presentation.Error` / `Presentation.Loading`
 
 Slot components for custom loading and error states.
+
+### `Presentation.Provider`
+
+Optional. `Root` creates its own store, so this is only needed when you want to own the store and drive it from outside the tree.
+
+```tsx
+const store = useCreatePresentationStore();
+
+<Presentation.Provider store={store}>
+  <Presentation.Root file={file}>{/* ... */}</Presentation.Root>
+</Presentation.Provider>;
+```
 
 ### Hooks
 
@@ -130,7 +138,7 @@ Slot components for custom loading and error states.
 const { presentation, status } = usePresentation();
 const { slide } = useSlide();
 const { zoom, setZoom } = useZoom();
-const store = useCreatePresentationStore({ file });
+const store = useCreatePresentationStore();
 ```
 
 ## Edit operations (core)
