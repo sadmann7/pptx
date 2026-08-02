@@ -129,159 +129,396 @@ interface Spotlight {
   slideIndex: number;
   caption: string;
   description: string;
+  /** Centre of the card on the board, in board units (one unit is one slide px). */
+  x: number;
+  y: number;
+  /** How close the camera sits while this card is the subject. */
+  zoom: number;
 }
 
+/**
+ * The cards sit on one board that a camera moves across, rather than each
+ * taking a turn in the same spot. Positions step on both axes so every move
+ * is diagonal, and the gaps are sized so the neighbouring cards stay just
+ * inside the frame edges: that parallax is what carries the run between
+ * subjects, in place of the fade to bare backdrop it used to cut through.
+ */
 const SPOTLIGHTS: Spotlight[] = [
   {
     file: "editorial-forest-editable.pptx",
     slideIndex: 1,
     caption: "True to the original",
     description: "Slides look exactly the way they do in PowerPoint.",
+    x: 0,
+    y: -120,
+    zoom: 1.06,
   },
   {
     file: "pocket-machines-sakura-chroma.pptx",
     slideIndex: 0,
     caption: "Rich visuals",
     description: "Gradients, shadows, and transparency come through untouched.",
+    x: 1420,
+    y: 280,
+    zoom: 1.02,
   },
   {
     file: "adventure-club-pin-and-paper.pptx",
     slideIndex: 3,
     caption: "Charts",
     description: "Data visualizations render natively, no images involved.",
+    x: 2820,
+    y: -230,
+    zoom: 1.08,
   },
   {
     file: "make-something-strange-creative-mode.pptx",
     slideIndex: 6,
     caption: "Tables",
     description: "Styled cells, borders, and layouts stay just as designed.",
+    x: 4240,
+    y: 240,
+    zoom: 1.03,
   },
   {
     file: "after-the-needle-drops-mat.pptx",
     slideIndex: 0,
     caption: "Typography",
     description: "Weights, spacing, and alignment carry over precisely.",
+    x: 5640,
+    y: -270,
+    zoom: 1.07,
   },
   {
     file: "side-quest-club-block-frame.pptx",
     slideIndex: 4,
     caption: "Complex layouts",
     description: "Grouped shapes and multi-column designs hold together.",
+    x: 7060,
+    y: 160,
+    zoom: 1.04,
   },
 ];
 
 const SPOTLIGHT_DURATION = 85;
+/** Frames of a beat spent gliding to the next card. The rest is the hold. */
+const CAMERA_MOVE = 30;
+const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
+const SHOWCASE_FRAMES = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
 
-function SpotlightScene({ spotlight, index }: { spotlight: Spotlight; index: number }) {
-  const frame = useCurrentFrame();
-  const intro = progress(frame, 0, 28);
-  const captionIntro = progress(frame, 10, 38);
-  const descIntro = progress(frame, 18, 46);
+/** How far ahead of the camera settling a caption starts arriving. */
+const CAPTION_LEAD = 8;
 
-  // Fade content out before the hard cut to the next spotlight so its
-  // entrance doesn't overlap with lingering visuals from this one. The cuts
-  // between spotlights are the only edges this covers; the crossfades at
-  // either end of the run are handled by the enclosing SceneContent.
-  const exitFade = interpolate(
-    frame,
-    [SPOTLIGHT_DURATION - 12, SPOTLIGHT_DURATION - 2],
-    [1, 0],
-    clamp,
+/** Where on screen the subject of the shot sits, leaving the left for text. */
+const FOCUS_X = 1290;
+const FOCUS_Y = 540;
+
+/** Slow out of the old card, slow into the new one, quick in between. */
+const cameraEase = Easing.bezier(0.65, 0, 0.25, 1);
+
+interface Camera {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/**
+ * Where the camera rests on `index`, with `t` running 0 to 1 across the hold.
+ * The drift is deliberately small: enough that no frame is frozen, not enough
+ * to read as a move of its own.
+ */
+function restingCamera(index: number, t: number): Camera {
+  const spotlight = SPOTLIGHTS[index];
+  if (!spotlight) throw new Error(`no spotlight at ${index}`);
+  const direction = index % 2 === 0 ? 1 : -1;
+
+  return {
+    x: spotlight.x + t * 26 * direction,
+    y: spotlight.y + t * 14,
+    zoom: spotlight.zoom * (1 + t * 0.014),
+  };
+}
+
+/** Beat index plus how far the camera has travelled towards the next one. */
+function focusAt(frame: number): number {
+  const index = Math.min(SPOTLIGHTS.length - 1, Math.floor(frame / SPOTLIGHT_DURATION));
+  const local = frame - index * SPOTLIGHT_DURATION;
+  if (index === SPOTLIGHTS.length - 1 || local < CAMERA_HOLD) return index;
+  return index + cameraEase((local - CAMERA_HOLD) / CAMERA_MOVE);
+}
+
+function cameraAt(frame: number): Camera {
+  const focus = focusAt(frame);
+  const index = Math.floor(focus);
+  const travel = focus - index;
+  if (travel === 0) {
+    // Resting. The last card has no move left to make, so it drifts for the
+    // whole beat rather than only the hold.
+    const local = frame - index * SPOTLIGHT_DURATION;
+    const span = index === SPOTLIGHTS.length - 1 ? SPOTLIGHT_DURATION : CAMERA_HOLD;
+    return restingCamera(index, Math.min(1, local / span));
+  }
+
+  const from = restingCamera(index, 1);
+  const to = restingCamera(index + 1, 0);
+  return {
+    x: from.x + (to.x - from.x) * travel,
+    y: from.y + (to.y - from.y) * travel,
+    zoom: from.zoom + (to.zoom - from.zoom) * travel,
+  };
+}
+
+function Board({ frame }: { frame: number }) {
+  const camera = cameraAt(frame);
+  const focus = focusAt(frame);
+
+  // A shallow turn that peaks mid-move and is gone by the time the camera
+  // settles, so a move reads as the camera swinging round to the next card
+  // rather than the board sliding under a fixed lens.
+  const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
+
+  return (
+    <AbsoluteFill style={{ perspective: 2600 }}>
+      <AbsoluteFill
+        style={{
+          transformOrigin: "0 0",
+          transform: [
+            `translate(${FOCUS_X}px, ${FOCUS_Y}px)`,
+            `rotateY(${-swing}deg)`,
+            `scale(${camera.zoom})`,
+            `translate(${-camera.x}px, ${-camera.y}px)`,
+          ].join(" "),
+        }}
+      >
+        {SPOTLIGHTS.map((spotlight, index) => {
+          // Cards recede as the camera leaves them, so the subject is always
+          // the one in focus even while two are on screen at once. The curve
+          // is steeper than linear so the card being left behind gives up the
+          // frame early in the move rather than competing through the whole
+          // of it.
+          const emphasis = (1 - Math.min(1, Math.abs(index - focus))) ** 1.4;
+          const blur = (1 - emphasis) * 4;
+
+          return (
+            <div
+              key={`${spotlight.file}-${spotlight.slideIndex}`}
+              style={{
+                position: "absolute",
+                left: spotlight.x - SLIDE_W / 2,
+                top: spotlight.y - SLIDE_H / 2,
+                width: SLIDE_W,
+                height: SLIDE_H,
+                borderRadius: 10,
+                overflow: "hidden",
+                boxShadow: "0 40px 100px rgba(0,0,0,.45)",
+                opacity: 0.26 + 0.74 * emphasis,
+                filter: blur > 0.05 ? `blur(${blur}px)` : undefined,
+              }}
+            >
+              <PptxCard
+                file={spotlight.file}
+                width={SLIDE_W}
+                height={SLIDE_H}
+                slideIndex={spotlight.slideIndex}
+              />
+            </div>
+          );
+        })}
+      </AbsoluteFill>
+    </AbsoluteFill>
   );
-  const contentOpacity = Math.min(intro, exitFade);
+}
 
-  const isLeft = index % 2 === 0;
+/** Words rise and sharpen in sequence, so a caption lands as a phrase. */
+function StaggeredWords({
+  text,
+  frame,
+  delay,
+  style,
+}: {
+  text: string;
+  frame: number;
+  delay: number;
+  style: CSSProperties;
+}) {
+  return (
+    <span style={{ display: "inline-flex", flexWrap: "wrap", ...style }}>
+      {text.split(" ").map((word, index) => {
+        const start = delay + index * 1.6;
+        const reveal = progress(frame, start, start + 17);
 
-  const cardW = 1050;
-  const cardH = (cardW / SLIDE_W) * SLIDE_H;
-  const cardMargin = 80;
-  const cardX = isLeft ? cardMargin : 1920 - cardW - cardMargin;
-  const cardSlideX = interpolate(intro, [0, 1], [isLeft ? -30 : 30, 0]);
-  const cardSlideY = interpolate(intro, [0, 1], [16, 0]);
-  const cardScale = interpolate(intro, [0, 1], [0.97, 1]);
+        return (
+          <span
+            key={`${word}-${index}`}
+            style={{
+              display: "inline-block",
+              // The gap is margin rather than a space inside the span, so a
+              // wrapped line starts flush instead of indented by it.
+              marginRight: "0.27em",
+              opacity: reveal,
+              transform: `translateY(${(1 - reveal) * 14}px)`,
+              filter: reveal < 1 ? `blur(${(1 - reveal) * 5}px)` : undefined,
+            }}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
-  const captionX = isLeft ? cardMargin + cardW + 60 : 0;
-  const captionW = 1920 - cardW - cardMargin - 60;
-  const captionSlide = interpolate(captionIntro, [0, 1], [20, 0]);
-  const descSlide = interpolate(descIntro, [0, 1], [14, 0]);
+/**
+ * Captions are stacked in one slot and cross-fade, so the text changes on the
+ * spot while the camera does the travelling.
+ */
+function Captions({ frame }: { frame: number }) {
+  return (
+    <div style={{ position: "relative", height: 260 }}>
+      {SPOTLIGHTS.map((spotlight, index) => {
+        const start = index * SPOTLIGHT_DURATION;
+        const local = frame - start;
+        const isLast = index === SPOTLIGHTS.length - 1;
+        // Gone by the time the camera is properly under way. Text sitting over
+        // a card that is sliding out from under it is the one thing that reads
+        // as clutter here, so the column empties first and the move gets the
+        // frame to itself.
+        const exit = isLast
+          ? 1
+          : interpolate(local, [CAMERA_HOLD - 2, CAMERA_HOLD + 8], [1, 0], clamp);
+
+        // Started just before the camera settles, so the column is never empty
+        // on arrival. The lead is short enough that the words are still rising
+        // as the card comes to rest, which ties the two together.
+        const reveal = local + CAPTION_LEAD;
+        if (reveal < 0 || exit === 0) return null;
+
+        return (
+          <div
+            key={`${spotlight.file}-${spotlight.slideIndex}`}
+            style={{ position: "absolute", inset: 0, opacity: exit }}
+          >
+            <StaggeredWords
+              text={spotlight.caption}
+              frame={reveal}
+              delay={0}
+              style={{
+                ...font,
+                fontSize: 62,
+                fontWeight: 800,
+                color: C.white,
+                letterSpacing: -1.6,
+                lineHeight: 1.12,
+              }}
+            />
+            <div style={{ height: 18 }} />
+            <StaggeredWords
+              text={spotlight.description}
+              frame={reveal}
+              delay={10}
+              style={{
+                ...font,
+                fontSize: 27,
+                fontWeight: 400,
+                color: C.muted,
+                lineHeight: 1.5,
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Counter and rail, held across the run so the section reads as one piece. */
+function Chrome({ frame }: { frame: number }) {
+  const index = Math.min(SPOTLIGHTS.length - 1, Math.floor(frame / SPOTLIGHT_DURATION));
+
+  return (
+    <>
+      <span
+        style={{
+          ...font,
+          fontSize: 15,
+          fontWeight: 500,
+          letterSpacing: 3,
+          color: C.accent,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {String(index + 1).padStart(2, "0")} / {String(SPOTLIGHTS.length).padStart(2, "0")}
+      </span>
+      <div style={{ display: "flex", gap: 8, marginTop: 28 }}>
+        {SPOTLIGHTS.map((spotlight, tick) => {
+          const elapsed = interpolate(
+            frame,
+            [tick * SPOTLIGHT_DURATION, (tick + 1) * SPOTLIGHT_DURATION],
+            [0, 1],
+            clamp,
+          );
+
+          return (
+            <div
+              key={`${spotlight.file}-${spotlight.slideIndex}`}
+              style={{
+                position: "relative",
+                width: 44,
+                height: 3,
+                borderRadius: 2,
+                background: "rgba(255,255,255,.14)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transformOrigin: "left center",
+                  transform: `scaleX(${elapsed})`,
+                  background: tick === index ? C.accent : "rgba(255,255,255,.4)",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function ShowcaseScene() {
+  const frame = useCurrentFrame();
 
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ opacity: contentOpacity }}>
-        <div
-          style={{
-            position: "absolute",
-            left: cardX,
-            top: (1080 - cardH) / 2,
-            width: cardW,
-            height: cardH,
-            borderRadius: 12,
-            overflow: "hidden",
-            boxShadow: "0 40px 100px rgba(0,0,0,.45)",
-            transform: `translate(${cardSlideX}px, ${cardSlideY}px) scale(${cardScale})`,
-          }}
-        >
-          <div
-            style={{
-              width: SLIDE_W,
-              height: SLIDE_H,
-              transform: `scale(${cardW / SLIDE_W})`,
-              transformOrigin: "top left",
-            }}
-          >
-            <PptxCard
-              file={spotlight.file}
-              width={SLIDE_W}
-              height={SLIDE_H}
-              slideIndex={spotlight.slideIndex}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            position: "absolute",
-            left: captionX,
-            top: 0,
-            width: captionW,
-            height: 1080,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: "0 40px",
-            textAlign: isLeft ? "left" : "right",
-          }}
-        >
-          <span
-            style={{
-              ...font,
-              fontSize: 64,
-              fontWeight: 800,
-              color: C.white,
-              letterSpacing: -1.6,
-              lineHeight: 1.12,
-              opacity: captionIntro,
-              transform: `translateY(${captionSlide}px)`,
-            }}
-          >
-            {spotlight.caption}
-          </span>
-          <span
-            style={{
-              ...font,
-              fontSize: 28,
-              fontWeight: 400,
-              color: C.muted,
-              lineHeight: 1.5,
-              marginTop: 18,
-              opacity: descIntro,
-              transform: `translateY(${descSlide}px)`,
-            }}
-          >
-            {spotlight.description}
-          </span>
-        </div>
-      </AbsoluteFill>
+      <Board frame={frame} />
+      {/* Cards pass behind the text on their way through, so the column needs
+          its own ground to stay legible against. A pool of shade around the
+          text rather than a curtain over the left half: the corners stay open,
+          which is where the neighbouring cards show. */}
+      <AbsoluteFill
+        style={{
+          background:
+            "radial-gradient(ellipse 46% 52% at 21% 50%, rgba(14,17,23,.95) 0%, rgba(14,17,23,.86) 46%, rgba(14,17,23,0) 100%)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 120,
+          top: 0,
+          width: 620,
+          height: 1080,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <Chrome frame={frame} />
+        <div style={{ height: 34 }} />
+        <Captions frame={frame} />
+      </div>
     </AbsoluteFill>
   );
 }
@@ -379,7 +616,7 @@ function CtaScene() {
 
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
-const SPOTLIGHTS_TOTAL = sectionDuration(SPOTLIGHTS.length * SPOTLIGHT_DURATION);
+const SPOTLIGHTS_TOTAL = sectionDuration(SHOWCASE_FRAMES);
 
 export function Launch() {
   return (
@@ -390,22 +627,17 @@ export function Launch() {
 
       <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
 
-      {/* All spotlights in one sequence with hard cuts between them, each
-          managing its own fade across those cuts. The run shares one backdrop
-          so the envelope has only the cards and captions to fade. */}
+      {/* One continuous shot: every card is mounted on the board for the whole
+          run and the camera moves between them, so there are no cuts for the
+          cards to fade across. The run shares one backdrop, leaving the
+          envelope only the board and the text column to fade. */}
       <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
         <AbsoluteFill>
           <Backdrop />
           <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
-            {SPOTLIGHTS.map((spotlight, index) => (
-              <Sequence
-                key={`${spotlight.file}-${spotlight.slideIndex}`}
-                from={CONTENT_LEAD + index * SPOTLIGHT_DURATION}
-                durationInFrames={SPOTLIGHT_DURATION}
-              >
-                <SpotlightScene spotlight={spotlight} index={index} />
-              </Sequence>
-            ))}
+            <Sequence from={CONTENT_LEAD} layout="none">
+              <ShowcaseScene />
+            </Sequence>
           </SceneContent>
         </AbsoluteFill>
       </TransitionSeries.Sequence>
