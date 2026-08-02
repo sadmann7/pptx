@@ -209,6 +209,9 @@ const SHOWCASE_FRAMES = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
 /** How far ahead of the camera settling a caption starts arriving. */
 const CAPTION_LEAD = 8;
 
+/** Keeps the text column readable where cards pass behind it. */
+const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
+
 /** Where on screen the subject of the shot sits, leaving the left for text. */
 const FOCUS_X = 1290;
 const FOCUS_Y = 540;
@@ -409,6 +412,11 @@ function Captions({ frame }: { frame: number }) {
                 color: C.white,
                 letterSpacing: -1.6,
                 lineHeight: 1.12,
+                // Cards pass behind the column, dimmed and blurred but still
+                // bright enough on the lighter decks to eat into the text. A
+                // shadow carries that on the few hundred pixels where they
+                // overlap, without a scrim muting the card itself.
+                textShadow: TEXT_ON_BOARD,
               }}
             />
             <div style={{ height: 18 }} />
@@ -422,6 +430,7 @@ function Captions({ frame }: { frame: number }) {
                 fontWeight: 400,
                 color: C.muted,
                 lineHeight: 1.5,
+                textShadow: TEXT_ON_BOARD,
               }}
             />
           </div>
@@ -431,78 +440,20 @@ function Captions({ frame }: { frame: number }) {
   );
 }
 
-/** Counter and rail, held across the run so the section reads as one piece. */
-function Chrome({ frame }: { frame: number }) {
-  const index = Math.min(SPOTLIGHTS.length - 1, Math.floor(frame / SPOTLIGHT_DURATION));
-
-  return (
-    <>
-      <span
-        style={{
-          ...font,
-          fontSize: 15,
-          fontWeight: 500,
-          letterSpacing: 3,
-          color: C.accent,
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {String(index + 1).padStart(2, "0")} / {String(SPOTLIGHTS.length).padStart(2, "0")}
-      </span>
-      <div style={{ display: "flex", gap: 8, marginTop: 28 }}>
-        {SPOTLIGHTS.map((spotlight, tick) => {
-          const elapsed = interpolate(
-            frame,
-            [tick * SPOTLIGHT_DURATION, (tick + 1) * SPOTLIGHT_DURATION],
-            [0, 1],
-            clamp,
-          );
-
-          return (
-            <div
-              key={`${spotlight.file}-${spotlight.slideIndex}`}
-              style={{
-                position: "relative",
-                width: 44,
-                height: 3,
-                borderRadius: 2,
-                background: "rgba(255,255,255,.14)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  transformOrigin: "left center",
-                  transform: `scaleX(${elapsed})`,
-                  background: tick === index ? C.accent : "rgba(255,255,255,.4)",
-                }}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
 function ShowcaseScene() {
   const frame = useCurrentFrame();
 
+  // Every other section animates its own way in, since content is held back
+  // past the crossfade rather than fading across it. Without this the board
+  // arrived in one frame, which is what made the cut from the title read as a
+  // jump. The camera settles the last of the way in as it appears.
+  const entrance = progress(frame, 0, 20);
+
   return (
-    <AbsoluteFill>
-      <Board frame={frame} />
-      {/* Cards pass behind the text on their way through, so the column needs
-          its own ground to stay legible against. A pool of shade around the
-          text rather than a curtain over the left half: the corners stay open,
-          which is where the neighbouring cards show. */}
-      <AbsoluteFill
-        style={{
-          background:
-            "radial-gradient(ellipse 46% 52% at 21% 50%, rgba(14,17,23,.95) 0%, rgba(14,17,23,.86) 46%, rgba(14,17,23,0) 100%)",
-        }}
-      />
+    <AbsoluteFill style={{ opacity: entrance }}>
+      <AbsoluteFill style={{ transform: `scale(${interpolate(entrance, [0, 1], [0.985, 1])})` }}>
+        <Board frame={frame} />
+      </AbsoluteFill>
       <div
         style={{
           position: "absolute",
@@ -515,8 +466,6 @@ function ShowcaseScene() {
           justifyContent: "center",
         }}
       >
-        <Chrome frame={frame} />
-        <div style={{ height: 34 }} />
         <Captions frame={frame} />
       </div>
     </AbsoluteFill>
