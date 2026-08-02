@@ -133,38 +133,38 @@ interface Spotlight {
 
 const SPOTLIGHTS: Spotlight[] = [
   {
-    file: "editorial-forest.pptx",
+    file: "editorial-forest-editable.pptx",
     slideIndex: 1,
     caption: "True to the original",
     description: "Slides look exactly the way they do in PowerPoint.",
   },
   {
-    file: "sakura-chroma.pptx",
+    file: "pocket-machines-sakura-chroma.pptx",
     slideIndex: 0,
     caption: "Rich visuals",
     description: "Gradients, shadows, and transparency come through untouched.",
   },
   {
-    file: "make-something-strange.pptx",
-    slideIndex: 5,
+    file: "adventure-club-pin-and-paper.pptx",
+    slideIndex: 3,
     caption: "Charts",
     description: "Data visualizations render natively, no images involved.",
   },
   {
-    file: "make-something-strange.pptx",
+    file: "make-something-strange-creative-mode.pptx",
     slideIndex: 6,
     caption: "Tables",
     description: "Styled cells, borders, and layouts stay just as designed.",
   },
   {
-    file: "bold-poster.pptx",
+    file: "after-the-needle-drops-mat.pptx",
     slideIndex: 0,
     caption: "Typography",
     description: "Weights, spacing, and alignment carry over precisely.",
   },
   {
-    file: "emerald-editorial.pptx",
-    slideIndex: 1,
+    file: "side-quest-club-block-frame.pptx",
+    slideIndex: 4,
     caption: "Complex layouts",
     description: "Grouped shapes and multi-column designs hold together.",
   },
