@@ -197,4 +197,9 @@ See [`packages/core/OOXML-SUPPORT.md`](./packages/core/OOXML-SUPPORT.md) for a d
 
 ## License
 
-Apache-2.0. See [LICENSE](./LICENSE).
+[Apache-2.0](./LICENSE), except for the files noted below.
+
+- The MTX font decoder (`packages/core/src/fonts/mtx/`) and the predefined table style data (`packages/core/src/renderer/table-style.ts`) stay under [MPL-2.0](./LICENSES/MPL-2.0.txt), as marked in their file headers.
+- The fonts embedded in the sample decks under `apps/video/public/` and `packages/e2e/fixtures/` are licensed under [OFL-1.1](./LICENSES/OFL-1.1.txt).
+
+See [NOTICE](./NOTICE) for the full third-party attributions.
