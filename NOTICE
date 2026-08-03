@@ -26,6 +26,54 @@ Licensed under the Mozilla Public License, Version 2.0.
 The file packages/core/src/renderer/table-style.ts contains predefined table
 style data derived from LibreOffice's predefined-table-styles.cxx.
 -------------------------------------------------------------------------------
+Embedded fonts in the sample presentations
+apps/video/public/*.pptx and packages/e2e/fixtures/*.pptx
+
+The sample decks in this repository embed font binaries, all of which are
+licensed under the SIL Open Font License, Version 1.1. They are not part of
+any published npm package. Their upstream copyright notices are:
+
+Copyright 2014 The Caveat Project Authors
+  https://github.com/googlefonts/caveat
+Copyright 2014 The DM Sans Project Authors
+  https://github.com/googlefonts/dm-fonts
+Copyright 2014 - 2021 Adobe Systems Incorporated
+  http://www.adobe.com/, with Reserved Font Name 'Source'
+Copyright 2015 The Cormorant Project Authors
+  https://github.com/CatharsisFonts/Cormorant
+Copyright 2016 The Inter Project Authors
+  https://github.com/rsms/inter
+Copyright 2017 IBM Corp. All rights reserved.
+  https://github.com/IBM/plex
+Copyright 2017 The Archivo Black Project Authors
+  https://github.com/Omnibus-Type/ArchivoBlack
+Copyright 2017 The Barlow Project Authors
+  https://github.com/jpt/barlow
+Copyright 2017 The Playfair Display Project Authors
+  https://github.com/clauseggers/Playfair-Display, with Reserved Font Name
+  "Playfair Display"
+Copyright 2019 The Big Shoulders Project Authors
+  https://github.com/xotypeco/big_shoulders
+Copyright 2019 The Manrope Project Authors
+  https://github.com/sharanda/manrope
+Copyright 2019 The Work Sans Project Authors
+  https://github.com/weiweihuanghuang/Work-Sans
+Copyright 2020 The Bodoni Moda Project Authors
+  https://github.com/indestructible-type/Bodoni
+Copyright 2020 The DM Mono Project Authors
+  https://github.com/googlefonts/dm-mono
+Copyright 2020 The JetBrains Mono Project Authors
+  https://github.com/JetBrains/JetBrainsMono
+Copyright 2020 The Space Grotesk Project Authors
+  https://github.com/floriankarsten/space-grotesk
+Copyright 2021 The Albert Sans Project Authors
+  https://github.com/usted/Albert-Sans
+Copyright 2022 The Bricolage Grotesque Project Authors
+  https://github.com/ateliertriay/bricolage
+-------------------------------------------------------------------------------
 
 A copy of the MPL-2.0 is available at LICENSES/MPL-2.0.txt and at
 https://mozilla.org/MPL/2.0/.
+
+A copy of the OFL-1.1 is available at LICENSES/OFL-1.1.txt and at
+https://openfontlicense.org/.
