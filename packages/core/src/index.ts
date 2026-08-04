@@ -85,6 +85,3 @@ export type { TableCell, TableNodeData, TableRow } from "./model/nodes/table";
 export type { SlideData, SlideNode } from "./model/slide";
 export type { ThemeData } from "./model/theme";
 export type { PptxFiles } from "./ooxml/zip";
-
-// Font decode lives in "@diceui/pptx-core/fonts"; only the handle type is re-exported here.
-export type { EmbeddedFontsHandle, LoadEmbeddedFontsOptions } from "./fonts/loader";

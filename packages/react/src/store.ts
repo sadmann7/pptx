@@ -1,7 +1,6 @@
 import type {
   EditOperation,
   EditResult,
-  EmbeddedFontsHandle,
   PptxSaveOptions,
   PresentationData,
   SlideData,
@@ -13,6 +12,7 @@ import {
   readPptx,
   writePptx,
 } from "@diceui/pptx-core";
+import type { EmbeddedFontsHandle } from "@diceui/pptx-core/fonts";
 
 import { DEFAULT_STORE_STATE } from "./constant";
 
