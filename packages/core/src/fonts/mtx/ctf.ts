@@ -1,661 +1,377 @@
-/**
- * @license
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- *
- * @remarks
- * Derived from mtx-decompressor v1.4.2
- * (https://github.com/ChristopherVR/mtx-decompressor, © ChristopherVR, MPL-2.0).
- * Optimized for `@diceui/pptx-core`:
- * - Triplet encodings as flat typed arrays (no object field loads)
- * - Bulk table copies instead of per-byte reads
- * - Reusable per-glyph scratch buffers instead of per-glyph allocations
- *
- * Output is byte-identical to the original.
- */
+import { Reader, Writer } from "./binary";
+import { decodeCvt } from "./cvt";
+import { fail } from "./error";
+import type { DecoderLimits } from "./limits";
+import { readPushValuesInto, writePushInstructions } from "./push";
+import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
+import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
+import { read255UShort } from "./varint";
 
-import { MtxStream } from "./stream";
-
-// ── TrueType constants ──────────────────────────────────────────────
-
-const FLG_ON_CURVE = 1;
-const FLG_X_SHORT = 2;
-const FLG_Y_SHORT = 4;
-const FLG_X_SAME = 16;
-const FLG_Y_SAME = 32;
-
-const NPUSHB = 64;
-const NPUSHW = 65;
-const PUSHB = 176;
-const PUSHW = 184;
-
-const ARG_1_AND_2_ARE_WORDS = 1;
-const HAVE_SCALE = 8;
-const MORE_COMPONENTS = 32;
-const HAVE_XY_SCALE = 64;
-const HAVE_2_BY_2 = 128;
-const HAVE_INSTRUCTIONS = 256;
-
-const INT16_MIN = -32768;
-const INT16_MAX = 32767;
-
-// ── Triplet encodings (flat structure-of-arrays) ────────────────────
-// Index = flag & 127. Generated to match the reference table exactly.
-
-const TRIPLET_COUNT = 128;
-const T_BYTE_COUNT = new Uint8Array(TRIPLET_COUNT);
-const T_X_BITS = new Uint8Array(TRIPLET_COUNT);
-const T_Y_BITS = new Uint8Array(TRIPLET_COUNT);
-const T_DELTA_X = new Int32Array(TRIPLET_COUNT);
-const T_DELTA_Y = new Int32Array(TRIPLET_COUNT);
-const T_X_SIGN = new Int8Array(TRIPLET_COUNT);
-const T_Y_SIGN = new Int8Array(TRIPLET_COUNT);
-
-{
-  let i = 0;
-  const put = (
-    byteCount: number,
-    xBits: number,
-    yBits: number,
-    deltaX: number,
-    deltaY: number,
-    xSign: number,
-    ySign: number,
-  ): void => {
-    T_BYTE_COUNT[i] = byteCount;
-    T_X_BITS[i] = xBits;
-    T_Y_BITS[i] = yBits;
-    T_DELTA_X[i] = deltaX;
-    T_DELTA_Y[i] = deltaY;
-    T_X_SIGN[i] = xSign;
-    T_Y_SIGN[i] = ySign;
-    i++;
-  };
-
-  // 0-9: Y axis only, deltas 0..1024 step 256, alternating sign
-  for (const delta of [0, 256, 512, 768, 1024]) {
-    put(2, 0, 8, 0, delta, 0, -1);
-    put(2, 0, 8, 0, delta, 0, 1);
-  }
-  // 10-19: X axis only
-  for (const delta of [0, 256, 512, 768, 1024]) {
-    put(2, 8, 0, delta, 0, -1, 0);
-    put(2, 8, 0, delta, 0, 1, 0);
-  }
-  // 20-83: 4-bit X + 4-bit Y, deltas {1,17,33,49} x {1,17,33,49}, 4 sign combos
-  for (const dx of [1, 17, 33, 49]) {
-    for (const dy of [1, 17, 33, 49]) {
-      put(2, 4, 4, dx, dy, -1, -1);
-      put(2, 4, 4, dx, dy, 1, -1);
-      put(2, 4, 4, dx, dy, -1, 1);
-      put(2, 4, 4, dx, dy, 1, 1);
-    }
-  }
-  // 84-119: 8-bit X + 8-bit Y, deltas {1,257,513} x {1,257,513}
-  for (const dx of [1, 257, 513]) {
-    for (const dy of [1, 257, 513]) {
-      put(3, 8, 8, dx, dy, -1, -1);
-      put(3, 8, 8, dx, dy, 1, -1);
-      put(3, 8, 8, dx, dy, -1, 1);
-      put(3, 8, 8, dx, dy, 1, 1);
-    }
-  }
-  // 120-123: 12-bit X + 12-bit Y
-  put(4, 12, 12, 0, 0, -1, -1);
-  put(4, 12, 12, 0, 0, 1, -1);
-  put(4, 12, 12, 0, 0, -1, 1);
-  put(4, 12, 12, 0, 0, 1, 1);
-  // 124-127: 16-bit X + 16-bit Y
-  put(5, 16, 16, 0, 0, -1, -1);
-  put(5, 16, 16, 0, 0, 1, -1);
-  put(5, 16, 16, 0, 0, -1, 1);
-  put(5, 16, 16, 0, 0, 1, 1);
-}
-
-// ── Table container ─────────────────────────────────────────────────
-
-export interface CtfTable {
+interface DirectoryEntry {
   tag: string;
   offset: number;
-  bufSize: number;
-  buf: Uint8Array;
-  checksum: number;
+  length: number;
 }
 
-export interface CtfContainer {
-  tables: CtfTable[];
-}
+const ARG_1_AND_2_ARE_WORDS = 0x0001;
+const WE_HAVE_A_SCALE = 0x0008;
+const MORE_COMPONENTS = 0x0020;
+const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
+const WE_HAVE_A_TWO_BY_TWO = 0x0080;
+const WE_HAVE_INSTRUCTIONS = 0x0100;
 
-// ── Variable-length integer readers ─────────────────────────────────
-
-function toInt16(v: number): number {
-  v &= 65535;
-  return v >= 32768 ? v - 65536 : v;
-}
-
-function read255UShort(s: MtxStream): number {
-  const code = s.readU8();
-  if (code === 253) return s.readU16();
-  if (code === 255) return 253 + s.readU8();
-  if (code === 254) return 506 + s.readU8();
-  return code;
-}
-
-function read255Short(s: MtxStream): number {
-  let sign = 1;
-  let code = s.readU8();
-  if (code === 253) return s.readS16();
-  if (code === 250) {
-    sign = -1;
-    code = s.readU8();
+function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
+  if (entry.offset < 0 || entry.length < 0 || entry.offset + entry.length > data.length) {
+    fail("INVALID_CTF", `Table ${entry.tag} lies outside CTF stream`);
   }
-  let value: number;
-  if (code === 255) {
-    value = 250 + s.readU8();
-  } else if (code === 254) {
-    value = 500 + s.readU8();
-  } else {
-    value = code;
-  }
-  return value * sign;
+  return data.subarray(entry.offset, entry.offset + entry.length);
 }
 
-// ── CVT ─────────────────────────────────────────────────────────────
-
-function unpackCVT(table: CtfTable, sIn: MtxStream): void {
-  sIn.seekAbsolute(table.offset);
-  const tableLength = sIn.readU16();
-  const numEntries = tableLength >>> 1;
-  const out = new MtxStream(null, 0);
-  out.reserve(tableLength);
-  let lastValue = 0;
-  for (let i = 0; i < numEntries; i++) {
-    const code = sIn.readU8();
-    let val: number;
-    if (code >= 248) {
-      val = 238 * (code - 247) + sIn.readU8();
-    } else if (code >= 239) {
-      val = -(238 * (code - 239) + sIn.readU8());
-    } else if (code === 238) {
-      val = sIn.readS16();
-    } else {
-      val = code;
-    }
-    lastValue = toInt16(lastValue + val);
-    out.writeS16(lastValue);
-  }
-  table.buf = out.toUint8Array();
-  table.bufSize = table.buf.length;
-}
-
-// ── Instruction push decoding ───────────────────────────────────────
-
-function decodePushInstructions(sIn: MtxStream, sOut: MtxStream, pushCount: number): void {
-  if (pushCount === 0) return;
-
-  const data: number[] = [];
-  let remaining = pushCount;
-  let isShort = false;
-  const runValues: number[] = [];
-
-  const flush = (): void => {
-    const count = runValues.length;
-    if (count === 0) return;
-    if (isShort) {
-      if (count < 8) {
-        sOut.writeU8(PUSHW + (count - 1));
-      } else {
-        sOut.writeU8(NPUSHW);
-        sOut.writeU8(count);
-      }
-      for (let i = 0; i < count; i++) sOut.writeS16(runValues[i]);
-    } else {
-      if (count < 8) {
-        sOut.writeU8(PUSHB + (count - 1));
-      } else {
-        sOut.writeU8(NPUSHB);
-        sOut.writeU8(count);
-      }
-      for (let i = 0; i < count; i++) sOut.writeU8(runValues[i] & 255);
-    }
-    runValues.length = 0;
-  };
-
-  const put = (v: number): void => {
-    data.push(v);
-    const needsShort = v < 0 || v > 255;
-    if (runValues.length > 0 && needsShort !== isShort) {
-      flush();
-    }
-    if (runValues.length === 0) {
-      isShort = needsShort;
-    }
-    runValues.push(v);
-    if (runValues.length >= 255) {
-      flush();
-    }
-  };
-
-  while (remaining > 0) {
-    const code = sIn.peekU8();
-    if (code === 251 && remaining >= 3 && data.length >= 2) {
-      sIn.readU8();
-      const prev = data[data.length - 2];
-      put(prev);
-      put(read255Short(sIn));
-      put(prev);
-      remaining -= 3;
-    } else if (code === 252 && remaining >= 5 && data.length >= 2) {
-      sIn.readU8();
-      const prev = data[data.length - 2];
-      put(prev);
-      put(read255Short(sIn));
-      put(prev);
-      put(read255Short(sIn));
-      put(prev);
-      remaining -= 5;
-    } else {
-      put(read255Short(sIn));
-      remaining -= 1;
-    }
-  }
-  flush();
-}
-
-// ── Glyph decoding ──────────────────────────────────────────────────
-
-function makeGlyphFlags(x: number, y: number, onCurve: boolean, firstTime: boolean): number {
-  let flags = 0;
-  if (onCurve) flags |= FLG_ON_CURVE;
-  if (!firstTime && x === 0) {
-    flags |= FLG_X_SAME;
-  } else if (x > -256 && x < 0) {
-    flags |= FLG_X_SHORT;
-  } else if (x >= 0 && x < 256) {
-    flags |= FLG_X_SHORT | FLG_X_SAME;
-  }
-  if (!firstTime && y === 0) {
-    flags |= FLG_Y_SAME;
-  } else if (y > -256 && y < 0) {
-    flags |= FLG_Y_SHORT;
-  } else if (y >= 0 && y < 256) {
-    flags |= FLG_Y_SHORT | FLG_Y_SAME;
-  }
-  return flags;
-}
-
-/** Reusable per-decode scratch to avoid per-glyph typed-array churn. */
-interface GlyphScratch {
-  flagBytes: Uint8Array;
-  xDeltas: Int16Array;
-  yDeltas: Int16Array;
-  onCurve: Uint8Array;
-}
-
-function ensureScratch(scratch: GlyphScratch, totalPoints: number): void {
-  if (scratch.flagBytes.length >= totalPoints) return;
-  const cap = Math.max(totalPoints, scratch.flagBytes.length * 2 || 256);
-  scratch.flagBytes = new Uint8Array(cap);
-  scratch.xDeltas = new Int16Array(cap);
-  scratch.yDeltas = new Int16Array(cap);
-  scratch.onCurve = new Uint8Array(cap);
-}
-
-function decodeSimpleGlyph(
-  numContours: number,
-  streams: MtxStream[],
-  out: MtxStream,
-  calcBBox: boolean,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
+/**
+ * Append a glyph's instruction block to the glyf writer.
+ *
+ * The length prefix is reserved and patched once the PUSH burst has been
+ * emitted, so the burst is measured by writing it rather than by scanning the
+ * push values twice.
+ */
+function writeInstructions(
+  rest: Reader,
+  push: Reader,
+  code: Reader,
+  limits: DecoderLimits,
+  glyphId: number,
+  writer: Writer,
   scratch: GlyphScratch,
 ): void {
-  if (numContours === 0) return;
+  const pushCount = read255UShort(rest);
+  const codeSize = read255UShort(rest);
+  if (codeSize > limits.maxInstructionsPerGlyph)
+    fail("LIMIT_EXCEEDED", "Glyph instruction stream exceeds configured limit");
+  if (codeSize > code.remaining) {
+    fail(
+      "INVALID_CTF",
+      `Glyph ${glyphId} needs ${codeSize} code byte(s), only ${code.remaining} remain`,
+    );
+  }
+  if (scratch.pushValues.length < pushCount) {
+    scratch.pushValues = new Int16Array(Math.max(pushCount, scratch.pushValues.length * 2, 16));
+  }
+  readPushValuesInto(push, pushCount, scratch.pushValues);
 
-  const sGlyph = streams[0];
-  out.writeS16(numContours);
-  const bboxPos = out.pos;
-  if (calcBBox) {
-    minX = INT16_MAX;
-    minY = INT16_MAX;
-    maxX = INT16_MIN;
-    maxY = INT16_MIN;
-    out.writeS16(0);
-    out.writeS16(0);
-    out.writeS16(0);
-    out.writeS16(0);
-  } else {
-    out.writeS16(minX);
-    out.writeS16(minY);
-    out.writeS16(maxX);
-    out.writeS16(maxY);
+  const lengthOffset = writer.length;
+  writer.u16be(0);
+  writePushInstructions(writer, scratch.pushValues, pushCount);
+  const instructionLength = writer.length - lengthOffset - 2 + codeSize;
+  if (instructionLength > 0xffff || instructionLength > limits.maxInstructionsPerGlyph) {
+    fail("LIMIT_EXCEEDED", "Reconstructed glyph instructions exceed TrueType limits");
   }
-
-  let totalPoints = 0;
-  for (let c = 0; c < numContours; c++) {
-    if (c === 0) totalPoints = 1;
-    totalPoints += read255UShort(sGlyph);
-    out.writeU16(totalPoints - 1);
-  }
-
-  ensureScratch(scratch, totalPoints);
-  const { flagBytes, xDeltas, yDeltas, onCurve } = scratch;
-
-  for (let i = 0; i < totalPoints; i++) {
-    flagBytes[i] = sGlyph.readU8();
-  }
-
-  let cumulativeX = 0;
-  let cumulativeY = 0;
-  for (let i = 0; i < totalPoints; i++) {
-    const flag = flagBytes[i];
-    onCurve[i] = flag & 128 ? 0 : 1;
-    const enc = flag & 127;
-    let dx = sGlyph.readNBits(T_X_BITS[enc]) + T_DELTA_X[enc];
-    let dy = sGlyph.readNBits(T_Y_BITS[enc]) + T_DELTA_Y[enc];
-    const xs = T_X_SIGN[enc];
-    const ys = T_Y_SIGN[enc];
-    if (xs !== 0) dx *= xs;
-    if (ys !== 0) dy *= ys;
-    xDeltas[i] = dx;
-    yDeltas[i] = dy;
-    cumulativeX += dx;
-    cumulativeY += dy;
-    if (calcBBox) {
-      if (cumulativeX < minX) minX = cumulativeX;
-      if (cumulativeX > maxX) maxX = cumulativeX;
-      if (cumulativeY < minY) minY = cumulativeY;
-      if (cumulativeY > maxY) maxY = cumulativeY;
-    }
-  }
-
-  const codeSizeLocation = out.pos;
-  out.writeU16(0);
-  const pushCount = read255UShort(sGlyph);
-  decodePushInstructions(streams[1], out, pushCount);
-  const codeSize = read255UShort(sGlyph);
-  if (codeSize > 0) {
-    streams[2].copyTo(out, codeSize);
-  }
-  const unpackedCodeSize = out.pos - (codeSizeLocation + 2);
-  const savedPos = out.pos;
-  out.seekAbsolute(codeSizeLocation);
-  out.writeU16(unpackedCodeSize);
-  out.seekAbsolute(savedPos);
-
-  for (let i = 0; i < totalPoints; i++) {
-    out.writeU8(makeGlyphFlags(xDeltas[i], yDeltas[i], onCurve[i] !== 0, i === 0));
-  }
-  for (let i = 0; i < totalPoints; i++) {
-    const x = xDeltas[i];
-    if (i === 0 || x !== 0) {
-      const absX = x < 0 ? -x : x;
-      if (absX < 256) {
-        out.writeU8(absX);
-      } else {
-        out.writeS16(x);
-      }
-    }
-  }
-  for (let i = 0; i < totalPoints; i++) {
-    const y = yDeltas[i];
-    if (i === 0 || y !== 0) {
-      const absY = y < 0 ? -y : y;
-      if (absY < 256) {
-        out.writeU8(absY);
-      } else {
-        out.writeS16(y);
-      }
-    }
-  }
-
-  if (calcBBox) {
-    const endPos = out.pos;
-    out.seekAbsolute(bboxPos);
-    out.writeS16(minX);
-    out.writeS16(minY);
-    out.writeS16(maxX);
-    out.writeS16(maxY);
-    out.seekAbsolute(endPos);
-  }
+  writer.patchU16be(lengthOffset, instructionLength);
+  writer.bytes(code.bytes(codeSize));
 }
 
-function decodeCompositeGlyph(streams: MtxStream[], out: MtxStream): void {
-  const sGlyph = streams[0];
-  out.writeS16(-1);
-  out.writeS16(sGlyph.readS16());
-  out.writeS16(sGlyph.readS16());
-  out.writeS16(sGlyph.readS16());
-  out.writeS16(sGlyph.readS16());
-  let flags = 0;
-  do {
-    flags = sGlyph.readU16();
-    const glyphIndex = sGlyph.readU16();
-    out.writeU16(flags);
-    out.writeU16(glyphIndex);
-    sGlyph.copyTo(out, flags & ARG_1_AND_2_ARE_WORDS ? 4 : 2);
-    let transformBytes = 0;
-    if (flags & HAVE_2_BY_2) {
-      transformBytes = 8;
-    } else if (flags & HAVE_XY_SCALE) {
-      transformBytes = 4;
-    } else if (flags & HAVE_SCALE) {
-      transformBytes = 2;
-    }
-    if (transformBytes > 0) {
-      sGlyph.copyTo(out, transformBytes);
-    }
-  } while (flags & MORE_COMPONENTS);
-
-  if (flags & HAVE_INSTRUCTIONS) {
-    const numInstrPos = out.pos;
-    out.writeU16(0);
-    const pushCount = read255UShort(sGlyph);
-    decodePushInstructions(streams[1], out, pushCount);
-    const codeSize = read255UShort(sGlyph);
-    if (codeSize > 0) {
-      streams[2].copyTo(out, codeSize);
-    }
-    const numInstr = out.pos - (numInstrPos + 2);
-    const savedPos = out.pos;
-    out.seekAbsolute(numInstrPos);
-    out.writeU16(numInstr);
-    out.seekAbsolute(savedPos);
-  }
+interface GlyphScratch extends TripletScratch {
+  rawFlags: Uint8Array;
+  encodedFlags: Uint8Array;
+  xData: Uint8Array;
+  yData: Uint8Array;
+  endPoints: Uint16Array;
+  pushValues: Int16Array;
 }
 
-function decodeGlyph(streams: MtxStream[], out: MtxStream, scratch: GlyphScratch): void {
-  const numContours = streams[0].readS16();
-  if (numContours < 0) {
-    decodeCompositeGlyph(streams, out);
-  } else if (numContours === 32767) {
-    const actualContours = streams[0].readS16();
-    const xMin = streams[0].readS16();
-    const yMin = streams[0].readS16();
-    const xMax = streams[0].readS16();
-    const yMax = streams[0].readS16();
-    decodeSimpleGlyph(actualContours, streams, out, false, xMin, yMin, xMax, yMax, scratch);
-  } else {
-    decodeSimpleGlyph(numContours, streams, out, true, 0, 0, 0, 0, scratch);
-  }
+function ensureByteScratch(scratch: GlyphScratch, points: number): void {
+  if (scratch.rawFlags.length >= points) return;
+  const capacity = Math.max(points, scratch.rawFlags.length * 2, 16);
+  scratch.rawFlags = new Uint8Array(capacity);
+  scratch.encodedFlags = new Uint8Array(capacity);
+  scratch.xData = new Uint8Array(capacity * 2);
+  scratch.yData = new Uint8Array(capacity * 2);
 }
 
-// ── glyf/loca reconstruction ────────────────────────────────────────
-
-interface HeadData {
-  indexToLocFormat: number;
-}
-
-interface MaxpData {
-  numGlyphs: number;
-  maxPoints: number;
-  maxContours: number;
-  maxSizeOfInstructions: number;
-  maxComponentElements: number;
-}
-
-function populateGlyfAndLoca(
-  glyf: CtfTable,
-  loca: CtfTable,
-  headData: HeadData,
-  maxpData: MaxpData,
-  streams: MtxStream[],
-): void {
-  const numGlyphs = maxpData.numGlyphs;
-  streams[0].seekAbsolute(glyf.offset);
-  streams[1].seekAbsolute(0);
-  streams[2].seekAbsolute(0);
-
-  const maxGlyphSize =
-    5 * 2 +
-    2 * maxpData.maxContours +
-    2 +
-    maxpData.maxSizeOfInstructions +
-    256 +
-    5 * maxpData.maxPoints +
-    4 * maxpData.maxComponentElements * 6 +
-    256;
-
-  const outStream = new MtxStream(null, 0);
-  outStream.reserve(numGlyphs * 256);
-  const isShortLoca = headData.indexToLocFormat === 0;
-  const locaStream = new MtxStream(null, 0);
-  locaStream.reserve((numGlyphs + 1) * (isShortLoca ? 2 : 4));
-  if (isShortLoca) {
-    locaStream.writeU16(0);
-  } else {
-    locaStream.writeU32(0);
-  }
-
-  const scratch: GlyphScratch = {
-    flagBytes: new Uint8Array(0),
-    xDeltas: new Int16Array(0),
-    yDeltas: new Int16Array(0),
-    onCurve: new Uint8Array(0),
-  };
-
-  for (let i = 0; i < numGlyphs; i++) {
-    // Geometric growth: the original re-reserved exactly pos+maxGlyphSize per
-    // glyph, forcing O(n²) copies on fonts whose glyf outgrows the estimate.
-    outStream.reserveGrow(outStream.pos + maxGlyphSize);
-    decodeGlyph(streams, outStream, scratch);
-    if (outStream.pos & 1) {
-      outStream.writeU8(0);
-    }
-    if (isShortLoca) {
-      locaStream.writeU16(outStream.pos >>> 1);
+function pointFlags(
+  points: DecodedTriplets,
+  ctfFlags: Uint8Array,
+  scratch: GlyphScratch,
+): {
+  flagsLength: number;
+  xLength: number;
+  yLength: number;
+} {
+  ensureByteScratch(scratch, points.length);
+  const rawFlags = scratch.rawFlags;
+  const compressedFlags = scratch.encodedFlags;
+  const xData = scratch.xData;
+  const yData = scratch.yData;
+  let xLength = 0;
+  let yLength = 0;
+  let priorX = 0;
+  let priorY = 0;
+  for (let i = 0; i < points.length; i++) {
+    const px = points.x[i]!;
+    const py = points.y[i]!;
+    const dx = px - priorX;
+    const dy = py - priorY;
+    priorX = px;
+    priorY = py;
+    let flag = (ctfFlags[i]! & 0x80) === 0 ? 0x01 : 0;
+    if (dx === 0) flag |= 0x10;
+    else if (dx > 0 && dx <= 255) {
+      flag |= 0x12;
+      xData[xLength++] = dx;
+    } else if (dx < 0 && dx >= -255) {
+      flag |= 0x02;
+      xData[xLength++] = -dx;
     } else {
-      locaStream.writeU32(outStream.pos);
+      xData[xLength++] = dx >>> 8;
+      xData[xLength++] = dx;
     }
+    if (dy === 0) flag |= 0x20;
+    else if (dy > 0 && dy <= 255) {
+      flag |= 0x24;
+      yData[yLength++] = dy;
+    } else if (dy < 0 && dy >= -255) {
+      flag |= 0x04;
+      yData[yLength++] = -dy;
+    } else {
+      yData[yLength++] = dy >>> 8;
+      yData[yLength++] = dy;
+    }
+    rawFlags[i] = flag;
   }
 
-  glyf.buf = outStream.toUint8Array();
-  glyf.bufSize = glyf.buf.length;
-  loca.buf = locaStream.toUint8Array();
-  loca.bufSize = loca.buf.length;
+  let flagsLength = 0;
+  let i = 0;
+  while (i < points.length) {
+    let run = 1;
+    while (i + run < points.length && rawFlags[i + run] === rawFlags[i] && run < 256) run++;
+    if (run > 1) {
+      compressedFlags[flagsLength++] = rawFlags[i]! | 0x08;
+      compressedFlags[flagsLength++] = run - 1;
+    } else compressedFlags[flagsLength++] = rawFlags[i]!;
+    i += run;
+  }
+  return { flagsLength, xLength, yLength };
 }
 
-function parseHead(table: CtfTable): HeadData {
-  const s = new MtxStream(table.buf, table.bufSize);
-  s.seekAbsolute(50);
-  return { indexToLocFormat: s.readS16() };
+function readSimpleGlyph(
+  numContours: number,
+  explicitBox: [number, number, number, number] | undefined,
+  rest: Reader,
+  push: Reader,
+  code: Reader,
+  limits: DecoderLimits,
+  glyphId: number,
+  writer: Writer,
+  scratch: GlyphScratch,
+): void {
+  // A contourless CTF glyph carries no further data in any stream, and
+  // TrueType spells an outline-free glyph as an empty loca range rather than a
+  // zero-contour record.
+  if (numContours === 0) return;
+  if (scratch.endPoints.length < numContours)
+    scratch.endPoints = new Uint16Array(Math.max(numContours, scratch.endPoints.length * 2, 8));
+  const endPoints = scratch.endPoints;
+  let pointCount = 0;
+  for (let i = 0; i < numContours; i++) {
+    const encoded = read255UShort(rest);
+    if (i === 0) pointCount = encoded + 1;
+    else pointCount += encoded;
+    if (pointCount <= 0 || pointCount > 0x10000)
+      fail("INVALID_CTF", "Invalid simple-glyph contour endpoint");
+    endPoints[i] = pointCount - 1;
+  }
+  if (pointCount > limits.maxPointsPerGlyph)
+    fail("LIMIT_EXCEEDED", "Glyph point count exceeds configured limit");
+  const flags = rest.bytes(pointCount);
+  const points = decodeTripletArrays(rest, flags, scratch);
+  const [xMin, yMin, xMax, yMax] = explicitBox ?? points.box;
+  const encodedPoints = pointFlags(points, flags, scratch);
+
+  writer.i16be(numContours);
+  writer.i16be(xMin);
+  writer.i16be(yMin);
+  writer.i16be(xMax);
+  writer.i16be(yMax);
+  for (let i = 0; i < numContours; i++) writer.u16be(endPoints[i]!);
+  writeInstructions(rest, push, code, limits, glyphId, writer, scratch);
+  writer.bytes(scratch.encodedFlags.subarray(0, encodedPoints.flagsLength));
+  writer.bytes(scratch.xData.subarray(0, encodedPoints.xLength));
+  writer.bytes(scratch.yData.subarray(0, encodedPoints.yLength));
 }
 
-function parseMaxp(table: CtfTable): MaxpData {
-  const s = new MtxStream(table.buf, table.bufSize);
-  const version = s.readU32();
-  const numGlyphs = s.readU16();
-  let maxPoints = 0;
-  let maxContours = 0;
-  let maxSizeOfInstructions = 0;
-  let maxComponentElements = 0;
-  if (version === 65536) {
-    maxPoints = s.readU16();
-    maxContours = s.readU16();
-    s.seekRelative(16);
-    maxSizeOfInstructions = s.readU16();
-    maxComponentElements = s.readU16();
+function readCompositeGlyph(
+  box: [number, number, number, number],
+  rest: Reader,
+  push: Reader,
+  code: Reader,
+  limits: DecoderLimits,
+  glyphId: number,
+  writer: Writer,
+  scratch: GlyphScratch,
+): void {
+  writer.i16be(-1);
+  for (const value of box) writer.i16be(value);
+  let flags = MORE_COMPONENTS;
+  let components = 0;
+  while (flags & MORE_COMPONENTS) {
+    if (++components > limits.maxGlyphs)
+      fail("LIMIT_EXCEEDED", "Composite glyph has too many components");
+    flags = rest.u16be();
+    writer.u16be(flags);
+    writer.u16be(rest.u16be());
+    const argsBytes = flags & ARG_1_AND_2_ARE_WORDS ? 4 : 2;
+    writer.bytes(rest.bytes(argsBytes));
+    if (flags & WE_HAVE_A_TWO_BY_TWO) writer.bytes(rest.bytes(8));
+    else if (flags & WE_HAVE_AN_X_AND_Y_SCALE) writer.bytes(rest.bytes(4));
+    else if (flags & WE_HAVE_A_SCALE) writer.bytes(rest.bytes(2));
   }
-  return { numGlyphs, maxPoints, maxContours, maxSizeOfInstructions, maxComponentElements };
+  if (flags & WE_HAVE_INSTRUCTIONS) {
+    writeInstructions(rest, push, code, limits, glyphId, writer, scratch);
+  }
 }
 
-// ── CTF container parsing ───────────────────────────────────────────
-
-export function parseCTF(streams: MtxStream[]): CtfContainer {
-  const s0 = streams[0];
-  s0.readU32();
-  const numTables = s0.readU16();
-  s0.seekRelative(6);
-
-  const tables: CtfTable[] = [];
-  let glyfIdx = -1;
-  let locaIdx = -1;
-  let maxpIdx = -1;
-  let headIdx = -1;
-
-  for (let i = 0; i < numTables; i++) {
-    const t0 = s0.readU8();
-    const t1 = s0.readU8();
-    const t2 = s0.readU8();
-    const t3 = s0.readU8();
-    const tag = String.fromCharCode(t0, t1, t2, t3);
-    if (tag === "hdmx" || tag === "VDMX") {
-      s0.seekRelative(12);
-      continue;
-    }
-    s0.seekRelative(4);
-    const offset = s0.readU32();
-    const size = s0.readU32();
-    const table: CtfTable = { tag, offset, bufSize: size, buf: new Uint8Array(0), checksum: 0 };
-    const idx = tables.length;
-    tables.push(table);
-    if (tag === "glyf") glyfIdx = idx;
-    else if (tag === "loca") locaIdx = idx;
-    else if (tag === "maxp") maxpIdx = idx;
-    else if (tag === "head") headIdx = idx;
-  }
-
-  for (const table of tables) {
-    if (table.tag === "glyf" || table.tag === "loca") continue;
-    if (table.tag === "cvt ") {
-      unpackCVT(table, s0);
-      continue;
-    }
-    s0.seekAbsolute(table.offset);
-    s0.ensureRead(table.bufSize);
-    // Bulk copy (the original read byte-by-byte through readU8).
-    table.buf = s0.buf.slice(s0.pos, s0.pos + table.bufSize);
-    s0.pos += table.bufSize;
-    if (table.tag === "head") {
-      table.buf[8] = 0;
-      table.buf[9] = 0;
-      table.buf[10] = 0;
-      table.buf[11] = 0;
-    }
-  }
-
-  let headData: HeadData = { indexToLocFormat: 0 };
-  if (headIdx >= 0) headData = parseHead(tables[headIdx]);
-
-  let maxpData: MaxpData = {
-    numGlyphs: 0,
-    maxPoints: 0,
-    maxContours: 0,
-    maxSizeOfInstructions: 0,
-    maxComponentElements: 0,
+function reconstructGlyphs(
+  restData: Uint8Array,
+  glyf: DirectoryEntry,
+  pushData: Uint8Array,
+  codeData: Uint8Array,
+  glyphCount: number,
+  limits: DecoderLimits,
+): { glyf: Uint8Array; offsets: Uint32Array } {
+  const rest = new Reader(restData, glyf.offset, glyf.offset + glyf.length);
+  const push = new Reader(pushData);
+  const code = new Reader(codeData);
+  const writer = new Writer(Math.min(glyf.length * 2, limits.maxFontBytes));
+  const offsets = new Uint32Array(glyphCount + 1);
+  const scratch: GlyphScratch = {
+    x: new Int16Array(16),
+    y: new Int16Array(16),
+    rawFlags: new Uint8Array(16),
+    encodedFlags: new Uint8Array(16),
+    xData: new Uint8Array(32),
+    yData: new Uint8Array(32),
+    endPoints: new Uint16Array(8),
+    pushValues: new Int16Array(16),
   };
-  if (maxpIdx >= 0) maxpData = parseMaxp(tables[maxpIdx]);
 
-  if (glyfIdx >= 0) {
-    if (locaIdx < 0) {
-      locaIdx = tables.length;
-      tables.push({ tag: "loca", offset: 0, bufSize: 0, buf: new Uint8Array(0), checksum: 0 });
+  for (let glyphId = 0; glyphId < glyphCount; glyphId++) {
+    offsets[glyphId] = writer.length;
+    let numContours = rest.i16be();
+    if (numContours < 0) {
+      const box: [number, number, number, number] = [
+        rest.i16be(),
+        rest.i16be(),
+        rest.i16be(),
+        rest.i16be(),
+      ];
+      readCompositeGlyph(box, rest, push, code, limits, glyphId, writer, scratch);
+    } else {
+      let box: [number, number, number, number] | undefined;
+      if (numContours === 0x7fff) {
+        numContours = rest.i16be();
+        if (numContours < 0) fail("INVALID_CTF", "Invalid explicit simple-glyph contour count");
+        box = [rest.i16be(), rest.i16be(), rest.i16be(), rest.i16be()];
+      }
+      readSimpleGlyph(numContours, box, rest, push, code, limits, glyphId, writer, scratch);
     }
-    populateGlyfAndLoca(tables[glyfIdx], tables[locaIdx], headData, maxpData, streams);
+    if (writer.length & 1) writer.u8(0);
+    if (writer.length > limits.maxFontBytes)
+      fail("LIMIT_EXCEEDED", "Reconstructed glyf table exceeds configured limit");
+  }
+  offsets[glyphCount] = writer.length;
+  return { glyf: writer.finish(), offsets };
+}
+
+function makeLoca(offsets: Uint32Array, shortFormat: boolean): Uint8Array {
+  const writer = new Writer(offsets.length * (shortFormat ? 2 : 4));
+  for (const offset of offsets) {
+    if (shortFormat) writer.u16be(offset >>> 1);
+    else writer.u32be(offset);
+  }
+  return writer.finish();
+}
+
+export function parseCtf(
+  streams: readonly [Uint8Array, Uint8Array, Uint8Array],
+  limits: DecoderLimits,
+  onWarn?: (message: string) => void,
+): SfntContainer {
+  const restData = streams[0];
+  const directory = new Reader(restData);
+  const sfntVersion = directory.u32be();
+  const tableCount = directory.u16be();
+  if (tableCount === 0 || tableCount > limits.maxTables)
+    fail("LIMIT_EXCEEDED", `Invalid CTF table count ${tableCount}`);
+  directory.skip(6);
+  const entries: DirectoryEntry[] = [];
+  const byTag = new Map<string, DirectoryEntry>();
+  for (let i = 0; i < tableCount; i++) {
+    const tag = tagAt(restData, directory.pos);
+    // Tag lookups below take the last entry while the emit loop keeps every
+    // entry, so a duplicate would resolve head/glyf to one table yet write two
+    // directory records for it. validateSfnt does not check tag uniqueness.
+    if (byTag.has(tag)) fail("INVALID_CTF", `Duplicate CTF table tag ${tag}`);
+    directory.skip(4);
+    directory.u32be();
+    const offset = directory.u32be();
+    const length = directory.u32be();
+    const entry = { tag, offset, length };
+    entries.push(entry);
+    byTag.set(tag, entry);
   }
 
-  return { tables };
+  const headEntry = byTag.get("head");
+  const maxpEntry = byTag.get("maxp");
+  const glyfEntry = byTag.get("glyf");
+  const locaEntry = byTag.get("loca");
+  if (!headEntry || !maxpEntry || !glyfEntry || !locaEntry)
+    fail("INVALID_CTF", "CTF is missing head, maxp, glyf, or loca");
+  // head is the only table this rewrites, so it is the only one that needs its
+  // own storage; the rest stay views into the decompressed stream until
+  // buildSfnt copies them into the font.
+  const head = tableView(restData, headEntry).slice();
+  const maxp = tableView(restData, maxpEntry);
+  if (head.length < 54 || maxp.length < 6) fail("INVALID_CTF", "Malformed head or maxp table");
+  head.fill(0, 8, 12);
+  const glyphCount = new DataView(maxp.buffer, maxp.byteOffset, maxp.byteLength).getUint16(
+    4,
+    false,
+  );
+  if (glyphCount > limits.maxGlyphs) fail("LIMIT_EXCEEDED", `Font declares ${glyphCount} glyphs`);
+
+  const reconstructed = reconstructGlyphs(
+    restData,
+    glyfEntry,
+    streams[1],
+    streams[2],
+    glyphCount,
+    limits,
+  );
+  const oldLocaFormat = new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(
+    50,
+    false,
+  );
+  const isShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
+  new DataView(head.buffer, head.byteOffset, head.byteLength).setInt16(
+    50,
+    isShortLoca ? 0 : 1,
+    false,
+  );
+  const loca = makeLoca(reconstructed.offsets, isShortLoca);
+
+  const droppedTables: string[] = [];
+  const tables: SfntTable[] = [];
+  for (const entry of entries) {
+    let data: Uint8Array;
+    if (entry.tag === "glyf") data = reconstructed.glyf;
+    else if (entry.tag === "loca") data = loca;
+    else if (entry.tag === "head") data = head;
+    else if (entry.tag === "cvt ") data = decodeCvt(tableView(restData, entry));
+    else if (entry.tag === "hdmx" || entry.tag === "VDMX") {
+      droppedTables.push(entry.tag);
+      onWarn?.(`Dropped optional ${entry.tag} table; outlines and metrics remain usable.`);
+      continue;
+    } else data = tableView(restData, entry);
+    tables.push({ tag: entry.tag, data });
+  }
+  return { sfntVersion, tables, ...(droppedTables.length ? { droppedTables } : {}) };
 }

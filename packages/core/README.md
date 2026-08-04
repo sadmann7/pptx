@@ -66,7 +66,7 @@ Supported operations: `setTextRun`, `setTextBody`, `setNodeTransform`, `setSolid
 Font decoding (including MTX-compressed embedded fonts) lives in a separate entry point so it stays out of your bundle unless used:
 
 ```ts
-import { decompressMtx } from "@diceui/pptx-core/fonts";
+import { decodeEmbeddedFont } from "@diceui/pptx-core/fonts";
 ```
 
 ## OOXML support
@@ -75,4 +75,4 @@ See [OOXML-SUPPORT.md](https://github.com/sadmann7/pptx/blob/main/packages/core/
 
 ## License
 
-Apache-2.0. Portions derived from third-party projects; see [NOTICE](./NOTICE). Files under `LICENSES/` carry their respective licenses (MPL-2.0 for the MTX font decoder and predefined table styles).
+Apache-2.0. Portions derived from third-party projects; see [NOTICE](./NOTICE). Files under `LICENSES/` carry their respective licenses (MPL-2.0 for the predefined table styles).

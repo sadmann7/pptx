@@ -62,7 +62,6 @@
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
     "jsdom": "catalog:",
-    "mtx-decompressor": "^1.4.2",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

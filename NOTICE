@@ -9,14 +9,18 @@ Licensed under the Apache License, Version 2.0.
 The packages/core directory contains code originally derived from this work
 and has been substantially modified, extended, and refactored.
 -------------------------------------------------------------------------------
-mtx-decompressor
-https://github.com/ChristopherVR/mtx-decompressor
-Copyright (c) ChristopherVR
+MicroType Express (MTX) and Embedded OpenType (EOT)
+https://www.w3.org/Submission/2008/SUBM-MTX-20080305/
+https://www.w3.org/Submission/2008/SUBM-EOT-20080305/
 
-Licensed under the Mozilla Public License, Version 2.0.
-The packages/core/src/fonts/mtx directory contains code derived from this
-work; those files remain under the MPL-2.0 (see the license headers in each
-file).
+The embedded-font decoder in packages/core/src/fonts/mtx is an original
+implementation of these two W3C Member Submissions, written for this project
+and licensed under the Apache License, Version 2.0. W3C's standards-licensing
+page records Monotype Imaging's no-charge, royalty-free grant for implementing
+the MTX specification. See packages/core/src/fonts/mtx/PROVENANCE.md.
+
+MicroType is a trademark of Monotype Imaging. This project is not affiliated
+with or endorsed by Monotype Imaging, Microsoft, or W3C.
 -------------------------------------------------------------------------------
 LibreOffice
 https://www.libreoffice.org/

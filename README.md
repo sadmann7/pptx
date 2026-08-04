@@ -192,14 +192,15 @@ See [`packages/core/OOXML-SUPPORT.md`](./packages/core/OOXML-SUPPORT.md) for a d
 ## Credits
 
 - **[pptx-renderer](https://github.com/aiden0z/pptx-renderer)** (Apache-2.0): the parser was originally derived from this work and has been substantially modified, extended, and refactored.
-- **[mtx-decompressor](https://github.com/ChristopherVR/mtx-decompressor)** (MPL-2.0): the embedded font decoder (`packages/core/src/fonts/mtx/`) is derived from this library and optimized for our use case.
 - **[LibreOffice](https://www.libreoffice.org/)** (MPL-2.0): the predefined table style data (`packages/core/src/renderer/table-style.ts`) is derived from `predefined-table-styles.cxx`.
+
+The embedded font decoder (`packages/core/src/fonts/mtx/`) is an original implementation of the W3C [MTX](https://www.w3.org/Submission/2008/SUBM-MTX-20080305/) and [EOT](https://www.w3.org/Submission/2008/SUBM-EOT-20080305/) Member Submissions. See [`PROVENANCE.md`](./packages/core/src/fonts/mtx/PROVENANCE.md).
 
 ## License
 
 [Apache-2.0](./LICENSE), except for the files noted below.
 
-- The MTX font decoder (`packages/core/src/fonts/mtx/`) and the predefined table style data (`packages/core/src/renderer/table-style.ts`) stay under [MPL-2.0](./LICENSES/MPL-2.0.txt), as marked in their file headers.
+- The predefined table style data (`packages/core/src/renderer/table-style.ts`) stays under [MPL-2.0](./LICENSES/MPL-2.0.txt), as marked in its file header.
 - The fonts embedded in the sample decks under `apps/video/public/` and `packages/e2e/fixtures/` are licensed under [OFL-1.1](./LICENSES/OFL-1.1.txt).
 
 See [NOTICE](./NOTICE) for the full third-party attributions.

@@ -1,5 +1,5 @@
-﻿/**
- * Inject embedded PPTX fonts into the DOM.
+/**
+ * Load embedded PPTX fonts and register them with the document.
  *
  * Decompression (LZCOMP + adaptive Huffman per font part) is CPU-heavy, so
  * unique font parts are decoded in parallel across a Web Worker pool. The
@@ -21,10 +21,10 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 
-export interface FontInjectionHandle {
+export interface EmbeddedFontsHandle {
   /**
    * Resolves when the priority fonts are registered (or skipped). When no
    * `priorityTypefaces` were given, this waits for every embedded font.
@@ -35,7 +35,7 @@ export interface FontInjectionHandle {
   dispose(): void;
 }
 
-export interface InjectEmbeddedFontsOptions {
+export interface LoadEmbeddedFontsOptions {
   /**
    * Typeface names that block `ready`. Anything else decodes in the
    * background after them. Names must match `EmbeddedFontEntry.typeface`.
@@ -50,7 +50,7 @@ export interface InjectEmbeddedFontsOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-const MAX_WORKERS = 6;
+const MAX_WORKER_COUNT = 6;
 
 const VARIANTS: {
   key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
@@ -76,13 +76,6 @@ interface DecodeJob {
   fontKey?: string;
 }
 
-/** Yield to the event loop so rendering and input stay responsive. */
-function nextTick(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-// ── Worker pool ─────────────────────────────────────────────────────
-
 /**
  * Decode jobs across a Web Worker pool, invoking `onDecoded` as each result
  * arrives (in queue order per worker, priority jobs first in the queue).
@@ -101,7 +94,7 @@ async function decodeWithWorkerPool(
     typeof navigator !== "undefined" && navigator.hardwareConcurrency
       ? navigator.hardwareConcurrency
       : 4;
-  const poolSize = Math.max(1, Math.min(jobs.length, concurrency - 1, MAX_WORKERS));
+  const poolSize = Math.max(1, Math.min(jobs.length, concurrency - 1, MAX_WORKER_COUNT));
 
   const workers: Worker[] = [];
   for (let i = 0; i < poolSize; i++) {
@@ -125,7 +118,7 @@ async function decodeWithWorkerPool(
             const request: FontWorkerRequest = {
               path: job.path,
               // Copy: the original buffer stays usable by the rest of the app.
-              bytes: toStandaloneArrayBuffer(job.bytes),
+              bytes: copyToArrayBuffer(job.bytes),
               fontKey: job.fontKey,
             };
             worker.postMessage(request, [request.bytes]);
@@ -136,7 +129,7 @@ async function decodeWithWorkerPool(
             onDecoded(event.data.path, event.data.buffer);
             takeNext();
           };
-          // Fires when the worker script itself fails to load or crashes.
+          // Triggers when the worker script itself fails to load or crashes.
           // Stop using this worker; unfinished jobs fall back to the caller.
           worker.onerror = () => {
             resolve();
@@ -154,13 +147,11 @@ async function decodeWithWorkerPool(
   return decodedPaths;
 }
 
-// ── Public API ──────────────────────────────────────────────────────
-
-export function injectEmbeddedFonts(
+export function loadEmbeddedFonts(
   presentation: PresentationData,
-  options?: InjectEmbeddedFontsOptions,
-): FontInjectionHandle {
-  const noop: FontInjectionHandle = {
+  options?: LoadEmbeddedFontsOptions,
+): EmbeddedFontsHandle {
+  const noop: EmbeddedFontsHandle = {
     ready: Promise.resolve(),
     complete: Promise.resolve(),
     dispose() {},
@@ -269,8 +260,8 @@ export function injectEmbeddedFonts(
       if (disposed) return;
       if (decodedPaths.has(job.path)) continue;
       const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
-      onDecoded(job.path, decoded ? toStandaloneArrayBuffer(decoded) : null);
-      await nextTick();
+      onDecoded(job.path, decoded ? copyToArrayBuffer(decoded) : null);
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     await Promise.all(registrations);
@@ -293,20 +284,23 @@ export function injectEmbeddedFonts(
 }
 
 /**
- * Match raw OOXML part sources (a slide plus its layout/master, which text
- * inherits typefaces from) against the deck's embedded typefaces, returning
- * the set actually referenced. Theme major/minor fonts are always included,
- * since text reaches them via `+mj-lt`/`+mn-lt` references.
+ * Pick out the embedded typefaces that the given slides actually reference,
+ * for use as `priorityTypefaces`.
  *
- * Used to prioritize first-slide fonts so `ready` does not wait for every
- * embedded family in the deck. Late fonts still swap in when registered.
+ * `slideXml` holds the raw OOXML of the slides about to be shown, each
+ * accompanied by its layout and master, since text inherits typefaces from
+ * those. Theme major/minor fonts are always included, because text reaches
+ * them indirectly via `+mj-lt`/`+mn-lt` references rather than by name.
+ *
+ * Prioritizing these keeps `ready` from waiting on every embedded family in
+ * the deck. The rest still swap in once they are registered.
  */
-export function collectPriorityTypefaces(
+export function findPriorityTypefaces(
   presentation: PresentationData,
-  sources: ReadonlyArray<string | undefined>,
+  slideXml: ReadonlyArray<string | undefined>,
 ): Set<string> | undefined {
   const embedded = presentation.embeddedFonts;
-  const xmlSources = sources.filter((s): s is string => !!s);
+  const xmlSources = slideXml.filter((xml): xml is string => !!xml);
   if (!embedded || embedded.length === 0 || xmlSources.length === 0) return undefined;
 
   const priority = new Set<string>();
