@@ -8,5 +8,5 @@
 
 export { decodeEmbeddedFont } from "./decode";
 export { deobfuscateFont } from "./deobfuscate";
-export { collectPriorityTypefaces, injectEmbeddedFonts } from "./injector";
-export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./injector";
+export { findPriorityTypefaces, loadEmbeddedFonts } from "./loader";
+export type { EmbeddedFontsHandle, LoadEmbeddedFontsOptions } from "./loader";

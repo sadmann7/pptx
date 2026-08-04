@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decodeEmbeddedFont } from "../../fonts/decode";
-import { decompressMtx, MtxError, parseEotMetadata } from "../../fonts/mtx";
+import { decodeMtx, MtxError, parseEotMetadata } from "../../fonts/mtx";
 import { Reader } from "../../fonts/mtx/binary";
 import { DEFAULT_LIMITS } from "../../fonts/mtx/limits";
 import { AdaptiveHuffman, BitReader, decompressLzcomp } from "../../fonts/mtx/lzcomp";
@@ -344,7 +344,7 @@ describe("MTX container", () => {
   it("rejects an unknown container version", () => {
     const streams = buildCtfStreams(FONT).map((stream) => encodeLzcompGreedy(stream));
     const mtx = buildMtx(streams as [Uint8Array, Uint8Array, Uint8Array], 2);
-    expect(() => decompressMtx(mtx)).toThrow(/Unsupported MTX version 2/u);
+    expect(() => decodeMtx(mtx)).toThrow(/Unsupported MTX version 2/u);
   });
 
   it("undoes XOR obfuscation of the payload", () => {
@@ -382,7 +382,7 @@ describe("EOT container", () => {
 
   it("passes an uncompressed payload straight through", () => {
     const streams = buildCtfStreams(FONT);
-    const font = decompressMtx(streams[0], { compressed: false });
+    const font = decodeMtx(streams[0], { compressed: false });
     expect(font).toEqual(streams[0]);
   });
 });

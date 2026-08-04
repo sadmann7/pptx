@@ -5,7 +5,7 @@
  * as a transferable ArrayBuffer (or `null` when decoding fails).
  */
 
-import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
 
 export interface FontWorkerRequest {
   path: string;
@@ -28,7 +28,7 @@ workerScope.onmessage = (event) => {
   try {
     const decoded = decodeEmbeddedFont(new Uint8Array(bytes), fontKey);
     if (decoded && decoded.length > 0) {
-      const buffer = toStandaloneArrayBuffer(decoded);
+      const buffer = copyToArrayBuffer(decoded);
       workerScope.postMessage({ path, buffer }, [buffer]);
     } else {
       workerScope.postMessage({ path, buffer: null });

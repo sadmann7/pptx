@@ -1,5 +1,5 @@
-﻿/**
- * Inject embedded PPTX fonts into the DOM.
+/**
+ * Load embedded PPTX fonts and register them with the document.
  *
  * Decompression (LZCOMP + adaptive Huffman per font part) is CPU-heavy, so
  * unique font parts are decoded in parallel across a Web Worker pool. The
@@ -21,10 +21,10 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { decodeEmbeddedFont, toStandaloneArrayBuffer } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 
-export interface FontInjectionHandle {
+export interface EmbeddedFontsHandle {
   /**
    * Resolves when the priority fonts are registered (or skipped). When no
    * `priorityTypefaces` were given, this waits for every embedded font.
@@ -35,7 +35,7 @@ export interface FontInjectionHandle {
   dispose(): void;
 }
 
-export interface InjectEmbeddedFontsOptions {
+export interface LoadEmbeddedFontsOptions {
   /**
    * Typeface names that block `ready`. Anything else decodes in the
    * background after them. Names must match `EmbeddedFontEntry.typeface`.
@@ -125,7 +125,7 @@ async function decodeWithWorkerPool(
             const request: FontWorkerRequest = {
               path: job.path,
               // Copy: the original buffer stays usable by the rest of the app.
-              bytes: toStandaloneArrayBuffer(job.bytes),
+              bytes: copyToArrayBuffer(job.bytes),
               fontKey: job.fontKey,
             };
             worker.postMessage(request, [request.bytes]);
@@ -156,11 +156,11 @@ async function decodeWithWorkerPool(
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function injectEmbeddedFonts(
+export function loadEmbeddedFonts(
   presentation: PresentationData,
-  options?: InjectEmbeddedFontsOptions,
-): FontInjectionHandle {
-  const noop: FontInjectionHandle = {
+  options?: LoadEmbeddedFontsOptions,
+): EmbeddedFontsHandle {
+  const noop: EmbeddedFontsHandle = {
     ready: Promise.resolve(),
     complete: Promise.resolve(),
     dispose() {},
@@ -269,7 +269,7 @@ export function injectEmbeddedFonts(
       if (disposed) return;
       if (decodedPaths.has(job.path)) continue;
       const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
-      onDecoded(job.path, decoded ? toStandaloneArrayBuffer(decoded) : null);
+      onDecoded(job.path, decoded ? copyToArrayBuffer(decoded) : null);
       await nextTick();
     }
 
@@ -293,20 +293,23 @@ export function injectEmbeddedFonts(
 }
 
 /**
- * Match raw OOXML part sources (a slide plus its layout/master, which text
- * inherits typefaces from) against the deck's embedded typefaces, returning
- * the set actually referenced. Theme major/minor fonts are always included,
- * since text reaches them via `+mj-lt`/`+mn-lt` references.
+ * Pick out the embedded typefaces that the given slides actually reference,
+ * for use as `priorityTypefaces`.
  *
- * Used to prioritize first-slide fonts so `ready` does not wait for every
- * embedded family in the deck. Late fonts still swap in when registered.
+ * `slideXml` holds the raw OOXML of the slides about to be shown, each
+ * accompanied by its layout and master, since text inherits typefaces from
+ * those. Theme major/minor fonts are always included, because text reaches
+ * them indirectly via `+mj-lt`/`+mn-lt` references rather than by name.
+ *
+ * Prioritizing these keeps `ready` from waiting on every embedded family in
+ * the deck. The rest still swap in once they are registered.
  */
-export function collectPriorityTypefaces(
+export function findPriorityTypefaces(
   presentation: PresentationData,
-  sources: ReadonlyArray<string | undefined>,
+  slideXml: ReadonlyArray<string | undefined>,
 ): Set<string> | undefined {
   const embedded = presentation.embeddedFonts;
-  const xmlSources = sources.filter((s): s is string => !!s);
+  const xmlSources = slideXml.filter((xml): xml is string => !!xml);
   if (!embedded || embedded.length === 0 || xmlSources.length === 0) return undefined;
 
   const priority = new Set<string>();

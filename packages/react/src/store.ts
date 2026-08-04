@@ -1,7 +1,7 @@
 import type {
   EditOperation,
   EditResult,
-  FontInjectionHandle,
+  EmbeddedFontsHandle,
   PptxSaveOptions,
   PresentationData,
   SlideData,
@@ -379,7 +379,7 @@ export function createStore(): Store {
   let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
   let loadGeneration = 0;
-  let fontInjection: FontInjectionHandle | undefined;
+  let embeddedFonts: EmbeddedFontsHandle | undefined;
 
   let slideIndexById = new Map<string, number>();
 
@@ -436,8 +436,8 @@ export function createStore(): Store {
     loadGeneration += 1;
     const gen = loadGeneration;
 
-    fontInjection?.dispose();
-    fontInjection = undefined;
+    embeddedFonts?.dispose();
+    embeddedFonts = undefined;
     clearEditHistory();
     replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
 
@@ -505,7 +505,7 @@ export function createStore(): Store {
       // pipeline is a lazily imported chunk; decks without embedded fonts
       // (or embedFonts: false) never fetch it.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
-        const { collectPriorityTypefaces, injectEmbeddedFonts } =
+        const { findPriorityTypefaces, loadEmbeddedFonts } =
           await import("@diceui/pptx-core/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
@@ -519,15 +519,15 @@ export function createStore(): Store {
         const fontBaseUnits = workDone;
         workTotal += fontUnits;
 
-        const priorityTypefaces = collectPriorityTypefaces(presentation, [startSlideXml]);
-        fontInjection = injectEmbeddedFonts(presentation, {
+        const priorityTypefaces = findPriorityTypefaces(presentation, [startSlideXml]);
+        embeddedFonts = loadEmbeddedFonts(presentation, {
           priorityTypefaces,
           onProgress: (done, total) => {
             workDone = fontBaseUnits + fontUnits * (done / total);
             reportProgress();
           },
         });
-        await fontInjection.complete;
+        await embeddedFonts.complete;
         if (gen !== loadGeneration) throw ABORT_ERROR;
       }
 
@@ -645,8 +645,8 @@ export function createStore(): Store {
 
   function reset(): void {
     loadGeneration += 1;
-    fontInjection?.dispose();
-    fontInjection = undefined;
+    embeddedFonts?.dispose();
+    embeddedFonts = undefined;
     clearEditHistory();
     replaceState({ ...DEFAULT_STORE_STATE });
   }

@@ -29,13 +29,10 @@ export interface UnpackedMtx {
   sizes: [number, number, number];
 }
 
-export function unpackMtx(
-  data: Uint8Array,
-  size = data.length,
-  limitOverrides?: Partial<DecoderLimits>,
-): UnpackedMtx {
-  if (!Number.isSafeInteger(size) || size < 10 || size > data.length)
-    fail("INVALID_MTX", "Invalid MTX size");
+/** Decompress the three LZCOMP blocks of an MTX payload into CTF streams. */
+export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): UnpackedMtx {
+  const size = data.length;
+  if (size < 10) fail("INVALID_MTX", "Invalid MTX size");
   const reader = new Reader(data, 0, size);
   const version = reader.u8();
   // Version 3 is MTX 1.0. Version 1 predates the run-length flag bit and is
@@ -46,29 +43,33 @@ export function unpackMtx(
   const offset3 = reader.u24be();
   if (offset2 < 10 || offset3 < offset2 || offset3 > size)
     fail("INVALID_MTX", "Invalid MTX block offsets");
-  const limits = resolveLimits(limitOverrides);
+  const resolved = resolveLimits(limits);
   const compressed: [Uint8Array, Uint8Array, Uint8Array] = [
     data.subarray(10, offset2),
     data.subarray(offset2, offset3),
     data.subarray(offset3, size),
   ];
   const streams = compressed.map((block) =>
-    decompressLzcomp(block, version, limits),
+    decompressLzcomp(block, version, resolved),
   ) as UnpackedMtx["streams"];
   return { streams, sizes: [streams[0].length, streams[1].length, streams[2].length] };
 }
 
-export function decompressMtx(fontData: Uint8Array, options: DecodeOptions = {}): Uint8Array {
+/**
+ * Turn the font-data block of an EOT into an sfnt. An uncompressed block is
+ * already one, so it is deobfuscated if needed and returned untouched.
+ */
+export function decodeMtx(data: Uint8Array, options: DecodeOptions = {}): Uint8Array {
   const encrypted = options.encrypted ?? false;
   const compressed = options.compressed ?? true;
-  let data = fontData;
+  let decrypted = data;
   if (encrypted) {
-    data = fontData.slice();
-    for (let i = 0; i < data.length; i++) data[i] = data[i]! ^ 0x50;
+    decrypted = data.slice();
+    for (let i = 0; i < decrypted.length; i++) decrypted[i] = decrypted[i]! ^ 0x50;
   }
-  if (!compressed) return data;
+  if (!compressed) return decrypted;
   const limits = resolveLimits(options.limits);
-  const unpacked = unpackMtx(data, data.length, limits);
+  const unpacked = unpackMtx(decrypted, limits);
   const container = parseCtf(unpacked.streams, limits, options.onWarn);
   const font = buildSfnt(container, limits.maxFontBytes);
   validateSfnt(font);
@@ -76,12 +77,12 @@ export function decompressMtx(fontData: Uint8Array, options: DecodeOptions = {})
 }
 
 export function eotToTtf(
-  bytes: Uint8Array,
+  data: Uint8Array,
   options: Omit<DecodeOptions, "compressed" | "encrypted"> = {},
 ): Uint8Array {
-  const metadata = parseEotMetadata(bytes);
+  const metadata = parseEotMetadata(data);
   const end = metadata.fontDataOffset + metadata.fontDataSize;
-  return decompressMtx(bytes.subarray(metadata.fontDataOffset, end), {
+  return decodeMtx(data.subarray(metadata.fontDataOffset, end), {
     ...options,
     compressed: metadata.compressed,
     encrypted: metadata.encrypted,

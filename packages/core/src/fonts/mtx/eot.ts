@@ -50,8 +50,8 @@ function readString(reader: Reader): string {
   return decodeUtf16(reader.bytes(size));
 }
 
-function parseTail(bytes: Uint8Array, start: number, end: number, version: EotVersion): string {
-  const reader = new Reader(bytes, start, end);
+function parseTail(data: Uint8Array, start: number, end: number, version: EotVersion): string {
+  const reader = new Reader(data, start, end);
   let rootString = "";
   if (version >= 2) {
     reader.u16le();
@@ -71,9 +71,9 @@ function parseTail(bytes: Uint8Array, start: number, end: number, version: EotVe
   return rootString;
 }
 
-export function parseEotMetadata(bytes: Uint8Array): EotMetadata {
-  const reader = new Reader(bytes);
-  if (bytes.length < 82) fail("INVALID_EOT", "EOT header is truncated");
+export function parseEotMetadata(data: Uint8Array): EotMetadata {
+  const reader = new Reader(data);
+  if (data.length < 82) fail("INVALID_EOT", "EOT header is truncated");
   const totalSize = reader.u32le();
   const fontDataSize = reader.u32le();
   const rawVersion = reader.u32le();
@@ -105,7 +105,7 @@ export function parseEotMetadata(bytes: Uint8Array): EotMetadata {
   reader.u16le();
   const fullName = readString(reader);
 
-  if (totalSize > bytes.length || totalSize < fontDataSize || fontDataSize === 0) {
+  if (totalSize > data.length || totalSize < fontDataSize || fontDataSize === 0) {
     fail("INVALID_EOT", "Inconsistent EOT or FontData size");
   }
   const fontDataOffset = totalSize - fontDataSize;
@@ -119,7 +119,7 @@ export function parseEotMetadata(bytes: Uint8Array): EotMetadata {
   for (const candidate of [declaredVersion, 1, 2, 3] as const) {
     if (parsedVersion) break;
     try {
-      rootString = parseTail(bytes, reader.pos, fontDataOffset, candidate);
+      rootString = parseTail(data, reader.pos, fontDataOffset, candidate);
       parsedVersion = candidate;
     } catch {
       // Fall through to the next known layout.

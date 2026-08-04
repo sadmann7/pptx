@@ -87,4 +87,4 @@ export type { ThemeData } from "./model/theme";
 export type { PptxFiles } from "./ooxml/zip";
 
 // Font decode lives in "@diceui/pptx-core/fonts"; only the handle type is re-exported here.
-export type { FontInjectionHandle, InjectEmbeddedFontsOptions } from "./fonts/injector";
+export type { EmbeddedFontsHandle, LoadEmbeddedFontsOptions } from "./fonts/loader";

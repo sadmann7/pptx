@@ -32,10 +32,10 @@ function isRawFont(data: Uint8Array): boolean {
  * Decode one embedded font part into a raw TrueType/OpenType binary.
  * Returns `undefined` when the data cannot be decoded.
  */
-export function decodeEmbeddedFont(raw: Uint8Array, fontKey?: string): Uint8Array | undefined {
-  if (raw.length === 0) return undefined;
+export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Array | undefined {
+  if (part.length === 0) return undefined;
 
-  const data = fontKey ? deobfuscateFont(raw, fontKey) : raw;
+  const data = fontKey ? deobfuscateFont(part, fontKey) : part;
 
   if (isRawFont(data)) return data;
 
@@ -49,7 +49,10 @@ export function decodeEmbeddedFont(raw: Uint8Array, fontKey?: string): Uint8Arra
   }
 }
 
-/** Copy a Uint8Array's contents into a standalone ArrayBuffer. */
-export function toStandaloneArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+/**
+ * Copy the bytes into an ArrayBuffer of their own, detached from any larger
+ * buffer they were a view into, so it can be transferred to a worker.
+ */
+export function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
