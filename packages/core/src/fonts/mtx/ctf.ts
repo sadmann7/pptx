@@ -350,13 +350,13 @@ export function parseCtf(
     50,
     false,
   );
-  const useShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
+  const isShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
   new DataView(head.buffer, head.byteOffset, head.byteLength).setInt16(
     50,
-    useShortLoca ? 0 : 1,
+    isShortLoca ? 0 : 1,
     false,
   );
-  const loca = makeLoca(reconstructed.offsets, useShortLoca);
+  const loca = makeLoca(reconstructed.offsets, isShortLoca);
 
   const droppedTables: string[] = [];
   const tables: SfntTable[] = [];
