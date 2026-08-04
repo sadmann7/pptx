@@ -248,7 +248,7 @@ export function decompressLzcomp(
   limits: DecoderLimits,
 ): Uint8Array {
   const bits = new BitReader(input);
-  const runLengthEncoded = version === 1 ? false : bits.bit() !== 0;
+  const isRunLengthEncoded = version === 1 ? false : bits.bit() !== 0;
   const encodedLength = bits.bits(24);
   if (encodedLength > limits.maxStreamBytes) {
     fail("LIMIT_EXCEEDED", `LZCOMP stream declares ${encodedLength} bytes`);
@@ -323,5 +323,5 @@ export function decompressLzcomp(
   }
 
   const decoded = history.slice(PRELOAD_SIZE);
-  return runLengthEncoded ? expandRunLength(decoded, limits.maxExpandedStreamBytes) : decoded;
+  return isRunLengthEncoded ? expandRunLength(decoded, limits.maxExpandedStreamBytes) : decoded;
 }
