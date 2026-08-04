@@ -306,6 +306,10 @@ export function parseCtf(
   const byTag = new Map<string, DirectoryEntry>();
   for (let i = 0; i < tableCount; i++) {
     const tag = tagAt(restData, directory.pos);
+    // Tag lookups below take the last entry while the emit loop keeps every
+    // entry, so a duplicate would resolve head/glyf to one table yet write two
+    // directory records for it. validateSfnt does not check tag uniqueness.
+    if (byTag.has(tag)) fail("INVALID_CTF", `Duplicate CTF table tag ${tag}`);
     directory.skip(4);
     directory.u32be();
     const offset = directory.u32be();

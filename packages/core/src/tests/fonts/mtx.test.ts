@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decodeEmbeddedFont } from "../../fonts/decode";
-import { decodeMtx, MtxError, parseEotMetadata } from "../../fonts/mtx";
+import { decodeMtx, MtxError, parseCtf, parseEotMetadata } from "../../fonts/mtx";
 import { Reader } from "../../fonts/mtx/binary";
 import { DEFAULT_LIMITS } from "../../fonts/mtx/limits";
 import { AdaptiveHuffman, BitReader, decompressLzcomp } from "../../fonts/mtx/lzcomp";
@@ -332,6 +332,19 @@ describe("CTF reconstruction", () => {
     expect(glyf.length).toBeGreaterThan(0xffff * 2);
     expect(big.indexToLocFormat).toBe(1);
     expect(big.locaOffsets.at(-1)).toBe(glyf.length);
+  });
+});
+
+describe("CTF table directory", () => {
+  it("rejects a duplicated table tag", () => {
+    // Tag lookups take the last entry while every entry is emitted, so a
+    // duplicate would otherwise yield two directory records for one table --
+    // malformed output that validateSfnt still accepts.
+    // A passthrough table keeps the rest of the parse healthy, so the
+    // duplicate itself is the only thing under test.
+    const gasp = { tag: "gasp", data: Uint8Array.of(0, 0, 0, 1, 0xff, 0xff, 0, 2) };
+    const streams = buildCtfStreams({ ...FONT, extraTables: [gasp, gasp] });
+    expect(() => parseCtf(streams, LIMITS)).toThrow(/Duplicate CTF table tag gasp/u);
   });
 });
 
