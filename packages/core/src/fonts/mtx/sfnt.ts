@@ -1,5 +1,5 @@
-import { checksum, tagBytes, Writer } from "./binary";
-import { fail } from "./errors";
+import { Writer } from "./binary";
+import { fail } from "./error";
 
 export interface SfntTable {
   tag: string;
@@ -12,6 +12,40 @@ export interface SfntContainer {
   sfntVersion: number;
   tables: SfntTable[];
   droppedTables?: string[];
+}
+
+export function tagAt(data: Uint8Array, offset: number): string {
+  if (offset < 0 || offset + 4 > data.length) fail("BOUNDS", "Tag outside input", offset);
+  return String.fromCharCode(
+    data[offset]!,
+    data[offset + 1]!,
+    data[offset + 2]!,
+    data[offset + 3]!,
+  );
+}
+
+export function tagBytes(tag: string): Uint8Array {
+  if (tag.length !== 4) throw new TypeError("SFNT tags must contain four characters");
+  return Uint8Array.from([
+    tag.charCodeAt(0),
+    tag.charCodeAt(1),
+    tag.charCodeAt(2),
+    tag.charCodeAt(3),
+  ]);
+}
+
+/** Sum of the data as big-endian uint32 words, zero-padded to a word boundary. */
+export function checksum(data: Uint8Array): number {
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const word =
+      (data[i] ?? 0) * 0x1000000 +
+      ((data[i + 1] ?? 0) << 16) +
+      ((data[i + 2] ?? 0) << 8) +
+      (data[i + 3] ?? 0);
+    sum = (sum + word) >>> 0;
+  }
+  return sum;
 }
 
 function highestPowerOfTwo(value: number): number {

@@ -1,9 +1,11 @@
-import { Reader, tagAt, Writer } from "./binary";
-import { decodeCvt, encodePushInstructions, read255UShort, readPushValues } from "./ctf-values";
-import { fail } from "./errors";
-import type { DecoderLimits } from "./options";
-import type { SfntContainer, SfntTable } from "./sfnt";
-import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplets";
+import { Reader, Writer } from "./binary";
+import { decodeCvt } from "./cvt";
+import { fail } from "./error";
+import type { DecoderLimits } from "./limits";
+import { encodePushInstructions, readPushValues } from "./push";
+import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
+import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
+import { read255UShort } from "./varint";
 
 interface DirectoryEntry {
   tag: string;

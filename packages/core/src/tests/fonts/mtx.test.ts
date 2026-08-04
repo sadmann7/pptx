@@ -12,9 +12,9 @@ import { describe, expect, it } from "vitest";
 import { decodeEmbeddedFont } from "../../fonts/decode";
 import { decompressMtx, MtxError, parseEotMetadata } from "../../fonts/mtx";
 import { Reader } from "../../fonts/mtx/binary";
+import { DEFAULT_LIMITS } from "../../fonts/mtx/limits";
 import { AdaptiveHuffman, BitReader, decompressLzcomp } from "../../fonts/mtx/lzcomp";
-import { DEFAULT_LIMITS } from "../../fonts/mtx/options";
-import { decodeTripletArrays } from "../../fonts/mtx/triplets";
+import { decodeTripletArrays } from "../../fonts/mtx/triplet";
 import {
   buildCompressedEot,
   buildCtfStreams,

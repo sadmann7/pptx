@@ -9,10 +9,20 @@ import {
   type EotMetadata,
   type EotVersion,
 } from "./eot";
-import { fail, MtxError, type MtxErrorCode } from "./errors";
+import { fail, MtxError, type MtxErrorCode } from "./error";
+import { resolveLimits, type DecoderLimits } from "./limits";
 import { decompressLzcomp } from "./lzcomp";
-import { resolveLimits, type DecodeOptions, type DecoderLimits } from "./options";
 import { buildSfnt, validateSfnt, type SfntContainer, type SfntTable } from "./sfnt";
+
+export interface DecodeOptions {
+  /** Undo the EOT XOR obfuscation before unpacking. */
+  encrypted?: boolean;
+  /** Whether the payload is MTX-compressed rather than a raw sfnt. */
+  compressed?: boolean;
+  limits?: Partial<DecoderLimits>;
+  /** Called when the decoder drops something recoverable, such as `hdmx`. */
+  onWarn?: (message: string) => void;
+}
 
 export interface UnpackedMtx {
   streams: [Uint8Array, Uint8Array, Uint8Array];
@@ -88,12 +98,4 @@ export {
   TTEMBED_XORENCRYPTDATA,
   validateSfnt,
 };
-export type {
-  DecodeOptions,
-  DecoderLimits,
-  EotMetadata,
-  EotVersion,
-  MtxErrorCode,
-  SfntContainer,
-  SfntTable,
-};
+export type { DecoderLimits, EotMetadata, EotVersion, MtxErrorCode, SfntContainer, SfntTable };

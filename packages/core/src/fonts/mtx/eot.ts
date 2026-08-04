@@ -1,5 +1,5 @@
 import { Reader } from "./binary";
-import { fail } from "./errors";
+import { fail } from "./error";
 
 export const TTEMBED_SUBSET = 0x00000001;
 export const TTEMBED_TTCOMPRESSED = 0x00000004;

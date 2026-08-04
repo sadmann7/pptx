@@ -1,5 +1,5 @@
 import { Reader } from "./binary";
-import { fail } from "./errors";
+import { fail } from "./error";
 
 export interface GlyphPoint {
   x: number;

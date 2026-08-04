@@ -11,7 +11,7 @@
  */
 
 import { AdaptiveHuffman } from "../../fonts/mtx/lzcomp";
-import { tripletEncoding } from "../../fonts/mtx/triplets";
+import { tripletEncoding } from "../../fonts/mtx/triplet";
 
 // ── Bit output ──────────────────────────────────────────────────────
 

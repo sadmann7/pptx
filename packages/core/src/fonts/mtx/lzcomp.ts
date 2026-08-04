@@ -1,5 +1,5 @@
-import { fail } from "./errors";
-import type { DecoderLimits } from "./options";
+import { fail } from "./error";
+import type { DecoderLimits } from "./limits";
 
 const PRELOAD_SIZE = 2 * 32 * 96 + 4 * 256;
 

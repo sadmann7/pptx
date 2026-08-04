@@ -1,3 +1,10 @@
+/**
+ * Resource ceilings applied while decoding.
+ *
+ * A malformed container can declare enormous sizes long before it produces
+ * any output, so every allocation the decoder makes is checked against these
+ * first.
+ */
 export interface DecoderLimits {
   /** Maximum size of any individual decompressed LZCOMP stream. */
   maxStreamBytes: number;
@@ -21,13 +28,7 @@ export const DEFAULT_LIMITS: Readonly<DecoderLimits> = Object.freeze({
   maxInstructionsPerGlyph: 1_000_000,
 });
 
-export interface DecodeOptions {
-  encrypted?: boolean;
-  compressed?: boolean;
-  limits?: Partial<DecoderLimits>;
-  onWarn?: (message: string) => void;
-}
-
+/** Fill in the defaults for any limit a caller left out, rejecting nonsense. */
 export function resolveLimits(input?: Partial<DecoderLimits>): DecoderLimits {
   const limits = { ...DEFAULT_LIMITS, ...input };
   for (const [name, value] of Object.entries(limits)) {
