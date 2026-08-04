@@ -50,7 +50,7 @@ export interface LoadEmbeddedFontsOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-const MAX_WORKERS = 6;
+const MAX_WORKER_COUNT = 6;
 
 const VARIANTS: {
   key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
@@ -76,13 +76,6 @@ interface DecodeJob {
   fontKey?: string;
 }
 
-/** Yield to the event loop so rendering and input stay responsive. */
-function nextTick(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-// ── Worker pool ─────────────────────────────────────────────────────
-
 /**
  * Decode jobs across a Web Worker pool, invoking `onDecoded` as each result
  * arrives (in queue order per worker, priority jobs first in the queue).
@@ -101,7 +94,7 @@ async function decodeWithWorkerPool(
     typeof navigator !== "undefined" && navigator.hardwareConcurrency
       ? navigator.hardwareConcurrency
       : 4;
-  const poolSize = Math.max(1, Math.min(jobs.length, concurrency - 1, MAX_WORKERS));
+  const poolSize = Math.max(1, Math.min(jobs.length, concurrency - 1, MAX_WORKER_COUNT));
 
   const workers: Worker[] = [];
   for (let i = 0; i < poolSize; i++) {
@@ -136,7 +129,7 @@ async function decodeWithWorkerPool(
             onDecoded(event.data.path, event.data.buffer);
             takeNext();
           };
-          // Fires when the worker script itself fails to load or crashes.
+          // Triggers when the worker script itself fails to load or crashes.
           // Stop using this worker; unfinished jobs fall back to the caller.
           worker.onerror = () => {
             resolve();
@@ -153,8 +146,6 @@ async function decodeWithWorkerPool(
 
   return decodedPaths;
 }
-
-// ── Public API ──────────────────────────────────────────────────────
 
 export function loadEmbeddedFonts(
   presentation: PresentationData,
@@ -270,7 +261,7 @@ export function loadEmbeddedFonts(
       if (decodedPaths.has(job.path)) continue;
       const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
       onDecoded(job.path, decoded ? copyToArrayBuffer(decoded) : null);
-      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     await Promise.all(registrations);
