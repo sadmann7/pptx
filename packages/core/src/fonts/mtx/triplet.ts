@@ -18,16 +18,21 @@ interface Encoding {
 }
 
 const BYTE_COUNT = new Uint8Array(128);
-const X_BITS = new Uint8Array(128);
-const Y_BITS = new Uint8Array(128);
+const X_SHIFT = new Uint8Array(128);
+const Y_SHIFT = new Uint8Array(128);
+const X_MASK = new Uint16Array(128);
+const Y_MASK = new Uint16Array(128);
 const DELTA_X = new Uint16Array(128);
 const DELTA_Y = new Uint16Array(128);
 const SIGNS = new Uint8Array(128); // bit 0 = negative x, bit 1 = negative y
 
 function setEncoding(index: number, encoding: Encoding): void {
   BYTE_COUNT[index] = encoding.bytes;
-  X_BITS[index] = encoding.xBits;
-  Y_BITS[index] = encoding.yBits;
+  const totalBits = (encoding.bytes - 1) * 8;
+  X_SHIFT[index] = totalBits - encoding.xBits;
+  Y_SHIFT[index] = totalBits - encoding.xBits - encoding.yBits;
+  X_MASK[index] = encoding.xBits === 0 ? 0 : 2 ** encoding.xBits - 1;
+  Y_MASK[index] = encoding.yBits === 0 ? 0 : 2 ** encoding.yBits - 1;
   DELTA_X[index] = encoding.deltaX;
   DELTA_Y[index] = encoding.deltaY;
   SIGNS[index] = (encoding.xNegative ? 1 : 0) | (encoding.yNegative ? 2 : 0);
@@ -128,26 +133,27 @@ export function decodeTripletArrays(
   let yMin = 0;
   let xMax = 0;
   let yMax = 0;
+  // Bounds are checked once per point against a local cursor rather than once
+  // per byte through the reader.
+  const data = reader.data;
+  const end = reader.end;
+  let pos = reader.pos;
   for (let i = 0; i < flags.length; i++) {
     const flag = flags[i]!;
     const index = flag & 0x7f;
     const byteCount = BYTE_COUNT[index]!;
-    const xBits = X_BITS[index]!;
-    const yBits = Y_BITS[index]!;
+    if (pos + byteCount - 1 > end) fail("BOUNDS", "Unexpected end of triplet data", pos);
     let packed = 0;
-    for (let j = 1; j < byteCount; j++) packed = packed * 256 + reader.u8();
-    const totalBits = (byteCount - 1) * 8;
-    const xMask = xBits === 0 ? 0 : 2 ** xBits - 1;
-    const yMask = yBits === 0 ? 0 : 2 ** yBits - 1;
-    let dx = ((packed >>> (totalBits - xBits)) & xMask) + DELTA_X[index]!;
-    let dy = ((packed >>> (totalBits - xBits - yBits)) & yMask) + DELTA_Y[index]!;
+    for (let j = 1; j < byteCount; j++) packed = packed * 256 + data[pos++]!;
+    let dx = ((packed >>> X_SHIFT[index]!) & X_MASK[index]!) + DELTA_X[index]!;
+    let dy = ((packed >>> Y_SHIFT[index]!) & Y_MASK[index]!) + DELTA_Y[index]!;
     const signs = SIGNS[index]!;
     if (signs & 1) dx = -dx;
     if (signs & 2) dy = -dy;
     x += dx;
     y += dy;
     if (x < -32768 || x > 32767 || y < -32768 || y > 32767) {
-      fail("INVALID_CTF", "Glyph coordinate exceeds TrueType range", reader.pos);
+      fail("INVALID_CTF", "Glyph coordinate exceeds TrueType range", pos);
     }
     xs[i] = x;
     ys[i] = y;
@@ -163,5 +169,6 @@ export function decodeTripletArrays(
       if (y > yMax) yMax = y;
     }
   }
+  reader.pos = pos;
   return { x: xs, y: ys, length: flags.length, box: [xMin, yMin, xMax, yMax] };
 }

@@ -2,7 +2,7 @@ import { Reader, Writer } from "./binary";
 import { decodeCvt } from "./cvt";
 import { fail } from "./error";
 import type { DecoderLimits } from "./limits";
-import { encodePushInstructions, readPushValues } from "./push";
+import { readPushValuesInto, writePushInstructions } from "./push";
 import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
 import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
 import { read255UShort } from "./varint";
@@ -20,42 +20,53 @@ const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
 const WE_HAVE_A_TWO_BY_TWO = 0x0080;
 const WE_HAVE_INSTRUCTIONS = 0x0100;
 
-function sliceTable(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
+function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
   if (entry.offset < 0 || entry.length < 0 || entry.offset + entry.length > data.length) {
     fail("INVALID_CTF", `Table ${entry.tag} lies outside CTF stream`);
   }
-  return data.slice(entry.offset, entry.offset + entry.length);
+  return data.subarray(entry.offset, entry.offset + entry.length);
 }
 
-function makeInstructions(
+/**
+ * Append a glyph's instruction block to the glyf writer.
+ *
+ * The length prefix is reserved and patched once the PUSH burst has been
+ * emitted, so the burst is measured by writing it rather than by scanning the
+ * push values twice.
+ */
+function writeInstructions(
   rest: Reader,
   push: Reader,
   code: Reader,
   limits: DecoderLimits,
   glyphId: number,
-): Uint8Array {
+  writer: Writer,
+  scratch: GlyphScratch,
+): void {
   const pushCount = read255UShort(rest);
   const codeSize = read255UShort(rest);
   if (codeSize > limits.maxInstructionsPerGlyph)
     fail("LIMIT_EXCEEDED", "Glyph instruction stream exceeds configured limit");
-  const values = readPushValues(push, pushCount);
-  const prefix = encodePushInstructions(values);
-  if (
-    prefix.length + codeSize > 0xffff ||
-    prefix.length + codeSize > limits.maxInstructionsPerGlyph
-  ) {
-    fail("LIMIT_EXCEEDED", "Reconstructed glyph instructions exceed TrueType limits");
-  }
-  const out = new Uint8Array(prefix.length + codeSize);
-  out.set(prefix);
   if (codeSize > code.remaining) {
     fail(
       "INVALID_CTF",
       `Glyph ${glyphId} needs ${codeSize} code byte(s), only ${code.remaining} remain`,
     );
   }
-  out.set(code.bytes(codeSize), prefix.length);
-  return out;
+  if (scratch.pushValues.length < pushCount) {
+    scratch.pushValues = new Int16Array(Math.max(pushCount, scratch.pushValues.length * 2, 16));
+  }
+  readPushValuesInto(push, pushCount, scratch.pushValues);
+
+  const lengthOffset = writer.length;
+  writer.u16be(0);
+  writePushInstructions(writer, scratch.pushValues, pushCount);
+  const instructionLength = writer.length - lengthOffset - 2 + codeSize;
+  if (instructionLength > 0xffff || instructionLength > limits.maxInstructionsPerGlyph) {
+    fail("LIMIT_EXCEEDED", "Reconstructed glyph instructions exceed TrueType limits");
+  }
+  writer.patchU16be(lengthOffset, instructionLength);
+  writer.bytes(code.bytes(codeSize));
 }
 
 interface GlyphScratch extends TripletScratch {
@@ -64,6 +75,7 @@ interface GlyphScratch extends TripletScratch {
   xData: Uint8Array;
   yData: Uint8Array;
   endPoints: Uint16Array;
+  pushValues: Int16Array;
 }
 
 function ensureByteScratch(scratch: GlyphScratch, points: number): void {
@@ -171,7 +183,6 @@ function readSimpleGlyph(
     fail("LIMIT_EXCEEDED", "Glyph point count exceeds configured limit");
   const flags = rest.bytes(pointCount);
   const points = decodeTripletArrays(rest, flags, scratch);
-  const instructions = makeInstructions(rest, push, code, limits, glyphId);
   const [xMin, yMin, xMax, yMax] = explicitBox ?? points.box;
   const encodedPoints = pointFlags(points, flags, scratch);
 
@@ -181,8 +192,7 @@ function readSimpleGlyph(
   writer.i16be(xMax);
   writer.i16be(yMax);
   for (let i = 0; i < numContours; i++) writer.u16be(endPoints[i]!);
-  writer.u16be(instructions.length);
-  writer.bytes(instructions);
+  writeInstructions(rest, push, code, limits, glyphId, writer, scratch);
   writer.bytes(scratch.encodedFlags.subarray(0, encodedPoints.flagsLength));
   writer.bytes(scratch.xData.subarray(0, encodedPoints.xLength));
   writer.bytes(scratch.yData.subarray(0, encodedPoints.yLength));
@@ -196,6 +206,7 @@ function readCompositeGlyph(
   limits: DecoderLimits,
   glyphId: number,
   writer: Writer,
+  scratch: GlyphScratch,
 ): void {
   writer.i16be(-1);
   for (const value of box) writer.i16be(value);
@@ -214,9 +225,7 @@ function readCompositeGlyph(
     else if (flags & WE_HAVE_A_SCALE) writer.bytes(rest.bytes(2));
   }
   if (flags & WE_HAVE_INSTRUCTIONS) {
-    const instructions = makeInstructions(rest, push, code, limits, glyphId);
-    writer.u16be(instructions.length);
-    writer.bytes(instructions);
+    writeInstructions(rest, push, code, limits, glyphId, writer, scratch);
   }
 }
 
@@ -241,6 +250,7 @@ function reconstructGlyphs(
     xData: new Uint8Array(32),
     yData: new Uint8Array(32),
     endPoints: new Uint16Array(8),
+    pushValues: new Int16Array(16),
   };
 
   for (let glyphId = 0; glyphId < glyphCount; glyphId++) {
@@ -253,7 +263,7 @@ function reconstructGlyphs(
         rest.i16be(),
         rest.i16be(),
       ];
-      readCompositeGlyph(box, rest, push, code, limits, glyphId, writer);
+      readCompositeGlyph(box, rest, push, code, limits, glyphId, writer, scratch);
     } else {
       let box: [number, number, number, number] | undefined;
       if (numContours === 0x7fff) {
@@ -311,8 +321,11 @@ export function parseCtf(
   const locaEntry = byTag.get("loca");
   if (!headEntry || !maxpEntry || !glyfEntry || !locaEntry)
     fail("INVALID_CTF", "CTF is missing head, maxp, glyf, or loca");
-  const head = sliceTable(restData, headEntry);
-  const maxp = sliceTable(restData, maxpEntry);
+  // head is the only table this rewrites, so it is the only one that needs its
+  // own storage; the rest stay views into the decompressed stream until
+  // buildSfnt copies them into the font.
+  const head = tableView(restData, headEntry).slice();
+  const maxp = tableView(restData, maxpEntry);
   if (head.length < 54 || maxp.length < 6) fail("INVALID_CTF", "Malformed head or maxp table");
   head.fill(0, 8, 12);
   const glyphCount = new DataView(maxp.buffer, maxp.byteOffset, maxp.byteLength).getUint16(
@@ -348,12 +361,12 @@ export function parseCtf(
     if (entry.tag === "glyf") data = reconstructed.glyf;
     else if (entry.tag === "loca") data = loca;
     else if (entry.tag === "head") data = head;
-    else if (entry.tag === "cvt ") data = decodeCvt(sliceTable(restData, entry));
+    else if (entry.tag === "cvt ") data = decodeCvt(tableView(restData, entry));
     else if (entry.tag === "hdmx" || entry.tag === "VDMX") {
       droppedTables.push(entry.tag);
       onWarn?.(`Dropped optional ${entry.tag} table; outlines and metrics remain usable.`);
       continue;
-    } else data = sliceTable(restData, entry);
+    } else data = tableView(restData, entry);
     tables.push({ tag: entry.tag, data });
   }
   return { sfntVersion, tables, ...(droppedTables.length ? { droppedTables } : {}) };

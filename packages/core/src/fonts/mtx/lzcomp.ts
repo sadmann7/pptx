@@ -3,20 +3,37 @@ import type { DecoderLimits } from "./limits";
 
 const PRELOAD_SIZE = 2 * 32 * 96 + 4 * 256;
 
+/**
+ * MSB-first bit reader with a byte-at-a-time prefetch buffer.
+ *
+ * `buffer` and `available` are public so the Huffman descent can hold them in
+ * locals for a whole symbol instead of paying a call and a bounds check per
+ * bit. Prefetching whole bytes is safe: it only fails once a bit is actually
+ * requested past the end of the input.
+ */
 export class BitReader {
   private readonly data: Uint8Array;
-  private bitOffset = 0;
+  private index = 0;
+  /** Low `available` bits are valid, MSB-first (the next bit is the highest). */
+  buffer = 0;
+  available = 0;
 
   constructor(data: Uint8Array) {
     this.data = data;
   }
 
+  /** Load bytes until at least one bit is available. */
+  refill(): void {
+    if (this.index >= this.data.length) fail("BOUNDS", "Unexpected end of LZCOMP bitstream");
+    do {
+      this.buffer = ((this.buffer << 8) | this.data[this.index++]!) >>> 0;
+      this.available += 8;
+    } while (this.available <= 16 && this.index < this.data.length);
+  }
+
   bit(): number {
-    if (this.bitOffset >= this.data.length * 8)
-      fail("BOUNDS", "Unexpected end of LZCOMP bitstream");
-    const value = (this.data[this.bitOffset >>> 3]! >>> (7 - (this.bitOffset & 7))) & 1;
-    this.bitOffset++;
-    return value;
+    if (this.available === 0) this.refill();
+    return (this.buffer >>> --this.available) & 1;
   }
 
   bits(count: number): number {
@@ -30,8 +47,9 @@ export class BitReader {
 export class AdaptiveHuffman {
   private readonly range: number;
   private readonly up: Int32Array;
-  private readonly left: Int32Array;
-  private readonly right: Int32Array;
+  /** Children interleaved as `child[node * 2 + bit]`, so a descent step indexes
+   * instead of branching on a bit that is inherently unpredictable. */
+  private readonly child: Int32Array;
   private readonly code: Int32Array;
   private readonly weight: Int32Array;
   private readonly symbolIndex: Int32Array;
@@ -43,22 +61,20 @@ export class AdaptiveHuffman {
     this.range = range;
     const nodeCount = range * 2;
     this.up = new Int32Array(nodeCount);
-    this.left = new Int32Array(nodeCount);
-    this.right = new Int32Array(nodeCount);
+    this.child = new Int32Array(nodeCount * 2);
     this.code = new Int32Array(nodeCount);
     this.weight = new Int32Array(nodeCount);
     this.symbolIndex = new Int32Array(range);
 
     this.code.fill(-1);
-    this.left.fill(-1);
-    this.right.fill(-1);
+    this.child.fill(-1);
     for (let i = 2; i < nodeCount; i++) {
       this.up[i] = i >>> 1;
       this.weight[i] = 1;
     }
     for (let i = 1; i < range; i++) {
-      this.left[i] = i * 2;
-      this.right[i] = i * 2 + 1;
+      this.child[i * 2] = i * 2;
+      this.child[i * 2 + 1] = i * 2 + 1;
     }
     for (let symbol = 0; symbol < range; symbol++) {
       const node = range + symbol;
@@ -66,7 +82,7 @@ export class AdaptiveHuffman {
       this.symbolIndex[symbol] = node;
     }
     for (let i = range - 1; i >= 1; i--) {
-      this.weight[i] = this.weight[this.left[i]!]! + this.weight[this.right[i]!]!;
+      this.weight[i] = this.weight[this.child[i * 2]!]! + this.weight[this.child[i * 2 + 1]!]!;
     }
 
     if (range > 256) {
@@ -82,9 +98,25 @@ export class AdaptiveHuffman {
   }
 
   read(bits: BitReader): number {
+    // The root is never a leaf, so the descent can read before it tests.
+    const { child, code } = this;
+    let buffer = bits.buffer;
+    let available = bits.available;
     let node = 1;
-    while (this.code[node]! < 0) node = bits.bit() ? this.right[node]! : this.left[node]!;
-    const symbol = this.code[node]!;
+    let symbol: number;
+    do {
+      if (available === 0) {
+        bits.buffer = buffer;
+        bits.available = available;
+        bits.refill();
+        buffer = bits.buffer;
+        available = bits.available;
+      }
+      node = child[node * 2 + ((buffer >>> --available) & 1)]!;
+      symbol = code[node]!;
+    } while (symbol < 0);
+    bits.buffer = buffer;
+    bits.available = available;
     this.update(node);
     return symbol;
   }
@@ -97,7 +129,7 @@ export class AdaptiveHuffman {
     const original = node;
     while (node !== 1) {
       const parent = this.up[node]!;
-      reverse.push(this.right[parent] === node ? 1 : 0);
+      reverse.push(this.child[parent * 2 + 1] === node ? 1 : 0);
       node = parent;
     }
     this.update(original);
@@ -105,17 +137,21 @@ export class AdaptiveHuffman {
     return reverse;
   }
 
+  /** Exchange two nodes' contents; `up` pointers stay with the positions. */
   private swap(a: number, b: number): void {
-    const upA = this.up[a]!;
-    const upB = this.up[b]!;
-    const fields = [this.left, this.right, this.code, this.weight] as const;
-    for (const field of fields) {
-      const tmp = field[a]!;
-      field[a] = field[b]!;
-      field[b] = tmp;
-    }
-    this.up[a] = upA;
-    this.up[b] = upB;
+    const { child, code, weight } = this;
+    let tmp = child[a * 2]!;
+    child[a * 2] = child[b * 2]!;
+    child[b * 2] = tmp;
+    tmp = child[a * 2 + 1]!;
+    child[a * 2 + 1] = child[b * 2 + 1]!;
+    child[b * 2 + 1] = tmp;
+    tmp = code[a]!;
+    code[a] = code[b]!;
+    code[b] = tmp;
+    tmp = weight[a]!;
+    weight[a] = weight[b]!;
+    weight[b] = tmp;
     this.repair(a);
     this.repair(b);
   }
@@ -123,8 +159,8 @@ export class AdaptiveHuffman {
   private repair(node: number): void {
     const symbol = this.code[node]!;
     if (symbol < 0) {
-      this.up[this.left[node]!] = node;
-      this.up[this.right[node]!] = node;
+      this.up[this.child[node * 2]!] = node;
+      this.up[this.child[node * 2 + 1]!] = node;
     } else {
       this.symbolIndex[symbol] = node;
     }

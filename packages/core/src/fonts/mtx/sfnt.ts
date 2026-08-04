@@ -37,12 +37,16 @@ export function tagBytes(tag: string): Uint8Array {
 /** Sum of the data as big-endian uint32 words, zero-padded to a word boundary. */
 export function checksum(data: Uint8Array): number {
   let sum = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    const word =
-      (data[i] ?? 0) * 0x1000000 +
-      ((data[i + 1] ?? 0) << 16) +
-      ((data[i + 2] ?? 0) << 8) +
-      (data[i + 3] ?? 0);
+  let i = 0;
+  // The whole words are summed without any in-bounds test so the loop body
+  // stays free of the undefined-element handling the ragged tail needs.
+  const aligned = data.length & ~3;
+  for (; i < aligned; i += 4) {
+    const word = data[i]! * 0x1000000 + (data[i + 1]! << 16) + (data[i + 2]! << 8) + data[i + 3]!;
+    sum = (sum + word) >>> 0;
+  }
+  if (i < data.length) {
+    const word = data[i]! * 0x1000000 + ((data[i + 1] ?? 0) << 16) + ((data[i + 2] ?? 0) << 8);
     sum = (sum + word) >>> 0;
   }
   return sum;

@@ -173,7 +173,12 @@ export class Writer {
     if (offset + 4 > this.length) fail("BOUNDS", "Patch outside output", offset);
     this.view.setUint32(offset, value >>> 0, false);
   }
+  /**
+   * Hand off the written bytes. Ownership transfers to the caller: when the
+   * buffer was sized exactly it is returned as-is rather than copied, so the
+   * writer must not be used afterwards.
+   */
   finish(): Uint8Array {
-    return this.data.slice(0, this.length);
+    return this.length === this.data.length ? this.data : this.data.slice(0, this.length);
   }
 }
