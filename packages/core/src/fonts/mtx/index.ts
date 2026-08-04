@@ -44,14 +44,13 @@ export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): Un
   if (offset2 < 10 || offset3 < offset2 || offset3 > size)
     fail("INVALID_MTX", "Invalid MTX block offsets");
   const resolved = resolveLimits(limits);
-  const compressed: [Uint8Array, Uint8Array, Uint8Array] = [
-    data.subarray(10, offset2),
-    data.subarray(offset2, offset3),
-    data.subarray(offset3, size),
+  const unpack = (start: number, end: number): Uint8Array =>
+    decompressLzcomp(data.subarray(start, end), version, resolved);
+  const streams: UnpackedMtx["streams"] = [
+    unpack(10, offset2),
+    unpack(offset2, offset3),
+    unpack(offset3, size),
   ];
-  const streams = compressed.map((block) =>
-    decompressLzcomp(block, version, resolved),
-  ) as UnpackedMtx["streams"];
   return { streams, sizes: [streams[0].length, streams[1].length, streams[2].length] };
 }
 
