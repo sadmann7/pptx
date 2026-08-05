@@ -127,8 +127,13 @@ const SLIDE_H = 540;
 interface Spotlight {
   file: string;
   slideIndex: number;
+  /**
+   * One line, and it carries the claim on its own. A supporting sentence
+   * underneath had to be small enough that it came out around five pixels tall
+   * once X scales 1920 into a phone-width feed, so what it said was lost and
+   * the caption has to say it instead.
+   */
   caption: string;
-  description: string;
   /** Centre of the card on the board, in board units (one unit is one slide px). */
   x: number;
   y: number;
@@ -148,7 +153,6 @@ const SPOTLIGHTS: Spotlight[] = [
     file: "editorial-forest-editable.pptx",
     slideIndex: 1,
     caption: "True to the original",
-    description: "Slides look exactly the way they do in PowerPoint.",
     x: 0,
     y: -120,
     zoom: 1.06,
@@ -156,8 +160,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "pocket-machines-sakura-chroma.pptx",
     slideIndex: 0,
-    caption: "Rich visuals",
-    description: "Gradients, shadows, and transparency come through untouched.",
+    caption: "Gradients and shadows",
     x: 1420,
     y: 280,
     zoom: 1.02,
@@ -165,8 +168,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "adventure-club-pin-and-paper.pptx",
     slideIndex: 3,
-    caption: "Charts",
-    description: "Data visualizations render natively, no images involved.",
+    caption: "Charts, not images",
     x: 2820,
     y: -230,
     zoom: 1.08,
@@ -174,8 +176,9 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "make-something-strange-creative-mode.pptx",
     slideIndex: 6,
-    caption: "Tables",
-    description: "Styled cells, borders, and layouts stay just as designed.",
+    // Two words a line, like the rest. "Tables, cell for cell" left "cell"
+    // alone on the second line of the column.
+    caption: "Tables and borders",
     x: 4240,
     y: 240,
     zoom: 1.03,
@@ -183,8 +186,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "after-the-needle-drops-mat.pptx",
     slideIndex: 0,
-    caption: "Typography",
-    description: "Weights, spacing, and alignment carry over precisely.",
+    caption: "Typography intact",
     x: 5640,
     y: -270,
     zoom: 1.07,
@@ -193,7 +195,6 @@ const SPOTLIGHTS: Spotlight[] = [
     file: "side-quest-club-block-frame.pptx",
     slideIndex: 4,
     caption: "Complex layouts",
-    description: "Grouped shapes and multi-column designs hold together.",
     x: 7060,
     y: 160,
     zoom: 1.04,
@@ -399,7 +400,15 @@ function Captions({ frame }: { frame: number }) {
         return (
           <div
             key={`${spotlight.file}-${spotlight.slideIndex}`}
-            style={{ position: "absolute", inset: 0, opacity: exit }}
+            // Centred in the slot rather than stacked from its top, which is
+            // where the caption sat while a second line followed it.
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              opacity: exit,
+            }}
           >
             <StaggeredWords
               text={spotlight.caption}
@@ -407,29 +416,15 @@ function Captions({ frame }: { frame: number }) {
               delay={0}
               style={{
                 ...font,
-                fontSize: 62,
+                fontSize: 76,
                 fontWeight: 800,
                 color: C.white,
-                letterSpacing: -1.6,
+                letterSpacing: -2,
                 lineHeight: 1.12,
                 // Cards pass behind the column, dimmed and blurred but still
                 // bright enough on the lighter decks to eat into the text. A
                 // shadow carries that on the few hundred pixels where they
                 // overlap, without a scrim muting the card itself.
-                textShadow: TEXT_ON_BOARD,
-              }}
-            />
-            <div style={{ height: 18 }} />
-            <StaggeredWords
-              text={spotlight.description}
-              frame={reveal}
-              delay={10}
-              style={{
-                ...font,
-                fontSize: 27,
-                fontWeight: 400,
-                color: C.muted,
-                lineHeight: 1.5,
                 textShadow: TEXT_ON_BOARD,
               }}
             />
@@ -502,10 +497,17 @@ function TitleCard() {
 
 // ── Features snaps ──────────────────────────────────────────────────────────
 
+/**
+ * The run closes the video, after the slides have made the case. "Zero
+ * runtime" used to end it: the core ships echarts and jszip as runtime
+ * dependencies and is itself all runtime, so the claim was not a vague one, it
+ * was untrue, and the term belongs to zero-runtime CSS. What is true and worth
+ * more anyway is that none of it needs a server.
+ */
 const SNAPS = [
   "Parse. Render. Edit. Re-export.",
   "Tables, charts, shapes, images.",
-  "TypeScript-first. Zero runtime.",
+  "TypeScript-first. No server required.",
 ];
 
 /**
