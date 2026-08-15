@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import * as React from "react";
 
 import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
@@ -8,12 +8,14 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 
+import { EditorPreview, type EditorPreviewReveal } from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
-import { geistSans } from "@/lib/fonts";
+import { geistMono, geistSans } from "@/lib/fonts";
 
 const C = {
   ink: "#0e1117",
   white: "#f5f6f8",
+  muted: "#8b92a8",
 };
 
 const clamp = {
@@ -34,6 +36,7 @@ const CAMERA_MOVE = 20;
 const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 const CAPTION_LEAD = 8;
 const SNAP_BEAT = 47;
+const COMPOSITION_CONTENT_FRAMES = 132;
 const CTA_DURATION = CONTENT_LEAD + 90;
 const DEMO_CONTENT_FRAMES = 210;
 
@@ -43,16 +46,19 @@ const FOCUS_X = 1290;
 const FOCUS_Y = 540;
 const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
 
-const sectionDuration = (contentFrames: number) => CONTENT_LEAD + contentFrames + FADE_DURATION;
-
-const progress = (frame: number, from: number, to: number) =>
-  interpolate(frame, [from, to], [0, 1], { ...clamp, easing: ease });
-
-const font: CSSProperties = {
+const font: React.CSSProperties = {
   fontFamily: geistSans,
 };
 
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
+
+function sectionDuration(contentFrames: number) {
+  return CONTENT_LEAD + contentFrames + FADE_DURATION;
+}
+
+function progress(frame: number, from: number, to: number) {
+  return interpolate(frame, [from, to], [0, 1], { ...clamp, easing: ease });
+}
 
 function Noise() {
   return (
@@ -104,7 +110,7 @@ function SceneContent({
 }: {
   durationInFrames: number;
   fadeOut?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   const frame = useCurrentFrame();
   const exitStart = durationInFrames - FADE_DURATION - CONTENT_FADE;
@@ -266,19 +272,15 @@ function Board({ frame }: { frame: number }) {
   );
 }
 
-function StaggeredWords({
-  text,
-  frame,
-  delay,
-  style,
-}: {
+interface StaggeredWordsProps extends React.ComponentProps<"span"> {
   text: string;
   frame: number;
-  delay: number;
-  style: CSSProperties;
-}) {
+  delay?: number;
+}
+
+function StaggeredWords({ text, frame, delay = 0, style, ...props }: StaggeredWordsProps) {
   return (
-    <span style={{ display: "inline-flex", flexWrap: "wrap", ...style }}>
+    <span style={{ display: "inline-flex", flexWrap: "wrap", ...style }} {...props}>
       {text.split(" ").map((word, index) => {
         const start = delay + index * 1.6;
         const reveal = progress(frame, start, start + 17);
@@ -302,9 +304,13 @@ function StaggeredWords({
   );
 }
 
-function Captions({ frame }: { frame: number }) {
+interface CaptionsProps extends React.ComponentProps<"div"> {
+  frame: number;
+}
+
+function Captions({ frame, style, ...props }: CaptionsProps) {
   return (
-    <div style={{ position: "relative", height: 260 }}>
+    <div style={{ position: "relative", height: 260, ...style }} {...props}>
       {SPOTLIGHTS.map((spotlight, index) => {
         const start = index * SPOTLIGHT_DURATION;
         const local = frame - start;
@@ -426,6 +432,164 @@ function FeaturesScene() {
   );
 }
 
+const COMPOSITION_LINES = [
+  "<Presentation.Root>",
+  "  <Presentation.ThumbnailList />",
+  "  <Presentation.Viewport>",
+  "    <Presentation.Slide>",
+  "      <Presentation.Selection />",
+  "    </Presentation.Slide>",
+  "  </Presentation.Viewport>",
+  "</Presentation.Root>",
+];
+
+const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
+
+/**
+ * github-dark, which is what the docs site renders code with, so the snippet
+ * here matches what a reader sees there. That theme paints a whole tag name in
+ * one colour, member included, and leaves the brackets and dots as plain text.
+ */
+const CODE_COLORS = {
+  tag: "#7ee787",
+  plain: "#c9d1d9",
+} as const;
+
+const TOKEN_PATTERN = /(?<tag>[A-Z][\w$]*)|(?<plain>[^A-Z]+)/gu;
+
+function tokenize(line: string): { text: string; kind: keyof typeof CODE_COLORS }[] {
+  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => ({
+    text: match[0],
+    kind: match.groups?.tag ? ("tag" as const) : ("plain" as const),
+  }));
+}
+
+function CodeLine({ line, reveal }: { line: string; reveal: number }) {
+  return (
+    <div
+      style={{
+        opacity: reveal,
+        transform: `translateY(${(1 - reveal) * 10}px)`,
+      }}
+    >
+      {tokenize(line).map((token, index) => (
+        <span key={`${index}-${token.text}`} style={{ color: CODE_COLORS[token.kind] }}>
+          {token.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Frames between one line appearing and the next. */
+const LINE_STAGGER = 9;
+const LINE_REVEAL = 15;
+/** The preview trails the line that introduces it, so the code reads as cause. */
+const PREVIEW_LAG = 5;
+
+const lineStart = (index: number) => index * LINE_STAGGER;
+
+function CompositionCode({ time }: { time: number }) {
+  return (
+    <pre
+      style={{
+        margin: 0,
+        fontFamily: geistMono,
+        fontSize: 34,
+        fontWeight: 500,
+        lineHeight: 1.6,
+        letterSpacing: -0.4,
+      }}
+    >
+      {COMPOSITION_LINES.map((line, index) => (
+        <CodeLine
+          key={line}
+          line={line}
+          reveal={progress(time, lineStart(index), lineStart(index) + LINE_REVEAL)}
+        />
+      ))}
+    </pre>
+  );
+}
+
+const PREVIEW_FILE = "the-good-room-soft-editorial.pptx";
+const PREVIEW_SLIDE = 0;
+const PREVIEW_RAIL_W = 130;
+const PREVIEW_PAD = 26;
+const PREVIEW_W = 980;
+/** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
+const PREVIEW_H =
+  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
+
+/**
+ * Which line of the snippet each part of the preview belongs to, so the editor
+ * assembles itself in step with the code that declares it.
+ */
+const PREVIEW_STAGES = {
+  chrome: 0,
+  rail: 1,
+  canvas: 2,
+  slide: 3,
+  selection: 4,
+} as const;
+
+type PreviewStageEntries = {
+  [K in keyof typeof PREVIEW_STAGES]: [K, (typeof PREVIEW_STAGES)[K]];
+}[keyof typeof PREVIEW_STAGES][];
+
+function previewStageEntries(): PreviewStageEntries {
+  return Object.entries(PREVIEW_STAGES) as PreviewStageEntries;
+}
+
+function buildPreviewReveal(time: number): EditorPreviewReveal {
+  const reveal: EditorPreviewReveal = {
+    chrome: 0,
+    rail: 0,
+    canvas: 0,
+    slide: 0,
+    selection: 0,
+  };
+  for (const [part, line] of previewStageEntries()) {
+    const from = lineStart(line) + PREVIEW_LAG;
+    reveal[part] = progress(time, from, from + LINE_REVEAL);
+  }
+  return reveal;
+}
+
+function CompositionScene() {
+  const frame = useCurrentFrame();
+  const time = frame - CONTENT_LEAD;
+  const reveal = buildPreviewReveal(time);
+
+  return (
+    <AbsoluteFill>
+      <Backdrop />
+      <SceneContent durationInFrames={COMPOSITION_DURATION}>
+        <AbsoluteFill
+          style={{
+            ...font,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 72,
+          }}
+        >
+          <CompositionCode time={time} />
+          <EditorPreview
+            file={PREVIEW_FILE}
+            slideIndex={PREVIEW_SLIDE}
+            width={PREVIEW_W}
+            height={PREVIEW_H}
+            railWidth={PREVIEW_RAIL_W}
+            padding={PREVIEW_PAD}
+            reveal={reveal}
+          />
+        </AbsoluteFill>
+      </SceneContent>
+    </AbsoluteFill>
+  );
+}
+
 /** Drop `public/editor-demo.mp4` in to insert the editing scene. */
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
@@ -475,12 +639,13 @@ export const DEFAULT_LAUNCH_PROPS: LaunchProps = {
 };
 
 export function launchDuration(hasEditorDemo: boolean): number {
-  const fades = hasEditorDemo ? 4 : 3;
+  const fades = hasEditorDemo ? 5 : 4;
   return (
     TITLE_DURATION +
     SPOTLIGHTS_TOTAL +
     (hasEditorDemo ? DEMO_DURATION : 0) +
     FEATURES_DURATION +
+    COMPOSITION_DURATION +
     CTA_DURATION -
     fades * FADE_DURATION
   );
@@ -512,6 +677,9 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
       : []),
     <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
       <FeaturesScene />
+    </TransitionSeries.Sequence>,
+    <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
+      <CompositionScene />
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="cta" durationInFrames={CTA_DURATION}>
       <CtaScene />
