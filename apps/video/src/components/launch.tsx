@@ -13,10 +13,7 @@ import { geistSans } from "@/lib/fonts";
 
 const C = {
   ink: "#0e1117",
-  line: "#2a3040",
-  accent: "#a78bfa",
   white: "#f5f6f8",
-  muted: "#8b92a8",
 };
 
 const clamp = {
@@ -24,25 +21,28 @@ const clamp = {
   extrapolateRight: "clamp",
 } as const;
 const ease = Easing.bezier(0.22, 1, 0.36, 1);
+const cameraEase = Easing.bezier(0.7, 0, 0.25, 1);
 
-/** Length of the crossfade between sections. */
 const FADE_DURATION = 12;
-/** How long a section's content takes to clear the crossfade at either edge. */
 const CONTENT_FADE = 10;
-/**
- * Held at the head of a section so its content starts once the crossfade has
- * finished rather than animating behind it. Every section animates its own
- * entrance, so this waits rather than fading and the gap between sections
- * stays as short as the crossfade itself.
- */
+/** Wait out the incoming crossfade; each scene animates its own entrance. */
 const CONTENT_LEAD = FADE_DURATION;
 
-/**
- * A section is its content plus the lead-in that clears the incoming
- * crossfade and the outgoing crossfade it has to be gone by. Sized this way
- * the content fades out over its own last frames and reaches zero exactly as
- * the crossfade starts, with no stretch of bare backdrop in between.
- */
+const TITLE_DURATION = 60;
+const SPOTLIGHT_DURATION = 62;
+const CAMERA_MOVE = 20;
+const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
+const CAPTION_LEAD = 8;
+const SNAP_BEAT = 47;
+const CTA_DURATION = CONTENT_LEAD + 90;
+const DEMO_CONTENT_FRAMES = 210;
+
+const SLIDE_W = 960;
+const SLIDE_H = 540;
+const FOCUS_X = 1290;
+const FOCUS_Y = 540;
+const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
+
 const sectionDuration = (contentFrames: number) => CONTENT_LEAD + contentFrames + FADE_DURATION;
 
 const progress = (frame: number, from: number, to: number) =>
@@ -51,6 +51,8 @@ const progress = (frame: number, from: number, to: number) =>
 const font: CSSProperties = {
   fontFamily: geistSans,
 };
+
+const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
 function Noise() {
   return (
@@ -94,16 +96,7 @@ function Backdrop() {
   );
 }
 
-/**
- * Fades a section's content out before the crossfade into the next section
- * begins. Every section paints the same backdrop, so a crossfade has only the
- * content on top of it to blend: leave content up on both sides and the
- * outgoing section shows through the incoming one rather than dissolving into
- * it, which is what put the features text across the last slide.
- *
- * Only the exit needs handling here. Content is held back on the way in by
- * `CONTENT_LEAD`, which keeps it off screen until the crossfade is over.
- */
+/** Fade content out before the section crossfade so two scenes don't stack. */
 function SceneContent({
   durationInFrames,
   fadeOut = true,
@@ -122,33 +115,15 @@ function SceneContent({
   return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 }
 
-const SLIDE_W = 960;
-const SLIDE_H = 540;
-
 interface Spotlight {
   file: string;
   slideIndex: number;
-  /**
-   * One line, and it carries the claim on its own. A supporting sentence
-   * underneath had to be small enough that it came out around five pixels tall
-   * once X scales 1920 into a phone-width feed, so what it said was lost and
-   * the caption has to say it instead.
-   */
   caption: string;
-  /** Centre of the card on the board, in board units (one unit is one slide px). */
   x: number;
   y: number;
-  /** How close the camera sits while this card is the subject. */
   zoom: number;
 }
 
-/**
- * The cards sit on one board that a camera moves across, rather than each
- * taking a turn in the same spot. Positions step on both axes so every move
- * is diagonal, and the gaps are sized so the neighbouring cards stay just
- * inside the frame edges: that parallax is what carries the run between
- * subjects, in place of the fade to bare backdrop it used to cut through.
- */
 const SPOTLIGHTS: Spotlight[] = [
   {
     file: "editorial-forest-editable.pptx",
@@ -192,29 +167,8 @@ const SPOTLIGHTS: Spotlight[] = [
   },
 ];
 
-/**
- * Held long enough to read the caption, short enough that the camera does not
- * become the subject. Six beats at 85 with a 30-frame ease spent 17 seconds
- * on the same move; five at 62 with a 20-frame cut is about 10.
- */
-const SPOTLIGHT_DURATION = 62;
-/** Frames of a beat spent gliding to the next card. The rest is the hold. */
-const CAMERA_MOVE = 20;
-const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 const SHOWCASE_FRAMES = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
-
-/** How far ahead of the camera settling a caption starts arriving. */
-const CAPTION_LEAD = 8;
-
-/** Keeps the text column readable where cards pass behind it. */
-const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
-
-/** Where on screen the subject of the shot sits, leaving the left for text. */
-const FOCUS_X = 1290;
-const FOCUS_Y = 540;
-
-/** Slow out of the old card, slow into the new one, quicker in between. */
-const cameraEase = Easing.bezier(0.7, 0, 0.25, 1);
+const SPOTLIGHTS_TOTAL = sectionDuration(SHOWCASE_FRAMES);
 
 interface Camera {
   x: number;
@@ -222,11 +176,6 @@ interface Camera {
   zoom: number;
 }
 
-/**
- * Where the camera rests on `index`, with `t` running 0 to 1 across the hold.
- * The drift is deliberately small: enough that no frame is frozen, not enough
- * to read as a move of its own.
- */
 function restingCamera(index: number, t: number): Camera {
   const spotlight = SPOTLIGHTS[index];
   if (!spotlight) throw new Error(`no spotlight at ${index}`);
@@ -239,7 +188,6 @@ function restingCamera(index: number, t: number): Camera {
   };
 }
 
-/** Beat index plus how far the camera has travelled towards the next one. */
 function focusAt(frame: number): number {
   const index = Math.min(SPOTLIGHTS.length - 1, Math.floor(frame / SPOTLIGHT_DURATION));
   const local = frame - index * SPOTLIGHT_DURATION;
@@ -252,8 +200,6 @@ function cameraAt(frame: number): Camera {
   const index = Math.floor(focus);
   const travel = focus - index;
   if (travel === 0) {
-    // Resting. The last card has no move left to make, so it drifts for the
-    // whole beat rather than only the hold.
     const local = frame - index * SPOTLIGHT_DURATION;
     const span = index === SPOTLIGHTS.length - 1 ? SPOTLIGHT_DURATION : CAMERA_HOLD;
     return restingCamera(index, Math.min(1, local / span));
@@ -271,10 +217,6 @@ function cameraAt(frame: number): Camera {
 function Board({ frame }: { frame: number }) {
   const camera = cameraAt(frame);
   const focus = focusAt(frame);
-
-  // A shallow turn that peaks mid-move and is gone by the time the camera
-  // settles, so a move reads as the camera swinging round to the next card
-  // rather than the board sliding under a fixed lens.
   const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
 
   return (
@@ -291,11 +233,6 @@ function Board({ frame }: { frame: number }) {
         }}
       >
         {SPOTLIGHTS.map((spotlight, index) => {
-          // Cards recede as the camera leaves them, so the subject is always
-          // the one in focus even while two are on screen at once. The curve
-          // is steeper than linear so the card being left behind gives up the
-          // frame early in the move rather than competing through the whole
-          // of it.
           const emphasis = (1 - Math.min(1, Math.abs(index - focus))) ** 1.4;
           const blur = (1 - emphasis) * 4;
 
@@ -329,7 +266,6 @@ function Board({ frame }: { frame: number }) {
   );
 }
 
-/** Words rise and sharpen in sequence, so a caption lands as a phrase. */
 function StaggeredWords({
   text,
   frame,
@@ -352,8 +288,6 @@ function StaggeredWords({
             key={`${word}-${index}`}
             style={{
               display: "inline-block",
-              // The gap is margin rather than a space inside the span, so a
-              // wrapped line starts flush instead of indented by it.
               marginRight: "0.27em",
               opacity: reveal,
               transform: `translateY(${(1 - reveal) * 14}px)`,
@@ -368,10 +302,6 @@ function StaggeredWords({
   );
 }
 
-/**
- * Captions are stacked in one slot and cross-fade, so the text changes on the
- * spot while the camera does the travelling.
- */
 function Captions({ frame }: { frame: number }) {
   return (
     <div style={{ position: "relative", height: 260 }}>
@@ -379,25 +309,15 @@ function Captions({ frame }: { frame: number }) {
         const start = index * SPOTLIGHT_DURATION;
         const local = frame - start;
         const isLast = index === SPOTLIGHTS.length - 1;
-        // Gone by the time the camera is properly under way. Text sitting over
-        // a card that is sliding out from under it is the one thing that reads
-        // as clutter here, so the column empties first and the move gets the
-        // frame to itself.
         const exit = isLast
           ? 1
           : interpolate(local, [CAMERA_HOLD - 2, CAMERA_HOLD + 8], [1, 0], clamp);
-
-        // Started just before the camera settles, so the column is never empty
-        // on arrival. The lead is short enough that the words are still rising
-        // as the card comes to rest, which ties the two together.
         const reveal = local + CAPTION_LEAD;
         if (reveal < 0 || exit === 0) return null;
 
         return (
           <div
             key={`${spotlight.file}-${spotlight.slideIndex}`}
-            // Centred in the slot rather than stacked from its top, which is
-            // where the caption sat while a second line followed it.
             style={{
               position: "absolute",
               inset: 0,
@@ -417,10 +337,6 @@ function Captions({ frame }: { frame: number }) {
                 color: C.white,
                 letterSpacing: -2,
                 lineHeight: 1.12,
-                // Cards pass behind the column, dimmed and blurred but still
-                // bright enough on the lighter decks to eat into the text. A
-                // shadow carries that on the few hundred pixels where they
-                // overlap, without a scrim muting the card itself.
                 textShadow: TEXT_ON_BOARD,
               }}
             />
@@ -433,11 +349,6 @@ function Captions({ frame }: { frame: number }) {
 
 function ShowcaseScene() {
   const frame = useCurrentFrame();
-
-  // Every other section animates its own way in, since content is held back
-  // past the crossfade rather than fading across it. Without this the board
-  // arrived in one frame, which is what made the cut from the title read as a
-  // jump. The camera settles the last of the way in as it appears.
   const entrance = progress(frame, 0, 20);
 
   return (
@@ -463,10 +374,6 @@ function ShowcaseScene() {
   );
 }
 
-// ── Title ───────────────────────────────────────────────────────────────────
-
-const TITLE_DURATION = 60;
-
 function TitleCard() {
   return (
     <AbsoluteFill>
@@ -491,27 +398,12 @@ function TitleCard() {
   );
 }
 
-// ── Features snaps ──────────────────────────────────────────────────────────
-
-/**
- * The run closes the video, after the slides have made the case. "Zero
- * runtime" used to end it: the core ships echarts and jszip as runtime
- * dependencies and is itself all runtime, so the claim was not a vague one, it
- * was untrue, and the term belongs to zero-runtime CSS. What is true and worth
- * more anyway is that none of it needs a server.
- */
 const SNAPS = [
   "Parse. Render. Edit. Re-export.",
   "Tables, charts, shapes, images.",
   "TypeScript-first. No server required.",
 ];
 
-/**
- * Trimmed from 55 so the run keeps the length it had before the crossfades
- * stopped overlapping it. Each snap used to lose frames to the fade at either
- * end of the section; giving them back in full read as a drag.
- */
-const SNAP_BEAT = 47;
 const FEATURES_DURATION = sectionDuration(SNAPS.length * SNAP_BEAT);
 
 function FeaturesScene() {
@@ -534,15 +426,9 @@ function FeaturesScene() {
   );
 }
 
-// ── Editor demo ─────────────────────────────────────────────────────────────
-
-/**
- * Drop `public/editor-demo.mp4` in to turn this sequence on. Until then the
- * composition skips it entirely rather than holding a labelled empty slot.
- */
+/** Drop `public/editor-demo.mp4` in to insert the editing scene. */
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
-const DEMO_CONTENT_FRAMES = 210;
 const DEMO_DURATION = sectionDuration(DEMO_CONTENT_FRAMES);
 
 function DemoScene() {
@@ -561,17 +447,11 @@ function DemoScene() {
   );
 }
 
-// ── CTA ─────────────────────────────────────────────────────────────────────
-
-const CTA_DURATION = CONTENT_LEAD + 90;
-
 function CtaScene() {
   return (
     <AbsoluteFill>
       <Backdrop />
-      {/* Closes the video, so there is no crossfade to clear on the way out. */}
       <SceneContent durationInFrames={CTA_DURATION} fadeOut={false}>
-        {/* Held past the crossfade so no keystrokes land while it is running. */}
         <Sequence from={CONTENT_LEAD} layout="none">
           <Typewriter
             text="npm i @diceui/pptx"
@@ -585,12 +465,6 @@ function CtaScene() {
     </AbsoluteFill>
   );
 }
-
-// ── Composition ─────────────────────────────────────────────────────────────
-
-const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
-
-const SPOTLIGHTS_TOTAL = sectionDuration(SHOWCASE_FRAMES);
 
 export type LaunchProps = {
   hasEditorDemo: boolean;
@@ -615,16 +489,11 @@ export function launchDuration(hasEditorDemo: boolean): number {
 export const LAUNCH_DURATION = launchDuration(false);
 
 export function Launch({ hasEditorDemo = false }: LaunchProps) {
-  const cut = () => <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />;
-
-  const title = (
-    <TransitionSeries.Sequence durationInFrames={TITLE_DURATION}>
+  const scenes = [
+    <TransitionSeries.Sequence key="title" durationInFrames={TITLE_DURATION}>
       <TitleCard />
-    </TransitionSeries.Sequence>
-  );
-
-  const showcase = (
-    <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
+    </TransitionSeries.Sequence>,
+    <TransitionSeries.Sequence key="showcase" durationInFrames={SPOTLIGHTS_TOTAL}>
       <AbsoluteFill>
         <Backdrop />
         <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
@@ -633,48 +502,36 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
           </Sequence>
         </SceneContent>
       </AbsoluteFill>
-    </TransitionSeries.Sequence>
-  );
-
-  const features = (
-    <TransitionSeries.Sequence durationInFrames={FEATURES_DURATION}>
+    </TransitionSeries.Sequence>,
+    ...(hasEditorDemo
+      ? [
+          <TransitionSeries.Sequence key="demo" durationInFrames={DEMO_DURATION}>
+            <DemoScene />
+          </TransitionSeries.Sequence>,
+        ]
+      : []),
+    <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
       <FeaturesScene />
-    </TransitionSeries.Sequence>
-  );
-
-  const cta = (
-    <TransitionSeries.Sequence durationInFrames={CTA_DURATION}>
+    </TransitionSeries.Sequence>,
+    <TransitionSeries.Sequence key="cta" durationInFrames={CTA_DURATION}>
       <CtaScene />
-    </TransitionSeries.Sequence>
-  );
-
-  if (hasEditorDemo) {
-    return (
-      <TransitionSeries>
-        {title}
-        {cut()}
-        {showcase}
-        {cut()}
-        <TransitionSeries.Sequence durationInFrames={DEMO_DURATION}>
-          <DemoScene />
-        </TransitionSeries.Sequence>
-        {cut()}
-        {features}
-        {cut()}
-        {cta}
-      </TransitionSeries>
-    );
-  }
+    </TransitionSeries.Sequence>,
+  ];
 
   return (
     <TransitionSeries>
-      {title}
-      {cut()}
-      {showcase}
-      {cut()}
-      {features}
-      {cut()}
-      {cta}
+      {scenes.flatMap((scene, index) =>
+        index === 0
+          ? [scene]
+          : [
+              <TransitionSeries.Transition
+                key={`cut-${index}`}
+                presentation={fade()}
+                timing={fadeTiming}
+              />,
+              scene,
+            ],
+      )}
     </TransitionSeries>
   );
 }

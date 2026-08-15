@@ -9,22 +9,9 @@ const FONT_VARS = {
   "--font-geist-sans": geistSans,
 } as React.CSSProperties;
 
-/**
- * Frames to keep looking for the slide before giving up and releasing anyway.
- * A render that hangs here would fail on Remotion's own delayRender timeout
- * with nothing pointing at the cause, so a scene rendered slightly early is
- * the better failure.
- */
+/** Give up and release rather than hang Remotion's delayRender timeout. */
 const SLIDE_WAIT_FRAMES = 120;
 
-/**
- * Runs `onReady` once the slide is in the DOM and has had a frame to paint.
- * `Presentation.Slide` marks its wrapper `data-status="ready"` and only fills
- * it once the deck is parsed, so a wrapper with content is the signal.
- *
- * Returns a cancel function so an unmount can drop the pending animation
- * frames rather than letting them call into a released delay handle.
- */
 function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
   let framesLeft = SLIDE_WAIT_FRAMES;
   let raf = 0;
@@ -80,8 +67,6 @@ export function PptxCard({
     let cancelled = false;
     fetch(staticFile(file))
       .then((r) => {
-        // fetch resolves on 404, so an unchecked body would fail later as an
-        // unreadable deck instead of a missing file.
         if (!r.ok) throw new Error(`${file}: ${r.status}`);
         return r.arrayBuffer();
       })
@@ -105,11 +90,9 @@ export function PptxCard({
           file={data}
           defaultSlideIndex={slideIndex}
           onLoad={() => {
-            // Parsing finishing is not the same as the slide being on screen:
-            // `onLoad` runs a commit early, so releasing the handle here lets
-            // Remotion screenshot an empty card on whichever frame this
-            // component mounted on. Wait for the slide, then for embedded
-            // fonts, then give it a frame to paint.
+            // `onLoad` fires before the slide has painted; wait for the ready
+            // wrapper, embedded fonts, and one frame so Remotion doesn't
+            // screenshot an empty card.
             stopWaitRef.current?.();
             stopWaitRef.current = waitForSlide(hostRef, () => {
               const fontsReady = document.fonts?.ready ?? Promise.resolve();
