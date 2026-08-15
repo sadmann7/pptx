@@ -153,7 +153,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "editorial-forest-editable.pptx",
     slideIndex: 1,
-    caption: "True to the original",
+    caption: "As in PowerPoint",
     x: 0,
     y: -120,
     zoom: 1.06,
@@ -185,7 +185,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "after-the-needle-drops-mat.pptx",
     slideIndex: 0,
-    caption: "Typography intact",
+    caption: "Embedded fonts",
     x: 5640,
     y: -270,
     zoom: 1.07,
