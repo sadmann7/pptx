@@ -5,15 +5,33 @@ import { staticFile, useDelayRender } from "remotion";
 /** Give up and release rather than hang Remotion's delayRender timeout. */
 const SLIDE_WAIT_FRAMES = 120;
 
+/**
+ * Thumbnails render through a budgeted async queue, so the count of pending
+ * ones drops in bursts. Previews clipped out of the rail never render at all,
+ * so waiting for zero would always time out; waiting for the count to hold
+ * steady this many frames means the queue has drained as far as it will.
+ */
+const THUMBNAIL_SETTLE_FRAMES = 10;
+
 function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
   let framesLeft = SLIDE_WAIT_FRAMES;
   let raf = 0;
   let stopped = false;
+  let pendingCount = -1;
+  let steadyFrames = 0;
 
   const check = () => {
     if (stopped) return;
-    const slide = hostRef.current?.querySelector('[data-status="ready"]');
-    if (slide?.firstElementChild || framesLeft <= 0) {
+    const host = hostRef.current;
+    const slide = host?.querySelector('[data-status="ready"]');
+
+    const nextPending = host?.querySelectorAll("[data-pending]").length ?? 0;
+    if (nextPending === pendingCount) steadyFrames++;
+    else steadyFrames = 0;
+    pendingCount = nextPending;
+
+    const settled = slide?.firstElementChild && steadyFrames >= THUMBNAIL_SETTLE_FRAMES;
+    if (settled || framesLeft <= 0) {
       raf = requestAnimationFrame(() => {
         if (!stopped) onReady();
       });

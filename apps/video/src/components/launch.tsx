@@ -446,22 +446,24 @@ const COMPOSITION_LINES = [
 const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 
 /**
- * github-dark, which is what the docs site renders code with, so the snippet
- * here matches what a reader sees there. That theme paints a whole tag name in
- * one colour, member included, and leaves the brackets and dots as plain text.
+ * The tag colour is github-dark's, matching the docs site. The namespace is
+ * dimmed rather than sharing it: `Presentation` repeats on all sixteen tags and
+ * would otherwise drown out the five component names, which are the point.
  */
 const CODE_COLORS = {
   tag: "#7ee787",
-  plain: "#c9d1d9",
+  namespace: "#7d8590",
+  plain: "#5b636d",
 } as const;
 
-const TOKEN_PATTERN = /(?<tag>[A-Z][\w$]*)|(?<plain>[^A-Z]+)/gu;
+const TOKEN_PATTERN = /(?<namespace>Presentation)|(?<tag>[A-Z][\w$]*)|(?<plain>[^A-Z]+)/gu;
 
 function tokenize(line: string): { text: string; kind: keyof typeof CODE_COLORS }[] {
-  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => ({
-    text: match[0],
-    kind: match.groups?.tag ? ("tag" as const) : ("plain" as const),
-  }));
+  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => {
+    const groups = match.groups ?? {};
+    const kind = groups.namespace ? "namespace" : groups.tag ? "tag" : "plain";
+    return { text: match[0], kind };
+  });
 }
 
 function CodeLine({ line, reveal }: { line: string; reveal: number }) {

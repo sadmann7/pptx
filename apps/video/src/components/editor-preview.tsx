@@ -145,8 +145,9 @@ export function EditorPreview({
               overflow: "hidden",
               borderRight: "1px solid rgba(255,255,255,.1)",
               background: "rgba(0,0,0,.25)",
+              // Opacity only: the previews observe their intersection with the
+              // window, and moving them detaches and re-renders every frame.
               opacity: reveal.rail,
-              transform: `translateX(${(1 - reveal.rail) * -railWidth}px)`,
               // Fade the clipped last thumbnail so the rail reads as scrollable.
               maskImage: "linear-gradient(to bottom, black 78%, transparent)",
             }}
