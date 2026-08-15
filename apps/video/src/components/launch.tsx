@@ -3,9 +3,10 @@ import type { CSSProperties, ReactNode } from "react";
 import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve";
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
 import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
+import { Video } from "@remotion/media";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 
 import { PptxCard } from "@/components/pptx-card";
 import { geistSans } from "@/lib/fonts";
@@ -160,7 +161,7 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "pocket-machines-sakura-chroma.pptx",
     slideIndex: 0,
-    caption: "Gradients and shadows",
+    caption: "Native gradients",
     x: 1420,
     y: 280,
     zoom: 1.02,
@@ -176,8 +177,6 @@ const SPOTLIGHTS: Spotlight[] = [
   {
     file: "make-something-strange-creative-mode.pptx",
     slideIndex: 6,
-    // Two words a line, like the rest. "Tables, cell for cell" left "cell"
-    // alone on the second line of the column.
     caption: "Tables and borders",
     x: 4240,
     y: 240,
@@ -191,19 +190,16 @@ const SPOTLIGHTS: Spotlight[] = [
     y: -270,
     zoom: 1.07,
   },
-  {
-    file: "side-quest-club-block-frame.pptx",
-    slideIndex: 4,
-    caption: "Complex layouts",
-    x: 7060,
-    y: 160,
-    zoom: 1.04,
-  },
 ];
 
-const SPOTLIGHT_DURATION = 85;
+/**
+ * Held long enough to read the caption, short enough that the camera does not
+ * become the subject. Six beats at 85 with a 30-frame ease spent 17 seconds
+ * on the same move; five at 62 with a 20-frame cut is about 10.
+ */
+const SPOTLIGHT_DURATION = 62;
 /** Frames of a beat spent gliding to the next card. The rest is the hold. */
-const CAMERA_MOVE = 30;
+const CAMERA_MOVE = 20;
 const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 const SHOWCASE_FRAMES = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
 
@@ -217,8 +213,8 @@ const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75
 const FOCUS_X = 1290;
 const FOCUS_Y = 540;
 
-/** Slow out of the old card, slow into the new one, quick in between. */
-const cameraEase = Easing.bezier(0.65, 0, 0.25, 1);
+/** Slow out of the old card, slow into the new one, quicker in between. */
+const cameraEase = Easing.bezier(0.7, 0, 0.25, 1);
 
 interface Camera {
   x: number;
@@ -538,6 +534,33 @@ function FeaturesScene() {
   );
 }
 
+// ── Editor demo ─────────────────────────────────────────────────────────────
+
+/**
+ * Drop `public/editor-demo.mp4` in to turn this sequence on. Until then the
+ * composition skips it entirely rather than holding a labelled empty slot.
+ */
+export const EDITOR_DEMO_FILE = "editor-demo.mp4";
+
+const DEMO_CONTENT_FRAMES = 210;
+const DEMO_DURATION = sectionDuration(DEMO_CONTENT_FRAMES);
+
+function DemoScene() {
+  return (
+    <AbsoluteFill>
+      <Backdrop />
+      <SceneContent durationInFrames={DEMO_DURATION}>
+        <Sequence from={CONTENT_LEAD} durationInFrames={DEMO_CONTENT_FRAMES} layout="none">
+          <Video
+            src={staticFile(EDITOR_DEMO_FILE)}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        </Sequence>
+      </SceneContent>
+    </AbsoluteFill>
+  );
+}
+
 // ── CTA ─────────────────────────────────────────────────────────────────────
 
 const CTA_DURATION = CONTENT_LEAD + 90;
@@ -569,49 +592,89 @@ const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
 const SPOTLIGHTS_TOTAL = sectionDuration(SHOWCASE_FRAMES);
 
-export function Launch() {
+export type LaunchProps = {
+  hasEditorDemo: boolean;
+} & Record<string, unknown>;
+
+export const DEFAULT_LAUNCH_PROPS: LaunchProps = {
+  hasEditorDemo: false,
+};
+
+export function launchDuration(hasEditorDemo: boolean): number {
+  const fades = hasEditorDemo ? 4 : 3;
   return (
-    <TransitionSeries>
-      <TransitionSeries.Sequence durationInFrames={TITLE_DURATION}>
-        <TitleCard />
-      </TransitionSeries.Sequence>
-
-      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
-
-      {/* One continuous shot: every card is mounted on the board for the whole
-          run and the camera moves between them, so there are no cuts for the
-          cards to fade across. The run shares one backdrop, leaving the
-          envelope only the board and the text column to fade. */}
-      <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
-        <AbsoluteFill>
-          <Backdrop />
-          <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
-            <Sequence from={CONTENT_LEAD} layout="none">
-              <ShowcaseScene />
-            </Sequence>
-          </SceneContent>
-        </AbsoluteFill>
-      </TransitionSeries.Sequence>
-
-      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
-
-      <TransitionSeries.Sequence durationInFrames={FEATURES_DURATION}>
-        <FeaturesScene />
-      </TransitionSeries.Sequence>
-
-      <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />
-
-      <TransitionSeries.Sequence durationInFrames={CTA_DURATION}>
-        <CtaScene />
-      </TransitionSeries.Sequence>
-    </TransitionSeries>
+    TITLE_DURATION +
+    SPOTLIGHTS_TOTAL +
+    (hasEditorDemo ? DEMO_DURATION : 0) +
+    FEATURES_DURATION +
+    CTA_DURATION -
+    fades * FADE_DURATION
   );
 }
 
-const SECTION_FADES = 3;
-export const LAUNCH_DURATION =
-  TITLE_DURATION +
-  SPOTLIGHTS_TOTAL +
-  FEATURES_DURATION +
-  CTA_DURATION -
-  SECTION_FADES * FADE_DURATION;
+export const LAUNCH_DURATION = launchDuration(false);
+
+export function Launch({ hasEditorDemo = false }: LaunchProps) {
+  const cut = () => <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} />;
+
+  const title = (
+    <TransitionSeries.Sequence durationInFrames={TITLE_DURATION}>
+      <TitleCard />
+    </TransitionSeries.Sequence>
+  );
+
+  const showcase = (
+    <TransitionSeries.Sequence durationInFrames={SPOTLIGHTS_TOTAL}>
+      <AbsoluteFill>
+        <Backdrop />
+        <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
+          <Sequence from={CONTENT_LEAD} layout="none">
+            <ShowcaseScene />
+          </Sequence>
+        </SceneContent>
+      </AbsoluteFill>
+    </TransitionSeries.Sequence>
+  );
+
+  const features = (
+    <TransitionSeries.Sequence durationInFrames={FEATURES_DURATION}>
+      <FeaturesScene />
+    </TransitionSeries.Sequence>
+  );
+
+  const cta = (
+    <TransitionSeries.Sequence durationInFrames={CTA_DURATION}>
+      <CtaScene />
+    </TransitionSeries.Sequence>
+  );
+
+  if (hasEditorDemo) {
+    return (
+      <TransitionSeries>
+        {title}
+        {cut()}
+        {showcase}
+        {cut()}
+        <TransitionSeries.Sequence durationInFrames={DEMO_DURATION}>
+          <DemoScene />
+        </TransitionSeries.Sequence>
+        {cut()}
+        {features}
+        {cut()}
+        {cta}
+      </TransitionSeries>
+    );
+  }
+
+  return (
+    <TransitionSeries>
+      {title}
+      {cut()}
+      {showcase}
+      {cut()}
+      {features}
+      {cut()}
+      {cta}
+    </TransitionSeries>
+  );
+}

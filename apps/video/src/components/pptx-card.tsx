@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { Presentation } from "@diceui/pptx";
-import { cancelRender, continueRender, delayRender, staticFile } from "remotion";
+import { staticFile, useDelayRender } from "remotion";
 
 import { geistSans } from "@/lib/fonts";
 
@@ -21,21 +21,33 @@ const SLIDE_WAIT_FRAMES = 120;
  * Runs `onReady` once the slide is in the DOM and has had a frame to paint.
  * `Presentation.Slide` marks its wrapper `data-status="ready"` and only fills
  * it once the deck is parsed, so a wrapper with content is the signal.
+ *
+ * Returns a cancel function so an unmount can drop the pending animation
+ * frames rather than letting them call into a released delay handle.
  */
 function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
   let framesLeft = SLIDE_WAIT_FRAMES;
+  let raf = 0;
+  let stopped = false;
 
   const check = () => {
+    if (stopped) return;
     const slide = hostRef.current?.querySelector('[data-status="ready"]');
     if (slide?.firstElementChild || framesLeft <= 0) {
-      requestAnimationFrame(onReady);
+      raf = requestAnimationFrame(() => {
+        if (!stopped) onReady();
+      });
       return;
     }
     framesLeft--;
-    requestAnimationFrame(check);
+    raf = requestAnimationFrame(check);
   };
 
-  check();
+  raf = requestAnimationFrame(check);
+  return () => {
+    stopped = true;
+    cancelAnimationFrame(raf);
+  };
 }
 
 export function PptxCard({
@@ -51,10 +63,18 @@ export function PptxCard({
   slideIndex?: number;
   style?: React.CSSProperties;
 }) {
+  const { delayRender, continueRender, cancelRender } = useDelayRender();
+  const [handle] = React.useState(() => delayRender(`load ${file}`));
   const [data, setData] = React.useState<ArrayBuffer | null>(null);
   const hostRef = React.useRef<HTMLDivElement>(null);
-  const [pptxLoadToken] = React.useState(() => delayRender(`load ${file}`));
   const resolvedRef = React.useRef(false);
+  const stopWaitRef = React.useRef<(() => void) | null>(null);
+
+  const release = React.useCallback(() => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    continueRender(handle);
+  }, [continueRender, handle]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -73,11 +93,10 @@ export function PptxCard({
       });
     return () => {
       cancelled = true;
-      if (!resolvedRef.current) {
-        continueRender(pptxLoadToken);
-      }
+      stopWaitRef.current?.();
+      release();
     };
-  }, [file, pptxLoadToken]);
+  }, [file, cancelRender, release]);
 
   return (
     <div ref={hostRef} style={{ ...FONT_VARS, width, height, ...style }}>
@@ -89,11 +108,14 @@ export function PptxCard({
             // Parsing finishing is not the same as the slide being on screen:
             // `onLoad` runs a commit early, so releasing the handle here lets
             // Remotion screenshot an empty card on whichever frame this
-            // component mounted on. Wait for the slide, then give it a frame
-            // to paint.
-            waitForSlide(hostRef, () => {
-              resolvedRef.current = true;
-              continueRender(pptxLoadToken);
+            // component mounted on. Wait for the slide, then for embedded
+            // fonts, then give it a frame to paint.
+            stopWaitRef.current?.();
+            stopWaitRef.current = waitForSlide(hostRef, () => {
+              const fontsReady = document.fonts?.ready ?? Promise.resolve();
+              void fontsReady.then(() => {
+                requestAnimationFrame(release);
+              });
             });
           }}
         >
