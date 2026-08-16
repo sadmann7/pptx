@@ -3,15 +3,19 @@ import * as React from "react";
 import { staticFile, useDelayRender } from "remotion";
 
 /** Give up and release rather than hang Remotion's delayRender timeout. */
-const SLIDE_WAIT_FRAMES = 120;
+const SLIDE_WAIT_FRAMES = 240;
 
 /**
- * Thumbnails render through a budgeted async queue, so the count of pending
- * ones drops in bursts. Previews clipped out of the rail never render at all,
- * so waiting for zero would always time out; waiting for the count to hold
- * steady this many frames means the queue has drained as far as it will.
+ * Thumbnails render through a budgeted async queue, so the count of unfinished
+ * ones drops in bursts. Previews clipped out of the rail never render at all, so
+ * waiting for zero would always time out; waiting for the count to hold steady
+ * this many frames means the queue has drained as far as it will. The window has
+ * to outlast the longest gap between bursts, or a slow thumbnail looks like the
+ * end of the queue and the deck releases half drawn. Remotion renders pages in
+ * parallel, so the gap widens with CPU contention and the window has to allow
+ * for the slowest case, not the one a single-threaded render shows.
  */
-const THUMBNAIL_SETTLE_FRAMES = 10;
+const THUMBNAIL_SETTLE_FRAMES = 45;
 
 function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
   let framesLeft = SLIDE_WAIT_FRAMES;
@@ -25,7 +29,11 @@ function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: 
     const host = hostRef.current;
     const slide = host?.querySelector('[data-status="ready"]');
 
-    const nextPending = host?.querySelectorAll("[data-pending]").length ?? 0;
+    // Charts count too: they initialise a frame or more after the slide they sit
+    // on, so a deck released on thumbnails alone captures its charts blank and
+    // then has them appear partway through the shot.
+    const nextPending =
+      host?.querySelectorAll("[data-pending], [data-pptx-chart-pending]").length ?? 0;
     if (nextPending === pendingCount) steadyFrames++;
     else steadyFrames = 0;
     pendingCount = nextPending;
@@ -51,20 +59,14 @@ function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: 
 /**
  * Fetches a deck and holds Remotion's render until the slide has painted with
  * its embedded fonts, so no frame is captured against an empty card.
- *
- * `onPainted` runs after paint but before the render is released, which is the
- * only window where imperative setup (dispatching a selection, say) still lands
- * in the captured frame.
  */
-export function useDeck(file: string, onPainted?: (host: HTMLDivElement) => void) {
+export function useDeck(file: string) {
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const [handle] = React.useState(() => delayRender(`load ${file}`));
   const [data, setData] = React.useState<ArrayBuffer | null>(null);
   const hostRef = React.useRef<HTMLDivElement>(null);
   const resolvedRef = React.useRef(false);
   const stopWaitRef = React.useRef<(() => void) | null>(null);
-  const onPaintedRef = React.useRef(onPainted);
-  onPaintedRef.current = onPainted;
 
   const release = React.useCallback(() => {
     if (resolvedRef.current) return;
@@ -97,10 +99,7 @@ export function useDeck(file: string, onPainted?: (host: HTMLDivElement) => void
     stopWaitRef.current = waitForSlide(hostRef, () => {
       const fontsReady = document.fonts?.ready ?? Promise.resolve();
       void fontsReady.then(() => {
-        const host = hostRef.current;
-        if (host) onPaintedRef.current?.(host);
-        // A second frame so anything onPainted mutated has painted too.
-        requestAnimationFrame(() => requestAnimationFrame(release));
+        requestAnimationFrame(release);
       });
     });
   }, [release]);

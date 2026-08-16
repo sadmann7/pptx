@@ -8,11 +8,7 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 
-import {
-  EDITOR_CHROME_H,
-  EditorPreview,
-  type EditorPreviewReveal,
-} from "@/components/editor-preview";
+import { EditorPreview } from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
 import { geistMono, geistSans } from "@/lib/fonts";
 
@@ -450,15 +446,16 @@ const COMPOSITION_LINES = [
 const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 
 /**
- * Geist dark values. A tag name is a single token, namespace and member
- * together, the way an editor paints it; only the brackets around it recede.
+ * GitHub Dark, narrowed to the two scopes this snippet produces: `entity.name.tag`
+ * and the punctuation around it.
  */
 const CODE_COLORS = {
-  tag: "#50e3c2",
-  punctuation: "#666666",
+  tag: "#7ee787",
+  punctuation: "#8b949e",
 } as const;
 
-const TOKEN_PATTERN = /(?<tag>[A-Za-z][\w$.]*)|(?<punctuation>[^A-Za-z]+)/gu;
+/** Names start with a letter, so the dot between namespace and member falls to punctuation. */
+const TOKEN_PATTERN = /(?<tag>[A-Za-z][\w$]*)|(?<punctuation>[^A-Za-z]+)/gu;
 
 function tokenize(line: string): { text: string; kind: keyof typeof CODE_COLORS }[] {
   return Array.from(line.matchAll(TOKEN_PATTERN), (match) => ({
@@ -487,8 +484,6 @@ function CodeLine({ line, reveal }: { line: string; reveal: number }) {
 /** Frames between one line appearing and the next. */
 const LINE_STAGGER = 9;
 const LINE_REVEAL = 15;
-/** The preview trails the line that introduces it, so the code reads as cause. */
-const PREVIEW_LAG = 5;
 
 const lineStart = (index: number) => index * LINE_STAGGER;
 
@@ -515,53 +510,41 @@ function CompositionCode({ time }: { time: number }) {
   );
 }
 
-const PREVIEW_FILE = "the-good-room-soft-editorial.pptx";
+const PREVIEW_FILE = "after-the-needle-drops-mat.pptx";
 const PREVIEW_SLIDE = 0;
 const PREVIEW_RAIL_W = 130;
 const PREVIEW_PAD = 26;
 const PREVIEW_W = 980;
 /** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
 const PREVIEW_H =
-  EDITOR_CHROME_H +
-  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) +
-  PREVIEW_PAD * 2;
+  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
+
+const PANEL_REVEAL = 20;
 
 /**
- * Which line of the snippet each part of the preview belongs to, so the editor
- * assembles itself in step with the code that declares it.
+ * Surface behind the snippet. Same material and height as the editor window, so
+ * the two columns read as a pair rather than as text floating on the gradient.
  */
-const PREVIEW_STAGES = {
-  chrome: 0,
-  rail: 1,
-  canvas: 2,
-  slide: 3,
-  selection: 4,
-} as const;
-
-type PreviewStageEntries = {
-  [K in keyof typeof PREVIEW_STAGES]: [K, (typeof PREVIEW_STAGES)[K]];
-}[keyof typeof PREVIEW_STAGES][];
-
-function previewStageEntries(): PreviewStageEntries {
-  return Object.entries(PREVIEW_STAGES) as PreviewStageEntries;
-}
-
-function buildPreviewReveal(time: number): EditorPreviewReveal {
-  const reveal: EditorPreviewReveal = {
-    chrome: 0,
-    rail: 0,
-    canvas: 0,
-    slide: 0,
-    selection: 0,
-  };
-  for (const [part, line] of previewStageEntries()) {
-    // The window is the container, not a consequence of a line, so it arrives
-    // with the first one; that also keeps the frame occupied while the incoming
-    // section crossfade is still running.
-    const from = lineStart(line) + (part === "chrome" ? 0 : PREVIEW_LAG);
-    reveal[part] = progress(time, from, from + LINE_REVEAL);
-  }
-  return reveal;
+function CodePanel({ reveal, children }: { reveal: number; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        height: PREVIEW_H,
+        padding: "0 40px",
+        boxSizing: "border-box",
+        borderRadius: 18,
+        background: "rgba(255,255,255,.04)",
+        border: "1px solid rgba(255,255,255,.12)",
+        boxShadow: `0 40px 120px rgba(0,0,0,${0.55 * reveal})`,
+        opacity: reveal,
+        transform: `translateY(${(1 - reveal) * 20}px) scale(${0.98 + reveal * 0.02})`,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function CompositionScene() {
@@ -569,7 +552,10 @@ function CompositionScene() {
   // whole scenes, and holding content back for it left the frame on a bare
   // gradient at both ends of this scene.
   const time = useCurrentFrame();
-  const reveal = buildPreviewReveal(time);
+  // Both panels arrive together as one surface; only the snippet inside is
+  // staggered. Assembling the editor part by part meant restyling the library
+  // components on every frame, which is what made the thumbnails flicker.
+  const reveal = progress(time, 0, PANEL_REVEAL);
 
   return (
     <AbsoluteFill>
@@ -584,7 +570,9 @@ function CompositionScene() {
             gap: 72,
           }}
         >
-          <CompositionCode time={time} />
+          <CodePanel reveal={reveal}>
+            <CompositionCode time={time} />
+          </CodePanel>
           <EditorPreview
             file={PREVIEW_FILE}
             slideIndex={PREVIEW_SLIDE}
