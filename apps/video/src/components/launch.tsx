@@ -8,7 +8,11 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 
-import { EditorPreview, type EditorPreviewReveal } from "@/components/editor-preview";
+import {
+  EDITOR_CHROME_H,
+  EditorPreview,
+  type EditorPreviewReveal,
+} from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
 import { geistMono, geistSans } from "@/lib/fonts";
 
@@ -446,24 +450,21 @@ const COMPOSITION_LINES = [
 const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 
 /**
- * The tag colour is github-dark's, matching the docs site. The namespace is
- * dimmed rather than sharing it: `Presentation` repeats on all sixteen tags and
- * would otherwise drown out the five component names, which are the point.
+ * Geist dark values. A tag name is a single token, namespace and member
+ * together, the way an editor paints it; only the brackets around it recede.
  */
 const CODE_COLORS = {
-  tag: "#7ee787",
-  namespace: "#7d8590",
-  plain: "#5b636d",
+  tag: "#50e3c2",
+  punctuation: "#666666",
 } as const;
 
-const TOKEN_PATTERN = /(?<namespace>Presentation)|(?<tag>[A-Z][\w$]*)|(?<plain>[^A-Z]+)/gu;
+const TOKEN_PATTERN = /(?<tag>[A-Za-z][\w$.]*)|(?<punctuation>[^A-Za-z]+)/gu;
 
 function tokenize(line: string): { text: string; kind: keyof typeof CODE_COLORS }[] {
-  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => {
-    const groups = match.groups ?? {};
-    const kind = groups.namespace ? "namespace" : groups.tag ? "tag" : "plain";
-    return { text: match[0], kind };
-  });
+  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => ({
+    text: match[0],
+    kind: match.groups?.tag ? ("tag" as const) : ("punctuation" as const),
+  }));
 }
 
 function CodeLine({ line, reveal }: { line: string; reveal: number }) {
@@ -521,7 +522,9 @@ const PREVIEW_PAD = 26;
 const PREVIEW_W = 980;
 /** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
 const PREVIEW_H =
-  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
+  EDITOR_CHROME_H +
+  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) +
+  PREVIEW_PAD * 2;
 
 /**
  * Which line of the snippet each part of the preview belongs to, so the editor
@@ -552,21 +555,26 @@ function buildPreviewReveal(time: number): EditorPreviewReveal {
     selection: 0,
   };
   for (const [part, line] of previewStageEntries()) {
-    const from = lineStart(line) + PREVIEW_LAG;
+    // The window is the container, not a consequence of a line, so it arrives
+    // with the first one; that also keeps the frame occupied while the incoming
+    // section crossfade is still running.
+    const from = lineStart(line) + (part === "chrome" ? 0 : PREVIEW_LAG);
     reveal[part] = progress(time, from, from + LINE_REVEAL);
   }
   return reveal;
 }
 
 function CompositionScene() {
-  const frame = useCurrentFrame();
-  const time = frame - CONTENT_LEAD;
+  // No content lead or fade-out here: the section crossfade already dissolves
+  // whole scenes, and holding content back for it left the frame on a bare
+  // gradient at both ends of this scene.
+  const time = useCurrentFrame();
   const reveal = buildPreviewReveal(time);
 
   return (
     <AbsoluteFill>
       <Backdrop />
-      <SceneContent durationInFrames={COMPOSITION_DURATION}>
+      <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{
             ...font,
@@ -677,11 +685,15 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
           </TransitionSeries.Sequence>,
         ]
       : []),
-    <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
-      <FeaturesScene />
-    </TransitionSeries.Sequence>,
+    // Composition before Features: the showcase has just proved what it
+    // renders, so "how you build it" follows while that is fresh, and the
+    // summary claims run into the install rather than splitting the two
+    // scenes that actually show something.
     <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
       <CompositionScene />
+    </TransitionSeries.Sequence>,
+    <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
+      <FeaturesScene />
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="cta" durationInFrames={CTA_DURATION}>
       <CtaScene />

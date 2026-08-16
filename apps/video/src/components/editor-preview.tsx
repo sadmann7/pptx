@@ -1,13 +1,57 @@
 import * as React from "react";
 
-import { Presentation } from "@diceui/pptx";
+import { Presentation, useSlide, useZoom } from "@diceui/pptx";
 
-import { geistSans } from "@/lib/fonts";
+import { geistMono, geistSans } from "@/lib/fonts";
 import { useDeck } from "@/lib/use-deck";
 
 const FONT_VARS = {
   "--font-geist-sans": geistSans,
 } as React.CSSProperties;
+
+/** Height of the title bar, which the caller needs to size the window. */
+export const EDITOR_CHROME_H = 46;
+
+/**
+ * Title bar. Every value comes from the loaded deck rather than being dressing,
+ * so the counter and zoom read whatever the preview is actually showing.
+ */
+function EditorChrome({ file, opacity }: { file: string; opacity: number }) {
+  const { index, total } = useSlide();
+  const { zoom } = useZoom();
+
+  const meta: React.CSSProperties = {
+    fontFamily: geistMono,
+    fontSize: 15,
+    color: "#8a8f98",
+    letterSpacing: -0.2,
+  };
+
+  return (
+    <div
+      style={{
+        opacity,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flex: "0 0 auto",
+        height: EDITOR_CHROME_H,
+        padding: "0 18px",
+        boxSizing: "border-box",
+        borderBottom: "1px solid rgba(255,255,255,.09)",
+        background: "rgba(255,255,255,.03)",
+      }}
+    >
+      <span style={meta}>{file}</span>
+      <span style={{ ...meta, display: "flex", gap: 18 }}>
+        <span>
+          {index + 1} / {total}
+        </span>
+        <span>{Math.round(zoom * 100)}%</span>
+      </span>
+    </div>
+  );
+}
 
 /**
  * The selection overlay captures the pointer on press, which throws for an
@@ -131,54 +175,62 @@ export function EditorPreview({
           defaultSlideIndex={slideIndex}
           readOnly={false}
           onLoad={onLoad}
-          style={{ display: "flex", width: "100%", height: "100%" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            height: "100%",
+          }}
         >
-          <Presentation.ThumbnailList
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              flex: "0 0 auto",
-              width: railWidth,
-              padding: 12,
-              boxSizing: "border-box",
-              overflow: "hidden",
-              borderRight: "1px solid rgba(255,255,255,.1)",
-              background: "rgba(0,0,0,.25)",
-              // Opacity only: the previews observe their intersection with the
-              // window, and moving them detaches and re-renders every frame.
-              opacity: reveal.rail,
-              // Fade the clipped last thumbnail so the rail reads as scrollable.
-              maskImage: "linear-gradient(to bottom, black 78%, transparent)",
-            }}
-          />
-          <Presentation.Viewport
-            autoFit
-            autoFitPadding={padding}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              height: "100%",
-              overflow: "hidden",
-              // The slide sits in normal flow, so centre it rather than let any
-              // leftover height pool at the bottom.
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              // Viewport draws nothing of its own, so give it a wash to make its
-              // arrival visible when its line lands.
-              background: `rgba(0,0,0,${0.22 * reveal.canvas})`,
-            }}
-          >
-            <Presentation.Slide
+          <EditorChrome file={file} opacity={reveal.chrome} />
+          <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+            <Presentation.ThumbnailList
               style={{
-                opacity: reveal.slide,
-                transform: `scale(${0.96 + reveal.slide * 0.04})`,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                flex: "0 0 auto",
+                width: railWidth,
+                padding: 12,
+                boxSizing: "border-box",
+                overflow: "hidden",
+                borderRight: "1px solid rgba(255,255,255,.1)",
+                background: "rgba(0,0,0,.25)",
+                // Opacity only: the previews observe their intersection with the
+                // window, and moving them detaches and re-renders every frame.
+                opacity: reveal.rail,
+                // Fade the clipped last thumbnail so the rail reads as scrollable.
+                maskImage: "linear-gradient(to bottom, black 78%, transparent)",
+              }}
+            />
+            <Presentation.Viewport
+              autoFit
+              autoFitPadding={padding}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: "100%",
+                overflow: "hidden",
+                // The slide sits in normal flow, so centre it rather than let any
+                // leftover height pool at the bottom.
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                // Viewport draws nothing of its own, so give it a wash to make its
+                // arrival visible when its line lands.
+                background: `rgba(0,0,0,${0.22 * reveal.canvas})`,
               }}
             >
-              <Presentation.Selection style={{ opacity: reveal.selection }} />
-            </Presentation.Slide>
-          </Presentation.Viewport>
+              <Presentation.Slide
+                style={{
+                  opacity: reveal.slide,
+                  transform: `scale(${0.96 + reveal.slide * 0.04})`,
+                }}
+              >
+                <Presentation.Selection style={{ opacity: reveal.selection }} />
+              </Presentation.Slide>
+            </Presentation.Viewport>
+          </div>
         </Presentation.Root>
       )}
     </div>
