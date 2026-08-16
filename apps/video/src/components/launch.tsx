@@ -7,10 +7,12 @@ import { Video } from "@remotion/media";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
+import type { ThemedToken } from "shiki/core";
 
 import { EditorPreview } from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
 import { geistMono, geistSans } from "@/lib/fonts";
+import { useHighlightedLines } from "@/lib/highlight";
 
 const C = {
   ink: "#0e1117",
@@ -36,7 +38,7 @@ const CAMERA_MOVE = 20;
 const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 const CAPTION_LEAD = 8;
 const SNAP_BEAT = 47;
-const COMPOSITION_CONTENT_FRAMES = 132;
+const COMPOSITION_CONTENT_FRAMES = 170;
 const CTA_DURATION = CONTENT_LEAD + 90;
 const DEMO_CONTENT_FRAMES = 210;
 
@@ -432,81 +434,131 @@ function FeaturesScene() {
   );
 }
 
-const COMPOSITION_LINES = [
-  "<Presentation.Root>",
-  "  <Presentation.ThumbnailList />",
-  "  <Presentation.Viewport>",
-  "    <Presentation.Slide>",
-  "      <Presentation.Selection />",
-  "    </Presentation.Slide>",
-  "  </Presentation.Viewport>",
-  "</Presentation.Root>",
+const RAIL_LINE_ID = "rail";
+
+const COMPOSITION_LINES: Record<string, string> = {
+  "root-open": "<Presentation.Root>",
+  [RAIL_LINE_ID]: "  <Presentation.ThumbnailList />",
+  "viewport-open": "  <Presentation.Viewport>",
+  "slide-open": "    <Presentation.Slide>",
+  selection: "      <Presentation.Selection />",
+  "slide-close": "    </Presentation.Slide>",
+  "viewport-close": "  </Presentation.Viewport>",
+  "root-close": "</Presentation.Root>",
+};
+
+/** A slide on its own, then the rail dropped in as a sibling of the canvas. */
+const WITHOUT_RAIL = [
+  "root-open",
+  "viewport-open",
+  "slide-open",
+  "selection",
+  "slide-close",
+  "viewport-close",
+  "root-close",
+];
+
+const WITH_RAIL = [
+  "root-open",
+  RAIL_LINE_ID,
+  "viewport-open",
+  "slide-open",
+  "selection",
+  "slide-close",
+  "viewport-close",
+  "root-close",
 ];
 
 const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 
+/** Highlighted as one document so each line is tokenised in context. */
+const COMPOSITION_SOURCE = WITH_RAIL.map((id) => COMPOSITION_LINES[id]).join("\n");
+
+const CODE_FONT_SIZE = 34;
+const CODE_LINE_H = Math.round(CODE_FONT_SIZE * 1.6);
 /**
- * GitHub Dark, narrowed to the two scopes this snippet produces: `entity.name.tag`
- * and the punctuation around it.
+ * Every line is positioned rather than laid out, so none of them give the block
+ * a width. In a monospace face the longest line is exactly this many characters.
  */
-const CODE_COLORS = {
-  tag: "#7ee787",
-  punctuation: "#8b949e",
-} as const;
+const CODE_COLUMNS = Math.max(...Object.values(COMPOSITION_LINES).map((line) => line.length));
 
-/** Names start with a letter, so the dot between namespace and member falls to punctuation. */
-const TOKEN_PATTERN = /(?<tag>[A-Za-z][\w$]*)|(?<punctuation>[^A-Za-z]+)/gu;
-
-function tokenize(line: string): { text: string; kind: keyof typeof CODE_COLORS }[] {
-  return Array.from(line.matchAll(TOKEN_PATTERN), (match) => ({
-    text: match[0],
-    kind: match.groups?.tag ? ("tag" as const) : ("punctuation" as const),
-  }));
-}
-
-function CodeLine({ line, reveal }: { line: string; reveal: number }) {
+function CodeLine({ tokens, row, mark, opacity }: CodeLineProps) {
   return (
     <div
       style={{
-        opacity: reveal,
-        transform: `translateY(${(1 - reveal) * 10}px)`,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        whiteSpace: "pre",
+        height: CODE_LINE_H,
+        lineHeight: `${CODE_LINE_H}px`,
+        opacity,
+        // Lifted while the lines below make room, so it does not collide with them.
+        zIndex: mark > 0 ? 1 : 0,
+        transform: `translateY(${row * CODE_LINE_H}px)`,
       }}
     >
-      {tokenize(line).map((token, index) => (
-        <span key={`${index}-${token.text}`} style={{ color: CODE_COLORS[token.kind] }}>
-          {token.text}
+      <span
+        style={{
+          position: "absolute",
+          inset: "0 -20px",
+          borderRadius: 8,
+          // GitHub Dark paints React components blue, so the insert marker uses
+          // that same token rather than the green added-line wash.
+          backgroundColor: `rgba(13,17,23,${0.94 * mark})`,
+          backgroundImage: `linear-gradient(rgba(121,192,255,${0.16 * mark}), rgba(121,192,255,${0.16 * mark}))`,
+          boxShadow: `inset 3px 0 0 rgba(121,192,255,${mark})`,
+        }}
+      />
+      {tokens.map((token, index) => (
+        <span
+          key={`${index}-${token.content}`}
+          style={{ position: "relative", color: token.color }}
+        >
+          {token.content}
         </span>
       ))}
     </div>
   );
 }
 
-/** Frames between one line appearing and the next. */
-const LINE_STAGGER = 9;
-const LINE_REVEAL = 15;
+interface CodeLineProps {
+  tokens: ThemedToken[];
+  row: number;
+  mark: number;
+  opacity: number;
+}
 
-const lineStart = (index: number) => index * LINE_STAGGER;
+function CompositionCode({ shift }: { shift: number }) {
+  const lines = useHighlightedLines(COMPOSITION_SOURCE);
 
-function CompositionCode({ time }: { time: number }) {
   return (
-    <pre
+    <div
       style={{
-        margin: 0,
+        position: "relative",
+        width: `${CODE_COLUMNS}ch`,
+        height: WITH_RAIL.length * CODE_LINE_H,
         fontFamily: geistMono,
-        fontSize: 34,
+        fontSize: CODE_FONT_SIZE,
         fontWeight: 500,
-        lineHeight: 1.6,
         letterSpacing: -0.4,
       }}
     >
-      {COMPOSITION_LINES.map((line, index) => (
-        <CodeLine
-          key={line}
-          line={line}
-          reveal={progress(time, lineStart(index), lineStart(index) + LINE_REVEAL)}
-        />
-      ))}
-    </pre>
+      {WITH_RAIL.map((id, to) => {
+        const tokens = lines?.[to];
+        if (!tokens) return null;
+        const from = id === RAIL_LINE_ID ? to : WITHOUT_RAIL.indexOf(id);
+        return (
+          <CodeLine
+            key={id}
+            tokens={tokens}
+            row={from + (to - from) * shift}
+            mark={id === RAIL_LINE_ID ? Math.sin(shift * Math.PI) : 0}
+            opacity={id === RAIL_LINE_ID ? shift : 1}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -520,6 +572,9 @@ const PREVIEW_H =
   Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
 
 const PANEL_REVEAL = 20;
+/** Late enough that the whole snippet has been on screen long enough to read. */
+const MOVE_START = 72;
+const MOVE_FRAMES = 26;
 
 /**
  * Surface behind the snippet. Same material and height as the editor window, so
@@ -547,15 +602,39 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
   );
 }
 
+/**
+ * A full-bleed slide and the same window with a rail, each mounted for the
+ * whole scene and settled before it is seen. Cutting between them is the only
+ * way the rail can appear without throwing its IntersectionObserver.
+ */
+function PreviewSwap({ reveal, swap }: { reveal: number; swap: number }) {
+  const common = {
+    file: PREVIEW_FILE,
+    slideIndex: PREVIEW_SLIDE,
+    width: PREVIEW_W,
+    height: PREVIEW_H,
+    railWidth: PREVIEW_RAIL_W,
+    padding: PREVIEW_PAD,
+  };
+  const layer: React.CSSProperties = { position: "absolute", inset: 0 };
+
+  return (
+    <div style={{ position: "relative", width: PREVIEW_W, height: PREVIEW_H, flex: "0 0 auto" }}>
+      <EditorPreview {...common} showRail={false} reveal={reveal * (1 - swap)} style={layer} />
+      <EditorPreview {...common} reveal={reveal * swap} style={layer} />
+    </div>
+  );
+}
+
 function CompositionScene() {
   // No content lead or fade-out here: the section crossfade already dissolves
   // whole scenes, and holding content back for it left the frame on a bare
   // gradient at both ends of this scene.
   const time = useCurrentFrame();
-  // Both panels arrive together as one surface; only the snippet inside is
-  // staggered. Assembling the editor part by part meant restyling the library
-  // components on every frame, which is what made the thumbnails flicker.
   const reveal = progress(time, 0, PANEL_REVEAL);
+  // Hold the slide, then insert the rail line. The editor cuts as the line lands.
+  const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
+  const swap = progress(time, MOVE_START + MOVE_FRAMES - 4, MOVE_START + MOVE_FRAMES);
 
   return (
     <AbsoluteFill>
@@ -571,17 +650,9 @@ function CompositionScene() {
           }}
         >
           <CodePanel reveal={reveal}>
-            <CompositionCode time={time} />
+            <CompositionCode shift={shift} />
           </CodePanel>
-          <EditorPreview
-            file={PREVIEW_FILE}
-            slideIndex={PREVIEW_SLIDE}
-            width={PREVIEW_W}
-            height={PREVIEW_H}
-            railWidth={PREVIEW_RAIL_W}
-            padding={PREVIEW_PAD}
-            reveal={reveal}
-          />
+          <PreviewSwap reveal={reveal} swap={swap} />
         </AbsoluteFill>
       </SceneContent>
     </AbsoluteFill>

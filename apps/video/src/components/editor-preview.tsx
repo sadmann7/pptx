@@ -17,6 +17,7 @@ export function EditorPreview({
   railWidth = 130,
   padding = 26,
   reveal = 1,
+  showRail = true,
   style,
 }: {
   file: string;
@@ -27,9 +28,57 @@ export function EditorPreview({
   padding?: number;
   /** Entrance progress, 0 to 1. Only the window moves; the editor inside is static. */
   reveal?: number;
+  /**
+   * Whether the thumbnail rail is in the tree. Fixed for the life of the
+   * instance: mounting it later would throw the IntersectionObserver and
+   * blank every miniature.
+   */
+  showRail?: boolean;
   style?: React.CSSProperties;
 }) {
   const { data, hostRef, onLoad } = useDeck(file);
+
+  const rail = (
+    <Presentation.ThumbnailList
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        flex: "0 0 auto",
+        width: railWidth,
+        padding: 12,
+        boxSizing: "border-box",
+        overflow: "hidden",
+        borderRight: "1px solid rgba(255,255,255,.1)",
+        background: "rgba(0,0,0,.25)",
+        // Fade the clipped last thumbnail so the rail reads as scrollable.
+        maskImage: "linear-gradient(to bottom, black 78%, transparent)",
+      }}
+    />
+  );
+
+  const canvas = (
+    <Presentation.Viewport
+      autoFit
+      autoFitPadding={padding}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        height: "100%",
+        overflow: "hidden",
+        // The slide sits in normal flow, so centre it rather than let any
+        // leftover height pool at the bottom.
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,.22)",
+      }}
+    >
+      <Presentation.Slide>
+        <Presentation.Selection />
+      </Presentation.Slide>
+    </Presentation.Viewport>
+  );
 
   return (
     <div
@@ -62,42 +111,8 @@ export function EditorPreview({
             height: "100%",
           }}
         >
-          <Presentation.ThumbnailList
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              flex: "0 0 auto",
-              width: railWidth,
-              padding: 12,
-              boxSizing: "border-box",
-              overflow: "hidden",
-              borderRight: "1px solid rgba(255,255,255,.1)",
-              background: "rgba(0,0,0,.25)",
-              // Fade the clipped last thumbnail so the rail reads as scrollable.
-              maskImage: "linear-gradient(to bottom, black 78%, transparent)",
-            }}
-          />
-          <Presentation.Viewport
-            autoFit
-            autoFitPadding={padding}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              height: "100%",
-              overflow: "hidden",
-              // The slide sits in normal flow, so centre it rather than let any
-              // leftover height pool at the bottom.
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(0,0,0,.22)",
-            }}
-          >
-            <Presentation.Slide>
-              <Presentation.Selection />
-            </Presentation.Slide>
-          </Presentation.Viewport>
+          {showRail ? rail : null}
+          {canvas}
         </Presentation.Root>
       )}
     </div>
