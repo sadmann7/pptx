@@ -5,6 +5,10 @@ import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
 import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
 import { Video } from "@remotion/media";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
+import type {
+  TransitionPresentation,
+  TransitionPresentationComponentProps,
+} from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import type { ThemedToken } from "shiki/core";
@@ -47,6 +51,16 @@ const SLIDE_H = 540;
 const FOCUS_X = 1290;
 const FOCUS_Y = 540;
 const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
+const VIDEO_W = 1920;
+const VIDEO_H = 1080;
+const HANDOFF_FRAMES = 36;
+const COMPOSITION_GAP = 72;
+const PREVIEW_RAIL_W = 130;
+const PREVIEW_PAD = 26;
+const PREVIEW_W = 980;
+/** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
+const PREVIEW_H =
+  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
 
 const font: React.CSSProperties = {
   fontFamily: geistSans,
@@ -176,7 +190,7 @@ const SPOTLIGHTS: Spotlight[] = [
 ];
 
 const SHOWCASE_FRAMES = SPOTLIGHTS.length * SPOTLIGHT_DURATION;
-const SPOTLIGHTS_TOTAL = sectionDuration(SHOWCASE_FRAMES);
+const SPOTLIGHTS_TOTAL = CONTENT_LEAD + SHOWCASE_FRAMES + HANDOFF_FRAMES;
 
 interface Camera {
   x: number;
@@ -204,6 +218,17 @@ function focusAt(frame: number): number {
 }
 
 function cameraAt(frame: number): Camera {
+  if (frame >= SHOWCASE_FRAMES) {
+    const t = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + HANDOFF_FRAMES);
+    const from = restingCamera(SPOTLIGHTS.length - 1, 1);
+    const to = landingCamera();
+    return {
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
+      zoom: from.zoom + (to.zoom - from.zoom) * t,
+    };
+  }
+
   const focus = focusAt(frame);
   const index = Math.floor(focus);
   const travel = focus - index;
@@ -226,6 +251,13 @@ function Board({ frame }: { frame: number }) {
   const camera = cameraAt(frame);
   const focus = focusAt(frame);
   const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
+  const nest = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + HANDOFF_FRAMES);
+  const othersOut = progress(frame, SHOWCASE_FRAMES - 18, SHOWCASE_FRAMES + 6);
+  const swapOut = progress(
+    frame,
+    SHOWCASE_FRAMES + HANDOFF_FRAMES - 4,
+    SHOWCASE_FRAMES + HANDOFF_FRAMES,
+  );
 
   return (
     <AbsoluteFill style={{ perspective: 2600 }}>
@@ -241,8 +273,12 @@ function Board({ frame }: { frame: number }) {
         }}
       >
         {SPOTLIGHTS.map((spotlight, index) => {
+          const isLast = index === SPOTLIGHTS.length - 1;
           const emphasis = (1 - Math.min(1, Math.abs(index - focus))) ** 1.4;
           const blur = (1 - emphasis) * 4;
+          const opacity = isLast
+            ? (0.26 + 0.74 * emphasis) * (1 - swapOut)
+            : (0.26 + 0.74 * emphasis) * (1 - othersOut);
 
           return (
             <div
@@ -253,10 +289,12 @@ function Board({ frame }: { frame: number }) {
                 top: spotlight.y - SLIDE_H / 2,
                 width: SLIDE_W,
                 height: SLIDE_H,
-                borderRadius: 10,
+                borderRadius: isLast ? 10 * (1 - nest) : 10,
                 overflow: "hidden",
-                boxShadow: "0 40px 100px rgba(0,0,0,.45)",
-                opacity: 0.26 + 0.74 * emphasis,
+                boxShadow: isLast
+                  ? `0 ${40 * (1 - nest)}px ${100 * (1 - nest)}px rgba(0,0,0,${0.45 * (1 - nest)})`
+                  : "0 40px 100px rgba(0,0,0,.45)",
+                opacity,
                 filter: blur > 0.05 ? `blur(${blur}px)` : undefined,
               }}
             >
@@ -318,7 +356,7 @@ function Captions({ frame, style, ...props }: CaptionsProps) {
         const local = frame - start;
         const isLast = index === SPOTLIGHTS.length - 1;
         const exit = isLast
-          ? 1
+          ? interpolate(frame, [SHOWCASE_FRAMES - 22, SHOWCASE_FRAMES - 4], [1, 0], clamp)
           : interpolate(local, [CAMERA_HOLD - 2, CAMERA_HOLD + 8], [1, 0], clamp);
         const reveal = local + CAPTION_LEAD;
         if (reveal < 0 || exit === 0) return null;
@@ -481,6 +519,32 @@ const CODE_LINE_H = Math.round(CODE_FONT_SIZE * 1.6);
  * a width. In a monospace face the longest line is exactly this many characters.
  */
 const CODE_COLUMNS = Math.max(...Object.values(COMPOSITION_LINES).map((line) => line.length));
+const CODE_PANEL_PAD_X = 40;
+const CODE_PANEL_W = CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * CODE_FONT_SIZE * 0.6);
+
+/**
+ * Camera that places the last showcase slide on the composition preview's
+ * empty canvas, so the two copies occupy the same pixels at the cut.
+ */
+function landingCamera(): Camera {
+  const spotlight = SPOTLIGHTS.at(-1);
+  if (!spotlight) throw new Error("no last spotlight");
+
+  const rowWidth = CODE_PANEL_W + COMPOSITION_GAP + PREVIEW_W;
+  const previewLeft = (VIDEO_W - rowWidth) / 2 + CODE_PANEL_W + COMPOSITION_GAP;
+  const previewTop = (VIDEO_H - PREVIEW_H) / 2;
+  const slideHeight = PREVIEW_H - PREVIEW_PAD * 2;
+  const slideWidth = (slideHeight * 16) / 9;
+  const slideLeft = previewLeft + (PREVIEW_W - slideWidth) / 2;
+  const slideTop = previewTop + PREVIEW_PAD;
+  const zoom = slideWidth / SLIDE_W;
+
+  return {
+    x: spotlight.x - (slideLeft + slideWidth / 2 - FOCUS_X) / zoom,
+    y: spotlight.y - (slideTop + slideHeight / 2 - FOCUS_Y) / zoom,
+    zoom,
+  };
+}
 
 function CodeLine({ tokens, row, mark, opacity }: CodeLineProps) {
   return (
@@ -564,14 +628,7 @@ function CompositionCode({ shift }: { shift: number }) {
 
 const PREVIEW_FILE = "after-the-needle-drops-mat.pptx";
 const PREVIEW_SLIDE = 0;
-const PREVIEW_RAIL_W = 130;
-const PREVIEW_PAD = 26;
-const PREVIEW_W = 980;
-/** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
-const PREVIEW_H =
-  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
 
-const PANEL_REVEAL = 20;
 /** Late enough that the whole snippet has been on screen long enough to read. */
 const MOVE_START = 72;
 const MOVE_FRAMES = 26;
@@ -586,15 +643,15 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
       style={{
         display: "flex",
         alignItems: "center",
+        width: CODE_PANEL_W,
         height: PREVIEW_H,
-        padding: "0 40px",
+        padding: `0 ${CODE_PANEL_PAD_X}px`,
         boxSizing: "border-box",
         borderRadius: 18,
         background: "rgba(255,255,255,.04)",
         border: "1px solid rgba(255,255,255,.12)",
         boxShadow: `0 40px 120px rgba(0,0,0,${0.55 * reveal})`,
         opacity: reveal,
-        transform: `translateY(${(1 - reveal) * 20}px) scale(${0.98 + reveal * 0.02})`,
       }}
     >
       {children}
@@ -607,7 +664,17 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
  * whole scene and settled before it is seen. Cutting between them is the only
  * way the rail can appear without throwing its IntersectionObserver.
  */
-function PreviewSwap({ reveal, swap }: { reveal: number; swap: number }) {
+function PreviewSwap({
+  reveal,
+  swap,
+  slideOpacity,
+  through,
+}: {
+  reveal: number;
+  swap: number;
+  slideOpacity: number;
+  through: boolean;
+}) {
   const common = {
     file: PREVIEW_FILE,
     slideIndex: PREVIEW_SLIDE,
@@ -620,25 +687,31 @@ function PreviewSwap({ reveal, swap }: { reveal: number; swap: number }) {
 
   return (
     <div style={{ position: "relative", width: PREVIEW_W, height: PREVIEW_H, flex: "0 0 auto" }}>
-      <EditorPreview {...common} showRail={false} reveal={reveal * (1 - swap)} style={layer} />
+      <EditorPreview
+        {...common}
+        showRail={false}
+        reveal={reveal * (1 - swap)}
+        slideOpacity={slideOpacity}
+        through={through}
+        style={layer}
+      />
       <EditorPreview {...common} reveal={reveal * swap} style={layer} />
     </div>
   );
 }
 
 function CompositionScene() {
-  // No content lead or fade-out here: the section crossfade already dissolves
-  // whole scenes, and holding content back for it left the frame on a bare
-  // gradient at both ends of this scene.
   const time = useCurrentFrame();
-  const reveal = progress(time, 0, PANEL_REVEAL);
-  // Hold the slide, then insert the rail line. The editor cuts as the line lands.
+  const reveal = progress(time, 8, 28);
+  const settled = progress(time, HANDOFF_FRAMES - 4, HANDOFF_FRAMES);
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
   const swap = progress(time, MOVE_START + MOVE_FRAMES - 4, MOVE_START + MOVE_FRAMES);
 
   return (
     <AbsoluteFill>
-      <Backdrop />
+      <AbsoluteFill style={{ opacity: settled }}>
+        <Backdrop />
+      </AbsoluteFill>
       <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{
@@ -646,13 +719,13 @@ function CompositionScene() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            gap: 72,
+            gap: COMPOSITION_GAP,
           }}
         >
           <CodePanel reveal={reveal}>
             <CompositionCode shift={shift} />
           </CodePanel>
-          <PreviewSwap reveal={reveal} swap={swap} />
+          <PreviewSwap reveal={reveal} swap={swap} slideOpacity={settled} through={settled < 1} />
         </AbsoluteFill>
       </SceneContent>
     </AbsoluteFill>
@@ -699,6 +772,28 @@ function CtaScene() {
   );
 }
 
+/**
+ * Both scenes stay fully opaque. The last showcase slide is already flying into
+ * the editor's hole, so a fade would double-expose it; chrome simply appears
+ * around the card that is already on screen.
+ */
+function persistPresentation(): TransitionPresentation<Record<string, never>> {
+  return { component: PersistPresentation, props: {} };
+}
+
+function PersistPresentation({
+  children,
+  presentationDirection,
+}: TransitionPresentationComponentProps<Record<string, never>>) {
+  return (
+    <AbsoluteFill style={{ zIndex: presentationDirection === "entering" ? 1 : 0 }}>
+      {children}
+    </AbsoluteFill>
+  );
+}
+
+const handoffTiming = linearTiming({ durationInFrames: HANDOFF_FRAMES });
+
 export type LaunchProps = {
   hasEditorDemo: boolean;
 } & Record<string, unknown>;
@@ -708,7 +803,7 @@ export const DEFAULT_LAUNCH_PROPS: LaunchProps = {
 };
 
 export function launchDuration(hasEditorDemo: boolean): number {
-  const fades = hasEditorDemo ? 5 : 4;
+  const shortFades = hasEditorDemo ? 4 : 3;
   return (
     TITLE_DURATION +
     SPOTLIGHTS_TOTAL +
@@ -716,7 +811,8 @@ export function launchDuration(hasEditorDemo: boolean): number {
     FEATURES_DURATION +
     COMPOSITION_DURATION +
     CTA_DURATION -
-    fades * FADE_DURATION
+    shortFades * FADE_DURATION -
+    (hasEditorDemo ? FADE_DURATION : HANDOFF_FRAMES)
   );
 }
 
@@ -730,7 +826,7 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
     <TransitionSeries.Sequence key="showcase" durationInFrames={SPOTLIGHTS_TOTAL}>
       <AbsoluteFill>
         <Backdrop />
-        <SceneContent durationInFrames={SPOTLIGHTS_TOTAL}>
+        <SceneContent durationInFrames={SPOTLIGHTS_TOTAL} fadeOut={false}>
           <Sequence from={CONTENT_LEAD} layout="none">
             <ShowcaseScene />
           </Sequence>
@@ -761,18 +857,27 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
 
   return (
     <TransitionSeries>
-      {scenes.flatMap((scene, index) =>
-        index === 0
-          ? [scene]
-          : [
-              <TransitionSeries.Transition
-                key={`cut-${index}`}
-                presentation={fade()}
-                timing={fadeTiming}
-              />,
-              scene,
-            ],
-      )}
+      {scenes.flatMap((scene, index) => {
+        if (index === 0) return [scene];
+        const from = scenes[index - 1]?.key;
+        const handoff = from === "showcase" && scene.key === "composition";
+        return [
+          handoff ? (
+            <TransitionSeries.Transition
+              key={`cut-${index}`}
+              presentation={persistPresentation()}
+              timing={handoffTiming}
+            />
+          ) : (
+            <TransitionSeries.Transition
+              key={`cut-${index}`}
+              presentation={fade()}
+              timing={fadeTiming}
+            />
+          ),
+          scene,
+        ];
+      })}
     </TransitionSeries>
   );
 }

@@ -18,6 +18,8 @@ export function EditorPreview({
   padding = 26,
   reveal = 1,
   showRail = true,
+  slideOpacity = 1,
+  through = false,
   style,
 }: {
   file: string;
@@ -34,6 +36,12 @@ export function EditorPreview({
    * blank every miniature.
    */
   showRail?: boolean;
+  slideOpacity?: number;
+  /**
+   * Punch a hole through the canvas so a matching slide behind the window can
+   * show through, used while the last showcase card flies into place.
+   */
+  through?: boolean;
   style?: React.CSSProperties;
 }) {
   const { data, hostRef, onLoad } = useDeck(file);
@@ -71,10 +79,10 @@ export function EditorPreview({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,.22)",
+        background: through ? "transparent" : "rgba(0,0,0,.22)",
       }}
     >
-      <Presentation.Slide>
+      <Presentation.Slide style={{ opacity: slideOpacity }}>
         <Presentation.Selection />
       </Presentation.Slide>
     </Presentation.Viewport>
@@ -93,7 +101,7 @@ export function EditorPreview({
         // themselves off their intersection with the window, so any movement
         // re-triggers that and blanks them mid-entrance.
         opacity: reveal,
-        background: "rgba(255,255,255,.04)",
+        background: through ? "transparent" : "rgba(255,255,255,.04)",
         border: "1px solid rgba(255,255,255,.12)",
         boxShadow: `0 40px 120px rgba(0,0,0,${0.55 * reveal})`,
         ...style,
