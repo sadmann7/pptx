@@ -253,11 +253,6 @@ function Board({ frame }: { frame: number }) {
   const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
   const nest = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + HANDOFF_FRAMES);
   const othersOut = progress(frame, SHOWCASE_FRAMES - 18, SHOWCASE_FRAMES + 6);
-  const swapOut = progress(
-    frame,
-    SHOWCASE_FRAMES + HANDOFF_FRAMES - 4,
-    SHOWCASE_FRAMES + HANDOFF_FRAMES,
-  );
 
   return (
     <AbsoluteFill style={{ perspective: 2600 }}>
@@ -276,9 +271,11 @@ function Board({ frame }: { frame: number }) {
           const isLast = index === SPOTLIGHTS.length - 1;
           const emphasis = (1 - Math.min(1, Math.abs(index - focus))) ** 1.4;
           const blur = (1 - emphasis) * 4;
-          const opacity = isLast
-            ? (0.26 + 0.74 * emphasis) * (1 - swapOut)
-            : (0.26 + 0.74 * emphasis) * (1 - othersOut);
+          // The last card is left at full opacity and simply unmounts with the
+          // scene. By then it is nested exactly over the editor's own copy of
+          // the same slide, so the cut is invisible, where a crossfade would
+          // put both on fractional opacity and dim the pair for its duration.
+          const opacity = (0.26 + 0.74 * emphasis) * (isLast ? 1 : 1 - othersOut);
 
           return (
             <div
@@ -418,6 +415,18 @@ function ShowcaseScene() {
       </div>
     </AbsoluteFill>
   );
+}
+
+/**
+ * The showcase sits above the composition for the handoff, so its backdrop has
+ * to get out of the way. Dropping it in one step is invisible because the scene
+ * underneath is already painting the same gradient at full opacity, whereas
+ * fading it would tint every pixel for the length of the ramp.
+ */
+function ShowcaseBackdrop() {
+  const frame = useCurrentFrame();
+  if (frame >= SPOTLIGHTS_TOTAL - HANDOFF_FRAMES) return null;
+  return <Backdrop />;
 }
 
 function TitleCard() {
@@ -633,6 +642,9 @@ const PREVIEW_SLIDE = 0;
 const MOVE_START = 72;
 const MOVE_FRAMES = 26;
 
+/** Frames between one miniature starting its fade and the next one starting. */
+const RAIL_POP_CADENCE = 4;
+
 /**
  * Surface behind the snippet. Same material and height as the editor window, so
  * the two columns read as a pair rather than as text floating on the gradient.
@@ -667,13 +679,11 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
 function PreviewSwap({
   reveal,
   swap,
-  slideOpacity,
-  through,
+  railReveal,
 }: {
   reveal: number;
   swap: number;
-  slideOpacity: number;
-  through: boolean;
+  railReveal: number;
 }) {
   const common = {
     file: PREVIEW_FILE,
@@ -687,15 +697,8 @@ function PreviewSwap({
 
   return (
     <div style={{ position: "relative", width: PREVIEW_W, height: PREVIEW_H, flex: "0 0 auto" }}>
-      <EditorPreview
-        {...common}
-        showRail={false}
-        reveal={reveal * (1 - swap)}
-        slideOpacity={slideOpacity}
-        through={through}
-        style={layer}
-      />
-      <EditorPreview {...common} reveal={reveal * swap} style={layer} />
+      <EditorPreview {...common} showRail={false} reveal={reveal * (1 - swap)} style={layer} />
+      <EditorPreview {...common} reveal={reveal * swap} railReveal={railReveal} style={layer} />
     </div>
   );
 }
@@ -703,15 +706,13 @@ function PreviewSwap({
 function CompositionScene() {
   const time = useCurrentFrame();
   const reveal = progress(time, 8, 28);
-  const settled = progress(time, HANDOFF_FRAMES - 4, HANDOFF_FRAMES);
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
   const swap = progress(time, MOVE_START + MOVE_FRAMES - 4, MOVE_START + MOVE_FRAMES);
+  const railReveal = Math.max(0, (time - (MOVE_START + MOVE_FRAMES)) / RAIL_POP_CADENCE);
 
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ opacity: settled }}>
-        <Backdrop />
-      </AbsoluteFill>
+      <Backdrop />
       <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{
@@ -725,7 +726,7 @@ function CompositionScene() {
           <CodePanel reveal={reveal}>
             <CompositionCode shift={shift} />
           </CodePanel>
-          <PreviewSwap reveal={reveal} swap={swap} slideOpacity={settled} through={settled < 1} />
+          <PreviewSwap reveal={reveal} swap={swap} railReveal={railReveal} />
         </AbsoluteFill>
       </SceneContent>
     </AbsoluteFill>
@@ -773,9 +774,11 @@ function CtaScene() {
 }
 
 /**
- * Both scenes stay fully opaque. The last showcase slide is already flying into
- * the editor's hole, so a fade would double-expose it; chrome simply appears
- * around the card that is already on screen.
+ * Both scenes stay fully opaque and the showcase stays on top, so the card
+ * still flying lands over an editor that is already fully drawn. Fading either
+ * scene would be worse than a cut: a fractional opacity puts the backdrop
+ * gradient on its own compositing surface, which Chromium renders about a luma
+ * darker, and the step back at the end of the ramp reads as a flash.
  */
 function persistPresentation(): TransitionPresentation<Record<string, never>> {
   return { component: PersistPresentation, props: {} };
@@ -786,7 +789,7 @@ function PersistPresentation({
   presentationDirection,
 }: TransitionPresentationComponentProps<Record<string, never>>) {
   return (
-    <AbsoluteFill style={{ zIndex: presentationDirection === "entering" ? 1 : 0 }}>
+    <AbsoluteFill style={{ zIndex: presentationDirection === "exiting" ? 1 : 0 }}>
       {children}
     </AbsoluteFill>
   );
@@ -825,7 +828,7 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="showcase" durationInFrames={SPOTLIGHTS_TOTAL}>
       <AbsoluteFill>
-        <Backdrop />
+        <ShowcaseBackdrop />
         <SceneContent durationInFrames={SPOTLIGHTS_TOTAL} fadeOut={false}>
           <Sequence from={CONTENT_LEAD} layout="none">
             <ShowcaseScene />
