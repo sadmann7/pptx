@@ -4,7 +4,8 @@ import path from "node:path";
 
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
-// Keep a cheap silent track; some platforms drop videos with no audio stream.
+// Remotion muxes a silent AAC track into the mp4 even though nothing here plays
+// audio, and it defaults to ~317 kbps of silence. This keeps that track cheap.
 Config.setAudioBitrate("32K");
 Config.overrideWebpackConfig((config) => {
   const withTailwind = enableTailwind(config);

@@ -2463,10 +2463,8 @@ export function parseChartXml(
     // Apply PowerPoint-like nice axis range (adds headroom beyond data max)
     applyNiceAxisRange(option, chartSize);
 
-    // PowerPoint draws a chart in its final state; the entrance animation is an
-    // ECharts default, not something the file asks for. Leaving it on also makes
-    // the chart a moving target for anything that captures a frame: thumbnails,
-    // screenshot tests, video renders.
+    // The entrance animation is an ECharts default, not something the file asks
+    // for, and it makes any captured frame a moving target.
     option.animation = false;
 
     // Apply background colors

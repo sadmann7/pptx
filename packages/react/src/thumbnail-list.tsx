@@ -95,7 +95,7 @@ interface ThumbnailRovingContextValue {
    */
   observeResize: (element: Element, cb: (width: number) => void) => () => void;
   /**
-   * Enqueue a `renderThumbnail()` call, drained FIFO per animation frame
+   * Enqueue a `renderSlide()` call, drained FIFO per animation frame
    * within an ~8ms budget so no single frame blocks the main thread.
    */
   scheduleRender: (fn: () => void) => () => void;
@@ -284,7 +284,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       [resizeCallbacksRef, sharedResizeObserverRef],
     );
 
-    // Batch renderThumbnail() calls that arrive simultaneously (e.g. initial
+    // Batch renderSlide() calls that arrive simultaneously (e.g. initial
     // viewport fills, rapid scroll) and drains them within an ~8ms per-frame
     // budget so no single commit blocks the main thread.
     const renderQueueRef = useLazyRef<Array<() => void>>(() => []);
@@ -593,10 +593,10 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
 /**
  * Renders the slide miniature for the enclosing `ThumbnailItem`.
  *
- * Uses an IntersectionObserver with a 200 px rootMargin so `renderThumbnail()`
- * is called slightly before the element scrolls into view. For normal
- * scrolling the thumbnail is always ready before it's visible. Rapid
- * scrollbar drag may briefly show a pending placeholder; the same
+ * Uses an IntersectionObserver with a 200 px vertical rootMargin so
+ * `renderSlide()` is called slightly before the element scrolls into view.
+ * For normal scrolling the thumbnail is always ready before it's visible.
+ * Rapid scrollbar drag may briefly show a pending placeholder; the same
  * behaviour as the reference vanilla implementation.
  *
  * Rendered DOM is kept in the list's handle cache: scrolling back re-attaches
@@ -653,9 +653,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
     // The IntersectionObserver fires when this preview enters/leaves the
-    // rootMargin zone (200px around the scroll container). On entry:
+    // rootMargin zone (200px above and below the scroll container). On entry:
     //   - Cache hit  → re-attach synchronously (zero pending flash)
-    //   - Cache miss → enqueue renderThumbnail() on the budgeted queue
+    //   - Cache miss → enqueue renderSlide() on the budgeted queue
     // On exit: detach DOM, keep handle in cache for instant re-attach.
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
