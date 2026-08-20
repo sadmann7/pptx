@@ -493,6 +493,14 @@ describe("parseChartXml: fallbacks", () => {
   });
 });
 
+describe("parseChartXml: determinism", () => {
+  // Thumbnails, screenshot tests and video renders all capture a single frame.
+  it("disables the ECharts entrance animation", () => {
+    const { option } = parseOption(BAR_CHART_XML) as AnyRecord;
+    expect(option.animation).toBe(false);
+  });
+});
+
 describe("data labels", () => {
   it("parses shared dLbls config", () => {
     const node = parseChartFragment(`<c:ser><c:dLbls>

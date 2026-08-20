@@ -2463,6 +2463,10 @@ export function parseChartXml(
     // Apply PowerPoint-like nice axis range (adds headroom beyond data max)
     applyNiceAxisRange(option, chartSize);
 
+    // The entrance animation is an ECharts default, not something the file asks
+    // for, and it makes any captured frame a moving target.
+    option.animation = false;
+
     // Apply background colors
     if (chartBg) {
       option.backgroundColor = chartBg;
@@ -2570,6 +2574,10 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   chartDiv.style.minWidth = "0";
   chartDiv.style.minHeight = "0";
   chartDiv.style.overflow = "hidden";
+  // ECharts can only be initialised once the div is attached and measurable, so
+  // a chart is always at least a frame behind the rest of the slide. This marks
+  // the gap for anything that needs to know the slide is not finished drawing.
+  chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
   // Parse chart data and create ECharts option
@@ -2612,11 +2620,13 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   const chartReady = new Promise<void>((resolve) => {
     const finishInit = (): void => {
       initChart(chartDiv, option, chartSet);
+      delete chartDiv.dataset.pptxChartPending;
       resolve();
     };
 
     requestAnimationFrame(() => {
       if (!chartDiv.isConnected) {
+        delete chartDiv.dataset.pptxChartPending;
         resolve();
         return;
       }
@@ -2631,6 +2641,7 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
         const sizeObserver = new ResizeObserver((entries) => {
           if (!chartDiv.isConnected) {
             sizeObserver.disconnect();
+            delete chartDiv.dataset.pptxChartPending;
             return;
           }
           const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
