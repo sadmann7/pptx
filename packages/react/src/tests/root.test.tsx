@@ -107,6 +107,23 @@ describe("Presentation.Root file prop", () => {
     expect(events[1].previousSlideId).toBe(events[0].slideId);
   });
 
+  it("calls onStatusChange through the load lifecycle", async () => {
+    const fixture = await loadFixture();
+    const transitions: string[] = [];
+
+    render(
+      <Presentation.Root
+        file={fixture}
+        onStatusChange={({ status, previousStatus }) =>
+          transitions.push(`${previousStatus}->${status}`)
+        }
+      />,
+    );
+
+    await waitFor(() => expect(transitions).toContain("loading->ready"));
+    expect(transitions).toEqual(["idle->loading", "loading->ready"]);
+  });
+
   it("does not touch a provider store when file is omitted", () => {
     const store = createStore();
     render(

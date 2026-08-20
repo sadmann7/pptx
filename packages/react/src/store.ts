@@ -124,9 +124,54 @@ export interface SlideChangeEvent {
   reason: SlideChangeReason;
 }
 
+/** What produced an applied edit. */
+export type EditSource = "edit" | "undo" | "redo";
+
+export interface EditEvent {
+  /** The operation that was applied, re-applied, or reverted. */
+  operation: EditOperation;
+
+  /** Result of applying it, including the slides it touched. */
+  result: EditResult;
+
+  /** Whether this came from `edit()`, `undo()`, or `redo()`. */
+  source: EditSource;
+}
+
+export interface HistoryChangeEvent {
+  /** Whether there is now an edit to undo. */
+  canUndo: boolean;
+
+  /** Whether there is now an edit to redo. */
+  canRedo: boolean;
+
+  /** Whether the deck has unsaved changes (see `store.isDirty`). */
+  isDirty: boolean;
+}
+
+export interface StatusChangeEvent {
+  /** The status the store just moved to. */
+  status: PresentationStatus;
+
+  /** The status it moved from. */
+  previousStatus: PresentationStatus;
+}
+
+export interface ZoomChangeEvent {
+  /** The new zoom level, where `1` equals 100%. */
+  zoom: number;
+
+  /** The zoom level it changed from. */
+  previousZoom: number;
+}
+
 /** Payload delivered to each `store.on()` event. */
 export interface StoreEventMap {
   slideChange: SlideChangeEvent;
+  edit: EditEvent;
+  historyChange: HistoryChangeEvent;
+  statusChange: StatusChangeEvent;
+  zoomChange: ZoomChangeEvent;
 }
 
 type StoreEventHandler<E extends keyof StoreEventMap> = (payload: StoreEventMap[E]) => void;
@@ -370,6 +415,20 @@ export interface Store {
   canRedo: () => boolean;
 
   /**
+   * Returns `true` when the deck has edits that have not been written out by
+   * `save()`. Undoing back to the last saved point clears it again.
+   *
+   * Use it to guard navigation away from unsaved work:
+   *
+   * ```ts
+   * window.addEventListener("beforeunload", (event) => {
+   *   if (store.isDirty()) event.preventDefault();
+   * });
+   * ```
+   */
+  isDirty: () => boolean;
+
+  /**
    * Serialize the (possibly edited) presentation back to a .pptx archive.
    * Requires the deck to have been loaded with `{ readOnly: false }`.
    */
@@ -433,6 +492,10 @@ export function createStore(): Store {
   const listeners = new Set<() => void>();
   const eventListeners: { [E in keyof StoreEventMap]: Set<StoreEventHandler<E>> } = {
     slideChange: new Set(),
+    edit: new Set(),
+    historyChange: new Set(),
+    statusChange: new Set(),
+    zoomChange: new Set(),
   };
   let loadGeneration = 0;
   let embeddedFonts: EmbeddedFontsHandle | undefined;
@@ -441,6 +504,12 @@ export function createStore(): Store {
 
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
+  /**
+   * Undo-stack depth as of the last `save()`. The deck is clean while the
+   * stack sits exactly here, so undoing back to a saved state clears the dirty
+   * flag. `-1` marks the save point unreachable (see `edit()`).
+   */
+  let savedUndoDepth = 0;
   let slideRevisionById = new Map<string, number>();
   let slideContentRevisionById = new Map<string, number>();
 
@@ -460,15 +529,34 @@ export function createStore(): Store {
     update: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
   ): void {
     const patch = typeof update === "function" ? update(state) : update;
+    const previous = state;
     state = { ...state, ...patch };
     if ("presentation" in patch) rebuildSlideIndex(state.presentation);
     emit();
+    emitStateEvents(previous);
   }
 
   function replaceState(nextState: StoreState): void {
+    const previous = state;
     state = nextState;
     rebuildSlideIndex(nextState.presentation);
     emit();
+    emitStateEvents(previous);
+  }
+
+  /**
+   * Events that are a pure function of two state snapshots are emitted here,
+   * so every path that writes state reports them without having to remember
+   * to. Events that carry more than the diff (`slideChange`'s reason, `edit`'s
+   * operation) are emitted at their mutation site instead.
+   */
+  function emitStateEvents(previous: StoreState): void {
+    if (state.status !== previous.status) {
+      emitEvent("statusChange", { status: state.status, previousStatus: previous.status });
+    }
+    if (state.zoom !== previous.zoom) {
+      emitEvent("zoomChange", { zoom: state.zoom, previousZoom: previous.zoom });
+    }
   }
 
   function getState(): StoreState {
@@ -488,6 +576,10 @@ export function createStore(): Store {
     };
   }
 
+  function emitEvent<E extends keyof StoreEventMap>(event: E, payload: StoreEventMap[E]): void {
+    for (const handler of eventListeners[event] as Set<StoreEventHandler<E>>) handler(payload);
+  }
+
   /**
    * Emit `slideChange` when the active slide actually moved. Call after the
    * state update so handlers observe the new state.
@@ -495,13 +587,29 @@ export function createStore(): Store {
   function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
     const slideId = state.activeSlideId;
     if (slideId === previousSlideId) return;
-    const payload: SlideChangeEvent = {
+    emitEvent("slideChange", {
       slideId,
       index: slideId ? getSlideIndex(slideId) : -1,
       previousSlideId,
       reason,
-    };
-    for (const handler of eventListeners.slideChange) handler(payload);
+    });
+  }
+
+  function historySnapshot(): HistoryChangeEvent {
+    return { canUndo: canUndo(), canRedo: canRedo(), isDirty: isDirty() };
+  }
+
+  /** Emit `historyChange` when undo/redo availability or dirtiness moved. */
+  function emitHistoryChange(previous: HistoryChangeEvent): void {
+    const next = historySnapshot();
+    if (
+      next.canUndo === previous.canUndo &&
+      next.canRedo === previous.canRedo &&
+      next.isDirty === previous.isDirty
+    ) {
+      return;
+    }
+    emitEvent("historyChange", next);
   }
 
   async function load(
@@ -518,11 +626,13 @@ export function createStore(): Store {
     // Captured before the state is cleared below: the transient drop to
     // `null` while loading is not a slide change worth reporting.
     const previousSlideId = state.activeSlideId;
+    const previousHistory = historySnapshot();
 
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
     clearEditHistory();
     replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
+    emitHistoryChange(previousHistory);
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
     // model above). The budget grows once font bytes are known after unzip;
@@ -732,18 +842,25 @@ export function createStore(): Store {
   function reset(): void {
     loadGeneration += 1;
     const previousSlideId = state.activeSlideId;
+    const previousHistory = historySnapshot();
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
     clearEditHistory();
     replaceState({ ...DEFAULT_STORE_STATE });
     emitSlideChange(previousSlideId, "reset");
+    emitHistoryChange(previousHistory);
   }
 
   function clearEditHistory(): void {
     undoStack = [];
     redoStack = [];
+    savedUndoDepth = 0;
     slideRevisionById = new Map();
     slideContentRevisionById = new Map();
+  }
+
+  function isDirty(): boolean {
+    return undoStack.length !== savedUndoDepth;
   }
 
   function getSlideRevision(slideId: string): number {
@@ -818,15 +935,25 @@ export function createStore(): Store {
       );
     }
 
+    const previousHistory = historySnapshot();
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, op);
+
+    // A new edit made while below the save point discards the path back to
+    // it, so that depth no longer means "saved": the deck stays dirty until
+    // the next save.
+    if (savedUndoDepth > undoStack.length) savedUndoDepth = -1;
+
     undoStack.push({ op, result });
     redoStack = [];
     commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
+    emitEvent("edit", { operation: op, result, source: "edit" });
+    emitHistoryChange(previousHistory);
     return result;
   }
 
   function undo(): boolean {
+    const previousHistory = historySnapshot();
     const entry = undoStack.pop();
     if (!entry) return false;
     const prevActiveIndex = getActiveSlideIndex();
@@ -838,10 +965,13 @@ export function createStore(): Store {
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
     commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op));
+    emitEvent("edit", { operation: entry.op, result: entry.result, source: "undo" });
+    emitHistoryChange(previousHistory);
     return true;
   }
 
   async function redo(): Promise<boolean> {
+    const previousHistory = historySnapshot();
     const entry = redoStack.pop();
     if (!entry) return false;
     const { presentation } = state;
@@ -852,6 +982,8 @@ export function createStore(): Store {
     const result = await applyEdit(presentation, entry.op);
     undoStack.push({ op: entry.op, result });
     commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
+    emitEvent("edit", { operation: entry.op, result, source: "redo" });
+    emitHistoryChange(previousHistory);
     return true;
   }
 
@@ -873,7 +1005,12 @@ export function createStore(): Store {
         "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
       );
     }
-    return writePptx(presentation, options);
+    const previousHistory = historySnapshot();
+    const bytes = await writePptx(presentation, options);
+    // Everything up to here is now on disk: this depth is the clean state.
+    savedUndoDepth = undoStack.length;
+    emitHistoryChange(previousHistory);
+    return bytes;
   }
 
   return {
@@ -900,6 +1037,7 @@ export function createStore(): Store {
     redo,
     canUndo,
     canRedo,
+    isDirty,
     save,
     getSlideRevision,
     getSlideContentRevision,

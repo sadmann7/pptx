@@ -1,9 +1,9 @@
 import * as React from "react";
 
-import { useStoreContext, useZoom } from "./context";
+import { useStoreContext, useStoreEvent, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
-import type { AutoFitPadding } from "./store";
+import type { AutoFitPadding, ZoomChangeEvent } from "./store";
 
 /**
  * Ignore wheel events for this long after a wheel-triggered navigation.
@@ -60,6 +60,16 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<ViewportState>;
+
+  /**
+   * Event handler called whenever the zoom level changes, including the
+   * automatic fits performed while `autoFit` is on.
+   *
+   * ```tsx
+   * onZoomChange={({ zoom }) => setZoomLabel(`${Math.round(zoom * 100)}%`)}
+   * ```
+   */
+  onZoomChange?: (event: ZoomChangeEvent) => void;
 }
 
 /**
@@ -70,13 +80,22 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
  * Place `<Presentation.Slide>` inside to render the current slide.
  */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
-  { autoFit = false, autoFitPadding = 0, scrollNavigation = false, render, ...viewportProps },
+  {
+    autoFit = false,
+    autoFitPadding = 0,
+    scrollNavigation = false,
+    render,
+    onZoomChange,
+    ...viewportProps
+  },
   forwardedRef,
 ) {
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
   const store = useStoreContext("PresentationViewport");
   const { zoom } = useZoom();
+
+  useStoreEvent(store, "zoomChange", onZoomChange);
 
   React.useEffect(() => {
     if (!autoFit || !viewportRef.current) return;

@@ -237,6 +237,53 @@ describe("reset and subscriptions", () => {
   });
 });
 
+describe("statusChange and zoomChange events", () => {
+  it("reports each status transition through a load", async () => {
+    const store = createStore();
+    const transitions: string[] = [];
+    store.on("statusChange", ({ status, previousStatus }) =>
+      transitions.push(`${previousStatus}->${status}`),
+    );
+
+    await store.load(fixture);
+    expect(transitions).toEqual(["idle->loading", "loading->ready"]);
+
+    store.reset();
+    expect(transitions.at(-1)).toBe("ready->idle");
+  });
+
+  it("reports a failed load as a transition to error", async () => {
+    const store = createStore();
+    const transitions: string[] = [];
+    store.on("statusChange", ({ status }) => transitions.push(status));
+
+    await expect(store.load(new ArrayBuffer(16))).rejects.toThrow();
+    expect(transitions).toEqual(["loading", "error"]);
+  });
+
+  it("reports zoom changes once per effective change", async () => {
+    const store = await loadedStore();
+    const zooms: number[] = [];
+    store.on("zoomChange", ({ zoom }) => zooms.push(zoom));
+
+    store.zoomIn();
+    store.setZoom(1.25); // No-op: already there.
+    store.fitTo(640, 360);
+    expect(zooms).toEqual([1.25, 0.5]);
+  });
+
+  it("reports the previous zoom alongside the new one", async () => {
+    const store = await loadedStore();
+    let event: { zoom: number; previousZoom: number } | null = null;
+    store.on("zoomChange", (payload) => {
+      event = payload;
+    });
+
+    store.setZoom(2);
+    expect(event).toEqual({ zoom: 2, previousZoom: 1 });
+  });
+});
+
 describe("slideChange events", () => {
   it("reports the new slide, the previous one, and why it changed", async () => {
     const store = await loadedStore();

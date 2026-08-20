@@ -138,3 +138,26 @@ store.redo(); // re-applies the last undone edit
 ```
 
 Cross-slide edits navigate to the affected slide automatically on undo/redo.
+
+## Unsaved changes
+
+`store.isDirty()` reports whether there are edits that `save()` has not written out. Undoing back to the last saved state clears it again, so a user who undoes their way back to where they started is not warned for nothing:
+
+```tsx
+window.addEventListener("beforeunload", (event) => {
+  if (store.isDirty()) event.preventDefault();
+});
+```
+
+Rather than polling it, take it from `onHistoryChange`, which fires whenever undo/redo availability or dirtiness moves:
+
+```tsx
+<Presentation.Root
+  file={file}
+  readOnly={false}
+  onHistoryChange={({ canUndo, canRedo, isDirty }) => {
+    setToolbar({ canUndo, canRedo });
+    setHasUnsavedChanges(isDirty);
+  }}
+/>
+```

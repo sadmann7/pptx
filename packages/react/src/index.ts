@@ -6,6 +6,7 @@ export type { RootProps, RootState } from "./root";
 export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
 export type { SlideProps, SlideState } from "./slide";
 export type {
+  ThumbnailSelectEvent,
   ThumbnailItemNumberProps,
   ThumbnailItemPreviewProps,
   ThumbnailItemPreviewState,
@@ -31,6 +32,9 @@ export type { ComponentRenderFn, RenderProp } from "./render";
 
 export type {
   AutoFitPadding,
+  EditEvent,
+  EditSource,
+  HistoryChangeEvent,
   StoreState as PresentationState,
   PresentationStatus,
   Store as PresentationStore,
@@ -39,6 +43,8 @@ export type {
   SidePadding,
   SlideChangeEvent,
   SlideChangeReason,
+  StatusChangeEvent,
+  ZoomChangeEvent,
 } from "./store";
 
 export type {

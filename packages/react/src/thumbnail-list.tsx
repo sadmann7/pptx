@@ -460,9 +460,42 @@ export interface ThumbnailItemState {
   displayIndex: number;
 }
 
-export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onClick"> {
+/** Fired when a thumbnail is about to become the active slide. */
+export interface ThumbnailSelectEvent {
+  /** Stable id of the slide the list is about to navigate to. */
+  slideId: string;
+
+  /** Call to keep the navigation from happening. */
+  preventDefault: () => void;
+}
+
+export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onSelect"> {
   slideId: string;
   render?: RenderProp<ThumbnailItemState>;
+
+  /**
+   * Runs just before this item becomes the active slide, whether from a click
+   * or from keyboard roving (arrowing through the list changes slides, so it
+   * fires there too). Call `preventDefault()` to stop the navigation.
+   *
+   * This exists because the list navigates on focus, which the browser
+   * delivers before `click`: a veto expressed in `onClick` would arrive after
+   * the slide had already changed. Use `onClick` for side effects that do not
+   * need to block navigation, such as analytics.
+   *
+   * Note that `ThumbnailItem` is memoized: passing a handler whose identity
+   * changes every render opts the item out of that memoization.
+   *
+   * ```tsx
+   * <Presentation.ThumbnailItem
+   *   slideId={slideId}
+   *   onSelect={(event) => {
+   *     if (store.isDirty() && !confirmDiscard()) event.preventDefault();
+   *   }}
+   * />
+   * ```
+   */
+  onSelect?: (event: ThumbnailSelectEvent) => void;
 }
 
 /**
@@ -470,7 +503,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
-    { slideId, children, render, ...thumbnailItemProps },
+    { slideId, children, render, onSelect, ...thumbnailItemProps },
     forwardedRef,
   ) {
     const store = useStoreContext(THUMBNAIL_ITEM_NAME);
@@ -499,6 +532,24 @@ export const ThumbnailItem = React.memo(
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
 
+    /**
+     * Single navigation path for both click and focus, so a consumer's veto
+     * applies no matter which one got there first.
+     */
+    function selectSlide(): void {
+      if (onSelect) {
+        let isPrevented = false;
+        onSelect({
+          slideId,
+          preventDefault: () => {
+            isPrevented = true;
+          },
+        });
+        if (isPrevented) return;
+      }
+      store.goTo(slideId);
+    }
+
     const itemContextValue = React.useMemo<ThumbnailItemContextValue>(
       () => ({ slideId, displayIndex, isActive }),
       [slideId, displayIndex, isActive],
@@ -523,10 +574,10 @@ export const ThumbnailItem = React.memo(
                 "data-slide-id": slideId,
                 tabIndex: isCurrentTabStop ? 0 : -1,
                 style: { width: "100%" },
-                onClick: () => store.goTo(slideId),
+                onClick: () => selectSlide(),
                 onFocus: () => {
                   rovingContext.onItemFocus(slideId);
-                  store.goTo(slideId);
+                  selectSlide();
                 },
                 onMouseDown: () => {
                   rovingContext.onItemFocus(slideId);

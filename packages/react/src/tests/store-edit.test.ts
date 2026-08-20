@@ -7,10 +7,10 @@
  * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
  * slide-level edit operations depend on.
  */
-import type { ShapeNodeData } from "@diceui/pptx-core";
+import type { EditOperation, ShapeNodeData } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import type { SlideChangeEvent } from "../store";
+import type { EditEvent, HistoryChangeEvent, SlideChangeEvent } from "../store";
 import { createStore, Store } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
@@ -268,6 +268,124 @@ describe("structural edits and navigation", () => {
     // Active moved off the removed copy onto a valid neighbor.
     expect(store.getState().activeSlideId).not.toBe(result.createdSlideId);
     expect(store.getActiveSlideIndex()).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("edit and historyChange events", () => {
+  const textEdit = (slideId: string, text: string): EditOperation => ({
+    type: "setTextRun",
+    slideId,
+    nodeId: "2",
+    paragraphIndex: 0,
+    runIndex: 0,
+    text,
+  });
+
+  it("reports the operation and where it came from", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    const events: EditEvent[] = [];
+    store.on("edit", (event) => events.push(event));
+
+    const operation = textEdit(slideId, "Edited");
+    await store.edit(operation);
+    store.undo();
+    await store.redo();
+
+    expect(events.map((event) => event.source)).toEqual(["edit", "undo", "redo"]);
+    expect(events.every((event) => event.operation === operation)).toBe(true);
+    expect(events[0].result.affectedSlideIds).toContain(slideId);
+  });
+
+  it("tracks undo/redo availability and dirtiness together", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    const events: HistoryChangeEvent[] = [];
+    store.on("historyChange", (event) => events.push(event));
+
+    await store.edit(textEdit(slideId, "Edited"));
+    expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
+
+    store.undo();
+    expect(events.at(-1)).toEqual({ canUndo: false, canRedo: true, isDirty: false });
+
+    await store.redo();
+    expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
+  });
+
+  it("stays quiet when undo and redo find nothing to do", async () => {
+    const store = await editableStore();
+    const events: HistoryChangeEvent[] = [];
+    store.on("historyChange", (event) => events.push(event));
+
+    expect(store.undo()).toBe(false);
+    expect(await store.redo()).toBe(false);
+    expect(events).toHaveLength(0);
+  });
+});
+
+describe("isDirty", () => {
+  const textEdit = (slideId: string, text: string): EditOperation => ({
+    type: "setTextRun",
+    slideId,
+    nodeId: "2",
+    paragraphIndex: 0,
+    runIndex: 0,
+    text,
+  });
+
+  it("starts clean and tracks edits against the last save", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    expect(store.isDirty()).toBe(false);
+
+    await store.edit(textEdit(slideId, "One"));
+    expect(store.isDirty()).toBe(true);
+
+    await store.save();
+    expect(store.isDirty()).toBe(false);
+
+    await store.edit(textEdit(slideId, "Two"));
+    expect(store.isDirty()).toBe(true);
+  });
+
+  it("clears when undoing back to the saved state and re-dirties on redo", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+
+    await store.edit(textEdit(slideId, "One"));
+    expect(store.isDirty()).toBe(true);
+
+    store.undo();
+    expect(store.isDirty()).toBe(false);
+
+    await store.redo();
+    expect(store.isDirty()).toBe(true);
+  });
+
+  it("stays dirty when a new edit discards the path back to the save point", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+
+    await store.edit(textEdit(slideId, "One"));
+    await store.edit(textEdit(slideId, "Two"));
+    await store.save();
+
+    // Back to one edit deep, then branch: the deck now holds different content
+    // at the same stack depth as the save, so it must not read as clean.
+    store.undo();
+    await store.edit(textEdit(slideId, "Three"));
+    expect(store.isDirty()).toBe(true);
+  });
+
+  it("resets to clean on a fresh load", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    await store.edit(textEdit(slideId, "One"));
+    expect(store.isDirty()).toBe(true);
+
+    await store.load(fixture, { readOnly: false, embedFonts: false });
+    expect(store.isDirty()).toBe(false);
   });
 });
 

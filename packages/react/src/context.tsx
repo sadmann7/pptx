@@ -3,8 +3,8 @@ import * as React from "react";
 import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
-import { useLazyRef } from "./hook";
-import type { AutoFitPadding, Store, StoreState } from "./store";
+import { useLatestRef, useLazyRef } from "./hook";
+import type { AutoFitPadding, Store, StoreEventMap, StoreState } from "./store";
 import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
@@ -72,6 +72,28 @@ export function useStoreContext(consumerName: string): Store {
     );
   }
   return store;
+}
+
+/**
+ * Bridges an optional event-handler prop to a store event for the lifetime of
+ * the component. Internal: components expose the handler as a prop rather than
+ * making consumers manage a subscription.
+ *
+ * The handler is read through a ref, so passing an inline function does not
+ * resubscribe on every render.
+ */
+export function useStoreEvent<E extends keyof StoreEventMap>(
+  store: Store,
+  event: E,
+  handler: ((payload: StoreEventMap[E]) => void) | undefined,
+): void {
+  const handlerRef = useLatestRef(handler);
+
+  // Subscribing to an external store: an effect is the right tool here.
+  React.useEffect(
+    () => store.on(event, (payload) => handlerRef.current?.(payload)),
+    [store, event, handlerRef],
+  );
 }
 
 /**

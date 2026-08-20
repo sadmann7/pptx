@@ -31,6 +31,19 @@ describe("Presentation.Viewport", () => {
     expect(screen.getByText("inside")).toBeDefined();
   });
 
+  it("calls onZoomChange with the new and previous zoom", async () => {
+    const store = await loadedStore();
+    const events: { zoom: number; previousZoom: number }[] = [];
+
+    withStore(store, <Presentation.Viewport onZoomChange={(event) => events.push(event)} />);
+
+    act(() => store.setZoom(2));
+    expect(events).toEqual([{ zoom: 2, previousZoom: 1 }]);
+
+    act(() => store.zoomOut(0.5));
+    expect(events.at(-1)).toEqual({ zoom: 1.5, previousZoom: 2 });
+  });
+
   describe("scrollNavigation", () => {
     function wheel(element: HTMLElement, deltaY: number, timeStamp?: number): void {
       const event = new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true });

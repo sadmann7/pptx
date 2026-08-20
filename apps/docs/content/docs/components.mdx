@@ -15,12 +15,17 @@ import * as Presentation from "@diceui/pptx";
   readOnly={false}
   onLoad={(store) => {}}
   onSlideChange={({ slideId, index, reason }) => {}}
+  onStatusChange={({ status }) => {}}
+  onEdit={({ operation, source }) => {}}
+  onHistoryChange={({ canUndo, canRedo, isDirty }) => {}}
 >
   {/* children */}
 </Presentation.Root>;
 ```
 
 `onSlideChange` fires for every change of the active slide. Use `reason` to tell user navigation (`"navigate"`) apart from a completed load (`"load"`), an edit that moved the active slide (`"edit"`), and a cleared viewer (`"reset"`).
+
+`onEdit` fires after an edit is applied, undone, or redone, with `source` naming which of the three it was. `onHistoryChange` fires whenever undo/redo availability or the unsaved-changes flag moves, which is enough to drive a toolbar without polling the store.
 
 <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
@@ -31,10 +36,16 @@ import * as Presentation from "@diceui/pptx";
 Scrollable container that centers the slide and optionally auto-fits it to fill the available space.
 
 ```tsx
-<Presentation.Viewport autoFit autoFitPadding={32}>
+<Presentation.Viewport
+  autoFit
+  autoFitPadding={32}
+  onZoomChange={({ zoom }) => setZoomLabel(`${Math.round(zoom * 100)}%`)}
+>
   <Presentation.Slide />
 </Presentation.Viewport>
 ```
+
+`onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on.
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 
@@ -142,7 +153,7 @@ Pass a render function to `children` for full control over each item:
 <Presentation.ThumbnailList>
   {({ slides }) =>
     slides.map((slide) => (
-      <Presentation.ThumbnailItem key={slide.id}>
+      <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
         <Presentation.ThumbnailItemPreview />
         <Presentation.ThumbnailItemNumber />
       </Presentation.ThumbnailItem>
@@ -151,7 +162,24 @@ Pass a render function to `children` for full control over each item:
 </Presentation.ThumbnailList>
 ```
 
+### Intercepting navigation [#thumbnail-list-on-select]
+
+`onSelect` runs just before an item becomes the active slide. Call `preventDefault()` to stop it:
+
+```tsx
+<Presentation.ThumbnailItem
+  slideId={slide.id}
+  onSelect={(event) => {
+    if (store.isDirty() && !confirmDiscard()) event.preventDefault();
+  }}
+/>
+```
+
+The list navigates on focus, so this fires for keyboard roving as well as clicks. That is also why the veto lives here rather than in `onClick`: the browser delivers `focus` before `click`, so a handler that ran on click would arrive after the slide had already changed. Use `onClick` for side effects that do not need to block navigation.
+
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailListProps" />
+
+<AutoTypeTable path="types/presentation.ts" name="ThumbnailItemProps" />
 
 ---
 
