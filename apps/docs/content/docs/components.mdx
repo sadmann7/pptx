@@ -10,10 +10,17 @@ The outermost component. Creates an internal store (or inherits one from `Presen
 ```tsx
 import * as Presentation from "@diceui/pptx";
 
-<Presentation.Root file={file} readOnly={false} onLoad={(store) => {}}>
+<Presentation.Root
+  file={file}
+  readOnly={false}
+  onLoad={(store) => {}}
+  onSlideChange={({ slideId, index, reason }) => {}}
+>
   {/* children */}
 </Presentation.Root>;
 ```
+
+`onSlideChange` fires for every change of the active slide. Use `reason` to tell user navigation (`"navigate"`) apart from a completed load (`"load"`), an edit that moved the active slide (`"edit"`), and a cleared viewer (`"reset"`).
 
 <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
@@ -38,10 +45,12 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
 
 ```tsx
-<Presentation.Slide>
+<Presentation.Slide onNodeError={(nodeId, error) => reportError(error, { nodeId })}>
   <Presentation.Selection />
 </Presentation.Slide>
 ```
+
+A shape that fails to render is skipped rather than breaking the slide. `onNodeError` surfaces those failures; without a handler they are logged with `console.warn`.
 
 The wrapper carries a `data-status` attribute matching the current load status:
 
@@ -72,9 +81,13 @@ Must be placed inside `Presentation.Slide`.
     onNodeDelete={(id, error) => error && toast.error("Could not delete")}
     onNodeTransform={(id, error) => error && toast.error("Could not move")}
     onTextChange={(id, error) => error && toast.error("Text edit failed")}
+    onSelectionChange={({ nodes }) => setInspectedShape(nodes[0] ?? null)}
+    onModeChange={(mode) => setToolbarDisabled(mode === "move" || mode === "resize")}
   />
 </Presentation.Slide>
 ```
+
+`onSelectionChange` is how UI outside the overlay (a formatting toolbar, a properties panel) follows the selection. It also fires with an empty selection when the active slide changes, since navigating away drops the selection.
 
 ### Interaction model [#selection-interactions]
 

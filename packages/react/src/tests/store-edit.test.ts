@@ -10,6 +10,7 @@
 import type { ShapeNodeData } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import type { SlideChangeEvent } from "../store";
 import { createStore, Store } from "../store";
 import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 
@@ -267,6 +268,59 @@ describe("structural edits and navigation", () => {
     // Active moved off the removed copy onto a valid neighbor.
     expect(store.getState().activeSlideId).not.toBe(result.createdSlideId);
     expect(store.getActiveSlideIndex()).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("slideChange events from edits", () => {
+  it('reports reason "edit" when deleting the active slide moves it', async () => {
+    const store = await editableStore();
+    // The slides array is mutated in place by edits, so hold the id, not the index.
+    const targetId = store.getState().presentation!.slides[1].id;
+    store.goTo(targetId);
+
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    await store.edit({ type: "deleteSlide", slideId: targetId });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].reason).toBe("edit");
+    expect(events[0].previousSlideId).toBe(targetId);
+    expect(events[0].slideId).toBe(store.getState().activeSlideId);
+  });
+
+  it("stays quiet for edits that leave the active slide alone", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    await store.edit({
+      type: "setTextRun",
+      slideId,
+      nodeId: "2",
+      paragraphIndex: 0,
+      runIndex: 0,
+      text: "Edited",
+    });
+
+    expect(events).toHaveLength(0);
+  });
+
+  it("reports the jump when undo navigates to the slide it touched", async () => {
+    const store = await editableStore();
+    const restoredId = store.getState().presentation!.slides[2].id;
+    await store.edit({ type: "deleteSlide", slideId: restoredId });
+
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    store.undo();
+
+    expect(events).toHaveLength(1);
+    expect(events[0].reason).toBe("edit");
+    expect(events[0].slideId).toBe(restoredId);
   });
 });
 

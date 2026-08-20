@@ -458,6 +458,15 @@ type InternalState =
       editingElement: HTMLElement;
     };
 
+/** The selection as reported to `onSelectionChange`. */
+export interface SelectionChangeEvent {
+  /** Ids of every selected node, in selection order. Empty when nothing is selected. */
+  nodeIds: string[];
+
+  /** The selected nodes themselves, matching `nodeIds`. */
+  nodes: SlideNode[];
+}
+
 /** The current interaction state of the edit layer. */
 export interface SelectionState {
   /** Interaction mode of the selection. */
@@ -488,6 +497,25 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
   onNodeTransform?: (nodeId: string, error?: unknown) => void;
   /** Called after inline text editing is committed (or errors). */
   onTextChange?: (nodeId: string, error?: unknown) => void;
+
+  /**
+   * Called whenever the set of selected nodes changes, so UI outside the
+   * overlay (a formatting toolbar, a properties panel) can follow along.
+   *
+   * Also called with an empty selection when the active slide changes, since
+   * navigating away drops the selection. Treat the handler as idempotent.
+   *
+   * ```tsx
+   * onSelectionChange={({ nodes }) => setInspectedShape(nodes[0] ?? null)}
+   * ```
+   */
+  onSelectionChange?: (event: SelectionChangeEvent) => void;
+
+  /**
+   * Called when the interaction mode changes, e.g. entering text editing or
+   * starting a drag. Useful for disabling toolbars mid-gesture.
+   */
+  onModeChange?: (mode: SelectionState["mode"], previousMode: SelectionState["mode"]) => void;
 }
 
 /**
@@ -514,7 +542,15 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Arrow keys nudge, Delete removes: applied to the whole selection.
  */
 const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
-  { render, onNodeDelete, onNodeTransform, onTextChange, ...selectionProps },
+  {
+    render,
+    onNodeDelete,
+    onNodeTransform,
+    onTextChange,
+    onSelectionChange,
+    onModeChange,
+    ...selectionProps
+  },
   forwardedRef,
 ) {
   const store = useStoreContext(SELECTION_NAME);
@@ -560,6 +596,34 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const isTextMode = state.mode === "text";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
+
+  // Selection transitions happen across ~25 pointer/keyboard paths, several of
+  // them fired from document-level listeners, so notifying from each handler
+  // would mean threading the callback through all of them. Diffing a single
+  // derived key keeps one notification site and guarantees it can't drift out
+  // of sync with the rendered selection.
+  const onSelectionChangeRef = useLatestRef(onSelectionChange);
+  const onModeChangeRef = useLatestRef(onModeChange);
+  const selectedIdsRef = useLatestRef(selectedIds);
+  const selectedNodesRef = useLatestRef(selectedNodes);
+  const selectionKey = selectedIds.join("\u0000");
+  const mode = state.mode;
+  const previousModeRef = React.useRef(mode);
+
+  React.useEffect(() => {
+    onSelectionChangeRef.current?.({
+      nodeIds: selectedIdsRef.current,
+      nodes: selectedNodesRef.current,
+    });
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- the joined key is the change signal; payload is read from refs
+  }, [selectionKey, onSelectionChangeRef, selectedIdsRef, selectedNodesRef]);
+
+  React.useEffect(() => {
+    const previousMode = previousModeRef.current;
+    if (previousMode === mode) return;
+    previousModeRef.current = mode;
+    onModeChangeRef.current?.(mode, previousMode);
+  }, [mode, onModeChangeRef]);
 
   const isBanding =
     state.mode === "marquee" && isBandDrag(state.startX, state.startY, state.curX, state.curY);

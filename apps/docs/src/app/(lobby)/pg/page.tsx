@@ -23,6 +23,10 @@ export default function PgPage() {
   const id = React.useId();
   const store = useCreatePresentationStore();
 
+  store.on("slideChange", (event) => {
+    console.log("slideChange", event);
+  });
+
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;

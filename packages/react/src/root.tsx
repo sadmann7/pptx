@@ -6,7 +6,7 @@ import { Context } from "./context";
 import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
-import type { PreviewInput, Store } from "./store";
+import type { PreviewInput, SlideChangeEvent, Store } from "./store";
 import { createStore } from "./store";
 
 export interface RootState {
@@ -96,6 +96,19 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
    * ```
    */
   onError?: (error: Error) => void;
+
+  /**
+   * Event handler called whenever the active slide changes, whether from
+   * navigation, a completed load, an edit that moved the active slide, or a
+   * reset. Inspect `reason` to tell them apart.
+   *
+   * ```tsx
+   * onSlideChange={({ slideId, index, reason }) => {
+   *   if (reason === "navigate") analytics.track("slide_viewed", { index });
+   * }}
+   * ```
+   */
+  onSlideChange?: (event: SlideChangeEvent) => void;
 }
 
 export function Root({
@@ -105,6 +118,7 @@ export function Root({
   render,
   onLoad,
   onError,
+  onSlideChange,
   ...rootProps
 }: RootProps) {
   const contextStore = React.useContext(Context);
@@ -122,7 +136,14 @@ export function Root({
 
   const onLoadRef = useLatestRef(onLoad);
   const onErrorRef = useLatestRef(onError);
+  const onSlideChangeRef = useLatestRef(onSlideChange);
   const defaultSlideIndexRef = useLatestRef(defaultSlideIndex);
+
+  // Subscribing to an external store: an effect is the right tool here.
+  React.useEffect(
+    () => store.on("slideChange", (event) => onSlideChangeRef.current?.(event)),
+    [store, onSlideChangeRef],
+  );
 
   React.useEffect(() => {
     // `undefined` means the file API is not in use: Root leaves the store

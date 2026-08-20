@@ -3,7 +3,7 @@ export * as Presentation from "./primitive";
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
-export type { SelectionProps, SelectionState } from "./selection";
+export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
 export type { SlideProps, SlideState } from "./slide";
 export type {
   ThumbnailItemNumberProps,
@@ -34,8 +34,11 @@ export type {
   StoreState as PresentationState,
   PresentationStatus,
   Store as PresentationStore,
+  StoreEventMap as PresentationStoreEventMap,
   PreviewInput,
   SidePadding,
+  SlideChangeEvent,
+  SlideChangeReason,
 } from "./store";
 
 export type {

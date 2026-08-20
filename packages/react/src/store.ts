@@ -99,6 +99,38 @@ export interface StoreState {
   revision: number;
 }
 
+/**
+ * What caused the active slide to change.
+ *
+ * - `"navigate"`: `goTo`, `goToIndex`, `next`, or `prev`.
+ * - `"load"`: a presentation finished parsing and its start slide became active.
+ * - `"edit"`: an edit, undo, or redo moved the active slide (e.g. the active
+ *   slide was deleted, or an undo jumped to the slide it touched).
+ * - `"reset"`: the viewer was cleared.
+ */
+export type SlideChangeReason = "navigate" | "load" | "edit" | "reset";
+
+export interface SlideChangeEvent {
+  /** Stable id of the now-active slide, or `null` when the viewer was cleared. */
+  slideId: string | null;
+
+  /** 0-based position of the now-active slide, or `-1` when there is none. */
+  index: number;
+
+  /** Stable id of the previously active slide, or `null` when there was none. */
+  previousSlideId: string | null;
+
+  /** What triggered the change. */
+  reason: SlideChangeReason;
+}
+
+/** Payload delivered to each `store.on()` event. */
+export interface StoreEventMap {
+  slideChange: SlideChangeEvent;
+}
+
+type StoreEventHandler<E extends keyof StoreEventMap> = (payload: StoreEventMap[E]) => void;
+
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
 export interface Store {
   /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
@@ -117,6 +149,27 @@ export interface Store {
    * @returns A function that removes the subscription when called.
    */
   subscribe: (listener: () => void) => () => void;
+
+  /**
+   * Listen for a specific store event.
+   *
+   * Unlike `subscribe`, which fires on every state change and carries no
+   * payload, these events describe what happened and why: the reason for a
+   * change is known at the mutation site and cannot be recovered by diffing
+   * two state snapshots.
+   *
+   * Handlers run after the state has been updated and `subscribe` listeners
+   * have been notified, so `getState()` is already current.
+   *
+   * ```ts
+   * const unsubscribe = store.on("slideChange", ({ slideId, reason }) => {
+   *   console.log("now on", slideId, "because of", reason);
+   * });
+   * ```
+   *
+   * @returns A function that removes the listener when called.
+   */
+  on: <E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>) => () => void;
 
   /**
    * Parse and display a presentation file.
@@ -378,6 +431,9 @@ function clamp(value: number, min: number, max: number): number {
 export function createStore(): Store {
   let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
+  const eventListeners: { [E in keyof StoreEventMap]: Set<StoreEventHandler<E>> } = {
+    slideChange: new Set(),
+  };
   let loadGeneration = 0;
   let embeddedFonts: EmbeddedFontsHandle | undefined;
 
@@ -424,6 +480,30 @@ export function createStore(): Store {
     return () => listeners.delete(listener);
   }
 
+  function on<E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>): () => void {
+    const handlers = eventListeners[event] as Set<StoreEventHandler<E>>;
+    handlers.add(handler);
+    return () => {
+      handlers.delete(handler);
+    };
+  }
+
+  /**
+   * Emit `slideChange` when the active slide actually moved. Call after the
+   * state update so handlers observe the new state.
+   */
+  function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
+    const slideId = state.activeSlideId;
+    if (slideId === previousSlideId) return;
+    const payload: SlideChangeEvent = {
+      slideId,
+      index: slideId ? getSlideIndex(slideId) : -1,
+      previousSlideId,
+      reason,
+    };
+    for (const handler of eventListeners.slideChange) handler(payload);
+  }
+
   async function load(
     input: PreviewInput,
     options?: {
@@ -435,6 +515,9 @@ export function createStore(): Store {
   ): Promise<PresentationData> {
     loadGeneration += 1;
     const gen = loadGeneration;
+    // Captured before the state is cleared below: the transient drop to
+    // `null` while loading is not a slide change worth reporting.
+    const previousSlideId = state.activeSlideId;
 
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
@@ -540,6 +623,7 @@ export function createStore(): Store {
         error: null,
         revision: 0,
       });
+      emitSlideChange(previousSlideId, "load");
 
       return presentation;
     } catch (error) {
@@ -571,7 +655,8 @@ export function createStore(): Store {
   function goTo(slideId: string): void {
     const { presentation } = state;
     if (!presentation) return;
-    if (state.activeSlideId === slideId) return;
+    const previousSlideId = state.activeSlideId;
+    if (previousSlideId === slideId) return;
     const index = slideIndexById.get(slideId);
     if (index === undefined) return;
 
@@ -581,6 +666,7 @@ export function createStore(): Store {
     if (target) materializeSlide(presentation, target);
 
     setState({ activeSlideId: slideId });
+    emitSlideChange(previousSlideId, "navigate");
   }
 
   function goToIndex(index: number): void {
@@ -645,10 +731,12 @@ export function createStore(): Store {
 
   function reset(): void {
     loadGeneration += 1;
+    const previousSlideId = state.activeSlideId;
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
     clearEditHistory();
     replaceState({ ...DEFAULT_STORE_STATE });
+    emitSlideChange(previousSlideId, "reset");
   }
 
   function clearEditHistory(): void {
@@ -688,6 +776,8 @@ export function createStore(): Store {
     const { presentation } = state;
     if (!presentation) return;
 
+    const previousSlideId = state.activeSlideId;
+
     for (const slideId of affectedSlideIds) {
       slideRevisionById.set(slideId, getSlideRevision(slideId) + 1);
       if (!transformOnly) {
@@ -714,6 +804,7 @@ export function createStore(): Store {
     if (activeSlide) materializeSlide(presentation, activeSlide);
 
     setState({ activeSlideId, revision: state.revision + 1 });
+    emitSlideChange(previousSlideId, "edit");
   }
 
   async function edit(op: EditOperation): Promise<EditResult> {
@@ -788,6 +879,7 @@ export function createStore(): Store {
   return {
     getState,
     subscribe,
+    on,
     load,
     reset,
     goTo,

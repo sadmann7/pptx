@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
+import type { SlideChangeEvent } from "../store";
 import { createStore } from "../store";
 import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 import { loadFixture } from "./test-utils";
@@ -233,5 +234,101 @@ describe("reset and subscriptions", () => {
     unsubscribe();
     store.next();
     expect(notifications).toBe(1);
+  });
+});
+
+describe("slideChange events", () => {
+  it("reports the new slide, the previous one, and why it changed", async () => {
+    const store = await loadedStore();
+    const slides = store.getState().presentation!.slides;
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    store.next();
+    expect(events).toEqual([
+      {
+        slideId: slides[1].id,
+        index: 1,
+        previousSlideId: slides[0].id,
+        reason: "navigate",
+      },
+    ]);
+  });
+
+  it("fires once per navigation regardless of which action triggered it", async () => {
+    const store = await loadedStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    store.next();
+    store.prev();
+    store.goToIndex(2);
+    store.goTo(store.getState().presentation!.slides[0].id);
+
+    expect(events.map((event) => event.index)).toEqual([1, 0, 2, 0]);
+    expect(events.every((event) => event.reason === "navigate")).toBe(true);
+  });
+
+  it("stays quiet when navigation is a no-op", async () => {
+    const store = await loadedStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    // Already on the first slide.
+    store.prev();
+    store.goToIndex(0);
+    store.goTo(store.getState().activeSlideId!);
+    store.goTo("ppt/slides/nope.xml");
+
+    expect(events).toHaveLength(0);
+  });
+
+  it("reports the start slide on load and the cleared slide on reset", async () => {
+    const store = createStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    await store.load(fixture, { defaultSlideIndex: 1 });
+    expect(events).toHaveLength(1);
+    expect(events[0].reason).toBe("load");
+    expect(events[0].index).toBe(1);
+    expect(events[0].previousSlideId).toBeNull();
+
+    const loadedSlideId = events[0].slideId;
+    store.reset();
+    expect(events).toHaveLength(2);
+    expect(events[1]).toEqual({
+      slideId: null,
+      index: -1,
+      previousSlideId: loadedSlideId,
+      reason: "reset",
+    });
+  });
+
+  it("exposes state that is already current when the handler runs", async () => {
+    const store = await loadedStore();
+    let seen: { active: string | null; index: number } | null = null;
+    store.on("slideChange", (event) => {
+      seen = { active: store.getState().activeSlideId, index: store.getActiveSlideIndex() };
+      expect(event.slideId).toBe(store.getState().activeSlideId);
+    });
+
+    store.goToIndex(2);
+    expect(seen).toEqual({ active: store.getState().activeSlideId, index: 2 });
+  });
+
+  it("stops delivering after the listener is removed", async () => {
+    const store = await loadedStore();
+    let count = 0;
+    const off = store.on("slideChange", () => {
+      count++;
+    });
+
+    store.next();
+    expect(count).toBe(1);
+
+    off();
+    store.next();
+    expect(count).toBe(1);
   });
 });
