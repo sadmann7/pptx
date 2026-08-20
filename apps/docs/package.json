@@ -12,6 +12,10 @@
   },
   "dependencies": {
     "@diceui/pptx": "workspace:*",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^9.0.0",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@pptx/ui": "workspace:*",
     "fumadocs-core": "16.11.3",
     "fumadocs-mdx": "15.1.0",

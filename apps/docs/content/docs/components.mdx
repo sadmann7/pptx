@@ -177,6 +177,8 @@ Pass a render function to `children` for full control over each item:
 
 The list navigates on focus, so this fires for keyboard roving as well as clicks. That is also why the veto lives here rather than in `onClick`: the browser delivers `focus` before `click`, so a handler that ran on click would arrive after the slide had already changed. Use `onClick` for side effects that do not need to block navigation.
 
+`onSelect` is also what lets a sortable library suppress navigation mid-drag. The strip ships no drag-and-drop of its own; see [Reordering slides](/docs/editing#reordering-slides) for a worked example.
+
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailListProps" />
 
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailItemProps" />

@@ -3,6 +3,8 @@ title: Editing
 description: Move, resize, and edit text in presentations.
 ---
 
+<EditingDemo />
+
 Editing requires two things: loading the presentation with `readOnly={false}`, and placing `Presentation.Selection` inside `Presentation.Slide`.
 
 ```tsx
@@ -138,6 +140,34 @@ store.redo(); // re-applies the last undone edit
 ```
 
 Cross-slide edits navigate to the affected slide automatically on undo/redo.
+
+## Reordering slides
+
+Moving a slide is an edit like any other, so it is undoable and included in `isDirty`. The thumbnail strip deliberately ships no drag-and-drop: reordering is left to whatever sortable library you already use, and `Presentation.ThumbnailItem` is built to be wrapped by one. It forwards `ref`, merges arbitrary props and event handlers, and lets your `style` win over its internals so transforms animate normally.
+
+Commit the drop as a `moveSlide` edit:
+
+```tsx
+async function onDragEnd({ active, over }: DragEndEvent) {
+  if (!over || active.id === over.id) return;
+  const toIndex = slideIds.indexOf(String(over.id));
+  await store.edit({ type: "moveSlide", slideId: String(active.id), toIndex });
+}
+```
+
+Three things are worth knowing when wiring this up:
+
+- dnd-kit's `attributes` set `role="button"` and `tabIndex={0}`. Both would override what the list needs, replacing the `option` role and putting every thumbnail in the tab order instead of the single roving tab stop. Drop those two keys and spread the rest.
+- Give the pointer sensor a small activation distance (`{ distance: 4 }`), or a plain click starts a drag instead of selecting the slide.
+- `store.edit()` is async, so hold the dropped order in local state until it settles; otherwise the strip snaps back to the old order for a frame.
+
+The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt+↑, for example) pass through untouched.
+
+The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. Here it is in full:
+
+<include lang="tsx" meta='title="editing-demo.tsx"'>
+  ../../src/components/editing-demo.tsx
+</include>
 
 ## Unsaved changes
 
