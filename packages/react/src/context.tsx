@@ -4,7 +4,7 @@ import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
 import { useLatestRef, useLazyRef } from "./hook";
-import type { AutoFitPadding, Store, StoreEventMap, StoreState } from "./store";
+import type { AutoFitPadding, Store, StoreEventMap, StoreState, ZoomLevel } from "./store";
 import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
@@ -264,11 +264,25 @@ export function useSlide(): UseSlideResult {
 }
 
 export interface UseZoomResult {
-  /** Current zoom level (1 = 100%, 0.5 = 50%). */
+  /** Zoom the slide is rendered at (1 = 100%, 0.5 = 50%). */
   zoom: number;
 
-  /** Set an explicit zoom level. */
-  setZoom: (zoom: number) => void;
+  /**
+   * The zoom that was asked for: a level, or `"fit"` while the viewport keeps
+   * the slide fitted. A zoom control reads this as its value.
+   */
+  zoomLevel: ZoomLevel;
+
+  /**
+   * Set an explicit zoom level, or `"fit"` to hand the zoom back to the
+   * viewport. A level stays put across container resizes.
+   *
+   * ```tsx
+   * setZoom(1.5);
+   * setZoom("fit");
+   * ```
+   */
+  setZoom: (zoom: ZoomLevel) => void;
 
   /**
    * Increase zoom by `step`.
@@ -304,10 +318,12 @@ export interface UseZoomResult {
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
+  const zoomLevel = useStoreSelector<ZoomLevel>(store, (s) => s.zoomLevel, "fit");
 
   return {
     zoom,
-    setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
+    zoomLevel,
+    setZoom: React.useCallback((level: ZoomLevel) => store.setZoom(level), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
     fitTo: React.useCallback(

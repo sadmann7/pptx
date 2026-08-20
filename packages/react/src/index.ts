@@ -45,6 +45,8 @@ export type {
   SlideChangeReason,
   StatusChangeEvent,
   ZoomChangeEvent,
+  ZoomChangeReason,
+  ZoomLevel,
 } from "./store";
 
 export type {

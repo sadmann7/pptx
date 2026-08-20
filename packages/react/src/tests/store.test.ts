@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import type { SlideChangeEvent } from "../store";
+import type { SlideChangeEvent, ZoomChangeEvent } from "../store";
 import { createStore } from "../store";
 import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 import { loadFixture } from "./test-utils";
@@ -227,13 +227,17 @@ describe("reset and subscriptions", () => {
     store.next();
     expect(notifications).toBe(1);
 
-    // No state change → no notification.
+    // Same zoom, but the requested level moves from "fit" to a number.
     store.setZoom(store.getState().zoom);
-    expect(notifications).toBe(1);
+    expect(notifications).toBe(2);
+
+    // Now nothing moves at all → no notification.
+    store.setZoom(store.getState().zoom);
+    expect(notifications).toBe(2);
 
     unsubscribe();
     store.next();
-    expect(notifications).toBe(1);
+    expect(notifications).toBe(2);
   });
 });
 
@@ -274,13 +278,77 @@ describe("statusChange and zoomChange events", () => {
 
   it("reports the previous zoom alongside the new one", async () => {
     const store = await loadedStore();
-    let event: { zoom: number; previousZoom: number } | null = null;
+    let event: ZoomChangeEvent | null = null;
     store.on("zoomChange", (payload) => {
       event = payload;
     });
 
     store.setZoom(2);
-    expect(event).toEqual({ zoom: 2, previousZoom: 1 });
+    expect(event).toEqual({ zoom: 2, previousZoom: 1, reason: "zoom" });
+  });
+
+  it("reports what produced each zoom change", async () => {
+    const store = await loadedStore();
+    const reasons: string[] = [];
+    store.on("zoomChange", ({ reason }) => reasons.push(reason));
+
+    store.setZoom(2);
+    store.zoomOut(0.5);
+    store.fitTo(640, 360);
+    store.reset();
+
+    expect(reasons).toEqual(["zoom", "zoom", "fit", "reset"]);
+  });
+});
+
+describe("zoomLevel", () => {
+  it("starts fitted and pins the level on an explicit zoom", async () => {
+    const store = await loadedStore();
+    expect(store.getState().zoomLevel).toBe("fit");
+
+    store.setZoom(2);
+    expect(store.getState().zoomLevel).toBe(2);
+
+    store.fitTo(640, 360);
+    expect(store.getState().zoomLevel).toBe("fit");
+  });
+
+  it("pins the level even when the zoom does not move", async () => {
+    const store = await loadedStore();
+    store.fitTo(640, 360);
+    const fittedZoom = store.getState().zoom;
+
+    // Picking the percentage the fit had already produced still pins it,
+    // otherwise a resize would silently take it back.
+    store.setZoom(fittedZoom);
+    expect(store.getState().zoom).toBe(fittedZoom);
+    expect(store.getState().zoomLevel).toBe(fittedZoom);
+  });
+
+  it("records a fit request without a container to resolve it", async () => {
+    const store = await loadedStore();
+    store.setZoom(3);
+
+    // Nothing knows the container size here, so the zoom holds until a
+    // viewport (or a `fitTo` call) resolves the request.
+    store.setZoom("fit");
+    expect(store.getState().zoom).toBe(3);
+    expect(store.getState().zoomLevel).toBe("fit");
+  });
+
+  it("clamps and pins defaultZoom", async () => {
+    const store = createStore();
+    await store.load(await loadFixture(), { defaultZoom: 0.5, embedFonts: false });
+
+    expect(store.getState().zoom).toBe(0.5);
+    expect(store.getState().zoomLevel).toBe(0.5);
+  });
+
+  it("stays fitted when no defaultZoom is given", async () => {
+    const store = await loadedStore();
+
+    expect(store.getState().zoom).toBe(1);
+    expect(store.getState().zoomLevel).toBe("fit");
   });
 });
 

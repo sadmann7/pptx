@@ -13,6 +13,7 @@ import * as Presentation from "@diceui/pptx";
 <Presentation.Root
   file={file}
   readOnly={false}
+  defaultZoom={0.5}
   onLoad={(store) => {}}
   onSlideChange={({ slideId, index, reason }) => {}}
   onStatusChange={({ status }) => {}}
@@ -45,7 +46,31 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 </Presentation.Viewport>
 ```
 
-`onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on.
+`onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
+
+`autoFit` only fits while the requested zoom is `"fit"`. Pinning a number stops it refitting on resize so the chosen level survives, and `setZoom("fit")` hands the zoom back. Both go through one setter, so a zoom control needs no state of its own:
+
+```tsx
+function ZoomSelect() {
+  const { zoomLevel, setZoom } = useZoom();
+
+  return (
+    <select
+      value={String(zoomLevel)}
+      onChange={(event) => {
+        const next = event.target.value;
+        setZoom(next === "fit" ? "fit" : Number(next));
+      }}
+    >
+      <option value="fit">Fit</option>
+      <option value="1">100%</option>
+      <option value="2">200%</option>
+    </select>
+  );
+}
+```
+
+To open a deck at a fixed level instead of fitting, pass `defaultZoom` to `Root`; auto-fit leaves it alone until something asks for `"fit"`.
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 

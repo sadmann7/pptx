@@ -102,6 +102,9 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 
     const viewportElement = viewportRef.current;
     const fit = () => {
+      // A pinned level is the consumer's to keep, so fitting here would fight
+      // their zoom control on the next resize. `setZoom("fit")` opts back in.
+      if (store.getState().zoomLevel !== "fit") return;
       if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
         store.fitTo(viewportElement.clientWidth, viewportElement.clientHeight, autoFitPadding);
     };
@@ -112,16 +115,19 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(viewportElement);
 
-    // Re-fit when a new presentation loads: the new slide's aspect ratio may
-    // differ so the zoom needs to be recalculated. Only fires on presentation
-    // identity changes, not on zoom/navigation/progress updates.
+    // Two things ask for a re-fit: a new presentation, whose slides may have a
+    // different aspect ratio, and `setZoom("fit")`, which records the request
+    // and leaves resolving it to whoever knows the container size.
     let lastPresentation = store.getState().presentation;
+    let wasFitted = store.getState().zoomLevel === "fit";
     const unsubscribe = store.subscribe(() => {
-      const presentation = store.getState().presentation;
-      if (presentation !== lastPresentation) {
-        lastPresentation = presentation;
-        fit();
-      }
+      const { presentation, zoomLevel } = store.getState();
+      const isFitted = zoomLevel === "fit";
+      const isPresentationNew = presentation !== lastPresentation;
+      const isFitRequested = isFitted && !wasFitted;
+      lastPresentation = presentation;
+      wasFitted = isFitted;
+      if (isPresentationNew || isFitRequested) fit();
     });
 
     return () => {

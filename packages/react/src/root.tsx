@@ -72,6 +72,18 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   defaultSlideIndex?: number | ((slides: SlideData[]) => number);
 
   /**
+   * Zoom level to open at, where `1` equals 100%.
+   *
+   * Counts as an explicit zoom, so a `Viewport autoFit` will not fit over it.
+   * Omit it to let auto-fit choose the level.
+   *
+   * ```tsx
+   * <Presentation.Root file={file} defaultZoom={0.5} />
+   * ```
+   */
+  defaultZoom?: number;
+
+  /**
    * When `false`, the source package is retained so the presentation can be
    * edited via `store.edit()` and saved back to a .pptx via `store.save()`.
    *
@@ -153,6 +165,7 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
 export function Root({
   file,
   defaultSlideIndex,
+  defaultZoom,
   readOnly,
   render,
   onLoad,
@@ -179,6 +192,7 @@ export function Root({
   const onLoadRef = useLatestRef(onLoad);
   const onErrorRef = useLatestRef(onError);
   const defaultSlideIndexRef = useLatestRef(defaultSlideIndex);
+  const defaultZoomRef = useLatestRef(defaultZoom);
 
   useStoreEvent(store, "slideChange", onSlideChange);
   useStoreEvent(store, "statusChange", onStatusChange);
@@ -197,14 +211,18 @@ export function Root({
     }
 
     store
-      .load(file, { defaultSlideIndex: defaultSlideIndexRef.current, readOnly })
+      .load(file, {
+        defaultSlideIndex: defaultSlideIndexRef.current,
+        defaultZoom: defaultZoomRef.current,
+        readOnly,
+      })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
         // AbortError means a newer load() superseded this one so it's not a real failure.
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
-  }, [store, file, readOnly, defaultSlideIndexRef, onLoadRef, onErrorRef]);
+  }, [store, file, readOnly, defaultSlideIndexRef, defaultZoomRef, onLoadRef, onErrorRef]);
 
   return (
     <Context.Provider value={store}>

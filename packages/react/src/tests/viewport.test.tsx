@@ -1,9 +1,10 @@
 import * as React from "react";
 
 import { act, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
+import type { ZoomChangeEvent } from "../store";
 import { loadedStore, withStore } from "./test-utils";
 
 describe("Presentation.Viewport", () => {
@@ -33,15 +34,86 @@ describe("Presentation.Viewport", () => {
 
   it("calls onZoomChange with the new and previous zoom", async () => {
     const store = await loadedStore();
-    const events: { zoom: number; previousZoom: number }[] = [];
+    const events: ZoomChangeEvent[] = [];
 
     withStore(store, <Presentation.Viewport onZoomChange={(event) => events.push(event)} />);
 
     act(() => store.setZoom(2));
-    expect(events).toEqual([{ zoom: 2, previousZoom: 1 }]);
+    expect(events).toEqual([{ zoom: 2, previousZoom: 1, reason: "zoom" }]);
 
     act(() => store.zoomOut(0.5));
-    expect(events.at(-1)).toEqual({ zoom: 1.5, previousZoom: 2 });
+    expect(events.at(-1)).toEqual({ zoom: 1.5, previousZoom: 2, reason: "zoom" });
+  });
+
+  describe("autoFit", () => {
+    /**
+     * The test DOM reports a zero-sized element and never lays anything out,
+     * so the container size and the resize notification both have to be
+     * supplied by hand to exercise the fit path at all.
+     */
+    function stubResizeObserver(): () => void {
+      const callbacks = new Set<ResizeObserverCallback>();
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(callback: ResizeObserverCallback) {
+            callbacks.add(callback);
+          }
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      return () => {
+        for (const callback of callbacks) callback([], {} as ResizeObserver);
+      };
+    }
+
+    function stubSize(element: HTMLElement, width: number, height: number): void {
+      Object.defineProperty(element, "clientWidth", { value: width, configurable: true });
+      Object.defineProperty(element, "clientHeight", { value: height, configurable: true });
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('fits to the container while the level is "fit"', async () => {
+      const store = await loadedStore();
+      const notifyResize = stubResizeObserver();
+      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+
+      stubSize(screen.getByTestId("viewport"), 640, 360);
+      act(() => notifyResize());
+
+      expect(store.getState().zoom).toBe(0.5);
+      expect(store.getState().zoomLevel).toBe("fit");
+    });
+
+    it("leaves a pinned level alone when the container resizes", async () => {
+      const store = await loadedStore();
+      const notifyResize = stubResizeObserver();
+      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+
+      stubSize(screen.getByTestId("viewport"), 640, 360);
+      act(() => store.setZoom(2));
+      act(() => notifyResize());
+
+      expect(store.getState().zoom).toBe(2);
+    });
+
+    it('resolves setZoom("fit") against the live container size', async () => {
+      const store = await loadedStore();
+      stubResizeObserver();
+      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+
+      stubSize(screen.getByTestId("viewport"), 640, 360);
+      act(() => store.setZoom(2));
+      act(() => store.setZoom("fit"));
+
+      expect(store.getState().zoom).toBe(0.5);
+      expect(store.getState().zoomLevel).toBe("fit");
+    });
   });
 
   describe("scrollNavigation", () => {

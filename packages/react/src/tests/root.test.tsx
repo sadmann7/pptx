@@ -124,6 +124,23 @@ describe("Presentation.Root file prop", () => {
     expect(transitions).toEqual(["idle->loading", "loading->ready"]);
   });
 
+  it("opens at defaultZoom and keeps auto-fit off it", async () => {
+    const fixture = await loadFixture();
+    const store = createStore();
+
+    render(
+      <Presentation.Provider store={store}>
+        <Presentation.Root file={fixture} defaultZoom={0.5}>
+          <Presentation.Viewport autoFit />
+        </Presentation.Root>
+      </Presentation.Provider>,
+    );
+
+    await waitFor(() => expect(store.getState().status).toBe("ready"));
+    expect(store.getState().zoom).toBe(0.5);
+    expect(store.getState().zoomLevel).toBe(0.5);
+  });
+
   it("does not touch a provider store when file is omitted", () => {
     const store = createStore();
     render(
