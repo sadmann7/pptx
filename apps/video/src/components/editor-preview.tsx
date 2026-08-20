@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { Presentation } from "@diceui/pptx";
 
-import { panelShadow } from "@/lib/theme";
+import { PANEL_BORDER_WIDTH, panelShadow } from "@/lib/theme";
 import { useDeck } from "@/lib/use-deck";
 
 export function EditorPreview({
@@ -123,6 +123,9 @@ export function EditorPreview({
       style={{
         width,
         height,
+        // Explicit, because the size the caller passes has to be the outer size
+        // for the landing geometry in launch.tsx to work out.
+        boxSizing: "border-box",
         borderRadius: 18,
         overflow: "hidden",
         // Opacity only. A transform here would move the thumbnails, and they
@@ -130,7 +133,7 @@ export function EditorPreview({
         // movement re-triggers that and blanks them mid-entrance.
         opacity: reveal,
         background: "rgba(255,255,255,.04)",
-        border: "1px solid rgba(255,255,255,.12)",
+        border: `${PANEL_BORDER_WIDTH}px solid rgba(255,255,255,.12)`,
         boxShadow: panelShadow(reveal),
         ...style,
       }}

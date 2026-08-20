@@ -17,7 +17,7 @@ import { EditorPreview } from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
 import { fontVars, geistMono, geistSans } from "@/lib/fonts";
 import { useHighlightedLines } from "@/lib/highlight";
-import { panelShadow } from "@/lib/theme";
+import { PANEL_BORDER_WIDTH, panelShadow } from "@/lib/theme";
 
 const C = {
   ink: "#0e1117",
@@ -61,9 +61,13 @@ const COMPOSITION_GAP = 72;
 const PREVIEW_RAIL_W = 130;
 const PREVIEW_PAD = 26;
 const PREVIEW_W = 980;
+/** Width of the canvas `autoFit` measures: the window less its border and rail. */
+const PREVIEW_CANVAS_W = PREVIEW_W - PANEL_BORDER_WIDTH * 2 - PREVIEW_RAIL_W;
 /** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
 const PREVIEW_H =
-  Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
+  Math.round(((PREVIEW_CANVAS_W - PREVIEW_PAD * 2) * SLIDE_H) / SLIDE_W) +
+  PREVIEW_PAD * 2 +
+  PANEL_BORDER_WIDTH * 2;
 
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
@@ -532,6 +536,36 @@ const CODE_PANEL_PAD_X = 40;
 const CODE_PANEL_W = CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * CODE_FONT_SIZE * 0.6);
 
 /**
+ * Where the composition preview draws its slide, mirroring `autoFit` rather
+ * than approximating it: the viewport reports its border-box less the border
+ * and the rail, fits the largest 16:9 box inside that minus the padding, and
+ * centres it. At `railIn` 0 the canvas is also shifted back over the hidden
+ * rail, which is the last term. Approximating any of this leaves the landing
+ * card a few pixels off its target and the seam pops.
+ */
+function previewSlideRect() {
+  const rowWidth = CODE_PANEL_W + COMPOSITION_GAP + PREVIEW_W;
+  const previewLeft = (VIDEO_W - rowWidth) / 2 + CODE_PANEL_W + COMPOSITION_GAP;
+  const previewTop = (VIDEO_H - PREVIEW_H) / 2;
+  const canvasHeight = PREVIEW_H - PANEL_BORDER_WIDTH * 2;
+
+  const zoom = Math.min(
+    (PREVIEW_CANVAS_W - PREVIEW_PAD * 2) / SLIDE_W,
+    (canvasHeight - PREVIEW_PAD * 2) / SLIDE_H,
+  );
+  const width = SLIDE_W * zoom;
+  const height = SLIDE_H * zoom;
+
+  return {
+    width,
+    height,
+    zoom,
+    left: previewLeft + PANEL_BORDER_WIDTH + PREVIEW_RAIL_W / 2 + (PREVIEW_CANVAS_W - width) / 2,
+    top: previewTop + PANEL_BORDER_WIDTH + (canvasHeight - height) / 2,
+  };
+}
+
+/**
  * Camera that places the last showcase slide on the composition preview's
  * empty canvas, so the two copies occupy the same pixels at the cut.
  */
@@ -539,19 +573,12 @@ function landingCamera(): Camera {
   const spotlight = SPOTLIGHTS.at(-1);
   if (!spotlight) throw new Error("no last spotlight");
 
-  const rowWidth = CODE_PANEL_W + COMPOSITION_GAP + PREVIEW_W;
-  const previewLeft = (VIDEO_W - rowWidth) / 2 + CODE_PANEL_W + COMPOSITION_GAP;
-  const previewTop = (VIDEO_H - PREVIEW_H) / 2;
-  const slideHeight = PREVIEW_H - PREVIEW_PAD * 2;
-  const slideWidth = (slideHeight * 16) / 9;
-  const slideLeft = previewLeft + (PREVIEW_W - slideWidth) / 2;
-  const slideTop = previewTop + PREVIEW_PAD;
-  const zoom = slideWidth / SLIDE_W;
+  const slide = previewSlideRect();
 
   return {
-    x: spotlight.x - (slideLeft + slideWidth / 2 - FOCUS_X) / zoom,
-    y: spotlight.y - (slideTop + slideHeight / 2 - FOCUS_Y) / zoom,
-    zoom,
+    x: spotlight.x - (slide.left + slide.width / 2 - FOCUS_X) / slide.zoom,
+    y: spotlight.y - (slide.top + slide.height / 2 - FOCUS_Y) / slide.zoom,
+    zoom: slide.zoom,
   };
 }
 
@@ -664,7 +691,7 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
         boxSizing: "border-box",
         borderRadius: 18,
         background: "rgba(255,255,255,.04)",
-        border: "1px solid rgba(255,255,255,.12)",
+        border: `${PANEL_BORDER_WIDTH}px solid rgba(255,255,255,.12)`,
         boxShadow: panelShadow(reveal),
         opacity: reveal,
       }}
