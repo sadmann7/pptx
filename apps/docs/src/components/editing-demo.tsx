@@ -7,12 +7,14 @@ import { useCreatePresentationStore, usePresentation } from "@diceui/pptx";
 import {
   DndContext,
   type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@pptx/ui/components/button";
@@ -127,6 +129,9 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
   const [pendingIds, setPendingIds] = React.useState<string[] | null>(null);
   const orderedIds = pendingIds ?? slideIds;
 
+  /** Slide under the pointer, mirrored into the drag overlay. */
+  const [draggedId, setDraggedId] = React.useState<string | null>(null);
+
   // Pointer only: the list owns ArrowUp/ArrowDown for roving focus, so a
   // keyboard drag sensor bound to the same keys would fight it.
   const sensors = useSensors(
@@ -137,6 +142,7 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
 
   async function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    setDraggedId(null);
     if (!over || active.id === over.id) return;
 
     const slideId = String(active.id);
@@ -161,12 +167,41 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToVerticalAxis]}
+      // A transformed child still counts toward its scroll container's overflow,
+      // so an unclamped drag past the last thumbnail grows scrollHeight, which
+      // lets auto-scroll run, which grows the transform again: the strip scrolls
+      // forever. Clamping the drag to the scroll port breaks that loop.
+      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+      onDragStart={({ active }: DragStartEvent) => setDraggedId(String(active.id))}
+      onDragCancel={() => setDraggedId(null)}
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList className="m-1 hidden md:flex">
-          {() => orderedIds.map((slideId) => <SortableItem key={slideId} slideId={slideId} />)}
+        <PresentationThumbnailList className="hidden md:flex">
+          {() => (
+            <>
+              {orderedIds.map((slideId) => (
+                <SortableItem key={slideId} slideId={slideId} />
+              ))}
+              {/*
+               * Inside the list so the floating copy can read the list context
+               * it needs to paint a real miniature. It is fixed-positioned, so
+               * the strip's overflow does not clip it.
+               */}
+              <DragOverlay>
+                {draggedId ? (
+                  <PresentationThumbnailItem
+                    presentational
+                    slideId={draggedId}
+                    className="h-full cursor-grabbing bg-background shadow-lg"
+                  >
+                    <PresentationThumbnailItemNumber />
+                    <PresentationThumbnailItemPreview />
+                  </PresentationThumbnailItem>
+                ) : null}
+              </DragOverlay>
+            </>
+          )}
         </PresentationThumbnailList>
       </SortableContext>
     </DndContext>
@@ -188,7 +223,9 @@ function SortableItem({ slideId }: { slideId: string }) {
       slideId={slideId}
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "z-10 opacity-80 shadow-lg" : undefined}
+      // The overlay carries the thumbnail during the drag, so what stays in the
+      // list is just the slot it will land in.
+      className={isDragging ? "opacity-30" : undefined}
       onSelect={(event) => {
         // Pressing a thumbnail focuses it, and focus navigates. Suppress that
         // while dragging so the deck does not jump mid-gesture.

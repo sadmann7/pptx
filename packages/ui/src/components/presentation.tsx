@@ -156,10 +156,7 @@ function PresentationThumbnailList({
   return (
     <PresentationPrimitive.ThumbnailList
       data-slot="presentation-thumbnail-list"
-      className={cn(
-        "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1 pr-2",
-        className,
-      )}
+      className={cn("flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1.5", className)}
       {...props}
     >
       {children ??
