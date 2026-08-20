@@ -1,10 +1,10 @@
-import * as React from "react";
+import type { ComponentProps } from "react";
 
 import { Presentation } from "@diceui/pptx";
 
-import { useDeck } from "@/lib/use-deck";
+import { useDeck } from "@/hooks/use-deck";
 
-interface PptxCardProps extends React.ComponentProps<"div"> {
+interface PptxCardProps extends ComponentProps<"div"> {
   file: string;
   width: number;
   height: number;

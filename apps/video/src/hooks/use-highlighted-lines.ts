@@ -11,11 +11,6 @@ const THEME = "github-dark";
 
 let highlighter: Promise<HighlighterCore> | null = null;
 
-/**
- * One grammar and one theme, imported directly rather than through Shiki's
- * bundled loader, so the video ships a highlighter instead of every language it
- * knows. The JavaScript engine avoids pulling in the Oniguruma wasm.
- */
 function getHighlighter() {
   highlighter ??= createHighlighterCore({
     langs: [tsx],
@@ -25,10 +20,6 @@ function getHighlighter() {
   return highlighter;
 }
 
-/**
- * Tokenises a snippet into one array per line, holding Remotion's render until
- * the highlighter is ready so no frame is captured against unstyled code.
- */
 export function useHighlightedLines(code: string): ThemedToken[][] | null {
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const [handle] = React.useState(() => delayRender("highlight snippet"));

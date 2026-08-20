@@ -1,4 +1,4 @@
-import type * as React from "react";
+import type { CSSProperties } from "react";
 
 import { loadFont as loadGeistSans } from "@remotion/google-fonts/Geist";
 import { loadFont as loadGeistMono } from "@remotion/google-fonts/GeistMono";
@@ -19,4 +19,4 @@ export const geistMono = mono.fontFamily;
 export const fontVars = {
   "--font-geist-sans": geistSans,
   "--font-geist-mono": geistMono,
-} as React.CSSProperties;
+} as CSSProperties;
