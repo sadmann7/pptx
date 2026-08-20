@@ -121,6 +121,13 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
             // than the viewport. The slide wrapper centers itself with
             // `margin: auto`, which degrades correctly to scrollable.
             overflow: "auto",
+            // Being the scroll container, this element has to stay within the
+            // viewport: sized by its content it would grow past it at high
+            // zoom and take its scrollbars off screen. Resolves to `none`
+            // when the parent's size is indefinite, so it costs nothing
+            // outside a bounded viewport.
+            maxWidth: "100%",
+            maxHeight: "100%",
           },
           children: slideContent,
         },

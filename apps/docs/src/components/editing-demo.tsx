@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, usePresentation } from "@diceui/pptx";
+import { useCreatePresentationStore, usePresentation, useZoom } from "@diceui/pptx";
 import {
   DndContext,
   type DragEndEvent,
@@ -32,12 +32,24 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pptx/ui/components/select";
 
 import { SAMPLE_DECK_PATH } from "@/lib/constants";
+
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2];
 
 export function EditingDemo() {
   const store = useCreatePresentationStore();
   const [history, setHistory] = React.useState({ canUndo: false, canRedo: false });
+
+  /** Off once a zoom level is picked, so a resize stops overriding the choice. */
+  const [isAutoFit, setIsAutoFit] = React.useState(true);
 
   React.useEffect(() => {
     fetch(SAMPLE_DECK_PATH)
@@ -58,7 +70,12 @@ export function EditingDemo() {
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
-        <Toolbar store={store} history={history} />
+        <Toolbar
+          store={store}
+          history={history}
+          isAutoFit={isAutoFit}
+          onAutoFitChange={setIsAutoFit}
+        />
         <Presentation
           className="min-h-0 flex-1"
           // Undo/redo availability without polling the store, so the toolbar
@@ -69,7 +86,7 @@ export function EditingDemo() {
           <PresentationContent>
             <PresentationLoading />
             <PresentationError />
-            <PresentationViewport autoFit autoFitPadding={10}>
+            <PresentationViewport autoFit={isAutoFit} autoFitPadding={10}>
               <PresentationSlide>
                 <PresentationSelection />
               </PresentationSlide>
@@ -84,9 +101,11 @@ export function EditingDemo() {
 interface ToolbarProps {
   store: PresentationStore;
   history: { canUndo: boolean; canRedo: boolean };
+  isAutoFit: boolean;
+  onAutoFitChange: (isAutoFit: boolean) => void;
 }
 
-function Toolbar({ store, history }: ToolbarProps) {
+function Toolbar({ store, history, isAutoFit, onAutoFitChange }: ToolbarProps) {
   const { status } = usePresentation();
 
   return (
@@ -113,7 +132,53 @@ function Toolbar({ store, history }: ToolbarProps) {
       >
         Redo
       </Button>
+      <ZoomSelect isAutoFit={isAutoFit} onAutoFitChange={onAutoFitChange} />
     </div>
+  );
+}
+
+function ZoomSelect({
+  isAutoFit,
+  onAutoFitChange,
+}: Pick<ToolbarProps, "isAutoFit" | "onAutoFitChange">) {
+  const { zoom, setZoom } = useZoom();
+  const percentage = `${Math.round(zoom * 100)}%`;
+
+  return (
+    <Select
+      value={isAutoFit ? "fit" : String(zoom)}
+      onValueChange={(value) => {
+        const next = String(value);
+        // Auto-fit refits on every resize, so it has to be released for an
+        // explicit level to survive the next one.
+        onAutoFitChange(next === "fit");
+        if (next !== "fit") setZoom(Number(next));
+      }}
+    >
+      <SelectTrigger
+        size="sm"
+        className="h-6 w-22 gap-1 rounded-md py-0 pr-1.5 pl-2 text-xs [&_svg:not([class*='size-'])]:size-3"
+      >
+        <SelectValue>{isAutoFit ? `Fit · ${percentage}` : percentage}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="min-w-22 p-0.5">
+        <SelectItem
+          value="fit"
+          className="py-0.5 pr-6 pl-1.5 text-xs [&_svg:not([class*='size-'])]:size-3"
+        >
+          Fit
+        </SelectItem>
+        {ZOOM_LEVELS.map((level) => (
+          <SelectItem
+            key={level}
+            value={String(level)}
+            className="py-0.5 pr-6 pl-1.5 text-xs [&_svg:not([class*='size-'])]:size-3"
+          >
+            {`${level * 100}%`}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
