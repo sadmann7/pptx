@@ -499,7 +499,8 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
 
   /**
    * Render the item's visuals only: no listbox role, no roving focus
-   * registration, and no navigation on click or focus.
+   * registration, no navigation on click or focus, and no presence in the
+   * accessibility tree.
    *
    * Use it for a second copy of an item that is already in the list, such as
    * the floating thumbnail a drag overlay renders while reordering. Without
@@ -509,7 +510,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
    *
    * @default false
    */
-  presentational?: boolean;
+  decorative?: boolean;
 }
 
 /**
@@ -517,7 +518,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
-    { slideId, children, render, onSelect, presentational = false, ...thumbnailItemProps },
+    { slideId, children, render, onSelect, decorative = false, ...thumbnailItemProps },
     forwardedRef,
   ) {
     const store = useStoreContext(THUMBNAIL_ITEM_NAME);
@@ -532,11 +533,11 @@ export const ThumbnailItem = React.memo(
     const { onItemRegister, onItemUnregister } = rovingContext;
     const registerRef = React.useCallback(
       (element: HTMLButtonElement | null) => {
-        if (presentational) return;
+        if (decorative) return;
         if (element) onItemRegister(slideId, element);
         else onItemUnregister(slideId);
       },
-      [slideId, presentational, onItemRegister, onItemUnregister],
+      [slideId, decorative, onItemRegister, onItemUnregister],
     );
 
     const isCurrentTabStop = React.useSyncExternalStore(
@@ -566,10 +567,10 @@ export const ThumbnailItem = React.memo(
     }
 
     /**
-     * Listbox behaviour, dropped for a presentational copy so it stays out of
+     * Listbox behaviour, dropped for a decorative copy so it stays out of
      * roving focus, the accessibility tree, and navigation.
      */
-    const optionProps: React.ComponentProps<"button"> = presentational
+    const optionProps: React.ComponentProps<"button"> = decorative
       ? { "aria-hidden": true, inert: true, tabIndex: -1 }
       : {
           role: "option",

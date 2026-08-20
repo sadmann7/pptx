@@ -191,7 +191,7 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
               <DragOverlay>
                 {draggedId ? (
                   <PresentationThumbnailItem
-                    presentational
+                    decorative
                     slideId={draggedId}
                     className="h-full cursor-grabbing bg-background shadow-lg"
                   >

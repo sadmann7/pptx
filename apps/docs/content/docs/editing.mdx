@@ -161,12 +161,12 @@ A few things are worth knowing when wiring this up:
 - Give the pointer sensor a small activation distance (`{ distance: 4 }`), or a plain click starts a drag instead of selecting the slide.
 - `store.edit()` is async, so hold the dropped order in local state until it settles; otherwise the strip snaps back to the old order for a frame.
 - Clamp the drag with `restrictToFirstScrollableAncestor`. The strip scrolls vertically, and a transformed child still counts toward its scroll container's overflow, so an unclamped drag past the last thumbnail grows `scrollHeight`, which lets auto-scroll run, which grows the transform again — the list scrolls for as long as you hold the pointer at the edge.
-- Give a drag overlay's thumbnail the `presentational` prop. The overlay is a second copy of a slide that is still in the list, and without it the copy takes the original's place in the roving focus map, unregisters it on drop, and the deck is announced with a duplicate option.
+- Give a drag overlay's thumbnail the `decorative` prop. The overlay is a second copy of a slide that is still in the list, and without it the copy takes the original's place in the roving focus map, unregisters it on drop, and the deck is announced with a duplicate option.
 
 ```tsx
 <DragOverlay>
   {draggedId ? (
-    <Presentation.ThumbnailItem presentational slideId={draggedId}>
+    <Presentation.ThumbnailItem decorative slideId={draggedId}>
       <Presentation.ThumbnailItemNumber />
       <Presentation.ThumbnailItemPreview />
     </Presentation.ThumbnailItem>

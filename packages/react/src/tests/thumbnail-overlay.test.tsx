@@ -87,11 +87,7 @@ function Strip({ store, overlaySlideId }: StripProps) {
               </Presentation.ThumbnailItem>
             ))}
             {overlaySlideId ? (
-              <Presentation.ThumbnailItem
-                presentational
-                slideId={overlaySlideId}
-                data-testid="overlay"
-              >
+              <Presentation.ThumbnailItem decorative slideId={overlaySlideId} data-testid="overlay">
                 <Presentation.ThumbnailItemNumber />
                 <Presentation.ThumbnailItemPreview />
               </Presentation.ThumbnailItem>
@@ -103,7 +99,7 @@ function Strip({ store, overlaySlideId }: StripProps) {
   );
 }
 
-describe("presentational thumbnail items", () => {
+describe("decorative thumbnail items", () => {
   it("keeps the copy out of the listbox and out of the tab order", async () => {
     const store = await editableStore();
     const slides = store.getState().presentation!.slides;
