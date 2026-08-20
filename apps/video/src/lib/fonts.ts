@@ -1,12 +1,22 @@
+import type * as React from "react";
+
 import { loadFont as loadGeistSans } from "@remotion/google-fonts/Geist";
 import { loadFont as loadGeistMono } from "@remotion/google-fonts/GeistMono";
 
-export const { fontFamily: geistSans } = loadGeistSans("normal", {
+const sans = loadGeistSans("normal", {
   weights: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
-export const { fontFamily: geistMono } = loadGeistMono("normal", {
+const mono = loadGeistMono("normal", {
   weights: ["400", "500", "600"],
   subsets: ["latin"],
 });
+
+export const geistSans = sans.fontFamily;
+export const geistMono = mono.fontFamily;
+
+export const fontVars = {
+  "--font-geist-sans": geistSans,
+  "--font-geist-mono": geistMono,
+} as React.CSSProperties;

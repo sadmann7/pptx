@@ -2,12 +2,8 @@ import * as React from "react";
 
 import { Presentation } from "@diceui/pptx";
 
-import { geistSans } from "@/lib/fonts";
+import { panelShadow } from "@/lib/theme";
 import { useDeck } from "@/lib/use-deck";
-
-const FONT_VARS = {
-  "--font-geist-sans": geistSans,
-} as React.CSSProperties;
 
 export function EditorPreview({
   file,
@@ -112,7 +108,6 @@ export function EditorPreview({
     <div
       ref={hostRef}
       style={{
-        ...FONT_VARS,
         width,
         height,
         borderRadius: 18,
@@ -123,7 +118,7 @@ export function EditorPreview({
         opacity: reveal,
         background: "rgba(255,255,255,.04)",
         border: "1px solid rgba(255,255,255,.12)",
-        boxShadow: `0 40px 120px rgba(0,0,0,${0.55 * reveal})`,
+        boxShadow: panelShadow(reveal),
         ...style,
       }}
     >

@@ -4,19 +4,20 @@ import { FocusBlurResolve } from "@pptx/ui/components/remocn/focus-blur-resolve"
 import { SoftBlurIn } from "@pptx/ui/components/remocn/soft-blur-in";
 import { Typewriter } from "@pptx/ui/components/remocn/typewriter";
 import { Video } from "@remotion/media";
-import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import type {
   TransitionPresentation,
   TransitionPresentationComponentProps,
 } from "@remotion/transitions";
+import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import type { ThemedToken } from "shiki/core";
 
 import { EditorPreview } from "@/components/editor-preview";
 import { PptxCard } from "@/components/pptx-card";
-import { geistMono, geistSans } from "@/lib/fonts";
+import { fontVars, geistMono, geistSans } from "@/lib/fonts";
 import { useHighlightedLines } from "@/lib/highlight";
+import { panelShadow } from "@/lib/theme";
 
 const C = {
   ink: "#0e1117",
@@ -54,6 +55,8 @@ const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75
 const VIDEO_W = 1920;
 const VIDEO_H = 1080;
 const HANDOFF_FRAMES = 36;
+/** How long the flying card keeps its lift off the board. */
+const FLUSH_FRAMES = 12;
 const COMPOSITION_GAP = 72;
 const PREVIEW_RAIL_W = 130;
 const PREVIEW_PAD = 26;
@@ -61,10 +64,6 @@ const PREVIEW_W = 980;
 /** Sized so the 16:9 slide fills the canvas exactly, leaving no dead band. */
 const PREVIEW_H =
   Math.round(((PREVIEW_W - PREVIEW_RAIL_W - PREVIEW_PAD * 2) * 9) / 16) + PREVIEW_PAD * 2;
-
-const font: React.CSSProperties = {
-  fontFamily: geistSans,
-};
 
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 
@@ -93,7 +92,6 @@ function Backdrop() {
   return (
     <AbsoluteFill
       style={{
-        ...font,
         color: C.white,
         overflow: "hidden",
         background: [
@@ -251,7 +249,11 @@ function Board({ frame }: { frame: number }) {
   const camera = cameraAt(frame);
   const focus = focusAt(frame);
   const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
-  const nest = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + HANDOFF_FRAMES);
+  // Lift and rounding are gone by the time the card reaches the editor, which
+  // the camera does well before the handoff ends. A slide on a canvas does not
+  // float, so carrying the shadow the rest of the way just leaves a glow
+  // sitting inside the window until the cut.
+  const flush = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + FLUSH_FRAMES);
   const othersOut = progress(frame, SHOWCASE_FRAMES - 18, SHOWCASE_FRAMES + 6);
 
   return (
@@ -286,10 +288,10 @@ function Board({ frame }: { frame: number }) {
                 top: spotlight.y - SLIDE_H / 2,
                 width: SLIDE_W,
                 height: SLIDE_H,
-                borderRadius: isLast ? 10 * (1 - nest) : 10,
+                borderRadius: isLast ? 10 * (1 - flush) : 10,
                 overflow: "hidden",
                 boxShadow: isLast
-                  ? `0 ${40 * (1 - nest)}px ${100 * (1 - nest)}px rgba(0,0,0,${0.45 * (1 - nest)})`
+                  ? `0 ${40 * (1 - flush)}px ${100 * (1 - flush)}px rgba(0,0,0,${0.45 * (1 - flush)})`
                   : "0 40px 100px rgba(0,0,0,.45)",
                 opacity,
                 filter: blur > 0.05 ? `blur(${blur}px)` : undefined,
@@ -374,7 +376,6 @@ function Captions({ frame, style, ...props }: CaptionsProps) {
               frame={reveal}
               delay={0}
               style={{
-                ...font,
                 fontSize: 76,
                 fontWeight: 800,
                 color: C.white,
@@ -436,7 +437,6 @@ function TitleCard() {
       <SceneContent durationInFrames={TITLE_DURATION}>
         <AbsoluteFill
           style={{
-            ...font,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -662,7 +662,7 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
         borderRadius: 18,
         background: "rgba(255,255,255,.04)",
         border: "1px solid rgba(255,255,255,.12)",
-        boxShadow: `0 40px 120px rgba(0,0,0,${0.55 * reveal})`,
+        boxShadow: panelShadow(reveal),
         opacity: reveal,
       }}
     >
@@ -716,7 +716,6 @@ function CompositionScene() {
       <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{
-            ...font,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
@@ -859,28 +858,30 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
   ];
 
   return (
-    <TransitionSeries>
-      {scenes.flatMap((scene, index) => {
-        if (index === 0) return [scene];
-        const from = scenes[index - 1]?.key;
-        const handoff = from === "showcase" && scene.key === "composition";
-        return [
-          handoff ? (
-            <TransitionSeries.Transition
-              key={`cut-${index}`}
-              presentation={persistPresentation()}
-              timing={handoffTiming}
-            />
-          ) : (
-            <TransitionSeries.Transition
-              key={`cut-${index}`}
-              presentation={fade()}
-              timing={fadeTiming}
-            />
-          ),
-          scene,
-        ];
-      })}
-    </TransitionSeries>
+    <AbsoluteFill style={{ ...fontVars, fontFamily: geistSans }}>
+      <TransitionSeries>
+        {scenes.flatMap((scene, index) => {
+          if (index === 0) return [scene];
+          const from = scenes[index - 1]?.key;
+          const handoff = from === "showcase" && scene.key === "composition";
+          return [
+            handoff ? (
+              <TransitionSeries.Transition
+                key={`cut-${index}`}
+                presentation={persistPresentation()}
+                timing={handoffTiming}
+              />
+            ) : (
+              <TransitionSeries.Transition
+                key={`cut-${index}`}
+                presentation={fade()}
+                timing={fadeTiming}
+              />
+            ),
+            scene,
+          ];
+        })}
+      </TransitionSeries>
+    </AbsoluteFill>
   );
 }
