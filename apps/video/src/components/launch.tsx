@@ -642,6 +642,9 @@ const PREVIEW_SLIDE = 0;
 const MOVE_START = 72;
 const MOVE_FRAMES = 26;
 
+/** How long the rail column takes to arrive once the code has made room for it. */
+const RAIL_IN_FRAMES = 20;
+
 /** Frames between one miniature starting its fade and the next one starting. */
 const RAIL_POP_CADENCE = 4;
 
@@ -671,44 +674,13 @@ function CodePanel({ reveal, children }: { reveal: number; children: React.React
   );
 }
 
-/**
- * A full-bleed slide and the same window with a rail, each mounted for the
- * whole scene and settled before it is seen. Cutting between them is the only
- * way the rail can appear without throwing its IntersectionObserver.
- */
-function PreviewSwap({
-  reveal,
-  swap,
-  railReveal,
-}: {
-  reveal: number;
-  swap: number;
-  railReveal: number;
-}) {
-  const common = {
-    file: PREVIEW_FILE,
-    slideIndex: PREVIEW_SLIDE,
-    width: PREVIEW_W,
-    height: PREVIEW_H,
-    railWidth: PREVIEW_RAIL_W,
-    padding: PREVIEW_PAD,
-  };
-  const layer: React.CSSProperties = { position: "absolute", inset: 0 };
-
-  return (
-    <div style={{ position: "relative", width: PREVIEW_W, height: PREVIEW_H, flex: "0 0 auto" }}>
-      <EditorPreview {...common} showRail={false} reveal={reveal * (1 - swap)} style={layer} />
-      <EditorPreview {...common} reveal={reveal * swap} railReveal={railReveal} style={layer} />
-    </div>
-  );
-}
-
 function CompositionScene() {
   const time = useCurrentFrame();
   const reveal = progress(time, 8, 28);
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
-  const swap = progress(time, MOVE_START + MOVE_FRAMES - 4, MOVE_START + MOVE_FRAMES);
-  const railReveal = Math.max(0, (time - (MOVE_START + MOVE_FRAMES)) / RAIL_POP_CADENCE);
+  const railLanded = MOVE_START + MOVE_FRAMES;
+  const railIn = progress(time, railLanded, railLanded + RAIL_IN_FRAMES);
+  const railReveal = Math.max(0, (time - (railLanded + RAIL_POP_CADENCE)) / RAIL_POP_CADENCE);
 
   return (
     <AbsoluteFill>
@@ -725,7 +697,18 @@ function CompositionScene() {
           <CodePanel reveal={reveal}>
             <CompositionCode shift={shift} />
           </CodePanel>
-          <PreviewSwap reveal={reveal} swap={swap} railReveal={railReveal} />
+          <EditorPreview
+            file={PREVIEW_FILE}
+            slideIndex={PREVIEW_SLIDE}
+            width={PREVIEW_W}
+            height={PREVIEW_H}
+            railWidth={PREVIEW_RAIL_W}
+            padding={PREVIEW_PAD}
+            reveal={reveal}
+            railIn={railIn}
+            railReveal={railReveal}
+            style={{ flex: "0 0 auto" }}
+          />
         </AbsoluteFill>
       </SceneContent>
     </AbsoluteFill>

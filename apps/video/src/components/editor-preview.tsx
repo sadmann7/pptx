@@ -13,7 +13,7 @@ export function EditorPreview({
   railWidth = 130,
   padding = 26,
   reveal = 1,
-  showRail = true,
+  railIn = 1,
   railReveal = Number.POSITIVE_INFINITY,
   style,
 }: {
@@ -26,15 +26,18 @@ export function EditorPreview({
   /** Entrance progress, 0 to 1. Only the window moves; the editor inside is static. */
   reveal?: number;
   /**
-   * Whether the thumbnail rail is in the tree. Fixed for the life of the
-   * instance: mounting it later would throw the IntersectionObserver and
-   * blank every miniature.
+   * How far the rail has arrived, 0 to 1. The rail holds its final layout box
+   * the whole time and only fades, because mounting it late or moving it out of
+   * the window would throw the IntersectionObserver that decides whether each
+   * miniature draws at all. At 0 the canvas is shifted over the hidden column
+   * so the slide sits centred in the full window, which is what makes the
+   * arrival read as the slide sliding aside to make room.
    */
-  showRail?: boolean;
+  railIn?: number;
   /**
    * Miniatures faded in up to this index, so the rail fills top to bottom.
-   * Opacity and blur only, since moving a preview re-triggers the intersection
-   * check that decides whether it draws at all.
+   * Opacity, blur and a few pixels of travel only, all of which stay inside the
+   * rail's own box and so leave the intersection checks alone.
    */
   railReveal?: number;
   style?: React.CSSProperties;
@@ -52,8 +55,11 @@ export function EditorPreview({
         padding: 12,
         boxSizing: "border-box",
         overflow: "hidden",
+        opacity: railIn,
         borderRight: "1px solid rgba(255,255,255,.1)",
-        background: "rgba(0,0,0,.25)",
+        // Sits on the canvas material below, so this only needs to be the
+        // little extra darkening that separates the rail from the canvas.
+        background: "rgba(0,0,0,.04)",
         // Fade the clipped last thumbnail so the rail reads as scrollable.
         maskImage: "linear-gradient(to bottom, black 78%, transparent)",
       }}
@@ -71,6 +77,9 @@ export function EditorPreview({
                 width: "100%",
                 opacity: shown,
                 filter: shown < 1 ? `blur(${(1 - shown) * 6}px)` : undefined,
+                // Travels in from the left edge of the rail's padding, so it
+                // never leaves the column and gets clipped out of view.
+                transform: `translateX(${-12 * (1 - shown)}px)`,
               }}
             >
               <Presentation.ThumbnailItemPreview />
@@ -95,7 +104,11 @@ export function EditorPreview({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,.22)",
+        // Inserting the rail moves the canvas centre right by half the rail's
+        // width, so undoing exactly that puts the slide where it would sit in
+        // an empty window. It holds nothing but the slide, so unlike the rail
+        // it is free to move.
+        transform: `translateX(${(-railWidth / 2) * (1 - railIn)}px)`,
       }}
     >
       <Presentation.Slide>
@@ -112,9 +125,9 @@ export function EditorPreview({
         height,
         borderRadius: 18,
         overflow: "hidden",
-        // Opacity only. A transform would move the thumbnails, and they render
-        // themselves off their intersection with the window, so any movement
-        // re-triggers that and blanks them mid-entrance.
+        // Opacity only. A transform here would move the thumbnails, and they
+        // render themselves off their intersection with the window, so any
+        // movement re-triggers that and blanks them mid-entrance.
         opacity: reveal,
         background: "rgba(255,255,255,.04)",
         border: "1px solid rgba(255,255,255,.12)",
@@ -132,9 +145,12 @@ export function EditorPreview({
             display: "flex",
             width: "100%",
             height: "100%",
+            // Carried here rather than on the canvas so the rail column is the
+            // same material while it is still hidden.
+            background: "rgba(0,0,0,.22)",
           }}
         >
-          {showRail ? rail : null}
+          {rail}
           {canvas}
         </Presentation.Root>
       )}
