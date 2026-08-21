@@ -51,11 +51,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Let the list's rAF-batched render queue drain. */
+/**
+ * Let the list's rAF-batched render queue drain.
+ *
+ * The queue drains within an 8ms-per-frame budget, so a single callback
+ * normally clears in one tick. A loaded CI runner can blow that budget on
+ * the very first callback, pushing the rest to a second frame; a handful of
+ * extra ticks costs nothing locally and removes that flake.
+ */
 async function flushPreviews(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
-  });
+  for (let tick = 0; tick < 5; tick++) {
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    });
+  }
 }
 
 function previewOf(item: Element): Element | null {
