@@ -116,7 +116,7 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 ### `Presentation.ThumbnailList`
 
-Slide strip. All items mount immediately (cheap empty buttons). The miniature inside each one is rendered lazily as it approaches the viewport, so a long deck does not paint every slide at once. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
 
 ### `Presentation.Error` / `Presentation.Loading`
 
