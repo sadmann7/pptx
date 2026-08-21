@@ -10,7 +10,6 @@ export const DEFAULT_STORE_STATE: StoreState = {
   presentation: null,
   activeSlideId: null,
   zoom: 1,
-  zoomLevel: "fit",
   progress: 0,
   error: null,
   revision: 0,

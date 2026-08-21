@@ -39,8 +39,7 @@ interface PresentationState {
   status: "idle" | "loading" | "ready" | "error";
   presentation: PresentationData | null;
   activeSlideId: string | null;
-  zoom: number; // resolved zoom the slide renders at (default: 1)
-  zoomLevel: number | "fit"; // the zoom that was asked for (default: "fit")
+  zoom: number; // default: 1
   progress: number; // 0–100, meaningful while status === "loading"
   error: Error | null;
   revision: number; // bumped on every edit/undo/redo
@@ -56,7 +55,7 @@ interface PresentationState {
 ```ts
 store.load(file, {
   defaultSlideIndex?: number | ((slides) => number), // default: 0
-  defaultZoom?: number,  // opens at this level instead of auto-fitting
+  defaultZoom?: number,  // initial zoom; auto-fit overrides it on mount
   readOnly?: boolean,    // default: true
   lazy?: boolean,        // default: true (parse slides on demand)
   embedFonts?: boolean,  // default: true (decode embedded fonts before ready)
@@ -84,20 +83,15 @@ store.canGoPrev()
 ### Zoom
 
 ```ts
-store.setZoom(1.5)            // pin a level, clamped to [0.1, 4]
-store.setZoom("fit")          // let the viewport fit and keep fitting
+store.setZoom(n: number)      // clamped to [0.1, 4]
 store.zoomIn(step?: number)   // default step: 0.25
 store.zoomOut(step?: number)
 store.fitTo(width, height, padding?) // compute largest zoom that fits
 ```
 
-Zoom is two values: `zoom` is the number the slide renders at, and `zoomLevel` is what was asked for. A pinned number survives container resizes; `"fit"` is re-applied on every resize, which is how `Viewport autoFit` knows whether it may touch the zoom.
+Fitting is a viewport concern: `<Presentation.Viewport autoFit>` calls `fitTo` on mount and on every container resize. A zoom control that offers both a "Fit" entry and explicit levels owns that choice itself, toggling `autoFit` off when a level is picked, otherwise the next resize fits over it.
 
-Only something that knows the container size can turn `"fit"` into a number, so `setZoom("fit")` records the request and leaves `zoom` alone until a mounted `Viewport autoFit` (or your own `fitTo()` call) resolves it.
-
-`zoomLevel` can move while `zoom` does not, so pinning the exact percentage a fit had already produced still counts as pinning it.
-
-The `zoomChange` event reports what produced the change:
+The `zoomChange` event reports what produced the change, which is how a control tells a resize-driven fit apart from a level someone asked for:
 
 ```ts
 store.on("zoomChange", ({ zoom, previousZoom, reason }) => {
@@ -240,7 +234,7 @@ await store.edit({
 import {
   usePresentation, // { presentation, status, progress, error }
   useSlide, // { slide, slideId, index }
-  useZoom, // { zoom, zoomLevel, setZoom, zoomIn, zoomOut, fitTo }
+  useZoom, // { zoom, setZoom, zoomIn, zoomOut, fitTo }
 } from "@diceui/pptx";
 ```
 

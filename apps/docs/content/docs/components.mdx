@@ -48,29 +48,24 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 
 `onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
 
-`autoFit` only fits while the requested zoom is `"fit"`. Pinning a number stops it refitting on resize so the chosen level survives, and `setZoom("fit")` hands the zoom back. Both go through one setter, so a zoom control needs no state of its own:
+`autoFit` refits on every container resize, so a zoom control that offers explicit levels alongside a "Fit" entry owns that toggle:
 
 ```tsx
-function ZoomSelect() {
-  const { zoomLevel, setZoom } = useZoom();
+function Viewer({ file }) {
+  const [isAutoFit, setIsAutoFit] = React.useState(true);
 
   return (
-    <select
-      value={String(zoomLevel)}
-      onChange={(event) => {
-        const next = event.target.value;
-        setZoom(next === "fit" ? "fit" : Number(next));
-      }}
-    >
-      <option value="fit">Fit</option>
-      <option value="1">100%</option>
-      <option value="2">200%</option>
-    </select>
+    <Presentation.Root file={file}>
+      <ZoomSelect isAutoFit={isAutoFit} onAutoFitChange={setIsAutoFit} />
+      <Presentation.Viewport autoFit={isAutoFit}>
+        <Presentation.Slide />
+      </Presentation.Viewport>
+    </Presentation.Root>
   );
 }
 ```
 
-To open a deck at a fixed level instead of fitting, pass `defaultZoom` to `Root`; auto-fit leaves it alone until something asks for `"fit"`.
+Picking a level turns `autoFit` off so the next resize leaves it alone; picking "Fit" turns it back on. To open a deck at a fixed level, pass `defaultZoom` to `Root`, which only applies when nothing is auto-fitting over it.
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 

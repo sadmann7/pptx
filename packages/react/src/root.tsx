@@ -74,8 +74,8 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   /**
    * Zoom level to open at, where `1` equals 100%.
    *
-   * Counts as an explicit zoom, so a `Viewport autoFit` will not fit over it.
-   * Omit it to let auto-fit choose the level.
+   * Only meaningful without auto-fitting: a `Viewport autoFit` fits on mount
+   * and overrides it.
    *
    * ```tsx
    * <Presentation.Root file={file} defaultZoom={0.5} />

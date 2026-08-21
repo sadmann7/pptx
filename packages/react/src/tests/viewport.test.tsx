@@ -69,50 +69,34 @@ describe("Presentation.Viewport", () => {
       };
     }
 
-    function stubSize(element: HTMLElement, width: number, height: number): void {
-      Object.defineProperty(element, "clientWidth", { value: width, configurable: true });
-      Object.defineProperty(element, "clientHeight", { value: height, configurable: true });
-    }
-
     afterEach(() => {
       vi.unstubAllGlobals();
     });
 
-    it('fits to the container while the level is "fit"', async () => {
+    it("fits the slide to the container on resize", async () => {
       const store = await loadedStore();
       const notifyResize = stubResizeObserver();
       withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
 
-      stubSize(screen.getByTestId("viewport"), 640, 360);
+      const viewport = screen.getByTestId("viewport");
+      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
+      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
       act(() => notifyResize());
 
+      // Fixture deck is 1280x720.
       expect(store.getState().zoom).toBe(0.5);
-      expect(store.getState().zoomLevel).toBe("fit");
     });
 
-    it("leaves a pinned level alone when the container resizes", async () => {
+    it("reports the fit as the reason", async () => {
       const store = await loadedStore();
-      const notifyResize = stubResizeObserver();
-      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+      const reasons: string[] = [];
+      withStore(
+        store,
+        <Presentation.Viewport onZoomChange={({ reason }) => reasons.push(reason)} />,
+      );
 
-      stubSize(screen.getByTestId("viewport"), 640, 360);
-      act(() => store.setZoom(2));
-      act(() => notifyResize());
-
-      expect(store.getState().zoom).toBe(2);
-    });
-
-    it('resolves setZoom("fit") against the live container size', async () => {
-      const store = await loadedStore();
-      stubResizeObserver();
-      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
-
-      stubSize(screen.getByTestId("viewport"), 640, 360);
-      act(() => store.setZoom(2));
-      act(() => store.setZoom("fit"));
-
-      expect(store.getState().zoom).toBe(0.5);
-      expect(store.getState().zoomLevel).toBe("fit");
+      act(() => store.fitTo(640, 360));
+      expect(reasons).toEqual(["fit"]);
     });
   });
 

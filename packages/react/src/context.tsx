@@ -4,7 +4,7 @@ import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
 import { useLatestRef, useLazyRef } from "./hook";
-import type { AutoFitPadding, Store, StoreEventMap, StoreState, ZoomLevel } from "./store";
+import type { AutoFitPadding, Store, StoreEventMap, StoreState } from "./store";
 import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
@@ -76,23 +76,23 @@ export function useStoreContext(consumerName: string): Store {
 
 /**
  * Bridges an optional event-handler prop to a store event for the lifetime of
- * the component. Internal: components expose the handler as a prop rather than
+ * the component. Internal: components expose the callback as a prop rather than
  * making consumers manage a subscription.
  *
- * The handler is read through a ref, so passing an inline function does not
+ * The callback is read through a ref, so passing an inline function does not
  * resubscribe on every render.
  */
 export function useStoreEvent<E extends keyof StoreEventMap>(
   store: Store,
   event: E,
-  handler: ((payload: StoreEventMap[E]) => void) | undefined,
+  callback: ((payload: StoreEventMap[E]) => void) | undefined,
 ): void {
-  const handlerRef = useLatestRef(handler);
+  const callbackRef = useLatestRef(callback);
 
   // Subscribing to an external store: an effect is the right tool here.
   React.useEffect(
-    () => store.on(event, (payload) => handlerRef.current?.(payload)),
-    [store, event, handlerRef],
+    () => store.on(event, (payload) => callbackRef.current?.(payload)),
+    [store, event, callbackRef],
   );
 }
 
@@ -264,25 +264,11 @@ export function useSlide(): UseSlideResult {
 }
 
 export interface UseZoomResult {
-  /** Zoom the slide is rendered at (1 = 100%, 0.5 = 50%). */
+  /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
 
-  /**
-   * The zoom that was asked for: a level, or `"fit"` while the viewport keeps
-   * the slide fitted. A zoom control reads this as its value.
-   */
-  zoomLevel: ZoomLevel;
-
-  /**
-   * Set an explicit zoom level, or `"fit"` to hand the zoom back to the
-   * viewport. A level stays put across container resizes.
-   *
-   * ```tsx
-   * setZoom(1.5);
-   * setZoom("fit");
-   * ```
-   */
-  setZoom: (zoom: ZoomLevel) => void;
+  /** Set an explicit zoom level. */
+  setZoom: (zoom: number) => void;
 
   /**
    * Increase zoom by `step`.
@@ -318,12 +304,10 @@ export interface UseZoomResult {
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
-  const zoomLevel = useStoreSelector<ZoomLevel>(store, (s) => s.zoomLevel, "fit");
 
   return {
     zoom,
-    zoomLevel,
-    setZoom: React.useCallback((level: ZoomLevel) => store.setZoom(level), [store]),
+    setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
     fitTo: React.useCallback(

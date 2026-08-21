@@ -227,17 +227,13 @@ describe("reset and subscriptions", () => {
     store.next();
     expect(notifications).toBe(1);
 
-    // Same zoom, but the requested level moves from "fit" to a number.
+    // No state change → no notification.
     store.setZoom(store.getState().zoom);
-    expect(notifications).toBe(2);
-
-    // Now nothing moves at all → no notification.
-    store.setZoom(store.getState().zoom);
-    expect(notifications).toBe(2);
+    expect(notifications).toBe(1);
 
     unsubscribe();
     store.next();
-    expect(notifications).toBe(2);
+    expect(notifications).toBe(1);
   });
 });
 
@@ -299,56 +295,12 @@ describe("statusChange and zoomChange events", () => {
 
     expect(reasons).toEqual(["zoom", "zoom", "fit", "reset"]);
   });
-});
 
-describe("zoomLevel", () => {
-  it("starts fitted and pins the level on an explicit zoom", async () => {
-    const store = await loadedStore();
-    expect(store.getState().zoomLevel).toBe("fit");
-
-    store.setZoom(2);
-    expect(store.getState().zoomLevel).toBe(2);
-
-    store.fitTo(640, 360);
-    expect(store.getState().zoomLevel).toBe("fit");
-  });
-
-  it("pins the level even when the zoom does not move", async () => {
-    const store = await loadedStore();
-    store.fitTo(640, 360);
-    const fittedZoom = store.getState().zoom;
-
-    // Picking the percentage the fit had already produced still pins it,
-    // otherwise a resize would silently take it back.
-    store.setZoom(fittedZoom);
-    expect(store.getState().zoom).toBe(fittedZoom);
-    expect(store.getState().zoomLevel).toBe(fittedZoom);
-  });
-
-  it("records a fit request without a container to resolve it", async () => {
-    const store = await loadedStore();
-    store.setZoom(3);
-
-    // Nothing knows the container size here, so the zoom holds until a
-    // viewport (or a `fitTo` call) resolves the request.
-    store.setZoom("fit");
-    expect(store.getState().zoom).toBe(3);
-    expect(store.getState().zoomLevel).toBe("fit");
-  });
-
-  it("clamps and pins defaultZoom", async () => {
+  it("opens at defaultZoom", async () => {
     const store = createStore();
     await store.load(await loadFixture(), { defaultZoom: 0.5, embedFonts: false });
 
     expect(store.getState().zoom).toBe(0.5);
-    expect(store.getState().zoomLevel).toBe(0.5);
-  });
-
-  it("stays fitted when no defaultZoom is given", async () => {
-    const store = await loadedStore();
-
-    expect(store.getState().zoom).toBe(1);
-    expect(store.getState().zoomLevel).toBe("fit");
   });
 });
 

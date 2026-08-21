@@ -74,23 +74,11 @@ export interface StoreState {
   activeSlideId: string | null;
 
   /**
-   * Zoom the slide is rendered at, where `1` equals 100%. Always a number,
-   * including while fitting: this is the resolved value.
+   * Current zoom level, where `1` equals 100%.
    *
    * @default 1
    */
   zoom: number;
-
-  /**
-   * The zoom that was asked for: an explicit level, or `"fit"` while the
-   * viewport is keeping the slide fitted to its container.
-   *
-   * A zoom control reads this as its value, since it says which entry is
-   * selected in a way `zoom` alone cannot.
-   *
-   * @default "fit"
-   */
-  zoomLevel: ZoomLevel;
 
   /**
    * Parse progress from `0` to `100`.
@@ -168,12 +156,6 @@ export interface StatusChangeEvent {
   /** The status it moved from. */
   previousStatus: PresentationStatus;
 }
-
-/**
- * A zoom request: an explicit level where `1` equals 100%, or `"fit"` to let
- * the viewport scale the slide to its container and keep it fitted on resize.
- */
-export type ZoomLevel = number | "fit";
 
 /** What produced a zoom change. */
 export type ZoomChangeReason = "zoom" | "fit" | "load" | "reset";
@@ -290,9 +272,8 @@ export interface Store {
       /**
        * Zoom level to start at, where `1` equals 100%.
        *
-       * Counts as an explicit zoom, so a `Viewport autoFit` will not fit over
-       * it; the deck opens at exactly this level until something calls
-       * `fit()`. Omit it to let auto-fit choose.
+       * Only meaningful without auto-fitting: a `Viewport autoFit` fits on
+       * mount and overrides it.
        */
       defaultZoom?: number;
 
@@ -365,20 +346,12 @@ export interface Store {
   prev: () => void;
 
   /**
-   * Set an explicit zoom level, clamped to `[MIN_ZOOM, MAX_ZOOM]`, or pass
-   * `"fit"` to hand the zoom back to the viewport.
+   * Set the zoom level directly.
+   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`.
    *
-   * A number stays put across container resizes; `"fit"` is re-applied on
-   * every resize. Fitting needs a container, so `"fit"` is resolved by a
-   * mounted `Viewport autoFit` (or your own `fitTo()` call) and leaves `zoom`
-   * unchanged until then.
-   *
-   * ```ts
-   * store.setZoom(1.5);
-   * store.setZoom("fit");
-   * ```
+   * @default 1
    */
-  setZoom: (zoom: ZoomLevel) => void;
+  setZoom: (zoom: number) => void;
 
   /**
    * Increase zoom by `step`.
@@ -782,20 +755,16 @@ export function createStore(): Store {
         if (gen !== loadGeneration) throw ABORT_ERROR;
       }
 
-      // A `defaultZoom` is a pinned level like any other, so auto-fit leaves
-      // it alone; without one the deck opens fitted.
       const defaultZoom = options?.defaultZoom;
-      const startZoom =
-        defaultZoom !== undefined && Number.isFinite(defaultZoom)
-          ? clamp(defaultZoom, MIN_ZOOM, MAX_ZOOM)
-          : null;
       zoomChangeReason = "load";
       replaceState({
         status: "ready",
         presentation,
         activeSlideId: startSlide?.id ?? null,
-        zoom: startZoom ?? 1,
-        zoomLevel: startZoom ?? "fit",
+        zoom:
+          defaultZoom !== undefined && Number.isFinite(defaultZoom)
+            ? clamp(defaultZoom, MIN_ZOOM, MAX_ZOOM)
+            : 1,
         progress: 100,
         error: null,
         revision: 0,
@@ -877,33 +846,16 @@ export function createStore(): Store {
     return getActiveSlideIndex() > 0;
   }
 
-  /**
-   * Apply a resolved zoom. `reason` also says what to record as the requested
-   * level: a fit stays `"fit"` so the viewport keeps refitting, anything else
-   * pins the number.
-   */
-  function applyZoom(zoom: number, reason: Extract<ZoomChangeReason, "zoom" | "fit">): void {
+  function applyZoom(zoom: number, reason: ZoomChangeReason): void {
     if (!Number.isFinite(zoom)) return;
     const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
-    const zoomLevel: ZoomLevel = reason === "fit" ? "fit" : clamped;
-    // The requested level can move while the resolved zoom does not (pinning
-    // the percentage a fit had already produced), so it needs its own check.
-    if (Object.is(clamped, state.zoom)) {
-      if (state.zoomLevel !== zoomLevel) setState({ zoomLevel });
-      return;
-    }
+    if (Object.is(clamped, state.zoom)) return;
     zoomChangeReason = reason;
-    setState({ zoom: clamped, zoomLevel });
+    setState({ zoom: clamped });
   }
 
-  function setZoom(zoom: ZoomLevel): void {
-    if (zoom !== "fit") {
-      applyZoom(zoom, "zoom");
-      return;
-    }
-    // Only a container can resolve a fit, so this records the request and a
-    // mounted `Viewport autoFit` picks it up and calls `fitTo`.
-    if (state.zoomLevel !== "fit") setState({ zoomLevel: "fit" });
+  function setZoom(zoom: number): void {
+    applyZoom(zoom, "zoom");
   }
 
   function zoomIn(step = DEFAULT_ZOOM_STEP): void {
