@@ -31,9 +31,9 @@ import {
   PresentationThumbnailItemPreview,
   PresentationThumbnailList,
   PresentationViewport,
-  PresentationZoomSelect,
 } from "@pptx/ui/components/presentation";
 
+import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import { SAMPLE_DECK_PATH } from "@/lib/constants";
 
 export function PresentationEditingDemo() {

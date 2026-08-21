@@ -41,10 +41,11 @@ import {
   PresentationThumbnailItemPreview,
   PresentationThumbnailList,
   PresentationViewport,
-  PresentationZoomSelect,
 } from "@pptx/ui/components/presentation";
 import { cn } from "@pptx/ui/lib/utils";
 import { PresentationIcon } from "lucide-react";
+
+import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 
 export default function PgPage() {
   const id = React.useId();
