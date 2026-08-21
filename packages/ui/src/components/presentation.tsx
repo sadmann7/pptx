@@ -166,17 +166,8 @@ function PresentationThumbnailList({
 }: PresentationPrimitive.ThumbnailList.Props) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
-  const [isMobile, setIsMobile] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const toggleRef = React.useRef<HTMLButtonElement | null>(null);
-
-  React.useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const onChange = () => setIsMobile(mediaQuery.matches);
-    onChange();
-    mediaQuery.addEventListener("change", onChange);
-    return () => mediaQuery.removeEventListener("change", onChange);
-  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -221,8 +212,8 @@ function PresentationThumbnailList({
     <>
       <Button
         type="button"
-        aria-controls={id}
         aria-expanded={open}
+        aria-controls={id}
         ref={toggleRef}
         variant="outline"
         size="icon-sm"
@@ -233,10 +224,8 @@ function PresentationThumbnailList({
       </Button>
       <PresentationPrimitive.ThumbnailList
         id={id}
-        aria-hidden={isMobile && !open ? true : undefined}
         data-slot="presentation-thumbnail-list"
         data-state={open ? "open" : "closed"}
-        inert={isMobile && !open}
         ref={listRef}
         render={<aside />}
         className={cn(
