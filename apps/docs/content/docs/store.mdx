@@ -17,9 +17,22 @@ The store is the single source of truth for all presentation state: loading, nav
 </Presentation.Root>
 ```
 
+Descendants can still drive that internal store: `usePresentationStore()` returns it, so a toolbar can call `edit()`, `undo()`, or `save()` without you owning the instance.
+
+```tsx
+import { usePresentationStore } from "@diceui/pptx";
+
+function SaveButton() {
+  const store = usePresentationStore();
+  return <button onClick={() => store.save()}>Save</button>;
+}
+```
+
+It returns a stable reference and subscribes to nothing, so use `usePresentation`, `useSlide`, or `useZoom` for reactive reads rather than `store.getState()`.
+
 ### Controlled
 
-Use `useCreatePresentationStore` when you need to drive the store from outside (programmatic load, toolbar buttons, save):
+Use `useCreatePresentationStore` when the store has to exist before the tree does, for example to load a file from an event handler that lives outside it:
 
 ```tsx
 import { useCreatePresentationStore } from "@diceui/pptx";
@@ -237,6 +250,7 @@ await store.edit({
 ```tsx
 import {
   usePresentation, // { presentation, status, progress, error }
+  usePresentationStore, // the ambient store, for imperative calls
   useSlide, // { slide, slideId, index }
   useZoom, // { zoom, isAutoFit, setZoom, zoomIn, zoomOut, setAutoFit, fitTo }
 } from "@diceui/pptx";

@@ -75,6 +75,35 @@ export function useStoreContext(consumerName: string): Store {
 }
 
 /**
+ * Returns the `PresentationStore` driving the surrounding tree, whether it was
+ * passed to `Presentation.Provider` or created internally by
+ * `Presentation.Root`. Throws if called outside either.
+ *
+ * This is how a descendant reaches the imperative API (`load`, `edit`, `undo`,
+ * `redo`, `save`, `reset`) without the store being threaded down as a prop,
+ * and it is the only way to reach `Root`'s internal store at all:
+ *
+ * ```tsx
+ * function SaveButton() {
+ *   const store = usePresentationStore();
+ *   return <button onClick={() => store.save()}>Save</button>;
+ * }
+ *
+ * // No `useCreatePresentationStore`, no `Provider`, no prop drilling.
+ * <Presentation.Root file={file} readOnly={false}>
+ *   <SaveButton />
+ * </Presentation.Root>
+ * ```
+ *
+ * Returns a stable reference and subscribes to nothing, so a state change does
+ * not re-render the caller. Read state with `usePresentation`, `useSlide`, or
+ * `useZoom` instead of `store.getState()`.
+ */
+export function useStore(): Store {
+  return useStoreContext("usePresentationStore");
+}
+
+/**
  * Bridges an optional event-handler prop to a store event for the lifetime of
  * the component. Internal: components expose the callback as a prop rather than
  * making consumers manage a subscription.

@@ -21,6 +21,7 @@ export type { ViewportProps, ViewportState } from "./viewport";
 export {
   useCreateStore as useCreatePresentationStore,
   usePresentation,
+  useStore as usePresentationStore,
   useSlide,
   useSlideIndex,
   useSlideRevision,

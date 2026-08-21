@@ -172,11 +172,9 @@ function PresentationThumbnailList({
   React.useEffect(() => {
     if (!open) return;
 
-    /** Pointer id of a gesture that started outside, until it taps or scrolls. */
     let pendingPointerId: number | null = null;
 
     function isInside(target: Node) {
-      // The toggle owns its own click, so closing here would fight it.
       return !!listRef.current?.contains(target) || !!toggleRef.current?.contains(target);
     }
 
@@ -184,10 +182,6 @@ function PresentationThumbnailList({
       pendingPointerId = isInside(event.target as Node) ? null : event.pointerId;
     }
 
-    /**
-     * Dismiss on release rather than on press: a touch that turns into a scroll
-     * is cancelled by the browser, so only a tap that stays outside gets here.
-     */
     function onPointerUp(event: PointerEvent) {
       const isPendingPointer = pendingPointerId === event.pointerId;
       pendingPointerId = null;
@@ -217,13 +211,12 @@ function PresentationThumbnailList({
   return (
     <>
       <Button
-        ref={toggleRef}
         type="button"
-        variant="outline"
-        size="icon-sm"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={open ? "Hide slides" : "Show slides"}
+        ref={toggleRef}
+        variant="outline"
+        size="icon-sm"
         className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm md:hidden"
         onClick={() => setOpen((value) => !value)}
       >
@@ -231,15 +224,13 @@ function PresentationThumbnailList({
       </Button>
       <PresentationPrimitive.ThumbnailList
         id={id}
+        data-slot="presentation-thumbnail-list"
+        data-state={open ? "open" : "closed"}
         ref={listRef}
         render={<aside />}
-        data-slot="presentation-thumbnail-list"
         className={cn(
-          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
-          // Above the toggle so the panel covers it instead of the first
-          // thumbnail sitting under a floating button.
-          "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-20 max-md:transition-transform",
-          !open && "max-md:-translate-x-full",
+          "absolute inset-y-0 left-0 z-20 flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5 transition-transform data-closed:-translate-x-full",
+          "md:static md:z-auto md:data-closed:translate-x-0",
           className,
         )}
         {...props}
