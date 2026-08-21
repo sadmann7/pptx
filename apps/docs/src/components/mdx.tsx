@@ -3,8 +3,8 @@ import { AutoTypeTable, type AutoTypeTableProps } from "fumadocs-typescript/ui";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 
-import { EditingDemo } from "@/components/editing-demo";
 import { PresentationDemo } from "@/components/presentation-demo";
+import { PresentationEditingDemo } from "@/components/presentation-editing-demo";
 
 const generator = createGenerator({
   cache: createFileSystemGeneratorCache(".next/fumadocs-typescript"),
@@ -16,8 +16,8 @@ export function getMDXComponents(components?: MDXComponents) {
     AutoTypeTable: (props: Partial<AutoTypeTableProps>) => (
       <AutoTypeTable {...props} generator={generator} />
     ),
-    EditingDemo,
     PresentationDemo,
+    PresentationEditingDemo,
     ...components,
   } satisfies MDXComponents;
 }

@@ -44,7 +44,7 @@ import { SAMPLE_DECK_PATH } from "@/lib/constants";
 
 const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2];
 
-export function EditingDemo() {
+export function PresentationEditingDemo() {
   const store = useCreatePresentationStore();
   const [history, setHistory] = React.useState({ canUndo: false, canRedo: false });
 
@@ -242,7 +242,7 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList className="hidden md:flex">
+        <PresentationThumbnailList>
           {() => (
             <>
               {orderedIds.map((slideId) => (

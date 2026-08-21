@@ -60,11 +60,11 @@ export function PresentationDemo() {
       </div>
       <PresentationProvider store={store}>
         <Presentation className="min-h-0 flex-1">
-          <PresentationThumbnailList className="hidden md:flex" />
+          <PresentationThumbnailList />
           <PresentationContent>
             <PresentationLoading />
             <PresentationError />
-            <PresentationViewport autoFit autoFitPadding={10} scrollNavigation>
+            <PresentationViewport>
               <PresentationSlide>
                 <PresentationSelection />
               </PresentationSlide>

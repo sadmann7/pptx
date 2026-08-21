@@ -1,7 +1,11 @@
 "use client";
 
+import * as React from "react";
+
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { Button } from "@pptx/ui/components/button";
 import { cn } from "@pptx/ui/lib/utils";
+import { PanelLeftIcon } from "lucide-react";
 
 function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
   return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;
@@ -11,7 +15,7 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   return (
     <PresentationPrimitive.Root
       data-slot="presentation"
-      className={cn("flex overflow-hidden", className)}
+      className={cn("relative flex overflow-hidden", className)}
       {...props}
     />
   );
@@ -27,9 +31,16 @@ function PresentationContent({ className, ...props }: React.ComponentProps<"div"
   );
 }
 
-function PresentationViewport({ className, ...props }: PresentationPrimitive.Viewport.Props) {
+function PresentationViewport({
+  className,
+  autoFit = true,
+  autoFitPadding = 10,
+  ...props
+}: PresentationPrimitive.Viewport.Props) {
   return (
     <PresentationPrimitive.Viewport
+      autoFit={autoFit}
+      autoFitPadding={autoFitPadding}
       data-slot="presentation-viewport"
       className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
       {...props}
@@ -153,16 +164,91 @@ function PresentationThumbnailList({
   children,
   ...props
 }: PresentationPrimitive.ThumbnailList.Props) {
+  const id = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const toggleRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    /** Pointer id of a gesture that started outside, until it taps or scrolls. */
+    let pendingPointerId: number | null = null;
+
+    function isInside(target: Node) {
+      // The toggle owns its own click, so closing here would fight it.
+      return !!listRef.current?.contains(target) || !!toggleRef.current?.contains(target);
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      pendingPointerId = isInside(event.target as Node) ? null : event.pointerId;
+    }
+
+    /**
+     * Dismiss on release rather than on press: a touch that turns into a scroll
+     * is cancelled by the browser, so only a tap that stays outside gets here.
+     */
+    function onPointerUp(event: PointerEvent) {
+      const isPendingPointer = pendingPointerId === event.pointerId;
+      pendingPointerId = null;
+      if (isPendingPointer && !isInside(event.target as Node)) setOpen(false);
+    }
+
+    function onPointerCancel() {
+      pendingPointerId = null;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerCancel);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerCancel);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   return (
-    <PresentationPrimitive.ThumbnailList
-      data-slot="presentation-thumbnail-list"
-      className={cn("flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1.5", className)}
-      {...props}
-    >
-      {children ??
-        (({ slides }) =>
-          slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
-    </PresentationPrimitive.ThumbnailList>
+    <>
+      <Button
+        ref={toggleRef}
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label={open ? "Hide slides" : "Show slides"}
+        className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm md:hidden"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <PanelLeftIcon />
+      </Button>
+      <PresentationPrimitive.ThumbnailList
+        id={id}
+        ref={listRef}
+        render={<aside />}
+        data-slot="presentation-thumbnail-list"
+        className={cn(
+          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
+          // Above the toggle so the panel covers it instead of the first
+          // thumbnail sitting under a floating button.
+          "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-20 max-md:transition-transform",
+          !open && "max-md:-translate-x-full",
+          className,
+        )}
+        {...props}
+      >
+        {children ??
+          (({ slides }) =>
+            slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
+      </PresentationPrimitive.ThumbnailList>
+    </>
   );
 }
 

@@ -3,7 +3,7 @@ title: Editing
 description: Move, resize, and edit text in presentations.
 ---
 
-<EditingDemo />
+<PresentationEditingDemo />
 
 Editing requires two things: loading the presentation with `readOnly={false}`, and placing `Presentation.Selection` inside `Presentation.Slide`.
 
@@ -180,8 +180,8 @@ The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor 
 
 The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. Here it is in full:
 
-<include lang="tsx" meta='title="editing-demo.tsx"'>
-  ../../src/components/editing-demo.tsx
+<include lang="tsx" meta='title="presentation-editing-demo.tsx"'>
+  ../../src/components/presentation-editing-demo.tsx
 </include>
 
 ## Unsaved changes
