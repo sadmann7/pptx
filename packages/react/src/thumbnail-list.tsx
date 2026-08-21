@@ -357,10 +357,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       firstItem?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef]);
 
-    // Pressing a thumbnail pins the roving tab stop to it, which would outlive
-    // any navigation the store performs on its own: undo and redo jump to the
-    // slide they touched, so without this the tab stop (and the focus riding on
-    // it) would stay behind on whatever was pressed last.
+    // Keeps tab stop in sync with undo/redo slide changes.
     React.useEffect(() => {
       return store.on("slideChange", ({ slideId, reason }) => {
         if (reason !== "edit" || !slideId) return;
