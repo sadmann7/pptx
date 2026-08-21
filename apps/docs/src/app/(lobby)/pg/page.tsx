@@ -4,12 +4,10 @@ import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
+import type { DragEndEvent, DragStartEvent, DropAnimation } from "@dnd-kit/core";
 import {
   DndContext,
-  type DragEndEvent,
   DragOverlay,
-  type DragStartEvent,
-  type DropAnimation,
   PointerSensor,
   closestCenter,
   defaultDropAnimation,
@@ -184,10 +182,6 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      // A transformed child still counts toward its scroll container's overflow,
-      // so an unclamped drag past the last thumbnail grows scrollHeight, which
-      // lets auto-scroll run, which grows the transform again: the strip scrolls
-      // forever. Clamping the drag to the scroll port breaks that loop.
       modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
       onDragStart={({ active }: DragStartEvent) => setDraggedId(String(active.id))}
       onDragCancel={() => setDraggedId(null)}
