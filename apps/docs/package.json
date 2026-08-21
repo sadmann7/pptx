@@ -21,10 +21,11 @@
     "fumadocs-mdx": "15.1.0",
     "fumadocs-typescript": "^5.3.0",
     "fumadocs-ui": "16.11.3",
+    "lucide-react": "catalog:",
     "next": "16.2.10",
     "next-themes": "catalog:",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",

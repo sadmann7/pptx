@@ -17,7 +17,15 @@ import {
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button } from "@pptx/ui/components/button";
+import { Button, buttonVariants } from "@pptx/ui/components/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@pptx/ui/components/empty";
 import { Input } from "@pptx/ui/components/input";
 import { Label } from "@pptx/ui/components/label";
 import {
@@ -35,6 +43,8 @@ import {
   PresentationViewport,
   PresentationZoomSelect,
 } from "@pptx/ui/components/presentation";
+import { cn } from "@pptx/ui/lib/utils";
+import { PresentationIcon } from "lucide-react";
 
 export default function PgPage() {
   const id = React.useId();
@@ -81,6 +91,7 @@ export default function PgPage() {
             <PresentationContent>
               <PresentationLoading />
               <PresentationError />
+              <PresentationEmpty inputId={`${id}-file-input`} />
               <PresentationViewport>
                 <PresentationSlide>
                   <PresentationSelection />
@@ -94,7 +105,39 @@ export default function PgPage() {
   );
 }
 
-function SortableThumbnailList({ store }: { store: PresentationStore }) {
+interface PresentationEmptyProps {
+  inputId: string;
+}
+
+function PresentationEmpty({ inputId }: PresentationEmptyProps) {
+  const { status } = usePresentation();
+  if (status !== "idle") return null;
+
+  return (
+    <Empty className="absolute inset-0 z-10">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <PresentationIcon />
+        </EmptyMedia>
+        <EmptyTitle>No presentation open</EmptyTitle>
+        <EmptyDescription>
+          Pick a .pptx file to render it here, then edit, reorder, and save it back.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <label htmlFor={inputId} className={cn(buttonVariants({ size: "sm" }), "cursor-pointer")}>
+          Choose file
+        </label>
+      </EmptyContent>
+    </Empty>
+  );
+}
+
+interface SortableThumbnailListProps {
+  store: PresentationStore;
+}
+
+function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const { presentation } = usePresentation();
   const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
 
@@ -185,7 +228,11 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
   );
 }
 
-function SortableThumbnailItem({ slideId }: { slideId: string }) {
+interface SortableThumbnailItemProps {
+  slideId: string;
+}
+
+function SortableThumbnailItem({ slideId }: SortableThumbnailItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slideId,
   });
@@ -214,49 +261,6 @@ function SortableThumbnailItem({ slideId }: { slideId: string }) {
       <PresentationThumbnailItemNumber />
       <PresentationThumbnailItemPreview />
     </PresentationThumbnailItem>
-  );
-}
-
-interface ThumbnailPerfDetail {
-  frames: number;
-  renders: number;
-  totalMs: number;
-  maxFrameMs: number;
-  backlog: number;
-}
-
-function useThumbnailPerf(): ThumbnailPerfDetail | null {
-  const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
-
-  const subscribe = React.useCallback((onStoreChange: () => void) => {
-    const onPerf = (event: Event) => {
-      perfRef.current = (event as CustomEvent<ThumbnailPerfDetail>).detail;
-      onStoreChange();
-    };
-    window.addEventListener("pptx:thumbnail-perf", onPerf);
-    return () => window.removeEventListener("pptx:thumbnail-perf", onPerf);
-  }, []);
-
-  return React.useSyncExternalStore(
-    subscribe,
-    () => perfRef.current,
-    () => null,
-  );
-}
-
-function ThumbnailPerfReadout() {
-  const perf = useThumbnailPerf();
-  if (!perf) return null;
-
-  const avgFrameMs = perf.frames > 0 ? perf.totalMs / perf.frames : 0;
-  return (
-    <span>
-      thumbs:{" "}
-      <strong className="text-foreground">
-        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
-        · {perf.backlog} queued
-      </strong>
-    </span>
   );
 }
 
@@ -328,6 +332,49 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
         Save .pptx
       </Button>
     </div>
+  );
+}
+
+interface ThumbnailPerfDetail {
+  frames: number;
+  renders: number;
+  totalMs: number;
+  maxFrameMs: number;
+  backlog: number;
+}
+
+function useThumbnailPerf(): ThumbnailPerfDetail | null {
+  const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
+
+  const subscribe = React.useCallback((onStoreChange: () => void) => {
+    const onPerf = (event: Event) => {
+      perfRef.current = (event as CustomEvent<ThumbnailPerfDetail>).detail;
+      onStoreChange();
+    };
+    window.addEventListener("pptx:thumbnail-perf", onPerf);
+    return () => window.removeEventListener("pptx:thumbnail-perf", onPerf);
+  }, []);
+
+  return React.useSyncExternalStore(
+    subscribe,
+    () => perfRef.current,
+    () => null,
+  );
+}
+
+function ThumbnailPerfReadout() {
+  const perf = useThumbnailPerf();
+  if (!perf) return null;
+
+  const avgFrameMs = perf.frames > 0 ? perf.totalMs / perf.frames : 0;
+  return (
+    <span>
+      thumbs:{" "}
+      <strong className="text-foreground">
+        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
+        · {perf.backlog} queued
+      </strong>
+    </span>
   );
 }
 
