@@ -87,6 +87,49 @@ describe("Presentation.Viewport", () => {
       expect(store.getState().zoom).toBe(0.5);
     });
 
+    it("stops fitting on resize once an explicit level is picked", async () => {
+      const store = await loadedStore();
+      const notifyResize = stubResizeObserver();
+      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+
+      const viewport = screen.getByTestId("viewport");
+      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
+      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+
+      act(() => store.setZoom(2));
+      act(() => notifyResize());
+      expect(store.getState().zoom).toBe(2);
+    });
+
+    it("refits when auto-fit is turned back on", async () => {
+      const store = await loadedStore();
+      stubResizeObserver();
+      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+
+      const viewport = screen.getByTestId("viewport");
+      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
+      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+
+      act(() => store.setZoom(2));
+      // No resize in between: re-arming fits against the container as it is.
+      act(() => store.setAutoFit(true));
+      expect(store.getState().zoom).toBe(0.5);
+    });
+
+    it("leaves zoom alone when the prop is off", async () => {
+      const store = await loadedStore();
+      const notifyResize = stubResizeObserver();
+      withStore(store, <Presentation.Viewport data-testid="viewport" />);
+
+      const viewport = screen.getByTestId("viewport");
+      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
+      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+      act(() => notifyResize());
+
+      expect(store.getState().isAutoFit).toBe(false);
+      expect(store.getState().zoom).toBe(1);
+    });
+
     it("reports the fit as the reason", async () => {
       const store = await loadedStore();
       const reasons: string[] = [];

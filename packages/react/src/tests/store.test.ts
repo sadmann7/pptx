@@ -196,6 +196,50 @@ describe("zoom", () => {
     expect(store.getState().zoom).toBeCloseTo(0.5, 9);
   });
 
+  it("releases auto-fit when an explicit level is set", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    store.setZoom(1.5);
+    expect(store.getState().isAutoFit).toBe(false);
+
+    store.setAutoFit(true);
+    store.zoomIn();
+    expect(store.getState().isAutoFit).toBe(false);
+
+    store.setAutoFit(true);
+    store.zoomOut();
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("releases auto-fit even when the level is already current", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    store.setZoom(store.getState().zoom);
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("fitTo measures without arming auto-fit", async () => {
+    const store = await loadedStore();
+    store.fitTo(640, 360);
+
+    expect(store.getState().zoom).toBeCloseTo(0.5, 9);
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("keeps auto-fit across load and reset", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    // The flag describes the mounted viewport, which outlives both.
+    await store.load(fixture);
+    expect(store.getState().isAutoFit).toBe(true);
+
+    store.reset();
+    expect(store.getState().isAutoFit).toBe(true);
+  });
+
   it("fitTo supports per-side padding objects", async () => {
     const store = await loadedStore();
     // 1280x720 slide; horizontal padding is the limiting axis.

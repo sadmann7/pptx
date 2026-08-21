@@ -33,6 +33,7 @@ import {
   PresentationThumbnailItemPreview,
   PresentationThumbnailList,
   PresentationViewport,
+  PresentationZoomSelect,
 } from "@pptx/ui/components/presentation";
 
 export default function PgPage() {
@@ -64,29 +65,31 @@ export default function PgPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-(--spacing(14)))] w-full max-w-(--fd-layout-width) flex-col gap-2">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+    <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col gap-2 p-4">
+      <div className="flex items-center gap-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
-      <PresentationProvider store={store}>
-        <PresentationDebug />
-        <PresentationToolbar store={store} />
-        <Presentation className="flex-1">
-          <SortableThumbnailList store={store} />
-          <PresentationContent>
-            <PresentationLoading />
-            <PresentationError />
-            <PresentationViewport>
-              <PresentationSlide>
-                <PresentationSelection />
-              </PresentationSlide>
-            </PresentationViewport>
-          </PresentationContent>
-        </Presentation>
-      </PresentationProvider>
+      <div className="flex h-[calc(100dvh-(--spacing(32)))] flex-col overflow-hidden rounded-md border">
+        <PresentationProvider store={store}>
+          <PresentationDebug />
+          <PresentationToolbar store={store} />
+          <Presentation className="flex-1 border-t">
+            <SortableThumbnailList store={store} />
+            <PresentationContent>
+              <PresentationLoading />
+              <PresentationError />
+              <PresentationViewport>
+                <PresentationSlide>
+                  <PresentationSelection />
+                </PresentationSlide>
+              </PresentationViewport>
+            </PresentationContent>
+          </Presentation>
+        </PresentationProvider>
+      </div>
     </div>
   );
 }
@@ -299,7 +302,7 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
+    <div className="flex items-center gap-2 p-1.5">
       <Button
         size="sm"
         variant="outline"
@@ -320,7 +323,8 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
       <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void store.redo()}>
         Redo
       </Button>
-      <Button size="sm" className="ml-auto" onClick={onSave}>
+      <PresentationZoomSelect className="ml-auto" />
+      <Button size="sm" onClick={onSave}>
         Save .pptx
       </Button>
     </div>

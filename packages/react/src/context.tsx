@@ -267,22 +267,34 @@ export interface UseZoomResult {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
 
-  /** Set an explicit zoom level. */
+  /**
+   * Whether zoom is tracking the viewport size. A zoom control reads this to
+   * show "Fit" instead of a level, without keeping a flag of its own.
+   */
+  isAutoFit: boolean;
+
+  /** Set an explicit zoom level. Turns auto-fit off. */
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`.
+   * Increase zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`.
+   * Decrease zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
+
+  /**
+   * Turn auto-fit on or off. Turning it on refits the slide to the viewport
+   * immediately and on every resize after it.
+   */
+  setAutoFit: (isAutoFit: boolean) => void;
 
   /**
    * Compute and apply a zoom that fits the slide inside the given container
@@ -298,18 +310,22 @@ export interface UseZoomResult {
 /**
  * Subscribes to zoom state and exposes zoom actions.
  *
- * Must be called inside a `<Presentation.Root>` tree. For automatic fitting,
- * prefer `<Presentation.Viewport autoFit>` which calls `fitTo` internally.
+ * Must be called inside a `<Presentation.Root>` tree. Fitting needs a
+ * measured container, so it belongs to `<Presentation.Viewport autoFit>`:
+ * this hook only reports and toggles the mode.
  */
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
+  const isAutoFit = useStoreSelector(store, (s) => s.isAutoFit, DEFAULT_STORE_STATE.isAutoFit);
 
   return {
     zoom,
+    isAutoFit,
     setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
+    setAutoFit: React.useCallback((next: boolean) => store.setAutoFit(next), [store]),
     fitTo: React.useCallback(
       (w: number, h: number, padding?: AutoFitPadding) => store.fitTo(w, h, padding),
       [store],

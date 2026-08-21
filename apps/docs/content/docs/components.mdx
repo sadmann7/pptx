@@ -48,24 +48,30 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 
 `onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
 
-`autoFit` refits on every container resize, so a zoom control that offers explicit levels alongside a "Fit" entry owns that toggle:
+`autoFit` is the starting mode, not a latch. Setting an explicit level turns fitting off so the next resize leaves that level alone, and `setAutoFit(true)` turns it back on, which means a zoom control offering both keeps no state of its own:
 
 ```tsx
-function Viewer({ file }) {
-  const [isAutoFit, setIsAutoFit] = React.useState(true);
+function ZoomSelect() {
+  const { zoom, isAutoFit, setZoom, setAutoFit } = useZoom();
 
   return (
-    <Presentation.Root file={file}>
-      <ZoomSelect isAutoFit={isAutoFit} onAutoFitChange={setIsAutoFit} />
-      <Presentation.Viewport autoFit={isAutoFit}>
-        <Presentation.Slide />
-      </Presentation.Viewport>
-    </Presentation.Root>
+    <select
+      value={isAutoFit ? "fit" : String(zoom)}
+      onChange={(event) => {
+        const { value } = event.target;
+        if (value === "fit") setAutoFit(true);
+        else setZoom(Number(value));
+      }}
+    >
+      <option value="fit">Fit · {Math.round(zoom * 100)}%</option>
+      <option value="1">100%</option>
+      <option value="2">200%</option>
+    </select>
   );
 }
 ```
 
-Picking a level turns `autoFit` off so the next resize leaves it alone; picking "Fit" turns it back on. To open a deck at a fixed level, pass `defaultZoom` to `Root`, which only applies when nothing is auto-fitting over it.
+The viewport keeps measuring itself while fitting is off, so re-arming picks up any resize that happened in between. To open a deck at a fixed level, pass `defaultZoom` to `Root`, which only applies when nothing is auto-fitting over it.
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 

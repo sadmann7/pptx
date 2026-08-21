@@ -40,6 +40,7 @@ interface PresentationState {
   presentation: PresentationData | null;
   activeSlideId: string | null;
   zoom: number; // default: 1
+  isAutoFit: boolean; // whether zoom tracks the viewport size
   progress: number; // 0–100, meaningful while status === "loading"
   error: Error | null;
   revision: number; // bumped on every edit/undo/redo
@@ -83,13 +84,16 @@ store.canGoPrev()
 ### Zoom
 
 ```ts
-store.setZoom(n: number)      // clamped to [0.1, 4]
-store.zoomIn(step?: number)   // default step: 0.25
+store.setZoom(n: number)      // clamped to [0.1, 4]; releases auto-fit
+store.zoomIn(step?: number)   // default step: 0.25; releases auto-fit
 store.zoomOut(step?: number)
-store.fitTo(width, height, padding?) // compute largest zoom that fits
+store.setAutoFit(isAutoFit: boolean) // fit now and on every resize
+store.fitTo(width, height, padding?) // one-shot fit for a known box
 ```
 
-Fitting is a viewport concern: `<Presentation.Viewport autoFit>` calls `fitTo` on mount and on every container resize. A zoom control that offers both a "Fit" entry and explicit levels owns that choice itself, toggling `autoFit` off when a level is picked, otherwise the next resize fits over it.
+Measuring is a viewport concern, deciding is the store's. `state.isAutoFit` says whether zoom is tracking the container, and a mounted `<Presentation.Viewport autoFit>` refits itself whenever it is on. `setZoom`, `zoomIn`, and `zoomOut` turn it off so the level someone picked survives the next resize; `setAutoFit(true)` turns it back on and refits immediately. `fitTo` is the escape hatch for a box you measured yourself, and leaves the mode alone.
+
+`isAutoFit` describes the viewport rather than the deck, so it survives `load()` and `reset()`.
 
 The `zoomChange` event reports what produced the change, which is how a control tells a resize-driven fit apart from a level someone asked for:
 
@@ -234,7 +238,7 @@ await store.edit({
 import {
   usePresentation, // { presentation, status, progress, error }
   useSlide, // { slide, slideId, index }
-  useZoom, // { zoom, setZoom, zoomIn, zoomOut, fitTo }
+  useZoom, // { zoom, isAutoFit, setZoom, zoomIn, zoomOut, setAutoFit, fitTo }
 } from "@diceui/pptx";
 ```
 

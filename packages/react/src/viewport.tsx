@@ -22,6 +22,11 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * When `true`, automatically scales the slide to fill the viewport's
    * dimensions whenever the container resizes.
    *
+   * This is the starting mode, not a latch: `setZoom` (and `zoomIn`/
+   * `zoomOut`) turn fitting off so an explicit level survives the next
+   * resize, and `setAutoFit(true)` turns it back on. A zoom control offering
+   * both therefore needs no state of its own.
+   *
    * @default false
    */
   autoFit?: boolean;
@@ -97,38 +102,51 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 
   useStoreEvent(store, "zoomChange", onZoomChange);
 
+  // The prop seeds the store's fit mode rather than owning it, so a zoom
+  // control can release and re-arm fitting without the consumer mirroring it
+  // in state. Runs only when the prop itself changes, so it never fights a
+  // `setAutoFit` call made from the UI.
   React.useEffect(() => {
-    if (!autoFit || !viewportRef.current) return;
+    store.setAutoFit(autoFit);
+  }, [autoFit, store]);
+
+  React.useEffect(() => {
+    if (!viewportRef.current) return;
 
     const viewportElement = viewportRef.current;
+    // Measurement lives here because only the viewport knows its own box; the
+    // store decides whether a measurement should be applied.
     const fit = () => {
+      if (!store.getState().isAutoFit) return;
       if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
         store.fitTo(viewportElement.clientWidth, viewportElement.clientHeight, autoFitPadding);
     };
 
     fit();
 
-    // Re-fit when the container is resized.
+    // Observed even while fitting is off, so re-arming it picks up a resize
+    // that happened in the meantime.
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(viewportElement);
 
-    // Re-fit when a new presentation loads: the new slide's aspect ratio may
-    // differ so the zoom needs to be recalculated. Only fires on presentation
-    // identity changes, not on zoom/navigation/progress updates.
-    let lastPresentation = store.getState().presentation;
+    // Re-fit when fitting is re-armed, and when a new presentation loads: the
+    // new deck's aspect ratio may differ so the zoom needs to be recalculated.
+    // Both are identity/flag flips, not zoom or navigation updates.
+    let { presentation: lastPresentation, isAutoFit: wasAutoFit } = store.getState();
     const unsubscribe = store.subscribe(() => {
-      const presentation = store.getState().presentation;
-      if (presentation !== lastPresentation) {
-        lastPresentation = presentation;
-        fit();
-      }
+      const { presentation, isAutoFit } = store.getState();
+      const isArmed = isAutoFit && !wasAutoFit;
+      const isReloaded = presentation !== lastPresentation;
+      lastPresentation = presentation;
+      wasAutoFit = isAutoFit;
+      if (isArmed || isReloaded) fit();
     });
 
     return () => {
       unsubscribe();
       resizeObserver.disconnect();
     };
-  }, [autoFit, autoFitPadding, store]);
+  }, [autoFitPadding, store]);
 
   // PowerPoint-style wheel navigation: scroll within the slide first; once
   // the scroll container hits its boundary in the wheel direction (or there

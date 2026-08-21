@@ -81,6 +81,17 @@ export interface StoreState {
   zoom: number;
 
   /**
+   * Whether zoom is tracking the container size. While `true`, a mounted
+   * `Presentation.Viewport` refits the slide on every resize; `setZoom`,
+   * `zoomIn`, and `zoomOut` turn it back off.
+   *
+   * Survives `load()` and `reset()`: it describes the viewport, not the deck.
+   *
+   * @default false
+   */
+  isAutoFit: boolean;
+
+  /**
    * Parse progress from `0` to `100`.
    * Only meaningful while `status === "loading"`.
    */
@@ -347,29 +358,47 @@ export interface Store {
 
   /**
    * Set the zoom level directly.
-   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`.
+   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`. Turns auto-fit off, so the next
+   * container resize leaves the level alone.
    *
    * @default 1
    */
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`.
+   * Increase zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`.
+   * Decrease zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
 
   /**
+   * Turn auto-fit on or off. While on, a mounted `Presentation.Viewport`
+   * fits the slide to itself immediately and on every resize.
+   *
+   * A `Viewport autoFit` sets this on mount, so a zoom control only needs it
+   * to return to fitting after an explicit level:
+   *
+   * ```ts
+   * store.setAutoFit(true); // "Fit"
+   * store.setZoom(1.5); // releases it again
+   * ```
+   */
+  setAutoFit: (isAutoFit: boolean) => void;
+
+  /**
    * Fit the presentation to a container by computing the largest zoom level
    * that keeps all slides fully visible.
+   *
+   * A one-shot measurement: it does not turn auto-fit on, so nothing refits
+   * on the next resize. Use `setAutoFit(true)` for that.
    *
    * ```ts
    * store.fitTo(containerWidth, containerHeight, 32);
@@ -662,7 +691,14 @@ export function createStore(): Store {
     embeddedFonts = undefined;
     clearEditHistory();
     zoomChangeReason = "load";
-    replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
+    // `isAutoFit` describes the mounted viewport, which outlives the deck, so
+    // a load carries it over instead of dropping back to the idle default.
+    replaceState({
+      ...DEFAULT_STORE_STATE,
+      isAutoFit: state.isAutoFit,
+      status: "loading",
+      progress: 0,
+    });
     emitHistoryChange(previousHistory);
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
@@ -765,6 +801,7 @@ export function createStore(): Store {
           defaultZoom !== undefined && Number.isFinite(defaultZoom)
             ? clamp(defaultZoom, MIN_ZOOM, MAX_ZOOM)
             : 1,
+        isAutoFit: state.isAutoFit,
         progress: 100,
         error: null,
         revision: 0,
@@ -846,24 +883,34 @@ export function createStore(): Store {
     return getActiveSlideIndex() > 0;
   }
 
-  function applyZoom(zoom: number, reason: ZoomChangeReason): void {
+  /**
+   * Single write path for zoom. `isAutoFit` is written alongside the level so
+   * that releasing auto-fit and applying the level someone picked land in one
+   * notification instead of two.
+   */
+  function applyZoom(zoom: number, reason: ZoomChangeReason, isAutoFit = state.isAutoFit): void {
     if (!Number.isFinite(zoom)) return;
     const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
-    if (Object.is(clamped, state.zoom)) return;
+    if (Object.is(clamped, state.zoom) && isAutoFit === state.isAutoFit) return;
     zoomChangeReason = reason;
-    setState({ zoom: clamped });
+    setState({ zoom: clamped, isAutoFit });
   }
 
   function setZoom(zoom: number): void {
-    applyZoom(zoom, "zoom");
+    applyZoom(zoom, "zoom", false);
   }
 
   function zoomIn(step = DEFAULT_ZOOM_STEP): void {
-    applyZoom(state.zoom + step, "zoom");
+    applyZoom(state.zoom + step, "zoom", false);
   }
 
   function zoomOut(step = DEFAULT_ZOOM_STEP): void {
-    applyZoom(state.zoom - step, "zoom");
+    applyZoom(state.zoom - step, "zoom", false);
+  }
+
+  function setAutoFit(isAutoFit: boolean): void {
+    if (state.isAutoFit === isAutoFit) return;
+    setState({ isAutoFit });
   }
 
   function fitTo(
@@ -888,7 +935,7 @@ export function createStore(): Store {
     embeddedFonts = undefined;
     clearEditHistory();
     zoomChangeReason = "reset";
-    replaceState({ ...DEFAULT_STORE_STATE });
+    replaceState({ ...DEFAULT_STORE_STATE, isAutoFit: state.isAutoFit });
     emitSlideChange(previousSlideId, "reset");
     emitHistoryChange(previousHistory);
   }
@@ -1068,6 +1115,7 @@ export function createStore(): Store {
     setZoom,
     zoomIn,
     zoomOut,
+    setAutoFit,
     fitTo,
     getSlideIndex,
     getActiveSlideIndex,

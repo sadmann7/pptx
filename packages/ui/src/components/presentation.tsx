@@ -2,10 +2,19 @@
 
 import * as React from "react";
 
-import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { Presentation as PresentationPrimitive, useZoom } from "@diceui/pptx";
 import { Button } from "@pptx/ui/components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pptx/ui/components/select";
 import { cn } from "@pptx/ui/lib/utils";
 import { PanelLeftIcon } from "lucide-react";
+
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2];
 
 function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
   return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;
@@ -45,6 +54,61 @@ function PresentationViewport({
       className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
       {...props}
     />
+  );
+}
+
+interface PresentationZoomSelectProps extends Omit<
+  React.ComponentProps<typeof SelectTrigger>,
+  "value" | "onValueChange"
+> {
+  /** Explicit levels offered alongside the "Fit" entry, where `1` is 100%. */
+  levels?: number[];
+}
+
+/**
+ * Zoom control with a "Fit" entry and explicit levels.
+ *
+ * Holds no state: the store knows whether zoom is fitting, and picking a
+ * level releases fitting on its own.
+ */
+function PresentationZoomSelect({
+  levels = ZOOM_LEVELS,
+  className,
+  ...props
+}: PresentationZoomSelectProps) {
+  const { zoom, isAutoFit, setZoom, setAutoFit } = useZoom();
+  const percentage = `${Math.round(zoom * 100)}%`;
+  const itemClassName = "py-0.5 pr-6 pl-1.5 text-xs [&_svg:not([class*='size-'])]:size-3";
+
+  return (
+    <Select
+      value={isAutoFit ? "fit" : String(zoom)}
+      onValueChange={(value) => {
+        if (value === "fit") setAutoFit(true);
+        else setZoom(Number(value));
+      }}
+    >
+      <SelectTrigger
+        size="sm"
+        className={cn(
+          "h-6 w-22 gap-1 rounded-md py-0 pr-1.5 pl-2 text-xs [&_svg:not([class*='size-'])]:size-3",
+          className,
+        )}
+        {...props}
+      >
+        <SelectValue>{isAutoFit ? `Fit · ${percentage}` : percentage}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="min-w-22 p-0.5">
+        <SelectItem value="fit" className={itemClassName}>
+          Fit
+        </SelectItem>
+        {levels.map((level) => (
+          <SelectItem key={level} value={String(level)} className={itemClassName}>
+            {`${level * 100}%`}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -265,4 +329,5 @@ export {
   PresentationThumbnailItemPreview,
   PresentationThumbnailList,
   PresentationViewport,
+  PresentationZoomSelect,
 };
