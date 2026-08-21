@@ -9,8 +9,11 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  type DropAnimation,
   PointerSensor,
   closestCenter,
+  defaultDropAnimation,
+  defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -35,6 +38,16 @@ import {
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import { SAMPLE_DECK_PATH } from "@/lib/constants";
+
+/**
+ * The stock drop animation is kept, minus the side effect that pins the source
+ * item at `opacity: 0` until it finishes: that is what made the thumbnail, and
+ * the focus ring on it, come back a quarter second after the pointer lifted.
+ */
+const DROP_ANIMATION: DropAnimation = {
+  ...defaultDropAnimation,
+  sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
+};
 
 export function PresentationEditingDemo() {
   const store = useCreatePresentationStore();
@@ -190,7 +203,7 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
                * it needs to paint a real miniature. It is fixed-positioned, so
                * the strip's overflow does not clip it.
                */}
-              <DragOverlay>
+              <DragOverlay dropAnimation={DROP_ANIMATION}>
                 {draggedId ? (
                   <PresentationThumbnailItem
                     decorative

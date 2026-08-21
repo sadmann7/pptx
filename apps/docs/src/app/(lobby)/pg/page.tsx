@@ -9,8 +9,11 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  type DropAnimation,
   PointerSensor,
   closestCenter,
+  defaultDropAnimation,
+  defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -46,6 +49,17 @@ import { cn } from "@pptx/ui/lib/utils";
 import { PresentationIcon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
+
+/**
+ * Keeps the source item visible during the drop animation.
+ *
+ * The default side effect sets its opacity to `0`, delaying the thumbnail
+ * item's focus ring from reappearing until roughly 250 ms after pointer release.
+ */
+const DROP_ANIMATION: DropAnimation = {
+  ...defaultDropAnimation,
+  sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
+};
 
 export default function PgPage() {
   const id = React.useId();
@@ -186,12 +200,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
               {orderedIds.map((slideId) => (
                 <SortableThumbnailItem key={slideId} slideId={slideId} />
               ))}
-              {/*
-               * Inside the list so the floating copy can read the list context
-               * it needs to paint a real miniature. It is fixed-positioned, so
-               * the strip's overflow does not clip it.
-               */}
-              <DragOverlay>
+              <DragOverlay dropAnimation={DROP_ANIMATION}>
                 {draggedId ? (
                   <PresentationThumbnailItem
                     decorative
