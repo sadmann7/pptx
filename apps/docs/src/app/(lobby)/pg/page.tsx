@@ -19,6 +19,8 @@ import {
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
 
+import { EditingDemo } from "@/components/editing-demo";
+
 export default function PgPage() {
   const id = React.useId();
   const store = useCreatePresentationStore();
@@ -55,6 +57,7 @@ export default function PgPage() {
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
+      <EditingDemo />
       <PresentationProvider store={store}>
         <PresentationDebug />
         <PresentationToolbar store={store} />

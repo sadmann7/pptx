@@ -2535,6 +2535,7 @@ export function parseChartXml(
  */
 export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
+  wrapper.dataset.pptxChart = "";
   wrapper.style.position = "absolute";
   wrapper.style.left = `${node.position.x}px`;
   wrapper.style.top = `${node.position.y}px`;
@@ -2619,43 +2620,37 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   // Use requestAnimationFrame to ensure the container has dimensions.
   const chartReady = new Promise<void>((resolve) => {
     const finishInit = (): void => {
-      initChart(chartDiv, option, chartSet);
+      initChart(chartDiv, option, chartSet, ctx.cleanups);
       delete chartDiv.dataset.pptxChartPending;
       resolve();
     };
 
+    // Only a container that is in the document and has a box can be measured,
+    // so initialisation waits rather than giving up: a thumbnail may be parked
+    // off-DOM for minutes before it scrolls back into view.
+    const isMeasurable = (): boolean =>
+      chartDiv.isConnected && chartDiv.offsetWidth > 0 && chartDiv.offsetHeight > 0;
+
     requestAnimationFrame(() => {
-      if (!chartDiv.isConnected) {
-        delete chartDiv.dataset.pptxChartPending;
-        resolve();
+      if (isMeasurable()) {
+        finishInit();
         return;
       }
 
-      // Guard against 0-size containers (e.g. hidden tabs); defer until non-zero.
-      if (chartDiv.offsetWidth === 0 || chartDiv.offsetHeight === 0) {
-        if (typeof ResizeObserver === "undefined") {
-          finishInit();
-          return;
-        }
-
-        const sizeObserver = new ResizeObserver((entries) => {
-          if (!chartDiv.isConnected) {
-            sizeObserver.disconnect();
-            delete chartDiv.dataset.pptxChartPending;
-            return;
-          }
-          const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
-          if (width > 0 && height > 0) {
-            sizeObserver.disconnect();
-            finishInit();
-          }
-        });
-        sizeObserver.observe(chartDiv);
-        resolve();
+      if (typeof ResizeObserver === "undefined") {
+        finishInit();
         return;
       }
 
-      finishInit();
+      const sizeObserver = new ResizeObserver(() => {
+        if (!isMeasurable()) return;
+        sizeObserver.disconnect();
+        finishInit();
+      });
+      sizeObserver.observe(chartDiv);
+      ctx.cleanups?.push(() => sizeObserver.disconnect());
+      // `ready` must not block on a chart that may never become visible.
+      resolve();
     });
   });
   ctx.asyncTasks?.push(chartReady);
@@ -2663,11 +2658,12 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-/** Actually create ECharts instance, set option, and wire up resize + dispose. */
+/** Actually create ECharts instance, set option, and wire up resize. */
 function initChart(
   container: HTMLElement,
   option: echarts.EChartsOption,
   chartInstances?: Set<echarts.ECharts>,
+  cleanups?: (() => void)[],
 ): void {
   try {
     const chart = init(container);
@@ -2678,20 +2674,15 @@ function initChart(
       return;
     }
 
-    // Handle container resize
+    // A detached container reports a 0x0 box, which is not a signal to tear the
+    // chart down: callers such as the thumbnail list park a rendered slide
+    // off-DOM and re-attach it later, and it must come back with its canvas
+    // intact. The owning SlideHandle disposes the chart instead.
     const ro = new ResizeObserver(() => {
-      if (container.isConnected) {
-        chart.resize();
-      } else {
-        // Container removed from DOM: dispose to prevent leaks
-        ro.disconnect();
-        if (!chart.isDisposed()) {
-          chart.dispose();
-        }
-        chartInstances?.delete(chart);
-      }
+      if (container.isConnected) chart.resize();
     });
     ro.observe(container);
+    cleanups?.push(() => ro.disconnect());
   } catch (error) {
     console.warn("Failed to initialize ECharts:", error);
     container.style.display = "flex";

@@ -29,6 +29,12 @@ export interface RenderContext {
   colorCache: Map<string, { color: string; alpha: number }>;
   /** Async media/rendering work that callers may await before screenshot/export. */
   asyncTasks?: Promise<void>[];
+  /**
+   * Teardown callbacks run by `SlideHandle.dispose()`. Renderers that attach
+   * long-lived observers register them here so the slide handle stays the
+   * single owner of everything the render created.
+   */
+  cleanups?: (() => void)[];
   /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. */
   pdfjs?: PdfjsConfig;
   /** Shared set of live ECharts instances for explicit disposal. */
