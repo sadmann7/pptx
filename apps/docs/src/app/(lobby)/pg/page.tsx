@@ -51,24 +51,6 @@ export default function PgPage() {
   const id = React.useId();
   const store = useCreatePresentationStore();
 
-  React.useEffect(() => {
-    store.on("edit", (event) => {
-      console.log("edit", event);
-    });
-    store.on("slideChange", (event) => {
-      console.log("slideChange", event);
-    });
-    store.on("historyChange", (event) => {
-      console.log("historyChange", event);
-    });
-    store.on("statusChange", (event) => {
-      console.log("redo", event);
-    });
-    store.on("zoomChange", (event) => {
-      console.log("zoomChange", event);
-    });
-  }, [store]);
-
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
