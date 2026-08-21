@@ -211,12 +211,13 @@ function PresentationThumbnailList({
   return (
     <>
       <Button
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
         ref={toggleRef}
+        type="button"
         variant="outline"
         size="icon-sm"
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label={open ? "Hide slides" : "Show slides"}
         className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm md:hidden"
         onClick={() => setOpen((value) => !value)}
       >
@@ -224,13 +225,13 @@ function PresentationThumbnailList({
       </Button>
       <PresentationPrimitive.ThumbnailList
         id={id}
-        data-slot="presentation-thumbnail-list"
-        data-state={open ? "open" : "closed"}
         ref={listRef}
         render={<aside />}
+        data-slot="presentation-thumbnail-list"
         className={cn(
-          "absolute inset-y-0 left-0 z-20 flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5 transition-transform data-closed:-translate-x-full",
-          "md:static md:z-auto md:data-closed:translate-x-0",
+          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
+          "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-20 max-md:transition-transform",
+          !open && "max-md:-translate-x-full",
           className,
         )}
         {...props}
