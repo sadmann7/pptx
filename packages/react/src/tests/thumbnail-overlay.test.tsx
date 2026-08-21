@@ -9,7 +9,6 @@
  * `thumbnail-reorder.test.tsx`: happy-dom's XML parser drops namespaced
  * attributes the renderer depends on.
  */
-import * as React from "react";
 
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -144,7 +143,6 @@ describe("decorative thumbnail items", () => {
     const slides = store.getState().presentation!.slides;
 
     const { rerender } = render(<Strip store={store} overlaySlideId={slides[0].id} />);
-    // Drag ends: the overlay goes away, the list item stays.
     rerender(<Strip store={store} />);
 
     const options = screen.getAllByRole("option");
@@ -183,7 +181,6 @@ describe("previews of the same slide in two places", () => {
     const cachedElement = original?.firstElementChild;
     expect(cachedElement).toBeTruthy();
 
-    // Drag starts.
     rerender(<Strip store={store} overlaySlideId={slides[0].id} />);
     await flushPreviews();
 
@@ -205,7 +202,6 @@ describe("previews of the same slide in two places", () => {
     rerender(<Strip store={store} overlaySlideId={slides[0].id} />);
     await flushPreviews();
 
-    // Drop.
     rerender(<Strip store={store} />);
     await flushPreviews();
 

@@ -657,7 +657,6 @@ export function createStore(): Store {
     return { canUndo: canUndo(), canRedo: canRedo(), isDirty: isDirty() };
   }
 
-  /** Emit `historyChange` when undo/redo availability or dirtiness moved. */
   function emitHistoryChange(previous: HistoryChangeEvent): void {
     const next = historySnapshot();
     if (
@@ -960,7 +959,6 @@ export function createStore(): Store {
     return slideContentRevisionById.get(slideId) ?? 0;
   }
 
-  /** `true` when the operation only changes node transforms (position/size/rotation). */
   function isTransformOnly(op: EditOperation): boolean {
     if (op.type === "setNodeTransform") return true;
     if (op.type === "batch") return op.operations.every(isTransformOnly);
@@ -1067,7 +1065,6 @@ export function createStore(): Store {
     if (!presentation) return false;
 
     const prevActiveIndex = getActiveSlideIndex();
-    // Re-apply the original operation; it captures fresh undo state.
     const result = await applyEdit(presentation, entry.op);
     undoStack.push({ op: entry.op, result });
     commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));

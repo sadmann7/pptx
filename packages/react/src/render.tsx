@@ -39,10 +39,6 @@ export type RenderProp<S = Record<string, never>> =
   | React.ReactElement
   | ComponentRenderFn<React.HTMLAttributes<any>, S>;
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 type AnyProps = Record<string, unknown>;
 
 /**
@@ -163,16 +159,13 @@ export function renderElement<
   const { render, className: userClassName, style: userStyle } = componentProps;
   const { state, ref, props } = params;
 
-  // Flatten props array into a single object
   const internalProps: AnyProps = Array.isArray(props)
     ? props.reduce<AnyProps>((acc, p) => (p ? mergeProps(acc, p) : acc), {})
     : (props ?? {});
 
-  // className: internal first, user appended
   const internalClassName = internalProps.className as string | undefined;
   const mergedClassName = [internalClassName, userClassName].filter(Boolean).join(" ") || undefined;
 
-  // style: internal defaults, user wins per-key
   const internalStyle = internalProps.style as React.CSSProperties | undefined;
   const mergedStyle = internalStyle || userStyle ? { ...internalStyle, ...userStyle } : undefined;
 
@@ -182,14 +175,12 @@ export function renderElement<
     ...(mergedStyle !== undefined && { style: mergedStyle }),
   };
 
-  // Attach merged ref
   if (ref !== undefined) {
     finalProps.ref = Array.isArray(ref)
       ? mergeRefs(...(ref as (React.Ref<E> | null | undefined)[]))
       : ref;
   }
 
-  // Evaluate render prop
   if (render !== undefined) {
     if (typeof render === "function") {
       return render(finalProps as React.HTMLAttributes<any>, state);

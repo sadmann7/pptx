@@ -17,7 +17,6 @@ const SELECTION_NAME = "Presentation.Selection";
 
 const ENABLE_DEBUG_LOG = false;
 
-/** Screen-px thickness of the selection-frame grab hitboxes shown while editing text. */
 const FRAME_GRAB_SIZE = 10;
 
 const FRAME_GRAB_INSET = FRAME_GRAB_SIZE / 2;
@@ -263,7 +262,6 @@ export function getPasteboardOverhang(
   for (const node of nodes) {
     let { x, y, w, h } = getNodeRect(node);
     if (node.rotation !== 0) {
-      // Axis-aligned bounds of the rotated rect (rotation is about center).
       const radians = (node.rotation * Math.PI) / 180;
       const halfW = (Math.abs(Math.cos(radians)) * w + Math.abs(Math.sin(radians)) * h) / 2;
       const halfH = (Math.abs(Math.sin(radians)) * w + Math.abs(Math.cos(radians)) * h) / 2;
@@ -383,9 +381,6 @@ function readRunsFromParagraphElement(
   return runs;
 }
 
-/**
- * Compare the read-back paragraphs to the model to detect changes.
- */
 export function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
   if (node.nodeType !== "shape") return false;
   const shape = node as ShapeNodeData;
@@ -405,7 +400,6 @@ type InternalState =
   | { mode: "selected"; nodeIds: string[] }
   | {
       mode: "move";
-      /** All nodes moving together (multi-selection drags as a unit). */
       nodeIds: string[];
       /** The node under the pointer; drives click (no-drag) behavior. */
       primaryId: string;
@@ -425,7 +419,6 @@ type InternalState =
       clickIds?: string[];
     }
   | {
-      /** Rubber-band selection from a drag on empty canvas (client coords). */
       mode: "marquee";
       startX: number;
       startY: number;
@@ -439,7 +432,6 @@ type InternalState =
     }
   | {
       mode: "resize";
-      /** Every node being scaled; one entry for a solo selection. */
       nodeIds: string[];
       /** The node whose handle is being dragged; it sets the scale factors. */
       gripNodeId: string;
@@ -448,13 +440,11 @@ type InternalState =
       startY: number;
       dx: number;
       dy: number;
-      /** Shift held during the drag: corner grips keep the aspect ratio. */
       lockAspect: boolean;
     }
   | {
       mode: "text";
       nodeId: string;
-      /** The text container element that has contentEditable. */
       editingElement: HTMLElement;
     };
 
@@ -561,7 +551,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
-  // Stable refs for document-level listeners (avoids stale closures).
   const stateRef = useLatestRef(state);
 
   // Shallow clone of a styled run span, captured per shape on entering text
@@ -590,7 +579,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         .map((id) => slide.nodes.find((node) => node.id === id))
         .filter((node): node is SlideNode => node !== undefined)
     : [];
-  /** The single selected node; with a multi-selection, the first one. */
   const selectedNode = selectedNodes[0] ?? null;
   const isSoloSelection = selectedNodes.length === 1;
 
@@ -628,7 +616,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isBanding =
     state.mode === "marquee" && isBandDrag(state.startX, state.startY, state.curX, state.curY);
 
-  // Every selected shape previews the scale taken from the dragged shape.
   const grippedNode =
     state.mode === "resize" ? selectedNodes.find((node) => node.id === state.gripNodeId) : null;
   const resizeScale =
@@ -676,7 +663,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (selection && !selection.isCollapsed) selection.removeAllRanges();
   }
 
-  /** Convert viewport (client) coordinates to slide-space px. */
   function clientToSlide(clientX: number, clientY: number): NodePosition {
     const wrapperRect = getSlideWrapper()?.getBoundingClientRect();
     if (!wrapperRect) return { x: 0, y: 0 };
@@ -856,7 +842,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
-  /** Move the caret to the given text node offset. */
   function setCaret(node: Node, offset: number): void {
     const selection = window.getSelection();
     if (!selection) return;
@@ -884,16 +869,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /**
-   * Intercept text insertion when the browser would drop it outside a styled
-   * run span. Chrome cannot keep the caret inside an empty text node (the
-   * keystroke escapes into the parent div), and destructive edits like
-   * select-all + delete remove the run spans entirely; in both cases typed
-   * text would render with unstyled defaults (e.g. near-white → invisible).
-   * Instead of the default insertion we place the text into the run span at
-   * the caret, or into a clone of the span captured on entering text mode.
-   */
-  /** The styling template span for a shape, if one was captured for it. */
   function runTemplateFor(nodeId: string): HTMLElement | null {
     const entry = runTemplateRef.current;
     return entry && entry.nodeId === nodeId ? entry.span : null;
@@ -915,13 +890,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (runSpan) {
       if (anchor.nodeType === Node.TEXT_NODE && (anchor.textContent ?? "").length > 0) {
-        // Insert into the existing text node at the caret offset.
         const textNode = anchor as Text;
         const offset = Math.min(selection.anchorOffset, textNode.length);
         textNode.insertData(offset, data);
         setCaret(textNode, offset + data.length);
       } else {
-        // Empty span: append a text node so the text stays inside.
         let textNode = runSpan.lastChild;
         if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
           textNode = document.createTextNode("");
@@ -964,6 +937,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
+  /**
+   * Intercept text insertion when the browser would drop it outside a styled
+   * run span. Chrome cannot keep the caret inside an empty text node (the
+   * keystroke escapes into the parent div), and destructive edits like
+   * select-all + delete remove the run spans entirely; in both cases typed
+   * text would render with unstyled defaults (e.g. near-white → invisible).
+   * Instead of the default insertion we place the text into the run span at
+   * the caret, or into a clone of the span captured on entering text mode.
+   */
   function interceptTextInsertion(
     event: InputEvent,
     editingElement: HTMLElement,
@@ -1071,7 +1053,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     snapCaretIntoRun(paragraphDiv ?? anchor);
   }
 
-  /** Tear down contentEditable and commit the edited text if it changed. */
   function commitTextEdits(current: Extract<InternalState, { mode: "text" }>): void {
     const { nodeId, editingElement } = current;
 
@@ -1125,7 +1106,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   ): void {
     commitTextEdits(current);
 
-    // Transition to the appropriate next state.
     if (nextNodeId === null) {
       setState({ mode: "idle" });
     } else {
@@ -1134,7 +1114,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
-  // Document listeners use latest refs to always call the current handler each render.
   const enterTextModeRef = useLatestRef(enterTextMode);
   const commitTextEditsRef = useLatestRef(commitTextEdits);
   const doExitTextModeRef = useLatestRef(doExitTextMode);
@@ -1148,14 +1127,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
-      // Click inside the editing element → let contentEditable handle it.
       if (currentState.editingElement.contains(event.target as Node)) return;
 
       // Clicks on the overlay's own children (border move strips) are
       // handled by their own handlers.
       if (rootRef.current?.contains(event.target as Node)) return;
 
-      // Click on another shape?
       const wrapper = rootRef.current?.parentElement?.parentElement;
       if (!wrapper) return;
       const target = event.target as HTMLElement;
@@ -1201,7 +1178,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
       if (event.key === "Escape") {
         event.preventDefault();
-        // Escape → select the shape (PowerPoint behavior).
         doExitTextModeRef.current(currentState);
         return;
       }
@@ -1546,8 +1522,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const { nodeIds, primaryId, dx, dy, moved, resumeText, clickIds } = state;
 
       if (moved && selectedNodes.length > 0) {
-        // Actual drag → commit the move (one undoable edit for the whole
-        // selection), land in selected mode.
         const movingNodes = selectedNodes;
         setState({ mode: "selected", nodeIds });
         commitEdit(
@@ -1591,7 +1565,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           },
         );
       } else {
-        // Click (no drag). Reset any stray left/top offset.
         for (const node of selectedNodes) {
           const shapeElement = getShapeElement(node.id);
           if (shapeElement) {
@@ -1614,7 +1587,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           // text commit may re-render the slide, so wait for the new DOM.
           resumeTextEditing(primaryId);
         } else if (nodeEditsOnClick(primaryId)) {
-          // Use the original pointer position for caret placement.
           enterTextMode(primaryId, state.startX, state.startY);
         } else {
           setState({ mode: "selected", nodeIds: [primaryId] });
@@ -1677,9 +1649,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /**
-   * Double click on a regular shape with text → edit with caret at point.
-   */
   function onDoubleClick(event: React.MouseEvent<HTMLDivElement>): void {
     debugLog("double click", { isTextMode });
     if (isTextMode) return;
@@ -1717,9 +1686,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /**
-   * Move every given node by `delta`, as a single undoable edit.
-   */
   function nudge(nodes: SlideNode[], delta: NodePosition): void {
     if (nodes.length === 0) return;
     const ops = nodes.map((node) => ({
@@ -1750,7 +1716,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
-    // Ctrl/Cmd+A selects every shape on the slide (PowerPoint).
     if (mod && key === "a") {
       event.preventDefault();
       const allIds = slide!.nodes.map((n) => n.id);
@@ -1760,7 +1725,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (selectedNodes.length === 0) return;
 
-    // F2 or Enter on a single selected text shape enters text mode.
     if (
       (event.key === "F2" || event.key === "Enter") &&
       isSoloSelection &&
@@ -1976,7 +1940,6 @@ interface SelectionBoxProps {
   node: SlideNode;
   state: InternalState;
   zoom: number;
-  /** Scale taken from the dragged shape, applied to every selected shape. */
   resizeScale: ResizeScale | null;
   /** False mid-band, when the grips are unreachable anyway. */
   showResizeGrips: boolean;
@@ -2049,7 +2012,6 @@ interface ResizeGripsProps {
   onGripPointerDown: (event: React.PointerEvent<HTMLDivElement>, grip: GripDirection) => void;
 }
 
-/** The eight handles, positioned against whichever box encloses them. */
 function ResizeGrips({ onGripPointerDown }: ResizeGripsProps) {
   return GRIP_DIRECTIONS.map((direction) => (
     <div
@@ -2080,9 +2042,6 @@ interface MarqueeBoxProps {
   rootElement: HTMLElement | null;
 }
 
-/**
- * Rubber-band rectangle drawn while drag-selecting on empty canvas.
- */
 function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
   // State coords are viewport-relative; the overlay is our positioning context.
   const origin = rootElement?.getBoundingClientRect();

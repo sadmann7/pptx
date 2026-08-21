@@ -16,9 +16,6 @@ export const DEFAULT_STORE_STATE: StoreState = {
   revision: 0,
 };
 
-/**
- * Visually hidden style for screen readers.
- */
 export const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
   position: "absolute",
   width: "1px",

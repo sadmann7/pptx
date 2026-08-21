@@ -85,7 +85,6 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   const { zoom } = useZoom();
   const store = useStoreContext(SLIDE_NAME);
 
-  // Bumped when an edit/undo/redo touches this slide; re-renders the content.
   const slideId = slide?.id;
   const revision = useSlideRevision(store, slideId);
   const contentRevision = useSlideContentRevision(store, slideId);
@@ -217,7 +216,6 @@ function SlideImpl({
       }
     }
 
-    // Full rebuild required.
     if (slideHandleRef.current) {
       slideHandleRef.current.dispose();
       slideHandleRef.current = null;

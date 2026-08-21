@@ -37,9 +37,6 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "Presentation.ThumbnailItemNumber";
  */
 const INTERSECTION_OBSERVER_ROOT_MARGIN = "200px 0px";
 
-/**
- * Cached rendered thumbnail plus the edit revision it was rendered at.
- */
 interface CachedThumbnail {
   slideHandle: SlideHandle;
   revision: number;
@@ -233,7 +230,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       [tabStopListenersRef],
     );
 
-    // Shared caches, keyed by presentation identity
     const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
     if (!mediaCacheRef.current || mediaCacheRef.current.key !== presentation) {
       mediaCacheRef.current = { key: presentation ?? {}, cache: new Map() };
@@ -260,7 +256,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       };
     }, [slideHandleCache, mediaUrlCache]);
 
-    // Shared ResizeObserver used to observe the size of the thumbnail list
     const resizeCallbacksRef = useLazyRef(() => new Map<Element, (width: number) => void>());
     const sharedResizeObserverRef = useLazyRef(() =>
       typeof ResizeObserver !== "undefined"
@@ -284,9 +279,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       [resizeCallbacksRef, sharedResizeObserverRef],
     );
 
-    // Batch renderSlide() calls that arrive simultaneously (e.g. initial
-    // viewport fills, rapid scroll) and drains them within an ~8ms per-frame
-    // budget so no single commit blocks the main thread.
     const renderQueueRef = useLazyRef<Array<() => void>>(() => []);
     const drainRafRef = React.useRef<number | null>(null);
 
@@ -713,9 +705,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
      */
     const ownsCachedHandleRef = React.useRef(false);
     const hasRenderedRef = React.useRef(false);
-    /** Slide the currently attached miniature was rendered for. */
     const attachedSlideIdRef = React.useRef<string | null>(null);
-    /** Edit revision the attached miniature was rendered at. */
     const attachedRevisionRef = React.useRef<number | null>(null);
     /**
      * Incremented by every run of the observer effect below. A teardown that
@@ -761,11 +751,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       });
     }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
-    // The IntersectionObserver triggers when this preview enters/leaves the
-    // rootMargin zone (200px above and below the scroll container). On entry:
-    //   - Cache hit  → re-attach synchronously (zero pending flash)
-    //   - Cache miss → enqueue renderSlide() on the budgeted queue
-    // On exit: detach DOM, keep handle in cache for instant re-attach.
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
       const run = ++observerRunRef.current;
@@ -773,7 +758,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       if (typeof IntersectionObserver === "undefined") return;
 
       const attach = (element: HTMLDivElement, slideHandle: SlideHandle, isCached: boolean) => {
-        if (slideHandleRef.current === slideHandle) return; // already attached
+        if (slideHandleRef.current === slideHandle) return;
         const currentScale =
           widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
         if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
@@ -809,7 +794,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
       const intersectionObserver = new IntersectionObserver(
         (entries) => {
-          const entry = entries.at(-1); // latest state wins
+          const entry = entries.at(-1);
           if (!entry) return;
           const element = itemPreviewRef.current;
           if (!element) return;
@@ -834,7 +819,6 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
               // its cache entry is retired or the re-render below is skipped.
               if (slideHandleRef.current) detach(element);
               if (cached && !isCurrent && isAvailable) {
-                // Discard because it was rendered under an older edit revision.
                 cached.slideHandle.dispose();
                 slideHandleCache.delete(slide.id);
               }
