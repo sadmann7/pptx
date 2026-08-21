@@ -539,7 +539,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     onTextChange,
     onSelectionChange,
     onModeChange,
-    ...selectionProps
+    ...selectionImplProps
   },
   forwardedRef,
 ) {
@@ -1873,7 +1873,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             touchAction: "none",
           },
         },
-        selectionProps,
+        selectionImplProps,
       ],
     },
   );
@@ -1894,7 +1894,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
  * focus.
  */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
-  { onUndo, onRedo, ...props },
+  { onUndo, onRedo, ...selectionProps },
   forwardedRef,
 ) {
   const store = useStoreContext(SELECTION_NAME);
@@ -1933,7 +1933,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   if (!slideId) return null;
 
-  return <SelectionImpl key={slideId} ref={forwardedRef} {...props} />;
+  return <SelectionImpl key={slideId} ref={forwardedRef} {...selectionProps} />;
 });
 
 interface SelectionBoxProps {

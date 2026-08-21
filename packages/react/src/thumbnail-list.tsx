@@ -64,6 +64,29 @@ function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
 }
 
+/**
+ * Publish `slideHandle` as the shared miniature for `slideId`.
+ *
+ * Returns `false` when a live entry for the current revision already holds the
+ * slot, which happens while the same slide is mounted twice (a drag overlay
+ * next to its list item). The caller then holds a private copy that it must
+ * dispose itself, so the two previews never move one DOM node between them.
+ */
+function getIsThumbnailCached(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  slideId: string,
+  slideHandle: SlideHandle,
+  revision: number,
+): boolean {
+  const cached = slideHandleCache.get(slideId);
+  if (cached) {
+    if (cached.slideHandle !== slideHandle && cached.revision === revision) return false;
+    cached.slideHandle.dispose();
+  }
+  slideHandleCache.set(slideId, { slideHandle, revision });
+  return true;
+}
+
 interface ThumbnailRovingContextValue {
   /**
    * Tab-stop tracking lives in a mini external store instead of context
@@ -654,29 +677,6 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
 }
 
 /**
- * Publish `slideHandle` as the shared miniature for `slideId`.
- *
- * Returns `false` when a live entry for the current revision already holds the
- * slot, which happens while the same slide is mounted twice (a drag overlay
- * next to its list item). The caller then holds a private copy that it must
- * dispose itself, so the two previews never move one DOM node between them.
- */
-function claimThumbnailCache(
-  slideHandleCache: Map<string, CachedThumbnail>,
-  slideId: string,
-  slideHandle: SlideHandle,
-  revision: number,
-): boolean {
-  const cached = slideHandleCache.get(slideId);
-  if (cached) {
-    if (cached.slideHandle !== slideHandle && cached.revision === revision) return false;
-    cached.slideHandle.dispose();
-  }
-  slideHandleCache.set(slideId, { slideHandle, revision });
-  return true;
-}
-
-/**
  * Renders the slide miniature for the enclosing `ThumbnailItem`.
  *
  * Uses an IntersectionObserver with a 200 px vertical rootMargin so
@@ -827,7 +827,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
                 const mountedElement = itemPreviewRef.current;
                 if (!mountedElement || slideHandleRef.current) return;
                 const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-                const isCached = claimThumbnailCache(
+                const isCached = getIsThumbnailCached(
                   slideHandleCache,
                   slide.id,
                   slideHandle,
@@ -898,7 +898,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       element.appendChild(slideHandle.element);
       slideHandleRef.current = slideHandle;
       attachedRevisionRef.current = revision;
-      ownsCachedHandleRef.current = claimThumbnailCache(
+      ownsCachedHandleRef.current = getIsThumbnailCached(
         slideHandleCache,
         slide.id,
         slideHandle,

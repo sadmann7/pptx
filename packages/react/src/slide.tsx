@@ -136,7 +136,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   );
 });
 
-interface SlideImplProps {
+interface SlideImplProps extends React.ComponentProps<"div"> {
   presentation: PresentationData;
   slide: SlideData;
   zoom: number;
@@ -145,7 +145,6 @@ interface SlideImplProps {
   /** Content revision that stays unchanged when only node transforms were edited. */
   contentRevision: number;
   onNodeError?: (nodeId: string, error: unknown) => void;
-  children?: React.ReactNode;
 }
 
 function SlideImpl({
@@ -156,6 +155,8 @@ function SlideImpl({
   contentRevision,
   onNodeError,
   children,
+  style,
+  ...slideImplProps
 }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
@@ -275,7 +276,9 @@ function SlideImpl({
         // auto margins collapse to 0 when the content overflows, keeping the
         // start edges scrollable.
         margin: "auto",
+        ...style,
       }}
+      {...slideImplProps}
     >
       {/*
        * Slide frame: sized and positioned to the slide itself. The selection
