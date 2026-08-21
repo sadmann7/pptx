@@ -200,7 +200,6 @@ describe("undo / redo", () => {
     const slide0Id = slides[0].id;
     const slide1Id = slides[1].id;
 
-    // Edit slide 0, then navigate to slide 1.
     await store.edit({
       type: "setTextRun",
       slideId: slide0Id,

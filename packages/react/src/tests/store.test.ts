@@ -191,7 +191,6 @@ describe("zoom", () => {
     // Presentation is 1280x720; a 640x360 container fits at exactly 0.5.
     store.fitTo(640, 360);
     expect(store.getState().zoom).toBeCloseTo(0.5, 9);
-    // Padding shrinks the available box.
     store.fitTo(660, 380, 10);
     expect(store.getState().zoom).toBeCloseTo(0.5, 9);
   });
@@ -385,7 +384,6 @@ describe("slideChange events", () => {
     const events: SlideChangeEvent[] = [];
     store.on("slideChange", (event) => events.push(event));
 
-    // Already on the first slide.
     store.prev();
     store.goToIndex(0);
     store.goTo(store.getState().activeSlideId!);

@@ -991,7 +991,6 @@ describe("keyboard shortcuts", () => {
   it("Escape from selected returns to idle", async () => {
     const { overlay } = await renderSelection();
 
-    // Ctrl+A to select all first
     act(() => {
       overlay.focus();
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
