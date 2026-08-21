@@ -9,7 +9,6 @@
  * `sldIdLst`, and happy-dom's XML parser drops the namespaced `r:id`
  * attributes it depends on.
  */
-import * as React from "react";
 
 import { act, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -137,6 +136,41 @@ describe("consumer-driven reordering", () => {
     expect(options.map((option) => option.textContent)).toEqual(["1", "2", "3"]);
     // The slide that moved to the end now reads as number 3.
     expect(options[2].getAttribute("data-slide-id")).toBe(movedId);
+  });
+
+  it("hands the roving tab stop to the slide an undo jumps to", async () => {
+    const store = await editableStore();
+    const slides = store.getState().presentation!.slides;
+    const [first, third] = [slides[0].id, slides[2].id];
+
+    render(
+      <Presentation.Provider store={store}>
+        <Presentation.ThumbnailList />
+      </Presentation.Provider>,
+    );
+
+    // Pressing a thumbnail pins the tab stop, which is what used to strand it.
+    act(() => screen.getAllByRole("option")[2].focus());
+    expect(store.getState().activeSlideId).toBe(third);
+
+    // A reorder of other slides leaves the active slide, and the pin, alone.
+    await act(async () => {
+      await store.edit({ type: "moveSlide", slideId: first, toIndex: 1 });
+    });
+    expect(store.getState().activeSlideId).toBe(third);
+
+    await act(async () => {
+      store.undo();
+    });
+
+    // Undo navigated to the slide it touched, so the tab stop and the focus
+    // riding on it follow instead of staying behind on the pressed thumbnail.
+    expect(store.getState().activeSlideId).toBe(first);
+    const undoneItem = screen
+      .getAllByRole("option")
+      .find((option) => option.getAttribute("data-slide-id") === first);
+    expect(undoneItem?.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(undoneItem);
   });
 
   it("lets onSelect suppress navigation while a drag is in progress", async () => {

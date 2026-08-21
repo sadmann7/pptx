@@ -357,6 +357,27 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       firstItem?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef]);
 
+    // Keeps tab stop in sync with undo/redo slide changes.
+    React.useEffect(() => {
+      return store.on("slideChange", ({ slideId, reason }) => {
+        if (reason !== "edit" || !slideId) return;
+        setCurrentTabStopId(slideId);
+        const items = itemsRef.current;
+        const nextItem = items.get(slideId);
+        if (!nextItem) return;
+        const activeElement = document.activeElement;
+        if (activeElement === nextItem) return;
+        // Only take focus if the list already had it: an undo triggered from a
+        // toolbar button should move the tab stop without stealing the caret.
+        for (const item of items.values()) {
+          if (item === activeElement) {
+            nextItem.focus({ preventScroll: true });
+            return;
+          }
+        }
+      });
+    }, [store, setCurrentTabStopId, itemsRef]);
+
     const hasTabStop = React.useSyncExternalStore(
       subscribeTabStop,
       () => getEffectiveTabStopId() != null,
