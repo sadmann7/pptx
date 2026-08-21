@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
 import { Button } from "@pptx/ui/components/button";
+import { useIsMobile } from "@pptx/ui/hooks/use-mobile";
 import { cn } from "@pptx/ui/lib/utils";
 import { PanelLeftIcon } from "lucide-react";
 
@@ -165,17 +166,26 @@ function PresentationThumbnailList({
   ...props
 }: PresentationPrimitive.ThumbnailList.Props) {
   const id = React.useId();
+  const isMobile = useIsMobile();
   const [open, setOpen] = React.useState(false);
+  const [wasMobile, setWasMobile] = React.useState(isMobile);
   const listRef = React.useRef<HTMLDivElement | null>(null);
-  const toggleRef = React.useRef<HTMLButtonElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  const isHidden = isMobile && !open;
+
+  if (wasMobile !== isMobile) {
+    setWasMobile(isMobile);
+    setOpen(false);
+  }
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!isMobile || !open) return;
 
     let pendingPointerId: number | null = null;
 
     function isInside(target: Node) {
-      return !!listRef.current?.contains(target) || !!toggleRef.current?.contains(target);
+      return !!listRef.current?.contains(target) || !!triggerRef.current?.contains(target);
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -206,32 +216,36 @@ function PresentationThumbnailList({
       document.removeEventListener("pointercancel", onPointerCancel);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [isMobile, open]);
 
   return (
     <>
-      <Button
-        ref={toggleRef}
-        type="button"
-        variant="outline"
-        size="icon-sm"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-label={open ? "Hide slides" : "Show slides"}
-        className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm md:hidden"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <PanelLeftIcon />
-      </Button>
+      {isMobile && (
+        <Button
+          type="button"
+          aria-controls={id}
+          aria-expanded={open}
+          variant="outline"
+          size="icon-sm"
+          ref={triggerRef}
+          className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <PanelLeftIcon />
+        </Button>
+      )}
       <PresentationPrimitive.ThumbnailList
         id={id}
+        aria-hidden={isHidden || undefined}
+        data-slot="presentation-thumbnail-list"
+        data-mobile={isMobile || undefined}
+        inert={isHidden}
         ref={listRef}
         render={<aside />}
-        data-slot="presentation-thumbnail-list"
         className={cn(
           "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
-          "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-20 max-md:transition-transform",
-          !open && "max-md:-translate-x-full",
+          isMobile && "absolute inset-y-0 left-0 z-20 transition-transform",
+          isHidden && "-translate-x-full",
           className,
         )}
         {...props}
