@@ -4,7 +4,28 @@ import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
-import { Button } from "@pptx/ui/components/button";
+import {
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Button, buttonVariants } from "@pptx/ui/components/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@pptx/ui/components/empty";
 import { Input } from "@pptx/ui/components/input";
 import { Label } from "@pptx/ui/components/label";
 import {
@@ -15,9 +36,16 @@ import {
   PresentationProvider,
   PresentationSelection,
   PresentationSlide,
+  PresentationThumbnailItem,
+  PresentationThumbnailItemNumber,
+  PresentationThumbnailItemPreview,
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import { cn } from "@pptx/ui/lib/utils";
+import { PresentationIcon } from "lucide-react";
+
+import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 
 export default function PgPage() {
   const id = React.useId();
@@ -30,73 +58,192 @@ export default function PgPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-(--spacing(14)))] w-full max-w-(--fd-layout-width) flex-col gap-2">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+    <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col gap-2 p-4">
+      <div className="flex items-center gap-2">
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
         <Input id={`${id}-file-input`} type="file" accept=".pptx" onChange={onFileChange} />
       </div>
-      <PresentationProvider store={store}>
-        <PresentationDebug />
-        <PresentationToolbar store={store} />
-        <Presentation className="flex-1">
-          <PresentationThumbnailList />
-          <PresentationContent>
-            <PresentationLoading />
-            <PresentationError />
-            <PresentationViewport autoFit autoFitPadding={10}>
-              <PresentationSlide>
-                <PresentationSelection />
-              </PresentationSlide>
-            </PresentationViewport>
-          </PresentationContent>
-        </Presentation>
-      </PresentationProvider>
+      <div className="flex h-[calc(100dvh-(--spacing(32)))] flex-col overflow-hidden rounded-md border">
+        <PresentationProvider store={store}>
+          <PresentationDebug />
+          <PresentationToolbar store={store} />
+          <Presentation className="flex-1 border-t">
+            <SortableThumbnailList store={store} />
+            <PresentationContent>
+              <PresentationLoading />
+              <PresentationError />
+              <PresentationEmpty inputId={`${id}-file-input`} />
+              <PresentationViewport>
+                <PresentationSlide>
+                  <PresentationSelection />
+                </PresentationSlide>
+              </PresentationViewport>
+            </PresentationContent>
+          </Presentation>
+        </PresentationProvider>
+      </div>
     </div>
   );
 }
 
-interface ThumbnailPerfDetail {
-  frames: number;
-  renders: number;
-  totalMs: number;
-  maxFrameMs: number;
-  backlog: number;
+interface PresentationEmptyProps {
+  inputId: string;
 }
 
-function useThumbnailPerf(): ThumbnailPerfDetail | null {
-  const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
+function PresentationEmpty({ inputId }: PresentationEmptyProps) {
+  const { status } = usePresentation();
+  if (status !== "idle") return null;
 
-  const subscribe = React.useCallback((onStoreChange: () => void) => {
-    const onPerf = (event: Event) => {
-      perfRef.current = (event as CustomEvent<ThumbnailPerfDetail>).detail;
-      onStoreChange();
-    };
-    window.addEventListener("pptx:thumbnail-perf", onPerf);
-    return () => window.removeEventListener("pptx:thumbnail-perf", onPerf);
-  }, []);
-
-  return React.useSyncExternalStore(
-    subscribe,
-    () => perfRef.current,
-    () => null,
+  return (
+    <Empty className="absolute inset-0 z-10">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <PresentationIcon />
+        </EmptyMedia>
+        <EmptyTitle>No presentation open</EmptyTitle>
+        <EmptyDescription>
+          Pick a .pptx file to render it here, then edit, reorder, and save it back.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <label htmlFor={inputId} className={cn(buttonVariants({ size: "sm" }), "cursor-pointer")}>
+          Choose file
+        </label>
+      </EmptyContent>
+    </Empty>
   );
 }
 
-function ThumbnailPerfReadout() {
-  const perf = useThumbnailPerf();
-  if (!perf) return null;
+interface SortableThumbnailListProps {
+  store: PresentationStore;
+}
 
-  const avgFrameMs = perf.frames > 0 ? perf.totalMs / perf.frames : 0;
+function SortableThumbnailList({ store }: SortableThumbnailListProps) {
+  const { presentation } = usePresentation();
+  const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
+
+  /**
+   * Order to paint while a drop is being committed. `store.edit()` is async, so
+   * without this the strip would snap back to the old order for a frame between
+   * the pointer release and the edit landing.
+   */
+  const [pendingIds, setPendingIds] = React.useState<string[] | null>(null);
+  const orderedIds = pendingIds ?? slideIds;
+
+  /** Slide under the pointer, mirrored into the drag overlay. */
+  const [draggedId, setDraggedId] = React.useState<string | null>(null);
+
+  // Pointer only: the list owns ArrowUp/ArrowDown for roving focus, so a
+  // keyboard drag sensor bound to the same keys would fight it.
+  const sensors = useSensors(
+    // A small threshold keeps a plain click selecting the slide instead of
+    // starting a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  async function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setDraggedId(null);
+    if (!over || active.id === over.id) return;
+
+    const slideId = String(active.id);
+    const toIndex = orderedIds.indexOf(String(over.id));
+    if (toIndex === -1) return;
+
+    const fromIndex = orderedIds.indexOf(slideId);
+    const next = [...orderedIds];
+    next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, slideId);
+    setPendingIds(next);
+
+    try {
+      await store.edit({ type: "moveSlide", slideId, toIndex });
+    } finally {
+      // The store is the source of truth again once the edit settles.
+      setPendingIds(null);
+    }
+  }
+
   return (
-    <span>
-      thumbs:{" "}
-      <strong className="text-foreground">
-        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
-        · {perf.backlog} queued
-      </strong>
-    </span>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      // A transformed child still counts toward its scroll container's overflow,
+      // so an unclamped drag past the last thumbnail grows scrollHeight, which
+      // lets auto-scroll run, which grows the transform again: the strip scrolls
+      // forever. Clamping the drag to the scroll port breaks that loop.
+      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
+      onDragStart={({ active }: DragStartEvent) => setDraggedId(String(active.id))}
+      onDragCancel={() => setDraggedId(null)}
+      onDragEnd={onDragEnd}
+    >
+      <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+        <PresentationThumbnailList>
+          {() => (
+            <>
+              {orderedIds.map((slideId) => (
+                <SortableThumbnailItem key={slideId} slideId={slideId} />
+              ))}
+              {/*
+               * Inside the list so the floating copy can read the list context
+               * it needs to paint a real miniature. It is fixed-positioned, so
+               * the strip's overflow does not clip it.
+               */}
+              <DragOverlay>
+                {draggedId ? (
+                  <PresentationThumbnailItem
+                    decorative
+                    slideId={draggedId}
+                    className="h-full cursor-grabbing bg-background shadow-lg"
+                  >
+                    <PresentationThumbnailItemNumber />
+                    <PresentationThumbnailItemPreview />
+                  </PresentationThumbnailItem>
+                ) : null}
+              </DragOverlay>
+            </>
+          )}
+        </PresentationThumbnailList>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+interface SortableThumbnailItemProps {
+  slideId: string;
+}
+
+function SortableThumbnailItem({ slideId }: SortableThumbnailItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: slideId,
+  });
+
+  // dnd-kit sets role="button" and tabIndex={0}; both would override what the
+  // list needs, replacing the `option` role and putting every thumbnail in the
+  // tab order instead of the one roving tab stop.
+  const { role: _role, tabIndex: _tabIndex, ...dragAttributes } = attributes;
+
+  return (
+    <PresentationThumbnailItem
+      slideId={slideId}
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // The overlay carries the thumbnail during the drag, so what stays in the
+      // list is just the slot it will land in.
+      className={isDragging ? "opacity-30" : undefined}
+      onSelect={(event) => {
+        // Pressing a thumbnail focuses it, and focus navigates. Suppress that
+        // while dragging so the deck does not jump mid-gesture.
+        if (isDragging) event.preventDefault();
+      }}
+      {...dragAttributes}
+      {...listeners}
+    >
+      <PresentationThumbnailItemNumber />
+      <PresentationThumbnailItemPreview />
+    </PresentationThumbnailItem>
   );
 }
 
@@ -142,7 +289,7 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
+    <div className="flex items-center gap-2 p-1.5">
       <Button
         size="sm"
         variant="outline"
@@ -163,10 +310,54 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
       <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void store.redo()}>
         Redo
       </Button>
-      <Button size="sm" className="ml-auto" onClick={onSave}>
+      <PresentationZoomSelect className="ml-auto" />
+      <Button size="sm" onClick={onSave}>
         Save .pptx
       </Button>
     </div>
+  );
+}
+
+interface ThumbnailPerfDetail {
+  frames: number;
+  renders: number;
+  totalMs: number;
+  maxFrameMs: number;
+  backlog: number;
+}
+
+function useThumbnailPerf(): ThumbnailPerfDetail | null {
+  const perfRef = React.useRef<ThumbnailPerfDetail | null>(null);
+
+  const subscribe = React.useCallback((onStoreChange: () => void) => {
+    const onPerf = (event: Event) => {
+      perfRef.current = (event as CustomEvent<ThumbnailPerfDetail>).detail;
+      onStoreChange();
+    };
+    window.addEventListener("pptx:thumbnail-perf", onPerf);
+    return () => window.removeEventListener("pptx:thumbnail-perf", onPerf);
+  }, []);
+
+  return React.useSyncExternalStore(
+    subscribe,
+    () => perfRef.current,
+    () => null,
+  );
+}
+
+function ThumbnailPerfReadout() {
+  const perf = useThumbnailPerf();
+  if (!perf) return null;
+
+  const avgFrameMs = perf.frames > 0 ? perf.totalMs / perf.frames : 0;
+  return (
+    <span>
+      thumbs:{" "}
+      <strong className="text-foreground">
+        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
+        · {perf.backlog} queued
+      </strong>
+    </span>
   );
 }
 

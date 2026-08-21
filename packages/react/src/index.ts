@@ -3,9 +3,10 @@ export * as Presentation from "./primitive";
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
-export type { SelectionProps, SelectionState } from "./selection";
+export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
 export type { SlideProps, SlideState } from "./slide";
 export type {
+  ThumbnailSelectEvent,
   ThumbnailItemNumberProps,
   ThumbnailItemPreviewProps,
   ThumbnailItemPreviewState,
@@ -20,6 +21,7 @@ export type { ViewportProps, ViewportState } from "./viewport";
 export {
   useCreateStore as useCreatePresentationStore,
   usePresentation,
+  useStore as usePresentationStore,
   useSlide,
   useSlideIndex,
   useSlideRevision,
@@ -31,11 +33,20 @@ export type { ComponentRenderFn, RenderProp } from "./render";
 
 export type {
   AutoFitPadding,
+  EditEvent,
+  EditSource,
+  HistoryChangeEvent,
   StoreState as PresentationState,
   PresentationStatus,
   Store as PresentationStore,
+  StoreEventMap as PresentationStoreEventMap,
   PreviewInput,
   SidePadding,
+  SlideChangeEvent,
+  SlideChangeReason,
+  StatusChangeEvent,
+  ZoomChangeEvent,
+  ZoomChangeReason,
 } from "./store";
 
 export type {

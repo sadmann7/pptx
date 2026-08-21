@@ -2,7 +2,7 @@ import { act, render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { UsePresentationResult, UseSlideResult, UseZoomResult } from "../context";
-import { usePresentation, useSlide, useZoom } from "../context";
+import { usePresentation, useSlide, useStore, useZoom } from "../context";
 import { Presentation } from "../index";
 import type { Store } from "../store";
 import { createStore } from "../store";
@@ -64,6 +64,56 @@ describe("usePresentation", () => {
   it("throws when used outside a Presentation tree", () => {
     function Naked() {
       usePresentation();
+      return null;
+    }
+    expect(() => render(<Naked />)).toThrow(/must be used within/);
+  });
+});
+
+describe("usePresentationStore", () => {
+  it("returns the store given to the provider", () => {
+    const store = createStore();
+    let resolved: Store | null = null;
+
+    function Probe() {
+      resolved = useStore();
+      return null;
+    }
+
+    render(
+      <Presentation.Provider store={store}>
+        <Probe />
+      </Presentation.Provider>,
+    );
+
+    expect(resolved).toBe(store);
+  });
+
+  it("reaches the store Root created for itself", () => {
+    let resolved: Store | null = null;
+
+    function Probe() {
+      resolved = useStore();
+      return null;
+    }
+
+    // No provider and no `useCreatePresentationStore`: this hook is the only
+    // way to drive the deck imperatively in this arrangement. No `file` here,
+    // so nothing loads; reaching the store is the whole point.
+    render(
+      <Presentation.Root>
+        <Probe />
+      </Presentation.Root>,
+    );
+
+    expect(resolved).not.toBeNull();
+    act(() => resolved!.setZoom(2));
+    expect(resolved!.getState().zoom).toBe(2);
+  });
+
+  it("throws when used outside a Presentation tree", () => {
+    function Naked() {
+      useStore();
       return null;
     }
     expect(() => render(<Naked />)).toThrow(/must be used within/);

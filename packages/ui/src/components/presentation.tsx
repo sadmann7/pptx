@@ -1,7 +1,12 @@
 "use client";
 
+import * as React from "react";
+
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
+import { Button } from "@pptx/ui/components/button";
+import { useIsMobile } from "@pptx/ui/hooks/use-mobile";
 import { cn } from "@pptx/ui/lib/utils";
+import { PanelLeftIcon } from "lucide-react";
 
 function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
   return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;
@@ -11,7 +16,7 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   return (
     <PresentationPrimitive.Root
       data-slot="presentation"
-      className={cn("flex overflow-hidden", className)}
+      className={cn("relative flex overflow-hidden", className)}
       {...props}
     />
   );
@@ -27,9 +32,16 @@ function PresentationContent({ className, ...props }: React.ComponentProps<"div"
   );
 }
 
-function PresentationViewport({ className, ...props }: PresentationPrimitive.Viewport.Props) {
+function PresentationViewport({
+  className,
+  autoFit = true,
+  autoFitPadding = 10,
+  ...props
+}: PresentationPrimitive.Viewport.Props) {
   return (
     <PresentationPrimitive.Viewport
+      autoFit={autoFit}
+      autoFitPadding={autoFitPadding}
       data-slot="presentation-viewport"
       className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
       {...props}
@@ -153,19 +165,96 @@ function PresentationThumbnailList({
   children,
   ...props
 }: PresentationPrimitive.ThumbnailList.Props) {
+  const id = React.useId();
+  const isMobile = useIsMobile();
+  const [open, setOpen] = React.useState(false);
+  const [wasMobile, setWasMobile] = React.useState(isMobile);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  const isHidden = isMobile && !open;
+
+  if (wasMobile !== isMobile) {
+    setWasMobile(isMobile);
+    setOpen(false);
+  }
+
+  React.useEffect(() => {
+    if (!isMobile || !open) return;
+
+    let pendingPointerId: number | null = null;
+
+    function isInside(target: Node) {
+      return !!listRef.current?.contains(target) || !!triggerRef.current?.contains(target);
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      pendingPointerId = isInside(event.target as Node) ? null : event.pointerId;
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      const isPendingPointer = pendingPointerId === event.pointerId;
+      pendingPointerId = null;
+      if (isPendingPointer && !isInside(event.target as Node)) setOpen(false);
+    }
+
+    function onPointerCancel() {
+      pendingPointerId = null;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerCancel);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerCancel);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobile, open]);
+
   return (
-    <PresentationPrimitive.ThumbnailList
-      data-slot="presentation-thumbnail-list"
-      className={cn(
-        "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1 pr-2",
-        className,
+    <>
+      {isMobile && (
+        <Button
+          type="button"
+          aria-controls={id}
+          aria-expanded={open}
+          variant="outline"
+          size="icon-sm"
+          ref={triggerRef}
+          className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <PanelLeftIcon />
+        </Button>
       )}
-      {...props}
-    >
-      {children ??
-        (({ slides }) =>
-          slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
-    </PresentationPrimitive.ThumbnailList>
+      <PresentationPrimitive.ThumbnailList
+        id={id}
+        aria-hidden={isHidden || undefined}
+        data-slot="presentation-thumbnail-list"
+        data-mobile={isMobile || undefined}
+        inert={isHidden}
+        ref={listRef}
+        render={<aside />}
+        className={cn(
+          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
+          isMobile && "absolute inset-y-0 left-0 z-20 transition-transform",
+          isHidden && "-translate-x-full",
+          className,
+        )}
+        {...props}
+      >
+        {children ??
+          (({ slides }) =>
+            slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
+      </PresentationPrimitive.ThumbnailList>
+    </>
   );
 }
 

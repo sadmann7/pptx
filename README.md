@@ -45,9 +45,9 @@ import * as Presentation from "@diceui/pptx";
 
 export function Editor({ file }: { file: File }) {
   return (
-    <Presentation.Root file={file}>
+    <Presentation.Root file={file} readOnly={false}>
       <Presentation.ThumbnailList />
-      <Presentation.Viewport>
+      <Presentation.Viewport autoFit>
         <Presentation.Slide>
           <Presentation.Selection />
         </Presentation.Slide>
@@ -77,7 +77,7 @@ handle.dispose();
 
 ### `Presentation.Root`
 
-The context provider. Accepts a `File`, `ArrayBuffer`, or URL string as `file`.
+The context provider. Accepts a `File`, `Blob`, `ArrayBuffer`, or `Uint8Array` as `file`.
 
 ### `Presentation.Viewport`
 
@@ -116,7 +116,7 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 ### `Presentation.ThumbnailList`
 
-Slide strip. Renders a preview per slide, filling each one as it approaches the viewport so a long deck does not render all at once. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.
 
 ### `Presentation.Error` / `Presentation.Loading`
 
@@ -139,7 +139,7 @@ const store = useCreatePresentationStore();
 ```ts
 const { presentation, status } = usePresentation();
 const { slide } = useSlide();
-const { zoom, setZoom } = useZoom();
+const { zoom, isAutoFit, setZoom, setAutoFit } = useZoom();
 const store = useCreatePresentationStore();
 ```
 

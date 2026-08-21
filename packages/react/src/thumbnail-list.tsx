@@ -460,9 +460,57 @@ export interface ThumbnailItemState {
   displayIndex: number;
 }
 
-export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onClick"> {
+/** Fired when a thumbnail is about to become the active slide. */
+export interface ThumbnailSelectEvent {
+  /** Stable id of the slide the list is about to navigate to. */
+  slideId: string;
+
+  /** Call to keep the navigation from happening. */
+  preventDefault: () => void;
+}
+
+export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onSelect"> {
   slideId: string;
   render?: RenderProp<ThumbnailItemState>;
+
+  /**
+   * Runs just before this item becomes the active slide, whether from a click
+   * or from keyboard roving (arrowing through the list changes slides, so it
+   * triggers there too). Call `preventDefault()` to stop the navigation.
+   *
+   * This exists because the list navigates on focus, which the browser
+   * delivers before `click`: a veto expressed in `onClick` would arrive after
+   * the slide had already changed. Use `onClick` for side effects that do not
+   * need to block navigation, such as analytics.
+   *
+   * Note that `ThumbnailItem` is memoized: passing a handler whose identity
+   * changes every render opts the item out of that memoization.
+   *
+   * ```tsx
+   * <Presentation.ThumbnailItem
+   *   slideId={slideId}
+   *   onSelect={(event) => {
+   *     if (store.isDirty() && !confirmDiscard()) event.preventDefault();
+   *   }}
+   * />
+   * ```
+   */
+  onSelect?: (event: ThumbnailSelectEvent) => void;
+
+  /**
+   * Render the item's visuals only: no listbox role, no roving focus
+   * registration, no navigation on click or focus, and no presence in the
+   * accessibility tree.
+   *
+   * Use it for a second copy of an item that is already in the list, such as
+   * the floating thumbnail a drag overlay renders while reordering. Without
+   * it the copy claims the original's slot in the roving focus map and
+   * unregisters it on unmount, and the deck is announced with a duplicate
+   * option.
+   *
+   * @default false
+   */
+  decorative?: boolean;
 }
 
 /**
@@ -470,7 +518,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
  */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
-    { slideId, children, render, ...thumbnailItemProps },
+    { slideId, children, render, onSelect, decorative = false, ...thumbnailItemProps },
     forwardedRef,
   ) {
     const store = useStoreContext(THUMBNAIL_ITEM_NAME);
@@ -485,10 +533,11 @@ export const ThumbnailItem = React.memo(
     const { onItemRegister, onItemUnregister } = rovingContext;
     const registerRef = React.useCallback(
       (element: HTMLButtonElement | null) => {
+        if (decorative) return;
         if (element) onItemRegister(slideId, element);
         else onItemUnregister(slideId);
       },
-      [slideId, onItemRegister, onItemUnregister],
+      [slideId, decorative, onItemRegister, onItemUnregister],
     );
 
     const isCurrentTabStop = React.useSyncExternalStore(
@@ -498,6 +547,67 @@ export const ThumbnailItem = React.memo(
     );
 
     const state: ThumbnailItemState = { slideId, isActive, displayIndex };
+
+    /**
+     * Single navigation path for both click and focus, so a consumer's veto
+     * applies no matter which one got there first.
+     */
+    function selectSlide(): void {
+      if (onSelect) {
+        let isPrevented = false;
+        onSelect({
+          slideId,
+          preventDefault: () => {
+            isPrevented = true;
+          },
+        });
+        if (isPrevented) return;
+      }
+      store.goTo(slideId);
+    }
+
+    /**
+     * Listbox behaviour, dropped for a decorative copy so it stays out of
+     * roving focus, the accessibility tree, and navigation.
+     */
+    const optionProps: React.ComponentProps<"button"> = decorative
+      ? { "aria-hidden": true, inert: true, tabIndex: -1 }
+      : {
+          role: "option",
+          "aria-selected": isActive,
+          "aria-posinset": displayIndex + 1,
+          "aria-setsize": setSize,
+          tabIndex: isCurrentTabStop ? 0 : -1,
+          onClick: () => selectSlide(),
+          onFocus: () => {
+            rovingContext.onItemFocus(slideId);
+            selectSlide();
+          },
+          onMouseDown: () => {
+            rovingContext.onItemFocus(slideId);
+          },
+          onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+            if (event.target !== event.currentTarget) return;
+            const focusIntent = MAP_KEY_TO_INTENT[event.key];
+            if (!focusIntent || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+              return;
+            event.preventDefault();
+
+            let candidates = Array.from(rovingContext.itemsRef.current.values());
+            if (focusIntent === "last") {
+              candidates = candidates.reverse();
+            } else if (focusIntent === "prev" || focusIntent === "next") {
+              if (focusIntent === "prev") candidates = candidates.reverse();
+              const idx = candidates.indexOf(event.currentTarget);
+              candidates = rovingContext.loop
+                ? wrapArray(candidates, idx + 1)
+                : candidates.slice(idx + 1);
+            }
+            // Deferred so the browser finishes processing this keydown
+            // before focus moves; synchronous focus can be swallowed.
+            setTimeout(() => focusFirst(candidates));
+          },
+        };
 
     const itemContextValue = React.useMemo<ThumbnailItemContextValue>(
       () => ({ slideId, displayIndex, isActive }),
@@ -515,49 +625,10 @@ export const ThumbnailItem = React.memo(
             props: [
               {
                 type: "button",
-                role: "option",
-                "aria-selected": isActive,
-                "aria-posinset": displayIndex + 1,
-                "aria-setsize": setSize,
                 "data-active": isActive || undefined,
                 "data-slide-id": slideId,
-                tabIndex: isCurrentTabStop ? 0 : -1,
                 style: { width: "100%" },
-                onClick: () => store.goTo(slideId),
-                onFocus: () => {
-                  rovingContext.onItemFocus(slideId);
-                  store.goTo(slideId);
-                },
-                onMouseDown: () => {
-                  rovingContext.onItemFocus(slideId);
-                },
-                onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => {
-                  if (event.target !== event.currentTarget) return;
-                  const focusIntent = MAP_KEY_TO_INTENT[event.key];
-                  if (
-                    !focusIntent ||
-                    event.metaKey ||
-                    event.ctrlKey ||
-                    event.altKey ||
-                    event.shiftKey
-                  )
-                    return;
-                  event.preventDefault();
-
-                  let candidates = Array.from(rovingContext.itemsRef.current.values());
-                  if (focusIntent === "last") {
-                    candidates = candidates.reverse();
-                  } else if (focusIntent === "prev" || focusIntent === "next") {
-                    if (focusIntent === "prev") candidates = candidates.reverse();
-                    const idx = candidates.indexOf(event.currentTarget);
-                    candidates = rovingContext.loop
-                      ? wrapArray(candidates, idx + 1)
-                      : candidates.slice(idx + 1);
-                  }
-                  // Deferred so the browser finishes processing this keydown
-                  // before focus moves; synchronous focus can be swallowed.
-                  setTimeout(() => focusFirst(candidates));
-                },
+                ...optionProps,
                 children,
               },
               thumbnailItemProps,
@@ -591,6 +662,29 @@ export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
 }
 
 /**
+ * Publish `slideHandle` as the shared miniature for `slideId`.
+ *
+ * Returns `false` when a live entry for the current revision already holds the
+ * slot, which happens while the same slide is mounted twice (a drag overlay
+ * next to its list item). The caller then holds a private copy that it must
+ * dispose itself, so the two previews never move one DOM node between them.
+ */
+function claimThumbnailCache(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  slideId: string,
+  slideHandle: SlideHandle,
+  revision: number,
+): boolean {
+  const cached = slideHandleCache.get(slideId);
+  if (cached) {
+    if (cached.slideHandle !== slideHandle && cached.revision === revision) return false;
+    cached.slideHandle.dispose();
+  }
+  slideHandleCache.set(slideId, { slideHandle, revision });
+  return true;
+}
+
+/**
  * Renders the slide miniature for the enclosing `ThumbnailItem`.
  *
  * Uses an IntersectionObserver with a 200 px vertical rootMargin so
@@ -612,7 +706,22 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     const itemPreviewRef = React.useRef<HTMLDivElement>(null);
     const slideHandleRef = React.useRef<SlideHandle | null>(null);
+    /**
+     * Whether the attached handle is the shared cached one. `false` means this
+     * preview rendered a private copy because another mount already held the
+     * cache slot, and owns its disposal.
+     */
+    const ownsCachedHandleRef = React.useRef(false);
     const hasRenderedRef = React.useRef(false);
+    /** Slide the currently attached miniature was rendered for. */
+    const attachedSlideIdRef = React.useRef<string | null>(null);
+    /** Edit revision the attached miniature was rendered at. */
+    const attachedRevisionRef = React.useRef<number | null>(null);
+    /**
+     * Incremented by every run of the observer effect below. A teardown that
+     * sees a newer run knows it was a re-run rather than an unmount.
+     */
+    const observerRunRef = React.useRef(0);
     const { mediaUrlCache, slideHandleCache, observeResize, scheduleRender } = rovingContext;
 
     const slideIndex = store.getSlideIndex(itemContext.slideId);
@@ -652,23 +761,27 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       });
     }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
-    // The IntersectionObserver fires when this preview enters/leaves the
+    // The IntersectionObserver triggers when this preview enters/leaves the
     // rootMargin zone (200px above and below the scroll container). On entry:
     //   - Cache hit  → re-attach synchronously (zero pending flash)
     //   - Cache miss → enqueue renderSlide() on the budgeted queue
     // On exit: detach DOM, keep handle in cache for instant re-attach.
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
+      const run = ++observerRunRef.current;
       if (!itemPreviewElement || !presentation || !slide) return;
       if (typeof IntersectionObserver === "undefined") return;
 
-      const attach = (element: HTMLDivElement, slideHandle: SlideHandle) => {
+      const attach = (element: HTMLDivElement, slideHandle: SlideHandle, isCached: boolean) => {
         if (slideHandleRef.current === slideHandle) return; // already attached
         const currentScale =
           widthRef.current > 0 ? widthRef.current / presentationWidthRef.current : 0;
         if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
         element.appendChild(slideHandle.element);
         slideHandleRef.current = slideHandle;
+        attachedSlideIdRef.current = slide.id;
+        attachedRevisionRef.current = revisionRef.current;
+        ownsCachedHandleRef.current = isCached;
         hasRenderedRef.current = true;
         delete element.dataset.pending;
       };
@@ -676,10 +789,21 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       const detach = (element: HTMLDivElement) => {
         const slideHandle = slideHandleRef.current;
         slideHandleRef.current = null;
+        attachedSlideIdRef.current = null;
         slideHandle?.element.remove();
+        // The cached handle is kept alive for the next mount; a private copy
+        // has no other owner, so it is released here.
+        if (slideHandle && !ownsCachedHandleRef.current) slideHandle.dispose();
+        ownsCachedHandleRef.current = false;
         hasRenderedRef.current = false;
         element.dataset.pending = "";
       };
+
+      // A previous run of this effect can leave a miniature attached (see the
+      // teardown below). Keep it only when it is still the right slide.
+      if (slideHandleRef.current && attachedSlideIdRef.current !== slide.id) {
+        detach(itemPreviewElement);
+      }
 
       let cancelRender: (() => void) | null = null;
 
@@ -697,10 +821,19 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
           if (entry.isIntersecting) {
             const cached = slideHandleCache.get(slide.id);
-            if (cached && cached.revision === revisionRef.current) {
-              attach(element, cached.slideHandle);
+            const isCurrent = cached !== undefined && cached.revision === revisionRef.current;
+            // A cached node that is already inside another preview belongs to
+            // that mount; moving it here would blank it out.
+            const parent = cached?.slideHandle.element.parentElement ?? null;
+            const isAvailable = parent === null || parent === element;
+
+            if (isCurrent && isAvailable) {
+              attach(element, cached.slideHandle, true);
             } else {
-              if (cached) {
+              // Anything still attached here is stale, and it has to go before
+              // its cache entry is retired or the re-render below is skipped.
+              if (slideHandleRef.current) detach(element);
+              if (cached && !isCurrent && isAvailable) {
                 // Discard because it was rendered under an older edit revision.
                 cached.slideHandle.dispose();
                 slideHandleCache.delete(slide.id);
@@ -710,8 +843,13 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
                 const mountedElement = itemPreviewRef.current;
                 if (!mountedElement || slideHandleRef.current) return;
                 const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-                slideHandleCache.set(slide.id, { slideHandle, revision: revisionRef.current });
-                attach(mountedElement, slideHandle);
+                const isCached = claimThumbnailCache(
+                  slideHandleCache,
+                  slide.id,
+                  slideHandle,
+                  revisionRef.current,
+                );
+                attach(mountedElement, slideHandle, isCached);
               });
             }
           } else {
@@ -727,7 +865,15 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         intersectionObserver.disconnect();
         cancelRender?.();
         cancelRender = null;
-        detach(itemPreviewElement);
+        // An unmount and a re-run of this effect are indistinguishable here,
+        // and detaching on a re-run blanks the miniature for the frame it takes
+        // a fresh observer to report, which reads as a flash. Defer the
+        // decision: a re-run has already started the next run by now.
+        queueMicrotask(() => {
+          // oxlint-disable-next-line react-hooks/exhaustive-deps -- reading the latest value is the point: it tells a re-run from an unmount
+          if (observerRunRef.current !== run) return;
+          detach(itemPreviewElement);
+        });
       };
     }, [
       presentation,
@@ -741,19 +887,25 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     // Re-render the miniature in place when an edit bumps the revision,
     // without tearing down the IntersectionObserver (the detach→re-attach
-    // gap was the cause of the thumbnail flash on every edit). Only fires
+    // gap was the cause of the thumbnail flash on every edit). Only triggers
     // when the slide is currently visible/attached; off-screen slides are
     // re-rendered on demand by the IntersectionObserver callback using revisionRef.
     React.useEffect(() => {
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
       if (!slideHandleRef.current) return; // not visible; IO handles it
+      // Effects are re-created whenever React restores this subtree, so an
+      // unchanged revision means the attached miniature is already current.
+      if (attachedRevisionRef.current === revision) return;
 
       const oldHandle = slideHandleRef.current;
       oldHandle.element.remove();
       oldHandle.dispose();
       slideHandleRef.current = null;
-      slideHandleCache.delete(slide.id);
+      // Only the mount that published the entry may retire it; a private copy
+      // would otherwise evict a node still attached to another preview.
+      if (ownsCachedHandleRef.current) slideHandleCache.delete(slide.id);
+      ownsCachedHandleRef.current = false;
 
       const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
       const currentScale =
@@ -761,7 +913,13 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
       element.appendChild(slideHandle.element);
       slideHandleRef.current = slideHandle;
-      slideHandleCache.set(slide.id, { slideHandle, revision });
+      attachedRevisionRef.current = revision;
+      ownsCachedHandleRef.current = claimThumbnailCache(
+        slideHandleCache,
+        slide.id,
+        slideHandle,
+        revision,
+      );
       // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision-only: the IO effect above handles presentation and slide changes, and every visual edit bumps revision
     }, [revision]);
 

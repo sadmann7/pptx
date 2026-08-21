@@ -440,6 +440,7 @@ export function renderSlide(
   const isSharedCache = !!options?.mediaUrlCache;
   const chartInstances = options?.chartInstances ?? new Set<ECharts>();
   const asyncTasks: Promise<void>[] = [];
+  const cleanups: (() => void)[] = [];
 
   // Create render context (resolves slide -> layout -> master -> theme chain)
   const ctx = createRenderContext(
@@ -450,6 +451,7 @@ export function renderSlide(
     options?.pdfjs,
   );
   ctx.asyncTasks = asyncTasks;
+  ctx.cleanups = cleanups;
   if (options?.onNavigate) {
     ctx.onNavigate = options.onNavigate;
   }
@@ -555,6 +557,10 @@ export function renderSlide(
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+
+    // Detach observers before tearing down what they watch
+    for (const cleanup of cleanups) cleanup();
+    cleanups.length = 0;
 
     // Dispose chart instances whose DOM is inside this slide container
     if (chartInstances) {

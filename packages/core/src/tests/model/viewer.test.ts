@@ -104,7 +104,7 @@ describe("PptxViewer.open (list mode)", () => {
     expect(container.textContent).toContain("Slide 3");
   });
 
-  it("fires renderstart/rendercomplete/sliderendered/slidechange events", async () => {
+  it("triggers renderstart/rendercomplete/sliderendered/slidechange events", async () => {
     const container = makeContainer();
     const events: string[] = [];
     const renderedIndexes: number[] = [];

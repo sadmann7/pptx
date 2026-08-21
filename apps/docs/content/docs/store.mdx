@@ -17,9 +17,22 @@ The store is the single source of truth for all presentation state: loading, nav
 </Presentation.Root>
 ```
 
+Descendants can still drive that internal store: `usePresentationStore()` returns it, so a toolbar can call `edit()`, `undo()`, or `save()` without you owning the instance.
+
+```tsx
+import { usePresentationStore } from "@diceui/pptx";
+
+function SaveButton() {
+  const store = usePresentationStore();
+  return <button onClick={() => store.save()}>Save</button>;
+}
+```
+
+It returns a stable reference and subscribes to nothing, so use `usePresentation`, `useSlide`, or `useZoom` for reactive reads rather than `store.getState()`.
+
 ### Controlled
 
-Use `useCreatePresentationStore` when you need to drive the store from outside (programmatic load, toolbar buttons, save):
+Use `useCreatePresentationStore` when the store has to exist before the tree does, for example to load a file from an event handler that lives outside it:
 
 ```tsx
 import { useCreatePresentationStore } from "@diceui/pptx";
@@ -40,6 +53,7 @@ interface PresentationState {
   presentation: PresentationData | null;
   activeSlideId: string | null;
   zoom: number; // default: 1
+  isAutoFit: boolean; // whether zoom tracks the viewport size
   progress: number; // 0–100, meaningful while status === "loading"
   error: Error | null;
   revision: number; // bumped on every edit/undo/redo
@@ -55,6 +69,7 @@ interface PresentationState {
 ```ts
 store.load(file, {
   defaultSlideIndex?: number | ((slides) => number), // default: 0
+  defaultZoom?: number,  // initial zoom; auto-fit overrides it on mount
   readOnly?: boolean,    // default: true
   lazy?: boolean,        // default: true (parse slides on demand)
   embedFonts?: boolean,  // default: true (decode embedded fonts before ready)
@@ -82,10 +97,23 @@ store.canGoPrev()
 ### Zoom
 
 ```ts
-store.setZoom(n: number)      // clamped to [0.1, 4]
-store.zoomIn(step?: number)   // default step: 0.25
+store.setZoom(n: number)      // clamped to [0.1, 4]; releases auto-fit
+store.zoomIn(step?: number)   // default step: 0.25; releases auto-fit
 store.zoomOut(step?: number)
-store.fitTo(width, height, padding?) // compute largest zoom that fits
+store.setAutoFit(isAutoFit: boolean) // fit now and on every resize
+store.fitTo(width, height, padding?) // one-shot fit for a known box
+```
+
+Measuring is a viewport concern, deciding is the store's. `state.isAutoFit` says whether zoom is tracking the container, and a mounted `<Presentation.Viewport autoFit>` refits itself whenever it is on. `setZoom`, `zoomIn`, and `zoomOut` turn it off so the level someone picked survives the next resize; `setAutoFit(true)` turns it back on and refits immediately. `fitTo` is the escape hatch for a box you measured yourself, and leaves the mode alone.
+
+`isAutoFit` describes the viewport rather than the deck, so it survives `load()` and `reset()`.
+
+The `zoomChange` event reports what produced the change, which is how a control tells a resize-driven fit apart from a level someone asked for:
+
+```ts
+store.on("zoomChange", ({ zoom, previousZoom, reason }) => {
+  // reason: "zoom" | "fit" | "load" | "reset"
+});
 ```
 
 ### Editing
@@ -98,8 +126,21 @@ store.undo(): boolean
 await store.redo(): Promise<boolean>
 store.canUndo(): boolean
 store.canRedo(): boolean
+store.isDirty(): boolean
 await store.save(options?): Promise<Uint8Array>
 store.getSlideRevision(slideId: string): number
+```
+
+### Events
+
+`store.on(event, handler)` is the low-level channel the Root/Viewport callback props wrap. It returns an unsubscribe function.
+
+```ts
+store.on("slideChange", ({ slideId, index, reason }) => {});
+store.on("statusChange", ({ status, previousStatus }) => {});
+store.on("edit", ({ operation, source }) => {});
+store.on("historyChange", ({ canUndo, canRedo, isDirty }) => {});
+store.on("zoomChange", ({ zoom, previousZoom, reason }) => {});
 ```
 
 ## Edit operations
@@ -222,8 +263,9 @@ await store.edit({
 ```tsx
 import {
   usePresentation, // { presentation, status, progress, error }
+  usePresentationStore, // the ambient store, for imperative calls
   useSlide, // { slide, slideId, index }
-  useZoom, // { zoom, setZoom, zoomIn, zoomOut, fitTo }
+  useZoom, // { zoom, isAutoFit, setZoom, zoomIn, zoomOut, setAutoFit, fitTo }
 } from "@diceui/pptx";
 ```
 

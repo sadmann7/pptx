@@ -11,7 +11,7 @@ import {
   useStoreContext,
   useZoom,
 } from "./context";
-import { useLazyRef } from "./hook";
+import { useLatestRef, useLazyRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import { getPasteboardOverhang } from "./selection";
@@ -51,6 +51,19 @@ export interface SlideProps extends React.ComponentProps<"div"> {
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<SlideState>;
+
+  /**
+   * Event handler called when an individual shape fails to render. The rest
+   * of the slide still renders; the failing node is skipped.
+   *
+   * Providing a handler replaces the default `console.warn`, so log the
+   * error yourself if you still want it visible.
+   *
+   * ```tsx
+   * onNodeError={(nodeId, error) => reportError(error, { nodeId })}
+   * ```
+   */
+  onNodeError?: (nodeId: string, error: unknown) => void;
 }
 
 /**
@@ -64,7 +77,7 @@ export interface SlideProps extends React.ComponentProps<"div"> {
  * enabling css-driven state styles without extra js.
  */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
-  { children, render, ...slideProps },
+  { children, render, onNodeError, ...slideProps },
   forwardedRef,
 ) {
   const { presentation, status } = usePresentation();
@@ -85,6 +98,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
         zoom={zoom}
         revision={revision}
         contentRevision={contentRevision}
+        onNodeError={onNodeError}
       >
         {children}
       </SlideImpl>
@@ -107,6 +121,13 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
             // than the viewport. The slide wrapper centers itself with
             // `margin: auto`, which degrades correctly to scrollable.
             overflow: "auto",
+            // Being the scroll container, this element has to stay within the
+            // viewport: sized by its content it would grow past it at high
+            // zoom and take its scrollbars off screen. Resolves to `none`
+            // when the parent's size is indefinite, so it costs nothing
+            // outside a bounded viewport.
+            maxWidth: "100%",
+            maxHeight: "100%",
           },
           children: slideContent,
         },
@@ -124,6 +145,7 @@ interface SlideImplProps {
   revision: number;
   /** Content revision that stays unchanged when only node transforms were edited. */
   contentRevision: number;
+  onNodeError?: (nodeId: string, error: unknown) => void;
   children?: React.ReactNode;
 }
 
@@ -133,6 +155,7 @@ function SlideImpl({
   zoom,
   revision,
   contentRevision,
+  onNodeError,
   children,
 }: SlideImplProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -144,6 +167,8 @@ function SlideImpl({
     );
   const contentRevisionRef = React.useRef<number>(null);
   const renderedSlideIdRef = React.useRef<string>(null);
+  // Kept in a ref so passing an inline handler doesn't rebuild the slide DOM.
+  const onNodeErrorRef = useLatestRef(onNodeError);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -207,7 +232,9 @@ function SlideImpl({
       // (PowerPoint pasteboard behavior) instead of clipping at the bounds.
       clipContent: !isEditable,
       onNodeError: (nodeId, error) => {
-        console.warn(`[pptx] Node render error: ${nodeId}`, error);
+        const handler = onNodeErrorRef.current;
+        if (handler) handler(nodeId, error);
+        else console.warn(`[pptx] Node render error: ${nodeId}`, error);
       },
     });
 
@@ -216,7 +243,7 @@ function SlideImpl({
     nodeSnapshotRef.current = buildNodeSnapshot(slide);
     contentRevisionRef.current = contentRevision;
     renderedSlideIdRef.current = slide.id;
-  }, [presentation, slide, revision, contentRevision, mediaUrlCacheRef]);
+  }, [presentation, slide, revision, contentRevision, mediaUrlCacheRef, onNodeErrorRef]);
 
   React.useEffect(() => {
     return () => {

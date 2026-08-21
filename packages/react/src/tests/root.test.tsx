@@ -1,9 +1,11 @@
+import { act } from "react";
+
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { useStoreContext } from "../context";
 import { Presentation } from "../index";
-import type { Store } from "../store";
+import type { SlideChangeEvent, Store } from "../store";
 import { createStore } from "../store";
 import { loadFixture } from "./test-utils";
 
@@ -83,6 +85,57 @@ describe("Presentation.Root file prop", () => {
     render(<Presentation.Root file={new ArrayBuffer(8)} onError={(err) => (error = err)} />);
     await waitFor(() => expect(error).not.toBeNull());
     expect(error).toBeInstanceOf(Error);
+  });
+
+  it("calls onSlideChange for the start slide and for later navigation", async () => {
+    const fixture = await loadFixture();
+    const store = createStore();
+    const events: SlideChangeEvent[] = [];
+
+    render(
+      <Presentation.Provider store={store}>
+        <Presentation.Root file={fixture} onSlideChange={(event) => events.push(event)} />
+      </Presentation.Provider>,
+    );
+
+    await waitFor(() => expect(events).toHaveLength(1));
+    expect(events[0]).toMatchObject({ index: 0, reason: "load", previousSlideId: null });
+
+    act(() => store.next());
+    expect(events).toHaveLength(2);
+    expect(events[1]).toMatchObject({ index: 1, reason: "navigate" });
+    expect(events[1].previousSlideId).toBe(events[0].slideId);
+  });
+
+  it("calls onStatusChange through the load lifecycle", async () => {
+    const fixture = await loadFixture();
+    const transitions: string[] = [];
+
+    render(
+      <Presentation.Root
+        file={fixture}
+        onStatusChange={({ status, previousStatus }) =>
+          transitions.push(`${previousStatus}->${status}`)
+        }
+      />,
+    );
+
+    await waitFor(() => expect(transitions).toContain("loading->ready"));
+    expect(transitions).toEqual(["idle->loading", "loading->ready"]);
+  });
+
+  it("opens at defaultZoom", async () => {
+    const fixture = await loadFixture();
+    const store = createStore();
+
+    render(
+      <Presentation.Provider store={store}>
+        <Presentation.Root file={fixture} defaultZoom={0.5} />
+      </Presentation.Provider>,
+    );
+
+    await waitFor(() => expect(store.getState().status).toBe("ready"));
+    expect(store.getState().zoom).toBe(0.5);
   });
 
   it("does not touch a provider store when file is omitted", () => {

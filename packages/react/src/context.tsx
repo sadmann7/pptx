@@ -3,8 +3,8 @@ import * as React from "react";
 import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
-import { useLazyRef } from "./hook";
-import type { AutoFitPadding, Store, StoreState } from "./store";
+import { useLatestRef, useLazyRef } from "./hook";
+import type { AutoFitPadding, Store, StoreEventMap, StoreState } from "./store";
 import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
@@ -72,6 +72,57 @@ export function useStoreContext(consumerName: string): Store {
     );
   }
   return store;
+}
+
+/**
+ * Returns the `PresentationStore` driving the surrounding tree, whether it was
+ * passed to `Presentation.Provider` or created internally by
+ * `Presentation.Root`. Throws if called outside either.
+ *
+ * This is how a descendant reaches the imperative API (`load`, `edit`, `undo`,
+ * `redo`, `save`, `reset`) without the store being threaded down as a prop,
+ * and it is the only way to reach `Root`'s internal store at all:
+ *
+ * ```tsx
+ * function SaveButton() {
+ *   const store = usePresentationStore();
+ *   return <button onClick={() => store.save()}>Save</button>;
+ * }
+ *
+ * // No `useCreatePresentationStore`, no `Provider`, no prop drilling.
+ * <Presentation.Root file={file} readOnly={false}>
+ *   <SaveButton />
+ * </Presentation.Root>
+ * ```
+ *
+ * Returns a stable reference and subscribes to nothing, so a state change does
+ * not re-render the caller. Read state with `usePresentation`, `useSlide`, or
+ * `useZoom` instead of `store.getState()`.
+ */
+export function useStore(): Store {
+  return useStoreContext("usePresentationStore");
+}
+
+/**
+ * Bridges an optional event-handler prop to a store event for the lifetime of
+ * the component. Internal: components expose the callback as a prop rather than
+ * making consumers manage a subscription.
+ *
+ * The callback is read through a ref, so passing an inline function does not
+ * resubscribe on every render.
+ */
+export function useStoreEvent<E extends keyof StoreEventMap>(
+  store: Store,
+  event: E,
+  callback: ((payload: StoreEventMap[E]) => void) | undefined,
+): void {
+  const callbackRef = useLatestRef(callback);
+
+  // Subscribing to an external store: an effect is the right tool here.
+  React.useEffect(
+    () => store.on(event, (payload) => callbackRef.current?.(payload)),
+    [store, event, callbackRef],
+  );
 }
 
 /**
@@ -245,22 +296,34 @@ export interface UseZoomResult {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
 
-  /** Set an explicit zoom level. */
+  /**
+   * Whether zoom is tracking the viewport size. A zoom control reads this to
+   * show "Fit" instead of a level, without keeping a flag of its own.
+   */
+  isAutoFit: boolean;
+
+  /** Set an explicit zoom level. Turns auto-fit off. */
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`.
+   * Increase zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`.
+   * Decrease zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
+
+  /**
+   * Turn auto-fit on or off. Turning it on refits the slide to the viewport
+   * immediately and on every resize after it.
+   */
+  setAutoFit: (isAutoFit: boolean) => void;
 
   /**
    * Compute and apply a zoom that fits the slide inside the given container
@@ -276,18 +339,22 @@ export interface UseZoomResult {
 /**
  * Subscribes to zoom state and exposes zoom actions.
  *
- * Must be called inside a `<Presentation.Root>` tree. For automatic fitting,
- * prefer `<Presentation.Viewport autoFit>` which calls `fitTo` internally.
+ * Must be called inside a `<Presentation.Root>` tree. Fitting needs a
+ * measured container, so it belongs to `<Presentation.Viewport autoFit>`:
+ * this hook only reports and toggles the mode.
  */
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
+  const isAutoFit = useStoreSelector(store, (s) => s.isAutoFit, DEFAULT_STORE_STATE.isAutoFit);
 
   return {
     zoom,
+    isAutoFit,
     setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
+    setAutoFit: React.useCallback((next: boolean) => store.setAutoFit(next), [store]),
     fitTo: React.useCallback(
       (w: number, h: number, padding?: AutoFitPadding) => store.fitTo(w, h, padding),
       [store],

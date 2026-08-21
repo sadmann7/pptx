@@ -6,7 +6,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
-import type { GripDirection, Rect } from "../selection";
+import type { GripDirection, Rect, SelectionChangeEvent } from "../selection";
 import {
   MIN_SIZE,
   cleanText,
@@ -535,6 +535,76 @@ describe("Ctrl+A select all", () => {
     });
 
     expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Selection and mode callbacks
+// ---------------------------------------------------------------------------
+
+describe("onSelectionChange and onModeChange", () => {
+  it("reports the selected node ids and nodes when the selection changes", async () => {
+    const events: SelectionChangeEvent[] = [];
+    const { overlay, shapeElements } = await renderSelection({
+      onSelectionChange: (event: SelectionChangeEvent) => events.push(event),
+    });
+
+    // Mount reports the empty selection so consumers can clear stale state.
+    expect(events).toEqual([{ nodeIds: [], nodes: [] }]);
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[1].nodeIds).toHaveLength(shapeElements.length);
+    expect(events[1].nodes.map((node) => node.id)).toEqual(events[1].nodeIds);
+  });
+
+  it("reports mode transitions with the previous mode, and not on mount", async () => {
+    const modes: [string, string][] = [];
+    const { overlay } = await renderSelection({
+      onModeChange: (mode: string, previousMode: string) => modes.push([mode, previousMode]),
+    });
+
+    expect(modes).toHaveLength(0);
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(modes).toEqual([["selected", "idle"]]);
+
+    act(() => {
+      fireEvent.keyDown(overlay, { key: "Escape" });
+    });
+    expect(modes).toEqual([
+      ["selected", "idle"],
+      ["idle", "selected"],
+    ]);
+  });
+
+  it("does not re-fire while the selection is unchanged", async () => {
+    let calls = 0;
+    const { overlay } = await renderSelection({
+      onSelectionChange: () => {
+        calls++;
+      },
+    });
+    expect(calls).toBe(1);
+
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(calls).toBe(2);
+
+    // Selecting all again lands on the same set.
+    act(() => {
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+    expect(calls).toBe(2);
   });
 });
 

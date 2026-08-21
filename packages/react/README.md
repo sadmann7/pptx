@@ -54,7 +54,7 @@ export function Editor({ file }: { file: File }) {
 | `Presentation.Viewport`      | Scrollable canvas; scales the active slide to fit   |
 | `Presentation.Slide`         | Renders the active slide                            |
 | `Presentation.Selection`     | Editing overlay (move, resize, text, undo/redo)     |
-| `Presentation.ThumbnailList` | Virtualized slide strip                             |
+| `Presentation.ThumbnailList` | Scrollable list of slide thumbnails                 |
 | `Presentation.Loading`       | Slot for custom loading states                      |
 | `Presentation.Error`         | Slot for custom error states                        |
 

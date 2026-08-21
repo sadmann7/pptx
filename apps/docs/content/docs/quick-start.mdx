@@ -24,11 +24,11 @@ export function Viewer({ file }: { file: File }) {
 }
 ```
 
-Pass a `File` object (e.g. from `<input type="file">`), an `ArrayBuffer`, or a URL string to `file`.
+Pass a `File`, `Blob`, `ArrayBuffer`, or `Uint8Array` to `file`.
 
 ## With shadcn/ui
 
-If you installed via the shadcn CLI, use the pre-built components instead:
+If you installed via the shadcn CLI, use the pre-built components instead. `PresentationThumbnailList` is a rail on desktop and an offcanvas on mobile (toggle, Escape, outside tap); you do not need to hide it yourself.
 
 ```tsx
 import {

@@ -10,10 +10,24 @@ The outermost component. Creates an internal store (or inherits one from `Presen
 ```tsx
 import * as Presentation from "@diceui/pptx";
 
-<Presentation.Root file={file} readOnly={false} onLoad={(store) => {}}>
+<Presentation.Root
+  file={file}
+  readOnly={false}
+  defaultZoom={0.5}
+  onLoad={(store) => {}}
+  onError={(error) => {}}
+  onSlideChange={({ slideId, index, reason }) => {}}
+  onStatusChange={({ status }) => {}}
+  onEdit={({ operation, source }) => {}}
+  onHistoryChange={({ canUndo, canRedo, isDirty }) => {}}
+>
   {/* children */}
 </Presentation.Root>;
 ```
+
+`onSlideChange` triggers for every change of the active slide. Use `reason` to tell user navigation (`"navigate"`) apart from a completed load (`"load"`), an edit that moved the active slide (`"edit"`), and a cleared viewer (`"reset"`).
+
+`onEdit` triggers after an edit is applied, undone, or redone, with `source` naming which of the three it was. `onHistoryChange` triggers whenever undo/redo availability or the unsaved-changes flag moves, which is enough to drive a toolbar without polling the store.
 
 <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
@@ -24,10 +38,44 @@ import * as Presentation from "@diceui/pptx";
 Scrollable container that centers the slide and optionally auto-fits it to fill the available space.
 
 ```tsx
-<Presentation.Viewport autoFit autoFitPadding={32}>
+<Presentation.Viewport
+  autoFit
+  autoFitPadding={10}
+  scrollNavigation
+  onZoomChange={({ zoom, reason }) => setZoom(`${Math.round(zoom * 100)}%`)}
+>
   <Presentation.Slide />
 </Presentation.Viewport>
 ```
+
+`onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
+
+`scrollNavigation` makes the wheel behave like PowerPoint: scrolling past the end of the slide advances, past the start goes back. It is off by default because it captures wheel events, which fights a page that already scrolls.
+
+`autoFit` is the starting mode, not a latch. Setting an explicit level turns fitting off so the next resize leaves that level alone, and `setAutoFit(true)` turns it back on, which means a zoom control offering both keeps no state of its own:
+
+```tsx
+function ZoomSelect() {
+  const { zoom, isAutoFit, setZoom, setAutoFit } = useZoom();
+
+  return (
+    <select
+      value={isAutoFit ? "fit" : String(zoom)}
+      onChange={(event) => {
+        const { value } = event.target;
+        if (value === "fit") setAutoFit(true);
+        else setZoom(Number(value));
+      }}
+    >
+      <option value="fit">Fit · {Math.round(zoom * 100)}%</option>
+      <option value="1">100%</option>
+      <option value="2">200%</option>
+    </select>
+  );
+}
+```
+
+The viewport keeps measuring itself while fitting is off, so re-arming picks up any resize that happened in between. To open a deck at a fixed level, pass `defaultZoom` to `Root`, which only applies when nothing is auto-fitting over it.
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 
@@ -38,10 +86,12 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
 
 ```tsx
-<Presentation.Slide>
+<Presentation.Slide onNodeError={(nodeId, error) => reportError(error, { nodeId })}>
   <Presentation.Selection />
 </Presentation.Slide>
 ```
+
+A shape that fails to render is skipped rather than breaking the slide. `onNodeError` surfaces those failures; without a handler they are logged with `console.warn`.
 
 The wrapper carries a `data-status` attribute matching the current load status:
 
@@ -72,9 +122,13 @@ Must be placed inside `Presentation.Slide`.
     onNodeDelete={(id, error) => error && toast.error("Could not delete")}
     onNodeTransform={(id, error) => error && toast.error("Could not move")}
     onTextChange={(id, error) => error && toast.error("Text edit failed")}
+    onSelectionChange={({ nodes }) => setInspectedShape(nodes[0] ?? null)}
+    onModeChange={(mode) => setToolbarDisabled(mode === "move" || mode === "resize")}
   />
 </Presentation.Slide>
 ```
+
+`onSelectionChange` is how UI outside the overlay (a formatting toolbar, a properties panel) follows the selection. It also triggers with an empty selection when the active slide changes, since navigating away drops the selection.
 
 ### Interaction model [#selection-interactions]
 
@@ -115,7 +169,7 @@ Control the accent color with a CSS variable:
 
 ## ThumbnailList [#thumbnail-list]
 
-Virtualized slide strip. Thumbnails are rendered lazily as they scroll into view. Keyboard navigation (↑/↓, Home, End) uses roving focus.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
 
 ```tsx
 <Presentation.ThumbnailList loop />
@@ -129,7 +183,7 @@ Pass a render function to `children` for full control over each item:
 <Presentation.ThumbnailList>
   {({ slides }) =>
     slides.map((slide) => (
-      <Presentation.ThumbnailItem key={slide.id}>
+      <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
         <Presentation.ThumbnailItemPreview />
         <Presentation.ThumbnailItemNumber />
       </Presentation.ThumbnailItem>
@@ -138,7 +192,26 @@ Pass a render function to `children` for full control over each item:
 </Presentation.ThumbnailList>
 ```
 
+### Intercepting navigation [#thumbnail-list-on-select]
+
+`onSelect` runs just before an item becomes the active slide. Call `preventDefault()` to stop it:
+
+```tsx
+<Presentation.ThumbnailItem
+  slideId={slide.id}
+  onSelect={(event) => {
+    if (store.isDirty() && !confirmDiscard()) event.preventDefault();
+  }}
+/>
+```
+
+The list navigates on focus, so this triggers for keyboard roving as well as clicks. That is also why the veto lives here rather than in `onClick`: the browser delivers `focus` before `click`, so a handler that ran on click would arrive after the slide had already changed. Use `onClick` for side effects that do not need to block navigation.
+
+`onSelect` is also what lets a sortable library suppress navigation mid-drag. The strip ships no drag-and-drop of its own; see [Reordering slides](/docs/editing#reordering-slides) for a worked example.
+
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailListProps" />
+
+<AutoTypeTable path="types/presentation.ts" name="ThumbnailItemProps" />
 
 ---
 

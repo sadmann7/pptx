@@ -2,11 +2,18 @@ import * as React from "react";
 
 import type { SlideData } from "@diceui/pptx-core";
 
-import { Context } from "./context";
+import { Context, useStoreEvent } from "./context";
 import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
-import type { PreviewInput, Store } from "./store";
+import type {
+  EditEvent,
+  HistoryChangeEvent,
+  PreviewInput,
+  SlideChangeEvent,
+  StatusChangeEvent,
+  Store,
+} from "./store";
 import { createStore } from "./store";
 
 export interface RootState {
@@ -65,6 +72,18 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   defaultSlideIndex?: number | ((slides: SlideData[]) => number);
 
   /**
+   * Zoom level to open at, where `1` equals 100%.
+   *
+   * Only meaningful without auto-fitting: a `Viewport autoFit` fits on mount
+   * and overrides it.
+   *
+   * ```tsx
+   * <Presentation.Root file={file} defaultZoom={0.5} />
+   * ```
+   */
+  defaultZoom?: number;
+
+  /**
    * When `false`, the source package is retained so the presentation can be
    * edited via `store.edit()` and saved back to a .pptx via `store.save()`.
    *
@@ -96,15 +115,65 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
    * ```
    */
   onError?: (error: Error) => void;
+
+  /**
+   * Event handler called whenever the active slide changes, whether from
+   * navigation, a completed load, an edit that moved the active slide, or a
+   * reset. Inspect `reason` to tell them apart.
+   *
+   * ```tsx
+   * onSlideChange={({ slideId, index, reason }) => {
+   *   if (reason === "navigate") analytics.track("slide_viewed", { index });
+   * }}
+   * ```
+   */
+  onSlideChange?: (event: SlideChangeEvent) => void;
+
+  /**
+   * Event handler called whenever the load status changes, e.g. `"idle"` to
+   * `"loading"` or `"loading"` to `"ready"`. Covers loads started by the
+   * `file` prop and by `store.load()` alike.
+   */
+  onStatusChange?: (event: StatusChangeEvent) => void;
+
+  /**
+   * Event handler called after an edit is applied, undone, or redone.
+   * Inspect `source` to tell them apart.
+   *
+   * ```tsx
+   * onEdit={({ operation, source }) => {
+   *   if (source === "edit") queueAutosave(operation);
+   * }}
+   * ```
+   */
+  onEdit?: (event: EditEvent) => void;
+
+  /**
+   * Event handler called when undo/redo availability or the unsaved-changes
+   * flag moves. Use it to drive toolbar state without polling the store.
+   *
+   * ```tsx
+   * onHistoryChange={({ canUndo, canRedo, isDirty }) => {
+   *   setToolbar({ canUndo, canRedo });
+   *   setHasUnsavedChanges(isDirty);
+   * }}
+   * ```
+   */
+  onHistoryChange?: (event: HistoryChangeEvent) => void;
 }
 
 export function Root({
   file,
   defaultSlideIndex,
+  defaultZoom,
   readOnly,
   render,
   onLoad,
   onError,
+  onSlideChange,
+  onStatusChange,
+  onEdit,
+  onHistoryChange,
   ...rootProps
 }: RootProps) {
   const contextStore = React.useContext(Context);
@@ -123,6 +192,12 @@ export function Root({
   const onLoadRef = useLatestRef(onLoad);
   const onErrorRef = useLatestRef(onError);
   const defaultSlideIndexRef = useLatestRef(defaultSlideIndex);
+  const defaultZoomRef = useLatestRef(defaultZoom);
+
+  useStoreEvent(store, "slideChange", onSlideChange);
+  useStoreEvent(store, "statusChange", onStatusChange);
+  useStoreEvent(store, "edit", onEdit);
+  useStoreEvent(store, "historyChange", onHistoryChange);
 
   React.useEffect(() => {
     // `undefined` means the file API is not in use: Root leaves the store
@@ -136,14 +211,18 @@ export function Root({
     }
 
     store
-      .load(file, { defaultSlideIndex: defaultSlideIndexRef.current, readOnly })
+      .load(file, {
+        defaultSlideIndex: defaultSlideIndexRef.current,
+        defaultZoom: defaultZoomRef.current,
+        readOnly,
+      })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
         // AbortError means a newer load() superseded this one so it's not a real failure.
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
-  }, [store, file, readOnly, defaultSlideIndexRef, onLoadRef, onErrorRef]);
+  }, [store, file, readOnly, defaultSlideIndexRef, defaultZoomRef, onLoadRef, onErrorRef]);
 
   return (
     <Context.Provider value={store}>

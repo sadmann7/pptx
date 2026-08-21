@@ -81,6 +81,17 @@ export interface StoreState {
   zoom: number;
 
   /**
+   * Whether zoom is tracking the container size. While `true`, a mounted
+   * `Presentation.Viewport` refits the slide on every resize; `setZoom`,
+   * `zoomIn`, and `zoomOut` turn it back off.
+   *
+   * Survives `load()` and `reset()`: it describes the viewport, not the deck.
+   *
+   * @default false
+   */
+  isAutoFit: boolean;
+
+  /**
    * Parse progress from `0` to `100`.
    * Only meaningful while `status === "loading"`.
    */
@@ -98,6 +109,93 @@ export interface StoreState {
    */
   revision: number;
 }
+
+/**
+ * What caused the active slide to change.
+ *
+ * - `"navigate"`: `goTo`, `goToIndex`, `next`, or `prev`.
+ * - `"load"`: a presentation finished parsing and its start slide became active.
+ * - `"edit"`: an edit, undo, or redo moved the active slide (e.g. the active
+ *   slide was deleted, or an undo jumped to the slide it touched).
+ * - `"reset"`: the viewer was cleared.
+ */
+export type SlideChangeReason = "navigate" | "load" | "edit" | "reset";
+
+export interface SlideChangeEvent {
+  /** Stable id of the now-active slide, or `null` when the viewer was cleared. */
+  slideId: string | null;
+
+  /** 0-based position of the now-active slide, or `-1` when there is none. */
+  index: number;
+
+  /** Stable id of the previously active slide, or `null` when there was none. */
+  previousSlideId: string | null;
+
+  /** What triggered the change. */
+  reason: SlideChangeReason;
+}
+
+/** What produced an applied edit. */
+export type EditSource = "edit" | "undo" | "redo";
+
+export interface EditEvent {
+  /** The operation that was applied, re-applied, or reverted. */
+  operation: EditOperation;
+
+  /** Result of applying it, including the slides it touched. */
+  result: EditResult;
+
+  /** Whether this came from `edit()`, `undo()`, or `redo()`. */
+  source: EditSource;
+}
+
+export interface HistoryChangeEvent {
+  /** Whether there is now an edit to undo. */
+  canUndo: boolean;
+
+  /** Whether there is now an edit to redo. */
+  canRedo: boolean;
+
+  /** Whether the deck has unsaved changes (see `store.isDirty`). */
+  isDirty: boolean;
+}
+
+export interface StatusChangeEvent {
+  /** The status the store just moved to. */
+  status: PresentationStatus;
+
+  /** The status it moved from. */
+  previousStatus: PresentationStatus;
+}
+
+/** What produced a zoom change. */
+export type ZoomChangeReason = "zoom" | "fit" | "load" | "reset";
+
+export interface ZoomChangeEvent {
+  /** The new zoom level, where `1` equals 100%. */
+  zoom: number;
+
+  /** The zoom level it changed from. */
+  previousZoom: number;
+
+  /**
+   * What triggered the change. `"fit"` covers both `fitTo()` and the automatic
+   * fits a `Viewport autoFit` performs, which is how a zoom control tells a
+   * container resize apart from a level someone asked for.
+   */
+  reason: ZoomChangeReason;
+}
+
+/** Payload delivered to each `store.on()` event. */
+export interface StoreEventMap {
+  slideChange: SlideChangeEvent;
+  edit: EditEvent;
+  historyChange: HistoryChangeEvent;
+  statusChange: StatusChangeEvent;
+  zoomChange: ZoomChangeEvent;
+}
+
+type StoreEventHandler<E extends keyof StoreEventMap> = (payload: StoreEventMap[E]) => void;
 
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
 export interface Store {
@@ -117,6 +215,27 @@ export interface Store {
    * @returns A function that removes the subscription when called.
    */
   subscribe: (listener: () => void) => () => void;
+
+  /**
+   * Listen for a specific store event.
+   *
+   * Unlike `subscribe`, which triggers on every state change and carries no
+   * payload, these events describe what happened and why: the reason for a
+   * change is known at the mutation site and cannot be recovered by diffing
+   * two state snapshots.
+   *
+   * Handlers run after the state has been updated and `subscribe` listeners
+   * have been notified, so `getState()` is already current.
+   *
+   * ```ts
+   * const unsubscribe = store.on("slideChange", ({ slideId, reason }) => {
+   *   console.log("now on", slideId, "because of", reason);
+   * });
+   * ```
+   *
+   * @returns A function that removes the listener when called.
+   */
+  on: <E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>) => () => void;
 
   /**
    * Parse and display a presentation file.
@@ -160,6 +279,14 @@ export interface Store {
        * ```
        */
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+
+      /**
+       * Zoom level to start at, where `1` equals 100%.
+       *
+       * Only meaningful without auto-fitting: a `Viewport autoFit` fits on
+       * mount and overrides it.
+       */
+      defaultZoom?: number;
 
       /**
        * When `true`, only the active slide's contents are parsed during
@@ -231,29 +358,47 @@ export interface Store {
 
   /**
    * Set the zoom level directly.
-   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`.
+   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`. Turns auto-fit off, so the next
+   * container resize leaves the level alone.
    *
    * @default 1
    */
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`.
+   * Increase zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`.
+   * Decrease zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
 
   /**
+   * Turn auto-fit on or off. While on, a mounted `Presentation.Viewport`
+   * fits the slide to itself immediately and on every resize.
+   *
+   * A `Viewport autoFit` sets this on mount, so a zoom control only needs it
+   * to return to fitting after an explicit level:
+   *
+   * ```ts
+   * store.setAutoFit(true); // "Fit"
+   * store.setZoom(1.5); // releases it again
+   * ```
+   */
+  setAutoFit: (isAutoFit: boolean) => void;
+
+  /**
    * Fit the presentation to a container by computing the largest zoom level
    * that keeps all slides fully visible.
+   *
+   * A one-shot measurement: it does not turn auto-fit on, so nothing refits
+   * on the next resize. Use `setAutoFit(true)` for that.
    *
    * ```ts
    * store.fitTo(containerWidth, containerHeight, 32);
@@ -317,6 +462,20 @@ export interface Store {
   canRedo: () => boolean;
 
   /**
+   * Returns `true` when the deck has edits that have not been written out by
+   * `save()`. Undoing back to the last saved point clears it again.
+   *
+   * Use it to guard navigation away from unsaved work:
+   *
+   * ```ts
+   * window.addEventListener("beforeunload", (event) => {
+   *   if (store.isDirty()) event.preventDefault();
+   * });
+   * ```
+   */
+  isDirty: () => boolean;
+
+  /**
    * Serialize the (possibly edited) presentation back to a .pptx archive.
    * Requires the deck to have been loaded with `{ readOnly: false }`.
    */
@@ -378,13 +537,33 @@ function clamp(value: number, min: number, max: number): number {
 export function createStore(): Store {
   let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
+  const eventListeners: { [E in keyof StoreEventMap]: Set<StoreEventHandler<E>> } = {
+    slideChange: new Set(),
+    edit: new Set(),
+    historyChange: new Set(),
+    statusChange: new Set(),
+    zoomChange: new Set(),
+  };
   let loadGeneration = 0;
   let embeddedFonts: EmbeddedFontsHandle | undefined;
+
+  /**
+   * Reason for the zoom write in flight, read by `emitStateEvents`. Zoom is
+   * written from several paths and the state diff alone cannot say which, so
+   * each mutation site records it here first.
+   */
+  let zoomChangeReason: ZoomChangeReason = "zoom";
 
   let slideIndexById = new Map<string, number>();
 
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
+  /**
+   * Undo-stack depth as of the last `save()`. The deck is clean while the
+   * stack sits exactly here, so undoing back to a saved state clears the dirty
+   * flag. `-1` marks the save point unreachable (see `edit()`).
+   */
+  let savedUndoDepth = 0;
   let slideRevisionById = new Map<string, number>();
   let slideContentRevisionById = new Map<string, number>();
 
@@ -404,15 +583,38 @@ export function createStore(): Store {
     update: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
   ): void {
     const patch = typeof update === "function" ? update(state) : update;
+    const previous = state;
     state = { ...state, ...patch };
     if ("presentation" in patch) rebuildSlideIndex(state.presentation);
     emit();
+    emitStateEvents(previous);
   }
 
   function replaceState(nextState: StoreState): void {
+    const previous = state;
     state = nextState;
     rebuildSlideIndex(nextState.presentation);
     emit();
+    emitStateEvents(previous);
+  }
+
+  /**
+   * Events that are a pure function of two state snapshots are emitted here,
+   * so every path that writes state reports them without having to remember
+   * to. Events that carry more than the diff (`slideChange`'s reason, `edit`'s
+   * operation) are emitted at their mutation site instead.
+   */
+  function emitStateEvents(previous: StoreState): void {
+    if (state.status !== previous.status) {
+      emitEvent("statusChange", { status: state.status, previousStatus: previous.status });
+    }
+    if (state.zoom !== previous.zoom) {
+      emitEvent("zoomChange", {
+        zoom: state.zoom,
+        previousZoom: previous.zoom,
+        reason: zoomChangeReason,
+      });
+    }
   }
 
   function getState(): StoreState {
@@ -424,10 +626,55 @@ export function createStore(): Store {
     return () => listeners.delete(listener);
   }
 
+  function on<E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>): () => void {
+    const handlers = eventListeners[event] as Set<StoreEventHandler<E>>;
+    handlers.add(handler);
+    return () => {
+      handlers.delete(handler);
+    };
+  }
+
+  function emitEvent<E extends keyof StoreEventMap>(event: E, payload: StoreEventMap[E]): void {
+    for (const handler of eventListeners[event] as Set<StoreEventHandler<E>>) handler(payload);
+  }
+
+  /**
+   * Emit `slideChange` when the active slide actually moved. Call after the
+   * state update so handlers observe the new state.
+   */
+  function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
+    const slideId = state.activeSlideId;
+    if (slideId === previousSlideId) return;
+    emitEvent("slideChange", {
+      slideId,
+      index: slideId ? getSlideIndex(slideId) : -1,
+      previousSlideId,
+      reason,
+    });
+  }
+
+  function historySnapshot(): HistoryChangeEvent {
+    return { canUndo: canUndo(), canRedo: canRedo(), isDirty: isDirty() };
+  }
+
+  /** Emit `historyChange` when undo/redo availability or dirtiness moved. */
+  function emitHistoryChange(previous: HistoryChangeEvent): void {
+    const next = historySnapshot();
+    if (
+      next.canUndo === previous.canUndo &&
+      next.canRedo === previous.canRedo &&
+      next.isDirty === previous.isDirty
+    ) {
+      return;
+    }
+    emitEvent("historyChange", next);
+  }
+
   async function load(
     input: PreviewInput,
     options?: {
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
+      defaultZoom?: number;
       lazySlides?: boolean;
       embedFonts?: boolean;
       readOnly?: boolean;
@@ -435,11 +682,24 @@ export function createStore(): Store {
   ): Promise<PresentationData> {
     loadGeneration += 1;
     const gen = loadGeneration;
+    // Captured before the state is cleared below: the transient drop to
+    // `null` while loading is not a slide change worth reporting.
+    const previousSlideId = state.activeSlideId;
+    const previousHistory = historySnapshot();
 
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
     clearEditHistory();
-    replaceState({ ...DEFAULT_STORE_STATE, status: "loading", progress: 0 });
+    zoomChangeReason = "load";
+    // `isAutoFit` describes the mounted viewport, which outlives the deck, so
+    // a load carries it over instead of dropping back to the idle default.
+    replaceState({
+      ...DEFAULT_STORE_STATE,
+      isAutoFit: state.isAutoFit,
+      status: "loading",
+      progress: 0,
+    });
+    emitHistoryChange(previousHistory);
 
     // Progress = workDone / workTotal in byte-equivalent units (see cost
     // model above). The budget grows once font bytes are known after unzip;
@@ -531,15 +791,22 @@ export function createStore(): Store {
         if (gen !== loadGeneration) throw ABORT_ERROR;
       }
 
+      const defaultZoom = options?.defaultZoom;
+      zoomChangeReason = "load";
       replaceState({
         status: "ready",
         presentation,
         activeSlideId: startSlide?.id ?? null,
-        zoom: 1,
+        zoom:
+          defaultZoom !== undefined && Number.isFinite(defaultZoom)
+            ? clamp(defaultZoom, MIN_ZOOM, MAX_ZOOM)
+            : 1,
+        isAutoFit: state.isAutoFit,
         progress: 100,
         error: null,
         revision: 0,
       });
+      emitSlideChange(previousSlideId, "load");
 
       return presentation;
     } catch (error) {
@@ -571,7 +838,8 @@ export function createStore(): Store {
   function goTo(slideId: string): void {
     const { presentation } = state;
     if (!presentation) return;
-    if (state.activeSlideId === slideId) return;
+    const previousSlideId = state.activeSlideId;
+    if (previousSlideId === slideId) return;
     const index = slideIndexById.get(slideId);
     if (index === undefined) return;
 
@@ -581,6 +849,7 @@ export function createStore(): Store {
     if (target) materializeSlide(presentation, target);
 
     setState({ activeSlideId: slideId });
+    emitSlideChange(previousSlideId, "navigate");
   }
 
   function goToIndex(index: number): void {
@@ -614,19 +883,34 @@ export function createStore(): Store {
     return getActiveSlideIndex() > 0;
   }
 
-  function setZoom(zoom: number): void {
+  /**
+   * Single write path for zoom. `isAutoFit` is written alongside the level so
+   * that releasing auto-fit and applying the level someone picked land in one
+   * notification instead of two.
+   */
+  function applyZoom(zoom: number, reason: ZoomChangeReason, isAutoFit = state.isAutoFit): void {
     if (!Number.isFinite(zoom)) return;
     const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
-    if (Object.is(clamped, state.zoom)) return;
-    setState({ zoom: clamped });
+    if (Object.is(clamped, state.zoom) && isAutoFit === state.isAutoFit) return;
+    zoomChangeReason = reason;
+    setState({ zoom: clamped, isAutoFit });
+  }
+
+  function setZoom(zoom: number): void {
+    applyZoom(zoom, "zoom", false);
   }
 
   function zoomIn(step = DEFAULT_ZOOM_STEP): void {
-    setZoom(state.zoom + step);
+    applyZoom(state.zoom + step, "zoom", false);
   }
 
   function zoomOut(step = DEFAULT_ZOOM_STEP): void {
-    setZoom(state.zoom - step);
+    applyZoom(state.zoom - step, "zoom", false);
+  }
+
+  function setAutoFit(isAutoFit: boolean): void {
+    if (state.isAutoFit === isAutoFit) return;
+    setState({ isAutoFit });
   }
 
   function fitTo(
@@ -640,22 +924,32 @@ export function createStore(): Store {
     const availW = containerWidth - left - right;
     const availH = containerHeight - top - bottom;
     if (availW <= 0 || availH <= 0) return;
-    setZoom(Math.min(availW / presentation.width, availH / presentation.height));
+    applyZoom(Math.min(availW / presentation.width, availH / presentation.height), "fit");
   }
 
   function reset(): void {
     loadGeneration += 1;
+    const previousSlideId = state.activeSlideId;
+    const previousHistory = historySnapshot();
     embeddedFonts?.dispose();
     embeddedFonts = undefined;
     clearEditHistory();
-    replaceState({ ...DEFAULT_STORE_STATE });
+    zoomChangeReason = "reset";
+    replaceState({ ...DEFAULT_STORE_STATE, isAutoFit: state.isAutoFit });
+    emitSlideChange(previousSlideId, "reset");
+    emitHistoryChange(previousHistory);
   }
 
   function clearEditHistory(): void {
     undoStack = [];
     redoStack = [];
+    savedUndoDepth = 0;
     slideRevisionById = new Map();
     slideContentRevisionById = new Map();
+  }
+
+  function isDirty(): boolean {
+    return undoStack.length !== savedUndoDepth;
   }
 
   function getSlideRevision(slideId: string): number {
@@ -688,6 +982,8 @@ export function createStore(): Store {
     const { presentation } = state;
     if (!presentation) return;
 
+    const previousSlideId = state.activeSlideId;
+
     for (const slideId of affectedSlideIds) {
       slideRevisionById.set(slideId, getSlideRevision(slideId) + 1);
       if (!transformOnly) {
@@ -714,6 +1010,7 @@ export function createStore(): Store {
     if (activeSlide) materializeSlide(presentation, activeSlide);
 
     setState({ activeSlideId, revision: state.revision + 1 });
+    emitSlideChange(previousSlideId, "edit");
   }
 
   async function edit(op: EditOperation): Promise<EditResult> {
@@ -727,15 +1024,25 @@ export function createStore(): Store {
       );
     }
 
+    const previousHistory = historySnapshot();
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, op);
+
+    // A new edit made while below the save point discards the path back to
+    // it, so that depth no longer means "saved": the deck stays dirty until
+    // the next save.
+    if (savedUndoDepth > undoStack.length) savedUndoDepth = -1;
+
     undoStack.push({ op, result });
     redoStack = [];
     commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
+    emitEvent("edit", { operation: op, result, source: "edit" });
+    emitHistoryChange(previousHistory);
     return result;
   }
 
   function undo(): boolean {
+    const previousHistory = historySnapshot();
     const entry = undoStack.pop();
     if (!entry) return false;
     const prevActiveIndex = getActiveSlideIndex();
@@ -747,10 +1054,13 @@ export function createStore(): Store {
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
     commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op));
+    emitEvent("edit", { operation: entry.op, result: entry.result, source: "undo" });
+    emitHistoryChange(previousHistory);
     return true;
   }
 
   async function redo(): Promise<boolean> {
+    const previousHistory = historySnapshot();
     const entry = redoStack.pop();
     if (!entry) return false;
     const { presentation } = state;
@@ -761,6 +1071,8 @@ export function createStore(): Store {
     const result = await applyEdit(presentation, entry.op);
     undoStack.push({ op: entry.op, result });
     commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
+    emitEvent("edit", { operation: entry.op, result, source: "redo" });
+    emitHistoryChange(previousHistory);
     return true;
   }
 
@@ -782,12 +1094,18 @@ export function createStore(): Store {
         "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
       );
     }
-    return writePptx(presentation, options);
+    const previousHistory = historySnapshot();
+    const bytes = await writePptx(presentation, options);
+    // Everything up to here is now on disk: this depth is the clean state.
+    savedUndoDepth = undoStack.length;
+    emitHistoryChange(previousHistory);
+    return bytes;
   }
 
   return {
     getState,
     subscribe,
+    on,
     load,
     reset,
     goTo,
@@ -797,6 +1115,7 @@ export function createStore(): Store {
     setZoom,
     zoomIn,
     zoomOut,
+    setAutoFit,
     fitTo,
     getSlideIndex,
     getActiveSlideIndex,
@@ -808,6 +1127,7 @@ export function createStore(): Store {
     redo,
     canUndo,
     canRedo,
+    isDirty,
     save,
     getSlideRevision,
     getSlideContentRevision,

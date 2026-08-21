@@ -13,7 +13,7 @@ This is a library for viewing and editing PowerPoint presentations in the browse
 - **Editing**: Move, resize (with aspect-ratio lock), multi-select, marquee, inline text editing, and full undo/redo.
 - **Keyboard shortcuts**: Ctrl+Z/Y, arrow nudge, Delete, Escape, Ctrl+A matching PowerPoint behavior.
 - **Embedded fonts**: Decodes and registers ODTTF/MTX fonts from the PPTX so slides render with the original typefaces.
-- **Thumbnail strip**: Virtualized slide list with lazy rendering and a shared render queue so large decks never block the main thread.
+- **Thumbnail strip**: Slide list with lazy miniature rendering and a shared render queue so large decks never block the main thread.
 - **Auto-fit zoom**: Slide scales to fill the viewport and re-fits on window resize.
 - **Lossless save**: Round-trips untouched parts byte-for-byte; only edited slides are re-serialized.
 - **Composable API**: Primitive components you assemble like shadcn/ui. Bring your own layout and styles.

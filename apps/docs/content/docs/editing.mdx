@@ -3,6 +3,8 @@ title: Editing
 description: Move, resize, and edit text in presentations.
 ---
 
+<PresentationEditingDemo />
+
 Editing requires two things: loading the presentation with `readOnly={false}`, and placing `Presentation.Selection` inside `Presentation.Slide`.
 
 ```tsx
@@ -138,3 +140,69 @@ store.redo(); // re-applies the last undone edit
 ```
 
 Cross-slide edits navigate to the affected slide automatically on undo/redo.
+
+## Reordering slides
+
+Moving a slide is an edit like any other, so it is undoable and included in `isDirty`. The thumbnail strip deliberately ships no drag-and-drop: reordering is left to whatever sortable library you already use, and `Presentation.ThumbnailItem` is built to be wrapped by one. It forwards `ref`, merges arbitrary props and event handlers, and lets your `style` win over its internals so transforms animate normally.
+
+Commit the drop as a `moveSlide` edit:
+
+```tsx
+async function onDragEnd({ active, over }: DragEndEvent) {
+  if (!over || active.id === over.id) return;
+  const toIndex = slideIds.indexOf(String(over.id));
+  await store.edit({ type: "moveSlide", slideId: String(active.id), toIndex });
+}
+```
+
+A few things are worth knowing when wiring this up:
+
+- dnd-kit's `attributes` set `role="button"` and `tabIndex={0}`. Both would override what the list needs, replacing the `option` role and putting every thumbnail in the tab order instead of the single roving tab stop. Drop those two keys and spread the rest.
+- Give the pointer sensor a small activation distance (`{ distance: 4 }`), or a plain click starts a drag instead of selecting the slide.
+- `store.edit()` is async, so hold the dropped order in local state until it settles; otherwise the strip snaps back to the old order for a frame.
+- Clamp the drag with `restrictToFirstScrollableAncestor`. The strip scrolls vertically, and a transformed child still counts toward its scroll container's overflow, so an unclamped drag past the last thumbnail grows `scrollHeight`, which lets auto-scroll run, which grows the transform again — the list scrolls for as long as you hold the pointer at the edge.
+- Give a drag overlay's thumbnail the `decorative` prop. The overlay is a second copy of a slide that is still in the list, and without it the copy takes the original's place in the roving focus map, unregisters it on drop, and the deck is announced with a duplicate option.
+
+```tsx
+<DragOverlay>
+  {draggedId ? (
+    <Presentation.ThumbnailItem decorative slideId={draggedId}>
+      <Presentation.ThumbnailItemNumber />
+      <Presentation.ThumbnailItemPreview />
+    </Presentation.ThumbnailItem>
+  ) : null}
+</DragOverlay>
+```
+
+Render the overlay inside `Presentation.ThumbnailList` so the copy can reach the list context it needs to paint a real miniature. It is fixed-positioned, so the strip's overflow will not clip it.
+
+The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt+↑, for example) pass through untouched.
+
+The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. Here it is in full:
+
+<include lang="tsx" meta='title="presentation-editing-demo.tsx"'>
+  ../../src/components/presentation-editing-demo.tsx
+</include>
+
+## Unsaved changes
+
+`store.isDirty()` reports whether there are edits that `save()` has not written out. Undoing back to the last saved state clears it again, so a user who undoes their way back to where they started is not warned for nothing:
+
+```tsx
+window.addEventListener("beforeunload", (event) => {
+  if (store.isDirty()) event.preventDefault();
+});
+```
+
+Rather than polling it, take it from `onHistoryChange`, which triggers whenever undo/redo availability or dirtiness moves:
+
+```tsx
+<Presentation.Root
+  file={file}
+  readOnly={false}
+  onHistoryChange={({ canUndo, canRedo, isDirty }) => {
+    setToolbar({ canUndo, canRedo });
+    setHasUnsavedChanges(isDirty);
+  }}
+/>
+```

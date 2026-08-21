@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
+import type { SlideChangeEvent, ZoomChangeEvent } from "../store";
 import { createStore } from "../store";
 import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
 import { loadFixture } from "./test-utils";
@@ -195,6 +196,50 @@ describe("zoom", () => {
     expect(store.getState().zoom).toBeCloseTo(0.5, 9);
   });
 
+  it("releases auto-fit when an explicit level is set", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    store.setZoom(1.5);
+    expect(store.getState().isAutoFit).toBe(false);
+
+    store.setAutoFit(true);
+    store.zoomIn();
+    expect(store.getState().isAutoFit).toBe(false);
+
+    store.setAutoFit(true);
+    store.zoomOut();
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("releases auto-fit even when the level is already current", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    store.setZoom(store.getState().zoom);
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("fitTo measures without arming auto-fit", async () => {
+    const store = await loadedStore();
+    store.fitTo(640, 360);
+
+    expect(store.getState().zoom).toBeCloseTo(0.5, 9);
+    expect(store.getState().isAutoFit).toBe(false);
+  });
+
+  it("keeps auto-fit across load and reset", async () => {
+    const store = await loadedStore();
+    store.setAutoFit(true);
+
+    // The flag describes the mounted viewport, which outlives both.
+    await store.load(fixture);
+    expect(store.getState().isAutoFit).toBe(true);
+
+    store.reset();
+    expect(store.getState().isAutoFit).toBe(true);
+  });
+
   it("fitTo supports per-side padding objects", async () => {
     const store = await loadedStore();
     // 1280x720 slide; horizontal padding is the limiting axis.
@@ -233,5 +278,168 @@ describe("reset and subscriptions", () => {
     unsubscribe();
     store.next();
     expect(notifications).toBe(1);
+  });
+});
+
+describe("statusChange and zoomChange events", () => {
+  it("reports each status transition through a load", async () => {
+    const store = createStore();
+    const transitions: string[] = [];
+    store.on("statusChange", ({ status, previousStatus }) =>
+      transitions.push(`${previousStatus}->${status}`),
+    );
+
+    await store.load(fixture);
+    expect(transitions).toEqual(["idle->loading", "loading->ready"]);
+
+    store.reset();
+    expect(transitions.at(-1)).toBe("ready->idle");
+  });
+
+  it("reports a failed load as a transition to error", async () => {
+    const store = createStore();
+    const transitions: string[] = [];
+    store.on("statusChange", ({ status }) => transitions.push(status));
+
+    await expect(store.load(new ArrayBuffer(16))).rejects.toThrow();
+    expect(transitions).toEqual(["loading", "error"]);
+  });
+
+  it("reports zoom changes once per effective change", async () => {
+    const store = await loadedStore();
+    const zooms: number[] = [];
+    store.on("zoomChange", ({ zoom }) => zooms.push(zoom));
+
+    store.zoomIn();
+    store.setZoom(1.25); // No-op: already there.
+    store.fitTo(640, 360);
+    expect(zooms).toEqual([1.25, 0.5]);
+  });
+
+  it("reports the previous zoom alongside the new one", async () => {
+    const store = await loadedStore();
+    let event: ZoomChangeEvent | null = null;
+    store.on("zoomChange", (payload) => {
+      event = payload;
+    });
+
+    store.setZoom(2);
+    expect(event).toEqual({ zoom: 2, previousZoom: 1, reason: "zoom" });
+  });
+
+  it("reports what produced each zoom change", async () => {
+    const store = await loadedStore();
+    const reasons: string[] = [];
+    store.on("zoomChange", ({ reason }) => reasons.push(reason));
+
+    store.setZoom(2);
+    store.zoomOut(0.5);
+    store.fitTo(640, 360);
+    store.reset();
+
+    expect(reasons).toEqual(["zoom", "zoom", "fit", "reset"]);
+  });
+
+  it("opens at defaultZoom", async () => {
+    const store = createStore();
+    await store.load(await loadFixture(), { defaultZoom: 0.5, embedFonts: false });
+
+    expect(store.getState().zoom).toBe(0.5);
+  });
+});
+
+describe("slideChange events", () => {
+  it("reports the new slide, the previous one, and why it changed", async () => {
+    const store = await loadedStore();
+    const slides = store.getState().presentation!.slides;
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    store.next();
+    expect(events).toEqual([
+      {
+        slideId: slides[1].id,
+        index: 1,
+        previousSlideId: slides[0].id,
+        reason: "navigate",
+      },
+    ]);
+  });
+
+  it("triggers once per navigation regardless of which action triggered it", async () => {
+    const store = await loadedStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    store.next();
+    store.prev();
+    store.goToIndex(2);
+    store.goTo(store.getState().presentation!.slides[0].id);
+
+    expect(events.map((event) => event.index)).toEqual([1, 0, 2, 0]);
+    expect(events.every((event) => event.reason === "navigate")).toBe(true);
+  });
+
+  it("stays quiet when navigation is a no-op", async () => {
+    const store = await loadedStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    // Already on the first slide.
+    store.prev();
+    store.goToIndex(0);
+    store.goTo(store.getState().activeSlideId!);
+    store.goTo("ppt/slides/nope.xml");
+
+    expect(events).toHaveLength(0);
+  });
+
+  it("reports the start slide on load and the cleared slide on reset", async () => {
+    const store = createStore();
+    const events: SlideChangeEvent[] = [];
+    store.on("slideChange", (event) => events.push(event));
+
+    await store.load(fixture, { defaultSlideIndex: 1 });
+    expect(events).toHaveLength(1);
+    expect(events[0].reason).toBe("load");
+    expect(events[0].index).toBe(1);
+    expect(events[0].previousSlideId).toBeNull();
+
+    const loadedSlideId = events[0].slideId;
+    store.reset();
+    expect(events).toHaveLength(2);
+    expect(events[1]).toEqual({
+      slideId: null,
+      index: -1,
+      previousSlideId: loadedSlideId,
+      reason: "reset",
+    });
+  });
+
+  it("exposes state that is already current when the handler runs", async () => {
+    const store = await loadedStore();
+    let seen: { active: string | null; index: number } | null = null;
+    store.on("slideChange", (event) => {
+      seen = { active: store.getState().activeSlideId, index: store.getActiveSlideIndex() };
+      expect(event.slideId).toBe(store.getState().activeSlideId);
+    });
+
+    store.goToIndex(2);
+    expect(seen).toEqual({ active: store.getState().activeSlideId, index: 2 });
+  });
+
+  it("stops delivering after the listener is removed", async () => {
+    const store = await loadedStore();
+    let count = 0;
+    const off = store.on("slideChange", () => {
+      count++;
+    });
+
+    store.next();
+    expect(count).toBe(1);
+
+    off();
+    store.next();
+    expect(count).toBe(1);
   });
 });
