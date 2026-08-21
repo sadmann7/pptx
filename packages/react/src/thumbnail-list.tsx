@@ -713,6 +713,15 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
      */
     const ownsCachedHandleRef = React.useRef(false);
     const hasRenderedRef = React.useRef(false);
+    /** Slide the currently attached miniature was rendered for. */
+    const attachedSlideIdRef = React.useRef<string | null>(null);
+    /** Edit revision the attached miniature was rendered at. */
+    const attachedRevisionRef = React.useRef<number | null>(null);
+    /**
+     * Incremented by every run of the observer effect below. A teardown that
+     * sees a newer run knows it was a re-run rather than an unmount.
+     */
+    const observerRunRef = React.useRef(0);
     const { mediaUrlCache, slideHandleCache, observeResize, scheduleRender } = rovingContext;
 
     const slideIndex = store.getSlideIndex(itemContext.slideId);
@@ -759,6 +768,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
     // On exit: detach DOM, keep handle in cache for instant re-attach.
     React.useEffect(() => {
       const itemPreviewElement = itemPreviewRef.current;
+      const run = ++observerRunRef.current;
       if (!itemPreviewElement || !presentation || !slide) return;
       if (typeof IntersectionObserver === "undefined") return;
 
@@ -769,6 +779,8 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
         element.appendChild(slideHandle.element);
         slideHandleRef.current = slideHandle;
+        attachedSlideIdRef.current = slide.id;
+        attachedRevisionRef.current = revisionRef.current;
         ownsCachedHandleRef.current = isCached;
         hasRenderedRef.current = true;
         delete element.dataset.pending;
@@ -777,6 +789,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       const detach = (element: HTMLDivElement) => {
         const slideHandle = slideHandleRef.current;
         slideHandleRef.current = null;
+        attachedSlideIdRef.current = null;
         slideHandle?.element.remove();
         // The cached handle is kept alive for the next mount; a private copy
         // has no other owner, so it is released here.
@@ -785,6 +798,12 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         hasRenderedRef.current = false;
         element.dataset.pending = "";
       };
+
+      // A previous run of this effect can leave a miniature attached (see the
+      // teardown below). Keep it only when it is still the right slide.
+      if (slideHandleRef.current && attachedSlideIdRef.current !== slide.id) {
+        detach(itemPreviewElement);
+      }
 
       let cancelRender: (() => void) | null = null;
 
@@ -811,6 +830,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             if (isCurrent && isAvailable) {
               attach(element, cached.slideHandle, true);
             } else {
+              // Anything still attached here is stale, and it has to go before
+              // its cache entry is retired or the re-render below is skipped.
+              if (slideHandleRef.current) detach(element);
               if (cached && !isCurrent && isAvailable) {
                 // Discard because it was rendered under an older edit revision.
                 cached.slideHandle.dispose();
@@ -843,7 +865,15 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
         intersectionObserver.disconnect();
         cancelRender?.();
         cancelRender = null;
-        detach(itemPreviewElement);
+        // An unmount and a re-run of this effect are indistinguishable here,
+        // and detaching on a re-run blanks the miniature for the frame it takes
+        // a fresh observer to report, which reads as a flash. Defer the
+        // decision: a re-run has already started the next run by now.
+        queueMicrotask(() => {
+          // oxlint-disable-next-line react-hooks/exhaustive-deps -- reading the latest value is the point: it tells a re-run from an unmount
+          if (observerRunRef.current !== run) return;
+          detach(itemPreviewElement);
+        });
       };
     }, [
       presentation,
@@ -864,6 +894,9 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
       if (!slideHandleRef.current) return; // not visible; IO handles it
+      // Effects are re-created whenever React restores this subtree, so an
+      // unchanged revision means the attached miniature is already current.
+      if (attachedRevisionRef.current === revision) return;
 
       const oldHandle = slideHandleRef.current;
       oldHandle.element.remove();
@@ -880,6 +913,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
       element.appendChild(slideHandle.element);
       slideHandleRef.current = slideHandle;
+      attachedRevisionRef.current = revision;
       ownsCachedHandleRef.current = claimThumbnailCache(
         slideHandleCache,
         slide.id,
