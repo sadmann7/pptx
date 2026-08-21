@@ -15,6 +15,7 @@ import * as Presentation from "@diceui/pptx";
   readOnly={false}
   defaultZoom={0.5}
   onLoad={(store) => {}}
+  onError={(error) => {}}
   onSlideChange={({ slideId, index, reason }) => {}}
   onStatusChange={({ status }) => {}}
   onEdit={({ operation, source }) => {}}
@@ -24,9 +25,9 @@ import * as Presentation from "@diceui/pptx";
 </Presentation.Root>;
 ```
 
-`onSlideChange` fires for every change of the active slide. Use `reason` to tell user navigation (`"navigate"`) apart from a completed load (`"load"`), an edit that moved the active slide (`"edit"`), and a cleared viewer (`"reset"`).
+`onSlideChange` triggers for every change of the active slide. Use `reason` to tell user navigation (`"navigate"`) apart from a completed load (`"load"`), an edit that moved the active slide (`"edit"`), and a cleared viewer (`"reset"`).
 
-`onEdit` fires after an edit is applied, undone, or redone, with `source` naming which of the three it was. `onHistoryChange` fires whenever undo/redo availability or the unsaved-changes flag moves, which is enough to drive a toolbar without polling the store.
+`onEdit` triggers after an edit is applied, undone, or redone, with `source` naming which of the three it was. `onHistoryChange` triggers whenever undo/redo availability or the unsaved-changes flag moves, which is enough to drive a toolbar without polling the store.
 
 <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
@@ -39,14 +40,17 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 ```tsx
 <Presentation.Viewport
   autoFit
-  autoFitPadding={32}
-  onZoomChange={({ zoom }) => setZoomLabel(`${Math.round(zoom * 100)}%`)}
+  autoFitPadding={10}
+  scrollNavigation
+  onZoomChange={({ zoom, reason }) => setZoom(`${Math.round(zoom * 100)}%`)}
 >
   <Presentation.Slide />
 </Presentation.Viewport>
 ```
 
 `onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
+
+`scrollNavigation` makes the wheel behave like PowerPoint: scrolling past the end of the slide advances, past the start goes back. It is off by default because it captures wheel events, which fights a page that already scrolls.
 
 `autoFit` is the starting mode, not a latch. Setting an explicit level turns fitting off so the next resize leaves that level alone, and `setAutoFit(true)` turns it back on, which means a zoom control offering both keeps no state of its own:
 
@@ -124,7 +128,7 @@ Must be placed inside `Presentation.Slide`.
 </Presentation.Slide>
 ```
 
-`onSelectionChange` is how UI outside the overlay (a formatting toolbar, a properties panel) follows the selection. It also fires with an empty selection when the active slide changes, since navigating away drops the selection.
+`onSelectionChange` is how UI outside the overlay (a formatting toolbar, a properties panel) follows the selection. It also triggers with an empty selection when the active slide changes, since navigating away drops the selection.
 
 ### Interaction model [#selection-interactions]
 
@@ -165,7 +169,7 @@ Control the accent color with a CSS variable:
 
 ## ThumbnailList [#thumbnail-list]
 
-Virtualized slide strip. Thumbnails are rendered lazily as they scroll into view. Keyboard navigation (↑/↓, Home, End) uses roving focus.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
 
 ```tsx
 <Presentation.ThumbnailList loop />
@@ -201,7 +205,7 @@ Pass a render function to `children` for full control over each item:
 />
 ```
 
-The list navigates on focus, so this fires for keyboard roving as well as clicks. That is also why the veto lives here rather than in `onClick`: the browser delivers `focus` before `click`, so a handler that ran on click would arrive after the slide had already changed. Use `onClick` for side effects that do not need to block navigation.
+The list navigates on focus, so this triggers for keyboard roving as well as clicks. That is also why the veto lives here rather than in `onClick`: the browser delivers `focus` before `click`, so a handler that ran on click would arrive after the slide had already changed. Use `onClick` for side effects that do not need to block navigation.
 
 `onSelect` is also what lets a sortable library suppress navigation mid-drag. The strip ships no drag-and-drop of its own; see [Reordering slides](/docs/editing#reordering-slides) for a worked example.
 

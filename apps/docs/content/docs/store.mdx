@@ -126,8 +126,21 @@ store.undo(): boolean
 await store.redo(): Promise<boolean>
 store.canUndo(): boolean
 store.canRedo(): boolean
+store.isDirty(): boolean
 await store.save(options?): Promise<Uint8Array>
 store.getSlideRevision(slideId: string): number
+```
+
+### Events
+
+`store.on(event, handler)` is the low-level channel the Root/Viewport callback props wrap. It returns an unsubscribe function.
+
+```ts
+store.on("slideChange", ({ slideId, index, reason }) => {});
+store.on("statusChange", ({ status, previousStatus }) => {});
+store.on("edit", ({ operation, source }) => {});
+store.on("historyChange", ({ canUndo, canRedo, isDirty }) => {});
+store.on("zoomChange", ({ zoom, previousZoom, reason }) => {});
 ```
 
 ## Edit operations

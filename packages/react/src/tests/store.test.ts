@@ -366,7 +366,7 @@ describe("slideChange events", () => {
     ]);
   });
 
-  it("fires once per navigation regardless of which action triggered it", async () => {
+  it("triggers once per navigation regardless of which action triggered it", async () => {
     const store = await loadedStore();
     const events: SlideChangeEvent[] = [];
     store.on("slideChange", (event) => events.push(event));

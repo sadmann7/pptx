@@ -476,7 +476,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
   /**
    * Runs just before this item becomes the active slide, whether from a click
    * or from keyboard roving (arrowing through the list changes slides, so it
-   * fires there too). Call `preventDefault()` to stop the navigation.
+   * triggers there too). Call `preventDefault()` to stop the navigation.
    *
    * This exists because the list navigates on focus, which the browser
    * delivers before `click`: a veto expressed in `onClick` would arrive after
@@ -761,7 +761,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       });
     }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
-    // The IntersectionObserver fires when this preview enters/leaves the
+    // The IntersectionObserver triggers when this preview enters/leaves the
     // rootMargin zone (200px above and below the scroll container). On entry:
     //   - Cache hit  → re-attach synchronously (zero pending flash)
     //   - Cache miss → enqueue renderSlide() on the budgeted queue
@@ -887,7 +887,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
 
     // Re-render the miniature in place when an edit bumps the revision,
     // without tearing down the IntersectionObserver (the detach→re-attach
-    // gap was the cause of the thumbnail flash on every edit). Only fires
+    // gap was the cause of the thumbnail flash on every edit). Only triggers
     // when the slide is currently visible/attached; off-screen slides are
     // re-rendered on demand by the IntersectionObserver callback using revisionRef.
     React.useEffect(() => {

@@ -487,9 +487,9 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<SelectionState>;
-  /** Called after `Ctrl+Z` fires. */
+  /** Called after `Ctrl+Z` triggers. */
   onUndo?: (status: "success" | "empty", error?: unknown) => void;
-  /** Called after `Ctrl+Shift+Z` / `Ctrl+Y` fires. */
+  /** Called after `Ctrl+Shift+Z` / `Ctrl+Y` triggers. */
   onRedo?: (status: "success" | "empty", error?: unknown) => void;
   /** Called after a node delete is attempted (keyboard or pointer). */
   onNodeDelete?: (nodeId: string, error?: unknown) => void;
@@ -1272,7 +1272,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * Deselecting on release rather than on press is what keeps touch usable.
    * A scroll begins as a pointerdown on whatever is under the finger, so
    * acting there would drop the selection every time the deck was scrolled.
-   * The browser fires pointercancel when it takes the gesture over for
+   * The browser triggers pointercancel when it takes the gesture over for
    * scrolling, which distinguishes a scroll from a tap without guessing at a
    * movement threshold.
    *
@@ -1316,7 +1316,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
   // detaching our contentEditable element: typed text would go into the
   // detached tree and never appear on screen. SlideImpl is a parent, so its
-  // effect runs after this one; the rAF fires after the whole effects flush,
+  // effect runs after this one; the rAF triggers after the whole effects flush,
   // when the fresh DOM is in place, and re-attaches editing to it.
   React.useEffect(() => {
     debugLog("revision effect", { slideRevision, mode: stateRef.current.mode });
@@ -1742,7 +1742,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
     // Text mode keys are handled by the document listener; this handler
-    // only fires when the overlay div has focus (selected/idle modes).
+    // only triggers when the overlay div has focus (selected/idle modes).
     // Undo/redo shortcuts live in the outer Selection wrapper (document
     // level) so they survive the slide-change remount of this component.
     if (isTextMode) return;

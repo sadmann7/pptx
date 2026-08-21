@@ -194,7 +194,7 @@ window.addEventListener("beforeunload", (event) => {
 });
 ```
 
-Rather than polling it, take it from `onHistoryChange`, which fires whenever undo/redo availability or dirtiness moves:
+Rather than polling it, take it from `onHistoryChange`, which triggers whenever undo/redo availability or dirtiness moves:
 
 ```tsx
 <Presentation.Root

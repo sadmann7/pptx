@@ -219,7 +219,7 @@ export interface Store {
   /**
    * Listen for a specific store event.
    *
-   * Unlike `subscribe`, which fires on every state change and carries no
+   * Unlike `subscribe`, which triggers on every state change and carries no
    * payload, these events describe what happened and why: the reason for a
    * change is known at the mutation site and cannot be recovered by diffing
    * two state snapshots.

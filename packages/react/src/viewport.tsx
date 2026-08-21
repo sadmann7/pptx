@@ -71,7 +71,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * automatic fits performed while `autoFit` is on.
    *
    * ```tsx
-   * onZoomChange={({ zoom }) => setZoomLabel(`${Math.round(zoom * 100)}%`)}
+   * onZoomChange={({ zoom }) => setZoom(`${Math.round(zoom * 100)}%`)}
    * ```
    */
   onZoomChange?: (event: ZoomChangeEvent) => void;
