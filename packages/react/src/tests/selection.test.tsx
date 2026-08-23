@@ -1047,7 +1047,7 @@ describe("keyboard shortcuts", () => {
     const { container } = render(
       <Presentation.Provider store={store}>
         <Presentation.Slide>
-          <Presentation.Selection onUndo={onUndo} />
+          <Presentation.Selection undoRedoShortcuts onUndo={onUndo} />
         </Presentation.Slide>
       </Presentation.Provider>,
     );
@@ -1070,7 +1070,7 @@ describe("keyboard shortcuts", () => {
     const { container } = render(
       <Presentation.Provider store={store}>
         <Presentation.Slide>
-          <Presentation.Selection onRedo={onRedo} />
+          <Presentation.Selection undoRedoShortcuts onRedo={onRedo} />
         </Presentation.Slide>
       </Presentation.Provider>,
     );
@@ -1086,6 +1086,87 @@ describe("keyboard shortcuts", () => {
     await waitFor(() => {
       expect(onRedo).toHaveBeenCalled();
     });
+  });
+
+  it("acts on a keystroke aimed at the overlay", async () => {
+    const onUndo = vi.fn();
+    const { overlay } = await renderSelection({ undoRedoShortcuts: true, onUndo });
+
+    act(() => overlay.focus());
+    act(() => {
+      fireEvent.keyDown(overlay, { key: "z", ctrlKey: true });
+    });
+
+    expect(onUndo).toHaveBeenCalledWith("empty");
+  });
+
+  it("leaves a keystroke aimed outside the presentation to the host page", async () => {
+    const onUndo = vi.fn();
+    const store = await editableStore();
+
+    // A focusable sibling stands in for the rest of the app. It is not a native
+    // undo target, so only the focus boundary can keep the deck out of it.
+    const { container } = render(
+      <Presentation.Provider store={store}>
+        <div data-testid="outside" tabIndex={-1} />
+        <Presentation.Slide>
+          <Presentation.Selection undoRedoShortcuts onUndo={onUndo} />
+        </Presentation.Slide>
+      </Presentation.Provider>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+    });
+
+    const outside = container.querySelector<HTMLDivElement>("[data-testid='outside']")!;
+    act(() => outside.focus());
+    act(() => {
+      fireEvent.keyDown(outside, { key: "z", ctrlKey: true });
+    });
+
+    expect(onUndo).not.toHaveBeenCalled();
+  });
+
+  it("acts on a keystroke from elsewhere inside Root, e.g. the thumbnail strip", async () => {
+    const onUndo = vi.fn();
+    const store = await editableStore();
+
+    // Undo after reordering thumbnails is the motivating case: focus sits on a
+    // thumbnail, which is inside `Root` but outside the overlay.
+    const { container } = render(
+      <Presentation.Provider store={store}>
+        <Presentation.Root>
+          <Presentation.ThumbnailList />
+          <Presentation.Slide>
+            <Presentation.Selection undoRedoShortcuts onUndo={onUndo} />
+          </Presentation.Slide>
+        </Presentation.Root>
+      </Presentation.Provider>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+    });
+
+    const thumbnail = container.querySelectorAll<HTMLElement>("[role='option']")[0];
+    act(() => thumbnail.focus());
+    act(() => {
+      fireEvent.keyDown(thumbnail, { key: "z", ctrlKey: true });
+    });
+
+    expect(onUndo).toHaveBeenCalledWith("empty");
+  });
+
+  it("does not bind the shortcut unless asked to handle it", async () => {
+    const onUndo = vi.fn();
+    await renderSelection({ onUndo });
+
+    act(() => {
+      fireEvent.keyDown(document, { key: "z", ctrlKey: true });
+    });
+
+    expect(onUndo).not.toHaveBeenCalled();
   });
 });
 

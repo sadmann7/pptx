@@ -80,7 +80,7 @@ export function PresentationEditingDemo() {
             <PresentationError />
             <PresentationViewport autoFit autoFitPadding={10}>
               <PresentationSlide>
-                <PresentationSelection />
+                <PresentationSelection undoRedoShortcuts />
               </PresentationSlide>
             </PresentationViewport>
           </PresentationContent>

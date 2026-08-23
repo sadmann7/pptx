@@ -9,6 +9,18 @@ import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
 
+/**
+ * `Presentation.Root`'s DOM node, published for descendants that need the
+ * presentation's focus boundary rather than their own element: `Selection`
+ * listens for undo/redo on the document, and has to tell a keystroke aimed at
+ * the deck (including its thumbnail strip) apart from one aimed at the rest of
+ * the host page.
+ *
+ * A ref rather than state: only event handlers read it, so publishing the
+ * element must not re-render the tree.
+ */
+export const RootContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
+
 export interface ProviderProps {
   /** The `PresentationStore` to make available to descendants. */
   store: Store;

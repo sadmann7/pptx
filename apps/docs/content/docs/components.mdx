@@ -3,7 +3,7 @@ title: Components
 description: API reference for all Presentation primitives.
 ---
 
-## Root [#root]
+## Root
 
 The outermost component. Creates an internal store (or inherits one from `Presentation.Provider`), loads the file, and provides context to all descendants.
 
@@ -33,7 +33,7 @@ import * as Presentation from "@diceui/pptx";
 
 ---
 
-## Viewport [#viewport]
+## Viewport
 
 Scrollable container that centers the slide and optionally auto-fits it to fill the available space.
 
@@ -81,7 +81,7 @@ The viewport keeps measuring itself while fitting is off, so re-arming picks up 
 
 ---
 
-## Slide [#slide]
+## Slide
 
 Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
 
@@ -105,7 +105,7 @@ The wrapper carries a `data-status` attribute matching the current load status:
 
 ---
 
-## Selection [#selection]
+## Selection
 
 PowerPoint-style editing overlay. Enables drag-to-move, resize, inline text editing, multi-select, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
 
@@ -130,7 +130,7 @@ Must be placed inside `Presentation.Slide`.
 
 `onSelectionChange` is how UI outside the overlay (a formatting toolbar, a properties panel) follows the selection. It also triggers with an empty selection when the active slide changes, since navigating away drops the selection.
 
-### Interaction model [#selection-interactions]
+### Interaction model
 
 | Action                                 | Behavior                         |
 | -------------------------------------- | -------------------------------- |
@@ -143,15 +143,17 @@ Must be placed inside `Presentation.Slide`.
 | Drag resize handle                     | Resize                           |
 | Shift + drag corner handle             | Resize preserving aspect ratio   |
 | Ctrl/Cmd + A                           | Select all                       |
-| Shift / Ctrl + click                   | Toggle shape in/out of selection |
+| Shift / Ctrl / Cmd + click             | Toggle shape in/out of selection |
 | Drag empty canvas                      | Marquee select                   |
 | Delete / Backspace                     | Delete selected                  |
 | Arrow keys                             | Nudge (1 px; Shift = 10 px)      |
 | Ctrl/Cmd + Z                           | Undo                             |
-| Ctrl/Cmd + Y or Ctrl + Shift + Z       | Redo                             |
+| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z   | Redo                             |
 | Escape                                 | Exit text mode → deselect        |
 
-### Theming [#selection-theming]
+Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
+
+### Theming
 
 Control the accent color with a CSS variable:
 
@@ -167,7 +169,7 @@ Control the accent color with a CSS variable:
 
 ---
 
-## ThumbnailList [#thumbnail-list]
+## ThumbnailList
 
 Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
 
@@ -175,7 +177,7 @@ Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately
 <Presentation.ThumbnailList loop />
 ```
 
-### Custom layout [#thumbnail-list-custom]
+### Custom layout
 
 Pass a render function to `children` for full control over each item:
 
@@ -192,7 +194,7 @@ Pass a render function to `children` for full control over each item:
 </Presentation.ThumbnailList>
 ```
 
-### Intercepting navigation [#thumbnail-list-on-select]
+### Intercepting navigation
 
 `onSelect` runs just before an item becomes the active slide. Call `preventDefault()` to stop it:
 
@@ -215,7 +217,7 @@ The list navigates on focus, so this triggers for keyboard roving as well as cli
 
 ---
 
-## Loading [#loading]
+## Loading
 
 Renders its children only while the presentation is in the `"loading"` state.
 
@@ -227,7 +229,7 @@ Renders its children only while the presentation is in the `"loading"` state.
 
 ---
 
-## Error [#error]
+## Error
 
 Renders its children only when the presentation fails to parse.
 
