@@ -33,15 +33,19 @@ export function PresentationDemo() {
       })
       .then((buffer) => store.load(buffer))
       .catch(() => {
-        // Fail silently to avoid blocking the main thread
+        // Fail silently to avoid blocking the main thread.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- store is a stable ref, intentionally omitted from deps
   }, []);
 
-  function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { readOnly: false });
+    try {
+      await store.load(file, { readOnly: false });
+    } catch {
+      // Fail silently because `load()` already wrote the failure to `store.error`.
+    }
   }
 
   return (

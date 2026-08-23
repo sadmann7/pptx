@@ -64,7 +64,7 @@ export function PresentationEditingDemo() {
       // Editing and reordering both need the source package retained.
       .then((buffer) => store.load(buffer, { readOnly: false }))
       .catch(() => {
-        // Fail silently to avoid blocking the main thread
+        // Fail silently to avoid blocking the main thread.
       });
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- store is a stable ref, intentionally omitted from deps
   }, []);

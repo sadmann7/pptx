@@ -30,6 +30,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default false
    */
   autoFit?: boolean;
+
   /**
    * When `true`, the mouse wheel navigates between slides like PowerPoint:
    * scrolling past the end of the current slide's scroll range advances to
@@ -43,6 +44,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default false
    */
   scrollNavigation?: boolean;
+
   /**
    * Padding (in pixels) reserved around the slide when fitting.
    * Only used when `autoFit` is `true`.
@@ -59,6 +61,7 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default 0
    */
   autoFitPadding?: AutoFitPadding;
+
   /**
    * Replace the viewport container element.
    * - ReactElement: cloned with composed props

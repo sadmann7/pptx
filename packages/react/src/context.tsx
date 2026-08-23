@@ -202,7 +202,7 @@ export interface UsePresentationResult {
 /**
  * Subscribes to top-level presentation state: parse status, progress, and errors.
  *
- * Must be called inside a `<Presentation.Root>` tree.
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
  *
  * Each field is subscribed independently so that unrelated store updates
  * (zoom changes, slide navigation) do not cause consumers to re-render.
@@ -264,7 +264,7 @@ export interface UseSlideResult {
 /**
  * Subscribes to slide navigation state and exposes navigation actions.
  *
- * Must be called inside a `<Presentation.Root>` tree.
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
  */
 export function useSlide(): UseSlideResult {
   const store = useStoreContext("useSlide");
@@ -339,8 +339,8 @@ export interface UseZoomResult {
 /**
  * Subscribes to zoom state and exposes zoom actions.
  *
- * Must be called inside a `<Presentation.Root>` tree. Fitting needs a
- * measured container, so it belongs to `<Presentation.Viewport autoFit>`:
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
+ * Fitting needs a measured container, so it belongs to `<Presentation.Viewport autoFit>`:
  * this hook only reports and toggles the mode.
  */
 export function useZoom(): UseZoomResult {
@@ -385,7 +385,7 @@ export interface UseHistoryResult {
 /**
  * Undo, redo, and whether the deck has unsaved edits.
  *
- * Must be called inside a `<Presentation.Root>` tree.
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
  *
  * ```tsx
  * const { canUndo, undo } = useHistory();

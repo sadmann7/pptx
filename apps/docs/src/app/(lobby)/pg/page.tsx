@@ -66,7 +66,12 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0, readOnly: false });
+
+    try {
+      await store.load(file, { defaultSlideIndex: 0, readOnly: false });
+    } catch {
+      // Fail silently because `load()` already wrote the failure to `store.error`.
+    }
   }
 
   return (

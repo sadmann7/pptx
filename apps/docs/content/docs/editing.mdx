@@ -198,6 +198,7 @@ In the component tree, use `useHistory`:
 
 ```tsx
 function Toolbar() {
+  const store = usePresentationStore();
   const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 
   return (
@@ -208,7 +209,7 @@ function Toolbar() {
       <button disabled={!canRedo} onClick={() => void redo()}>
         Redo
       </button>
-      <button onClick={() => store.save()}>{isDirty ? "Save" : "Saved"}</button>
+      <button onClick={() => void store.save()}>{isDirty ? "Save" : "Saved"}</button>
     </>
   );
 }
