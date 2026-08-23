@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { SlideData } from "@diceui/pptx-core";
 
-import { Context, useStoreEvent } from "./context";
+import { Context, RootContext, useStoreEvent } from "./context";
 import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
@@ -162,20 +162,23 @@ export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | 
   onHistoryChange?: (event: HistoryChangeEvent) => void;
 }
 
-export function Root({
-  file,
-  defaultSlideIndex,
-  defaultZoom,
-  readOnly,
-  render,
-  onLoad,
-  onError,
-  onSlideChange,
-  onStatusChange,
-  onEdit,
-  onHistoryChange,
-  ...rootProps
-}: RootProps) {
+export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
+  {
+    file,
+    defaultSlideIndex,
+    defaultZoom,
+    readOnly,
+    render,
+    onLoad,
+    onError,
+    onSlideChange,
+    onStatusChange,
+    onEdit,
+    onHistoryChange,
+    ...rootProps
+  },
+  forwardedRef,
+) {
   const contextStore = React.useContext(Context);
 
   const internalStoreRef = React.useRef<Store | null>(null);
@@ -188,6 +191,8 @@ export function Root({
     // Unreachable: one of the two branches above always assigns a store.
     throw new Error("`Presentation.Root` failed to resolve a store");
   }
+
+  const rootRef = React.useRef<HTMLElement | null>(null);
 
   const onLoadRef = useLatestRef(onLoad);
   const onErrorRef = useLatestRef(onError);
@@ -226,17 +231,20 @@ export function Root({
 
   return (
     <Context.Provider value={store}>
-      {renderElement(
-        "div",
-        { render },
-        {
-          state: { file },
-          props: [rootProps],
-        },
-      )}
+      <RootContext.Provider value={rootRef}>
+        {renderElement(
+          "div",
+          { render },
+          {
+            state: { file },
+            ref: [rootRef, forwardedRef],
+            props: [rootProps],
+          },
+        )}
+      </RootContext.Provider>
     </Context.Provider>
   );
-}
+});
 
 export namespace Root {
   export type State = RootState;

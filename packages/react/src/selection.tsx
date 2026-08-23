@@ -8,7 +8,14 @@ import type {
 } from "@diceui/pptx-core";
 import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
-import { usePresentation, useSlide, useSlideRevision, useStoreContext, useZoom } from "./context";
+import {
+  RootContext,
+  usePresentation,
+  useSlide,
+  useSlideRevision,
+  useStoreContext,
+  useZoom,
+} from "./context";
 import { useLatestRef } from "./hook";
 import type { RenderProp } from "./render";
 import { mergeRefs, renderElement } from "./render";
@@ -108,6 +115,38 @@ function getIsNativeUndoTarget(target: EventTarget | null): boolean {
     target.tagName === "TEXTAREA" ||
     target.tagName === "SELECT"
   );
+}
+
+/**
+ * Whether a document-level keystroke belongs to the presentation.
+ *
+ * `boundary` is `Root`'s element when there is one, so a keystroke aimed at the
+ * thumbnail strip still counts; it falls back to the overlay for trees that
+ * skip `Root`. A target outside it belongs to the host page, which must keep
+ * its own undo. An unfocused page (`body`) has no other claimant, so the deck
+ * takes the keystroke: this is what makes the shortcut work before anything in
+ * the presentation has been clicked.
+ */
+function getIsPresentationTarget(
+  target: EventTarget | null,
+  boundary: HTMLElement | null,
+): boolean {
+  if (!(target instanceof Node)) return true;
+  if (target === document || target === document.body || target === document.documentElement) {
+    return true;
+  }
+  return boundary?.contains(target) ?? false;
+}
+
+function getIsUndoEvent(event: KeyboardEvent): boolean {
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  return !event.shiftKey && event.key.toLowerCase() === "z";
+}
+
+function getIsRedoEvent(event: KeyboardEvent): boolean {
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  const key = event.key.toLowerCase();
+  return key === "y" || (key === "z" && event.shiftKey);
 }
 
 /**
@@ -478,10 +517,30 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
    */
   render?: RenderProp<SelectionState>;
 
-  /** Called after `Ctrl+Z` triggers. */
+  /**
+   * Whether `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` undo and redo
+   * the deck.
+   *
+   * Off by default: undo is a shortcut the host app may already own, and a
+   * component in someone else's page should not claim it uninvited. Turn it on
+   * for an app whose main surface is the deck.
+   *
+   * Once on, it still only acts on keystrokes aimed at the presentation: a
+   * target inside a text field, or anywhere outside `Presentation.Root`, is
+   * left to the page.
+   *
+   * @default false
+   *
+   * ```tsx
+   * <Presentation.Selection undoRedoShortcuts />
+   * ```
+   */
+  undoRedoShortcuts?: boolean;
+
+  /** Called after an undo triggers. */
   onUndo?: (status: "success" | "empty", error?: unknown) => void;
 
-  /** Called after `Ctrl+Shift+Z` / `Ctrl+Y` triggers. */
+  /** Called after a redo triggers. */
   onRedo?: (status: "success" | "empty", error?: unknown) => void;
 
   /** Called after a node delete is attempted (keyboard or pointer). */
@@ -1895,16 +1954,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
  * Undo/redo shortcuts are handled here, at document level, rather than in
  * `SelectionImpl`: they are store operations that don't need selection state,
  * and they must survive the remount when an undo navigates to another slide.
- * PowerPoint likewise accepts Ctrl+Z regardless of what part of the app has
- * focus.
+ * Being on the document does not make them the page's: they only act on
+ * keystrokes aimed at the presentation (see `getIsPresentationTarget`), so an
+ * app that owns Ctrl+Z elsewhere keeps it.
  */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
-  { onUndo, onRedo, ...selectionProps },
+  { undoRedoShortcuts = false, onUndo, onRedo, ...selectionProps },
   forwardedRef,
 ) {
   const store = useStoreContext(SELECTION_NAME);
   const { presentation } = usePresentation();
   const { slideId } = useSlide();
+  const rootRef = React.useContext(RootContext);
+
+  // Focus boundary for trees without a `Root`: the overlay is all there is.
+  const overlayRef = React.useRef<HTMLDivElement | null>(null);
 
   const onUndoRef = useLatestRef(onUndo);
   const onRedoRef = useLatestRef(onRedo);
@@ -1912,18 +1976,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const editable = presentation?.sourcePackage != null;
 
   React.useEffect(() => {
-    if (!editable) return;
+    if (!editable || !undoRedoShortcuts) return;
 
     function onDocKeyDown(event: KeyboardEvent): void {
-      if (!(event.ctrlKey || event.metaKey)) return;
       if (getIsNativeUndoTarget(event.target)) return;
-      const key = event.key.toLowerCase();
+      const boundary = rootRef?.current ?? overlayRef.current;
+      if (!getIsPresentationTarget(event.target, boundary)) return;
 
-      if (key === "z" && !event.shiftKey) {
+      if (getIsUndoEvent(event)) {
         event.preventDefault();
         const success = store.undo();
         onUndoRef.current?.(success ? "success" : "empty");
-      } else if (key === "y" || (key === "z" && event.shiftKey)) {
+      } else if (getIsRedoEvent(event)) {
         event.preventDefault();
         store.redo().then(
           (success) => onRedoRef.current?.(success ? "success" : "empty"),
@@ -1934,11 +1998,13 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
     document.addEventListener("keydown", onDocKeyDown);
     return () => document.removeEventListener("keydown", onDocKeyDown);
-  }, [editable, store, onUndoRef, onRedoRef]);
+  }, [editable, undoRedoShortcuts, store, rootRef, onUndoRef, onRedoRef]);
 
   if (!slideId) return null;
 
-  return <SelectionImpl key={slideId} ref={forwardedRef} {...selectionProps} />;
+  return (
+    <SelectionImpl key={slideId} ref={mergeRefs(overlayRef, forwardedRef)} {...selectionProps} />
+  );
 });
 
 interface SelectionBoxProps {

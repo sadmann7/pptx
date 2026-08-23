@@ -23,9 +23,16 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock aspect ratio)
 - **Edit text** inline: single-click a text box, double-click or start typing on any shape
 - **Multi-select** with Shift/Ctrl+click, Ctrl+A, or drag a marquee on empty canvas
-- **Undo / redo** with Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y)
 - **Delete** selected shapes with Delete or Backspace
 - **Nudge** with arrow keys (1 px; Shift for 10 px)
+
+Undo and redo are opt-in, because Ctrl+Z is a shortcut the surrounding app may already own:
+
+```tsx
+<Presentation.Selection undoRedoShortcuts />
+```
+
+Once on, it is the only shortcut bound above the overlay, so it survives an undo navigating to another slide and works when focus sits on a thumbnail after a keyboard reorder. It still ignores keystrokes aimed at a text field or at anything outside `Presentation.Root`. Leave it off and call `store.undo()` from your own handler to keep full control.
 
 ## Handling edit events
 

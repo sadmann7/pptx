@@ -94,7 +94,7 @@ export default function PgPage() {
               <PresentationEmpty inputId={`${id}-file-input`} />
               <PresentationViewport>
                 <PresentationSlide>
-                  <PresentationSelection />
+                  <PresentationSelection undoRedoShortcuts />
                 </PresentationSlide>
               </PresentationViewport>
             </PresentationContent>

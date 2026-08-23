@@ -70,7 +70,7 @@ export function PresentationDemo() {
             <PresentationError />
             <PresentationViewport>
               <PresentationSlide>
-                <PresentationSelection />
+                <PresentationSelection undoRedoShortcuts />
               </PresentationSlide>
             </PresentationViewport>
           </PresentationContent>
