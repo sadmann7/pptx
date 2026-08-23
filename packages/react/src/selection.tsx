@@ -584,12 +584,12 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
  * - Escape from text editing → select the shape (handles appear).
  * - Escape from selection → deselect.
  * - Click a non-text shape → select it.
- * - Shift/Ctrl+click toggles shapes in and out of the selection.
+ * - Shift/Ctrl/Cmd+click toggles shapes in and out of the selection.
  * - Shift+drag a shape → move it along one axis only.
- * - Ctrl+drag a shape duplicates it in PowerPoint; unsupported here, so the
+ * - Ctrl/Cmd+drag a shape duplicates it in PowerPoint; unsupported here, so the
  *   press only toggles the selection.
  * - Drag on empty canvas → marquee-select fully enclosed shapes.
- * - Shift/Ctrl+drag on empty canvas → add the enclosed shapes to the selection.
+ * - Shift/Ctrl/Cmd+drag on empty canvas → add the enclosed shapes to the selection.
  * - Every selected shape keeps its own handles, and dragging any one of them
  *   scales the whole selection, each shape in place.
  * - Ctrl/Cmd+A selects every shape on the slide.
@@ -1956,7 +1956,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
  * and they must survive the remount when an undo navigates to another slide.
  * Being on the document does not make them the page's: they only act on
  * keystrokes aimed at the presentation (see `getIsPresentationTarget`), so an
- * app that owns Ctrl+Z elsewhere keeps it.
+ * app that owns Ctrl/Cmd+Z elsewhere keeps it.
  */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
   { undoRedoShortcuts = false, onUndo, onRedo, ...selectionProps },

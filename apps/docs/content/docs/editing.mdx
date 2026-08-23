@@ -17,24 +17,27 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 </Presentation.Root>
 ```
 
-## What you can do
+## Features
 
 - **Move** shapes by dragging them
-- **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock aspect ratio)
-- **Edit text** inline: single-click a text box, double-click or start typing on any shape
-- **Multi-select** with Shift/Ctrl+click, Ctrl+A, or drag a marquee on empty canvas
+- **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock the aspect ratio)
+- **Edit text** inline: single-click a text box, or double-click or start typing on any shape
+- **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with Delete or Backspace
-- **Nudge** with arrow keys (1 px; Shift for 10 px)
+- **Nudge** with the arrow keys (1 px, or 10 px while holding Shift)
+- **Undo** and **redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
 
-Undo and redo are opt-in, because Ctrl+Z is a shortcut the surrounding app may already own:
+Undo and redo shortcuts are disabled by default to avoid conflicts with the surrounding app. Enable them with undoRedoShortcuts on Presentation.Selection:
 
 ```tsx
 <Presentation.Selection undoRedoShortcuts />
 ```
 
-Once on, it is the only shortcut bound above the overlay, so it survives an undo navigating to another slide and works when focus sits on a thumbnail after a keyboard reorder. It still ignores keystrokes aimed at a text field or at anything outside `Presentation.Root`. Leave it off and call `store.undo()` from your own handler to keep full control.
+When enabled, undo and redo are controlled by `Presentation.Root` rather than the `Presentation.Selection` overlay. This keeps them available when undo switches slides or when focus moves to a thumbnail after a keyboard reorder. Keystrokes from text fields or outside `Presentation.Root` are ignored.
 
-## Handling edit events
+For full control, leave `undoRedoShortcuts` disabled and call `store.undo()` and `store.redo()`.
+
+## Edit callbacks
 
 Each edit callback receives `(status, error?)` for undo/redo (where `status` is `"success" | "empty"`) and `(nodeId, error?)` for node events. Check `error` to show a toast or log failures:
 
@@ -183,7 +186,7 @@ A few things are worth knowing when wiring this up:
 
 Render the overlay inside `Presentation.ThumbnailList` so the copy can reach the list context it needs to paint a real miniature. It is fixed-positioned, so the strip's overflow will not clip it.
 
-The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt+↑, for example) pass through untouched.
+The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt/Option+↑, for example) pass through untouched.
 
 The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. Here it is in full:
 
