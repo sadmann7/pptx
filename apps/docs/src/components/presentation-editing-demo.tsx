@@ -37,12 +37,13 @@ import {
 } from "@pptx/ui/components/presentation";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
-import { SAMPLE_DECK_PATH } from "@/lib/constants";
+import { DEMO_DECK_PATH } from "@/lib/constants";
 
 /**
- * The stock drop animation is kept, minus the side effect that pins the source
- * item at `opacity: 0` until it finishes: that is what made the thumbnail, and
- * the focus ring on it, come back a quarter second after the pointer lifted.
+ * Keeps the source item visible during the drop animation.
+ *
+ * The default side effect sets its opacity to `0`, delaying the thumbnail
+ * item's focus ring from reappearing until roughly 250 ms after pointer release.
  */
 const DROP_ANIMATION: DropAnimation = {
   ...defaultDropAnimation,
@@ -53,15 +54,15 @@ export function PresentationEditingDemo() {
   const store = useCreatePresentationStore();
 
   React.useEffect(() => {
-    fetch(SAMPLE_DECK_PATH)
+    fetch(DEMO_DECK_PATH)
       .then((res) => {
         // fetch resolves on 404, so an unchecked body would reach the parser as
         // an error page rather than a deck.
-        if (!res.ok) throw new Error(`${SAMPLE_DECK_PATH}: ${res.status}`);
+        if (!res.ok) throw new Error(`${DEMO_DECK_PATH}: ${res.status}`);
         return res.arrayBuffer();
       })
       // Editing and reordering both need the source package retained.
-      .then((buf) => store.load(buf, { readOnly: false }))
+      .then((buffer) => store.load(buffer, { readOnly: false }))
       .catch(() => {
         // Fail silently to avoid blocking the main thread
       });
