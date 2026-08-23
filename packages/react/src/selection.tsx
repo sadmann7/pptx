@@ -500,11 +500,13 @@ export interface SelectionChangeEvent {
 export interface SelectionState {
   /** Interaction mode of the selection. */
   mode: "idle" | "selected" | "move" | "resize" | "text" | "marquee";
+
   /**
    * The slide node currently selected, or `null` when nothing is selected.
    * With a multi-selection this is the first selected node.
    */
   selectedNode: SlideNode | null;
+
   /** All selected slide nodes (empty when nothing is selected). */
   selectedNodes: SlideNode[];
 }
@@ -518,16 +520,11 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
   render?: RenderProp<SelectionState>;
 
   /**
-   * Whether `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` undo and redo
-   * the deck.
+   * Enables undo and redo shortcuts for the deck:
+   * `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`).
    *
-   * Off by default: undo is a shortcut the host app may already own, and a
-   * component in someone else's page should not claim it uninvited. Turn it on
-   * for an app whose main surface is the deck.
-   *
-   * Once on, it still only acts on keystrokes aimed at the presentation: a
-   * target inside a text field, or anywhere outside `Presentation.Root`, is
-   * left to the page.
+   * Shortcuts only apply within `Presentation.Root` and are ignored in text
+   * fields. Disabled by default to avoid conflicts with the surrounding app.
    *
    * @default false
    *
