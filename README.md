@@ -114,6 +114,8 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 | Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z | Redo                                            |
 | Escape                        | Deselect / exit text mode                       |
 
+Undo and redo are the exception: they are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
+
 ### `Presentation.ThumbnailList`
 
 Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Compose your own item with `Presentation.ThumbnailItem`, `Presentation.ThumbnailItemNumber`, and `Presentation.ThumbnailItemPreview`, or render it childless for the default.

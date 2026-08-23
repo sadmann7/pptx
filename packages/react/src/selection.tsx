@@ -146,7 +146,8 @@ function getIsUndoEvent(event: KeyboardEvent): boolean {
 function getIsRedoEvent(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey)) return false;
   const key = event.key.toLowerCase();
-  return key === "y" || (key === "z" && event.shiftKey);
+  if (key === "y") return !event.shiftKey;
+  return key === "z" && event.shiftKey;
 }
 
 /**

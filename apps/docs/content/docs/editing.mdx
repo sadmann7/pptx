@@ -27,13 +27,13 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Nudge** with the arrow keys (1 px, or 10 px while holding Shift)
 - **Undo** and **redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
 
-Undo and redo shortcuts are disabled by default to avoid conflicts with the surrounding app. Enable them with undoRedoShortcuts on Presentation.Selection:
+Undo and redo shortcuts are disabled by default to avoid conflicts with the surrounding app. Enable them with `undoRedoShortcuts` on `Presentation.Selection`:
 
 ```tsx
 <Presentation.Selection undoRedoShortcuts />
 ```
 
-When enabled, undo and redo are controlled by `Presentation.Root` rather than the `Presentation.Selection` overlay. This keeps them available when undo switches slides or when focus moves to a thumbnail after a keyboard reorder. Keystrokes from text fields or outside `Presentation.Root` are ignored.
+When enabled, they are bound on the document rather than the overlay, so they keep working when undo switches slides or when focus moves to a thumbnail after a keyboard reorder. Only keystrokes aimed at the presentation act on the deck: the boundary is `Presentation.Root` when there is one, otherwise the overlay itself. Text fields are always left alone.
 
 For full control, leave `undoRedoShortcuts` disabled and call `store.undo()` and `store.redo()`.
 
