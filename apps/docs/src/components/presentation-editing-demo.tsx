@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, usePresentation } from "@diceui/pptx";
+import { useCreatePresentationStore, useHistory, usePresentation } from "@diceui/pptx";
 import {
   DndContext,
   type DragEndEvent,
@@ -51,7 +51,6 @@ const DROP_ANIMATION: DropAnimation = {
 
 export function PresentationEditingDemo() {
   const store = useCreatePresentationStore();
-  const [history, setHistory] = React.useState({ canUndo: false, canRedo: false });
 
   React.useEffect(() => {
     fetch(SAMPLE_DECK_PATH)
@@ -72,13 +71,8 @@ export function PresentationEditingDemo() {
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
-        <Toolbar store={store} history={history} />
-        <Presentation
-          className="min-h-0 flex-1"
-          // Undo/redo availability without polling the store, so the toolbar
-          // stays correct for edits made by dragging too.
-          onHistoryChange={({ canUndo, canRedo }) => setHistory({ canUndo, canRedo })}
-        >
+        <Toolbar />
+        <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
             <PresentationLoading />
@@ -95,13 +89,9 @@ export function PresentationEditingDemo() {
   );
 }
 
-interface ToolbarProps {
-  store: PresentationStore;
-  history: { canUndo: boolean; canRedo: boolean };
-}
-
-function Toolbar({ store, history }: ToolbarProps) {
+function Toolbar() {
   const { status } = usePresentation();
+  const { canUndo, canRedo, undo, redo } = useHistory();
 
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -114,17 +104,12 @@ function Toolbar({ store, history }: ToolbarProps) {
         size="sm"
         variant="ghost"
         className="ml-auto"
-        disabled={!history.canUndo}
-        onClick={() => store.undo()}
+        disabled={!canUndo}
+        onClick={() => undo()}
       >
         Undo
       </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={!history.canRedo}
-        onClick={() => void store.redo()}
-      >
+      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
         Redo
       </Button>
       <PresentationZoomSelect />

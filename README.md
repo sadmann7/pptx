@@ -140,6 +140,7 @@ const store = useCreatePresentationStore();
 const { presentation, status } = usePresentation();
 const { slide } = useSlide();
 const { zoom, isAutoFit, setZoom, setAutoFit } = useZoom();
+const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 const store = useCreatePresentationStore();
 ```
 

@@ -361,3 +361,54 @@ export function useZoom(): UseZoomResult {
     ),
   };
 }
+
+export interface UseHistoryResult {
+  /** Whether there is an edit to undo. */
+  canUndo: boolean;
+
+  /** Whether there is an edit to redo. */
+  canRedo: boolean;
+
+  /**
+   * Whether the deck has unsaved changes. Undoing back to the last saved
+   * point clears it again.
+   */
+  isDirty: boolean;
+
+  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
+  undo: () => boolean;
+
+  /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
+  redo: () => Promise<boolean>;
+}
+
+/**
+ * Undo, redo, and whether the deck has unsaved edits.
+ *
+ * Must be called inside a `<Presentation.Root>` tree.
+ *
+ * ```tsx
+ * const { canUndo, undo } = useHistory();
+ * <button disabled={!canUndo} onClick={undo}>Undo</button>
+ * ```
+ */
+export function useHistory(): UseHistoryResult {
+  const store = useStoreContext("useHistory");
+
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => store.on("historyChange", onStoreChange),
+    [store],
+  );
+
+  const canUndo = React.useSyncExternalStore(subscribe, store.canUndo, () => false);
+  const canRedo = React.useSyncExternalStore(subscribe, store.canRedo, () => false);
+  const isDirty = React.useSyncExternalStore(subscribe, store.isDirty, () => false);
+
+  return {
+    canUndo,
+    canRedo,
+    isDirty,
+    undo: React.useCallback(() => store.undo(), [store]),
+    redo: React.useCallback(() => store.redo(), [store]),
+  };
+}

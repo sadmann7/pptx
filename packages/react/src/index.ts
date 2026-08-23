@@ -20,6 +20,7 @@ export type { ViewportProps, ViewportState } from "./viewport";
 
 export {
   useCreateStore as useCreatePresentationStore,
+  useHistory,
   usePresentation,
   useStore as usePresentationStore,
   useSlide,
@@ -27,7 +28,12 @@ export {
   useSlideRevision,
   useZoom,
 } from "./context";
-export type { UsePresentationResult, UseSlideResult, UseZoomResult } from "./context";
+export type {
+  UseHistoryResult,
+  UsePresentationResult,
+  UseSlideResult,
+  UseZoomResult,
+} from "./context";
 
 export type { ComponentRenderFn, RenderProp } from "./render";
 
