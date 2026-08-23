@@ -186,7 +186,7 @@ The demo at the top of this page wires all of that up with [dnd-kit](https://dnd
 
 ## Unsaved changes
 
-`store.isDirty()` reports whether there are edits that `save()` has not written out. Undoing back to the last saved state clears it again, so a user who undoes their way back to where they started is not warned for nothing:
+`store.isDirty()` reports whether the presentation has changed since it was last saved. If the user undoes those changes and returns to the saved state, it becomes false again avoiding unnecessary unsaved changes warnings.
 
 ```tsx
 window.addEventListener("beforeunload", (event) => {
@@ -194,14 +194,34 @@ window.addEventListener("beforeunload", (event) => {
 });
 ```
 
-Rather than polling it, take it from `onHistoryChange`, which triggers whenever undo/redo availability or dirtiness moves:
+In the component tree, use `useHistory`:
+
+```tsx
+function Toolbar() {
+  const store = usePresentationStore();
+  const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
+
+  return (
+    <>
+      <button disabled={!canUndo} onClick={undo}>
+        Undo
+      </button>
+      <button disabled={!canRedo} onClick={() => void redo()}>
+        Redo
+      </button>
+      <button onClick={() => void store.save()}>{isDirty ? "Save" : "Saved"}</button>
+    </>
+  );
+}
+```
+
+Outside the tree, the same values come through `onHistoryChange`:
 
 ```tsx
 <Presentation.Root
   file={file}
   readOnly={false}
   onHistoryChange={({ canUndo, canRedo, isDirty }) => {
-    setToolbar({ canUndo, canRedo });
     setHasUnsavedChanges(isDirty);
   }}
 />

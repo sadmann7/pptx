@@ -66,6 +66,7 @@ All components support a `render` prop to replace the underlying element.
 const { presentation, status } = usePresentation();
 const { slide, index, next, prev } = useSlide();
 const { zoom, setZoom } = useZoom();
+const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 
 // Controlled mode: create the store yourself and drive it manually
 const store = useCreatePresentationStore();

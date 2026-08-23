@@ -13,7 +13,7 @@ The store is the single source of truth for all presentation state: loading, nav
 
 ```tsx
 <Presentation.Root file={file}>
-  {/* descendants can use usePresentation(), useSlide(), useZoom() */}
+  {/* descendants can use usePresentation(), useSlide(), useZoom(), useHistory() */}
 </Presentation.Root>
 ```
 
@@ -28,7 +28,7 @@ function SaveButton() {
 }
 ```
 
-It returns a stable reference and subscribes to nothing, so use `usePresentation`, `useSlide`, or `useZoom` for reactive reads rather than `store.getState()`.
+It returns a stable reference and subscribes to nothing, so use `usePresentation`, `useSlide`, `useZoom`, or `useHistory` for reactive reads rather than `store.getState()`.
 
 ### Controlled
 
@@ -262,6 +262,7 @@ await store.edit({
 
 ```tsx
 import {
+  useHistory, // { canUndo, canRedo, isDirty, undo, redo }
   usePresentation, // { presentation, status, progress, error }
   usePresentationStore, // the ambient store, for imperative calls
   useSlide, // { slide, slideId, index }
@@ -270,3 +271,27 @@ import {
 ```
 
 All hooks must be used inside `Presentation.Root` or `Presentation.Provider`.
+
+### `useHistory`
+
+```tsx
+import { useHistory } from "@diceui/pptx";
+
+function HistoryButtons() {
+  const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
+
+  return (
+    <>
+      <button disabled={!canUndo} onClick={undo}>
+        Undo
+      </button>
+      <button disabled={!canRedo} onClick={() => void redo()}>
+        Redo
+      </button>
+      {isDirty && <span>Unsaved changes</span>}
+    </>
+  );
+}
+```
+
+Don't wire this with `store.subscribe`. Undo history isn't in store state, so a save that clears `isDirty` wouldn't re-render. Outside React, use `store.on("historyChange")`.

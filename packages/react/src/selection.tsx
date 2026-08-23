@@ -477,14 +477,19 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
    * - Function: `(props, state) => ReactElement`
    */
   render?: RenderProp<SelectionState>;
+
   /** Called after `Ctrl+Z` triggers. */
   onUndo?: (status: "success" | "empty", error?: unknown) => void;
+
   /** Called after `Ctrl+Shift+Z` / `Ctrl+Y` triggers. */
   onRedo?: (status: "success" | "empty", error?: unknown) => void;
+
   /** Called after a node delete is attempted (keyboard or pointer). */
   onNodeDelete?: (nodeId: string, error?: unknown) => void;
+
   /** Called after a node move or resize is attempted. */
   onNodeTransform?: (nodeId: string, error?: unknown) => void;
+
   /** Called after inline text editing is committed (or errors). */
   onTextChange?: (nodeId: string, error?: unknown) => void;
 

@@ -30,6 +30,7 @@
     "@types/node": "catalog:",
     "oxfmt": "^0.58.0",
     "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "rimraf": "^6.1.3",
     "tsx": "^4.22.4",
     "turbo": "^2.10.4",

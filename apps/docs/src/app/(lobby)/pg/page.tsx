@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
+import { useCreatePresentationStore, useHistory, usePresentation, useSlide } from "@diceui/pptx";
 import type { DragEndEvent, DragStartEvent, DropAnimation } from "@dnd-kit/core";
 import {
   DndContext,
@@ -66,7 +66,12 @@ export default function PgPage() {
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { defaultSlideIndex: 0, readOnly: false });
+
+    try {
+      await store.load(file, { defaultSlideIndex: 0, readOnly: false });
+    } catch {
+      // Fail silently because `load()` already wrote the failure to `store.error`.
+    }
   }
 
   return (
@@ -257,18 +262,7 @@ interface PresentationToolbarProps {
 function PresentationToolbar({ store }: PresentationToolbarProps) {
   const { status } = usePresentation();
   const { slideId } = useSlide();
-
-  const canUndo = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.canUndo(),
-    () => false,
-  );
-
-  const canRedo = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.canRedo(),
-    () => false,
-  );
+  const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 
   if (status !== "ready") return null;
 
@@ -307,15 +301,15 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
       >
         Delete slide
       </Button>
-      <Button size="sm" variant="ghost" disabled={!canUndo} onClick={() => store.undo()}>
+      <Button size="sm" variant="ghost" disabled={!canUndo} onClick={() => undo()}>
         Undo
       </Button>
-      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void store.redo()}>
+      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
         Redo
       </Button>
       <PresentationZoomSelect className="ml-auto" />
       <Button size="sm" onClick={onSave}>
-        Save .pptx
+        {isDirty ? "Save .pptx" : "Saved"}
       </Button>
     </div>
   );

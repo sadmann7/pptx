@@ -202,7 +202,7 @@ export interface UsePresentationResult {
 /**
  * Subscribes to top-level presentation state: parse status, progress, and errors.
  *
- * Must be called inside a `<Presentation.Root>` tree.
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
  *
  * Each field is subscribed independently so that unrelated store updates
  * (zoom changes, slide navigation) do not cause consumers to re-render.
@@ -264,7 +264,7 @@ export interface UseSlideResult {
 /**
  * Subscribes to slide navigation state and exposes navigation actions.
  *
- * Must be called inside a `<Presentation.Root>` tree.
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
  */
 export function useSlide(): UseSlideResult {
   const store = useStoreContext("useSlide");
@@ -339,8 +339,8 @@ export interface UseZoomResult {
 /**
  * Subscribes to zoom state and exposes zoom actions.
  *
- * Must be called inside a `<Presentation.Root>` tree. Fitting needs a
- * measured container, so it belongs to `<Presentation.Viewport autoFit>`:
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
+ * Fitting needs a measured container, so it belongs to `<Presentation.Viewport autoFit>`:
  * this hook only reports and toggles the mode.
  */
 export function useZoom(): UseZoomResult {
@@ -359,5 +359,56 @@ export function useZoom(): UseZoomResult {
       (w: number, h: number, padding?: AutoFitPadding) => store.fitTo(w, h, padding),
       [store],
     ),
+  };
+}
+
+export interface UseHistoryResult {
+  /** Whether there is an edit to undo. */
+  canUndo: boolean;
+
+  /** Whether there is an edit to redo. */
+  canRedo: boolean;
+
+  /**
+   * Whether the deck has unsaved changes. Undoing back to the last saved
+   * point clears it again.
+   */
+  isDirty: boolean;
+
+  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
+  undo: () => boolean;
+
+  /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
+  redo: () => Promise<boolean>;
+}
+
+/**
+ * Undo, redo, and whether the deck has unsaved edits.
+ *
+ * Must be called inside `Presentation.Root` or `Presentation.Provider`.
+ *
+ * ```tsx
+ * const { canUndo, undo } = useHistory();
+ * <button disabled={!canUndo} onClick={undo}>Undo</button>
+ * ```
+ */
+export function useHistory(): UseHistoryResult {
+  const store = useStoreContext("useHistory");
+
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => store.on("historyChange", onStoreChange),
+    [store],
+  );
+
+  const canUndo = React.useSyncExternalStore(subscribe, store.canUndo, () => false);
+  const canRedo = React.useSyncExternalStore(subscribe, store.canRedo, () => false);
+  const isDirty = React.useSyncExternalStore(subscribe, store.isDirty, () => false);
+
+  return {
+    canUndo,
+    canRedo,
+    isDirty,
+    undo: React.useCallback(() => store.undo(), [store]),
+    redo: React.useCallback(() => store.redo(), [store]),
   };
 }

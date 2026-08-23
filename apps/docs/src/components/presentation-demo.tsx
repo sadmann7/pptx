@@ -17,31 +17,35 @@ import {
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
 
-import { SAMPLE_DECK_PATH } from "@/lib/constants";
+import { DEMO_DECK_PATH } from "@/lib/constants";
 
 export function PresentationDemo() {
   const id = React.useId();
   const store = useCreatePresentationStore();
 
   React.useEffect(() => {
-    fetch(SAMPLE_DECK_PATH)
+    fetch(DEMO_DECK_PATH)
       .then((res) => {
         // fetch resolves on 404, so an unchecked body would reach the parser as
         // an error page rather than a deck.
-        if (!res.ok) throw new Error(`${SAMPLE_DECK_PATH}: ${res.status}`);
+        if (!res.ok) throw new Error(`${DEMO_DECK_PATH}: ${res.status}`);
         return res.arrayBuffer();
       })
-      .then((buf) => store.load(buf))
+      .then((buffer) => store.load(buffer))
       .catch(() => {
-        // Fail silently to avoid blocking the main thread
+        // Fail silently to avoid blocking the main thread.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- store is a stable ref, intentionally omitted from deps
   }, []);
 
-  function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    store.load(file, { readOnly: false });
+    try {
+      await store.load(file, { readOnly: false });
+    } catch {
+      // Fail silently because `load()` already wrote the failure to `store.error`.
+    }
   }
 
   return (

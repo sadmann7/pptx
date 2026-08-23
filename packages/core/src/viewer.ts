@@ -1292,7 +1292,7 @@ export class PptxViewer extends EventTarget {
 
   private handleNavigate(target: { slideIndex?: number; url?: string }): void {
     if (target.slideIndex !== undefined) {
-      this.goToSlide(target.slideIndex);
+      void this.goToSlide(target.slideIndex);
     } else if (target.url && isAllowedExternalUrl(target.url)) {
       window.open(target.url, "_blank", "noopener,noreferrer");
     }

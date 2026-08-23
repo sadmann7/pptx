@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, usePresentation } from "@diceui/pptx";
+import { useCreatePresentationStore, useHistory, usePresentation } from "@diceui/pptx";
 import {
   DndContext,
   type DragEndEvent,
@@ -37,12 +37,13 @@ import {
 } from "@pptx/ui/components/presentation";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
-import { SAMPLE_DECK_PATH } from "@/lib/constants";
+import { DEMO_DECK_PATH } from "@/lib/constants";
 
 /**
- * The stock drop animation is kept, minus the side effect that pins the source
- * item at `opacity: 0` until it finishes: that is what made the thumbnail, and
- * the focus ring on it, come back a quarter second after the pointer lifted.
+ * Keeps the source item visible during the drop animation.
+ *
+ * The default side effect sets its opacity to `0`, delaying the thumbnail
+ * item's focus ring from reappearing until roughly 250 ms after pointer release.
  */
 const DROP_ANIMATION: DropAnimation = {
   ...defaultDropAnimation,
@@ -51,20 +52,19 @@ const DROP_ANIMATION: DropAnimation = {
 
 export function PresentationEditingDemo() {
   const store = useCreatePresentationStore();
-  const [history, setHistory] = React.useState({ canUndo: false, canRedo: false });
 
   React.useEffect(() => {
-    fetch(SAMPLE_DECK_PATH)
+    fetch(DEMO_DECK_PATH)
       .then((res) => {
         // fetch resolves on 404, so an unchecked body would reach the parser as
         // an error page rather than a deck.
-        if (!res.ok) throw new Error(`${SAMPLE_DECK_PATH}: ${res.status}`);
+        if (!res.ok) throw new Error(`${DEMO_DECK_PATH}: ${res.status}`);
         return res.arrayBuffer();
       })
       // Editing and reordering both need the source package retained.
-      .then((buf) => store.load(buf, { readOnly: false }))
+      .then((buffer) => store.load(buffer, { readOnly: false }))
       .catch(() => {
-        // Fail silently to avoid blocking the main thread
+        // Fail silently to avoid blocking the main thread.
       });
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- store is a stable ref, intentionally omitted from deps
   }, []);
@@ -72,13 +72,8 @@ export function PresentationEditingDemo() {
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
-        <Toolbar store={store} history={history} />
-        <Presentation
-          className="min-h-0 flex-1"
-          // Undo/redo availability without polling the store, so the toolbar
-          // stays correct for edits made by dragging too.
-          onHistoryChange={({ canUndo, canRedo }) => setHistory({ canUndo, canRedo })}
-        >
+        <Toolbar />
+        <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
             <PresentationLoading />
@@ -95,13 +90,9 @@ export function PresentationEditingDemo() {
   );
 }
 
-interface ToolbarProps {
-  store: PresentationStore;
-  history: { canUndo: boolean; canRedo: boolean };
-}
-
-function Toolbar({ store, history }: ToolbarProps) {
+function Toolbar() {
   const { status } = usePresentation();
+  const { canUndo, canRedo, undo, redo } = useHistory();
 
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -114,17 +105,12 @@ function Toolbar({ store, history }: ToolbarProps) {
         size="sm"
         variant="ghost"
         className="ml-auto"
-        disabled={!history.canUndo}
-        onClick={() => store.undo()}
+        disabled={!canUndo}
+        onClick={() => undo()}
       >
         Undo
       </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={!history.canRedo}
-        onClick={() => void store.redo()}
-      >
+      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
         Redo
       </Button>
       <PresentationZoomSelect />
