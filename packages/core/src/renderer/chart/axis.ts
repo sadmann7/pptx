@@ -1,8 +1,9 @@
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
+import { resolveColorToCss } from "../style";
 import { parseOoxmlBoolElement } from "./boolean";
 import { formatValue } from "./format";
-import { extractChartLineStyle, resolveChartColor } from "./style";
+import { extractChartLineStyle } from "./style";
 import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
 import {
   type AxisInfo,
@@ -45,7 +46,7 @@ function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | un
     if (!defRPr.exists()) continue;
     const fill = defRPr.child("solidFill");
     if (fill.exists()) {
-      return resolveChartColor(fill, ctx);
+      return resolveColorToCss(fill, ctx);
     }
   }
   return undefined;
@@ -56,7 +57,7 @@ function extractAxisLineColor(ax: SafeXmlNode, ctx: RenderContext): string | und
   if (!ln.exists()) return undefined;
   const fill = ln.child("solidFill");
   if (!fill.exists()) return undefined;
-  return resolveChartColor(fill, ctx);
+  return resolveColorToCss(fill, ctx);
 }
 
 function isAxisLineHidden(ax: SafeXmlNode): boolean {
@@ -220,7 +221,10 @@ export function parseScatterAxes(
 export function getAxisTitleSpacePx(info: AxisInfo): number {
   if (!info.title || info.deleted) return 0;
   const fontSize = info.titleStyle?.fontSize ?? 10;
-  return Math.round(fontSize * 1.8);
+  // One line plus its gap to the tick labels, then a line height for each
+  // further line: a title carrying a `a:br` renders as several lines.
+  const extraLines = info.title.split("\n").length - 1;
+  return Math.round(fontSize * (1.8 + 1.25 * extraLines));
 }
 
 export function applyAxisInfo(

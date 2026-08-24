@@ -1,6 +1,6 @@
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { resolveColorToHex } from "./style";
+import { resolveColorToCss } from "../style";
 import { CHART_ACCENT_KEYS } from "./type";
 
 function parseChartColorMapOverride(chartXml: SafeXmlNode): Map<string, string> | undefined {
@@ -68,7 +68,7 @@ function resolveChartColorStyleColor(
   const doc = colorNode.element.ownerDocument;
   const wrapper = doc.createElementNS(colorNode.element.namespaceURI, "solidFill");
   wrapper.appendChild(colorNode.element.cloneNode(true));
-  return resolveColorToHex(new SafeXmlNode(wrapper), ctx);
+  return resolveColorToCss(new SafeXmlNode(wrapper), ctx);
 }
 
 function parseChartColorStylePalette(

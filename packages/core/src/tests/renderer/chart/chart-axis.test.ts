@@ -286,4 +286,9 @@ describe("getAxisTitleSpacePx", () => {
       23,
     );
   });
+
+  it("grows a line height per extra line", () => {
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD" })).toBe(31);
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD\nnet" })).toBe(43);
+  });
 });

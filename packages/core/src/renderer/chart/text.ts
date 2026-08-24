@@ -3,8 +3,7 @@ import { emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
 import { cssFontFamilyStack, resolveThemeFontStack } from "../font";
-import { resolveColor } from "../style";
-import { resolveChartColor } from "./style";
+import { resolveColor, resolveColorToCss } from "../style";
 import { type ChartTextStyle, EXPLICIT_FONT_SIZE } from "./type";
 
 type EChartsTextStyle = ChartTextStyle & {
@@ -93,7 +92,7 @@ export function extractTxPrColor(parentNode: SafeXmlNode, ctx: RenderContext): s
     if (!defRPr.exists()) continue;
     const fill = defRPr.child("solidFill");
     if (fill.exists()) {
-      return resolveChartColor(fill, ctx);
+      return resolveColorToCss(fill, ctx);
     }
   }
   return undefined;
@@ -150,8 +149,7 @@ function extractDefRPrStyle(defRPr: SafeXmlNode, ctx: RenderContext): ChartTextS
   const style: ChartTextStyle = {};
   const fill = defRPr.child("solidFill");
   if (fill.exists()) {
-    const c = resolveChartColor(fill, ctx);
-    if (c) style.color = c;
+    style.color = resolveColorToCss(fill, ctx);
   }
   const sz = defRPr.numAttr("sz");
   if (sz !== undefined && sz > 0) {

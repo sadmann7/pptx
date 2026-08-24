@@ -1,16 +1,18 @@
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { extractChartLineStyle, resolveChartColor, resolveChartFill } from "./style";
+import { resolveColor, resolveColorToCss } from "../style";
+import { extractChartLineStyle } from "./style";
 import type { ChartFrameStyle } from "./type";
 
 /**
- * A background a deck paints at zero opacity, which authoring tools write as a
- * `solidFill` rather than a `noFill`. Treating it as a color would plate the
+ * A chart background, or nothing when the deck paints it at zero opacity:
+ * authoring tools write "let the slide show through" as a `solidFill` carrying
+ * `a:alpha` 0 rather than as a `noFill`, and reading that as a color plates the
  * chart in whatever hue happens to carry the alpha, usually black.
  */
-function isTransparentFill(fill: SafeXmlNode, ctx: RenderContext): boolean {
-  const resolved = resolveChartFill(fill, ctx);
-  return resolved !== undefined && resolved.alpha <= 0;
+function resolveBackgroundFill(fill: SafeXmlNode, ctx: RenderContext): string | undefined {
+  if (resolveColor(fill, ctx).alpha <= 0) return undefined;
+  return resolveColorToCss(fill, ctx);
 }
 
 export function extractBackgroundColors(
@@ -27,7 +29,7 @@ export function extractBackgroundColors(
     if (!noFill.exists()) {
       const fill = chartSpaceSpPr.child("solidFill");
       if (fill.exists()) {
-        chartBg = isTransparentFill(fill, ctx) ? undefined : resolveChartColor(fill, ctx);
+        chartBg = resolveBackgroundFill(fill, ctx);
       } else {
         chartBg = "#ffffff";
       }
@@ -42,7 +44,7 @@ export function extractBackgroundColors(
       if (!noFill.exists()) {
         const fill = plotSpPr.child("solidFill");
         if (fill.exists()) {
-          plotAreaBg = isTransparentFill(fill, ctx) ? undefined : resolveChartColor(fill, ctx);
+          plotAreaBg = resolveBackgroundFill(fill, ctx);
         }
       }
     }
