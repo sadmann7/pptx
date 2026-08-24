@@ -3,17 +3,8 @@ import { graphic } from "echarts/core";
 import { ptToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { resolveColor, resolveLineStyle } from "../style";
+import { resolveColor, resolveColorToCss, resolveLineStyle } from "../style";
 import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./type";
-
-export function resolveColorToHex(fillNode: SafeXmlNode, ctx: RenderContext): string | undefined {
-  try {
-    const { color } = resolveColor(fillNode, ctx);
-    return color.startsWith("#") ? color : `#${color}`;
-  } catch {
-    return undefined;
-  }
-}
 
 function resolveGradientStop(
   gsNode: SafeXmlNode,
@@ -54,8 +45,7 @@ export function extractSeriesColor(
 
   const solidFill = spPr.child("solidFill");
   if (solidFill.exists()) {
-    const hex = resolveColorToHex(solidFill, ctx);
-    if (hex) return hex;
+    return resolveColorToCss(solidFill, ctx);
   }
 
   const gradFill = spPr.child("gradFill");
@@ -68,8 +58,7 @@ export function extractSeriesColor(
   if (ln.exists()) {
     const lnFill = ln.child("solidFill");
     if (lnFill.exists()) {
-      const hex = resolveColorToHex(lnFill, ctx);
-      if (hex) return hex;
+      return resolveColorToCss(lnFill, ctx);
     }
   }
 
@@ -168,10 +157,7 @@ export function extractDataPointStyles(
     const pointStyle: DataPointStyle = {};
     const solidFill = spPr.child("solidFill");
     if (solidFill.exists()) {
-      const hex = resolveColorToHex(solidFill, ctx);
-      if (hex) {
-        pointStyle.color = hex;
-      }
+      pointStyle.color = resolveColorToCss(solidFill, ctx);
     }
 
     const lineStyle = extractChartLineStyle(spPr.child("ln"), ctx);

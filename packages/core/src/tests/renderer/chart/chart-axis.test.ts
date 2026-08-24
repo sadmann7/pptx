@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   applyAxisInfo,
+  getAxisTitleSpacePx,
   getChartAxisIds,
   parseAxes,
   parseScatterAxes,
@@ -260,5 +261,34 @@ describe("applyAxisInfo", () => {
     expect(def.nameGap).toBe(42);
     expect(def.nameRotate).toBe(-90);
     expect(def.nameTextStyle).toEqual({ color: "#FF0000", fontSize: 12, fontWeight: "bold" });
+  });
+});
+
+describe("getAxisTitleSpacePx", () => {
+  const axis = {
+    deleted: false,
+    tickLblPos: "nextTo",
+    hasMajorGridlines: false,
+    orientation: "minMax",
+  };
+
+  it("is zero without a title", () => {
+    expect(getAxisTitleSpacePx(axis)).toBe(0);
+  });
+
+  it("is zero for a deleted axis", () => {
+    expect(getAxisTitleSpacePx({ ...axis, deleted: true, title: "Revenue" })).toBe(0);
+  });
+
+  it("scales with the title font size", () => {
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue" })).toBe(18);
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue", titleStyle: { fontSize: 13 } })).toBe(
+      23,
+    );
+  });
+
+  it("grows a line height per extra line", () => {
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD" })).toBe(31);
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD\nnet" })).toBe(43);
   });
 });

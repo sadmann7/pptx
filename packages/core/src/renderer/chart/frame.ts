@@ -1,7 +1,19 @@
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { extractChartLineStyle, resolveColorToHex } from "./style";
+import { resolveColor, resolveColorToCss } from "../style";
+import { extractChartLineStyle } from "./style";
 import type { ChartFrameStyle } from "./type";
+
+/**
+ * A chart background, or nothing when the deck paints it at zero opacity:
+ * authoring tools write "let the slide show through" as a `solidFill` carrying
+ * `a:alpha` 0 rather than as a `noFill`, and reading that as a color plates the
+ * chart in whatever hue happens to carry the alpha, usually black.
+ */
+function resolveBackgroundFill(fill: SafeXmlNode, ctx: RenderContext): string | undefined {
+  if (resolveColor(fill, ctx).alpha <= 0) return undefined;
+  return resolveColorToCss(fill, ctx);
+}
 
 export function extractBackgroundColors(
   chartXml: SafeXmlNode,
@@ -17,7 +29,7 @@ export function extractBackgroundColors(
     if (!noFill.exists()) {
       const fill = chartSpaceSpPr.child("solidFill");
       if (fill.exists()) {
-        chartBg = resolveColorToHex(fill, ctx);
+        chartBg = resolveBackgroundFill(fill, ctx);
       } else {
         chartBg = "#ffffff";
       }
@@ -32,7 +44,7 @@ export function extractBackgroundColors(
       if (!noFill.exists()) {
         const fill = plotSpPr.child("solidFill");
         if (fill.exists()) {
-          plotAreaBg = resolveColorToHex(fill, ctx);
+          plotAreaBg = resolveBackgroundFill(fill, ctx);
         }
       }
     }
