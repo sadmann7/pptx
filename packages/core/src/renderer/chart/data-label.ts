@@ -2,7 +2,7 @@ import { emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
 import { parseOoxmlBoolElement } from "./boolean";
-import { resolveColorToHex } from "./style";
+import { resolveChartColor } from "./style";
 import { extractTxPrColor, extractTxPrStyle } from "./text";
 import type { DataLabelConfig, DataLabelManualLayout } from "./type";
 
@@ -76,7 +76,7 @@ function parseDataLabelBoxStyle(dLbls: SafeXmlNode, ctx: RenderContext): Partial
   if (spPr.exists()) {
     const solidFill = spPr.child("solidFill");
     if (solidFill.exists()) {
-      const backgroundColor = resolveColorToHex(solidFill, ctx);
+      const backgroundColor = resolveChartColor(solidFill, ctx);
       if (backgroundColor) style.backgroundColor = backgroundColor;
     }
 
@@ -84,7 +84,7 @@ function parseDataLabelBoxStyle(dLbls: SafeXmlNode, ctx: RenderContext): Partial
     if (ln.exists() && !ln.child("noFill").exists()) {
       const strokeFill = ln.child("solidFill");
       if (strokeFill.exists()) {
-        const borderColor = resolveColorToHex(strokeFill, ctx);
+        const borderColor = resolveChartColor(strokeFill, ctx);
         if (borderColor) style.borderColor = borderColor;
       }
       const width = ln.numAttr("w");

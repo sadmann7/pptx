@@ -2,7 +2,7 @@ import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
 import { parseOoxmlBoolElement } from "./boolean";
 import { formatValue } from "./format";
-import { extractChartLineStyle, resolveColorToHex } from "./style";
+import { extractChartLineStyle, resolveChartColor } from "./style";
 import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
 import {
   type AxisInfo,
@@ -45,7 +45,7 @@ function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | un
     if (!defRPr.exists()) continue;
     const fill = defRPr.child("solidFill");
     if (fill.exists()) {
-      return resolveColorToHex(fill, ctx);
+      return resolveChartColor(fill, ctx);
     }
   }
   return undefined;
@@ -56,7 +56,7 @@ function extractAxisLineColor(ax: SafeXmlNode, ctx: RenderContext): string | und
   if (!ln.exists()) return undefined;
   const fill = ln.child("solidFill");
   if (!fill.exists()) return undefined;
-  return resolveColorToHex(fill, ctx);
+  return resolveChartColor(fill, ctx);
 }
 
 function isAxisLineHidden(ax: SafeXmlNode): boolean {
@@ -212,6 +212,17 @@ export function parseScatterAxes(
   return { xAxis, yAxis };
 }
 
+/**
+ * Room an axis title needs beyond its tick labels. ECharts' `containLabel`
+ * grows the grid for labels but never for the axis name, so a grid that pays
+ * only for labels pushes the title into the legend or past the chart's clip.
+ */
+export function getAxisTitleSpacePx(info: AxisInfo): number {
+  if (!info.title || info.deleted) return 0;
+  const fontSize = info.titleStyle?.fontSize ?? 10;
+  return Math.round(fontSize * 1.8);
+}
+
 export function applyAxisInfo(
   axisDef: Record<string, unknown>,
   info: AxisInfo,
@@ -237,7 +248,7 @@ export function applyAxisInfo(
   if (info.title) {
     axisDef.name = info.title;
     axisDef.nameLocation = "middle";
-    axisDef.nameGap = kind === "value" ? 42 : 28;
+    axisDef.nameGap = kind === "value" ? 42 : 24;
     if (info.titleRotation !== undefined) {
       axisDef.nameRotate = info.titleRotation;
     }

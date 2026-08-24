@@ -42,7 +42,13 @@ registerCharts([
 import { ChartNodeData } from "../model/nodes/chart";
 import { SafeXmlNode } from "../ooxml/xml";
 import { hexToRgb, hslToRgb, rgbToHex, rgbToHsl } from "../utils/color";
-import { applyAxisInfo, getChartAxisIds, parseAxes, parseScatterAxes } from "./chart/axis";
+import {
+  applyAxisInfo,
+  getAxisTitleSpacePx,
+  getChartAxisIds,
+  parseAxes,
+  parseScatterAxes,
+} from "./chart/axis";
 import { parseOoxmlBoolElement } from "./chart/boolean";
 import { parseDataLabels, parsePointDataLabelOverrides } from "./chart/data-label";
 import { buildDataTableElement, parseDataTable } from "./chart/data-table";
@@ -908,10 +914,12 @@ function buildBarChartOption(
   const gridTop = isHorizontal && hasTitle ? 60 : getGridTopPx(hasTitle, legendInfo);
   const legendTopPx = getLegendTopPx(hasTitle, legendInfo);
   // When value axis is hidden, reduce left/right padding so bars use full width
-  const gridLeft = isHorizontal ? 15 : valueAxis.deleted ? 4 : 18;
+  const leftAxis = isHorizontal ? categoryAxis : valueAxis;
+  const bottomAxis = isHorizontal ? valueAxis : categoryAxis;
+  const gridLeft = (isHorizontal ? 15 : valueAxis.deleted ? 4 : 18) + getAxisTitleSpacePx(leftAxis);
   const gridRight = isHorizontal ? 28 : 10;
   const tooltipFmt = pctFormat || sharedSeriesFormat;
-  const gridBottom = getGridBottomPx(legendInfo);
+  const gridBottom = getGridBottomPx(legendInfo) + getAxisTitleSpacePx(bottomAxis);
   const manualGrid = extractManualLayoutGrid(chartNode);
   const containLabel = !hasManualGrid(manualGrid);
 
@@ -1141,9 +1149,9 @@ function buildLineChartOption(
 
   const gridTop = getGridTopPx(!!titleOption, legendInfo);
   const legendTopPx = getLegendTopPx(!!titleOption, legendInfo);
-  const gridLeft = valueAxis.deleted ? 4 : 18;
+  const gridLeft = (valueAxis.deleted ? 4 : 18) + getAxisTitleSpacePx(valueAxis);
   const tooltipFmt = pctFormat || sharedSeriesFormat;
-  const gridBottom = getGridBottomPx(legendInfo);
+  const gridBottom = getGridBottomPx(legendInfo) + getAxisTitleSpacePx(categoryAxis);
   const manualGrid = extractManualLayoutGrid(chartNode);
   const containLabel = !hasManualGrid(manualGrid);
   const legendEntries = seriesArr.map((s, idx) => ({ series: s, idx }));
@@ -1626,9 +1634,10 @@ function buildScatterChartOption(
   const legendTopPx = getLegendTopPx(!!titleOption, legendInfo);
   const manualGrid = extractManualLayoutGrid(chartNode);
   const containLabel = !hasManualGrid(manualGrid);
-  const scatterGridLeft = yAxisInfo.deleted ? 4 : 18;
+  const scatterGridLeft = (yAxisInfo.deleted ? 4 : 18) + getAxisTitleSpacePx(yAxisInfo);
   const scatterGridTop = gridTop;
-  const scatterGridBottom = Math.max(getGridBottomPx(legendInfo), 20);
+  const scatterGridBottom =
+    Math.max(getGridBottomPx(legendInfo), 20) + getAxisTitleSpacePx(xAxisInfo);
 
   const xAxisDef: Record<string, unknown> = { type: "value" };
   const yAxisDef: Record<string, unknown> = { type: "value" };
@@ -1749,9 +1758,10 @@ function buildBubbleChartOption(
   const legendTopPx = getLegendTopPx(!!titleOption, legendInfo);
   const manualGrid = extractManualLayoutGrid(chartNode);
   const containLabel = !hasManualGrid(manualGrid);
-  const scatterGridLeft = yAxisInfo.deleted ? 4 : 18;
+  const scatterGridLeft = (yAxisInfo.deleted ? 4 : 18) + getAxisTitleSpacePx(yAxisInfo);
   const scatterGridTop = gridTop;
-  const scatterGridBottom = Math.max(getGridBottomPx(legendInfo), 20);
+  const scatterGridBottom =
+    Math.max(getGridBottomPx(legendInfo), 20) + getAxisTitleSpacePx(xAxisInfo);
 
   const xAxisDef: Record<string, unknown> = { type: "value" };
   const yAxisDef: Record<string, unknown> = { type: "value" };
@@ -1928,7 +1938,9 @@ function buildStockChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
   const legendTopPx = getLegendTopPx(!!titleOption, legendInfo);
-  const gridBottom = Math.max(getGridBottomPx(legendInfo), autoRotateDateLabels ? 56 : 0);
+  const gridBottom =
+    Math.max(getGridBottomPx(legendInfo), autoRotateDateLabels ? 56 : 0) +
+    getAxisTitleSpacePx(categoryAxis);
   const isHlc = seriesArr.length >= 3 && seriesArr.length < 4;
 
   const legendData = isHlc
@@ -2032,7 +2044,7 @@ function buildStockChartOption(
       containLabel,
       // Stock charts with rotated date labels need extra left inset so the
       // first category label is not clipped by the plot boundary.
-      left: 24,
+      left: 24 + getAxisTitleSpacePx(valueAxis),
       right: 10,
       top: gridTop,
       bottom: gridBottom,

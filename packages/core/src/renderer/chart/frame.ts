@@ -1,7 +1,17 @@
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { extractChartLineStyle, resolveColorToHex } from "./style";
+import { extractChartLineStyle, resolveChartColor, resolveChartFill } from "./style";
 import type { ChartFrameStyle } from "./type";
+
+/**
+ * A background a deck paints at zero opacity, which authoring tools write as a
+ * `solidFill` rather than a `noFill`. Treating it as a color would plate the
+ * chart in whatever hue happens to carry the alpha, usually black.
+ */
+function isTransparentFill(fill: SafeXmlNode, ctx: RenderContext): boolean {
+  const resolved = resolveChartFill(fill, ctx);
+  return resolved !== undefined && resolved.alpha <= 0;
+}
 
 export function extractBackgroundColors(
   chartXml: SafeXmlNode,
@@ -17,7 +27,7 @@ export function extractBackgroundColors(
     if (!noFill.exists()) {
       const fill = chartSpaceSpPr.child("solidFill");
       if (fill.exists()) {
-        chartBg = resolveColorToHex(fill, ctx);
+        chartBg = isTransparentFill(fill, ctx) ? undefined : resolveChartColor(fill, ctx);
       } else {
         chartBg = "#ffffff";
       }
@@ -32,7 +42,7 @@ export function extractBackgroundColors(
       if (!noFill.exists()) {
         const fill = plotSpPr.child("solidFill");
         if (fill.exists()) {
-          plotAreaBg = resolveColorToHex(fill, ctx);
+          plotAreaBg = isTransparentFill(fill, ctx) ? undefined : resolveChartColor(fill, ctx);
         }
       }
     }

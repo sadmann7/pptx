@@ -122,6 +122,57 @@ ${seriesXml(0, "S", ["A"], [1])}
     expect(option.grid.borderWidth).toBe(0);
   });
 
+  it("reserves grid space for axis titles on top of the label allowance", () => {
+    const title = (text: string) =>
+      `<c:title><c:tx><c:rich><a:p><a:pPr><a:defRPr sz="1200"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p></c:rich></c:tx></c:title>`;
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "S", ["A"], [1])}
+<c:axId val="111111111"/><c:axId val="222222222"/>
+</c:barChart>
+<c:catAx><c:axId val="111111111"/><c:delete val="0"/><c:axPos val="b"/>${title("Band")}<c:crossAx val="222222222"/></c:catAx>
+<c:valAx><c:axId val="222222222"/><c:delete val="0"/><c:axPos val="l"/>${title("Decay")}<c:crossAx val="111111111"/></c:valAx>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    // 12pt titles need 22px each beyond the 18px left inset and 20px floor.
+    expect(option.grid).toMatchObject({ left: 40, bottom: 42 });
+  });
+
+  it("leaves the plot area unpainted when its fill is fully transparent", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "S", ["A"], [1])}
+</c:barChart>
+<c:spPr><a:solidFill><a:srgbClr val="000000"><a:alpha val="0"/></a:srgbClr></a:solidFill></c:spPr>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    expect(option.grid.backgroundColor).toBeUndefined();
+    expect(option.grid.show).toBeUndefined();
+  });
+
+  it("leaves the chart space unpainted when its fill is fully transparent", () => {
+    const xml = chartSpaceXml(
+      `<c:plotArea>
+<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>
+${seriesXml(0, "S", ["A"], [1])}
+</c:barChart>
+</c:plotArea>`,
+      `<c:spPr><a:solidFill><a:srgbClr val="000000"><a:alpha val="0"/></a:srgbClr></a:solidFill></c:spPr>`,
+    );
+    const { option } = parseOption(xml) as AnyRecord;
+    expect(option.backgroundColor).toBeUndefined();
+  });
+
+  it("keeps the alpha a series line declares", () => {
+    const xml = chartSpaceXml(`<c:plotArea>
+<c:lineChart><c:grouping val="standard"/>
+${seriesXml(0, "Tinted", ["A", "B"], [1, 2], `<c:spPr><a:ln w="38100"><a:solidFill><a:srgbClr val="F0E8D2"><a:alpha val="62000"/></a:srgbClr></a:solidFill></a:ln></c:spPr>`)}
+</c:lineChart>
+</c:plotArea>`);
+    const { option } = parseOption(xml) as AnyRecord;
+    expect(option.series[0].lineStyle.color).toBe("rgba(240,232,210,0.620)");
+  });
+
   it("draws the plot area border when the plot area declares a solid line", () => {
     const xml = chartSpaceXml(`<c:plotArea>
 <c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>

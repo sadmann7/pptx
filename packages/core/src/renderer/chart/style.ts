@@ -3,9 +3,35 @@ import { graphic } from "echarts/core";
 import { ptToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { RenderContext } from "../context";
-import { resolveColor, resolveLineStyle } from "../style";
+import { resolveColor, resolveColorToCss, resolveLineStyle } from "../style";
 import type { ChartLineStyle, ChartLineType, DataPointStyle } from "./type";
 
+/**
+ * A fill as a CSS color, keeping the `a:alpha` it declares. Decks tint chart
+ * plates, series lines, and axis text with partial transparency, so a hex-only
+ * resolve paints a 62%-opaque line solid.
+ */
+export function resolveChartColor(fillNode: SafeXmlNode, ctx: RenderContext): string | undefined {
+  try {
+    return resolveColorToCss(fillNode, ctx);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Color and opacity apart, for callers that read a fully transparent fill as no fill. */
+export function resolveChartFill(
+  fillNode: SafeXmlNode,
+  ctx: RenderContext,
+): { color: string; alpha: number } | undefined {
+  try {
+    return resolveColor(fillNode, ctx);
+  } catch {
+    return undefined;
+  }
+}
+
+/** A fill as an opaque hex, for callers that do arithmetic on the channels. */
 export function resolveColorToHex(fillNode: SafeXmlNode, ctx: RenderContext): string | undefined {
   try {
     const { color } = resolveColor(fillNode, ctx);
@@ -54,8 +80,8 @@ export function extractSeriesColor(
 
   const solidFill = spPr.child("solidFill");
   if (solidFill.exists()) {
-    const hex = resolveColorToHex(solidFill, ctx);
-    if (hex) return hex;
+    const color = resolveChartColor(solidFill, ctx);
+    if (color) return color;
   }
 
   const gradFill = spPr.child("gradFill");
@@ -68,8 +94,8 @@ export function extractSeriesColor(
   if (ln.exists()) {
     const lnFill = ln.child("solidFill");
     if (lnFill.exists()) {
-      const hex = resolveColorToHex(lnFill, ctx);
-      if (hex) return hex;
+      const color = resolveChartColor(lnFill, ctx);
+      if (color) return color;
     }
   }
 
@@ -168,9 +194,9 @@ export function extractDataPointStyles(
     const pointStyle: DataPointStyle = {};
     const solidFill = spPr.child("solidFill");
     if (solidFill.exists()) {
-      const hex = resolveColorToHex(solidFill, ctx);
-      if (hex) {
-        pointStyle.color = hex;
+      const color = resolveChartColor(solidFill, ctx);
+      if (color) {
+        pointStyle.color = color;
       }
     }
 
