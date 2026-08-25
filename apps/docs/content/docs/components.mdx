@@ -31,7 +31,22 @@ import * as Presentation from "@diceui/pptx";
 
 <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
----
+## Provider
+
+Makes an existing store available to descendants without rendering any DOM. Use it when a toolbar or debug bar has to sit outside `Presentation.Root`'s layout, or when the store is created with `useCreatePresentationStore` before the tree mounts. See [Store](/docs/store) for the controlled setup.
+
+```tsx
+const store = useCreatePresentationStore();
+
+<Presentation.Provider store={store}>
+  <Toolbar />
+  <Presentation.Root>{/* … */}</Presentation.Root>
+</Presentation.Provider>;
+```
+
+`Presentation.Root` inherits the store from `Provider` when both wrap the same tree, so there is still only one source of truth.
+
+<AutoTypeTable path="types/presentation.ts" name="ProviderProps" />
 
 ## Viewport
 
@@ -42,6 +57,7 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
   autoFit
   autoFitPadding={10}
   scrollNavigation
+  scrollZoom
   onZoomChange={({ zoom, reason }) => setZoom(`${Math.round(zoom * 100)}%`)}
 >
   <Presentation.Slide />
@@ -51,6 +67,10 @@ Scrollable container that centers the slide and optionally auto-fits it to fill 
 `onZoomChange` covers every zoom change, including the automatic fits performed while `autoFit` is on. Its `reason` tells them apart: `"fit"` is auto-fit reacting to a resize, `"zoom"` is a level someone asked for.
 
 `scrollNavigation` makes the wheel behave like PowerPoint: scrolling past the end of the slide advances, past the start goes back. It is off by default because it captures wheel events, which fights a page that already scrolls.
+
+`scrollZoom` points the browser's zoom gesture at the deck instead of the page: Ctrl/Cmd + wheel and trackpad pinch change the zoom level, keeping whatever is under the pointer in place, as PowerPoint and every canvas editor do. It is off by default for the same reason as `scrollNavigation` — a viewer embedded in a page should not take page zoom away from a reader who is using it to read. Turn it on when the presentation owns the window. Ctrl/Cmd and the plus and minus keys still zoom the page either way.
+
+Because the gesture sets an explicit level, it releases `autoFit`, so a zoom control built like the one below flips from `Fit · 82%` to a plain percentage as soon as someone zooms.
 
 `autoFit` is the starting mode, not a latch. Setting an explicit level turns fitting off so the next resize leaves that level alone, and `setAutoFit(true)` turns it back on, which means a zoom control offering both keeps no state of its own:
 
@@ -79,8 +99,6 @@ The viewport keeps measuring itself while fitting is off, so re-arming picks up 
 
 <AutoTypeTable path="types/presentation.ts" name="ViewportProps" />
 
----
-
 ## Slide
 
 Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
@@ -102,8 +120,6 @@ The wrapper carries a `data-status` attribute matching the current load status:
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="SlideProps" />
-
----
 
 ## Selection
 
@@ -167,8 +183,6 @@ Control the accent color with a CSS variable:
 
 <AutoTypeTable path="types/presentation.ts" name="SelectionProps" />
 
----
-
 ## ThumbnailList
 
 Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
@@ -215,7 +229,9 @@ The list navigates on focus, so this triggers for keyboard roving as well as cli
 
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailItemProps" />
 
----
+<AutoTypeTable path="types/presentation.ts" name="ThumbnailItemPreviewProps" />
+
+<AutoTypeTable path="types/presentation.ts" name="ThumbnailItemNumberProps" />
 
 ## Loading
 
@@ -226,8 +242,6 @@ Renders its children only while the presentation is in the `"loading"` state.
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="LoadingProps" />
-
----
 
 ## Error
 
