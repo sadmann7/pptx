@@ -233,8 +233,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ctrl+wheel = pinch-zoom, shift+wheel = horizontal scroll; leave both alone.
-      if (event.deltaY === 0 || event.ctrlKey || event.shiftKey) return;
+      // Ignore ctrl/cmd/shift+wheel (zoom/horizontal scroll).
+      if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
       const scroller = findScroller(event.target);
@@ -246,8 +246,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       }
 
       if (event.timeStamp < cooldownUntil) {
-        // Momentum tail of the gesture that just navigated: swallow it so it
-        // neither chains to the page nor immediately scrolls the new slide.
+        // Swallow momentum after navigation to prevent chaining.
         event.preventDefault();
         return;
       }

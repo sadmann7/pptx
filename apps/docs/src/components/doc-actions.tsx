@@ -14,6 +14,8 @@ import { cn } from "@pptx/ui/lib/utils";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { Check, ChevronDown, Copy, TextIcon } from "lucide-react";
 
+import { siteConfig } from "@/lib/site";
+
 const markdownCache = new Map<string, string>();
 
 interface CopyPageButtonProps extends React.ComponentProps<typeof Button> {
@@ -81,8 +83,7 @@ interface PageMenuProps extends React.ComponentProps<typeof Button> {
 
 function PageMenu({ markdownUrl, className, ...props }: PageMenuProps) {
   const items = React.useMemo(() => {
-    const fullMarkdownUrl =
-      typeof window !== "undefined" ? new URL(markdownUrl, window.location.origin) : "loading";
+    const fullMarkdownUrl = new URL(markdownUrl, siteConfig.url);
     const q = `Read ${fullMarkdownUrl}, I want to ask questions about it.`;
 
     return [

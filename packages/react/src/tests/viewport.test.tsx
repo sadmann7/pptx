@@ -1,5 +1,3 @@
-import * as React from "react";
-
 import { act, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -191,17 +189,19 @@ describe("Presentation.Viewport", () => {
       expect(store.getActiveSlideIndex()).toBe(0);
     });
 
-    it("ignores ctrl+wheel (pinch-zoom gesture)", async () => {
+    it("ignores ctrl/cmd+wheel (zoom gesture)", async () => {
       const store = await loadedStore();
       withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
 
-      const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
-      // happy-dom's WheelEvent constructor drops modifier keys from the init.
-      Object.defineProperty(event, "ctrlKey", { value: true });
-      act(() => {
-        screen.getByTestId("viewport").dispatchEvent(event);
-      });
-      expect(store.getActiveSlideIndex()).toBe(0);
+      for (const modifier of ["ctrlKey", "metaKey"]) {
+        const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+        // happy-dom's WheelEvent constructor drops modifier keys from the init.
+        Object.defineProperty(event, modifier, { value: true });
+        act(() => {
+          screen.getByTestId("viewport").dispatchEvent(event);
+        });
+        expect(store.getActiveSlideIndex()).toBe(0);
+      }
     });
 
     it("ignores shift+wheel (horizontal scroll gesture)", async () => {
@@ -227,7 +227,15 @@ describe("Presentation.Viewport", () => {
   });
 
   describe("scrollZoom", () => {
-    /** Ctrl+wheel, whose modifier happy-dom drops from the constructor init. */
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    /**
+     * Ctrl/Cmd+wheel, sending Ctrl for both since the handler treats them
+     * alike. Assigned rather than passed: happy-dom's WheelEvent constructor
+     * drops modifier keys from the init.
+     */
     function zoomWheel(
       element: HTMLElement,
       deltaY: number,
@@ -253,7 +261,7 @@ describe("Presentation.Viewport", () => {
       return event;
     }
 
-    it("zooms in on ctrl+wheel up and out on ctrl+wheel down", async () => {
+    it("zooms in on ctrl/cmd+wheel up and out on ctrl/cmd+wheel down", async () => {
       const store = await loadedStore();
       withStore(store, <Presentation.Viewport scrollZoom data-testid="viewport" />);
       const viewport = screen.getByTestId("viewport");
@@ -339,7 +347,26 @@ describe("Presentation.Viewport", () => {
       const growth = 100 * (store.getState().zoom - 1);
       expect(scroller.scrollLeft).toBeCloseTo(growth / 2, 5);
       expect(scroller.scrollTop).toBeCloseTo(growth / 2, 5);
-      vi.unstubAllGlobals();
+    });
+
+    it("zooms without navigating when scrollNavigation is on too", async () => {
+      const store = await loadedStore();
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation scrollZoom data-testid="viewport" />,
+      );
+
+      // Cmd+wheel: the navigation handler runs first, so it has to pass on the
+      // modifiers the zoom handler claims or one gesture does both. Downwards,
+      // because navigating back off the first slide is a no-op either way.
+      const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+      Object.defineProperty(event, "metaKey", { value: true });
+      act(() => {
+        screen.getByTestId("viewport").dispatchEvent(event);
+      });
+
+      expect(store.getState().zoom).toBeCloseTo(Math.exp(-0.15), 5);
+      expect(store.getActiveSlideIndex()).toBe(0);
     });
 
     it("leaves the gesture to the browser when the prop is off", async () => {
