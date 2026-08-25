@@ -4,6 +4,7 @@ import { useStoreContext, useStoreEvent, useZoom } from "./context";
 import type { RenderProp } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding, ZoomChangeEvent } from "./store";
+import { MAX_ZOOM, MIN_ZOOM } from "./store";
 
 /**
  * Ignore wheel events for this long after a wheel-triggered navigation.
@@ -12,9 +13,44 @@ import type { AutoFitPadding, ZoomChangeEvent } from "./store";
  */
 const WHEEL_NAVIGATION_COOLDOWN_MS = 300;
 
+/**
+ * Zoom change per pixel of wheel delta, applied multiplicatively so a step is
+ * the same proportion at every level. Tuned so one mouse notch (~100px) is
+ * ~14%, which leaves a trackpad pinch (a few px per event) smooth.
+ */
+const ZOOM_WHEEL_SENSITIVITY = 0.0015;
+
 export interface ViewportState {
   /** Current zoom level (1 = 100%, 0.5 = 50%). */
   zoom: number;
+}
+
+/** The point a zoom gesture has to keep still, and what to scroll to keep it. */
+interface ZoomAnchor {
+  scroller: HTMLElement;
+  content: HTMLElement;
+  ratioX: number;
+  ratioY: number;
+  pointerX: number;
+  pointerY: number;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getIsScrollable(overflow: string): boolean {
+  return overflow === "auto" || overflow === "scroll";
+}
+
+/**
+ * Wheel delta in pixels. Firefox reports lines and, when scrolling by page,
+ * pages, which without normalizing would make a notch there barely register.
+ */
+function getWheelDeltaPx(event: WheelEvent): number {
+  if (event.deltaMode === 1) return event.deltaY * 16;
+  if (event.deltaMode === 2) return event.deltaY * 100;
+  return event.deltaY;
 }
 
 export interface ViewportProps extends React.ComponentProps<"div"> {
@@ -44,6 +80,20 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default false
    */
   scrollNavigation?: boolean;
+
+  /**
+   * When `true`, the browser's zoom gesture zooms the deck instead of the page:
+   * Ctrl/Cmd+wheel and trackpad pinch change the zoom level, keeping the point
+   * under the pointer in place. Like PowerPoint, and like every canvas editor.
+   *
+   * Off by default: taking that gesture also takes it away from readers who
+   * zoom the page to read, which is the wrong trade for a viewer embedded in a
+   * page. Turn it on when the presentation owns the window. Ctrl/Cmd and the
+   * plus/minus keys still zoom the page either way.
+   *
+   * @default false
+   */
+  scrollZoom?: boolean;
 
   /**
    * Padding (in pixels) reserved around the slide when fitting.
@@ -92,6 +142,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     autoFit = false,
     autoFitPadding = 0,
     scrollNavigation = false,
+    scrollZoom = false,
     render,
     onZoomChange,
     ...viewportProps
@@ -182,8 +233,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ctrl+wheel = pinch-zoom, shift+wheel = horizontal scroll; leave both alone.
-      if (event.deltaY === 0 || event.ctrlKey || event.shiftKey) return;
+      // Ignore ctrl/cmd/shift+wheel (zoom/horizontal scroll).
+      if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
       const scroller = findScroller(event.target);
@@ -195,8 +246,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       }
 
       if (event.timeStamp < cooldownUntil) {
-        // Momentum tail of the gesture that just navigated: swallow it so it
-        // neither chains to the page nor immediately scrolls the new slide.
+        // Swallow momentum after navigation to prevent chaining.
         event.preventDefault();
         return;
       }
@@ -222,6 +272,87 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     viewportElement.addEventListener("wheel", onWheel, { passive: false });
     return () => viewportElement.removeEventListener("wheel", onWheel);
   }, [scrollNavigation, store]);
+
+  // Ctrl/Cmd+wheel zoom. External system again (the browser owns this gesture
+  // until preventDefault takes it, which a passive listener cannot do).
+  React.useEffect(() => {
+    if (!scrollZoom || !viewportRef.current) return;
+
+    const viewportElement = viewportRef.current;
+
+    /**
+     * Nearest scroll container between the event target and the viewport
+     * (inclusive), normally the `Presentation.Slide` wrapper. Matched on
+     * `overflow` rather than on current scrollability, because at a fitted
+     * zoom there is nothing to scroll yet and zooming in is what creates it.
+     */
+    function findScroller(from: EventTarget | null): HTMLElement | null {
+      let element = from instanceof HTMLElement ? from : null;
+      while (element) {
+        const { overflowX, overflowY } = getComputedStyle(element);
+        if (getIsScrollable(overflowX) || getIsScrollable(overflowY)) return element;
+        if (element === viewportElement) break;
+        element = element.parentElement;
+      }
+      return null;
+    }
+
+    /**
+     * Where the pointer sits on the slide, as a fraction of the slide's box.
+     * Fractions rather than scroll offsets because the slide is centered by
+     * `margin: auto` until it outgrows the viewport, so its origin moves as
+     * the zoom crosses that threshold.
+     */
+    function getAnchor(event: WheelEvent): ZoomAnchor | null {
+      const scroller = findScroller(event.target);
+      const content = scroller?.firstElementChild;
+      if (!scroller || !(content instanceof HTMLElement)) return null;
+
+      const rect = content.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+
+      return {
+        scroller,
+        content,
+        ratioX: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+        ratioY: clamp((event.clientY - rect.top) / rect.height, 0, 1),
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+      };
+    }
+
+    function onWheel(event: WheelEvent): void {
+      if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0) return;
+
+      // Claimed before the level is checked: at either end of the range the
+      // gesture is still ours, and releasing it there would zoom the page.
+      event.preventDefault();
+
+      const { zoom } = store.getState();
+      const next = clamp(
+        zoom * Math.exp(-getWheelDeltaPx(event) * ZOOM_WHEEL_SENSITIVITY),
+        MIN_ZOOM,
+        MAX_ZOOM,
+      );
+      if (next === zoom) return;
+
+      const anchor = getAnchor(event);
+      store.setZoom(next);
+      if (!anchor) return;
+
+      // The correction has to wait for the slide to be laid out at the new
+      // level; measuring it beats predicting it, since `margin: auto` and the
+      // scrollbars themselves both move the box.
+      requestAnimationFrame(() => {
+        const rect = anchor.content.getBoundingClientRect();
+        anchor.scroller.scrollLeft += rect.left + anchor.ratioX * rect.width - anchor.pointerX;
+        anchor.scroller.scrollTop += rect.top + anchor.ratioY * rect.height - anchor.pointerY;
+      });
+    }
+
+    viewportElement.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewportElement.removeEventListener("wheel", onWheel);
+  }, [scrollZoom, store]);
 
   return renderElement(
     "div",

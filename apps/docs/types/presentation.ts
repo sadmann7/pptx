@@ -1,50 +1,51 @@
 ﻿// Types for AutoTypeTable: exposes component-specific props only,
 // with inherited HTML element props stripped out.
 //
+// `Omit<Props, keyof ComponentProps<"div">>` also drops names we override
+// (`onLoad`, `onError`, `onSelect`, render-function `children`) because
+// those keys exist on the host element. They get picked back.
+//
 // Usage in MDX:
-//   <AutoTypeTable path="types/presentation.ts" name="RootOwnProps" />
+//   <AutoTypeTable path="types/presentation.ts" name="RootProps" />
 
 import type * as React from "react";
 
 import type { Presentation as PresentationPrimitive } from "@diceui/pptx";
 
-export type RootProps = Omit<PresentationPrimitive.Root.Props, keyof React.ComponentProps<"div">>;
+type OverriddenHtmlKeys<T, Html> = {
+  [K in keyof T & keyof Html]-?: [T[K]] extends [Html[K]] ? never : K;
+}[keyof T & keyof Html];
 
-export type ViewportProps = Omit<
-  PresentationPrimitive.Viewport.Props,
-  keyof React.ComponentProps<"div">
->;
+type IndieProps<T, Html> = Omit<T, keyof Html> & Pick<T, OverriddenHtmlKeys<T, Html>>;
 
-export type SlideProps = Omit<PresentationPrimitive.Slide.Props, keyof React.ComponentProps<"div">>;
+type DivProps = React.ComponentProps<"div">;
+type ButtonProps = React.ComponentProps<"button">;
+type SpanProps = React.ComponentProps<"span">;
 
-export type SelectionProps = Omit<
-  PresentationPrimitive.Selection.Props,
-  keyof React.ComponentProps<"div">
->;
+export type ProviderProps = PresentationPrimitive.Provider.Props;
 
-export type ThumbnailListProps = Omit<
-  PresentationPrimitive.ThumbnailList.Props,
-  keyof React.ComponentProps<"div">
->;
+export type RootProps = IndieProps<PresentationPrimitive.Root.Props, DivProps>;
 
-export type ThumbnailItemProps = Omit<
-  PresentationPrimitive.ThumbnailItem.Props,
-  keyof React.ComponentProps<"button">
->;
+export type ViewportProps = IndieProps<PresentationPrimitive.Viewport.Props, DivProps>;
 
-export type ThumbnailItemPreviewProps = Omit<
+export type SlideProps = IndieProps<PresentationPrimitive.Slide.Props, DivProps>;
+
+export type SelectionProps = IndieProps<PresentationPrimitive.Selection.Props, DivProps>;
+
+export type ThumbnailListProps = IndieProps<PresentationPrimitive.ThumbnailList.Props, DivProps>;
+
+export type ThumbnailItemProps = IndieProps<PresentationPrimitive.ThumbnailItem.Props, ButtonProps>;
+
+export type ThumbnailItemPreviewProps = IndieProps<
   PresentationPrimitive.ThumbnailItemPreview.Props,
-  keyof React.ComponentProps<"div">
+  DivProps
 >;
 
-export type ThumbnailItemNumberProps = Omit<
+export type ThumbnailItemNumberProps = IndieProps<
   PresentationPrimitive.ThumbnailItemNumber.Props,
-  keyof React.ComponentProps<"span">
+  SpanProps
 >;
 
-export type LoadingProps = Omit<
-  PresentationPrimitive.Loading.Props,
-  keyof React.ComponentProps<"div">
->;
+export type LoadingProps = IndieProps<PresentationPrimitive.Loading.Props, DivProps>;
 
-export type ErrorProps = Omit<PresentationPrimitive.Error.Props, keyof React.ComponentProps<"div">>;
+export type ErrorProps = IndieProps<PresentationPrimitive.Error.Props, DivProps>;
