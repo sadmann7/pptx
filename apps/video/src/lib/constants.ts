@@ -46,7 +46,7 @@ export interface Spotlight {
 
 export const SPOTLIGHTS: Spotlight[] = [
   {
-    file: "editorial-forest-editable.pptx",
+    file: "the-city-after-asphalt-editorial-forest.pptx",
     slideIndex: 1,
     caption: "As in PowerPoint",
     x: 0,
