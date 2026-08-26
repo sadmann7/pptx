@@ -6,7 +6,6 @@
     "dev": "remotion studio --no-open --port 3001",
     "render": "remotion render launch out/launch.mp4",
     "still": "remotion still launch out/frame.png",
-    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -27,7 +26,6 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "oxlint": "catalog:",
     "typescript": "catalog:"
   }
 }

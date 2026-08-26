@@ -180,9 +180,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.5(@types/react@19.2.18)
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.80.0(oxlint-tsgolint@7.0.2001)
       postcss:
         specifier: ^8.5.26
         version: 8.5.26
@@ -241,9 +238,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.5(@types/react@19.2.18)
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.80.0(oxlint-tsgolint@7.0.2001)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -320,9 +314,6 @@ importers:
       jszip:
         specifier: 'catalog:'
         version: 3.10.1
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.80.0(oxlint-tsgolint@7.0.2001)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -448,9 +439,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.5(@types/react@19.2.18)
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.80.0(oxlint-tsgolint@7.0.2001)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

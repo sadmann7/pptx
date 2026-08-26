@@ -15,7 +15,6 @@
   },
   "scripts": {
     "shadcn": "pnpm dlx shadcn@latest",
-    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -34,7 +33,6 @@
     "@types/culori": "^4.0.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "oxlint": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {

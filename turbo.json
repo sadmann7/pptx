@@ -19,9 +19,9 @@
     "transit": {
       "dependsOn": ["^transit"]
     },
-    "lint": {
-      "dependsOn": ["transit"],
-      "outputs": []
+    "//#lint": {},
+    "//#lint:fix": {
+      "cache": false
     },
     "test": {
       "dependsOn": ["^build"],
@@ -35,7 +35,7 @@
       "dependsOn": ["transit", "docs#generate:content"]
     },
     "check": {
-      "dependsOn": ["lint", "typecheck"]
+      "dependsOn": ["//#lint", "typecheck"]
     },
     "dev": {
       "cache": false,
