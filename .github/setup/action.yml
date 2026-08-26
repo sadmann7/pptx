@@ -3,15 +3,8 @@ description: Sets up pnpm, Node and installs dependencies
 runs:
   using: composite
   steps:
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-
-    - name: Setup Node
-      uses: actions/setup-node@v4
+    - name: Setup pnpm and Node
+      uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
       with:
-        node-version: 24.x
-        cache: pnpm
-
-    - name: Install dependencies
-      run: pnpm install
-      shell: bash
+        runtime: node@24
+        cache: true
