@@ -2,7 +2,7 @@
   "name": "@diceui/pptx-e2e",
   "version": "0.0.0",
   "private": true,
-  "description": "Browser end-to-end tests for the PPTX renderer (Playwright + Vite harness).",
+  "description": "Browser end-to-end tests for the PPTX renderer.",
   "type": "module",
   "scripts": {
     "fixtures": "tsx scripts/generate-fixtures.ts",
@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@blazediff/ssim": "^1.7.1",
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -36,8 +36,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "sharp": "^0.35.3",
-    "tsx": "^4.22.4",
+    "tsx": "catalog:",
     "typescript": "catalog:",
-    "vite": "^7.3.6"
+    "vite": "^8.2.2"
   }
 }
