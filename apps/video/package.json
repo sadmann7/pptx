@@ -6,17 +6,16 @@
     "dev": "remotion studio --no-open --port 3001",
     "render": "remotion render launch out/launch.mp4",
     "still": "remotion still launch out/frame.png",
-    "lint": "oxlint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@diceui/pptx": "workspace:*",
     "@pptx/ui": "workspace:*",
-    "@remotion/cli": "4.0.491",
-    "@remotion/google-fonts": "4.0.491",
-    "@remotion/media": "4.0.491",
-    "@remotion/tailwind-v4": "4.0.491",
-    "@remotion/transitions": "4.0.491",
+    "@remotion/cli": "4.0.516",
+    "@remotion/google-fonts": "4.0.516",
+    "@remotion/media": "4.0.516",
+    "@remotion/tailwind-v4": "4.0.516",
+    "@remotion/transitions": "4.0.516",
     "react": "catalog:",
     "react-dom": "catalog:",
     "remotion": "catalog:",
@@ -27,7 +26,6 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "oxlint": "catalog:",
     "typescript": "catalog:"
   }
 }

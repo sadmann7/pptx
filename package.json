@@ -11,8 +11,8 @@
     "dev:web": "turbo -F web dev",
     "build": "turbo build",
     "test": "turbo test",
-    "lint": "turbo lint",
-    "lint:fix": "oxlint --fix",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
     "typecheck": "turbo typecheck",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
@@ -25,16 +25,16 @@
     "release": "turbo build --filter=!docs && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.1",
     "@pptx/config": "workspace:*",
     "@types/node": "catalog:",
-    "oxfmt": "^0.58.0",
+    "oxfmt": "^0.65.0",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "rimraf": "^6.1.3",
-    "tsx": "^4.22.4",
-    "turbo": "^2.10.4",
+    "tsx": "catalog:",
+    "turbo": "^2.10.11",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@11.12.0+sha512.820a6fbd0d9f04c226638002aead1e45340a9139dd5dc077c1d83ef44aa2481c8eb6637b4c9aa696a3c7e35ba818e49cf27213e5f2b91138d09b7a3e26e898ba"
+  "packageManager": "pnpm@11.24.0"
 }

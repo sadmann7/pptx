@@ -5,7 +5,7 @@
  */
 import * as React from "react";
 
-import { render } from "@testing-library/react";
+import { render, type RenderResult } from "@testing-library/react";
 
 import { Presentation } from "../index";
 import type { Store } from "../store";
@@ -28,6 +28,6 @@ export async function loadedStore(): Promise<Store> {
 }
 
 /** Render UI inside a `Presentation.Provider` bound to the given store. */
-export function withStore(store: Store, ui: React.ReactNode) {
+export function withStore(store: Store, ui: React.ReactNode): RenderResult {
   return render(<Presentation.Provider store={store}>{ui}</Presentation.Provider>);
 }
