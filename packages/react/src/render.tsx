@@ -24,7 +24,7 @@ export type PrimitiveProps<
    * Replaces the rendered element with a different element, or composes it with another component.
    *
    * - **ReactElement**: cloned with composed props
-   * - **Function**: called with composed props and state, and the default element is replaced with the return value.
+   * - **Function**: called with composed props and state; return value replaces the default element
    */
   render?: RenderProp<State, RenderFnProps>;
 };
