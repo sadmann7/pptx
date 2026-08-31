@@ -4,7 +4,7 @@ import type { SlideData } from "@diceui/pptx-core";
 
 import { Context, RootContext, useStoreEvent } from "./context";
 import { useLatestRef } from "./hook";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import type {
   EditEvent,
@@ -23,20 +23,7 @@ export interface RootState {
   file: PreviewInput | null | undefined;
 }
 
-export interface RootProps extends Omit<React.ComponentProps<"div">, "onLoad" | "onError"> {
-  /**
-   * Replace the root `<div>` with a custom element or render function.
-   *
-   * ```tsx
-   * // Element: props are merged in
-   * render={<section />}
-   *
-   * // Function: full control
-   * render={(props, state) => <section {...props} data-file={!!state.file} />}
-   * ```
-   */
-  render?: RenderProp<RootState>;
-
+export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoad" | "onError"> {
   /**
    * The file to parse and display. Accepts `File`, `Blob`, `ArrayBuffer`,
    * or `Uint8Array`.
@@ -188,8 +175,7 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
 
   const store = contextStore ?? internalStoreRef.current;
   if (store === null) {
-    // Unreachable: one of the two branches above always assigns a store.
-    throw new Error("`Presentation.Root` failed to resolve a store");
+    throw new Error("`Presentation.Root` failed to resolve a store.");
   }
 
   const rootRef = React.useRef<HTMLElement | null>(null);

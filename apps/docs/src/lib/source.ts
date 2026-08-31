@@ -2,11 +2,11 @@ import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
 
-import { docsContentRoute, docsImageRoute, docsRoute } from "./shared";
+import { DOCS_CONTENT_ROUTE, DOCS_IMAGE_ROUTE, DOCS_ROUTE } from "@/lib/constants";
 
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
-  baseUrl: docsRoute,
+  baseUrl: DOCS_ROUTE,
   source: docs.toFumadocsSource(),
   plugins: [lucideIconsPlugin()],
 });
@@ -16,7 +16,7 @@ export function getPageImage(page: (typeof source)["$inferPage"]) {
 
   return {
     segments,
-    url: `${docsImageRoute}/${segments.join("/")}`,
+    url: `${DOCS_IMAGE_ROUTE}/${segments.join("/")}`,
   };
 }
 
@@ -25,7 +25,7 @@ export function getPageMarkdownUrl(page: (typeof source)["$inferPage"]) {
 
   return {
     segments,
-    url: `${docsContentRoute}/${segments.join("/")}`,
+    url: `${DOCS_CONTENT_ROUTE}/${segments.join("/")}`,
   };
 }
 
