@@ -47,8 +47,10 @@ import { cn } from "@pptx/ui/lib/utils";
 import { PresentationIcon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
-import { parseArrayParam } from "@/lib/utils";
 import type { SearchParams } from "@/types";
+
+type PlaygroundLayout = "default" | "editing" | "compact";
+type PlaygroundHiddenTarget = "file-input" | "debug-toolbar" | "toolbar";
 
 /**
  * Keep the source item visible during the drop animation.
@@ -61,7 +63,15 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
 };
 
-const HIDE_TARGETS = new Set(["picker", "debug", "toolbar"] as const);
+const HIDDEN_TARGETS: Record<PlaygroundLayout, ReadonlySet<PlaygroundHiddenTarget>> = {
+  default: new Set(),
+  editing: new Set(["file-input", "debug-toolbar"]),
+  compact: new Set(["file-input", "debug-toolbar", "toolbar"]),
+};
+
+function getPlaygroundLayout(value: Awaited<SearchParams>[number]): PlaygroundLayout {
+  return value === "editing" || value === "compact" ? value : "default";
+}
 
 interface PresentationPlaygroundProps {
   searchParams: Promise<SearchParams>;
@@ -70,8 +80,8 @@ interface PresentationPlaygroundProps {
 export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
   const id = React.useId();
   const store = useCreatePresentationStore();
-  const params = React.use(searchParams);
-  const hidden = parseArrayParam(params.hide, HIDE_TARGETS);
+  const layout = getPlaygroundLayout(React.use(searchParams).layout);
+  const hidden = HIDDEN_TARGETS[layout];
 
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -86,7 +96,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
 
   return (
     <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col gap-2 p-4">
-      <div className={cn("flex items-center gap-2", hidden.has("picker") && "sr-only")}>
+      <div className={cn("flex items-center gap-2", hidden.has("file-input") && "sr-only")}>
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
@@ -95,13 +105,13 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
       <div
         className={cn(
           "flex flex-col overflow-hidden rounded-md border",
-          hidden.has("picker")
+          hidden.has("file-input")
             ? "h-[calc(100dvh-(--spacing(22)))]"
             : "h-[calc(100dvh-(--spacing(32)))]",
         )}
       >
         <PresentationProvider store={store}>
-          {!hidden.has("debug") && <PresentationDebug />}
+          {!hidden.has("debug-toolbar") && <PresentationDebugToolbar />}
           {!hidden.has("toolbar") && <PresentationToolbar store={store} />}
           <Presentation className="flex-1">
             <SortableThumbnailList store={store} />
@@ -375,7 +385,7 @@ function ThumbnailPerfReadout() {
   );
 }
 
-function PresentationDebug() {
+function PresentationDebugToolbar() {
   const { status, progress, error, presentation } = usePresentation();
   const { slide, index } = useSlide();
 
