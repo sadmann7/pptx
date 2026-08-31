@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { usePresentation } from "./context";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 
 export interface LoadingState {
@@ -9,7 +9,7 @@ export interface LoadingState {
   progress: number;
 }
 
-export interface LoadingProps extends Omit<React.ComponentProps<"div">, "children"> {
+export interface LoadingProps extends Omit<PrimitiveProps<"div", LoadingState>, "children"> {
   /**
    * Rendered while the presentation is loading.
    * Pass a function to receive the current `progress` (0–100).
@@ -21,13 +21,6 @@ export interface LoadingProps extends Omit<React.ComponentProps<"div">, "childre
    * ```
    */
   children?: React.ReactNode | ((progress: number) => React.ReactNode);
-
-  /**
-   * Replace the wrapper element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<LoadingState>;
 }
 
 /**

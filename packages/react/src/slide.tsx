@@ -12,7 +12,7 @@ import {
   useZoom,
 } from "./context";
 import { useLatestRef, useLazyRef } from "./hook";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import { getPasteboardOverhang } from "./selection";
 import type { PresentationStatus } from "./store";
@@ -44,14 +44,7 @@ export interface SlideState {
   index: number;
 }
 
-export interface SlideProps extends React.ComponentProps<"div"> {
-  /**
-   * Replace the slide wrapper element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<SlideState>;
-
+export interface SlideProps extends PrimitiveProps<"div", SlideState> {
   /**
    * Event handler called when an individual shape fails to render. The rest
    * of the slide still renders; the failing node is skipped.

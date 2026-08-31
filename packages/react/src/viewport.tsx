@@ -1,13 +1,13 @@
 import * as React from "react";
 
 import { useStoreContext, useStoreEvent, useZoom } from "./context";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding, ZoomChangeEvent } from "./store";
 import { MAX_ZOOM, MIN_ZOOM } from "./store";
 
 /**
- * Ignore wheel events for this long after a wheel-triggered navigation.
+ * Ignores wheel events for this long after a wheel-triggered navigation.
  * Trackpads emit a burst of momentum events for one physical gesture;
  * without a cooldown a single flick would skip through several slides.
  */
@@ -53,7 +53,7 @@ function getWheelDeltaPx(event: WheelEvent): number {
   return event.deltaY;
 }
 
-export interface ViewportProps extends React.ComponentProps<"div"> {
+export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   /**
    * When `true`, automatically scales the slide to fill the viewport's
    * dimensions whenever the container resizes.
@@ -111,13 +111,6 @@ export interface ViewportProps extends React.ComponentProps<"div"> {
    * @default 0
    */
   autoFitPadding?: AutoFitPadding;
-
-  /**
-   * Replace the viewport container element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<ViewportState>;
 
   /**
    * Event handler called whenever the zoom level changes, including the

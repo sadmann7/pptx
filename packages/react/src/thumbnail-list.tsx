@@ -22,7 +22,7 @@ import {
   useStoreSelector,
 } from "./context";
 import { useLatestRef, useLazyRef } from "./hook";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 
 const THUMBNAIL_LIST_NAME = "Presentation.ThumbnailList";
@@ -65,7 +65,7 @@ function wrapArray<T>(array: T[], startIndex: number): T[] {
 }
 
 /**
- * Publish `slideHandle` as the shared miniature for `slideId`.
+ * Publishes `slideHandle` as the shared miniature for `slideId`.
  *
  * Returns `false` when a live entry for the current revision already holds the
  * slot, which happens while the same slide is mounted twice (a drag overlay
@@ -110,12 +110,12 @@ interface ThumbnailRovingContextValue {
    */
   slideHandleCache: Map<string, CachedThumbnail>;
   /**
-   * Register with the list-level shared ResizeObserver.
+   * Registers with the list-level shared ResizeObserver.
    * Returns a cleanup function that unregisters the element.
    */
   observeResize: (element: Element, cb: (width: number) => void) => () => void;
   /**
-   * Enqueue a `renderSlide()` call, drained FIFO per animation frame
+   * Enqueues a `renderSlide()` call, drained FIFO per animation frame
    * within an ~8ms budget so no single frame blocks the main thread.
    */
   scheduleRender: (fn: () => void) => () => void;
@@ -126,7 +126,7 @@ const ThumbnailRovingContext = React.createContext<ThumbnailRovingContextValue |
 function useThumbnailRovingContext(consumerName: string) {
   const context = React.useContext(ThumbnailRovingContext);
   if (!context) {
-    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_LIST_NAME}\``);
+    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_LIST_NAME}\`.`);
   }
   return context;
 }
@@ -142,7 +142,7 @@ const ThumbnailItemContext = React.createContext<ThumbnailItemContextValue | nul
 function useThumbnailItemContext(consumerName: string) {
   const context = React.useContext(ThumbnailItemContext);
   if (!context) {
-    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_ITEM_NAME}\``);
+    throw new Error(`\`${consumerName}\` must be used within \`${THUMBNAIL_ITEM_NAME}\`.`);
   }
   return context;
 }
@@ -175,14 +175,10 @@ export interface ThumbnailListRenderState {
   goToIndex: (index: number) => void;
 }
 
-export interface ThumbnailListProps extends Omit<React.ComponentProps<"div">, "children"> {
-  /**
-   * Replace the list container element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<ThumbnailListState>;
-
+export interface ThumbnailListProps extends Omit<
+  PrimitiveProps<"div", ThumbnailListState>,
+  "children"
+> {
   /**
    * - Absent → default `ThumbnailItem` list (one per slide)
    * - ReactNode → rendered as-is inside the container
@@ -505,9 +501,11 @@ export interface ThumbnailSelectEvent {
   preventDefault: () => void;
 }
 
-export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">, "onSelect"> {
+export interface ThumbnailItemProps extends Omit<
+  PrimitiveProps<"button", ThumbnailItemState>,
+  "onSelect"
+> {
   slideId: string;
-  render?: RenderProp<ThumbnailItemState>;
 
   /**
    * Runs just before this item becomes the active slide, whether from a click
@@ -534,7 +532,7 @@ export interface ThumbnailItemProps extends Omit<React.ComponentProps<"button">,
   onSelect?: (event: ThumbnailSelectEvent) => void;
 
   /**
-   * Render the item's visuals only: no listbox role, no roving focus
+   * Renders the item's visuals only: no listbox role, no roving focus
    * registration, no navigation on click or focus, and no presence in the
    * accessibility tree.
    *
@@ -693,9 +691,10 @@ export interface ThumbnailItemPreviewState {
   scale: number;
 }
 
-export interface ThumbnailItemPreviewProps extends React.ComponentProps<"div"> {
-  render?: RenderProp<ThumbnailItemPreviewState>;
-}
+export interface ThumbnailItemPreviewProps extends PrimitiveProps<
+  "div",
+  ThumbnailItemPreviewState
+> {}
 
 /**
  * Renders the slide miniature for the enclosing `ThumbnailItem`.
@@ -960,9 +959,10 @@ export namespace ThumbnailItemPreview {
   export type Props = ThumbnailItemPreviewProps;
 }
 
-export interface ThumbnailItemNumberProps extends React.ComponentProps<"span"> {
-  render?: RenderProp<{ isActive: boolean; displayIndex: number; slideId: string }>;
-}
+export interface ThumbnailItemNumberProps extends PrimitiveProps<
+  "span",
+  { isActive: boolean; displayIndex: number; slideId: string }
+> {}
 
 /**
  * Renders the 1-based slide number for the enclosing `ThumbnailItem`.
