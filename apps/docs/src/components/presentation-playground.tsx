@@ -47,6 +47,7 @@ import { cn } from "@pptx/ui/lib/utils";
 import { PresentationIcon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
+import { parseArrayParam } from "@/lib/utils";
 import type { SearchParams } from "@/types";
 
 /**
@@ -60,6 +61,8 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
 };
 
+const HIDE_TARGETS = new Set(["picker", "debug", "toolbar"] as const);
+
 interface PresentationPlaygroundProps {
   searchParams: Promise<SearchParams>;
 }
@@ -67,7 +70,8 @@ interface PresentationPlaygroundProps {
 export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
   const id = React.useId();
   const store = useCreatePresentationStore();
-  const isRecording = React.use(searchParams).mode === "record";
+  const params = React.use(searchParams);
+  const hidden = parseArrayParam(params.hide, HIDE_TARGETS);
 
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -82,7 +86,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
 
   return (
     <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col gap-2 p-4">
-      <div className={cn("flex items-center gap-2", isRecording && "sr-only")}>
+      <div className={cn("flex items-center gap-2", hidden.has("picker") && "sr-only")}>
         <Label htmlFor={`${id}-file-input`} className="sr-only">
           Open presentation
         </Label>
@@ -91,12 +95,14 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
       <div
         className={cn(
           "flex flex-col overflow-hidden rounded-md border",
-          isRecording ? "h-[calc(100dvh-(--spacing(22)))]" : "h-[calc(100dvh-(--spacing(32)))]",
+          hidden.has("picker")
+            ? "h-[calc(100dvh-(--spacing(22)))]"
+            : "h-[calc(100dvh-(--spacing(32)))]",
         )}
       >
         <PresentationProvider store={store}>
-          {!isRecording && <PresentationDebug />}
-          <PresentationToolbar store={store} />
+          {!hidden.has("debug") && <PresentationDebug />}
+          {!hidden.has("toolbar") && <PresentationToolbar store={store} />}
           <Presentation className="flex-1">
             <SortableThumbnailList store={store} />
             <PresentationContent>
@@ -203,7 +209,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList>
+        <PresentationThumbnailList className="p-2">
           {() => (
             <>
               {orderedIds.map((slideId) => (
@@ -296,7 +302,7 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 border-b p-1.5">
+    <div className="flex items-center gap-2 border-b p-2">
       <Button
         size="sm"
         variant="outline"
