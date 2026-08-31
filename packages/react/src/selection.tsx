@@ -17,7 +17,7 @@ import {
   useZoom,
 } from "./context";
 import { useLatestRef } from "./hook";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { mergeRefs, renderElement } from "./render";
 
 const SELECTION_NAME = "Presentation.Selection";
@@ -151,7 +151,7 @@ function getIsRedoEvent(event: KeyboardEvent): boolean {
 }
 
 /**
- * Apply a resize drag (slide-px deltas) to the original rect, clamped to
+ * Applies a resize drag (slide-px deltas) to the original rect, clamped to
  * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
  * dimensions proportionally around the opposite corner, like PowerPoint.
  */
@@ -199,7 +199,7 @@ export function resizeRect(
 }
 
 /**
- * Apply a move drag (slide-px deltas). With `lockAxis` (Shift held) the
+ * Applies a move drag (slide-px deltas). With `lockAxis` (Shift held) the
  * larger delta wins and the other is dropped, so the shape travels straight
  * along one axis like PowerPoint. Ties keep the horizontal delta.
  */
@@ -259,7 +259,7 @@ export function gripScale(
 }
 
 /**
- * Scale a rect by the factors the dragged shape was scaled by, anchored at the
+ * Scales a rect by the factors the dragged shape was scaled by, anchored at the
  * edges opposite the grip, matching `resizeRect`.
  *
  * PowerPoint resizes every shape in a multi-selection when one shape's handle
@@ -346,7 +346,7 @@ function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
 }
 
 /**
- * Walk the edited contentEditable container and produce a `setTextBody`
+ * Walks the edited contentEditable container and produces a `setTextBody`
  * paragraphs payload. Uses the paragraph/run data attributes (see
  * `PPTX_ATTRS`) to map back to source indices for style inheritance.
  */
@@ -512,20 +512,13 @@ export interface SelectionState {
   selectedNodes: SlideNode[];
 }
 
-export interface SelectionProps extends React.ComponentProps<"div"> {
+export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   /**
-   * Replace the root overlay element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<SelectionState>;
-
-  /**
-   * Enables undo and redo shortcuts for the deck:
-   * `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`).
+   * When `true`, binds undo and redo to the deck: `Ctrl/Cmd+Z` and
+   * `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`).
    *
    * Shortcuts only apply within `Presentation.Root` and are ignored in text
-   * fields. Disabled by default to avoid conflicts with the surrounding app.
+   * fields. Off by default to avoid conflicts with the surrounding app.
    *
    * @default false
    *
@@ -535,24 +528,25 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
    */
   undoRedoShortcuts?: boolean;
 
-  /** Called after an undo triggers. */
+  /** Event handler called after an undo triggers. */
   onUndo?: (status: "success" | "empty", error?: unknown) => void;
 
-  /** Called after a redo triggers. */
+  /** Event handler called after a redo triggers. */
   onRedo?: (status: "success" | "empty", error?: unknown) => void;
 
-  /** Called after a node delete is attempted (keyboard or pointer). */
+  /** Event handler called after a node delete is attempted (keyboard or pointer). */
   onNodeDelete?: (nodeId: string, error?: unknown) => void;
 
-  /** Called after a node move or resize is attempted. */
+  /** Event handler called after a node move or resize is attempted. */
   onNodeTransform?: (nodeId: string, error?: unknown) => void;
 
-  /** Called after inline text editing is committed (or errors). */
+  /** Event handler called after inline text editing is committed (or errors). */
   onTextChange?: (nodeId: string, error?: unknown) => void;
 
   /**
-   * Called whenever the set of selected nodes changes, so UI outside the
-   * overlay (a formatting toolbar, a properties panel) can follow along.
+   * Event handler called whenever the set of selected nodes changes, so UI
+   * outside the overlay (a formatting toolbar, a properties panel) can
+   * follow along.
    *
    * Also called with an empty selection when the active slide changes, since
    * navigating away drops the selection. Treat the handler as idempotent.
@@ -564,8 +558,9 @@ export interface SelectionProps extends React.ComponentProps<"div"> {
   onSelectionChange?: (event: SelectionChangeEvent) => void;
 
   /**
-   * Called when the interaction mode changes, e.g. entering text editing or
-   * starting a drag. Useful for disabling toolbars mid-gesture.
+   * Event handler called when the interaction mode changes, e.g. entering
+   * text editing or starting a drag. Useful for disabling toolbars
+   * mid-gesture.
    */
   onModeChange?: (mode: SelectionState["mode"], previousMode: SelectionState["mode"]) => void;
 }
@@ -716,7 +711,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Drop any document text selection left behind by earlier gestures.
+   * Drops any document text selection left behind by earlier gestures.
    * A stale selection under the pointer turns the next press-and-drag into a
    * native drag-and-drop, cancelling our pointer stream mid-resize/move.
    */
@@ -874,7 +869,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Place the caret inside the last styled run span of `scope`. Typed text
+   * Places the caret inside the last styled run span of `scope`. Typed text
    * must land inside a run span (`PPTX_ATTRS.run`) to inherit the run's font and
    * color: a bare text node at the container/paragraph level renders with
    * unstyled defaults (e.g. black text on a dark slide → invisible typing).
@@ -937,7 +932,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Insert `data` at the current caret, keeping it inside a styled run span
+   * Inserts `data` at the current caret, keeping it inside a styled run span
    * (existing span at the caret, or a clone of the shape's template span).
    * Returns false when there is nowhere sensible to insert.
    */

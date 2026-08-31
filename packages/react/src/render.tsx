@@ -1,45 +1,27 @@
 import * as React from "react";
 
-/**
- * Function form of the `render` prop.
- *
- * @param props - Composed HTML attributes to spread onto the rendered element.
- * @param state - Component state; shape varies by component.
- * @returns A React element that receives the composed props.
- *
- * ```tsx
- * <Presentation.ThumbnailItem render={(props, { isActive }) => (
- *   <motion.div {...props} animate={{ opacity: isActive ? 1 : 0.5 }} />
- * )} />
- * ```
- */
+type AnyProps = Record<string, unknown>;
+
 export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement;
 
-/**
- * Customises the rendered element without changing component logic.
- *
- * - **ReactElement**: the element is cloned; props are merged in (`className`
- *   appended, `style` shallow-merged, event handlers chained).
- * - **Function** (`ComponentRenderFn`): called with final composed props and
- *   component state; the return value replaces the default element entirely.
- *
- * All primitives accept `render` alongside standard HTML element props.
- *
- * ```tsx
- * // Element shorthand
- * <Presentation.Slide render={<article />} />
- *
- * // Function for full control
- * <Presentation.Slide
- *   render={(props, { status }) => <article {...props} data-status={status} />}
- * />
- * ```
- */
-export type RenderProp<S = Record<string, never>> =
+export type RenderProp<S = Record<string, never>, P = React.HTMLAttributes<any>> =
   | React.ReactElement
-  | ComponentRenderFn<React.HTMLAttributes<any>, S>;
+  | ComponentRenderFn<P, S>;
 
-type AnyProps = Record<string, unknown>;
+export type PrimitiveProps<
+  Tag extends React.ElementType,
+  State = Record<string, never>,
+  RenderFunctionProps = React.ComponentProps<Tag>,
+> = React.ComponentProps<Tag> & {
+  /**
+   * Replaces the rendered element with a different element, or composes it with another component.
+   *
+   * - **ReactElement**: cloned with composed props
+   * - **Function**: called with composed props and state, and the default element is replaced with the return value.
+   * ```
+   */
+  render?: RenderProp<State, RenderFunctionProps>;
+};
 
 /**
  * Merges two prop objects with smart composition:
@@ -82,7 +64,7 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
 }
 
 /**
- * Combines multiple refs into a single callback ref.
+ * Combine multiple refs into a single callback ref.
  *
  * @see https://github.com/mui/base-ui/blob/master/packages/utils/src/useMergedRefs.ts
  */
@@ -98,24 +80,12 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
   };
 }
 
-/**
- * The subset of component props that drive element customisation.
- * Pass the full component props object: only `render`, `className`, and `style`
- * are consumed here; everything else is ignored.
- *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
- */
 export interface RenderElementComponentProps<S> {
   render?: RenderProp<S>;
   className?: string;
   style?: React.CSSProperties;
 }
 
-/**
- * Internal parameters that control how the element is built.
- *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
- */
 export interface RenderElementParams<S, E extends Element, P extends AnyProps = AnyProps> {
   /** Component state forwarded as the second argument to a function `render` prop. */
   state: S;

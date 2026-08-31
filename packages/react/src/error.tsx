@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { usePresentation } from "./context";
-import type { RenderProp } from "./render";
+import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 
 type GlobalError = globalThis.Error;
@@ -11,7 +11,7 @@ export interface ErrorState {
   error: GlobalError;
 }
 
-export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"> {
+export interface ErrorProps extends Omit<PrimitiveProps<"div", ErrorState>, "children"> {
   /**
    * Rendered when the presentation is in the `"error"` state.
    * Pass a function to receive the `Error` instance.
@@ -23,13 +23,6 @@ export interface ErrorProps extends Omit<React.ComponentProps<"div">, "children"
    * ```
    */
   children?: React.ReactNode | ((error: GlobalError) => React.ReactNode);
-
-  /**
-   * Replace the wrapper element.
-   * - ReactElement: cloned with composed props
-   * - Function: `(props, state) => ReactElement`
-   */
-  render?: RenderProp<ErrorState>;
 }
 
 /**
