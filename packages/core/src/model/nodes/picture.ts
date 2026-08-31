@@ -34,7 +34,7 @@ export interface PictureNodeData extends BaseNodeData {
 const CROP_DIVISOR = 100000;
 
 /**
- * Parse a picture XML node (`p:pic`) into PictureNodeData.
+ * Parses a picture XML node (`p:pic`) into PictureNodeData.
  */
 export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const base = parseBaseProps(picNode);

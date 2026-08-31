@@ -58,7 +58,7 @@ export function useDeck(file: string) {
     let cancelled = false;
     fetch(staticFile(file))
       .then((r) => {
-        if (!r.ok) throw new Error(`${file}: ${r.status}`);
+        if (!r.ok) throw new Error(`${file}: ${r.status}.`);
         return r.arrayBuffer();
       })
       .then((buf) => {

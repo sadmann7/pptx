@@ -19,7 +19,7 @@ export interface GroupNodeData extends BaseNodeData {
 const GROUP_CHILD_TAGS = new Set(["sp", "pic", "grpSp", "graphicFrame", "cxnSp"]);
 
 /**
- * Parse a group shape XML node (`p:grpSp`) into GroupNodeData.
+ * Parses a group shape XML node (`p:grpSp`) into GroupNodeData.
  */
 export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
   const base = parseBaseProps(grpNode);

@@ -1,5 +1,5 @@
 /**
- * Convert OOXML arc specification to SVG path arc command.
+ * Converts OOXML arc specification to SVG path arc command.
  * Based on PPTXjs shapeArc() implementation.
  *
  * @param cx - Center X coordinate

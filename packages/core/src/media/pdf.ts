@@ -240,7 +240,7 @@ function renderInWorker(
 // ---------------------------------------------------------------------------
 
 /**
- * Render page 1 of a PDF to a blob URL image.
+ * Renders page 1 of a PDF to a blob URL image.
  *
  * Uses a dedicated Web Worker with its own pdfjs instance, fully isolated
  * from the main thread. Never touches GlobalWorkerOptions or any other

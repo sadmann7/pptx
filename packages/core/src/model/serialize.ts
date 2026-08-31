@@ -1,5 +1,5 @@
 /**
- * Serialize PresentationData into a plain JSON-serializable structure.
+ * Serializes PresentationData into a plain JSON-serializable structure.
  * Strips all SafeXmlNode references and re-parses group children.
  */
 
@@ -108,7 +108,7 @@ function serializeRow(row: TableRow): SerializedRow {
 }
 
 /**
- * Parse a raw XML child node from a group into a typed node.
+ * Parses a raw XML child node from a group into a typed node.
  */
 function parseGroupChild(
   childXml: SafeXmlNode,

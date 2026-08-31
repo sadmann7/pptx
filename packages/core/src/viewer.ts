@@ -115,7 +115,7 @@ export interface PptxViewerEventMap {
 }
 
 /**
- * Scale a rendered slide element to its display size.
+ * Scales a rendered slide element to its display size.
  *
  * Uses `zoom` rather than `transform: scale()`: a transform rasterises the
  * slide at its intrinsic size, so at a fractional scale every hairline lands
@@ -248,7 +248,7 @@ export class PptxViewer extends EventTarget {
   // -----------------------------------------------------------------------
 
   /**
-   * Load a parsed presentation model. Does NOT render. Call `renderList()` or
+   * Loads a parsed presentation model. Does NOT render. Call `renderList()` or
    * `renderSlide()` afterwards.
    */
   load(presentation: PresentationData): void {
@@ -262,7 +262,7 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Render all slides in a scrollable list.
+   * Renders all slides in a scrollable list.
    */
   async renderList(options?: ListRenderOptions): Promise<void> {
     this.activeRenderMode = "list";
@@ -277,7 +277,7 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Render a single slide (no built-in nav UI).
+   * Renders a single slide (no built-in nav UI).
    */
   async renderSlide(index?: number): Promise<void> {
     this.activeRenderMode = "slide";
@@ -486,7 +486,7 @@ export class PptxViewer extends EventTarget {
   // -----------------------------------------------------------------------
 
   /**
-   * Render a single slide into an external container element.
+   * Renders a single slide into an external container element.
    * Useful for React/Vue integration, thumbnail generation, etc.
    *
    * **Ownership:** The caller owns the returned {@link SlideHandle} and is
@@ -521,7 +521,7 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Search loaded presentation text without depending on rendered DOM.
+   * Searches loaded presentation text without depending on rendered DOM.
    * Results point to slide/node locations that callers can use for navigation
    * or custom highlighting.
    */
@@ -535,7 +535,7 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Render a scaled preview of a slide into an external container.
+   * Renders a scaled preview of a slide into an external container.
    * The slide is laid out from the same intrinsic geometry and only scaled, so
    * this avoids thumbnail-only reflow differences.
    */
@@ -1329,5 +1329,5 @@ export async function normalizePptxSource(input: PptxSource): Promise<ArrayBuffe
     return new Response(blobLike).arrayBuffer();
   }
 
-  throw new Error("Blob preview input is not supported in this runtime");
+  throw new Error("Blob preview input is not supported in this runtime.");
 }

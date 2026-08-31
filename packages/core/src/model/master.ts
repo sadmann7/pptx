@@ -24,7 +24,7 @@ export interface MasterData {
 }
 
 /**
- * Check whether a shape node contains a placeholder definition.
+ * Checks whether a shape node contains a placeholder definition.
  * Looks for `p:nvSpPr > p:nvPr > p:ph` or `p:nvPicPr > p:nvPr > p:ph`.
  */
 function isPlaceholder(node: SafeXmlNode): boolean {
@@ -40,7 +40,7 @@ function isPlaceholder(node: SafeXmlNode): boolean {
 }
 
 /**
- * Extract shape transform in EMU units.
+ * Extracts shape transform in EMU units.
  */
 function getShapeXfrmInEmu(
   node: SafeXmlNode,
@@ -159,7 +159,7 @@ function extractPlaceholderEntriesRecursive(
 }
 
 /**
- * Parse all attributes of a node into a Map<string, string>.
+ * Parses all attributes of a node into a Map<string, string>.
  * Used for clrMap where every attribute is a color mapping entry.
  */
 function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
@@ -175,7 +175,7 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
 }
 
 /**
- * Parse a slide master XML root (`p:sldMaster`) into MasterData.
+ * Parses a slide master XML root (`p:sldMaster`) into MasterData.
  */
 export function parseMaster(root: SafeXmlNode): MasterData {
   const cSld = root.child("cSld");

@@ -49,13 +49,13 @@ export interface SlideRendererOptions {
   /** Shared set of live ECharts instances for explicit disposal. */
   chartInstances?: Set<ECharts>;
   /**
-   * Render empty slide placeholders with a dashed outline and the
+   * Renders empty slide placeholders with a dashed outline and the
    * layout/master prompt text, like PowerPoint's editing view.
    * Intended for edit mode; default `false`.
    */
   placeholderPrompts?: boolean;
   /**
-   * Clip node content to the slide bounds (default `true`).
+   * Clips node content to the slide bounds (default `true`).
    * Set `false` in editing surfaces so shapes dragged past the slide edge
    * stay visible, like PowerPoint's pasteboard.
    */
@@ -116,7 +116,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
 // ---------------------------------------------------------------------------
 
 /**
- * Create a visual error placeholder at the node's position.
+ * Creates a visual error placeholder at the node's position.
  */
 function createErrorPlaceholder(node: BaseNodeData): HTMLElement {
   const el = document.createElement("div");
@@ -155,7 +155,7 @@ interface TemplateShapeCacheEntry {
 const templateShapeCache = new WeakMap<SafeXmlNode, TemplateShapeCacheEntry>();
 
 /**
- * Parse and collect renderable shapes from a master or layout spTree.
+ * Parses and collects renderable shapes from a master or layout spTree.
  * Only includes NON-placeholder shapes (decorative elements, logos, footers).
  * Placeholder shapes are never rendered from master/layout; they only serve
  * as position/size inheritance templates.
@@ -293,7 +293,7 @@ export interface ThumbnailRendererOptions {
 }
 
 /**
- * Render a slide optimised for thumbnail display.
+ * Renders a slide optimised for thumbnail display.
  *
  * Uses the same rendering pipeline as `renderSlide()`: real theme colours,
  * actual shapes, images, and text; skips operations that are
@@ -422,7 +422,7 @@ export function renderThumbnail(
 }
 
 /**
- * Render a complete slide into an HTML element.
+ * Renders a complete slide into an HTML element.
  *
  * Rendering order:
  * 1. Background (slide → layout → master inheritance)

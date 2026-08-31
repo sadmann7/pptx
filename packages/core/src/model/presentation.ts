@@ -113,7 +113,7 @@ function detectWps(presentationXml: string): boolean {
 }
 
 /**
- * Find a rels entry by type substring match.
+ * Finds a rels entry by type substring match.
  */
 function findRelByType(rels: Map<string, RelEntry>, typeSubstring: string): RelEntry | undefined {
   for (const [, entry] of rels) {
@@ -125,7 +125,7 @@ function findRelByType(rels: Map<string, RelEntry>, typeSubstring: string): RelE
 }
 
 /**
- * Find ALL rels entries matching a type substring, returning [rId, entry] pairs.
+ * Finds ALL rels entries matching a type substring, returning [rId, entry] pairs.
  */
 function findRelsByType(rels: Map<string, RelEntry>, typeSubstring: string): [string, RelEntry][] {
   const results: [string, RelEntry][] = [];
@@ -138,7 +138,7 @@ function findRelsByType(rels: Map<string, RelEntry>, typeSubstring: string): [st
 }
 
 /**
- * Build the complete PresentationData from extracted PPTX files.
+ * Builds the complete PresentationData from extracted PPTX files.
  *
  * This is the main factory function that wires together all parsed components:
  * 1. Parses presentation.xml for slide ordering and size
@@ -444,7 +444,7 @@ function parseEmbeddedFontList(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract placeholder info (type, idx) from a raw placeholder XML node
+ * Extracts placeholder info (type, idx) from a raw placeholder XML node
  * stored in layout/master.
  */
 function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
@@ -466,7 +466,7 @@ function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
 }
 
 /**
- * Extract xfrm position/size from a raw placeholder XML node.
+ * Extracts xfrm position/size from a raw placeholder XML node.
  */
 function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSize } | undefined {
   // Try spPr > xfrm first (most shapes), then direct xfrm (graphic frames).
@@ -507,7 +507,7 @@ export function normalizePlaceholderType(type: string | undefined): string | und
 }
 
 /**
- * Find a matching layout placeholder (PlaceholderEntry); use entry.absoluteXfrm when present.
+ * Finds a matching layout placeholder (PlaceholderEntry); uses entry.absoluteXfrm when present.
  *
  * Match priority (best score wins):
  *   6. exact type + same idx
@@ -559,7 +559,7 @@ function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {
 }
 
 /**
- * Find the layout (or master, as fallback) placeholder shape node that a slide
+ * Finds the layout (or master, as fallback) placeholder shape node that a slide
  * placeholder inherits from. Used for edit-mode prompt text: the template
  * node's txBody carries the "Click to add title"-style prompt runs.
  */

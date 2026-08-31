@@ -26,7 +26,7 @@ import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveFill, resolveLineStyle } from "./style";
 
 /**
- * Check if a file extension is an unsupported legacy format (WMF only now; EMF is handled).
+ * Checks if a file extension is an unsupported legacy format (WMF only now; EMF is handled).
  */
 function isUnsupportedFormat(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() || "";
@@ -34,7 +34,7 @@ function isUnsupportedFormat(path: string): boolean {
 }
 
 /**
- * Check if a file path is an EMF image.
+ * Checks if a file path is an EMF image.
  */
 function isEmfFormat(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() || "";
@@ -61,7 +61,7 @@ function resolveImageRelUrl(rel: RelEntry, ctx: RenderContext): string | undefin
 // ---------------------------------------------------------------------------
 
 /**
- * Render a picture node into an absolutely-positioned HTML element.
+ * Renders a picture node into an absolutely-positioned HTML element.
  *
  * Handles:
  * - Standard images (png, jpg, gif, svg, bmp)
@@ -684,7 +684,7 @@ function applyPictureHyperlink(
 }
 
 /**
- * Resolve overall image opacity from OOXML blip alpha modifiers.
+ * Resolves overall image opacity from OOXML blip alpha modifiers.
  *
  * Supported today:
  * - alphaModFix amt="N"
@@ -713,7 +713,7 @@ function resolveBlipOpacity(blip: SafeXmlNode): number {
 }
 
 /**
- * Render a video element inside the wrapper.
+ * Renders a video element inside the wrapper.
  */
 function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
   // Try to get video URL from mediaRId
@@ -767,7 +767,7 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
 }
 
 /**
- * Render an audio element inside the wrapper.
+ * Renders an audio element inside the wrapper.
  */
 function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
   const audioUrl = resolveMediaUrl(node.mediaRId, ctx);
@@ -804,7 +804,7 @@ function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
 }
 
 /**
- * Resolve a media URL from a relationship ID.
+ * Resolves a media URL from a relationship ID.
  */
 function resolveMediaUrl(rId: string | undefined, ctx: RenderContext): string | undefined {
   if (!rId) return undefined;
@@ -826,7 +826,7 @@ function resolveMediaUrl(rId: string | undefined, ctx: RenderContext): string | 
 }
 
 /**
- * Render a placeholder div for missing or error content.
+ * Renders a placeholder div for missing or error content.
  */
 function renderPlaceholder(wrapper: HTMLElement, message: string): void {
   const placeholder = document.createElement("div");
@@ -844,7 +844,7 @@ function renderPlaceholder(wrapper: HTMLElement, message: string): void {
 }
 
 /**
- * Render a placeholder for unsupported image formats (WMF).
+ * Renders a placeholder for unsupported image formats (WMF).
  */
 function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void {
   const ext = path.split(".").pop()?.toUpperCase() || "Unknown";
@@ -878,7 +878,7 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
 // ---------------------------------------------------------------------------
 
 /**
- * Render EMF content by extracting embedded PDF or bitmap data.
+ * Renders EMF content by extracting embedded PDF or bitmap data.
  */
 function renderEmf(
   data: Uint8Array,
@@ -908,7 +908,7 @@ function renderEmf(
 }
 
 /**
- * Render an embedded PDF from EMF using pdfjs-dist.
+ * Renders an embedded PDF from EMF using pdfjs-dist.
  * Populates the wrapper asynchronously. The wrapper is returned immediately.
  */
 function renderEmfPdf(
@@ -939,7 +939,7 @@ function renderEmfPdf(
 }
 
 /**
- * Render an embedded DIB bitmap from EMF.
+ * Renders an embedded DIB bitmap from EMF.
  */
 function renderEmfBitmap(
   imageData: ImageData,
@@ -975,7 +975,7 @@ function renderEmfBitmap(
 }
 
 /**
- * Create an <img> element that fills its container.
+ * Creates an <img> element that fills its container.
  */
 function createFillImage(url: string): HTMLImageElement {
   const img = document.createElement("img");
@@ -993,7 +993,7 @@ function createFillImage(url: string): HTMLImageElement {
 // ---------------------------------------------------------------------------
 
 /**
- * Apply a duotone effect to an image via canvas pixel manipulation.
+ * Applies a duotone effect to an image via canvas pixel manipulation.
  *
  * OOXML `<a:duotone>` contains two color children (dark and light).
  * The image is converted to grayscale, then black→color1, white→color2.
@@ -1059,7 +1059,7 @@ function applyDuotoneFilter(
 // ---------------------------------------------------------------------------
 
 /**
- * Apply a luminance (brightness/contrast) effect to an image.
+ * Applies a luminance (brightness/contrast) effect to an image.
  *
  * OOXML `<a:lum>` supports `bright` (additive brightness offset, 0–100000 = 0–100%)
  * and `contrast` (multiplicative contrast, -100000 to 100000).
@@ -1117,7 +1117,7 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Apply a bi-level (threshold) effect to an image.
+ * Applies a bi-level (threshold) effect to an image.
  *
  * OOXML `<a:biLevel thresh="25000">` converts the image to black and white.
  * Each pixel's luminance is compared to the threshold (0–100000 = 0–100%).

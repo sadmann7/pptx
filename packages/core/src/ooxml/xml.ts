@@ -21,7 +21,7 @@ const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
 const queriedOnce = new WeakSet<Element>();
 
 /**
- * Drop the cached child index for an element whose children were mutated.
+ * Drops the cached child index for an element whose children were mutated.
  *
  * Edit operations that insert or remove child elements MUST call this on the
  * parent, otherwise later `child()`/`children()` lookups return stale results.
@@ -117,7 +117,7 @@ export class SafeXmlNode {
   }
 
   /**
-   * Find the first child element matching the given localName (namespace-agnostic).
+   * Finds the first child element matching the given localName (namespace-agnostic).
    * Returns an empty SafeXmlNode if not found, so chaining never crashes.
    */
   child(localName: string): SafeXmlNode {
@@ -137,7 +137,7 @@ export class SafeXmlNode {
   }
 
   /**
-   * Get child elements, optionally filtered by localName (namespace-agnostic).
+   * Gets child elements, optionally filtered by localName (namespace-agnostic).
    * If no localName is given, returns all direct child elements.
    */
   children(localName?: string): SafeXmlNode[] {
@@ -191,7 +191,7 @@ export class SafeXmlNode {
 let sharedParser: DOMParser | undefined;
 
 /**
- * Parse an XML string into a SafeXmlNode wrapping the document element.
+ * Parses an XML string into a SafeXmlNode wrapping the document element.
  * Uses the browser's built-in DOMParser.
  */
 export function parseXml(xmlString: string): SafeXmlNode {

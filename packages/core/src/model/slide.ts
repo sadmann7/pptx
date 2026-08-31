@@ -43,7 +43,7 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
 }
 
 /**
- * Find the layout relationship target from a slide's rels map.
+ * Finds the layout relationship target from a slide's rels map.
  * The relationship type URI for slide layouts ends with "slideLayout".
  */
 function findLayoutRel(rels: Map<string, RelEntry>): string {
@@ -56,7 +56,7 @@ function findLayoutRel(rels: Map<string, RelEntry>): string {
 }
 
 /**
- * Parse a slide XML root (`p:sld`) into SlideData.
+ * Parses a slide XML root (`p:sld`) into SlideData.
  *
  * @param root      Parsed XML root of the slide
  * @param index     Zero-based slide index
@@ -130,7 +130,7 @@ export function createLazySlide(
 }
 
 /**
- * Parse a lazy slide's deferred XML into nodes.
+ * Parses a lazy slide's deferred XML into nodes.
  * Returns the parsed slide XML root (for package registration), or undefined
  * when the slide was already materialized.
  */

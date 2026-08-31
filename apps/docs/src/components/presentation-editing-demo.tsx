@@ -58,7 +58,7 @@ export function PresentationEditingDemo() {
       .then((res) => {
         // fetch resolves on 404, so an unchecked body would reach the parser as
         // an error page rather than a deck.
-        if (!res.ok) throw new Error(`${DEMO_DECK_PATH}: ${res.status}`);
+        if (!res.ok) throw new Error(`${DEMO_DECK_PATH}: ${res.status}.`);
         return res.arrayBuffer();
       })
       // Editing and reordering both need the source package retained.

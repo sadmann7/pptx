@@ -790,7 +790,7 @@ const styleGenerators: Record<string, (accent: string, styleId: string) => strin
 const cache = new Map<string, SafeXmlNode>();
 
 /**
- * Get a predefined table style by its UUID.
+ * Gets a predefined table style by its UUID.
  * Returns the parsed SafeXmlNode (a:tblStyle element) or undefined if not a known predefined style.
  * Results are cached: same UUID always returns the same instance.
  */

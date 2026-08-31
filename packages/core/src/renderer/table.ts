@@ -59,7 +59,7 @@ function clearCssFillBackground(el: HTMLElement): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Find a table style node by its ID from presentation.tableStyles.
+ * Finds a table style node by its ID from presentation.tableStyles.
  * tableStyles XML structure: <a:tblStyleLst> <a:tblStyle styleId="{UUID}" ...>
  *
  * A table without an <a:tableStyleId> falls back to the built-in "No Style,
@@ -90,7 +90,7 @@ function findTableStyle(
 }
 
 /**
- * Get the appropriate style section from a table style for a given cell position.
+ * Gets the appropriate style section from a table style for a given cell position.
  * Priority: specific section > wholeTbl (fallback).
  */
 function getStyleSections(
@@ -178,7 +178,7 @@ interface TableStyleTextProps {
 }
 
 /**
- * Get the effective text properties from table style sections (last section with tcTxStyle wins).
+ * Gets the effective text properties from table style sections (last section with tcTxStyle wins).
  * tcTxStyle supports: b (bold), i (italic), and color children (schemeClr, solidFill, etc.).
  * When a style part (e.g. firstCol, firstRow) is applied, we use that part's tcTxStyle for cell
  * text styling so text stays readable on styled fill.
@@ -253,7 +253,7 @@ function getEffectiveTableStyleTextProps(
 }
 
 /**
- * Apply fill from a table style tcStyle node.
+ * Applies fill from a table style tcStyle node.
  * Structure: <a:tcStyle> <a:fill> <a:solidFill>... or <a:fillRef>...
  */
 function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContext): boolean {
@@ -396,7 +396,7 @@ function collectStyleBorders(
 }
 
 /**
- * Apply table-level background from tblStyle > tblBg.
+ * Applies table-level background from tblStyle > tblBg.
  * tblBg can contain fillRef (theme fill reference) or solidFill.
  */
 function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: RenderContext): void {
@@ -433,7 +433,7 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
 }
 
 /**
- * Track whether every cell of a row resolved to the same opaque colour.
+ * Tracks whether every cell of a row resolved to the same opaque colour.
  *
  * Neighbouring cell backgrounds meet on a fractional device pixel once the
  * slide is scaled, and the anti-aliased seam exposes whatever is behind the
@@ -480,7 +480,7 @@ function trackOuterEdge(
 }
 
 /**
- * Move an outline edge from its cells onto the table element.
+ * Moves an outline edge from its cells onto the table element.
  *
  * Every cell paints its borders as its own rectangles, so two neighbouring
  * segments of the same outline meet on a fractional device pixel once the slide
@@ -518,7 +518,7 @@ function tableFlipTransform(node: TableNodeData): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Render a table node into an absolutely-positioned HTML element.
+ * Renders a table node into an absolutely-positioned HTML element.
  */
 export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
   // A table's true size is defined by its grid (sum of gridCol widths and
@@ -756,7 +756,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 // ---------------------------------------------------------------------------
 
 /**
- * Apply table cell properties (tcPr) to a <td> element, collecting the cell's
+ * Applies table cell properties (tcPr) to a <td> element, collecting the cell's
  * borders into `borders` (they are painted later, once per shared edge).
  */
 function applyCellProperties(

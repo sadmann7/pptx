@@ -25,7 +25,7 @@ import { getEffectiveBodyPrChild } from "./text-body-props";
 // ---------------------------------------------------------------------------
 
 /**
- * Find paragraph properties at a specific indent level from a list style node.
+ * Finds paragraph properties at a specific indent level from a list style node.
  * Tries lvl{n}pPr (where n = level + 1), then falls back to defPPr.
  */
 function findStyleAtLevel(styleNode: SafeXmlNode | undefined, level: number): SafeXmlNode {
@@ -63,7 +63,7 @@ function getPlaceholderCategory(
 }
 
 /**
- * Find a placeholder node in a list by matching type and/or idx.
+ * Finds a placeholder node in a list by matching type and/or idx.
  */
 function findPlaceholderNode(
   placeholders: SafeXmlNode[],
@@ -99,7 +99,7 @@ function findPlaceholderNode(
 }
 
 /**
- * Extract lstStyle from a placeholder shape node.
+ * Extracts lstStyle from a placeholder shape node.
  */
 function getPlaceholderLstStyle(phNode: SafeXmlNode): SafeXmlNode | undefined {
   const txBody = phNode.child("txBody");
@@ -109,7 +109,7 @@ function getPlaceholderLstStyle(phNode: SafeXmlNode): SafeXmlNode | undefined {
 }
 
 /**
- * Merge a source paragraph property node onto a target style object.
+ * Merges a source paragraph property node onto a target style object.
  * Later calls override earlier values (higher priority wins).
  */
 interface MergedParagraphStyle {
@@ -534,7 +534,7 @@ function hexToRgbInternal(hex: string): { r: number; g: number; b: number } {
 }
 
 /**
- * Convert resolved color + alpha to CSS color string.
+ * Converts resolved color + alpha to CSS color string.
  */
 function colorToCssLocal(color: string, alpha: number): string {
   const hex = color.startsWith("#") ? color : `#${color}`;
@@ -642,7 +642,7 @@ function shouldUseHyperlinkThemeColor(
 }
 
 /**
- * Resolve a gradient fill node into a CSS linear-gradient string.
+ * Resolves a gradient fill node into a CSS linear-gradient string.
  * Used for text outline gradient effects.
  */
 function resolveGradientForText(gradFill: SafeXmlNode, ctx: RenderContext): string {
@@ -739,7 +739,7 @@ function toRoman(num: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Render a text body into the provided container element.
+ * Renders a text body into the provided container element.
  *
  * Implements style inheritance:
  * 1. presentation.defaultTextStyle

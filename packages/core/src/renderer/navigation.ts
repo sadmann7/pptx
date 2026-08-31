@@ -17,7 +17,7 @@ function normalizePackagePath(path: string): string {
 }
 
 /**
- * Resolve a slide relationship to the zero-based presentation order.
+ * Resolves a slide relationship to the zero-based presentation order.
  *
  * Slide relationship targets point to slide part paths, but the displayed slide
  * order comes from presentation.xml and can differ from slideN.xml numbering.

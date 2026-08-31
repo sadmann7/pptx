@@ -84,7 +84,7 @@ export const RECOMMENDED_PPTX_READ_LIMITS = Object.freeze({
 }) satisfies Required<PptxReadLimits>;
 
 function throwZipLimitExceeded(reason: string): never {
-  throw new Error(`PPTX read limit exceeded: ${reason}`);
+  throw new Error(`PPTX read limit exceeded: ${reason}.`);
 }
 
 function isMediaPath(path: string): boolean {

@@ -55,7 +55,7 @@ export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): Un
 }
 
 /**
- * Turn the font-data block of an EOT into an sfnt. An uncompressed block is
+ * Turns the font-data block of an EOT into an sfnt. An uncompressed block is
  * already one, so it is deobfuscated if needed and returned untouched.
  */
 export function decodeMtx(data: Uint8Array, options: DecodeOptions = {}): Uint8Array {

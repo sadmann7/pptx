@@ -67,19 +67,19 @@ async function saveAndReopen(pres: PresentationData): Promise<PresentationData> 
 async function savedPartText(pres: PresentationData, path: string): Promise<string> {
   const zip = await JSZip.loadAsync(await writePptx(pres));
   const file = zip.file(path);
-  if (!file) throw new Error(`part not in saved output: ${path}`);
+  if (!file) throw new Error(`part not in saved output: ${path}.`);
   return file.async("string");
 }
 
 function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): ShapeNodeData {
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
-  if (!node || node.nodeType !== "shape") throw new Error(`shape ${nodeId} not found`);
+  if (!node || node.nodeType !== "shape") throw new Error(`shape ${nodeId} not found.`);
   return node as ShapeNodeData;
 }
 
 function tableOn(pres: PresentationData, slideIndex: number, nodeId: string): TableNodeData {
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
-  if (!node || node.nodeType !== "table") throw new Error(`table ${nodeId} not found`);
+  if (!node || node.nodeType !== "table") throw new Error(`table ${nodeId} not found.`);
   return node;
 }
 

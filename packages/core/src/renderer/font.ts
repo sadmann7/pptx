@@ -56,7 +56,7 @@ function resolveScriptFont(
 }
 
 /**
- * Resolve theme font placeholder references like "+mj-lt" or "+mn-ea".
+ * Resolves theme font placeholder references like "+mj-lt" or "+mn-ea".
  */
 export function resolveThemeFont(
   typeface: string,

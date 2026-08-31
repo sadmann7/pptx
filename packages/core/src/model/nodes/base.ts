@@ -73,7 +73,7 @@ function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode
 }
 
 /**
- * Find the transform (xfrm) node. Shapes use `p:spPr > a:xfrm`,
+ * Finds the transform (xfrm) node. Shapes use `p:spPr > a:xfrm`,
  * groups use `p:grpSpPr > a:xfrm`, graphic frames use `p:xfrm`.
  */
 function findXfrm(node: SafeXmlNode): SafeXmlNode {
@@ -100,7 +100,7 @@ function findXfrm(node: SafeXmlNode): SafeXmlNode {
 }
 
 /**
- * Parse placeholder info from nvPr > p:ph.
+ * Parses placeholder info from nvPr > p:ph.
  */
 function parsePlaceholder(nvPr: SafeXmlNode): PlaceholderInfo | undefined {
   const ph = nvPr.child("ph");
@@ -113,7 +113,7 @@ function parsePlaceholder(nvPr: SafeXmlNode): PlaceholderInfo | undefined {
 }
 
 /**
- * Parse the base properties common to all node types from a shape-like XML node.
+ * Parses the base properties common to all node types from a shape-like XML node.
  * Returns everything except `nodeType`, which the caller must set.
  */
 export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeType"> {

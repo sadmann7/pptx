@@ -29,7 +29,7 @@ function decodeUriPathSegment(segment: string): string {
 }
 
 /**
- * Parse a .rels XML string into a Map of relationship ID -> RelEntry.
+ * Parses a .rels XML string into a Map of relationship ID -> RelEntry.
  *
  * Example input:
  * ```xml
@@ -62,7 +62,7 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
 }
 
 /**
- * Resolve a relative target path against a base path.
+ * Resolves a relative target path against a base path.
  *
  * Examples:
  *   resolveRelTarget('ppt/slides', '../slideLayouts/slideLayout1.xml')

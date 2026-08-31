@@ -38,7 +38,7 @@ const COLOR_SLOTS = [
 ] as const;
 
 /**
- * Extract a hex color value from a color definition node.
+ * Extracts a hex color value from a color definition node.
  * Handles both `a:srgbClr@val` and `a:sysClr@lastClr`.
  */
 function extractColor(node: SafeXmlNode): string | undefined {
@@ -54,7 +54,7 @@ function extractColor(node: SafeXmlNode): string | undefined {
 }
 
 /**
- * Parse font info from a majorFont or minorFont node.
+ * Parses font info from a majorFont or minorFont node.
  * Extracts typeface attributes from latin, ea, and cs child elements.
  * Office themes often leave <ea> empty and provide script-specific
  * <font script="Hans" .../> entries instead; preserve those for font resolution.
@@ -81,7 +81,7 @@ function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
 }
 
 /**
- * Parse a theme XML root (`a:theme`) into ThemeData.
+ * Parses a theme XML root (`a:theme`) into ThemeData.
  */
 export function parseTheme(root: SafeXmlNode): ThemeData {
   const themeElements = root.child("themeElements");

@@ -160,7 +160,7 @@ interface GridOptionExtended extends echarts.GridComponentOption {
 // ---------------------------------------------------------------------------
 
 /**
- * Extract chart title from chartSpace > chart > title.
+ * Extracts chart title from chartSpace > chart > title.
  * Returns undefined when autoTitleDeleted is true (title was intentionally removed).
  */
 function extractChartTitle(chartNode: SafeXmlNode, seriesArr?: SeriesData[]): string | undefined {
@@ -217,7 +217,7 @@ function buildChartTitleOption(
 }
 
 /**
- * Extract chart title manual layout (title > layout > manualLayout) to ECharts title position.
+ * Extracts chart title manual layout (title > layout > manualLayout) to ECharts title position.
  */
 function extractTitleManualLayout(chartNode: SafeXmlNode): Partial<Record<"left" | "top", string>> {
   const manual = chartNode.child("title").child("layout").child("manualLayout");
@@ -374,7 +374,7 @@ function hasManualGrid(
 // ---------------------------------------------------------------------------
 
 /**
- * Convert OOXML data label position to ECharts bar label position.
+ * Converts OOXML data label position to ECharts bar label position.
  */
 function mapBarLabelPosition(pos: string | undefined, isStacked: boolean): string {
   switch (pos) {
@@ -2061,7 +2061,7 @@ function buildStockChartOption(
 // ---------------------------------------------------------------------------
 
 /**
- * Parse plotArea/layout/manualLayout to ECharts grid override.
+ * Parses plotArea/layout/manualLayout to ECharts grid override.
  */
 interface ManualLayoutBox {
   x?: number;
@@ -2385,7 +2385,7 @@ function mergeCartesianComboOptions(
 }
 
 /**
- * Parse a chart XML (chartSpace root) into an ECharts option object and optional data table info.
+ * Parses a chart XML (chartSpace root) into an ECharts option object and optional data table info.
  * Exported for unit testing.
  */
 export function parseChartXml(
@@ -2543,7 +2543,7 @@ export function parseChartXml(
 // ---------------------------------------------------------------------------
 
 /**
- * Render a chart node into an HTML element with an ECharts instance.
+ * Renders a chart node into an HTML element with an ECharts instance.
  */
 export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");

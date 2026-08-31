@@ -80,7 +80,7 @@ export function useStoreContext(consumerName: string): Store {
   const store = React.useContext(Context);
   if (!store) {
     throw new Error(
-      `\`${consumerName}\` must be used within \`Presentation.Root\` or \`Presentation.Provider\``,
+      `\`${consumerName}\` must be used within \`Presentation.Root\` or \`Presentation.Provider\`.`,
     );
   }
   return store;
@@ -318,27 +318,27 @@ export interface UseZoomResult {
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`. Turns auto-fit off.
+   * Increases zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`. Turns auto-fit off.
+   * Decreases zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
 
   /**
-   * Turn auto-fit on or off. Turning it on refits the slide to the viewport
+   * Turns auto-fit on or off. Turning it on refits the slide to the viewport
    * immediately and on every resize after it.
    */
   setAutoFit: (isAutoFit: boolean) => void;
 
   /**
-   * Compute and apply a zoom that fits the slide inside the given container
+   * Computes and applies a zoom that fits the slide inside the given container
    * dimensions, respecting the optional padding.
    *
    * @param containerWidth - Available width in pixels.

@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 /**
- * Let the list's rAF-batched render queue drain.
+ * Lets the list's rAF-batched render queue drain.
  *
  * The queue drains within an 8ms-per-frame budget, so a single callback
  * normally clears in one tick. A loaded CI runner can blow that budget on

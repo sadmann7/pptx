@@ -1,5 +1,5 @@
 /**
- * Load embedded PPTX fonts and register them with the document.
+ * Loads embedded PPTX fonts and registers them with the document.
  *
  * Decompression (LZCOMP + adaptive Huffman per font part) is CPU-heavy, so
  * unique font parts are decoded in parallel across a Web Worker pool. The

@@ -17,7 +17,7 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "check": "turbo lint typecheck --affected && pnpm format",
-    "clean": "rimraf --glob **/node_modules **/.next **/dist .turbo",
+    "clean": "rimraf --glob **/node_modules **/.next **/.source **/dist .turbo",
     "render": "pnpm --filter video render",
     "shadcn": "pnpm --filter @pptx/ui shadcn",
     "changeset": "changeset",

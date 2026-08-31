@@ -50,7 +50,7 @@ function encodeText(text: string): Uint8Array {
 }
 
 /**
- * Extract the original `<?xml ...?>` declaration (including any trailing
+ * Extracts the original `<?xml ...?>` declaration (including any trailing
  * newline) so a re-serialized part keeps the source's prolog; XMLSerializer
  * never emits the declaration itself.
  */
@@ -153,7 +153,7 @@ export class PptxPackage {
   }
 
   /**
-   * Replace or add a part's raw content. The given content becomes the saved
+   * Replaces or adds a part's raw content. The given content becomes the saved
    * bytes for this part; any previously registered XML root and dirty flag
    * for the path are discarded as stale.
    */
@@ -215,7 +215,7 @@ export class PptxPackage {
       out.file(
         key,
         this.readBytes(key).then((bytes) => {
-          if (!bytes) throw new Error(`PptxPackage: part "${key}" disappeared during save`);
+          if (!bytes) throw new Error(`PptxPackage: part "${key}" disappeared during save.`);
           return bytes;
         }),
         { binary: true },
@@ -231,7 +231,7 @@ export class PptxPackage {
   private async serializeDirtyPart(key: string): Promise<Uint8Array> {
     const element = this.xmlRoots.get(key)?.element;
     if (!element) {
-      throw new Error(`PptxPackage: dirty part "${key}" has no XML document to serialize`);
+      throw new Error(`PptxPackage: dirty part "${key}" has no XML document to serialize.`);
     }
 
     sharedSerializer ??= new XMLSerializer();

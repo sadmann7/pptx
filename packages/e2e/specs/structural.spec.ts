@@ -1,6 +1,4 @@
 /**
- * Structural comparison specs (port of upstream's Layer 1).
- *
  * Instead of comparing pixels, these assert the parsed/serialized presentation
  * structure against what the fixture generator is known to produce
  * (scripts/generate-fixtures.ts). Catches parser regressions (dropped nodes,

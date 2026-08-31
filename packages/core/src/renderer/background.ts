@@ -250,7 +250,7 @@ function tryRenderSvgGradientBackgroundData(
 }
 
 /**
- * Render the background for a slide onto the container element.
+ * Renders the background for a slide onto the container element.
  *
  * Background priority: slide.background -> layout.background -> master.background.
  * The first found background is used.
@@ -296,7 +296,7 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
 }
 
 /**
- * Render background from bgPr (background properties).
+ * Renders background from bgPr (background properties).
  * Contains direct fill definitions: solidFill, gradFill, blipFill, etc.
  */
 function renderBgPr(
@@ -359,7 +359,7 @@ function renderBgPr(
 }
 
 /**
- * Render background from bgRef (theme format scheme reference).
+ * Renders background from bgRef (theme format scheme reference).
  * bgRef values 1001+ reference theme bgFillStyleLst; lower values fall back
  * to regular fillStyleLst for compatibility with non-standard producers.
  */
@@ -393,7 +393,7 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
 }
 
 /**
- * Render a blip (image) fill as a CSS background.
+ * Renders a blip (image) fill as a CSS background.
  */
 function renderBlipBackground(
   blipFill: SafeXmlNode,

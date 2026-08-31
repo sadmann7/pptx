@@ -1,5 +1,5 @@
 /**
- * Parse OOXML custom geometry (a:custGeom) into SVG path strings.
+ * Parses OOXML custom geometry (a:custGeom) into SVG path strings.
  */
 
 import { SafeXmlNode } from "../ooxml/xml";
@@ -49,7 +49,7 @@ function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
 }
 
 /**
- * Render a custom geometry element to an SVG path d-attribute string.
+ * Renders a custom geometry element to an SVG path d-attribute string.
  *
  * Coordinates in `a:pt` (and arcTo radii/angles) may be literal numbers or
  * references to guides defined in `a:avLst`/`a:gdLst` (ECMA-376

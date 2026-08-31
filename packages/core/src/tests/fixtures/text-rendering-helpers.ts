@@ -81,7 +81,7 @@ export function spansOf(paragraph: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Normalize a CSS color ("#RRGGBB", "#rgb" or "rgb()/rgba()") to a comparable
+ * Normalizes a CSS color ("#RRGGBB", "#rgb" or "rgb()/rgba()") to a comparable
  * "r,g,b,a" string, so assertions survive engine-specific serialization.
  */
 export function normalizeColor(color: string | undefined): string | undefined {
