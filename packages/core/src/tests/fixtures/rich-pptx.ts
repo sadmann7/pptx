@@ -74,7 +74,7 @@ export interface RichPptxOptions {
 }
 
 /**
- * Build a single-slide .pptx with the given customizations.
+ * Builds a single-slide .pptx with the given customizations.
  * Defaults produce the same package as `buildPptxWithShapes("")`.
  */
 export async function buildRichPptx(options: RichPptxOptions = {}): Promise<ArrayBuffer> {

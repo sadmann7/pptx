@@ -42,7 +42,7 @@ export function setOrRemoveAttr(el: Element, name: string, value: string | undef
 }
 
 /**
- * Serialize a mutated XML document root back to part text, preserving the
+ * Serializes a mutated XML document root back to part text, preserving the
  * original part's `<?xml ...?>` declaration.
  */
 export function serializePartText(root: Element, originalText: string): string {

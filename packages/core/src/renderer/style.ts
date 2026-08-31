@@ -22,7 +22,7 @@ import { RenderContext } from "./context";
 // ---------------------------------------------------------------------------
 
 /**
- * Build a cache key for a color node based on its tag, value, and modifiers.
+ * Builds a cache key for a color node based on its tag, value, and modifiers.
  */
 function buildColorCacheKey(colorNode: SafeXmlNode): string {
   const parts: string[] = [colorNode.localName, colorNode.attr("val") ?? ""];
@@ -65,7 +65,7 @@ function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
 }
 
 /**
- * Resolve a scheme color name through the master colorMap then theme colorScheme.
+ * Resolves a scheme color name through the master colorMap then theme colorScheme.
  *
  * OOXML scheme colors use logical names (e.g., "tx1", "bg1", "accent1").
  * The master's colorMap remaps some of these (e.g., "tx1" -> "dk1").
@@ -93,7 +93,7 @@ function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
 }
 
 /**
- * Resolve an OOXML color node (srgbClr, schemeClr, sysClr, prstClr, hslClr, scrgbClr)
+ * Resolves an OOXML color node (srgbClr, schemeClr, sysClr, prstClr, hslClr, scrgbClr)
  * into a CSS-ready hex color and alpha value.
  */
 export function resolveColor(
@@ -219,7 +219,7 @@ function resolveColorUncached(
 }
 
 /**
- * Resolve a color node and return a CSS color string.
+ * Resolves a color node and returns a CSS color string.
  * Convenience wrapper combining resolveColor + colorToCss.
  */
 export function resolveColorToCss(node: SafeXmlNode, ctx: RenderContext): string {
@@ -228,7 +228,7 @@ export function resolveColorToCss(node: SafeXmlNode, ctx: RenderContext): string
 }
 
 /**
- * Convert a resolved color + alpha into a CSS rgba() string.
+ * Converts a resolved color + alpha into a CSS rgba() string.
  */
 function colorToCss(color: string, alpha: number): string {
   const hex = color.startsWith("#") ? color : `#${color}`;
@@ -253,7 +253,7 @@ function resolveColorWithPlaceholder(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a fill from shape properties (spPr) into a CSS background value.
+ * Resolves a fill from shape properties (spPr) into a CSS background value.
  *
  * Returns:
  *   - CSS color/gradient string for solidFill/gradFill
@@ -311,7 +311,7 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve `<a:pattFill>` into a CSS background value using repeating gradients.
+ * Resolves `<a:pattFill>` into a CSS background value using repeating gradients.
  *
  * OOXML defines 40+ pattern presets. We support the most common ones and
  * fall back to a simple foreground/background 50% mix for unknown patterns.
@@ -473,7 +473,7 @@ function resolvePatternFill(
 }
 
 /**
- * Parse a gradient fill into a CSS gradient string.
+ * Parses a gradient fill into a CSS gradient string.
  */
 function resolveGradient(
   gradFill: SafeXmlNode,
@@ -551,7 +551,7 @@ function resolveGradient(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a line (outline) node into CSS-compatible properties.
+ * Resolves a line (outline) node into CSS-compatible properties.
  *
  * @param ln       The `<a:ln>` node from spPr
  * @param ctx      Render context
@@ -649,7 +649,7 @@ export function resolveLineStyle(
 }
 
 /**
- * Map OOXML preset dash values to CSS border-style.
+ * Maps OOXML preset dash values to CSS border-style.
  */
 function ooxmlDashToCss(val: string): string {
   switch (val) {
@@ -821,7 +821,7 @@ function resolveGradientFillNode(
 }
 
 /**
- * Resolve a gradient fill from `spPr` into structured data suitable for
+ * Resolves a gradient fill from `spPr` into structured data suitable for
  * creating SVG gradient elements. Returns null if no gradient fill is present.
  */
 export function resolveGradientFill(
@@ -910,7 +910,7 @@ export interface GradientStrokeData {
 }
 
 /**
- * Resolve a gradient stroke from an `<a:ln>` node that contains `<a:gradFill>`.
+ * Resolves a gradient stroke from an `<a:ln>` node that contains `<a:gradFill>`.
  * Returns gradient stop data, angle, and line width. Returns null if no gradient fill is present.
  */
 export function resolveGradientStroke(

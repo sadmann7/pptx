@@ -38,7 +38,7 @@ const BI_RGB = 0;
 const MAX_EMF_BITMAP_PIXELS = 16_777_216;
 
 /**
- * Parse an EMF file and extract its embedded content.
+ * Parses an EMF file and extracts its embedded content.
  */
 export function parseEmfContent(data: Uint8Array): EmfContent {
   if (data.length < 44) return { type: "unsupported" };
@@ -88,7 +88,7 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
 }
 
 /**
- * Parse a GDI Comment record looking for embedded PDF data.
+ * Parses a GDI Comment record looking for embedded PDF data.
  */
 function parseGdiComment(
   data: Uint8Array,
@@ -129,7 +129,7 @@ function parseGdiComment(
 }
 
 /**
- * Parse MULTIFORMATS GDI comment: contains format descriptors pointing to embedded data.
+ * Parses MULTIFORMATS GDI comment: contains format descriptors pointing to embedded data.
  */
 function parseMultiformats(
   data: Uint8Array,
@@ -191,7 +191,7 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
 }
 
 /**
- * Parse a STRETCHDIBITS record and extract the bitmap as ImageData.
+ * Parses a STRETCHDIBITS record and extracts the bitmap as ImageData.
  */
 function parseStretchDibits(
   data: Uint8Array,
@@ -273,7 +273,7 @@ function parseStretchDibits(
 }
 
 /**
- * Find the first occurrence of a byte sequence in a buffer.
+ * Finds the first occurrence of a byte sequence in a buffer.
  */
 function findSequence(buf: Uint8Array, seq: number[]): number {
   const end = buf.length - seq.length;
@@ -284,7 +284,7 @@ function findSequence(buf: Uint8Array, seq: number[]): number {
 }
 
 /**
- * Check if buffer matches a byte sequence at a given offset.
+ * Checks if buffer matches a byte sequence at a given offset.
  */
 function matchesAt(buf: Uint8Array, offset: number, seq: number[]): boolean {
   for (let j = 0; j < seq.length; j++) {

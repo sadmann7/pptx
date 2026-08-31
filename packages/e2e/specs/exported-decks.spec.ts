@@ -1,6 +1,4 @@
 /**
- * Smoke specs for the exported decks (specs/decks.ts).
- *
  * The oracle scores these decks against PowerPoint, but SSIM is a blunt
  * instrument: a dropped image on a busy slide, or a shape that renders as an
  * empty box, can cost less score than a font substitution and hide under the

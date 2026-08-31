@@ -33,7 +33,7 @@ export interface TableNodeData extends BaseNodeData {
 }
 
 /**
- * Parse a single table cell (`a:tc`).
+ * Parses a single table cell (`a:tc`).
  */
 function parseCell(tcNode: SafeXmlNode): TableCell {
   const gridSpan = tcNode.numAttr("gridSpan") ?? 1;
@@ -59,7 +59,7 @@ function parseCell(tcNode: SafeXmlNode): TableCell {
 }
 
 /**
- * Parse a table row (`a:tr`).
+ * Parses a table row (`a:tr`).
  */
 function parseRow(trNode: SafeXmlNode): TableRow {
   const height = emuToPx(trNode.numAttr("h") ?? 0);
@@ -83,7 +83,7 @@ function findTable(frameNode: SafeXmlNode): SafeXmlNode {
 }
 
 /**
- * Extract the table style ID from tblPr.
+ * Extracts the table style ID from tblPr.
  * It can be in `a:tblStyle@val` or as a direct `tblStyle` attribute.
  */
 function extractTableStyleId(tblPr: SafeXmlNode): string | undefined {
@@ -102,7 +102,7 @@ function extractTableStyleId(tblPr: SafeXmlNode): string | undefined {
 }
 
 /**
- * Parse a graphicFrame XML node containing a table into TableNodeData.
+ * Parses a graphicFrame XML node containing a table into TableNodeData.
  */
 export function parseTableNode(frameNode: SafeXmlNode): TableNodeData {
   const base = parseBaseProps(frameNode);

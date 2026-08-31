@@ -119,7 +119,7 @@ export interface SetTextBodyRun {
 }
 
 /**
- * Apply several operations as one atomic edit with a single undo (e.g.
+ * Applies several operations as one atomic edit with a single undo (e.g.
  * moving a multi-selection). Sub-operations are applied in order and undone
  * in reverse. If one fails midway, the already-applied ones are rolled back.
  */
@@ -224,7 +224,7 @@ function requirePkg(pres: PresentationData): PptxPackage {
 
 function findSlide(pres: PresentationData, slideId: string): SlideData {
   const slide = pres.slides.find((s) => s.id === slideId);
-  if (!slide) throw new Error(`applyEdit: unknown slide "${slideId}"`);
+  if (!slide) throw new Error(`applyEdit: unknown slide "${slideId}".`);
   return slide;
 }
 
@@ -232,14 +232,14 @@ function findNode(pres: PresentationData, slide: SlideData, nodeId: string): Sli
   materializeSlide(pres, slide);
   const node = slide.nodes.find((n) => n.id === nodeId);
   if (!node) {
-    throw new Error(`applyEdit: no top-level node "${nodeId}" on slide "${slide.id}"`);
+    throw new Error(`applyEdit: no top-level node "${nodeId}" on slide "${slide.id}".`);
   }
   return node;
 }
 
 function requireElement(node: SafeXmlNode, what: string): Element {
   const element = node.element;
-  if (!element) throw new Error(`applyEdit: ${what} is missing`);
+  if (!element) throw new Error(`applyEdit: ${what} is missing.`);
   return element;
 }
 
@@ -268,7 +268,7 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   const node = findNode(pres, slide, op.nodeId);
 
   if (node.nodeType !== "shape" || !node.textBody) {
-    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body`);
+    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body.`);
   }
   const shape = node as ShapeNodeData;
 
@@ -276,7 +276,7 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   const run = paragraph?.runs[op.runIndex];
   if (!paragraph || !run) {
     throw new Error(
-      `applyEdit: no run at paragraph ${op.paragraphIndex}, run ${op.runIndex} in node "${op.nodeId}"`,
+      `applyEdit: no run at paragraph ${op.paragraphIndex}, run ${op.runIndex} in node "${op.nodeId}".`,
     );
   }
 
@@ -286,10 +286,10 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   const runNodes = (pNode?.allChildren() ?? []).filter((c) => RUN_LOCAL_NAMES.has(c.localName));
   const runNode = runNodes[op.runIndex];
   if (!runNode) {
-    throw new Error(`applyEdit: run XML not found for paragraph ${op.paragraphIndex}`);
+    throw new Error(`applyEdit: run XML not found for paragraph ${op.paragraphIndex}.`);
   }
   if (runNode.localName !== "r" && runNode.localName !== "fld") {
-    throw new Error(`applyEdit: cannot set text on a <a:${runNode.localName}> (break/tab) run`);
+    throw new Error(`applyEdit: cannot set text on a <a:${runNode.localName}> (break/tab) run.`);
   }
 
   const runElement = requireElement(runNode, "run element");
@@ -324,7 +324,7 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
   const node = findNode(pres, slide, op.nodeId);
 
   if (node.nodeType !== "shape" || !node.textBody) {
-    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body`);
+    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body.`);
   }
   const shape = node as ShapeNodeData;
   const textBody = shape.textBody!;
@@ -504,7 +504,7 @@ interface XfrmHandle {
 }
 
 /**
- * Find the node's xfrm element, creating one when the node inherits its
+ * Finds the node's xfrm element, creating one when the node inherits its
  * transform (e.g. layout placeholders have no xfrm of their own; moving
  * them requires writing a new one into the slide part).
  */
@@ -565,7 +565,7 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
 }
 
 /**
- * Scale a table's grid to a new frame size, the way PowerPoint does when you
+ * Scales a table's grid to a new frame size, the way PowerPoint does when you
  * drag a table's resize handle.
  *
  * A table is laid out from its grid (the sum of `a:gridCol/@w` and of
@@ -741,13 +741,13 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   const node = findNode(pres, slide, op.nodeId);
 
   if (node.nodeType !== "shape") {
-    throw new Error(`applyEdit: setSolidFill only supports shape nodes, got "${node.nodeType}"`);
+    throw new Error(`applyEdit: setSolidFill only supports shape nodes, got "${node.nodeType}".`);
   }
   const shape = node as ShapeNodeData;
 
   const colorMatch = /^#?([0-9a-fA-F]{6})$/.exec(op.color);
   if (!colorMatch) {
-    throw new Error(`applyEdit: invalid color "${op.color}"; expected 6-digit hex`);
+    throw new Error(`applyEdit: invalid color "${op.color}"; expected 6-digit hex.`);
   }
   const color = colorMatch[1].toUpperCase();
 
@@ -811,7 +811,7 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
   const element = requireElement(node.source, "node element");
   const parentElement = element.parentElement;
   if (!parentElement)
-    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide`);
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
 
   const domRef = element.nextElementSibling;
   removeChild(element);
@@ -846,12 +846,12 @@ async function loadSlideListContext(pres: PresentationData): Promise<SlideListCo
   const sourcePackage = requirePkg(pres);
   const presRoot = sourcePackage.getXmlRoot(PRESENTATION_PATH);
   if (!presRoot?.exists()) {
-    throw new Error("applyEdit: presentation.xml is not registered on the package");
+    throw new Error("applyEdit: presentation.xml is not registered on the package.");
   }
   const lstNode = presRoot.child("sldIdLst");
   const lstElement = lstNode.element;
   if (!lstElement) {
-    throw new Error("applyEdit: unsupported package: presentation.xml has no sldIdLst");
+    throw new Error("applyEdit: unsupported package: presentation.xml has no sldIdLst.");
   }
   const relsText = (await sourcePackage.readText(PRESENTATION_RELS_PATH)) ?? "";
   return { sourcePackage, lstNode, lstElement, relsText, rels: parseRels(relsText) };
@@ -867,7 +867,7 @@ function findSldIdEntry(ctx: SlideListContext, slideId: string): { element: Elem
       return { element: requireElement(sldId, "sldId element"), rId };
     }
   }
-  throw new Error(`applyEdit: slide "${slideId}" not found in presentation.xml sldIdLst`);
+  throw new Error(`applyEdit: slide "${slideId}" not found in presentation.xml sldIdLst.`);
 }
 
 function sldIdElements(ctx: SlideListContext): Element[] {
@@ -963,7 +963,7 @@ async function applyDuplicateSlide(
 
   const slideText = await sourcePackage.readText(source.id);
   if (slideText === undefined) {
-    throw new Error(`applyEdit: slide part "${source.id}" is missing from the package`);
+    throw new Error(`applyEdit: slide part "${source.id}" is missing from the package.`);
   }
   const slideRelsText = await sourcePackage.readText(relsPathFor(source.id));
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
@@ -1042,7 +1042,7 @@ async function applyDeleteSlide(
   op: DeleteSlideOperation,
 ): Promise<EditResult> {
   if (pres.slides.length <= 1) {
-    throw new Error("applyEdit: cannot delete the last slide in the deck");
+    throw new Error("applyEdit: cannot delete the last slide in the deck.");
   }
 
   const ctx = await loadSlideListContext(pres);

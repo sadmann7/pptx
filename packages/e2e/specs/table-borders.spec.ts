@@ -1,6 +1,4 @@
 /**
- * Table border specs.
- *
  * The border model has three parts, each of which shipped broken at some point:
  *
  * 1. A table with no a:tableStyleId got no grid at all; PowerPoint paints the

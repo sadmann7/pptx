@@ -904,7 +904,7 @@ function mixRgb(
 }
 
 /**
- * Convert an OOXML gradient angle (in degrees, where 0 = right-to-left in OOXML coords)
+ * Converts an OOXML gradient angle (in degrees, where 0 = right-to-left in OOXML coords)
  * to SVG linearGradient x1/y1/x2/y2 coordinates (as percentages).
  */
 function angleToSvgGradientCoords(angleDeg: number): {
@@ -930,7 +930,7 @@ function angleToSvgGradientCoords(angleDeg: number): {
 }
 
 /**
- * Get the marker size multiplier based on OOXML size string.
+ * Gets the marker size multiplier based on OOXML size string.
  */
 function getMarkerSize(size: string | undefined): number {
   switch (size) {
@@ -1109,7 +1109,7 @@ function insetPathEnd(pathD: string, inset: number): string {
 }
 
 /**
- * Create an SVG marker element for a line end (arrowhead).
+ * Creates an SVG marker element for a line end (arrowhead).
  */
 function createArrowMarker(
   svgNs: string,
@@ -1283,7 +1283,7 @@ function resolvePresetGeometry(
 // ---------------------------------------------------------------------------
 
 /**
- * Render a shape node into an absolutely-positioned HTML element with SVG geometry.
+ * Renders a shape node into an absolutely-positioned HTML element with SVG geometry.
  */
 export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");

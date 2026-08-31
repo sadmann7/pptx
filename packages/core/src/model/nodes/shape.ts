@@ -66,7 +66,7 @@ export interface ShapeNodeData extends BaseNodeData {
 }
 
 /**
- * Parse a single text paragraph (`a:p`).
+ * Parses a single text paragraph (`a:p`).
  */
 function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   const pPr = pNode.child("pPr");
@@ -135,7 +135,7 @@ function parseParagraph(pNode: SafeXmlNode): TextParagraph {
 }
 
 /**
- * Parse a text body (`p:txBody` or `a:txBody`).
+ * Parses a text body (`p:txBody` or `a:txBody`).
  */
 export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
   if (!txBody.exists()) return undefined;
@@ -159,7 +159,7 @@ export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
 const FILL_TYPES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"] as const;
 
 /**
- * Find the first fill element in a shape properties node.
+ * Finds the first fill element in a shape properties node.
  */
 function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
   for (const fillType of FILL_TYPES) {
@@ -170,7 +170,7 @@ function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
 }
 
 /**
- * Parse adjustment values from `a:avLst > a:gd` elements.
+ * Parses adjustment values from `a:avLst > a:gd` elements.
  * Each guide has a `name` attribute and a `fmla` attribute like "val 50000".
  */
 function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
@@ -196,7 +196,7 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
 }
 
 /**
- * Parse a shape XML node (`p:sp` or `p:cxnSp`) into ShapeNodeData.
+ * Parses a shape XML node (`p:sp` or `p:cxnSp`) into ShapeNodeData.
  */
 export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
   const base = parseBaseProps(spNode);

@@ -1521,7 +1521,7 @@ function buildCurvedVerticalArrowMultiPath(
 }
 
 /**
- * Convert OOXML arcTo to SVG arc endpoint and command string.
+ * Converts OOXML arcTo to SVG arc endpoint and command string.
  * OOXML arcTo: wR, hR (radii), stAng, swAng (degrees).
  * Current point is at stAng on the arc ellipse.
  * Returns { path, endX, endY }.
@@ -4035,7 +4035,7 @@ actionButtonIcons.set("actionButtonDocument", (w, h) => {
 // actionButtonMovie icon is now rendered via multiPathPresets (see below).
 
 /**
- * Get the SVG path for the icon overlay of an action button.
+ * Gets the SVG path for the icon overlay of an action button.
  * Returns undefined if the shape is not an action button or is actionButtonBlank.
  */
 export function getActionButtonIconPath(
@@ -4408,7 +4408,7 @@ presetShapes.set("funnel", (w, h) => {
 // ===== Fallback =====
 
 /**
- * Get the SVG path for a preset shape, falling back to a simple rectangle
+ * Gets the SVG path for a preset shape, falling back to a simple rectangle
  * if the shape type is not implemented.
  */
 // ---------------------------------------------------------------------------
@@ -4444,7 +4444,7 @@ presetOverlays.set("can", (w, h) => {
 });
 
 /**
- * Get overlay paths for a preset shape (3D top faces, etc.).
+ * Gets overlay paths for a preset shape (3D top faces, etc.).
  * Returns empty array if the shape has no overlays.
  */
 export function getPresetOverlays(
@@ -6541,7 +6541,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
 });
 
 /**
- * Get multi-path preset sub-paths for a shape type.
+ * Gets multi-path preset sub-paths for a shape type.
  * Returns null if the shape is not a multi-path preset (use getPresetShapePath instead).
  */
 export function getMultiPathPreset(

@@ -138,7 +138,7 @@ const slideRels =
 </Relationships>`;
 
 /**
- * Build a single-slide .pptx whose spTree contains the given shapes XML
+ * Builds a single-slide .pptx whose spTree contains the given shapes XML
  * (`p:sp`/`p:pic`/... elements using the standard `a:`/`p:`/`r:` prefixes).
  */
 export async function buildPptxWithShapes(shapesXml: string): Promise<ArrayBuffer> {

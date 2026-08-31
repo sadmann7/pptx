@@ -12,7 +12,7 @@ export interface ChartNodeData extends BaseNodeData {
 }
 
 /**
- * Parse a graphicFrame containing a chart reference into a ChartNodeData.
+ * Parses a graphicFrame containing a chart reference into a ChartNodeData.
  *
  * @param graphicFrame  The graphicFrame XML node
  * @param slideRels     Relationship entries for the containing slide

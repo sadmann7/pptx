@@ -1,7 +1,4 @@
-import { test } from "@playwright/test";
 /**
- * Thumbnail-list scroll performance.
- *
  * Skipped unless PERF=1 (`pnpm test:perf`): it builds a long deck, scrolls the
  * real thumbnail list, and reports numbers rather than asserting a baseline,
  * because timings are machine-dependent.
@@ -18,6 +15,7 @@ import { test } from "@playwright/test";
  * The second number is the one that matches the complaint ("a bunch of
  * skeleton slides as we scroll until the scroll settles").
  */
+import { test } from "@playwright/test";
 import { copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

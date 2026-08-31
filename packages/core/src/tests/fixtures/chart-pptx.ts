@@ -43,7 +43,7 @@ const chartContentTypeOverride =
   '<Override PartName="/ppt/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>';
 
 /**
- * Build a single-slide .pptx whose slide contains a chart graphicFrame and
+ * Builds a single-slide .pptx whose slide contains a chart graphicFrame and
  * whose package includes the given chart1.xml part.
  */
 export async function buildPptxWithChart(
@@ -143,7 +143,7 @@ ${axesXml()}
 <c:plotVisOnly val="1"/>`);
 
 /**
- * Parse a chart XML fragment (using the standard c:/a:/r: prefixes) and return
+ * Parses a chart XML fragment (using the standard c:/a:/r: prefixes) and returns
  * the wrapper node; access parts through `.child(...)`.
  */
 export function parseChartFragment(xml: string): SafeXmlNode {
@@ -153,7 +153,7 @@ export function parseChartFragment(xml: string): SafeXmlNode {
 }
 
 /**
- * Create a real RenderContext backed by the minimal single-slide package
+ * Creates a real RenderContext backed by the minimal single-slide package
  * (Office theme accents, blank layout/master) for chart submodule tests.
  */
 export async function createChartTestContext(): Promise<RenderContext> {

@@ -202,7 +202,7 @@ export interface Store {
   /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
   getState: () => StoreState;
   /**
-   * Subscribe to state changes.
+   * Subscribes to state changes.
    *
    * ```ts
    * const unsubscribe = store.subscribe(() => {
@@ -217,7 +217,7 @@ export interface Store {
   subscribe: (listener: () => void) => () => void;
 
   /**
-   * Listen for a specific store event.
+   * Listens for a specific store event.
    *
    * Unlike `subscribe`, which triggers on every state change and carries no
    * payload, these events describe what happened and why: the reason for a
@@ -238,7 +238,7 @@ export interface Store {
   on: <E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>) => () => void;
 
   /**
-   * Parse and display a presentation file.
+   * Parses and displays a presentation file.
    *
    * @returns The parsed `PresentationData` on success.
    * Rejects with a `DOMException` named `"AbortError"` if a newer `load()`
@@ -330,7 +330,7 @@ export interface Store {
   ) => Promise<PresentationData>;
 
   /**
-   * Reset the viewer to its initial idle state and cancel any in-flight load.
+   * Resets the viewer to its initial idle state and cancels any in-flight load.
    *
    * ```ts
    * store.reset();
@@ -339,25 +339,25 @@ export interface Store {
   reset: () => void;
 
   /**
-   * Navigate to a slide by its stable id (`SlideData.id`).
+   * Navigates to a slide by its stable id (`SlideData.id`).
    * No-op if the id is not found in the current presentation.
    */
   goTo: (slideId: string) => void;
 
   /**
-   * Navigate to a slide by its 0-based index.
+   * Navigates to a slide by its 0-based index.
    * Clamps to the valid range; no-op when no presentation is loaded.
    */
   goToIndex: (index: number) => void;
 
-  /** Navigate to the next slide. No-op when already on the last slide. */
+  /** Navigates to the next slide. No-op when already on the last slide. */
   next: () => void;
 
-  /** Navigate to the previous slide. No-op when already on the first slide. */
+  /** Navigates to the previous slide. No-op when already on the first slide. */
   prev: () => void;
 
   /**
-   * Set the zoom level directly.
+   * Sets the zoom level directly.
    * Clamped to `[MIN_ZOOM, MAX_ZOOM]`. Turns auto-fit off, so the next
    * container resize leaves the level alone.
    *
@@ -366,21 +366,21 @@ export interface Store {
   setZoom: (zoom: number) => void;
 
   /**
-   * Increase zoom by `step`. Turns auto-fit off.
+   * Increases zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomIn: (step?: number) => void;
 
   /**
-   * Decrease zoom by `step`. Turns auto-fit off.
+   * Decreases zoom by `step`. Turns auto-fit off.
    *
    * @default step 0.25
    */
   zoomOut: (step?: number) => void;
 
   /**
-   * Turn auto-fit on or off. While on, a mounted `Presentation.Viewport`
+   * Turns auto-fit on or off. While on, a mounted `Presentation.Viewport`
    * fits the slide to itself immediately and on every resize.
    *
    * A `Viewport autoFit` sets this on mount, so a zoom control only needs it
@@ -394,7 +394,7 @@ export interface Store {
   setAutoFit: (isAutoFit: boolean) => void;
 
   /**
-   * Fit the presentation to a container by computing the largest zoom level
+   * Fits the presentation to a container by computing the largest zoom level
    * that keeps all slides fully visible.
    *
    * A one-shot measurement: it does not turn auto-fit on, so nothing refits
@@ -431,7 +431,7 @@ export interface Store {
   canGoPrev: () => boolean;
 
   /**
-   * Apply an edit operation to the loaded presentation.
+   * Applies an edit operation to the loaded presentation.
    *
    * Requires the deck to have been loaded with `{ readOnly: false }`.
    * On success the edit is pushed onto the undo stack, the redo stack is
@@ -449,10 +449,10 @@ export interface Store {
    */
   edit: (op: EditOperation) => Promise<EditResult>;
 
-  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
+  /** Reverts the most recent edit. Returns `false` when the undo stack is empty. */
   undo: () => boolean;
 
-  /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
+  /** Re-applies the most recently undone edit. Resolves `false` when the redo stack is empty. */
   redo: () => Promise<boolean>;
 
   /** Returns `true` when there is an edit to undo. */
@@ -476,7 +476,7 @@ export interface Store {
   isDirty: () => boolean;
 
   /**
-   * Serialize the (possibly edited) presentation back to a .pptx archive.
+   * Serializes the (possibly edited) presentation back to a .pptx archive.
    * Requires the deck to have been loaded with `{ readOnly: false }`.
    */
   save: (options?: PptxSaveOptions) => Promise<Uint8Array>;
@@ -514,7 +514,7 @@ async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
 
   if (input instanceof Blob) return input.arrayBuffer();
 
-  throw new Error("Unsupported input type");
+  throw new Error("Unsupported input type.");
 }
 
 function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
@@ -639,7 +639,7 @@ export function createStore(): Store {
   }
 
   /**
-   * Emit `slideChange` when the active slide actually moved. Call after the
+   * Emits `slideChange` when the active slide actually moved. Call after the
    * state update so handlers observe the new state.
    */
   function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
@@ -966,8 +966,8 @@ export function createStore(): Store {
   }
 
   /**
-   * Publish the outcome of an edit/undo/redo: bump affected slide revisions,
-   * repair navigation if the active slide disappeared, and notify
+   * Publishes the outcome of an edit/undo/redo: bumps affected slide revisions,
+   * repairs navigation if the active slide disappeared, and notifies
    * subscribers. The presentation object is mutated in place, so the state
    * `revision` counter is the only identity change subscribers see.
    */
@@ -1014,11 +1014,11 @@ export function createStore(): Store {
   async function edit(op: EditOperation): Promise<EditResult> {
     const { presentation, status } = state;
     if (!presentation || status !== "ready") {
-      throw new Error("PresentationStore.edit: no presentation is loaded");
+      throw new Error("PresentationStore.edit: no presentation is loaded.");
     }
     if (!presentation.sourcePackage) {
       throw new Error(
-        "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load()",
+        "PresentationStore.edit: presentation was loaded read-only; pass { readOnly: false } to load().",
       );
     }
 
@@ -1084,11 +1084,11 @@ export function createStore(): Store {
   async function save(options?: PptxSaveOptions): Promise<Uint8Array> {
     const { presentation } = state;
     if (!presentation) {
-      throw new Error("PresentationStore.save: no presentation is loaded");
+      throw new Error("PresentationStore.save: no presentation is loaded.");
     }
     if (!presentation.sourcePackage) {
       throw new Error(
-        "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load()",
+        "PresentationStore.save: presentation was loaded read-only; pass { readOnly: false } to load().",
       );
     }
     const previousHistory = historySnapshot();

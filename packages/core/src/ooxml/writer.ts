@@ -8,7 +8,7 @@ import type { PresentationData } from "../model/presentation";
 import type { PptxSaveOptions } from "./package";
 
 /**
- * Serialize a presentation back to a .pptx archive.
+ * Serializes a presentation back to a .pptx archive.
  *
  * Requires the presentation to have been parsed with `keepSourcePackage: true`
  * (see `PptxReadOptions.keepSourcePackage`), which retains the source package for

@@ -83,7 +83,7 @@ function mediaRelativePath(target: string): string {
 }
 
 /**
- * Resolve a relative media path (from rels) to its canonical path in PptxFiles.media.
+ * Resolves a relative media path (from rels) to its canonical path in PptxFiles.media.
  * Rels targets are relative like "../media/image1.png".
  * Media paths in PptxFiles are like "ppt/media/image1.png".
  */
@@ -93,7 +93,7 @@ export function resolveMediaPath(target: string): string {
 }
 
 /**
- * Return canonical media-path candidates for a relationship target.
+ * Returns canonical media-path candidates for a relationship target.
  *
  * OOXML relationship targets are URI references, so `%20` normally means a
  * literal space in the part name. Some producers/tests, however, keep the
@@ -129,7 +129,7 @@ export async function findMediaByTargetAsync(
 }
 
 /**
- * Get or create a blob URL for a media file, using a cache to avoid duplicates.
+ * Gets or creates a blob URL for a media file, using a cache to avoid duplicates.
  *
  * @param mediaPath - Canonical path (e.g. "ppt/media/image1.png")
  * @param data - Raw media data (Uint8Array or ArrayBuffer)

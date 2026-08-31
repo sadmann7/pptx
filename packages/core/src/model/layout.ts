@@ -33,7 +33,7 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
 }
 
 /**
- * Check whether a shape node contains a placeholder definition.
+ * Checks whether a shape node contains a placeholder definition.
  */
 function isPlaceholder(node: SafeXmlNode): boolean {
   for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
@@ -164,7 +164,7 @@ function extractPlaceholdersRecursive(
 }
 
 /**
- * Parse all attributes of a node into a Map<string, string>.
+ * Parses all attributes of a node into a Map<string, string>.
  */
 function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   const result = new Map<string, string>();
@@ -179,7 +179,7 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
 }
 
 /**
- * Parse a slide layout XML root (`p:sldLayout`) into LayoutData.
+ * Parses a slide layout XML root (`p:sldLayout`) into LayoutData.
  */
 export function parseLayout(root: SafeXmlNode): LayoutData {
   const cSld = root.child("cSld");

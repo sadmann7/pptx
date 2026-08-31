@@ -119,7 +119,7 @@ function applyGroupEffects(
 // ---------------------------------------------------------------------------
 
 /**
- * Render a group node into an absolutely-positioned HTML element.
+ * Renders a group node into an absolutely-positioned HTML element.
  *
  * Groups define a child coordinate space (childOffset + childExtent) that must
  * be remapped to the group's actual position and size. Each child's position
@@ -339,7 +339,7 @@ export function renderGroup(
 // ---------------------------------------------------------------------------
 
 /**
- * Parse a raw XML child node from a group's spTree into a typed node object.
+ * Parses a raw XML child node from a group's spTree into a typed node object.
  * Returns undefined for unrecognized or unsupported elements.
  */
 function parseGroupChild(

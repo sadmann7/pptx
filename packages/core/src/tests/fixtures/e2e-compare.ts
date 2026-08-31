@@ -48,7 +48,7 @@ export interface ComparableSlideInfo {
 }
 
 /**
- * Map PPTX slide indexes to exported PDF page indexes.
+ * Maps PPTX slide indexes to exported PDF page indexes.
  * PowerPoint PDF export skips hidden slides, so slides after a hidden slide
  * should compare against the next visible PDF page rather than the same index.
  */

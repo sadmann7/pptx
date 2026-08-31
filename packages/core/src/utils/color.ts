@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Parse a hex color string (with or without '#') into RGB components.
+ * Parses a hex color string (with or without '#') into RGB components.
  */
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const cleaned = hex.replace(/^#/, "");
@@ -28,7 +28,7 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
 }
 
 /**
- * Convert RGB components (0-255 each) to a 6-digit hex string with '#' prefix.
+ * Converts RGB components (0-255 each) to a 6-digit hex string with '#' prefix.
  */
 export function rgbToHex(r: number, g: number, b: number): string {
   const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
@@ -36,7 +36,7 @@ export function rgbToHex(r: number, g: number, b: number): string {
 }
 
 /**
- * Convert RGB (0-255) to HSL (h: 0-360, s: 0-1, l: 0-1).
+ * Converts RGB (0-255) to HSL (h: 0-360, s: 0-1, l: 0-1).
  */
 export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
@@ -68,7 +68,7 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
 }
 
 /**
- * Convert HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255).
+ * Converts HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255).
  */
 export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
   h = ((h % 360) + 360) % 360; // normalize hue
@@ -120,7 +120,7 @@ function linearToSrgb(c: number): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Apply tint modifier (mix toward white in linear RGB space).
+ * Applies tint modifier (mix toward white in linear RGB space).
  * OOXML spec: tint val is 0-100000 where 100000 = original color, 0 = fully white.
  * PowerPoint performs the blend in linear RGB space for perceptual correctness.
  */
@@ -138,7 +138,7 @@ export function applyTint(hex: string, tint: number): string {
 }
 
 /**
- * Apply shade modifier (mix toward black in linear RGB space).
+ * Applies shade modifier (mix toward black in linear RGB space).
  * shade: 0-100000 where 100000 = original color, 0 = fully black.
  */
 export function applyShade(hex: string, shade: number): string {
@@ -152,7 +152,7 @@ export function applyShade(hex: string, shade: number): string {
 }
 
 /**
- * Apply luminance modulation.
+ * Applies luminance modulation.
  * lumMod: percentage in OOXML units (e.g., 75000 = 75%).
  * Multiplies the L channel of HSL.
  */
@@ -165,7 +165,7 @@ export function applyLumMod(hex: string, lumMod: number): string {
 }
 
 /**
- * Apply luminance offset.
+ * Applies luminance offset.
  * lumOff: percentage offset in OOXML units (e.g., 25000 = +25%).
  * Adds to the L channel of HSL.
  */
@@ -178,7 +178,7 @@ export function applyLumOff(hex: string, lumOff: number): string {
 }
 
 /**
- * Apply saturation modulation.
+ * Applies saturation modulation.
  * satMod: percentage in OOXML units (e.g., 120000 = 120%).
  * Multiplies the S channel of HSL.
  */
@@ -191,7 +191,7 @@ export function applySatMod(hex: string, satMod: number): string {
 }
 
 /**
- * Apply hue modulation.
+ * Applies hue modulation.
  * hueMod: percentage in OOXML units (e.g., 60000 = shift hue by ratio).
  * In OOXML, hueMod multiplies the hue value. Hue wraps around at 360.
  */
@@ -204,7 +204,7 @@ export function applyHueMod(hex: string, hueMod: number): string {
 }
 
 /**
- * Apply hue offset (additive).
+ * Applies hue offset (additive).
  * hueOff: in 60000ths of a degree (OOXML ST_FixedAngle).
  * Adds to the hue channel of HSL, wrapping at 360.
  */
@@ -218,7 +218,7 @@ export function applyHueOff(hex: string, hueOff: number): string {
 }
 
 /**
- * Apply saturation offset (additive).
+ * Applies saturation offset (additive).
  * satOff: in OOXML percentage units (100000 = 100%).
  * Adds to the S channel of HSL.
  */
@@ -306,7 +306,7 @@ function applyInvGamma(hex: string): string {
 }
 
 /**
- * Convert OOXML alpha value (0-100000) to CSS opacity (0-1).
+ * Converts OOXML alpha value (0-100000) to CSS opacity (0-1).
  * 100000 = fully opaque, 0 = fully transparent.
  */
 export function applyAlpha(alpha: number): number {
@@ -323,7 +323,7 @@ export interface ColorModifier {
 }
 
 /**
- * Apply all OOXML color modifiers from an array of {name, val} objects.
+ * Applies all OOXML color modifiers from an array of {name, val} objects.
  * Modifiers are applied in the order they appear (matching XML document order).
  * Returns the final hex color and alpha value.
  */
