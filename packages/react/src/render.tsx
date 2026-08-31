@@ -190,9 +190,6 @@ function evaluateRenderProp<Tag extends IntrinsicTag, S>(
   return renderTag(defaultTag, props);
 }
 
-/**
- * Reads `ref` from a React element. In React 19 `ref` is a regular prop.
- */
 function getElementRef(element: React.ReactElement): React.Ref<unknown> | null {
   return (element.props as { ref?: React.Ref<unknown> }).ref ?? null;
 }
