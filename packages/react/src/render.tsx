@@ -64,7 +64,7 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
 }
 
 /**
- * Combine multiple refs into a single callback ref.
+ * Merges multiple refs into a single callback ref.
  *
  * @see https://github.com/mui/base-ui/blob/master/packages/utils/src/useMergedRefs.ts
  */
