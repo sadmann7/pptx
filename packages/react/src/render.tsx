@@ -24,7 +24,7 @@ export type PrimitiveProps<
    * Replaces the rendered element with a different element, or composes it with another component.
    *
    * - **ReactElement**: cloned with composed props
-   * - **Function**: called with composed props and state; return value replaces the default element
+   * - **Function**: called with composed props and state
    */
   render?: RenderProp<State, RenderFnProps>;
 };
@@ -165,6 +165,22 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
   return outProps;
 }
 
+function warnIfRenderLooksLikeComponent(renderFn: { name: string }) {
+  const { name } = renderFn;
+  if (name.length === 0) return;
+  if (!COMPONENT_IDENTIFIER_PATTERN.test(name)) return;
+  if (!LOWERCASE_CHARACTER_PATTERN.test(name)) return;
+
+  console.warn(
+    [
+      `The \`render\` prop received a function named \`${name}\` starting with an uppercase letter.`,
+      "You likely passed a React component as `render={Component}`.",
+      "This runs it as a plain callback, which may break the Rules of Hooks.",
+      "Rename it to start with lowercase or use `render={<Component />}` instead.",
+    ].join("\n"),
+  );
+}
+
 function evaluateRenderProp<Tag extends IntrinsicTag, S>(
   defaultTag: Tag,
   render: RenderProp<S, RenderFunctionProps<Tag>> | undefined,
@@ -202,21 +218,4 @@ function renderTag(tag: string, props: AnyProps): React.ReactElement {
     return <img alt="" {...props} />;
   }
   return React.createElement(tag, props);
-}
-
-function warnIfRenderLooksLikeComponent(renderFn: { name: string }) {
-  const { name } = renderFn;
-  if (name.length === 0) return;
-  if (!COMPONENT_IDENTIFIER_PATTERN.test(name)) return;
-  if (!LOWERCASE_CHARACTER_PATTERN.test(name)) return;
-
-  console.warn(
-    [
-      `The \`render\` prop received a function named \`${name}\` that starts with an uppercase letter.`,
-      "This usually means a React component was passed directly as `render={Component}`.",
-      "The function is called as a plain callback, which can break the Rules of Hooks.",
-      "If this is an intentional render callback, rename it to start with a lowercase letter.",
-      "Use `render={<Component />}` or `render={(props) => <Component {...props} />}` instead.",
-    ].join("\n"),
-  );
 }
