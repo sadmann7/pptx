@@ -21,9 +21,7 @@ export function DemoScene() {
           */}
           <OffthreadVideo
             src={staticFile(EDITOR_DEMO_FILE)}
-            // The recording is wider than 16:9, so `contain` letterboxes it over
-            // the backdrop rather than cropping the toolbar off the sides.
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </Sequence>
       </SceneContent>
