@@ -13,6 +13,7 @@ env:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -26,13 +27,15 @@ jobs:
       - name: Build packages
         run: pnpm turbo build --filter=!docs
 
-      # Uncomment when ready to publish:
-      # - name: Create release PR or publish
-      #   id: changesets
-      #   uses: changesets/action@v1.4.1
-      #   with:
-      #     commit: "chore(release): version packages"
-      #     title: "chore(release): version packages"
-      #     publish: pnpm changeset publish --provenance
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1.4.1
+        with:
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+          publish: pnpm changeset publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          # Trusted publishing (OIDC) is configured on npm, so NPM_TOKEN is not needed.
+          # Provenance is attached automatically, but only once this repo is public.
+          # Forcing it while private fails the publish with E422.
