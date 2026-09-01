@@ -9,7 +9,7 @@ export const CAMERA_MOVE = 20;
 export const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 export const CAPTION_LEAD = 8;
 export const SNAP_BEAT = 47;
-export const COMPOSITION_CONTENT_FRAMES = 170;
+export const COMPOSITION_CONTENT_FRAMES = 130;
 export const DEMO_CONTENT_FRAMES = 448; // 14.93s * 30fps = 448 frames
 
 export const SLIDE_W = 960;
@@ -147,10 +147,10 @@ export const CODE_PANEL_W = CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * COD
 
 export const PREVIEW_FILE = "after-the-needle-drops-mat.pptx";
 export const PREVIEW_SLIDE = 0;
-export const MOVE_START = 72;
-export const MOVE_FRAMES = 26;
-export const RAIL_IN_FRAMES = 20;
-export const RAIL_POP_CADENCE = 4;
+export const MOVE_START = 44;
+export const MOVE_FRAMES = 20;
+export const RAIL_IN_FRAMES = 14;
+export const RAIL_POP_CADENCE = 3;
 
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
