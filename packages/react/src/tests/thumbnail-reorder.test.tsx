@@ -11,24 +11,10 @@
  */
 
 import { act, render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { Presentation } from "../index";
-import type { Store } from "../store";
-import { createStore } from "../store";
-import { buildMinimalPptx } from "./minimal-pptx";
-
-let fixture: ArrayBuffer;
-
-beforeAll(async () => {
-  fixture = await buildMinimalPptx();
-});
-
-async function editableStore(): Promise<Store> {
-  const store = createStore();
-  await store.load(fixture, { readOnly: false, embedFonts: false });
-  return store;
-}
+import { editableStore } from "./test-utils";
 
 /** Slide ids in the order their buttons appear in the DOM. */
 function renderedOrder(): (string | null)[] {

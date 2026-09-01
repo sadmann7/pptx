@@ -15,6 +15,7 @@ import {
 import type { EmbeddedFontsHandle } from "@diceui/pptx-core/fonts";
 
 import { DEFAULT_STORE_STATE } from "./constant";
+import { clamp } from "./utils";
 
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 4;
@@ -528,10 +529,6 @@ function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding 
     bottom: padding?.bottom ?? 0,
     left: padding?.left ?? 0,
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 export function createStore(): Store {

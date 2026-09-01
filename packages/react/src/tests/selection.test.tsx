@@ -20,12 +20,51 @@ import {
   textBodyChanged,
   toggleSelection,
 } from "../selection";
-import { createStore, type Store } from "../store";
-import { loadFixture } from "./test-utils";
+import { createStore } from "../store";
+import { editableStore } from "./test-utils";
 
-// ===========================================================================
-// Unit tests: selection-utils (geometry + text read-back)
-// ===========================================================================
+/**
+ * happy-dom ships no `document.elementsFromPoint`, which `hitTest` needs, so
+ * stub it: by default it reports empty canvas, the precondition for a band, and
+ * a test can aim it at a shape element to press that shape instead.
+ *
+ * Containment still works, because node rects come from the model while only
+ * the band corners come from the pointer. With layout zeroed, `clientToSlide`
+ * reduces to `client / zoom`, so a band over the origin encloses the whole
+ * slide and one far outside it encloses nothing.
+ */
+const OVER_SLIDE = 100_000;
+const PAST_SLIDE = 90_000;
+
+/**
+ * What the stubbed hit test reports under the pointer: `null` means empty
+ * canvas, which is what a band needs. Point it at a shape element to simulate
+ * pressing that shape.
+ */
+let hitTarget: HTMLElement | null = null;
+
+/** Set when the stub below is ours to remove again. */
+let stubbedHitTest = false;
+
+beforeAll(() => {
+  // Typed as always present, but happy-dom does not implement it.
+  if (typeof document.elementsFromPoint === "function") return;
+  document.elementsFromPoint = () => (hitTarget ? [hitTarget] : []);
+  stubbedHitTest = true;
+});
+
+// The suite runs with `isolate: false`, so `document` is shared with the other
+// test files in this worker: clean up after the last test, not just before the
+// next one, or a stale target follows them.
+afterEach(() => {
+  hitTarget = null;
+});
+
+afterAll(() => {
+  if (!stubbedHitTest) return;
+  Reflect.deleteProperty(document, "elementsFromPoint");
+  stubbedHitTest = false;
+});
 
 describe("resizeRect", () => {
   const origin: Rect = { x: 100, y: 100, w: 200, h: 100 };
@@ -454,22 +493,6 @@ describe("textBodyChanged", () => {
   });
 });
 
-// ===========================================================================
-// Integration tests: Selection component
-// ===========================================================================
-
-let fixture: ArrayBuffer;
-
-beforeAll(async () => {
-  fixture = await loadFixture();
-});
-
-async function editableStore(): Promise<Store> {
-  const store = createStore();
-  await store.load(fixture, { readOnly: false, embedFonts: false });
-  return store;
-}
-
 /**
  * Renders a full Presentation tree with Slide + Selection, waits for ready,
  * and returns helpers for interacting with the overlay.
@@ -496,10 +519,6 @@ async function renderSelection(props: Record<string, unknown> = {}) {
   return { store, container, overlay, slideWrapper, shapeElements };
 }
 
-// ---------------------------------------------------------------------------
-// Mount guards
-// ---------------------------------------------------------------------------
-
 describe("Selection mount guards", () => {
   it("renders nothing when no presentation is loaded", () => {
     const store = createStore();
@@ -520,10 +539,6 @@ describe("Selection mount guards", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Ctrl+A select all
-// ---------------------------------------------------------------------------
-
 describe("Ctrl+A select all", () => {
   it("selects all shapes on the slide", async () => {
     const { overlay, shapeElements } = await renderSelection();
@@ -537,10 +552,6 @@ describe("Ctrl+A select all", () => {
     expect(overlay.getAttribute("data-mode")).toBe("selected");
   });
 });
-
-// ---------------------------------------------------------------------------
-// Selection and mode callbacks
-// ---------------------------------------------------------------------------
 
 describe("onSelectionChange and onModeChange", () => {
   it("reports the selected node ids and nodes when the selection changes", async () => {
@@ -606,53 +617,6 @@ describe("onSelectionChange and onModeChange", () => {
     });
     expect(calls).toBe(2);
   });
-});
-
-// ---------------------------------------------------------------------------
-// Marquee selection
-// ---------------------------------------------------------------------------
-
-/**
- * happy-dom ships no `document.elementsFromPoint`, which `hitTest` needs, so
- * stub it: by default it reports empty canvas, the precondition for a band, and
- * a test can aim it at a shape element to press that shape instead.
- *
- * Containment still works, because node rects come from the model while only
- * the band corners come from the pointer. With layout zeroed, `clientToSlide`
- * reduces to `client / zoom`, so a band over the origin encloses the whole
- * slide and one far outside it encloses nothing.
- */
-const OVER_SLIDE = 100_000;
-const PAST_SLIDE = 90_000;
-
-/**
- * What the stubbed hit test reports under the pointer: `null` means empty
- * canvas, which is what a band needs. Point it at a shape element to simulate
- * pressing that shape.
- */
-let hitTarget: HTMLElement | null = null;
-
-/** Set when the stub below is ours to remove again. */
-let stubbedHitTest = false;
-
-beforeAll(() => {
-  // Typed as always present, but happy-dom does not implement it.
-  if (typeof document.elementsFromPoint === "function") return;
-  document.elementsFromPoint = () => (hitTarget ? [hitTarget] : []);
-  stubbedHitTest = true;
-});
-
-// The suite runs with `isolate: false`, so `document` is shared with the other
-// test files in this worker: clean up after the last test, not just before the
-// next one, or a stale target follows them.
-afterEach(() => {
-  hitTarget = null;
-});
-
-afterAll(() => {
-  if (!stubbedHitTest) return;
-  Reflect.deleteProperty(document, "elementsFromPoint");
-  stubbedHitTest = false;
 });
 
 function band(
@@ -730,10 +694,6 @@ describe("marquee selection", () => {
     expect(overlay.getAttribute("data-mode")).toBe("selected");
   });
 });
-
-// ---------------------------------------------------------------------------
-// Multi-selection bounds box
-// ---------------------------------------------------------------------------
 
 describe("multi-selection handles", () => {
   /** Press and release the given shape, optionally with Shift held. */
@@ -910,10 +870,6 @@ describe("multi-selection handles", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Pressing outside the overlay
-// ---------------------------------------------------------------------------
-
 describe("pressing outside the overlay", () => {
   /** Selects every shape, leaving the overlay focused and in `selected`. */
   async function withSelection() {
@@ -982,10 +938,6 @@ describe("pressing outside the overlay", () => {
     expect(overlay.getAttribute("data-mode")).toBe("idle");
   });
 });
-
-// ---------------------------------------------------------------------------
-// Keyboard shortcuts (Escape, Delete, Arrow, Undo/Redo)
-// ---------------------------------------------------------------------------
 
 describe("keyboard shortcuts", () => {
   it("Escape from selected returns to idle", async () => {
@@ -1169,10 +1121,6 @@ describe("keyboard shortcuts", () => {
     expect(onUndo).not.toHaveBeenCalled();
   });
 });
-
-// ---------------------------------------------------------------------------
-// render prop
-// ---------------------------------------------------------------------------
 
 describe("render prop", () => {
   it("passes SelectionState to render function", async () => {

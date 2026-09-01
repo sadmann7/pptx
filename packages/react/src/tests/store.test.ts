@@ -2,20 +2,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { SlideChangeEvent, ZoomChangeEvent } from "../store";
 import { createStore } from "../store";
-import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
-import { loadFixture } from "./test-utils";
+import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { loadedStore, loadFixture } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
   fixture = await loadFixture();
 });
-
-async function loadedStore() {
-  const store = createStore();
-  await store.load(fixture);
-  return store;
-}
 
 describe("initial state", () => {
   it("starts idle with no presentation", () => {
@@ -57,6 +51,18 @@ describe("load", () => {
 
     await store.load(fixture, { defaultSlideIndex: 99 });
     expect(store.getActiveSlideIndex()).toBe(FIXTURE_SLIDE_COUNT - 1);
+  });
+
+  it("becomes ready with no active slide when the deck has no slides", async () => {
+    const store = createStore();
+    // The index clamps against `slides.length - 1`, so an empty deck crosses
+    // the bounds: it has to end up with no active slide, not a bogus index.
+    await store.load(await buildMinimalPptx(0), { defaultSlideIndex: 2 });
+    const state = store.getState();
+    expect(state.status).toBe("ready");
+    expect(state.presentation?.slides).toHaveLength(0);
+    expect(state.activeSlideId).toBeNull();
+    expect(store.getActiveSlideIndex()).toBe(-1);
   });
 
   it("sets error state when the input is not a valid pptx", async () => {

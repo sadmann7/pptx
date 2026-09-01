@@ -5,6 +5,7 @@ import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding, ZoomChangeEvent } from "./store";
 import { MAX_ZOOM, MIN_ZOOM } from "./store";
+import { clamp } from "./utils";
 
 /**
  * Ignores wheel events for this long after a wheel-triggered navigation.
@@ -33,10 +34,6 @@ interface ZoomAnchor {
   ratioY: number;
   pointerX: number;
   pointerY: number;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }
 
 function getIsScrollable(overflow: string): boolean {
