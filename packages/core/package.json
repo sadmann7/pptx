@@ -12,7 +12,15 @@
     "slides",
     "viewer"
   ],
+  "homepage": "https://pptx.diceui.com",
+  "bugs": {
+    "url": "https://github.com/sadmann7/pptx/issues"
+  },
   "license": "Apache-2.0",
+  "author": {
+    "name": "Sadman Sakib",
+    "url": "https://x.com/sadmann17"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sadmann7/pptx.git",
@@ -39,11 +47,13 @@
         "types": "./dist/fonts/index.d.mts",
         "import": "./dist/fonts/index.mjs"
       }
-    }
+    },
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",
     "bench": "vitest bench --run",
+    "clean": "rimraf dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
