@@ -10,8 +10,7 @@ export const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 export const CAPTION_LEAD = 8;
 export const SNAP_BEAT = 47;
 export const COMPOSITION_CONTENT_FRAMES = 170;
-/** Length of `public/editor-demo.mp4` (14.3s at 30 fps). Re-measure when re-recording. */
-export const DEMO_CONTENT_FRAMES = 430;
+export const DEMO_CONTENT_FRAMES = 430; // 14.33s * 30fps = 429.9 frames
 
 export const SLIDE_W = 960;
 export const SLIDE_H = 540;
@@ -155,13 +154,9 @@ export const RAIL_POP_CADENCE = 4;
 
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
-/**
- * Every transition overlaps its two neighbouring scenes, so each one shortens
- * the total. The showcase-to-composition handoff is always one of them; the
- * rest are fades, and the demo scene adds one more.
- */
 export function launchDuration(hasEditorDemo: boolean): number {
   const fades = hasEditorDemo ? 4 : 3;
+
   return (
     TITLE_DURATION +
     SPOTLIGHTS_TOTAL +
