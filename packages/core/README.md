@@ -1,8 +1,10 @@
 # @diceui/pptx-core
 
-Framework-agnostic PPTX engine: parse, render, edit, and save PowerPoint presentations in the browser. No framework dependency.
+A PPTX engine for parsing, rendering, editing, and saving PowerPoint presentations in the browser.
 
-Powers [`@diceui/pptx`](https://www.npmjs.com/package/@diceui/pptx), the React component library.
+## Documentation
+
+Visit [pptx.diceui.com](https://pptx.diceui.com) to view the full documentation.
 
 ## Install
 

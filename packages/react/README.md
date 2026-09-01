@@ -1,8 +1,10 @@
 # @diceui/pptx
 
-Composable React primitives for rendering and editing PowerPoint presentations. Headless building blocks you assemble and style yourself: slide viewport, thumbnails, inline text editing, drag-to-move, resize, and undo/redo.
+Composable primitives for viewing and editing PowerPoint presentations in the browser.
 
-Built on [`@diceui/pptx-core`](https://www.npmjs.com/package/@diceui/pptx-core), a framework-agnostic OOXML engine.
+## Documentation
+
+Visit [pptx.diceui.com](https://pptx.diceui.com) to view the full documentation.
 
 ## Install
 
