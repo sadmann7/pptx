@@ -6,10 +6,10 @@ Composable primitives for rendering and editing PowerPoint presentations. Suppor
 
 ## Packages
 
-| Package                                | Description                                                | Bundle               |
-| -------------------------------------- | ---------------------------------------------------------- | -------------------- |
-| [`@diceui/pptx-core`](./packages/core) | Framework-agnostic PPTX engine (parse, render, edit, save) | 729 KB / 161 KB gzip |
-| [`@diceui/pptx`](./packages/react)     | React component library built on top of the core           | 85 KB / 22 KB gzip   |
+| Package                                | Description                                                |
+| -------------------------------------- | ---------------------------------------------------------- |
+| [`@diceui/pptx-core`](./packages/core) | Framework-agnostic PPTX engine (parse, render, edit, save) |
+| [`@diceui/pptx`](./packages/react)     | React component library built on top of the core           |
 
 ## Quick start
 
