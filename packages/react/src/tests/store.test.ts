@@ -3,19 +3,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { SlideChangeEvent, ZoomChangeEvent } from "../store";
 import { createStore } from "../store";
 import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
-import { loadFixture } from "./test-utils";
+import { loadedStore, loadFixture } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
   fixture = await loadFixture();
 });
-
-async function loadedStore() {
-  const store = createStore();
-  await store.load(fixture);
-  return store;
-}
 
 describe("initial state", () => {
   it("starts idle with no presentation", () => {

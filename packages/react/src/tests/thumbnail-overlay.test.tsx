@@ -11,18 +11,11 @@
  */
 
 import { act, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
 import type { Store } from "../store";
-import { createStore } from "../store";
-import { buildMinimalPptx } from "./minimal-pptx";
-
-let fixture: ArrayBuffer;
-
-beforeAll(async () => {
-  fixture = await buildMinimalPptx();
-});
+import { editableStore } from "./test-utils";
 
 /**
  * jsdom ships no IntersectionObserver, and the preview only renders once it
@@ -68,12 +61,6 @@ async function flushPreviews(): Promise<void> {
 
 function previewOf(item: Element): Element | null {
   return item.querySelector("[aria-hidden='true']");
-}
-
-async function editableStore(): Promise<Store> {
-  const store = createStore();
-  await store.load(fixture, { readOnly: false, embedFonts: false });
-  return store;
 }
 
 interface StripProps {

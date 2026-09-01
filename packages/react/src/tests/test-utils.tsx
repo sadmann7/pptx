@@ -27,6 +27,17 @@ export async function loadedStore(): Promise<Store> {
   return store;
 }
 
+/**
+ * A store with the minimal fixture loaded for editing.
+ *
+ * `embedFonts` is off: the fixture has none, and the font pipeline needs workers.
+ */
+export async function editableStore(): Promise<Store> {
+  const store = createStore();
+  await store.load(await loadFixture(), { readOnly: false, embedFonts: false });
+  return store;
+}
+
 /** Render UI inside a `Presentation.Provider` bound to the given store. */
 export function withStore(store: Store, ui: React.ReactNode): RenderResult {
   return render(<Presentation.Provider store={store}>{ui}</Presentation.Provider>);

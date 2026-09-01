@@ -12,20 +12,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { EditEvent, HistoryChangeEvent, SlideChangeEvent } from "../store";
 import { createStore, Store } from "../store";
-import { buildMinimalPptx, FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
+import { editableStore, loadFixture } from "./test-utils";
 
 let fixture: ArrayBuffer;
 
 beforeAll(async () => {
-  fixture = await buildMinimalPptx();
+  fixture = await loadFixture();
 });
-
-async function editableStore(): Promise<Store> {
-  const store = createStore();
-  // embedFonts off: the fixture has none, and the font pipeline needs workers.
-  await store.load(fixture, { readOnly: false, embedFonts: false });
-  return store;
-}
 
 function slideText(store: Store, index: number): string | undefined {
   const slide = store.getState().presentation?.slides[index];
