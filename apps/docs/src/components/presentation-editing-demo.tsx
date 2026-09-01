@@ -35,6 +35,8 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/tooltip";
+import { Redo2Icon, Undo2Icon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import { DEMO_DECK_PATH } from "@/lib/constants";
@@ -101,18 +103,45 @@ function Toolbar() {
           ? "Drag a shape to move it, or drag a thumbnail to reorder the deck"
           : "Loading sample deck…"}
       </span>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ml-auto"
-        disabled={!canUndo}
-        onClick={() => undo()}
-      >
-        Undo
-      </Button>
-      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
-        Redo
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              // `focusableWhenDisabled` swaps the `disabled` attribute for
+              // `aria-disabled`, so the button keeps the hover that opens the
+              // tooltip. The base `disabled:` styles no longer match it.
+              className="ml-auto aria-disabled:opacity-50"
+              aria-label="Undo"
+              focusableWhenDisabled
+              disabled={!canUndo}
+              onClick={() => undo()}
+            >
+              <Undo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Undo</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="aria-disabled:opacity-50"
+              aria-label="Redo"
+              focusableWhenDisabled
+              disabled={!canRedo}
+              onClick={() => void redo()}
+            >
+              <Redo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Redo</TooltipContent>
+      </Tooltip>
       <PresentationZoomSelect />
     </div>
   );

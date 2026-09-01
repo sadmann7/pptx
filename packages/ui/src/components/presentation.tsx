@@ -43,7 +43,10 @@ function PresentationViewport({
       autoFit={autoFit}
       autoFitPadding={autoFitPadding}
       data-slot="presentation-viewport"
-      className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
+      className={cn(
+        "flex flex-1 items-center justify-center overflow-hidden bg-background",
+        className,
+      )}
       {...props}
     />
   );
@@ -228,7 +231,7 @@ function PresentationThumbnailList({
           variant="outline"
           size="icon-sm"
           ref={triggerRef}
-          className="absolute top-2 left-2 z-10"
+          className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm"
           onClick={() => setOpen((value) => !value)}
         >
           <PanelLeftIcon />
@@ -243,7 +246,7 @@ function PresentationThumbnailList({
         ref={listRef}
         render={<aside />}
         className={cn(
-          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r p-1.5",
+          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
           isMobile && "absolute inset-y-0 left-0 z-20 transition-transform",
           isHidden && "-translate-x-full",
           className,

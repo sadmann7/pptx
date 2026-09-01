@@ -43,8 +43,10 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import { Separator } from "@pptx/ui/components/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/tooltip";
 import { cn } from "@pptx/ui/lib/utils";
-import { PresentationIcon } from "lucide-react";
+import { CopyPlusIcon, PresentationIcon, Redo2Icon, Trash2Icon, Undo2Icon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import type { SearchParams } from "@/types";
@@ -119,7 +121,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
               <PresentationLoading />
               <PresentationError />
               <PresentationEmpty inputId={`${id}-file-input`} />
-              <PresentationViewport scrollZoom>
+              <PresentationViewport autoFitPadding={12} scrollZoom>
                 <PresentationSlide>
                   <PresentationSelection undoRedoShortcuts />
                 </PresentationSlide>
@@ -312,27 +314,80 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 border-b p-2">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => slideId && run(() => store.edit({ type: "duplicateSlide", slideId }))}
-      >
-        Duplicate slide
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => slideId && run(() => store.edit({ type: "deleteSlide", slideId }))}
-      >
-        Delete slide
-      </Button>
-      <Button size="sm" variant="ghost" disabled={!canUndo} onClick={() => undo()}>
-        Undo
-      </Button>
-      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
-        Redo
-      </Button>
+    <div className="flex flex-wrap items-center gap-2 border-b p-2">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Duplicate slide"
+              variant="ghost"
+              size="icon-sm"
+              className="aria-disabled:opacity-50"
+              disabled={!slideId}
+              focusableWhenDisabled
+              onClick={() => slideId && run(() => store.edit({ type: "duplicateSlide", slideId }))}
+            >
+              <CopyPlusIcon />
+            </Button>
+          }
+        />
+        <TooltipContent>Duplicate slide</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Delete slide"
+              variant="ghost"
+              size="icon-sm"
+              className="aria-disabled:opacity-50"
+              disabled={!slideId}
+              focusableWhenDisabled
+              onClick={() => slideId && run(() => store.edit({ type: "deleteSlide", slideId }))}
+            >
+              <Trash2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Delete slide</TooltipContent>
+      </Tooltip>
+      <Separator orientation="vertical" />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Undo"
+              variant="ghost"
+              size="icon-sm"
+              className="aria-disabled:opacity-50"
+              disabled={!canUndo}
+              focusableWhenDisabled
+              onClick={() => undo()}
+            >
+              <Undo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Undo</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Redo"
+              variant="ghost"
+              size="icon-sm"
+              className="aria-disabled:opacity-50"
+              disabled={!canRedo}
+              focusableWhenDisabled
+              onClick={() => void redo()}
+            >
+              <Redo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Redo</TooltipContent>
+      </Tooltip>
       <PresentationZoomSelect className="ml-auto" />
       <Button size="sm" onClick={onSave}>
         Export
@@ -390,7 +445,10 @@ function PresentationDebugToolbar() {
   const { slide, index } = useSlide();
 
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground">
+    // Wrapping keeps each readout whole on a narrow viewport: a flex item moves
+    // to the next line rather than breaking, and only the long perf readout is
+    // ever wide enough to wrap inside itself.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground">
       <span>
         status: <strong className="text-foreground">{status}</strong>
       </span>
