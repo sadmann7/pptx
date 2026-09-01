@@ -1,15 +1,19 @@
 # pptx
 
-Composable primitives for rendering and editing PowerPoint presentations. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
+Composable primitives for viewing and editing PowerPoint presentations in the browser. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
 
-`@diceui/pptx` gives you headless building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-core` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
+`@diceui/pptx` gives you composable building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-core` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
+
+## Documentation
+
+Visit [pptx.diceui.com](https://pptx.diceui.com) to view the full documentation.
 
 ## Packages
 
-| Package                                | Description                                                |
-| -------------------------------------- | ---------------------------------------------------------- |
-| [`@diceui/pptx-core`](./packages/core) | Framework-agnostic PPTX engine (parse, render, edit, save) |
-| [`@diceui/pptx`](./packages/react)     | React component library built on top of the core           |
+| Package                                | Description                                                                                     |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`@diceui/pptx`](./packages/react)     | Composable primitives for viewing and editing PowerPoint presentations in the browser           |
+| [`@diceui/pptx-core`](./packages/core) | PPTX engine for parsing, rendering, editing, and saving PowerPoint presentations in the browser |
 
 ## Quick start
 

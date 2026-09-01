@@ -1,7 +1,7 @@
 {
   "name": "@diceui/pptx-core",
   "version": "0.1.0",
-  "description": "Parse, render, edit, and save PowerPoint presentations in the browser.",
+  "description": "PPTX engine for parsing, rendering, editing, and saving PowerPoint presentations in the browser.",
   "keywords": [
     "editor",
     "ooxml",
