@@ -37,4 +37,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           # Trusted publishing (OIDC) is configured on npm, so NPM_TOKEN is not needed.
-          # It also attaches provenance, so `publish` needs no --provenance.
+          # Provenance is attached automatically, but only once this repo is public.
+          # Forcing it while private fails the publish with E422.
