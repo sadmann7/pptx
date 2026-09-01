@@ -109,10 +109,7 @@ function Toolbar() {
             <Button
               size="icon-sm"
               variant="ghost"
-              // `focusableWhenDisabled` swaps the `disabled` attribute for
-              // `aria-disabled`, so the button keeps the hover that opens the
-              // tooltip. The base `disabled:` styles no longer match it.
-              className="ml-auto aria-disabled:opacity-50"
+              className="ml-auto"
               aria-label="Undo"
               focusableWhenDisabled
               disabled={!canUndo}
@@ -130,11 +127,12 @@ function Toolbar() {
             <Button
               size="icon-sm"
               variant="ghost"
-              className="aria-disabled:opacity-50"
               aria-label="Redo"
               focusableWhenDisabled
               disabled={!canRedo}
-              onClick={() => void redo()}
+              onClick={() =>
+                void redo().catch((error) => console.error("[demo] redo failed:", error))
+              }
             >
               <Redo2Icon />
             </Button>

@@ -322,7 +322,6 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
               aria-label="Duplicate slide"
               variant="ghost"
               size="icon-sm"
-              className="aria-disabled:opacity-50"
               disabled={!slideId}
               focusableWhenDisabled
               onClick={() => slideId && run(() => store.edit({ type: "duplicateSlide", slideId }))}
@@ -340,7 +339,6 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
               aria-label="Delete slide"
               variant="ghost"
               size="icon-sm"
-              className="aria-disabled:opacity-50"
               disabled={!slideId}
               focusableWhenDisabled
               onClick={() => slideId && run(() => store.edit({ type: "deleteSlide", slideId }))}
@@ -359,7 +357,6 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
               aria-label="Undo"
               variant="ghost"
               size="icon-sm"
-              className="aria-disabled:opacity-50"
               disabled={!canUndo}
               focusableWhenDisabled
               onClick={() => undo()}
@@ -377,10 +374,9 @@ function PresentationToolbar({ store }: PresentationToolbarProps) {
               aria-label="Redo"
               variant="ghost"
               size="icon-sm"
-              className="aria-disabled:opacity-50"
               disabled={!canRedo}
               focusableWhenDisabled
-              onClick={() => void redo()}
+              onClick={() => run(() => redo())}
             >
               <Redo2Icon />
             </Button>
