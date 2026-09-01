@@ -106,7 +106,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
         className={cn(
           "flex flex-col overflow-hidden rounded-md border",
           hidden.has("file-input")
-            ? "h-[calc(100dvh-(--spacing(22)))]"
+            ? "h-[calc(100dvh-(--spacing(82)))]"
             : "h-[calc(100dvh-(--spacing(32)))]",
         )}
       >
