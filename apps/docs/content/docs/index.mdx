@@ -1,6 +1,6 @@
 ---
 title: Introduction
-description: Composable components for viewing and editing PowerPoint presentations.
+description: Composable primitives for viewing and editing PowerPoint presentations.
 ---
 
 This is a library for viewing and editing PowerPoint presentations in the browser.
@@ -20,15 +20,15 @@ This is a library for viewing and editing PowerPoint presentations in the browse
 
 ## Packages
 
-| Package             | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `@diceui/pptx`      | React component library                                    |
-| `@diceui/pptx-core` | Framework-agnostic PPTX engine (parse, render, edit, save) |
+| Package             | Description                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| `@diceui/pptx`      | Composable primitives for viewing and editing PowerPoint presentations in the browser           |
+| `@diceui/pptx-core` | PPTX engine for parsing, rendering, editing, and saving PowerPoint presentations in the browser |
 
 ## Architecture
 
-The library is split into two layers:
+The library is split into two layers, so `@diceui/pptx-core` can be used without React:
 
-**Core** (`@diceui/pptx-core`) handles the heavy lifting: unzipping the PPTX, parsing OOXML, resolving the slide/layout/master/theme inheritance chain, rendering each slide to a plain DOM tree, and applying typed edit operations. It has no React dependency.
+**Core** (`@diceui/pptx-core`) unzips the PPTX, parses OOXML, resolves the slide/layout/master/theme inheritance chain, renders each slide to a plain DOM tree, applies typed edit operations, and saves the presentation.
 
 **React** (`@diceui/pptx`) wraps the core with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.
