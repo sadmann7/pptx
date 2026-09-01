@@ -1,5 +1,4 @@
-import { Video } from "@remotion/media";
-import { AbsoluteFill, Sequence, staticFile } from "remotion";
+import { AbsoluteFill, OffthreadVideo, Sequence, staticFile } from "remotion";
 
 import { Backdrop, SceneContent } from "@/components/backdrop";
 import {
@@ -15,9 +14,16 @@ export function DemoScene() {
       <Backdrop />
       <SceneContent durationInFrames={DEMO_DURATION}>
         <Sequence from={CONTENT_LEAD} durationInFrames={DEMO_CONTENT_FRAMES} layout="none">
-          <Video
+          {/*
+            `OffthreadVideo` rather than `@remotion/media`'s `<Video>`: the latter
+            decodes via WebCodecs in the browser and times out seeking this clip
+            during renders. This one extracts frames with ffmpeg in Node.
+          */}
+          <OffthreadVideo
             src={staticFile(EDITOR_DEMO_FILE)}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            // The recording is wider than 16:9, so `contain` letterboxes it over
+            // the backdrop rather than cropping the toolbar off the sides.
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </Sequence>
       </SceneContent>

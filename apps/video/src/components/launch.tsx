@@ -75,6 +75,9 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
     <TransitionSeries.Sequence key="showcase" durationInFrames={SPOTLIGHTS_TOTAL}>
       <ShowcaseScene />
     </TransitionSeries.Sequence>,
+    <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
+      <CompositionScene />
+    </TransitionSeries.Sequence>,
     ...(hasEditorDemo
       ? [
           <TransitionSeries.Sequence key="demo" durationInFrames={DEMO_DURATION}>
@@ -82,9 +85,6 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
           </TransitionSeries.Sequence>,
         ]
       : []),
-    <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
-      <CompositionScene />
-    </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
       <FeaturesScene />
     </TransitionSeries.Sequence>,
