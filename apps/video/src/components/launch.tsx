@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import type {
   TransitionPresentation,
   TransitionPresentationComponentProps,
@@ -67,6 +69,11 @@ export const DEFAULT_LAUNCH_PROPS: LaunchProps = {
   hasEditorDemo: false,
 };
 
+/** Scene pairs that share imagery across the cut and hand it off instead of fading. */
+function isHandoff(from: React.Key | null | undefined, to: React.Key | null) {
+  return (from === "showcase" && to === "composition") || (from === "composition" && to === "demo");
+}
+
 export function Launch({ hasEditorDemo = false }: LaunchProps) {
   const scenes = [
     <TransitionSeries.Sequence key="title" durationInFrames={TITLE_DURATION}>
@@ -76,7 +83,7 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
       <ShowcaseScene />
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
-      <CompositionScene />
+      <CompositionScene handoff={hasEditorDemo} />
     </TransitionSeries.Sequence>,
     ...(hasEditorDemo
       ? [
@@ -98,8 +105,7 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
       <TransitionSeries>
         {scenes.flatMap((scene, index) => {
           if (index === 0) return [scene];
-          const from = scenes[index - 1]?.key;
-          const handoff = from === "showcase" && scene.key === "composition";
+          const handoff = isHandoff(scenes[index - 1]?.key, scene.key);
           return [
             handoff ? (
               <TransitionSeries.Transition

@@ -15,6 +15,8 @@ import {
   COMPOSITION_DURATION,
   COMPOSITION_GAP,
   COMPOSITION_SOURCE,
+  HANDOFF_FADE_FRAMES,
+  HANDOFF_FRAMES,
   MOVE_FRAMES,
   MOVE_START,
   PREVIEW_FILE,
@@ -139,9 +141,25 @@ function CompositionCode({ shift }: CompositionCodeProps) {
   );
 }
 
-export function CompositionScene() {
+function CompositionBackdrop({ handoff }: { handoff: boolean }) {
+  const time = useCurrentFrame();
+  if (handoff && time >= COMPOSITION_DURATION - HANDOFF_FRAMES) return null;
+  return <Backdrop />;
+}
+
+interface CompositionSceneProps {
+  /**
+   * When `true`, the scene dissolves into the editor demo instead of fading out,
+   * leaving the demo's matching slide in place of the preview panel.
+   */
+  handoff?: boolean;
+}
+
+export function CompositionScene({ handoff = false }: CompositionSceneProps) {
   const time = useCurrentFrame();
   const reveal = progress(time, 8, 28);
+  const exitStart = COMPOSITION_DURATION - HANDOFF_FRAMES;
+  const exit = handoff ? progress(time, exitStart, exitStart + HANDOFF_FADE_FRAMES) : 0;
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
   const railLanded = MOVE_START + MOVE_FRAMES;
   const railIn = progress(time, railLanded, railLanded + RAIL_IN_FRAMES);
@@ -149,7 +167,7 @@ export function CompositionScene() {
 
   return (
     <AbsoluteFill>
-      <Backdrop />
+      <CompositionBackdrop handoff={handoff} />
       <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{
@@ -157,6 +175,7 @@ export function CompositionScene() {
             alignItems: "center",
             justifyContent: "center",
             gap: COMPOSITION_GAP,
+            opacity: 1 - exit,
           }}
         >
           <CodePanel reveal={reveal}>
