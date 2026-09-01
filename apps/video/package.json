@@ -13,7 +13,6 @@
     "@pptx/ui": "workspace:*",
     "@remotion/cli": "4.0.516",
     "@remotion/google-fonts": "4.0.516",
-    "@remotion/media": "4.0.516",
     "@remotion/tailwind-v4": "4.0.516",
     "@remotion/transitions": "4.0.516",
     "react": "catalog:",

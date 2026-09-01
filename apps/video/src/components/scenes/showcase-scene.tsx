@@ -8,18 +8,11 @@ import {
   CAMERA_HOLD,
   CAMERA_MOVE,
   CAPTION_LEAD,
-  CODE_PANEL_W,
-  COMPOSITION_GAP,
   CONTENT_LEAD,
   FLUSH_FRAMES,
   FOCUS_X,
   FOCUS_Y,
   HANDOFF_FRAMES,
-  PREVIEW_CANVAS_W,
-  PREVIEW_H,
-  PREVIEW_PAD,
-  PREVIEW_RAIL_W,
-  PREVIEW_W,
   SHOWCASE_FRAMES,
   SLIDE_H,
   SLIDE_W,
@@ -27,10 +20,9 @@ import {
   SPOTLIGHTS_TOTAL,
   SPOTLIGHT_DURATION,
   TEXT_ON_BOARD,
-  VIDEO_H,
-  VIDEO_W,
 } from "@/lib/constants";
-import { PANEL_BORDER_WIDTH, color } from "@/lib/theme";
+import { previewSlideRect } from "@/lib/layout";
+import { color } from "@/lib/theme";
 import { cameraEase, clamp, progress } from "@/lib/timing";
 
 interface Camera {
@@ -39,32 +31,11 @@ interface Camera {
   zoom: number;
 }
 
-function previewSlideRect() {
-  const rowWidth = CODE_PANEL_W + COMPOSITION_GAP + PREVIEW_W;
-  const previewLeft = (VIDEO_W - rowWidth) / 2 + CODE_PANEL_W + COMPOSITION_GAP;
-  const previewTop = (VIDEO_H - PREVIEW_H) / 2;
-  const canvasHeight = PREVIEW_H - PANEL_BORDER_WIDTH * 2;
-  const zoom = Math.min(
-    (PREVIEW_CANVAS_W - PREVIEW_PAD * 2) / SLIDE_W,
-    (canvasHeight - PREVIEW_PAD * 2) / SLIDE_H,
-  );
-  const width = SLIDE_W * zoom;
-  const height = SLIDE_H * zoom;
-
-  return {
-    width,
-    height,
-    zoom,
-    left: previewLeft + PANEL_BORDER_WIDTH + PREVIEW_RAIL_W / 2 + (PREVIEW_CANVAS_W - width) / 2,
-    top: previewTop + PANEL_BORDER_WIDTH + (canvasHeight - height) / 2,
-  };
-}
-
 function landingCamera(): Camera {
   const spotlight = SPOTLIGHTS.at(-1);
   if (!spotlight) throw new Error("no last spotlight");
 
-  const slide = previewSlideRect();
+  const slide = previewSlideRect(0);
 
   return {
     x: spotlight.x - (slide.left + slide.width / 2 - FOCUS_X) / slide.zoom,

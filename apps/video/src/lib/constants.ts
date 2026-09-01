@@ -9,8 +9,8 @@ export const CAMERA_MOVE = 20;
 export const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 export const CAPTION_LEAD = 8;
 export const SNAP_BEAT = 47;
-export const COMPOSITION_CONTENT_FRAMES = 170;
-export const DEMO_CONTENT_FRAMES = 210;
+export const COMPOSITION_CONTENT_FRAMES = 130;
+export const DEMO_CONTENT_FRAMES = 448; // 14.93s * 30fps = 448 frames
 
 export const SLIDE_W = 960;
 export const SLIDE_H = 540;
@@ -20,6 +20,7 @@ export const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17
 export const VIDEO_W = 1920;
 export const VIDEO_H = 1080;
 export const HANDOFF_FRAMES = 36;
+export const HANDOFF_FADE_FRAMES = 14;
 export const FLUSH_FRAMES = 12;
 export const COMPOSITION_GAP = 72;
 export const PREVIEW_RAIL_W = 130;
@@ -99,7 +100,7 @@ export const SNAPS = [
 export const FEATURES_DURATION = sectionDuration(SNAPS.length * SNAP_BEAT);
 export const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 export const CTA_DURATION = CONTENT_LEAD + 90;
-export const DEMO_DURATION = sectionDuration(DEMO_CONTENT_FRAMES);
+export const DEMO_DURATION = HANDOFF_FRAMES + DEMO_CONTENT_FRAMES + FADE_DURATION;
 
 export const RAIL_LINE_ID = "rail";
 
@@ -147,24 +148,32 @@ export const CODE_PANEL_W = CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * COD
 
 export const PREVIEW_FILE = "after-the-needle-drops-mat.pptx";
 export const PREVIEW_SLIDE = 0;
-export const MOVE_START = 72;
-export const MOVE_FRAMES = 26;
-export const RAIL_IN_FRAMES = 20;
-export const RAIL_POP_CADENCE = 4;
+export const MOVE_START = 44;
+export const MOVE_FRAMES = 20;
+export const RAIL_IN_FRAMES = 14;
+export const RAIL_POP_CADENCE = 3;
 
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
+/**
+ * Slide bounds in the editor demo recording, measured off its first frame.
+ * Re-measure when the demo is re-recorded, otherwise the handoff drifts.
+ */
+export const DEMO_SLIDE = { left: 305.5, top: 138.5, width: 1553 } as const;
+export const DEMO_PUSH_START = 10;
+
 export function launchDuration(hasEditorDemo: boolean): number {
-  const shortFades = hasEditorDemo ? 4 : 3;
+  const handoffs = hasEditorDemo ? 2 : 1;
+
   return (
     TITLE_DURATION +
     SPOTLIGHTS_TOTAL +
+    COMPOSITION_DURATION +
     (hasEditorDemo ? DEMO_DURATION : 0) +
     FEATURES_DURATION +
-    COMPOSITION_DURATION +
     CTA_DURATION -
-    shortFades * FADE_DURATION -
-    (hasEditorDemo ? FADE_DURATION : HANDOFF_FRAMES)
+    3 * FADE_DURATION -
+    handoffs * HANDOFF_FRAMES
   );
 }
 
