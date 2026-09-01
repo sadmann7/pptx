@@ -141,25 +141,27 @@ function CompositionCode({ shift }: CompositionCodeProps) {
   );
 }
 
-function CompositionBackdrop({ handoff }: { handoff: boolean }) {
+interface CompositionBackdropProps {
+  isHandoff: boolean;
+}
+
+function CompositionBackdrop({ isHandoff }: CompositionBackdropProps) {
   const time = useCurrentFrame();
-  if (handoff && time >= COMPOSITION_DURATION - HANDOFF_FRAMES) return null;
+
+  if (isHandoff && time >= COMPOSITION_DURATION - HANDOFF_FRAMES) return null;
+
   return <Backdrop />;
 }
 
 interface CompositionSceneProps {
-  /**
-   * When `true`, the scene dissolves into the editor demo instead of fading out,
-   * leaving the demo's matching slide in place of the preview panel.
-   */
-  handoff?: boolean;
+  isHandoff?: boolean;
 }
 
-export function CompositionScene({ handoff = false }: CompositionSceneProps) {
+export function CompositionScene({ isHandoff = false }: CompositionSceneProps) {
   const time = useCurrentFrame();
   const reveal = progress(time, 8, 28);
   const exitStart = COMPOSITION_DURATION - HANDOFF_FRAMES;
-  const exit = handoff ? progress(time, exitStart, exitStart + HANDOFF_FADE_FRAMES) : 0;
+  const exit = isHandoff ? progress(time, exitStart, exitStart + HANDOFF_FADE_FRAMES) : 0;
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
   const railLanded = MOVE_START + MOVE_FRAMES;
   const railIn = progress(time, railLanded, railLanded + RAIL_IN_FRAMES);
@@ -167,7 +169,7 @@ export function CompositionScene({ handoff = false }: CompositionSceneProps) {
 
   return (
     <AbsoluteFill>
-      <CompositionBackdrop handoff={handoff} />
+      <CompositionBackdrop isHandoff={isHandoff} />
       <SceneContent durationInFrames={COMPOSITION_DURATION} fadeOut={false}>
         <AbsoluteFill
           style={{

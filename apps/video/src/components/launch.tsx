@@ -1,9 +1,5 @@
 import type * as React from "react";
 
-import type {
-  TransitionPresentation,
-  TransitionPresentationComponentProps,
-} from "@remotion/transitions";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill, CalculateMetadataFunction, staticFile } from "remotion";
@@ -46,19 +42,8 @@ export const calculateLaunchMetadata: CalculateMetadataFunction<LaunchProps> = a
   };
 };
 
-function persistPresentation(): TransitionPresentation<Record<string, never>> {
-  return { component: PersistPresentation, props: {} };
-}
-
-function PersistPresentation({
-  children,
-  presentationDirection,
-}: TransitionPresentationComponentProps<Record<string, never>>) {
-  return (
-    <AbsoluteFill style={{ zIndex: presentationDirection === "exiting" ? 1 : 0 }}>
-      {children}
-    </AbsoluteFill>
-  );
+function getIsHandoff(from: React.Key | null | undefined, to: React.Key | null) {
+  return (from === "showcase" && to === "composition") || (from === "composition" && to === "demo");
 }
 
 interface LaunchProps extends Record<string, unknown> {
@@ -69,11 +54,6 @@ export const DEFAULT_LAUNCH_PROPS: LaunchProps = {
   hasEditorDemo: false,
 };
 
-/** Scene pairs that share imagery across the cut and hand it off instead of fading. */
-function isHandoff(from: React.Key | null | undefined, to: React.Key | null) {
-  return (from === "showcase" && to === "composition") || (from === "composition" && to === "demo");
-}
-
 export function Launch({ hasEditorDemo = false }: LaunchProps) {
   const scenes = [
     <TransitionSeries.Sequence key="title" durationInFrames={TITLE_DURATION}>
@@ -83,7 +63,7 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
       <ShowcaseScene />
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
-      <CompositionScene handoff={hasEditorDemo} />
+      <CompositionScene isHandoff={hasEditorDemo} />
     </TransitionSeries.Sequence>,
     ...(hasEditorDemo
       ? [
@@ -105,12 +85,23 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
       <TransitionSeries>
         {scenes.flatMap((scene, index) => {
           if (index === 0) return [scene];
-          const handoff = isHandoff(scenes[index - 1]?.key, scene.key);
+          const handoff = getIsHandoff(scenes[index - 1]?.key, scene.key);
+
           return [
             handoff ? (
               <TransitionSeries.Transition
                 key={`cut-${index}`}
-                presentation={persistPresentation()}
+                presentation={{
+                  component: ({ presentationDirection, passedProps, ...props }) => (
+                    <AbsoluteFill
+                      style={{
+                        zIndex: presentationDirection === "exiting" ? passedProps.layer : 0,
+                      }}
+                      {...props}
+                    />
+                  ),
+                  props: { layer: scenes.length - index },
+                }}
                 timing={handoffTiming}
               />
             ) : (

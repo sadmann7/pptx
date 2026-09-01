@@ -35,7 +35,6 @@ function landingCamera(): Camera {
   const spotlight = SPOTLIGHTS.at(-1);
   if (!spotlight) throw new Error("no last spotlight");
 
-  // The rail has not landed yet when the showcase hands off.
   const slide = previewSlideRect(0);
 
   return {

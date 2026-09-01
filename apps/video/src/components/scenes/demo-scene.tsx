@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import {
   AbsoluteFill,
   Freeze,
@@ -21,22 +19,15 @@ import { demoSlideRect, previewSlideRect, rectCenter } from "@/lib/layout";
 import { PANEL_RADIUS, panelShadow } from "@/lib/theme";
 import { progress } from "@/lib/timing";
 
-const videoStyle: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-};
-
 function DemoVideo() {
-  return <OffthreadVideo src={staticFile(EDITOR_DEMO_FILE)} style={videoStyle} />;
+  return (
+    <OffthreadVideo
+      src={staticFile(EDITOR_DEMO_FILE)}
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
+  );
 }
 
-/**
- * Holds the recording's first frame on the slide the composition scene was just
- * previewing, then pushes it out to full frame. Both show the same deck, so the
- * dissolve happens while the two slides are pixel-aligned and the camera move
- * carries the viewer into the editor.
- */
 function DemoPushIn() {
   const time = useCurrentFrame();
   const push = progress(time, DEMO_PUSH_START, HANDOFF_FRAMES - 2);
