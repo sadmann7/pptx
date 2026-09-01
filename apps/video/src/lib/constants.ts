@@ -10,7 +10,7 @@ export const CAMERA_HOLD = SPOTLIGHT_DURATION - CAMERA_MOVE;
 export const CAPTION_LEAD = 8;
 export const SNAP_BEAT = 47;
 export const COMPOSITION_CONTENT_FRAMES = 170;
-export const DEMO_CONTENT_FRAMES = 430; // 14.33s * 30fps = 429.9 frames
+export const DEMO_CONTENT_FRAMES = 448; // 14.93s * 30fps = 448 frames
 
 export const SLIDE_W = 960;
 export const SLIDE_H = 540;
