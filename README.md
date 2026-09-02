@@ -1,8 +1,8 @@
 # pptx
 
-Composable primitives for viewing and editing PowerPoint presentations in the browser. Supports slide thumbnails, inline editing, drag-to-move, resize, and undo/redo.
+Composable primitives for viewing and editing PowerPoint presentations in the browser. Unstyled, accessible, and entirely yours to build on.
 
-`@diceui/pptx` gives you composable building blocks (`Root`, `Viewport`, `Slide`, `ThumbnailList`, `Selection`, ...) that you assemble and style yourself. Under the hood, `@diceui/pptx-core` parses OOXML, renders slides to DOM, and provides a typed edit API with full undo/redo, all without a framework dependency.
+[![layout](./apps/docs/public/layout.png)](https://pptx.diceui.com)
 
 ## Documentation
 

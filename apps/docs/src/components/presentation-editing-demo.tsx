@@ -35,6 +35,8 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/tooltip";
+import { Redo2Icon, Undo2Icon } from "lucide-react";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import { DEMO_DECK_PATH } from "@/lib/constants";
@@ -72,7 +74,7 @@ export function PresentationEditingDemo() {
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
-        <Toolbar />
+        <PresentationToolbar />
         <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
@@ -90,9 +92,13 @@ export function PresentationEditingDemo() {
   );
 }
 
-function Toolbar() {
+function PresentationToolbar() {
   const { status } = usePresentation();
   const { canUndo, canRedo, undo, redo } = useHistory();
+
+  function run(action: () => Promise<unknown>) {
+    void action().catch((error) => console.error("[demo] action failed:", error));
+  }
 
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -101,18 +107,41 @@ function Toolbar() {
           ? "Drag a shape to move it, or drag a thumbnail to reorder the deck"
           : "Loading sample deck…"}
       </span>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ml-auto"
-        disabled={!canUndo}
-        onClick={() => undo()}
-      >
-        Undo
-      </Button>
-      <Button size="sm" variant="ghost" disabled={!canRedo} onClick={() => void redo()}>
-        Redo
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Undo"
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto"
+              disabled={!canUndo}
+              focusableWhenDisabled
+              onClick={() => undo()}
+            >
+              <Undo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Undo</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Redo"
+              variant="ghost"
+              size="icon-sm"
+              disabled={!canRedo}
+              focusableWhenDisabled
+              onClick={() => run(() => redo())}
+            >
+              <Redo2Icon />
+            </Button>
+          }
+        />
+        <TooltipContent>Redo</TooltipContent>
+      </Tooltip>
       <PresentationZoomSelect />
     </div>
   );

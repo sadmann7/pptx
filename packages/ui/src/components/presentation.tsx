@@ -43,7 +43,10 @@ function PresentationViewport({
       autoFit={autoFit}
       autoFitPadding={autoFitPadding}
       data-slot="presentation-viewport"
-      className={cn("flex flex-1 items-center justify-center overflow-hidden", className)}
+      className={cn(
+        "flex flex-1 items-center justify-center overflow-hidden bg-background",
+        className,
+      )}
       {...props}
     />
   );
