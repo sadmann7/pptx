@@ -2520,6 +2520,17 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         const baseWhiteSpace = textContainer.style.whiteSpace;
         const baseOverflowY = textContainer.style.overflowY;
         const applyDynamicAutofit = () => {
+          // Measuring relies on moving the wrapper into `measurementRoot` and
+          // taking it out again, which is only safe while it has no parent to
+          // be taken out of. A deferred pass breaks that assumption: by then
+          // the wrapper sits inside its slide, and a slide can be detached for
+          // minutes at a time (a thumbnail scrolled out of view keeps its
+          // rendered DOM). Moving the wrapper out of such a slide deletes the
+          // shape from it permanently. Skip that pass instead. Only the
+          // refinement is lost; the synchronous pass already measured this
+          // shape inside the render host.
+          if (!wrapper.isConnected && wrapper.parentNode) return;
+
           textContainer.style.transform = baseTransform;
           textContainer.style.transformOrigin = baseTransformOrigin;
           textContainer.style.width = baseWidth;

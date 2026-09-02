@@ -132,6 +132,49 @@ describe("bodyPr normAutofit", () => {
   });
 });
 
+describe("deferred autofit measurement", () => {
+  /** Autofit modes that measure the rendered text, so they schedule a second pass. */
+  const DYNAMIC_AUTOFIT_BODY_PR = [
+    ["normAutofit", `<a:bodyPr><a:normAutofit/></a:bodyPr>`],
+    ["spAutoFit", `<a:bodyPr wrap="square"><a:spAutoFit/></a:bodyPr>`],
+  ] as const;
+
+  /** Enough frames for the double-rAF pass that follows the synchronous one. */
+  async function settleDeferredPasses(): Promise<void> {
+    for (let frame = 0; frame < 4; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    }
+  }
+
+  for (const [mode, bodyPrXml] of DYNAMIC_AUTOFIT_BODY_PR) {
+    it(`keeps a ${mode} shape in a detached slide`, async () => {
+      const element = await renderTextBox(MARKER_PARAGRAPH, { bodyPrXml });
+      // `renderSlide` hands back a detached container, and a thumbnail parked
+      // off-DOM while scrolled out of view looks the same for minutes at a time.
+      expect(element.isConnected).toBe(false);
+      const shape = element.querySelector("[data-pptx-node-id='2']");
+      expect(shape?.textContent).toBe("MARKER");
+
+      await settleDeferredPasses();
+
+      // Measuring by moving the shape into the measurement root and taking it
+      // out again used to delete it from a slide it was already part of, so the
+      // text was gone for good once the thumbnail scrolled back into view.
+      expect(element.querySelector("[data-pptx-node-id='2']")).toBe(shape);
+      expect(shape?.parentElement).toBe(element);
+    });
+  }
+
+  it("still measures a shape that has not been added to its slide yet", async () => {
+    // The synchronous pass runs before the caller appends the shape, which is
+    // the case the relocate-to-measure path exists for. It has to keep working.
+    const container = await renderBody(`<a:bodyPr><a:normAutofit/></a:bodyPr>`);
+    expect(container.textContent).toBe("MARKER");
+    await settleDeferredPasses();
+    expect(container.textContent).toBe("MARKER");
+  });
+});
+
 describe("field runs (a:fld)", () => {
   // TODO(spec?): ECMA-376 fields like slidenum should show the current slide
   // number; the renderer emits the cached <a:t> literal instead of recomputing
