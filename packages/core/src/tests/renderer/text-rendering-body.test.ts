@@ -2,7 +2,7 @@
  * Text body properties (a:bodyPr), field runs (a:fld) and hyperlink runs
  * (a:hlinkClick ppaction) through the real render pipeline.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeColor,
@@ -172,6 +172,94 @@ describe("deferred autofit measurement", () => {
     expect(container.textContent).toBe("MARKER");
     await settleDeferredPasses();
     expect(container.textContent).toBe("MARKER");
+  });
+
+  describe("picking the pass back up on re-attach", () => {
+    /**
+     * happy-dom has no ResizeObserver, and would report a 0x0 box for the
+     * re-attached shape even if it did. This reports one resize on demand.
+     */
+    class FakeResizeObserver {
+      static instances: FakeResizeObserver[] = [];
+      targets: Element[] = [];
+      isDisconnected = false;
+
+      constructor(private callback: ResizeObserverCallback) {
+        FakeResizeObserver.instances.push(this);
+      }
+      observe(target: Element) {
+        this.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.isDisconnected = true;
+      }
+      /** What the browser reports once the shape is laid out again. */
+      report() {
+        this.callback([], this as unknown as ResizeObserver);
+      }
+    }
+
+    beforeEach(() => {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    /** Makes the shape look laid out, which is the signal the observer waits for. */
+    function attachAndSize(slide: HTMLElement, shape: Element): void {
+      document.body.appendChild(slide);
+      Object.defineProperty(shape, "offsetWidth", { value: 400, configurable: true });
+    }
+
+    it("arms an observer on the shape rather than dropping the refinement", async () => {
+      const slide = await renderTextBox(MARKER_PARAGRAPH, {
+        bodyPrXml: `<a:bodyPr><a:normAutofit/></a:bodyPr>`,
+      });
+      const shape = slide.querySelector("[data-pptx-node-id='2']");
+
+      await settleDeferredPasses();
+
+      const observer = FakeResizeObserver.instances.at(-1);
+      expect(observer?.targets).toEqual([shape]);
+    });
+
+    it("re-measures once the shape is laid out again, then stops watching", async () => {
+      const slide = await renderTextBox(MARKER_PARAGRAPH, {
+        bodyPrXml: `<a:bodyPr><a:normAutofit/></a:bodyPr>`,
+      });
+      const shape = slide.querySelector("[data-pptx-node-id='2']");
+      if (!shape) throw new Error("shape not rendered");
+      const textContainer = textContainerOf(slide);
+
+      // Measuring the text is what the deferred pass exists to do, so counting
+      // reads is how we know it actually ran.
+      let widthReads = 0;
+      Object.defineProperty(textContainer, "clientWidth", {
+        get() {
+          widthReads++;
+          return 400;
+        },
+        configurable: true,
+      });
+
+      await settleDeferredPasses();
+      expect(widthReads).toBe(0);
+
+      attachAndSize(slide, shape);
+      FakeResizeObserver.instances.at(-1)?.report();
+
+      expect(widthReads).toBeGreaterThan(0);
+      // Still in the slide, and no longer watched, so writing styles in the
+      // pass cannot re-enter through the observer.
+      expect(shape.parentElement).toBe(slide);
+      expect(FakeResizeObserver.instances.at(-1)?.isDisconnected).toBe(true);
+
+      slide.remove();
+    });
   });
 });
 
