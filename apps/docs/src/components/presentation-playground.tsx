@@ -221,7 +221,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList className="overflow-clip p-2.5">
+        <PresentationThumbnailList className="p-2">
           {() => (
             <>
               {orderedIds.map((slideId) => (
@@ -441,9 +441,6 @@ function PresentationDebugToolbar() {
   const { slide, index } = useSlide();
 
   return (
-    // Wrapping keeps each readout whole on a narrow viewport: a flex item moves
-    // to the next line rather than breaking, and only the long perf readout is
-    // ever wide enough to wrap inside itself.
     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground">
       <span>
         status: <strong className="text-foreground">{status}</strong>
