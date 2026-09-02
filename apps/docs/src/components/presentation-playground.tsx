@@ -108,7 +108,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
         className={cn(
           "flex flex-col overflow-hidden rounded-md border",
           hidden.has("file-input")
-            ? "h-[calc(100dvh-(--spacing(82)))]"
+            ? "h-[calc(100dvh-(--spacing(22)))]"
             : "h-[calc(100dvh-(--spacing(32)))]",
         )}
       >
@@ -221,7 +221,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList className="p-2">
+        <PresentationThumbnailList className="overflow-clip p-2.5">
           {() => (
             <>
               {orderedIds.map((slideId) => (

@@ -2,7 +2,7 @@
 
 Composable primitives for viewing and editing PowerPoint presentations in the browser. Unstyled, accessible, and entirely yours to build on.
 
-![layout](./apps/docs/public/layout.png)
+![Layout](./apps/docs/public/layout.png)
 
 ## Documentation
 

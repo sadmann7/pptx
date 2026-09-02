@@ -74,7 +74,7 @@ export function PresentationEditingDemo() {
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
-        <Toolbar />
+        <PresentationToolbar />
         <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
@@ -92,9 +92,13 @@ export function PresentationEditingDemo() {
   );
 }
 
-function Toolbar() {
+function PresentationToolbar() {
   const { status } = usePresentation();
   const { canUndo, canRedo, undo, redo } = useHistory();
+
+  function run(action: () => Promise<unknown>) {
+    void action().catch((error) => console.error("[demo] action failed:", error));
+  }
 
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -107,12 +111,12 @@ function Toolbar() {
         <TooltipTrigger
           render={
             <Button
-              size="icon-sm"
-              variant="ghost"
-              className="ml-auto"
               aria-label="Undo"
-              focusableWhenDisabled
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto"
               disabled={!canUndo}
+              focusableWhenDisabled
               onClick={() => undo()}
             >
               <Undo2Icon />
@@ -125,14 +129,12 @@ function Toolbar() {
         <TooltipTrigger
           render={
             <Button
-              size="icon-sm"
-              variant="ghost"
               aria-label="Redo"
-              focusableWhenDisabled
+              variant="ghost"
+              size="icon-sm"
               disabled={!canRedo}
-              onClick={() =>
-                void redo().catch((error) => console.error("[demo] redo failed:", error))
-              }
+              focusableWhenDisabled
+              onClick={() => run(() => redo())}
             >
               <Redo2Icon />
             </Button>
