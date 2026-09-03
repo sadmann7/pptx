@@ -168,6 +168,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
+      sonner:
+        specifier: ^2.0.8
+        version: 2.0.8(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 'catalog:'
@@ -418,9 +421,6 @@ importers:
       remotion:
         specifier: 'catalog:'
         version: 4.0.516(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      sonner:
-        specifier: ^2.0.8
-        version: 2.0.8(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -443,6 +443,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.5(@types/react@19.2.18)
+      sonner:
+        specifier: ^2.0.8
+        version: 2.0.8(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -6727,7 +6730,7 @@ snapshots:
   '@napi-rs/wasm-runtime@1.0.7':
     dependencies:
       '@emnapi/core': 1.11.1
-      '@emnapi/runtime': 1.11.2
+      '@emnapi/runtime': 1.11.3
       '@tybys/wasm-util': 0.10.3
     optional: true
 
