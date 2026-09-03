@@ -3,13 +3,13 @@
 import * as React from "react";
 
 import { Button } from "@pptx/ui/components/button";
+import { ButtonGroup, ButtonGroupSeparator } from "@pptx/ui/components/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@pptx/ui/components/dropdown-menu";
-import { Separator } from "@pptx/ui/components/separator";
 import { cn } from "@pptx/ui/lib/utils";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { Check, ChevronDown, Copy, TextIcon } from "lucide-react";
@@ -172,13 +172,10 @@ interface DocActionsProps extends React.ComponentProps<"div"> {
 
 export function DocActions({ url, className, ...props }: DocActionsProps) {
   return (
-    <div
-      className={cn("flex items-stretch *:focus-visible:relative *:focus-visible:z-10", className)}
-      {...props}
-    >
-      <CopyPageButton markdownUrl={url} className="rounded-r-none border-r-0" />
-      <Separator orientation="vertical" className="bg-background/15" />
-      <PageMenu markdownUrl={url} className="rounded-l-none border-l-0" />
-    </div>
+    <ButtonGroup className={className} {...props}>
+      <CopyPageButton markdownUrl={url} className="border-r-0" />
+      <ButtonGroupSeparator className="bg-background/15" />
+      <PageMenu markdownUrl={url} className="border-l-0" />
+    </ButtonGroup>
   );
 }
