@@ -11,7 +11,7 @@ export default function IndexPage() {
           className="animate-fade-up text-center text-4xl/tight leading-tight font-bold tracking-tighter opacity-0 md:text-5xl/tight"
           style={{ animationDelay: "0.20s", animationFillMode: "forwards" }}
         >
-          {siteConfig.name}
+          {siteConfig.tagline}
         </h1>
         <p
           className="animate-fade-up text-center text-lg font-light opacity-0 md:text-xl"
