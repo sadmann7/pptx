@@ -23,6 +23,7 @@ import type {
 } from "../model/presentation";
 import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
+import { createFontWorker } from "./worker-host";
 
 export interface EmbeddedFontsHandle {
   /**
@@ -98,7 +99,7 @@ async function decodeWithWorkerPool(
 
   const workers: Worker[] = [];
   for (let i = 0; i < poolSize; i++) {
-    workers.push(new Worker(new URL("./worker.ts", import.meta.url), { type: "module" }));
+    workers.push(createFontWorker());
   }
 
   await Promise.all(
