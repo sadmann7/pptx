@@ -11,3 +11,9 @@
 ### Patch Changes
 
 - 1f6d781: Link the documentation site from the package README and update the package description.
+
+## 0.1.0
+
+### Minor Changes
+
+- Initial release. PPTX engine for parsing, rendering, editing, and saving PowerPoint presentations in the browser.
