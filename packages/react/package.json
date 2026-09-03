@@ -1,6 +1,6 @@
 {
   "name": "@diceui/pptx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Composable primitives for viewing and editing PowerPoint presentations in the browser.",
   "keywords": [
     "editor",
