@@ -17,12 +17,12 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
-      <div className="flex items-start justify-between gap-4 pb-4">
-        <div className="flex flex-col gap-1.5">
-          <DocsTitle>{page.data.title}</DocsTitle>
-          <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+      <div className="flex flex-col gap-1.5 pb-4">
+        <div className="flex items-center gap-2">
+          <DocsTitle className="flex-1">{page.data.title}</DocsTitle>
+          <DocActions url={markdownUrl} />
         </div>
-        <DocActions url={markdownUrl} />
+        <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       </div>
       <DocsBody>
         <MDX
