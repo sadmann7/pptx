@@ -5,15 +5,6 @@ import { defineConfig } from "tsdown";
 const workerHost = path.join(import.meta.dirname, "src", "fonts", "worker-host.ts");
 const workerEntry = path.join(import.meta.dirname, "src", "fonts", "worker.ts");
 
-/**
- * Bundles the font worker into a standalone script, so it can be spawned from a
- * blob URL instead of a relative path. Same approach the PDF renderer takes: a
- * worker referenced by URL only survives publishing if the consuming bundler
- * emits a chunk for it, and rolldown has no worker support to begin with.
- *
- * IIFE rather than ESM: with the decoder tree bundled in there is nothing left
- * to import, and a classic worker avoids needing module worker support.
- */
 async function bundleWorker(): Promise<string> {
   const bundle = await rolldown({
     input: workerEntry,
