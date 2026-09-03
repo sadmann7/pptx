@@ -60,6 +60,9 @@ catalogs:
     remotion:
       specifier: 4.0.516
       version: 4.0.516
+    rolldown:
+      specifier: ^1.2.5
+      version: 1.2.5
     tailwindcss:
       specifier: ^4.3.3
       version: 4.3.3
@@ -271,6 +274,9 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 30.0.1
+      rolldown:
+        specifier: 'catalog:'
+        version: 1.2.5
       tsdown:
         specifier: 'catalog:'
         version: 0.22.14(tsx@4.23.12)(typescript@7.0.2)(unrun@0.2.39)

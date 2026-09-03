@@ -71,6 +71,7 @@
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
     "jsdom": "catalog:",
+    "rolldown": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
