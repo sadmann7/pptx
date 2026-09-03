@@ -50,21 +50,21 @@ export function PresentationDemo() {
 
   return (
     <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
-        <Label htmlFor={`${id}-file`} className="shrink-0 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 border-b p-1.5">
+        <Label htmlFor={`${id}-file`} className="sr-only">
           Open .pptx
         </Label>
         <Input
           id={`${id}-file`}
           type="file"
           accept=".pptx"
-          className="h-8 max-w-xs cursor-pointer text-xs"
+          className="h-8 max-w-xs text-xs"
           onChange={onFileChange}
         />
       </div>
       <PresentationProvider store={store}>
         <Presentation className="min-h-0 flex-1">
-          <PresentationThumbnailList />
+          <PresentationThumbnailList className="p-1.5" />
           <PresentationContent>
             <PresentationLoading />
             <PresentationError />
