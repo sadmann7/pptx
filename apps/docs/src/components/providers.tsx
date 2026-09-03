@@ -3,6 +3,8 @@
 import { TooltipProvider } from "@pptx/ui/components/tooltip";
 import type { RootProviderProps } from "fumadocs-ui/provider/base";
 import { RootProvider } from "fumadocs-ui/provider/next";
+
+import { ThemeShortcut } from "@/components/theme-shortcuts";
 interface ProvidersProps extends RootProviderProps {
   children: React.ReactNode;
 }
@@ -10,6 +12,7 @@ interface ProvidersProps extends RootProviderProps {
 export function Providers({ children, ...props }: ProvidersProps) {
   return (
     <RootProvider {...props}>
+      <ThemeShortcut />
       <TooltipProvider>{children}</TooltipProvider>
     </RootProvider>
   );
