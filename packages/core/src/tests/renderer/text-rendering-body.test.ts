@@ -2,7 +2,7 @@
  * Text body properties (a:bodyPr), field runs (a:fld) and hyperlink runs
  * (a:hlinkClick ppaction) through the real render pipeline.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeColor,
@@ -129,6 +129,137 @@ describe("bodyPr normAutofit", () => {
     const [paragraph] = paragraphsOf(container);
     const bullet = spansOf(paragraph).find((s) => s.textContent === "• ");
     expect(parseFloat(bullet!.style.fontSize)).toBeCloseTo(10, 3);
+  });
+});
+
+describe("deferred autofit measurement", () => {
+  /** Autofit modes that measure the rendered text, so they schedule a second pass. */
+  const DYNAMIC_AUTOFIT_BODY_PR = [
+    ["normAutofit", `<a:bodyPr><a:normAutofit/></a:bodyPr>`],
+    ["spAutoFit", `<a:bodyPr wrap="square"><a:spAutoFit/></a:bodyPr>`],
+  ] as const;
+
+  /** Enough frames for the double-rAF pass that follows the synchronous one. */
+  async function settleDeferredPasses(): Promise<void> {
+    for (let frame = 0; frame < 4; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    }
+  }
+
+  for (const [mode, bodyPrXml] of DYNAMIC_AUTOFIT_BODY_PR) {
+    it(`keeps a ${mode} shape in a detached slide`, async () => {
+      const element = await renderTextBox(MARKER_PARAGRAPH, { bodyPrXml });
+      // `renderSlide` hands back a detached container, and a thumbnail parked
+      // off-DOM while scrolled out of view looks the same for minutes at a time.
+      expect(element.isConnected).toBe(false);
+      const shape = element.querySelector("[data-pptx-node-id='2']");
+      expect(shape?.textContent).toBe("MARKER");
+
+      await settleDeferredPasses();
+
+      // Measuring by moving the shape into the measurement root and taking it
+      // out again used to delete it from a slide it was already part of, so the
+      // text was gone for good once the thumbnail scrolled back into view.
+      expect(element.querySelector("[data-pptx-node-id='2']")).toBe(shape);
+      expect(shape?.parentElement).toBe(element);
+    });
+  }
+
+  it("still measures a shape that has not been added to its slide yet", async () => {
+    // The synchronous pass runs before the caller appends the shape, which is
+    // the case the relocate-to-measure path exists for. It has to keep working.
+    const container = await renderBody(`<a:bodyPr><a:normAutofit/></a:bodyPr>`);
+    expect(container.textContent).toBe("MARKER");
+    await settleDeferredPasses();
+    expect(container.textContent).toBe("MARKER");
+  });
+
+  describe("picking the pass back up on re-attach", () => {
+    /**
+     * happy-dom has no ResizeObserver, and would report a 0x0 box for the
+     * re-attached shape even if it did. This reports one resize on demand.
+     */
+    class FakeResizeObserver {
+      static instances: FakeResizeObserver[] = [];
+      targets: Element[] = [];
+      isDisconnected = false;
+
+      constructor(private callback: ResizeObserverCallback) {
+        FakeResizeObserver.instances.push(this);
+      }
+      observe(target: Element) {
+        this.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.isDisconnected = true;
+      }
+      /** What the browser reports once the shape is laid out again. */
+      report() {
+        this.callback([], this as unknown as ResizeObserver);
+      }
+    }
+
+    beforeEach(() => {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    /** Makes the shape look laid out, which is the signal the observer waits for. */
+    function attachAndSize(slide: HTMLElement, shape: Element): void {
+      document.body.appendChild(slide);
+      Object.defineProperty(shape, "offsetWidth", { value: 400, configurable: true });
+    }
+
+    it("arms an observer on the shape rather than dropping the refinement", async () => {
+      const slide = await renderTextBox(MARKER_PARAGRAPH, {
+        bodyPrXml: `<a:bodyPr><a:normAutofit/></a:bodyPr>`,
+      });
+      const shape = slide.querySelector("[data-pptx-node-id='2']");
+
+      await settleDeferredPasses();
+
+      const observer = FakeResizeObserver.instances.at(-1);
+      expect(observer?.targets).toEqual([shape]);
+    });
+
+    it("re-measures once the shape is laid out again, then stops watching", async () => {
+      const slide = await renderTextBox(MARKER_PARAGRAPH, {
+        bodyPrXml: `<a:bodyPr><a:normAutofit/></a:bodyPr>`,
+      });
+      const shape = slide.querySelector("[data-pptx-node-id='2']");
+      if (!shape) throw new Error("shape not rendered");
+      const textContainer = textContainerOf(slide);
+
+      // Measuring the text is what the deferred pass exists to do, so counting
+      // reads is how we know it actually ran.
+      let widthReads = 0;
+      Object.defineProperty(textContainer, "clientWidth", {
+        get() {
+          widthReads++;
+          return 400;
+        },
+        configurable: true,
+      });
+
+      await settleDeferredPasses();
+      expect(widthReads).toBe(0);
+
+      attachAndSize(slide, shape);
+      FakeResizeObserver.instances.at(-1)?.report();
+
+      expect(widthReads).toBeGreaterThan(0);
+      // Still in the slide, and no longer watched, so writing styles in the
+      // pass cannot re-enter through the observer.
+      expect(shape.parentElement).toBe(slide);
+      expect(FakeResizeObserver.instances.at(-1)?.isDisconnected).toBe(true);
+
+      slide.remove();
+    });
   });
 });
 

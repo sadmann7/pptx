@@ -438,7 +438,6 @@ function renderWarpedTextBody(node: ShapeNodeData, ctx: RenderContext): SVGSVGEl
 // Shape blipFill (image fill): resolve to blob URL for reuse (e.g. SVG/PNG in process diagrams)
 // ---------------------------------------------------------------------------
 
-/** Resolve shape blipFill to a blob URL so we can render it (e.g. slide 23 process graphic). */
 function resolveShapeBlipUrl(blipFill: SafeXmlNode, ctx: RenderContext): string | null {
   const blip = blipFill.child("blip");
   const embedId = blip.attr("embed") ?? blip.attr("r:embed");
@@ -2519,7 +2518,21 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         const baseHeight = textContainer.style.height;
         const baseWhiteSpace = textContainer.style.whiteSpace;
         const baseOverflowY = textContainer.style.overflowY;
+
+        let waitForReattach = (): void => undefined;
+
         const applyDynamicAutofit = () => {
+          // Measuring relocates the wrapper, which is only safe while it has no
+          // parent to be taken out of. A deferred pass runs after the shape is
+          // in its slide, and that slide may be detached for minutes (a
+          // thumbnail scrolled out of view keeps its DOM): relocating would
+          // delete the shape from it for good, and measuring it where it stands
+          // reads back zero. Wait for it to come back instead.
+          if (!wrapper.isConnected && wrapper.parentNode) {
+            waitForReattach();
+            return;
+          }
+
           textContainer.style.transform = baseTransform;
           textContainer.style.transformOrigin = baseTransformOrigin;
           textContainer.style.width = baseWidth;
@@ -2698,6 +2711,29 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           ) {
             textContainer.style.overflowY = "visible";
           }
+        };
+
+        // A detached wrapper reports a 0x0 box, so a non-zero one means it is
+        // laid out again. Same signal the chart renderer waits on.
+        const isMeasurable = (): boolean => wrapper.isConnected && wrapper.offsetWidth > 0;
+
+        let reattachObserver: ResizeObserver | null = null;
+        const stopWaitingForReattach = () => {
+          reattachObserver?.disconnect();
+          reattachObserver = null;
+        };
+
+        waitForReattach = () => {
+          if (reattachObserver || typeof ResizeObserver === "undefined") return;
+          reattachObserver = new ResizeObserver(() => {
+            if (!isMeasurable()) return;
+            // Disconnect first: the pass writes styles, so re-entering through
+            // the observer would loop.
+            stopWaitingForReattach();
+            applyDynamicAutofit();
+          });
+          reattachObserver.observe(wrapper);
+          ctx.cleanups?.push(stopWaitingForReattach);
         };
 
         const scheduleDynamicAutofit = () => {
