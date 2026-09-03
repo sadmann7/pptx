@@ -167,15 +167,15 @@ function PageMenu({ markdownUrl, className, ...props }: PageMenuProps) {
 }
 
 interface DocActionsProps extends React.ComponentProps<"div"> {
-  url: string;
+  markdownUrl: string;
 }
 
-export function DocActions({ url, className, ...props }: DocActionsProps) {
+export function DocActions({ markdownUrl, className, ...props }: DocActionsProps) {
   return (
     <ButtonGroup className={className} {...props}>
-      <CopyPageButton markdownUrl={url} className="border-r-0" />
+      <CopyPageButton markdownUrl={markdownUrl} className="border-r-0" />
       <ButtonGroupSeparator className="bg-background/15" />
-      <PageMenu markdownUrl={url} className="border-l-0" />
+      <PageMenu markdownUrl={markdownUrl} className="border-l-0" />
     </ButtonGroup>
   );
 }

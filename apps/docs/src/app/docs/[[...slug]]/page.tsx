@@ -20,14 +20,13 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
       <div className="flex flex-col gap-1.5 pb-4">
         <div className="flex items-center gap-2">
           <DocsTitle className="flex-1">{page.data.title}</DocsTitle>
-          <DocActions url={markdownUrl} />
+          <DocActions markdownUrl={markdownUrl} />
         </div>
         <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       </div>
       <DocsBody>
         <MDX
           components={getMDXComponents({
-            // this allows you to link to other pages with relative file paths
             a: createRelativeLink(source, page),
           })}
         />
