@@ -42,7 +42,7 @@ import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 
 /**
- * Keeps the source item visible during the drop animation.
+ * Keep the source item visible during the drop animation.
  *
  * The default side effect sets its opacity to `0`, delaying the thumbnail
  * item's focus ring from reappearing until roughly 250 ms after pointer release.
@@ -147,7 +147,11 @@ function PresentationToolbar() {
   );
 }
 
-function SortableThumbnailList({ store }: { store: PresentationStore }) {
+interface SortableThumbnailListProps {
+  store: PresentationStore;
+}
+
+function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const { presentation } = usePresentation();
   const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
 
@@ -159,15 +163,13 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
   const [pendingIds, setPendingIds] = React.useState<string[] | null>(null);
   const orderedIds = pendingIds ?? slideIds;
 
-  /** Slide under the pointer, mirrored into the drag overlay. */
   const [draggedId, setDraggedId] = React.useState<string | null>(null);
 
-  // Pointer only: the list owns ArrowUp/ArrowDown for roving focus, so a
-  // keyboard drag sensor bound to the same keys would fight it.
+  // Use PointerSensor only to prevent keyboard drag from conflicting with ArrowUp/Down roving focus.
   const sensors = useSensors(
-    // A small threshold keeps a plain click selecting the slide instead of
-    // starting a drag.
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
   );
 
   async function onDragEnd(event: DragEndEvent) {
@@ -180,6 +182,8 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
     if (toIndex === -1) return;
 
     const fromIndex = orderedIds.indexOf(slideId);
+    if (fromIndex === -1) return;
+
     const next = [...orderedIds];
     next.splice(fromIndex, 1);
     next.splice(toIndex, 0, slideId);
@@ -188,7 +192,6 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
     try {
       await store.edit({ type: "moveSlide", slideId, toIndex });
     } finally {
-      // The store is the source of truth again once the edit settles.
       setPendingIds(null);
     }
   }
@@ -197,27 +200,18 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      // A transformed child still counts toward its scroll container's overflow,
-      // so an unclamped drag past the last thumbnail grows scrollHeight, which
-      // lets auto-scroll run, which grows the transform again: the strip scrolls
-      // forever. Clamping the drag to the scroll port breaks that loop.
       modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
       onDragStart={({ active }: DragStartEvent) => setDraggedId(String(active.id))}
       onDragCancel={() => setDraggedId(null)}
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList>
+        <PresentationThumbnailList className="p-2">
           {() => (
             <>
               {orderedIds.map((slideId) => (
-                <SortableItem key={slideId} slideId={slideId} />
+                <SortableThumbnailItem key={slideId} slideId={slideId} />
               ))}
-              {/*
-               * Inside the list so the floating copy can read the list context
-               * it needs to paint a real miniature. It is fixed-positioned, so
-               * the strip's overflow does not clip it.
-               */}
               <DragOverlay dropAnimation={DROP_ANIMATION}>
                 {draggedId ? (
                   <PresentationThumbnailItem
@@ -238,7 +232,11 @@ function SortableThumbnailList({ store }: { store: PresentationStore }) {
   );
 }
 
-function SortableItem({ slideId }: { slideId: string }) {
+interface SortableThumbnailItemProps {
+  slideId: string;
+}
+
+function SortableThumbnailItem({ slideId }: SortableThumbnailItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slideId,
   });
