@@ -1,9 +1,8 @@
-import { generate as DefaultImage } from "fumadocs-ui/og";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 
 import { loadFonts } from "@/lib/fonts";
-import { siteConfig } from "@/lib/site";
+import { OG_IMAGE_SIZE, OgImage } from "@/lib/og";
 import { getPageImage, source } from "@/lib/source";
 
 export const revalidate = false;
@@ -16,14 +15,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const fonts = await loadFonts();
 
   return new ImageResponse(
-    <DefaultImage
-      title={page.data.title}
-      description={page.data.description}
-      site={siteConfig.name}
-    />,
+    <OgImage title={page.data.title} description={page.data.description} />,
     {
-      width: 1200,
-      height: 630,
+      ...OG_IMAGE_SIZE,
       fonts,
     },
   );
