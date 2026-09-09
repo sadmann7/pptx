@@ -343,10 +343,14 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     const activeSlideId = useStoreSelector(store, (s) => s.activeSlideId, null);
 
-    // Auto-focus the active (or first) thumbnail once per presentation load.
+    // Auto-focus the active (or first) thumbnail once per presentation load,
+    // but only for a load the user set in motion. A deck fetched on mount would
+    // otherwise take the page's initial tab position away from its first
+    // control. Where the browser cannot say, nothing is taken.
     React.useEffect(() => {
       if (!presentation || autoFocusedPresentationRef.current === presentation) return;
       autoFocusedPresentationRef.current = presentation;
+      if (!navigator.userActivation?.hasBeenActive) return;
       const items = itemsRef.current;
       const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
       const firstItem = activeItem ?? items.values().next().value;

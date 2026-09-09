@@ -90,6 +90,16 @@ describe("Presentation.ThumbnailList", () => {
     expect(store.getActiveSlideIndex()).toBe(1);
   });
 
+  it("leaves focus alone when a deck loads without the user having acted", async () => {
+    // happy-dom has no `navigator.userActivation`, matching a deck loaded on
+    // mount. Capturing focus here would steal the first tab stop.
+    const store = await loadedStore();
+    withStore(store, <Presentation.ThumbnailList />);
+
+    expect(screen.getAllByRole("option")).toHaveLength(FIXTURE_SLIDE_COUNT);
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("renders nothing before the presentation is ready", () => {
     const store = createStore();
     const { container } = withStore(store, <Presentation.ThumbnailList />);
