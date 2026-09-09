@@ -5,6 +5,7 @@
  * them to know when a render settled and to reach into the loaded deck.
  */
 import type { SerializedPresentation } from "@diceui/pptx-core";
+import type { EmbeddedFontError } from "@diceui/pptx-core/fonts";
 
 declare global {
   /** Which path the font harness decodes with; see harness/fonts.ts. */
@@ -39,6 +40,17 @@ declare global {
     __fontBytes?: number;
     /** Decodes every font part on the main thread, timing each one (ms). */
     __benchDecodeParts?: () => { path: string; bytes: number; ms: number }[];
+    /**
+     * Breaks one font part per failure kind, loads the rest, and reports what
+     * the loader passed to `onError`. Leaves the deck broken, so a page that
+     * calls this must not also be measured.
+     */
+    __benchFontErrors?: () => Promise<{
+      broken: { path: string; stage: EmbeddedFontError["stage"] }[];
+      errors: EmbeddedFontError[];
+      /** Faces added to `document.fonts`, i.e. the parts left intact. */
+      faces: number;
+    }>;
     /**
      * Runs the font pipeline once in the mode the page was loaded with, and
      * reports both the wall clock and what the main thread lost to it.
