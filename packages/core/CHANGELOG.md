@@ -1,5 +1,11 @@
 # @diceui/pptx-core
 
+## 0.2.0
+
+### Minor Changes
+
+- f07e526: Add an `onError` option to `loadEmbeddedFonts` so an embedded font that cannot be used is reported instead of silently falling back. Each report names the part, the typefaces left without it, whether it went missing, failed to decode, or was rejected by the `FontFace` API, and the decoder's message.
+
 ## 0.1.4
 
 ### Patch Changes
