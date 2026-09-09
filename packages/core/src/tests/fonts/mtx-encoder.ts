@@ -361,7 +361,12 @@ export interface CompositeGlyph extends GlyphHints {
 export type CtfGlyph = SimpleGlyph | CompositeGlyph;
 
 export interface CtfFontSpec {
-  glyphs: CtfGlyph[];
+  /** TrueType outlines. Omit for a CFF font, which has no glyf table. */
+  glyphs?: CtfGlyph[];
+  /** A CFF table's bytes. When given, the font is emitted OTTO-flavoured. */
+  cff?: Uint8Array;
+  /** The glyph count maxp declares. Defaults to the number of glyphs encoded. */
+  numGlyphs?: number;
   cvt?: number[];
   /** Extra tables copied through stream 0 untouched. */
   extraTables?: { tag: string; data: Uint8Array }[];
@@ -477,18 +482,25 @@ function makeMaxp(numGlyphs: number): Uint8Array {
 
 /** Build the three CTF streams for a font description. */
 export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uint8Array] {
+  const glyphs = spec.glyphs ?? [];
   const glyphBytes: number[] = [];
   const push: number[] = [];
   const code: number[] = [];
-  for (const glyph of spec.glyphs) encodeGlyph(glyph, glyphBytes, push, code);
+  for (const glyph of glyphs) encodeGlyph(glyph, glyphBytes, push, code);
+
+  const outlineTables = spec.cff
+    ? [{ tag: "CFF ", data: spec.cff }]
+    : [
+        { tag: "glyf", data: Uint8Array.from(glyphBytes) },
+        { tag: "loca", data: new Uint8Array(0) },
+      ];
 
   const tables: { tag: string; data: Uint8Array }[] = [
     { tag: "head", data: makeHead(spec.indexToLocFormat ?? 0, spec.unitsPerEm ?? 1000) },
-    { tag: "maxp", data: makeMaxp(spec.glyphs.length) },
+    { tag: "maxp", data: makeMaxp(spec.numGlyphs ?? glyphs.length) },
     ...(spec.cvt ? [{ tag: "cvt ", data: encodeCvt(spec.cvt) }] : []),
     ...(spec.extraTables ?? []),
-    { tag: "glyf", data: Uint8Array.from(glyphBytes) },
-    { tag: "loca", data: new Uint8Array(0) },
+    ...outlineTables,
   ];
 
   const directorySize = 12 + tables.length * 16;
@@ -497,7 +509,7 @@ export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uin
 
   const stream = new Uint8Array(directorySize + dataSize);
   const view = new DataView(stream.buffer);
-  view.setUint32(0, 0x00010000, false);
+  view.setUint32(0, spec.cff ? 0x4f54544f : 0x00010000, false);
   view.setUint16(4, tables.length, false);
 
   let offset = directorySize;

@@ -7,18 +7,22 @@ import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
 import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
 import { read255UShort } from "./varint";
 
-interface DirectoryEntry {
-  tag: string;
-  offset: number;
-  length: number;
-}
+// sfnt version tag `OTTO`, marking outlines in a `CFF ` table instead of `glyf`/`loca`.
+const SFNT_VERSION_CFF = 0x4f54544f;
 
+// Composite glyph flags from the OpenType `glyf` table.
 const ARG_1_AND_2_ARE_WORDS = 0x0001;
 const WE_HAVE_A_SCALE = 0x0008;
 const MORE_COMPONENTS = 0x0020;
 const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
 const WE_HAVE_A_TWO_BY_TWO = 0x0080;
 const WE_HAVE_INSTRUCTIONS = 0x0100;
+
+interface DirectoryEntry {
+  tag: string;
+  offset: number;
+  length: number;
+}
 
 function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
   if (entry.offset < 0 || entry.length < 0 || entry.offset + entry.length > data.length) {
@@ -319,12 +323,22 @@ export function parseCtf(
     byTag.set(tag, entry);
   }
 
+  // CFF outlines are stored as a table of their own, so there is no glyf to
+  // rebuild and no loca to derive: everything already sits in the stream and the
+  // reconstruction below applies to TrueType outlines only. PowerPoint embeds
+  // OTFs this way, and requiring glyf/loca would reject them.
+  const isCff = sfntVersion === SFNT_VERSION_CFF;
+
   const headEntry = byTag.get("head");
   const maxpEntry = byTag.get("maxp");
   const glyfEntry = byTag.get("glyf");
   const locaEntry = byTag.get("loca");
-  if (!headEntry || !maxpEntry || !glyfEntry || !locaEntry)
-    fail("INVALID_CTF", "CTF is missing head, maxp, glyf, or loca");
+  if (!headEntry || !maxpEntry) fail("INVALID_CTF", "CTF is missing head or maxp");
+  if (isCff) {
+    if (!byTag.has("CFF ")) fail("INVALID_CTF", "CFF-flavoured CTF has no CFF table");
+  } else if (!glyfEntry || !locaEntry) {
+    fail("INVALID_CTF", "CTF is missing glyf or loca");
+  }
   // head is the only table this rewrites, so it is the only one that needs its
   // own storage; the rest stay views into the decompressed stream until
   // buildSfnt copies them into the font.
@@ -338,32 +352,36 @@ export function parseCtf(
   );
   if (glyphCount > limits.maxGlyphs) fail("LIMIT_EXCEEDED", `Font declares ${glyphCount} glyphs`);
 
-  const reconstructed = reconstructGlyphs(
-    restData,
-    glyfEntry,
-    streams[1],
-    streams[2],
-    glyphCount,
-    limits,
-  );
-  const oldLocaFormat = new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(
-    50,
-    false,
-  );
-  const isShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
-  new DataView(head.buffer, head.byteOffset, head.byteLength).setInt16(
-    50,
-    isShortLoca ? 0 : 1,
-    false,
-  );
-  const loca = makeLoca(reconstructed.offsets, isShortLoca);
+  let reconstructed: { glyf: Uint8Array; offsets: Uint32Array } | undefined;
+  let loca: Uint8Array | undefined;
+  if (glyfEntry && locaEntry) {
+    reconstructed = reconstructGlyphs(
+      restData,
+      glyfEntry,
+      streams[1],
+      streams[2],
+      glyphCount,
+      limits,
+    );
+    const oldLocaFormat = new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(
+      50,
+      false,
+    );
+    const isShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
+    new DataView(head.buffer, head.byteOffset, head.byteLength).setInt16(
+      50,
+      isShortLoca ? 0 : 1,
+      false,
+    );
+    loca = makeLoca(reconstructed.offsets, isShortLoca);
+  }
 
   const droppedTables: string[] = [];
   const tables: SfntTable[] = [];
   for (const entry of entries) {
     let data: Uint8Array;
-    if (entry.tag === "glyf") data = reconstructed.glyf;
-    else if (entry.tag === "loca") data = loca;
+    if (reconstructed && entry.tag === "glyf") data = reconstructed.glyf;
+    else if (loca && entry.tag === "loca") data = loca;
     else if (entry.tag === "head") data = head;
     else if (entry.tag === "cvt ") data = decodeCvt(tableView(restData, entry));
     else if (entry.tag === "hdmx" || entry.tag === "VDMX") {

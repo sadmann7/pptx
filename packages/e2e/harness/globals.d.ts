@@ -7,6 +7,9 @@
 import type { SerializedPresentation } from "@diceui/pptx-core";
 
 declare global {
+  /** Which path the font harness decodes with; see harness/fonts.ts. */
+  type BenchMode = "worker" | "main" | "sliced";
+
   interface Window {
     /** True once the current slide, including async media and charts, settled. */
     __renderDone?: boolean;
@@ -29,5 +32,31 @@ declare global {
       slide: { render: number[]; mount: number[] };
       thumbnail: { render: number[]; mount: number[] };
     };
+    /** True once the embedded-font harness has a deck ready to decode. */
+    __fontsReady?: boolean;
+    /** Unique font parts the loaded deck will decode, and their total size. */
+    __fontParts?: number;
+    __fontBytes?: number;
+    /** Decodes every font part on the main thread, timing each one (ms). */
+    __benchDecodeParts?: () => { path: string; bytes: number; ms: number }[];
+    /**
+     * Runs the font pipeline once in the mode the page was loaded with, and
+     * reports both the wall clock and what the main thread lost to it.
+     */
+    __benchFonts?: () => Promise<{
+      mode: BenchMode;
+      parts: number;
+      bytes: number;
+      readyMs: number;
+      completeMs: number;
+      /** Faces added to `document.fonts`, i.e. parts the browser accepted. */
+      faces: number;
+      frames: number;
+      worstFrameMs: number;
+      blockedMs: number;
+      longTasks: number;
+      worstTaskMs: number;
+      totalTaskMs: number;
+    }>;
   }
 }

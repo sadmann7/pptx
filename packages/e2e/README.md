@@ -29,6 +29,29 @@ The Playwright config starts the harness itself, so no dev server is needed.
 Structural specs are the cheapest place to pin a parser fix; reach for pixels
 only when the bug is in how something rasterizes.
 
+## Performance
+
+```bash
+pnpm -F @diceui/pptx-core build   # font-perf needs the published bundle
+pnpm test:perf                    # thumbnail-perf and font-perf, chromium only
+```
+
+Both specs report numbers instead of asserting a baseline, since timings are
+machine-dependent, and both are skipped unless `PERF=1`. `thumbnail-perf` scrolls
+the real thumbnail list and counts skeletons; `font-perf` decodes embedded fonts
+through the Worker pool, through the main-thread fallback, and through a
+time-sliced main thread, under CPU throttling, to size what the worker is worth
+against the copy of the decoder it costs the bundle.
+
+`font-perf` substitutes MTX-compressed payloads (`fixtures/fonts/`, taken from
+the core decode fixtures) because every deck committed here embeds plain EOT,
+where decoding is a header strip. Point it at a real deck instead with
+`FONT_PERF_DECK=decks/whatever.pptx`, which measures the deck as it is.
+
+`pnpm tsx scripts/scan-fonts.mts` prints what each deck's font parts are, what
+wrote them, and what decoding them costs; it takes directories as arguments, so
+a downloaded corpus can be classified without copying anything in.
+
 ## Fixtures
 
 Decks are listed in `specs/decks.ts`, which the oracle and exported-deck specs

@@ -11,7 +11,7 @@
  */
 
 import { deobfuscateFont } from "./deobfuscate";
-import { eotToTtf } from "./mtx";
+import { eotToTtf, parseEotMetadata } from "./mtx";
 
 function isRawFont(data: Uint8Array): boolean {
   if (data.length < 4) return false;
@@ -46,6 +46,30 @@ export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Arr
     return isRawFont(decoded) ? decoded : undefined;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Whether decoding this part will run the MTX decompressor.
+ *
+ * That is the only expensive case: an uncompressed EOT payload is passed
+ * through, so decoding it is a header read and costs microseconds, while MTX
+ * means LZCOMP over three streams (a few ms per part). Callers use this to
+ * decide whether the work is worth moving off the main thread at all.
+ *
+ * Reading the flag repeats the deobfuscation `decodeEmbeddedFont` will do
+ * again, which is 32 XORed bytes and a copy: cheaper by orders of magnitude
+ * than the decision it informs.
+ */
+export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
+  if (part.length === 0) return false;
+  const data = fontKey ? deobfuscateFont(part, fontKey) : part;
+  if (isRawFont(data)) return false;
+  try {
+    return parseEotMetadata(data).compressed;
+  } catch {
+    // Unreadable header: decoding will fail rather than decompress.
+    return false;
   }
 }
 
