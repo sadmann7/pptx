@@ -11,7 +11,7 @@ import {
   useStoreContext,
   useZoom,
 } from "./context";
-import { useLatestRef, useLazyRef } from "./hook";
+import { useLatestRef, useLazyRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import { getPasteboardOverhang } from "./selection";

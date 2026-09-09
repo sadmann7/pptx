@@ -16,7 +16,7 @@ import {
   useStoreContext,
   useZoom,
 } from "./context";
-import { useLatestRef } from "./hook";
+import { useLatestRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { mergeRefs, renderElement } from "./render";
 

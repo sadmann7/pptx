@@ -3,7 +3,7 @@ import * as React from "react";
 import type { PresentationData, SlideData } from "@diceui/pptx-core";
 
 import { DEFAULT_STORE_STATE } from "./constant";
-import { useLatestRef, useLazyRef } from "./hook";
+import { useLatestRef, useLazyRef } from "./hooks";
 import type { AutoFitPadding, Store, StoreEventMap, StoreState } from "./store";
 import { createStore } from "./store";
 
