@@ -1,4 +1,4 @@
-export * as Presentation from "./primitive";
+export * as Presentation from "./primitives";
 
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
@@ -6,7 +6,6 @@ export type { RootProps, RootState } from "./root";
 export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
 export type { SlideProps, SlideState } from "./slide";
 export type {
-  ThumbnailSelectEvent,
   ThumbnailItemNumberProps,
   ThumbnailItemPreviewProps,
   ThumbnailItemPreviewState,
@@ -15,6 +14,7 @@ export type {
   ThumbnailListProps,
   ThumbnailListRenderState,
   ThumbnailListState,
+  ThumbnailSelectEvent,
 } from "./thumbnail-list";
 export type { ViewportProps, ViewportState } from "./viewport";
 

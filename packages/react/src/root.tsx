@@ -3,7 +3,7 @@ import * as React from "react";
 import type { SlideData } from "@diceui/pptx-core";
 
 import { Context, RootContext, useStoreEvent } from "./context";
-import { useLatestRef } from "./hook";
+import { useLatestRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import type {

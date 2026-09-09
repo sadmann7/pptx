@@ -21,7 +21,7 @@ import {
   useStoreContext,
   useStoreSelector,
 } from "./context";
-import { useLatestRef, useLazyRef } from "./hook";
+import { useLatestRef, useLazyRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 
@@ -193,6 +193,27 @@ export interface ThumbnailListProps extends Omit<
    * @default false
    */
   loop?: boolean;
+
+  /**
+   * What takes focus once a presentation finishes loading, evaluated once per
+   * load. Defaults to leaving focus alone, since a deck can arrive without the
+   * user asking for it (fetched on mount, or restored on navigation) and moving
+   * focus then takes the page's tab position away from wherever it belongs.
+   *
+   * - `false` → nothing moves.
+   * - `true` → the active thumbnail, or the first one.
+   * - A ref → that element, or the default target if it has not attached yet.
+   * - A function → called when the load settles; return an element, `true` or
+   *   `null` for the default target, or `false`/nothing to leave focus alone.
+   *   Use this when only some loads should pull focus, e.g. a page that
+   *   fetches a deck on mount and also has a file input.
+   *
+   * @default false
+   */
+  initialFocus?:
+    | boolean
+    | React.RefObject<HTMLElement | null>
+    | (() => boolean | void | HTMLElement | null);
 }
 
 /**
@@ -209,7 +230,10 @@ export interface ThumbnailListProps extends Omit<
  * the active item lives in the tab order at any time.
  */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
-  function ThumbnailList({ render, children, loop = false, ...thumbnailListProps }, forwardedRef) {
+  function ThumbnailList(
+    { render, children, loop = false, initialFocus = false, ...thumbnailListProps },
+    forwardedRef,
+  ) {
     const { presentation, status } = usePresentation();
     const store = useStoreContext(THUMBNAIL_LIST_NAME);
 
@@ -343,14 +367,33 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
 
     const activeSlideId = useStoreSelector(store, (s) => s.activeSlideId, null);
 
-    // Auto-focus the active (or first) thumbnail once per presentation load.
+    // Moves focus once per presentation load, to wherever `initialFocus` says.
+    // The ref is marked before anything else so a load that wants no focus
+    // cannot be revisited when the active slide changes later.
+    const initialFocusRef = React.useRef(initialFocus);
+    initialFocusRef.current = initialFocus;
+
     React.useEffect(() => {
       if (!presentation || autoFocusedPresentationRef.current === presentation) return;
       autoFocusedPresentationRef.current = presentation;
-      const items = itemsRef.current;
-      const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
-      const firstItem = activeItem ?? items.values().next().value;
-      firstItem?.focus({ preventScroll: true });
+
+      const target = initialFocusRef.current;
+      const resolved = typeof target === "function" ? target() : target;
+      if (resolved === false || resolved === undefined) return;
+
+      let element: HTMLElement | null | undefined;
+      if (resolved !== true && resolved !== null) {
+        element = "current" in resolved ? resolved.current : resolved;
+      }
+
+      // A named element that is not there yet (a ref before it attaches) falls
+      // back to the default target rather than dropping the focus request.
+      if (!element) {
+        const items = itemsRef.current;
+        const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
+        element = activeItem ?? items.values().next().value;
+      }
+      element?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef]);
 
     // Keeps tab stop in sync with undo/redo slide changes.
@@ -492,7 +535,7 @@ export interface ThumbnailItemState {
   displayIndex: number;
 }
 
-/** Fired when a thumbnail is about to become the active slide. */
+/** Triggered when a thumbnail is about to become the active slide. */
 export interface ThumbnailSelectEvent {
   /** Stable id of the slide the list is about to navigate to. */
   slideId: string;
