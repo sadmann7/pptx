@@ -643,7 +643,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
 
   // Selection transitions happen across ~25 pointer/keyboard paths, several of
-  // them fired from document-level listeners, so notifying from each handler
+  // them triggered from document-level listeners, so notifying from each handler
   // would mean threading the callback through all of them. Diffing a single
   // derived key keeps one notification site and guarantees it can't drift out
   // of sync with the rendered selection.

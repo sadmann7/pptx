@@ -492,7 +492,7 @@ export interface ThumbnailItemState {
   displayIndex: number;
 }
 
-/** Fired when a thumbnail is about to become the active slide. */
+/** Triggered when a thumbnail is about to become the active slide. */
 export interface ThumbnailSelectEvent {
   /** Stable id of the slide the list is about to navigate to. */
   slideId: string;
