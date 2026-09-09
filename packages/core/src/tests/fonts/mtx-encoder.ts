@@ -363,13 +363,9 @@ export type CtfGlyph = SimpleGlyph | CompositeGlyph;
 export interface CtfFontSpec {
   /** TrueType outlines. Omit for a CFF font, which has no glyf table. */
   glyphs?: CtfGlyph[];
-  /**
-   * A CFF table's bytes. When given, the font is emitted OTTO-flavoured: the
-   * directory carries CFF where a TrueType font carries glyf and loca, which is
-   * how PowerPoint embeds an OTF.
-   */
+  /** A CFF table's bytes. When given, the font is emitted OTTO-flavoured. */
   cff?: Uint8Array;
-  /** What maxp declares; defaults to the number of glyphs encoded. */
+  /** The glyph count maxp declares. Defaults to the number of glyphs encoded. */
   numGlyphs?: number;
   cvt?: number[];
   /** Extra tables copied through stream 0 untouched. */

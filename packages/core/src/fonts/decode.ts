@@ -61,7 +61,7 @@ export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Arr
  * again, which is 32 XORed bytes and a copy: cheaper by orders of magnitude
  * than the decision it informs.
  */
-export function isCompressedFont(part: Uint8Array, fontKey?: string): boolean {
+export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
   if (part.length === 0) return false;
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
   if (isRawFont(data)) return false;

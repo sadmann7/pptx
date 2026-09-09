@@ -7,21 +7,22 @@ import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
 import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
 import { read255UShort } from "./varint";
 
-interface DirectoryEntry {
-  tag: string;
-  offset: number;
-  length: number;
-}
-
-/** "OTTO": the sfnt version of a font whose outlines live in a CFF table. */
+// sfnt version tag `OTTO`, marking outlines in a `CFF ` table instead of `glyf`/`loca`.
 const SFNT_VERSION_CFF = 0x4f54544f;
 
+// Composite glyph flags from the OpenType `glyf` table.
 const ARG_1_AND_2_ARE_WORDS = 0x0001;
 const WE_HAVE_A_SCALE = 0x0008;
 const MORE_COMPONENTS = 0x0020;
 const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
 const WE_HAVE_A_TWO_BY_TWO = 0x0080;
 const WE_HAVE_INSTRUCTIONS = 0x0100;
+
+interface DirectoryEntry {
+  tag: string;
+  offset: number;
+  length: number;
+}
 
 function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
   if (entry.offset < 0 || entry.length < 0 || entry.offset + entry.length > data.length) {

@@ -25,9 +25,25 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { copyToArrayBuffer, decodeEmbeddedFont, isCompressedFont } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFont, getIsCompressedFont } from "./decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 import { createFontWorker } from "./worker-host";
+
+const MAX_WORKER_COUNT = 6;
+
+// Max time main-thread decoding holds the event loop before yielding (~1 frame at 60Hz).
+const SLICE_MS = 5;
+
+const VARIANTS: {
+  key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
+  weight: string;
+  style: string;
+}[] = [
+  { key: "regular", weight: "normal", style: "normal" },
+  { key: "bold", weight: "bold", style: "normal" },
+  { key: "italic", weight: "normal", style: "italic" },
+  { key: "boldItalic", weight: "bold", style: "italic" },
+];
 
 export interface EmbeddedFontsHandle {
   /**
@@ -54,25 +70,6 @@ export interface LoadEmbeddedFontsOptions {
    */
   onProgress?: (done: number, total: number) => void;
 }
-
-const MAX_WORKER_COUNT = 6;
-
-/**
- * How long main-thread decoding may hold the event loop before handing it back.
- * Under a frame at 60Hz, so a decode in progress cannot be what drops one.
- */
-const SLICE_MS = 5;
-
-const VARIANTS: {
-  key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
-  weight: string;
-  style: string;
-}[] = [
-  { key: "regular", weight: "normal", style: "normal" },
-  { key: "bold", weight: "bold", style: "normal" },
-  { key: "italic", weight: "normal", style: "italic" },
-  { key: "boldItalic", weight: "bold", style: "italic" },
-];
 
 interface FontTask {
   typeface: string;
@@ -257,10 +254,9 @@ export function loadEmbeddedFonts(
   const complete = (async () => {
     let decodedPaths = new Set<string>();
 
-    // Starting a pool costs more than decoding uncompressed parts does, so the
-    // payload decides: any part that will run the decompressor sends the whole
-    // deck through the pool, and a deck without one is decoded here.
-    const hasCompressedPart = jobs.some((job) => isCompressedFont(job.bytes, job.fontKey));
+    // Starting a pool costs more than decoding uncompressed parts does, so one
+    // compressed part sends the whole deck to the pool and none skips it.
+    const hasCompressedPart = jobs.some((job) => getIsCompressedFont(job.bytes, job.fontKey));
 
     if (hasCompressedPart && typeof Worker !== "undefined") {
       try {
@@ -270,9 +266,8 @@ export function loadEmbeddedFonts(
       }
     }
 
-    // Whatever the pool did not decode: uncompressed payloads, or, when it ran,
-    // parts left behind because Workers are unavailable (SSR), the worker script
-    // failed to load, or a worker died mid-run.
+    // Whatever the pool did not decode: uncompressed payloads, or parts left
+    // behind when it was skipped (SSR) or failed mid-run.
     let sliceStart = performance.now();
     for (const job of jobs) {
       if (disposed) return;
