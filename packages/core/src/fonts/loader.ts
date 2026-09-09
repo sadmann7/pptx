@@ -175,7 +175,7 @@ async function decodeWithWorkerPool(
             );
             takeNext();
           };
-          // Triggers when the worker script itself fails to load or crashes.
+          // Trigger when the worker script itself fails to load or crashes.
           // Stop using this worker; unfinished jobs fall back to the caller.
           worker.onerror = () => {
             resolve();
@@ -290,9 +290,7 @@ export function loadEmbeddedFonts(
     failure?: DecodeFailure,
   ): Promise<void> {
     if (buffer) {
-      // Every variant of a part shares its bytes, so a rejection is the part's
-      // and not one variant's. They are collected into a single report rather
-      // than one per family, to match how the other stages read.
+      // All variants share part bytes, so a rejection is reported once per part.
       const rejected: string[] = [];
       let rejection: string | undefined;
       for (const task of tasksByPath.get(path) ?? []) {
