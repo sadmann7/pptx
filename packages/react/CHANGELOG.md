@@ -1,5 +1,11 @@
 # @diceui/pptx
 
+## 0.2.0
+
+### Minor Changes
+
+- 3f8ac02: Add `initialFocus` to `ThumbnailList`. Loading a deck on mount no longer captures the first tab stop.
+
 ## 0.1.5
 
 ### Patch Changes
