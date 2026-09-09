@@ -35,6 +35,7 @@ catalog:
   react: ^19.2.8
   react-dom: ^19.2.8
   remotion: 4.0.516
+  sonner: ^2.0.8
   rolldown: ^1.2.5
   tailwindcss: ^4.3.3
   tsdown: ^0.22.14
