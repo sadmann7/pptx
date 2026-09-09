@@ -91,7 +91,7 @@ export interface LoadEmbeddedFontsOptions {
    * either way and the affected text renders with a fallback typeface, so this
    * exists to make an otherwise silent gap observable.
    *
-   * `"missing"` reports fire while `loadEmbeddedFonts` is still building its
+   * `"missing"` reports trigger while `loadEmbeddedFonts` is still building its
    * job list, before it returns.
    */
   onError?: (error: EmbeddedFontError) => void;
@@ -229,10 +229,12 @@ export function loadEmbeddedFonts(
     }
     if (jobByPath.has(path)) continue;
     const bytes = presentation.fonts.get(path);
-    if (!bytes || bytes.length === 0) {
+    if (!bytes) {
       missingPaths.add(path);
       continue;
     }
+    // A part that is present but empty stays a job, so the decoder reports it
+    // as the unreadable payload it is rather than as one the deck never had.
     jobByPath.set(path, { path, bytes, fontKey: task.variant.fontKey });
   }
 
@@ -288,6 +290,11 @@ export function loadEmbeddedFonts(
     failure?: DecodeFailure,
   ): Promise<void> {
     if (buffer) {
+      // Every variant of a part shares its bytes, so a rejection is the part's
+      // and not one variant's. They are collected into a single report rather
+      // than one per family, to match how the other stages read.
+      const rejected: string[] = [];
+      let rejection: string | undefined;
       for (const task of tasksByPath.get(path) ?? []) {
         if (disposed) return;
         try {
@@ -301,13 +308,17 @@ export function loadEmbeddedFonts(
           registered.push(face);
         } catch (error) {
           // Invalid font data: skip this variant, text falls back.
-          reportError({
-            path,
-            typefaces: [task.typeface],
-            stage: "register",
-            message: error instanceof Error ? error.message : String(error),
-          });
+          rejected.push(task.typeface);
+          rejection ??= error instanceof Error ? error.message : String(error);
         }
+      }
+      if (rejected.length > 0) {
+        reportError({
+          path,
+          typefaces: [...new Set(rejected)],
+          stage: "register",
+          message: rejection ?? "FontFace rejected the decoded font",
+        });
       }
     } else {
       reportError({

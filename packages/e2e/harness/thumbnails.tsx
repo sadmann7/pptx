@@ -8,7 +8,7 @@
  *
  * Query params:
  *   file   deck to load, served from fixtures/ (or decks/ for local decks)
- *   slides grow the deck to this many slides by duplicating its own slides,
+ *   slides grows the deck to this many slides by duplicating its own slides,
  *          so the list is long enough to scroll through (default: as loaded)
  *   width  thumbnail column width in px (default 180)
  *   height scroller height in px (default 720)
@@ -28,9 +28,9 @@ const width = Number.parseInt(params.get("width") ?? "180", 10);
 const height = Number.parseInt(params.get("height") ?? "720", 10);
 
 interface RenderTimings {
-  /** Producing the miniature, which the list does off-document. */
+  /** Produces the miniature, which the list does off-document. */
   render: number[];
-  /** Putting it in the document, which is what forces the layout. */
+  /** Puts it in the document, which is what forces the layout. */
   mount: number[];
 }
 

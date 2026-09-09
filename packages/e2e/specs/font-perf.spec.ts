@@ -1,5 +1,5 @@
 /**
- * Skipped unless PERF=1 (`pnpm test:perf`): it decodes real embedded fonts both
+ * Skips unless PERF=1 (`pnpm test:perf`): it decodes real embedded fonts both
  * ways and reports numbers rather than asserting a baseline, because timings
  * are machine-dependent.
  *

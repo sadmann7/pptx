@@ -6,13 +6,12 @@
  * and neither happy-dom nor jsdom implements it, so a unit test can reach the
  * decoder but never the registration that follows it.
  *
- * The harness breaks one part per kind of failure (dropped, undecodable, and
- * decodable but not a font the browser accepts) and leaves the rest intact, so
- * each run also proves reporting is per part rather than per deck.
+ * The harness breaks one part per kind of failure and leaves the rest intact,
+ * so each run also proves reporting is per part rather than per deck.
  */
 import { expect, test } from "@playwright/test";
 
-/** Three embedded parts, doubled, so three can break and three still load. */
+/** Three embedded parts, doubled, so several can break and several still load. */
 const DECK = "the-good-room-soft-editorial.pptx";
 const PART_FACTOR = 2;
 
@@ -42,28 +41,42 @@ test.describe("embedded font failures", () => {
       const result = await page.evaluate(() => window.__benchFontErrors?.());
       if (!result) throw new Error("harness did not expose __benchFontErrors");
       const { broken, errors, faces } = result;
-      expect(broken).toHaveLength(3);
+      expect(broken.map((part) => part.kind)).toEqual([
+        "missing",
+        "empty",
+        "undecodable",
+        "unregisterable",
+      ]);
 
-      // One report per broken part, and none for the parts left alone.
+      // One report per broken part, naming every family that lost it, and none
+      // for the parts left alone.
       expect(errors).toHaveLength(broken.length);
-      for (const { path, stage } of broken) {
-        const reported = errors.filter((error) => error.path === path);
+      for (const part of broken) {
+        const reported = errors.filter((error) => error.path === part.path);
         expect(reported).toHaveLength(1);
-        expect(reported[0]?.stage).toBe(stage);
-        // Something to act on: which typefaces lost their font, and why.
-        expect(reported[0]?.typefaces.length).toBeGreaterThan(0);
+        expect(reported[0]?.stage).toBe(part.stage);
+        expect(reported[0]?.typefaces.sort()).toEqual([...part.typefaces].sort());
         expect(reported[0]?.message).not.toBe("");
       }
 
+      const reportFor = (kind: BrokenFontPart["kind"]) => {
+        const part = broken.find((candidate) => candidate.kind === kind);
+        return errors.find((error) => error.path === part?.path);
+      };
+
+      // A part the deck carries but left empty is the decoder's to reject, so
+      // it reads as an unreadable payload and not as one the package lacks.
+      expect(reportFor("empty")?.message).toBe("Font part is empty");
+
       // The decoder identifies a container it cannot read, and that code is
       // what survives the trip out of the worker in `worker` mode.
-      const undecodable = errors.find((error) => error.stage === "decode");
-      expect(undecodable?.code).toBe("INVALID_EOT");
+      expect(reportFor("undecodable")?.code).toBe("INVALID_EOT");
 
-      // A part the decoder accepts can still be refused here, which is the
-      // failure no amount of decode-level testing would catch.
-      const unregisterable = errors.find((error) => error.stage === "register");
-      expect(unregisterable?.typefaces).toHaveLength(1);
+      // Bytes the decoder accepts can still be refused here, which is the
+      // failure no amount of decode-level testing would catch. Two families
+      // share this part, and one report covers both.
+      const unregisterable = reportFor("unregisterable");
+      expect(unregisterable?.typefaces.length).toBeGreaterThan(1);
 
       // The intact parts still registered, so reporting did not come at the
       // cost of loading the deck.

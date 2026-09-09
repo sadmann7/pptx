@@ -11,10 +11,19 @@ declare global {
   /** Which path the font harness decodes with; see harness/fonts.ts. */
   type BenchMode = "worker" | "main" | "sliced";
 
+  /** A font part the harness sabotaged, and what the loader should report. */
+  interface BrokenFontPart {
+    path: string;
+    kind: "missing" | "empty" | "undecodable" | "unregisterable";
+    stage: EmbeddedFontError["stage"];
+    /** Families that lose their font with this part. */
+    typefaces: string[];
+  }
+
   interface Window {
     /** True once the current slide, including async media and charts, settled. */
     __renderDone?: boolean;
-    /** Set instead of __renderDone when loading or rendering threw. */
+    /** Holds the error instead of setting __renderDone when loading or rendering threw. */
     __renderError?: string;
     __slideCount?: number;
     __slideWidth?: number;
@@ -46,7 +55,7 @@ declare global {
      * calls this must not also be measured.
      */
     __benchFontErrors?: () => Promise<{
-      broken: { path: string; stage: EmbeddedFontError["stage"] }[];
+      broken: BrokenFontPart[];
       errors: EmbeddedFontError[];
       /** Faces added to `document.fonts`, i.e. the parts left intact. */
       faces: number;
