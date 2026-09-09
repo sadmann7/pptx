@@ -11,7 +11,7 @@
  */
 
 import { deobfuscateFont } from "./deobfuscate";
-import { eotToTtf, parseEotMetadata } from "./mtx";
+import { eotToTtf, MtxError, type MtxErrorCode, parseEotMetadata } from "./mtx";
 
 function getIsRawFont(data: Uint8Array): boolean {
   if (data.length < 4) return false;
@@ -29,24 +29,43 @@ function getIsRawFont(data: Uint8Array): boolean {
 }
 
 /**
- * Decode one embedded font part into a raw TrueType/OpenType binary.
- * Returns `undefined` when the data cannot be decoded.
+ * The outcome of decoding one part, carrying why it failed when it did, so
+ * callers can report a font that silently fell back.
  */
-export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Array | undefined {
-  if (part.length === 0) return undefined;
+export type FontDecodeResult =
+  | { ok: true; bytes: Uint8Array }
+  | { ok: false; message: string; code?: MtxErrorCode };
+
+/**
+ * Decode one embedded font part into a raw TrueType/OpenType binary, keeping
+ * the reason on failure.
+ */
+export function decodeEmbeddedFontPart(part: Uint8Array, fontKey?: string): FontDecodeResult {
+  if (part.length === 0) return { ok: false, message: "Font part is empty" };
 
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
 
-  if (getIsRawFont(data)) return data;
+  if (getIsRawFont(data)) return { ok: true, bytes: data };
 
   try {
     const decoded = eotToTtf(data);
     // An uncompressed EOT payload is passed through untouched, so the sfnt
     // signature is the only evidence that the header offsets were right.
-    return getIsRawFont(decoded) ? decoded : undefined;
-  } catch {
-    return undefined;
+    if (getIsRawFont(decoded)) return { ok: true, bytes: decoded };
+    return { ok: false, message: "Decoded payload does not start with an sfnt signature" };
+  } catch (error) {
+    if (error instanceof MtxError) return { ok: false, message: error.message, code: error.code };
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Decode one embedded font part into a raw TrueType/OpenType binary.
+ * Returns `undefined` when the data cannot be decoded.
+ */
+export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Array | undefined {
+  const result = decodeEmbeddedFontPart(part, fontKey);
+  return result.ok ? result.bytes : undefined;
 }
 
 /**

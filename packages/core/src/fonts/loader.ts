@@ -25,7 +25,8 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { copyToArrayBuffer, decodeEmbeddedFont, getIsCompressedFont } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFontPart, getIsCompressedFont } from "./decode";
+import type { MtxErrorCode } from "./mtx";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 import { createFontWorker } from "./worker-host";
 
@@ -56,19 +57,44 @@ export interface EmbeddedFontsHandle {
   dispose(): void;
 }
 
+/** An embedded font that could not be used, reported through `onError`. */
+export interface EmbeddedFontError {
+  /** Package path of the `.fntdata` part that failed. */
+  path: string;
+  /** The typefaces left without this part. */
+  typefaces: string[];
+  /**
+   * `"missing"`: the deck references a part it does not contain.
+   * `"decode"`: the part is not a font this decoder can read.
+   * `"register"`: the decoded bytes were rejected by the FontFace API.
+   */
+  stage: "missing" | "decode" | "register";
+  message: string;
+  /** Set when the MTX decoder identified the failure. */
+  code?: MtxErrorCode;
+}
+
 export interface LoadEmbeddedFontsOptions {
   /**
    * Typeface names that block `ready`. Anything else decodes in the
    * background after them. Names must match `EmbeddedFontEntry.typeface`.
    */
   priorityTypefaces?: ReadonlySet<string>;
-
   /**
    * Called after each font part finishes (decoded and registered, or
    * skipped on failure). `done` counts finished parts, `total` is the
    * number of unique font parts in the deck.
    */
   onProgress?: (done: number, total: number) => void;
+  /**
+   * Called for each embedded font that could not be used. Loading continues
+   * either way and the affected text renders with a fallback typeface, so this
+   * exists to make an otherwise silent gap observable.
+   *
+   * `"missing"` reports fire while `loadEmbeddedFonts` is still building its
+   * job list, before it returns.
+   */
+  onError?: (error: EmbeddedFontError) => void;
 }
 
 interface FontTask {
@@ -84,6 +110,13 @@ interface DecodeJob {
   fontKey?: string;
 }
 
+interface DecodeFailure {
+  message: string;
+  code?: MtxErrorCode;
+}
+
+type OnDecoded = (path: string, buffer: ArrayBuffer | null, failure?: DecodeFailure) => void;
+
 /**
  * Decode jobs across a Web Worker pool, invoking `onDecoded` as each result
  * arrives (in queue order per worker, priority jobs first in the queue).
@@ -93,7 +126,7 @@ interface DecodeJob {
 async function decodeWithWorkerPool(
   jobs: DecodeJob[],
   isDisposed: () => boolean,
-  onDecoded: (path: string, buffer: ArrayBuffer | null) => void,
+  onDecoded: OnDecoded,
 ): Promise<Set<string>> {
   const decodedPaths = new Set<string>();
   const queue = [...jobs];
@@ -133,8 +166,13 @@ async function decodeWithWorkerPool(
           };
 
           worker.onmessage = (event: MessageEvent<FontWorkerResponse>) => {
-            decodedPaths.add(event.data.path);
-            onDecoded(event.data.path, event.data.buffer);
+            const { path, buffer, message, code } = event.data;
+            decodedPaths.add(path);
+            onDecoded(
+              path,
+              buffer,
+              buffer ? undefined : { message: message ?? "Decode failed", code },
+            );
             takeNext();
           };
           // Triggers when the worker script itself fails to load or crashes.
@@ -180,6 +218,7 @@ export function loadEmbeddedFonts(
   // Same .fntdata part can back multiple typeface entries; decode once.
   const jobByPath = new Map<string, DecodeJob>();
   const tasksByPath = new Map<string, FontTask[]>();
+  const missingPaths = new Set<string>();
   for (const task of tasks) {
     const path = task.variant.path;
     const forPath = tasksByPath.get(path);
@@ -190,9 +229,26 @@ export function loadEmbeddedFonts(
     }
     if (jobByPath.has(path)) continue;
     const bytes = presentation.fonts.get(path);
-    if (!bytes || bytes.length === 0) continue;
+    if (!bytes || bytes.length === 0) {
+      missingPaths.add(path);
+      continue;
+    }
     jobByPath.set(path, { path, bytes, fontKey: task.variant.fontKey });
   }
+
+  const typefacesForPath = (path: string): string[] => [
+    ...new Set((tasksByPath.get(path) ?? []).map((task) => task.typeface)),
+  ];
+
+  for (const path of missingPaths) {
+    options?.onError?.({
+      path,
+      typefaces: typefacesForPath(path),
+      stage: "missing",
+      message: "Font part is not present in the package",
+    });
+  }
+
   if (jobByPath.size === 0) return noop;
 
   // A part is priority when any of its typefaces is priority. Without an
@@ -220,8 +276,17 @@ export function loadEmbeddedFonts(
   const totalParts = jobs.length;
   let partsDone = 0;
 
+  const reportError = (error: EmbeddedFontError): void => {
+    if (disposed) return;
+    options?.onError?.(error);
+  };
+
   /** Register every typeface variant backed by a decoded part. */
-  async function registerPath(path: string, buffer: ArrayBuffer | null): Promise<void> {
+  async function registerPath(
+    path: string,
+    buffer: ArrayBuffer | null,
+    failure?: DecodeFailure,
+  ): Promise<void> {
     if (buffer) {
       for (const task of tasksByPath.get(path) ?? []) {
         if (disposed) return;
@@ -234,10 +299,24 @@ export function loadEmbeddedFonts(
           if (disposed) return;
           document.fonts.add(face);
           registered.push(face);
-        } catch {
+        } catch (error) {
           // Invalid font data: skip this variant, text falls back.
+          reportError({
+            path,
+            typefaces: [task.typeface],
+            stage: "register",
+            message: error instanceof Error ? error.message : String(error),
+          });
         }
       }
+    } else {
+      reportError({
+        path,
+        typefaces: typefacesForPath(path),
+        stage: "decode",
+        message: failure?.message ?? "Decode failed",
+        code: failure?.code,
+      });
     }
     partsDone += 1;
     options?.onProgress?.(partsDone, totalParts);
@@ -247,8 +326,8 @@ export function loadEmbeddedFonts(
   }
 
   const registrations: Promise<void>[] = [];
-  const onDecoded = (path: string, buffer: ArrayBuffer | null): void => {
-    registrations.push(registerPath(path, buffer));
+  const onDecoded: OnDecoded = (path, buffer, failure) => {
+    registrations.push(registerPath(path, buffer, failure));
   };
 
   const complete = (async () => {
@@ -272,8 +351,12 @@ export function loadEmbeddedFonts(
     for (const job of jobs) {
       if (disposed) return;
       if (decodedPaths.has(job.path)) continue;
-      const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
-      onDecoded(job.path, decoded ? copyToArrayBuffer(decoded) : null);
+      const result = decodeEmbeddedFontPart(job.bytes, job.fontKey);
+      if (result.ok) {
+        onDecoded(job.path, copyToArrayBuffer(result.bytes));
+      } else {
+        onDecoded(job.path, null, { message: result.message, code: result.code });
+      }
       if (performance.now() - sliceStart < SLICE_MS) continue;
       await new Promise((resolve) => setTimeout(resolve, 0));
       sliceStart = performance.now();
