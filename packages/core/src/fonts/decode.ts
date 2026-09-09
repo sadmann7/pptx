@@ -13,7 +13,7 @@
 import { deobfuscateFont } from "./deobfuscate";
 import { eotToTtf, parseEotMetadata } from "./mtx";
 
-function isRawFont(data: Uint8Array): boolean {
+function getIsRawFont(data: Uint8Array): boolean {
   if (data.length < 4) return false;
   const b0 = data[0],
     b1 = data[1],
@@ -37,13 +37,13 @@ export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Arr
 
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
 
-  if (isRawFont(data)) return data;
+  if (getIsRawFont(data)) return data;
 
   try {
     const decoded = eotToTtf(data);
     // An uncompressed EOT payload is passed through untouched, so the sfnt
     // signature is the only evidence that the header offsets were right.
-    return isRawFont(decoded) ? decoded : undefined;
+    return getIsRawFont(decoded) ? decoded : undefined;
   } catch {
     return undefined;
   }
@@ -58,13 +58,13 @@ export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Arr
  * decide whether the work is worth moving off the main thread at all.
  *
  * Reading the flag repeats the deobfuscation `decodeEmbeddedFont` will do
- * again, which is 32 XORed bytes and a copy: cheaper by orders of magnitude
- * than the decision it informs.
+ * again, so an obfuscated part is copied here to XOR its first 32 bytes back.
+ * A memcpy stays orders of magnitude below the decompression it decides on.
  */
 export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
   if (part.length === 0) return false;
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
-  if (isRawFont(data)) return false;
+  if (getIsRawFont(data)) return false;
   try {
     return parseEotMetadata(data).compressed;
   } catch {

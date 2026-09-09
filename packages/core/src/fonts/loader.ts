@@ -2,11 +2,11 @@
  * Loads embedded PPTX fonts and registers them with the document.
  *
  * Only MTX-compressed parts (LZCOMP + adaptive Huffman, a few ms each) are
- * worth moving: unique parts are decoded in parallel across a Web Worker pool,
- * and the main thread only registers the resulting TrueType binaries with the
- * document via the FontFace API, which is cheap. Parts that carry an
- * uncompressed payload decode in microseconds, so a pool would cost more to
- * start than it could save and they are decoded here instead.
+ * worth moving. A deck carrying one sends its parts to a Web Worker pool, which
+ * decodes unique parts in parallel and leaves the main thread to register the
+ * resulting TrueType binaries via the FontFace API, which is cheap. A deck
+ * whose parts are all uncompressed decodes in microseconds, so a pool would
+ * cost more to start than it could save, and it is decoded here instead.
  *
  * A deck can embed a part per family x weight x style while the first-rendered
  * slide uses only a few. Callers can pass `priorityTypefaces` so `ready`
