@@ -86,7 +86,7 @@ const revision = useSlideRevision(store, slideId);
 
 ### Controlled
 
-Create the store yourself when it has to exist before the tree, then pass it to `Provider`:
+Create the store manually and pass it to `Provider`:
 
 ```ts
 const store = useCreatePresentationStore();

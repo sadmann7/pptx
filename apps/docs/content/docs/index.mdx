@@ -27,6 +27,6 @@ description: Composable primitives for viewing and editing PowerPoint presentati
 
 The library is split into two layers, so `@diceui/pptx-core` can be used without React:
 
-**Core** (`@diceui/pptx-core`) unzips the PPTX, parses OOXML, resolves the slide/layout/master/theme inheritance chain, renders each slide to a plain DOM tree, applies typed edit operations, and saves the presentation.
+`@diceui/pptx-core` unzips the PPTX, parses OOXML, resolves the slide/layout/master/theme inheritance chain, renders each slide to a plain DOM tree, applies typed edit operations, and saves the presentation.
 
-**React** (`@diceui/pptx`) wraps the core with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions. Components subscribe to the store and re-render only when their slice of state changes.
+`@diceui/pptx` wraps the core with a store (based on `useSyncExternalStore`) and a set of primitive components. The store manages loading state, navigation, zoom, edit history, and per-slide render revisions.
