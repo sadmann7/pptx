@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { decodeEmbeddedFont } from "../../fonts/decode";
+import { decodeEmbeddedFont, decodeEmbeddedFontPart } from "../../fonts/decode";
 import { deobfuscateFont } from "../../fonts/deobfuscate";
 import { parseEotMetadata } from "../../fonts/mtx";
 import { TtfReader } from "./ttf-reader";
@@ -83,6 +83,28 @@ describe("embedded font parts", () => {
   it("truncating the payload is rejected instead of yielding a broken font", () => {
     const raw = read(PARTS[0]!);
     expect(decodeEmbeddedFont(raw.subarray(0, raw.length - 1))).toBeUndefined();
+  });
+
+  it("keeps the reason a part could not be decoded", () => {
+    const empty = decodeEmbeddedFontPart(new Uint8Array(0));
+    expect(empty).toEqual({ ok: false, message: "Font part is empty" });
+
+    // Too short to hold an EOT header, so the container parse bails first.
+    const stub = decodeEmbeddedFontPart(Uint8Array.from([1, 2, 3, 4]));
+    expect(stub.ok).toBe(false);
+    expect(stub).toMatchObject({ code: "INVALID_EOT" });
+
+    const truncated = read(PARTS[0]!);
+    const failure = decodeEmbeddedFontPart(truncated.subarray(0, truncated.length - 1));
+    expect(failure.ok).toBe(false);
+    expect(failure).toMatchObject({ code: expect.any(String) });
+    if (!failure.ok) expect(failure.message).not.toBe("");
+  });
+
+  it.each(PARTS)("reports success for %s with the decoded bytes", (name) => {
+    const result = decodeEmbeddedFontPart(read(name));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.bytes).toEqual(decodeEmbeddedFont(read(name)));
   });
 
   it("deobfuscates a GUID-keyed part before parsing the container", () => {

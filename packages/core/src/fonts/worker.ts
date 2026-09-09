@@ -5,7 +5,8 @@
  * as a transferable ArrayBuffer (or `null` when decoding fails).
  */
 
-import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFontPart } from "./decode";
+import type { MtxErrorCode } from "./mtx";
 
 export interface FontWorkerRequest {
   path: string;
@@ -16,6 +17,9 @@ export interface FontWorkerRequest {
 export interface FontWorkerResponse {
   path: string;
   buffer: ArrayBuffer | null;
+  /** Why decoding failed, set whenever `buffer` is `null`. */
+  message?: string;
+  code?: MtxErrorCode;
 }
 
 const workerScope = self as unknown as {
@@ -26,14 +30,20 @@ const workerScope = self as unknown as {
 workerScope.onmessage = (event) => {
   const { path, bytes, fontKey } = event.data;
   try {
-    const decoded = decodeEmbeddedFont(new Uint8Array(bytes), fontKey);
-    if (decoded && decoded.length > 0) {
-      const buffer = copyToArrayBuffer(decoded);
+    const result = decodeEmbeddedFontPart(new Uint8Array(bytes), fontKey);
+    if (result.ok && result.bytes.length > 0) {
+      const buffer = copyToArrayBuffer(result.bytes);
       workerScope.postMessage({ path, buffer }, [buffer]);
     } else {
-      workerScope.postMessage({ path, buffer: null });
+      workerScope.postMessage({
+        path,
+        buffer: null,
+        message: result.ok ? "Decoded font is empty" : result.message,
+        code: result.ok ? undefined : result.code,
+      });
     }
-  } catch {
-    workerScope.postMessage({ path, buffer: null });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    workerScope.postMessage({ path, buffer: null, message });
   }
 };

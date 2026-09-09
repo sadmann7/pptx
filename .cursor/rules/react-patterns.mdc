@@ -187,7 +187,7 @@ Effects are an escape hatch for synchronizing with **external systems** (non-Rea
 ### When Effects are appropriate
 
 - Synchronizing with external systems (jQuery widgets, browser APIs, network)
-- Analytics events that fire because the component was **displayed** (not because of a user action)
+- Analytics events that trigger because the component was **displayed** (not because of a user action)
 - Data fetching (but always add cleanup to avoid race conditions, and prefer framework-level solutions)
 
 ### Patterns to use instead of Effects

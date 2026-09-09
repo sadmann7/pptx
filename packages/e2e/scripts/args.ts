@@ -1,4 +1,4 @@
-/** Minimal `--flag value` parsing for the debugging scripts. */
+/** Parses `--flag value` options for the debugging scripts. */
 
 export interface ArgSpec {
   numbers?: readonly string[];

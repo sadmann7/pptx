@@ -1,5 +1,5 @@
 /**
- * Skipped unless PERF=1 (`pnpm test:perf`): it builds a long deck, scrolls the
+ * Skips unless PERF=1 (`pnpm test:perf`): it builds a long deck, scrolls the
  * real thumbnail list, and reports numbers rather than asserting a baseline,
  * because timings are machine-dependent.
  *

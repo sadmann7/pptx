@@ -20,9 +20,9 @@
  *            sliced  the fallback without a worker to fall back from: decodes
  *                    here and only yields once a slice runs long, which is what
  *                    dropping the worker would mean
- *   parts  multiply the deck's font parts by this factor, to see how the two
+ *   parts  multiplies the deck's font parts by this factor, to see how the two
  *          modes diverge on decks heavier than the ones we have (default 1)
- *   mtx    replace the deck's font parts with MTX-compressed ones, which is
+ *   mtx    replaces the deck's font parts with MTX-compressed ones, which is
  *          what PowerPoint itself writes; every deck we have embeds plain EOT,
  *          where decoding is a header strip and costs nothing
  *   build  "dist" to use the built font entry (inlined blob worker, minified),
@@ -31,6 +31,7 @@
  */
 import type { EmbeddedFontEntry, PresentationData } from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";
+import type { EmbeddedFontError } from "@diceui/pptx-core/fonts";
 
 const params = new URLSearchParams(location.search);
 const file = params.get("file");
@@ -140,6 +141,92 @@ async function applyMtxFontParts(presentation: PresentationData): Promise<void> 
       entry[key] = { path: variant.path };
     }
   }
+}
+
+/** Unique part paths in the order the deck declares them. */
+function fontPartPaths(presentation: PresentationData): string[] {
+  const paths = new Set<string>();
+  for (const entry of presentation.embeddedFonts ?? []) {
+    for (const key of VARIANT_KEYS) {
+      const path = entry[key]?.path;
+      if (path) paths.add(path);
+    }
+  }
+  return [...paths];
+}
+
+/** Families that would lose their font if the part at `path` failed. */
+function typefacesForPath(presentation: PresentationData, path: string): string[] {
+  const typefaces = new Set<string>();
+  for (const entry of presentation.embeddedFonts ?? []) {
+    for (const key of VARIANT_KEYS) {
+      if (entry[key]?.path === path) typefaces.add(entry.typeface);
+    }
+  }
+  return [...typefaces];
+}
+
+/** Points whatever uses `from` at `to`, so one part backs two families. */
+function repointVariants(presentation: PresentationData, from: string, to: string): void {
+  for (const entry of presentation.embeddedFonts ?? []) {
+    for (const key of VARIANT_KEYS) {
+      const variant = entry[key];
+      if (variant?.path === from) entry[key] = { ...variant, path: to };
+    }
+  }
+}
+
+/**
+ * Breaks one part per way a font can fail, so the loader has something to
+ * report. Each kind fails at a different depth, which is the point: a dropped
+ * part never reaches the decoder, an empty or garbage one is rejected by it,
+ * and an sfnt signature over junk gets past it to be refused by the browser,
+ * the one case only a real FontFace can produce.
+ */
+function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
+  const paths = fontPartPaths(presentation);
+  const broken: BrokenFontPart[] = [];
+  const record = (path: string, kind: BrokenFontPart["kind"], stage: BrokenFontPart["stage"]) => {
+    broken.push({ path, kind, stage, typefaces: typefacesForPath(presentation, path) });
+  };
+
+  const missing = paths[0];
+  if (missing) {
+    presentation.fonts.delete(missing);
+    record(missing, "missing", "missing");
+  }
+
+  // Present but empty, which the deck did carry, so it is the decoder's to
+  // reject rather than a part the package never had.
+  const empty = paths[1];
+  if (empty) {
+    presentation.fonts.set(empty, new Uint8Array(0));
+    record(empty, "empty", "decode");
+  }
+
+  // Long enough to hold an EOT header, so the container parse rejects it on
+  // its own terms (zeroed sizes) rather than for being too short to read.
+  const undecodable = paths[2];
+  if (undecodable) {
+    presentation.fonts.set(undecodable, new Uint8Array(200));
+    record(undecodable, "undecodable", "decode");
+  }
+
+  // A TrueType sfnt version and nothing else behind it: the decoder passes it
+  // through as an already-raw font, then FontFace finds no tables. A second
+  // family is pointed at the same part first, since the bytes are what failed
+  // and both families lose them together.
+  const unregisterable = paths[3];
+  const donor = paths[4];
+  if (unregisterable) {
+    if (donor) repointVariants(presentation, donor, unregisterable);
+    const stub = new Uint8Array(64);
+    stub.set([0x00, 0x01, 0x00, 0x00]);
+    presentation.fonts.set(unregisterable, stub);
+    record(unregisterable, "unregisterable", "register");
+  }
+
+  return broken;
 }
 
 /** Unique font parts the loader will decode, and their total size. */
@@ -342,6 +429,23 @@ async function main(): Promise<void> {
         }
       }
       return timings;
+    };
+
+    window.__benchFontErrors = async () => {
+      const broken = breakFontParts(presentation);
+      const facesBefore = document.fonts.size;
+
+      // Same Worker switch the bench uses, so both the pool (failures cross a
+      // postMessage) and the fallback (failures stay here) can be checked.
+      if (mode === "main") {
+        Object.defineProperty(window, "Worker", { value: undefined, configurable: true });
+      }
+
+      const errors: EmbeddedFontError[] = [];
+      const handle = loadEmbeddedFonts(presentation, { onError: (error) => errors.push(error) });
+      await handle.complete;
+
+      return { broken, errors, faces: document.fonts.size - facesBefore };
     };
 
     window.__benchFonts = async () => {

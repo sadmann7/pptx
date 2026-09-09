@@ -1,5 +1,5 @@
 /**
- * Pixel-level reads of a screenshot.
+ * Reads a screenshot at the pixel level.
  *
  * A hairline that looks wrong is usually a coverage problem rather than a
  * colour one: it lands between device pixels and is spread across two of them

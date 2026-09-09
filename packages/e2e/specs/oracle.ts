@@ -275,5 +275,5 @@ export function writeScoreBaseline(
   writeFileSync(baselinePath(deck, slide, project), `${JSON.stringify(rounded, null, 2)}\n`);
 }
 
-/** Set ORACLE_UPDATE=1 to (re)record baselines instead of asserting them. */
+/** True when ORACLE_UPDATE=1, so baselines are (re)recorded instead of asserted. */
 export const isUpdateMode = process.env.ORACLE_UPDATE === "1";
