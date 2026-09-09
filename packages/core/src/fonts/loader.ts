@@ -1,19 +1,23 @@
 /**
  * Loads embedded PPTX fonts and registers them with the document.
  *
- * Decompression (LZCOMP + adaptive Huffman per font part) is CPU-heavy, so
- * unique font parts are decoded in parallel across a Web Worker pool. The
- * main thread only registers the resulting TrueType binaries with the
- * document via the FontFace API, which is cheap.
+ * Only MTX-compressed parts (LZCOMP + adaptive Huffman, a few ms each) are
+ * worth moving: unique parts are decoded in parallel across a Web Worker pool,
+ * and the main thread only registers the resulting TrueType binaries with the
+ * document via the FontFace API, which is cheap. Parts that carry an
+ * uncompressed payload decode in microseconds, so a pool would cost more to
+ * start than it could save and they are decoded here instead.
  *
- * Decks routinely embed dozens of font parts (every family x weight x style)
- * while the first-rendered slide uses only a few. Callers can pass
- * `priorityTypefaces` so `ready` resolves as soon as those are registered;
- * the remaining fonts keep decoding in the background and swap in when
- * registered (renderers re-run text autofit on `document.fonts` arrival).
+ * A deck can embed a part per family x weight x style while the first-rendered
+ * slide uses only a few. Callers can pass `priorityTypefaces` so `ready`
+ * resolves as soon as those are registered; the remaining fonts keep decoding
+ * in the background and swap in when registered (renderers re-run text autofit
+ * on `document.fonts` arrival).
  *
- * When Workers are unavailable (SSR, worker load failure), decoding falls
- * back to the main thread, yielding to the event loop between fonts.
+ * Main-thread decoding gives the event loop a turn whenever it has held it long
+ * enough to risk a frame, rather than after every part: a turn of the loop
+ * costs about as much as decoding an uncompressed part, so yielding per part
+ * would be most of what decoding such a deck spends.
  */
 
 import type {
@@ -21,7 +25,7 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { copyToArrayBuffer, decodeEmbeddedFont } from "./decode";
+import { copyToArrayBuffer, decodeEmbeddedFont, isCompressedFont } from "./decode";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 import { createFontWorker } from "./worker-host";
 
@@ -52,6 +56,12 @@ export interface LoadEmbeddedFontsOptions {
 }
 
 const MAX_WORKER_COUNT = 6;
+
+/**
+ * How long main-thread decoding may hold the event loop before handing it back.
+ * Under a frame at 60Hz, so a decode in progress cannot be what drops one.
+ */
+const SLICE_MS = 5;
 
 const VARIANTS: {
   key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
@@ -247,7 +257,12 @@ export function loadEmbeddedFonts(
   const complete = (async () => {
     let decodedPaths = new Set<string>();
 
-    if (typeof Worker !== "undefined") {
+    // Starting a pool costs more than decoding uncompressed parts does, so the
+    // payload decides: any part that will run the decompressor sends the whole
+    // deck through the pool, and a deck without one is decoded here.
+    const hasCompressedPart = jobs.some((job) => isCompressedFont(job.bytes, job.fontKey));
+
+    if (hasCompressedPart && typeof Worker !== "undefined") {
       try {
         decodedPaths = await decodeWithWorkerPool(jobs, isDisposed, onDecoded);
       } catch {
@@ -255,14 +270,18 @@ export function loadEmbeddedFonts(
       }
     }
 
-    // Main-thread fallback for anything the pool did not decode
-    // (Workers unavailable, worker script failed to load, or died mid-run).
+    // Whatever the pool did not decode: uncompressed payloads, or, when it ran,
+    // parts left behind because Workers are unavailable (SSR), the worker script
+    // failed to load, or a worker died mid-run.
+    let sliceStart = performance.now();
     for (const job of jobs) {
       if (disposed) return;
       if (decodedPaths.has(job.path)) continue;
       const decoded = decodeEmbeddedFont(job.bytes, job.fontKey);
       onDecoded(job.path, decoded ? copyToArrayBuffer(decoded) : null);
+      if (performance.now() - sliceStart < SLICE_MS) continue;
       await new Promise((resolve) => setTimeout(resolve, 0));
+      sliceStart = performance.now();
     }
 
     await Promise.all(registrations);

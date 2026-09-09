@@ -76,7 +76,7 @@ claim should be backed by tests in `src/tests/` (see `.cursor/rules/testing.mdc`
 | Hyperlinks: external URLs, `ppaction://` slide jumps                                   | ✅     | URL protocol allow-list (`utils/url-validation.ts`)                                                     |
 | `bodyPr`: anchor, insets, wrap, `normAutofit`, `spAutoFit`, vertical text              | ✅     | Autofit re-measures via DOM; browser metrics ≠ DirectWrite exactly                                      |
 | Leading spaces / tabs at line start                                                    | ✅     | `white-space: pre-wrap` applied to runs that start a visual line with spaces; matches PowerPoint layout |
-| Embedded fonts (`.fntdata`: EOT/MTX, ODTTF deobfuscation)                              | ✅     | Internal MTX decompressor (`fonts/mtx/`), worker pool, priority loading                                 |
+| Embedded fonts (`.fntdata`: EOT/MTX, ODTTF deobfuscation)                              | ✅     | Internal MTX decompressor (`fonts/mtx/`), TrueType and CFF outlines, worker pool, priority loading      |
 | WordArt / text effects                                                                 | ❌     | Beyond vertical orientation                                                                             |
 | Math (OMML)                                                                            | ❌     |                                                                                                         |
 

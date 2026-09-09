@@ -201,7 +201,7 @@ const WIDE: GlyphPoint[] = [
   pt(700, 2600, false),
 ];
 
-const FONT: CtfFontSpec = {
+const FONT = {
   cvt: [0, 100, 337, 575, 574, 274, 65000, 1200, 1200],
   glyphs: [
     { kind: "simple", contours: [] },
@@ -230,7 +230,7 @@ const FONT: CtfFontSpec = {
       useHopCodes: true,
     },
   ],
-};
+} satisfies CtfFontSpec;
 
 function decodeFont(spec: CtfFontSpec): TtfReader {
   const decoded = decodeEmbeddedFont(buildCompressedEot(spec));
@@ -332,6 +332,45 @@ describe("CTF reconstruction", () => {
     expect(glyf.length).toBeGreaterThan(0xffff * 2);
     expect(big.indexToLocFormat).toBe(1);
     expect(big.locaOffsets.at(-1)).toBe(glyf.length);
+  });
+});
+
+describe("CFF-flavoured CTF", () => {
+  // Stands in for a real CFF table: the decoder must not look inside it, only
+  // carry it through, so arbitrary bytes are enough to prove that it does.
+  const CFF = Uint8Array.from({ length: 512 }, (_, i) => (i * 31 + (i >>> 3)) & 0xff);
+  const SPEC: CtfFontSpec = { cff: CFF, numGlyphs: 42 };
+
+  it("passes an OTF through, since a CFF font has no glyf to rebuild", () => {
+    const decoded = decodeEmbeddedFont(buildCompressedEot(SPEC));
+    expect(decoded).toBeDefined();
+
+    const font = new TtfReader(decoded!);
+    expect(font.tableTags).toEqual(["CFF ", "head", "maxp"]);
+    expect(font.numGlyphs).toBe(42);
+    // Byte-for-byte: the outlines are the one thing nothing may touch.
+    expect(font.tables.get("CFF ")).toEqual(CFF);
+  });
+
+  it("keeps the OTTO sfnt version, which is what makes it an OTF", () => {
+    const decoded = decodeEmbeddedFont(buildCompressedEot(SPEC))!;
+    expect(Array.from(decoded.subarray(0, 4))).toEqual([0x4f, 0x54, 0x54, 0x4f]);
+  });
+
+  it("rejects an OTTO font with no CFF table", () => {
+    const streams = buildCtfStreams(SPEC);
+    // Rename the CFF entry in the directory, which follows head and maxp: the
+    // flavour still claims CFF outlines while the table that would hold them is
+    // gone.
+    streams[0].set(new TextEncoder().encode("junk"), 12 + 2 * 16);
+    expect(() => parseCtf(streams, LIMITS)).toThrow(/CFF-flavoured CTF has no CFF table/u);
+  });
+
+  it("still requires glyf and loca from a TrueType font", () => {
+    const streams = buildCtfStreams(FONT);
+    // The glyf entry follows head, maxp and cvt.
+    streams[0].set(new TextEncoder().encode("junk"), 12 + 3 * 16);
+    expect(() => parseCtf(streams, LIMITS)).toThrow(/CTF is missing glyf or loca/u);
   });
 });
 

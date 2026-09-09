@@ -54,6 +54,30 @@ function serveLocalDecks(): Plugin {
 }
 
 /**
+ * Serves the built font entry at /core-dist/fonts.mjs.
+ *
+ * The font harness needs it to measure the path that actually ships: in the
+ * published bundle the decode worker is inlined as a blob (tsdown has no worker
+ * support), while from source Vite spawns it as a module the browser fetches,
+ * which makes starting a worker look far more expensive than it is. Requires
+ * `pnpm -F @diceui/pptx-core build`; without it the request 404s.
+ */
+function serveBuiltFontEntry(): Plugin {
+  const file = resolve(import.meta.dirname, "..", "core", "dist", "fonts", "index.mjs");
+  return {
+    name: "e2e-serve-built-font-entry",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/core-dist/fonts.mjs", (_req, res, next) => {
+        if (!existsSync(file)) return next();
+        res.setHeader("Content-Type", "text/javascript");
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
+/**
  * Serves the test harness pages at / (single slide) and /thumbnails.html
  * (thumbnail list), plus the generated fixture decks (fixtures/*.pptx) as
  * static files at the server root (e.g. /basic.pptx).
@@ -61,7 +85,7 @@ function serveLocalDecks(): Plugin {
 export default defineConfig({
   root: "harness",
   publicDir: "../fixtures",
-  plugins: [serveLocalDecks()],
+  plugins: [serveLocalDecks(), serveBuiltFontEntry()],
   // The thumbnail harness is the only JSX here and needs no refresh tooling,
   // so esbuild's automatic runtime replaces @vitejs/plugin-react.
   esbuild: { jsx: "automatic" },
