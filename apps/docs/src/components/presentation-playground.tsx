@@ -221,7 +221,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-        <PresentationThumbnailList className="p-2">
+        <PresentationThumbnailList className="p-2" initialFocus>
           {() => (
             <>
               {orderedIds.map((slideId) => (

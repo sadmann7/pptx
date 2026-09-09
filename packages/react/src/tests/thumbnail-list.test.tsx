@@ -90,13 +90,61 @@ describe("Presentation.ThumbnailList", () => {
     expect(store.getActiveSlideIndex()).toBe(1);
   });
 
-  it("leaves focus alone when a deck loads without the user having acted", async () => {
-    // happy-dom has no `navigator.userActivation`, matching a deck loaded on
-    // mount. Capturing focus here would steal the first tab stop.
+  it("leaves focus alone when a deck loads", async () => {
+    // A deck can arrive without being asked for (fetched on mount, restored on
+    // navigation), so capturing focus by default would take the page's tab
+    // position away from wherever it belongs.
     const store = await loadedStore();
     withStore(store, <Presentation.ThumbnailList />);
 
     expect(screen.getAllByRole("option")).toHaveLength(FIXTURE_SLIDE_COUNT);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("focuses the active thumbnail when initialFocus asks for it", async () => {
+    const store = await loadedStore();
+    withStore(store, <Presentation.ThumbnailList initialFocus />);
+
+    const options = screen.getAllByRole("option");
+    expect(document.activeElement).toBe(options[0]);
+  });
+
+  it("focuses the element initialFocus names, by ref or by return value", async () => {
+    const store = await loadedStore();
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+
+    withStore(store, <Presentation.ThumbnailList initialFocus={{ current: outside }} />);
+    expect(document.activeElement).toBe(outside);
+
+    outside.remove();
+  });
+
+  it("falls back to the active thumbnail when the named element is absent", async () => {
+    // A ref that has not attached, or a resolver returning null, is a focus
+    // request that cannot name its target, not a request to stay put.
+    const store = await loadedStore();
+    withStore(store, <Presentation.ThumbnailList initialFocus={{ current: null }} />);
+
+    expect(document.activeElement).toBe(screen.getAllByRole("option")[0]);
+  });
+
+  it("lets an initialFocus function decide per load", async () => {
+    // The shape a page with both an on-mount fetch and a file input needs: the
+    // consumer knows which load the user asked for, and this one did not.
+    const store = await loadedStore();
+    let asked = 0;
+    withStore(
+      store,
+      <Presentation.ThumbnailList
+        initialFocus={() => {
+          asked += 1;
+          return false;
+        }}
+      />,
+    );
+
+    expect(asked).toBe(1);
     expect(document.activeElement).toBe(document.body);
   });
 
