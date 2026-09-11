@@ -3,6 +3,34 @@ title: Components
 description: API reference for all Presentation primitives.
 ---
 
+## Layout
+
+Import the parts, and compose them together.
+
+import { Presentation } from "@diceui/pptx";
+
+```tsx
+<Presentation.Provider store={store}>
+  <Presentation.Root>
+    <Presentation.ThumbnailList>
+      {({ slides }) =>
+        slides.map((slide) => (
+          <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
+            <Presentation.ThumbnailItemPreview />
+            <Presentation.ThumbnailItemNumber />
+          </Presentation.ThumbnailItem>
+        ))
+      }
+    </Presentation.ThumbnailList>
+    <Presentation.Loading />
+    <Presentation.Error />
+    <Presentation.Viewport>
+      <Presentation.Slide />
+    </Presentation.Viewport>
+  </Presentation.Root>
+</Presentation.Provider>
+```
+
 ## Root
 
 The outermost component. Creates an internal store (or inherits one from `Presentation.Provider`), loads the file, and provides context to all descendants.
