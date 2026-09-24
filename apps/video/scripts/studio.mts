@@ -17,7 +17,10 @@ while (!(await getIsFreePort(port))) port++;
 // `remotion-cli.js` isn't in the package's exports, so resolve it from the
 // package root. Running it through node skips the `.cmd` shim on Windows.
 const require = createRequire(import.meta.url);
-const cli = path.join(path.dirname(require.resolve("@remotion/cli/package.json")), "remotion-cli.js");
+const cli = path.join(
+  path.dirname(require.resolve("@remotion/cli/package.json")),
+  "remotion-cli.js",
+);
 
 spawn(process.execPath, [cli, "studio", "--no-open", "--port", String(port)], {
   stdio: "inherit",
