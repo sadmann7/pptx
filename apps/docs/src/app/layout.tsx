@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import { Toaster } from "@pptx/ui/components/sonner";
 import { cn } from "@pptx/ui/lib/utils";
 import type { Metadata, Viewport } from "next";
@@ -62,11 +60,7 @@ export const viewport: Viewport = {
   ],
 };
 
-interface RootLayoutProps {
-  children: React.ReactNode;
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body

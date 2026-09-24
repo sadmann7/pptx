@@ -1,13 +1,8 @@
 ﻿import * as React from "react";
 
 import { PresentationPlayground } from "@/components/presentation-playground";
-import type { SearchParams } from "@/types";
 
-interface PgPageProps {
-  searchParams: Promise<SearchParams>;
-}
-
-export default function PgPage({ searchParams }: PgPageProps) {
+export default function PgPage({ searchParams }: PageProps<"/pg">) {
   return (
     <React.Suspense
       fallback={
