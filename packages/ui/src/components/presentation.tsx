@@ -5,7 +5,7 @@ import * as React from "react";
 import { Presentation as PresentationPrimitive } from "@diceui/pptx";
 import { Button } from "@pptx/ui/components/button";
 import { useIsMobile } from "@pptx/ui/hooks/use-mobile";
-import { cn } from "@pptx/ui/lib/utils";
+import { cn } from "cn";
 import { PanelLeftIcon } from "lucide-react";
 
 function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
