@@ -17,5 +17,5 @@
       "@pptx/ui/*": ["../../packages/ui/src/*"]
     }
   },
-  "include": ["src", "remotion.config.ts"]
+  "include": ["src", "scripts", "remotion.config.ts"]
 }
