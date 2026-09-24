@@ -1,5 +1,5 @@
 /**
- * Head-to-head benchmark: our parser vs @aiden0z/pptx-renderer@1.2.3.
+ * Head-to-head benchmark: our parser vs @aiden0z/pptx-renderer.
  *
  * Run with: pnpm -F "@diceui/pptx-core" bench
  *
