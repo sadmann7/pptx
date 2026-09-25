@@ -1,5 +1,12 @@
 # @diceui/pptx
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [9de30ee]
+  - @diceui/pptx-core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
