@@ -95,7 +95,7 @@ Start the harness and open a slide directly:
 
 ```bash
 pnpm harness
-# http://localhost:4000/?file=table-borders.pptx&slide=0&scale=0.86
+# http://localhost:5100/?file=table-borders.pptx&slide=0&scale=0.86
 ```
 
 | Param   | Meaning                                                                 |

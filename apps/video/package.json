@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/studio.mts",
+    "dev": "remotion studio --no-open --port 3100",
     "render": "remotion render launch out/launch.mp4",
     "still": "remotion still launch out/frame.png",
     "typecheck": "tsc --noEmit"
