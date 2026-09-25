@@ -15,6 +15,7 @@ import { chromium } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import { HARNESS_PORT } from "../lib/constants";
 import { parseArgs } from "./args";
 
 const args = parseArgs(process.argv.slice(2), {
@@ -27,7 +28,7 @@ const file = args.strings.file ?? "table-borders.pptx";
 const slide = args.numbers.slide ?? 0;
 const scale = args.numbers.scale ?? 1;
 const mode = args.strings.mode ?? "zoom";
-const port = args.numbers.port ?? 6000;
+const port = args.numbers.port ?? HARNESS_PORT;
 const out = resolve(args.strings.out ?? `out/${file.replace(/[/\\]/g, "-")}-${slide}.png`);
 const url = `http://localhost:${port}/?file=${encodeURIComponent(file)}&slide=${slide}&scale=${scale}&mode=${mode}`;
 

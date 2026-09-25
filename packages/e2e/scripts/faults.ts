@@ -21,6 +21,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
+import { HARNESS_PORT } from "../lib/constants";
 import {
   INK_TOLERANCE,
   type OracleScore,
@@ -66,7 +67,7 @@ const args = parseArgs(process.argv.slice(2), {
   lists: ["slide", "fault"],
 });
 
-const port = args.numbers.port ?? 6000;
+const port = args.numbers.port ?? HARNESS_PORT;
 const requestedFaults = args.lists.fault?.length ? args.lists.fault : [...FAULTS];
 const faults = FAULTS.filter(
   (fault) => fault.startsWith("control") || requestedFaults.includes(fault),
