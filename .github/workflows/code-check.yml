@@ -13,7 +13,6 @@ concurrency:
 
 env:
   FORCE_COLOR: 3
-  TURBO_UI: stream
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
