@@ -26,7 +26,9 @@ export default defineConfig({
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
   ],
   webServer: {
-    command: `pnpm exec vite --port ${HARNESS_PORT} --strictPort`,
+    // `pnpm exec` puts vite in its own process group, so Playwright's shutdown
+    // misses it and waits forever on the orphaned server.
+    command: `node node_modules/vite/bin/vite.js --port ${HARNESS_PORT} --strictPort`,
     url: HARNESS_ORIGIN,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
