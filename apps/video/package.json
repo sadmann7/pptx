@@ -19,7 +19,8 @@
     "react-dom": "catalog:",
     "remotion": "catalog:",
     "shiki": "^4.4.3",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "catalog:",
