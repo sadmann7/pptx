@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 5000;
+import { HARNESS_ORIGIN, HARNESS_PORT } from "./lib/constants";
 
 export default defineConfig({
   testDir: "./specs",
@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [["html"], ["github"]] : [["list"]],
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: HARNESS_ORIGIN,
     trace: "on-first-retry",
   },
   expect: {
@@ -26,8 +26,8 @@ export default defineConfig({
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
   ],
   webServer: {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
+    command: `pnpm exec vite --port ${HARNESS_PORT} --strictPort`,
+    url: HARNESS_ORIGIN,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

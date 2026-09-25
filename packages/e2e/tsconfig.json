@@ -12,5 +12,5 @@
     "esModuleInterop": true,
     "isolatedModules": true
   },
-  "include": ["harness", "specs", "scripts", "playwright.config.ts", "vite.config.ts"]
+  "include": ["harness", "lib", "specs", "scripts", "playwright.config.ts", "vite.config.ts"]
 }

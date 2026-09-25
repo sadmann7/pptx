@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "fixtures": "tsx scripts/generate-fixtures.ts",
-    "harness": "vite --port 5000 --strictPort",
+    "harness": "tsx scripts/harness.ts",
     "oracle:export": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-powerpoint.ps1",
     "shoot": "tsx scripts/shoot.ts",
     "probe": "tsx scripts/probe.ts",
