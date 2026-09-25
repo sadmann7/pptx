@@ -58,7 +58,7 @@ export interface PresentationData {
   /** Chart color style parts keyed by chart part path. */
   chartColorStyles?: Map<string, SafeXmlNode>;
   isWps: boolean;
-  /** Embedded font binary data keyed by zip path (ppt/fonts/*.fntdata). */
+  /** Embedded font binary data keyed by zip path (ppt/fonts/*). */
   fonts: Map<string, Uint8Array>;
   /** Parsed embedded font list from presentation.xml. */
   embeddedFonts?: EmbeddedFontEntry[];
