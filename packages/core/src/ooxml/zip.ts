@@ -30,7 +30,7 @@ export interface PptxFiles {
   chartStyles: Map<string, string>; // ppt/charts/style*.xml
   chartColors: Map<string, string>; // ppt/charts/colors*.xml
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
-  fonts: Map<string, Uint8Array>; // ppt/fonts/*.fntdata (embedded fonts)
+  fonts: Map<string, Uint8Array>; // ppt/fonts/* (embedded fonts)
   /** Retained source PPTX package for round-trip save. Present when parsed with `keepSourcePackage: true`. */
   sourcePackage?: PptxPackage;
 }
@@ -87,12 +87,12 @@ function throwZipLimitExceeded(reason: string): never {
   throw new Error(`PPTX read limit exceeded: ${reason}.`);
 }
 
-function isMediaPath(path: string): boolean {
+function getIsMediaPath(path: string): boolean {
   return path.startsWith("ppt/media/");
 }
 
-function isFontPath(path: string): boolean {
-  return path.startsWith("ppt/fonts/") && path.endsWith(".fntdata");
+function getIsFontPath(path: string): boolean {
+  return path.startsWith("ppt/fonts/") && !path.endsWith(".rels");
 }
 
 function setPathMapEntry<T>(map: Map<string, T>, path: string, value: T): void {
@@ -212,7 +212,7 @@ function validateDecodedEntrySize(path: string, size: number, state: PptxReadLim
     );
   }
 
-  if (isMediaPath(path)) {
+  if (getIsMediaPath(path)) {
     state.unknownMediaBytes += size;
     const mediaBytes = state.knownMediaBytes + state.unknownMediaBytes;
     if (state.limits.maxMediaBytes !== undefined && mediaBytes > state.limits.maxMediaBytes) {
@@ -342,7 +342,7 @@ async function readPptxInternal(
       );
     }
 
-    if (isMediaPath(normalizedPath)) {
+    if (getIsMediaPath(normalizedPath)) {
       knownMediaBytes += size;
       if (limits.maxMediaBytes !== undefined && knownMediaBytes > limits.maxMediaBytes) {
         throwZipLimitExceeded(
@@ -425,7 +425,7 @@ async function readPptxInternal(
     }
 
     // --- Media (binary) ---
-    if (isMediaPath(normalizedPath)) {
+    if (getIsMediaPath(normalizedPath)) {
       if (options.lazyMedia) {
         setPathMapEntry(lazyMediaEntries, normalizedPath, { path: normalizedPath, file });
         return;
@@ -437,7 +437,7 @@ async function readPptxInternal(
     }
 
     // --- Fonts (binary) ---
-    if (isFontPath(normalizedPath)) {
+    if (getIsFontPath(normalizedPath)) {
       const bytes = await readZipBinaryEntry(normalizedPath, file, limitState);
       setPathMapEntry(result.fonts, normalizedPath, bytes);
       return;

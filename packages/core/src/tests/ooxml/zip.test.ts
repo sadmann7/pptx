@@ -49,6 +49,14 @@ describe("readPptx media and auxiliary parts", () => {
     expect(files.fonts.get("ppt/fonts/font1.fntdata")).toEqual(fontBytes);
   });
 
+  it("extracts embedded font parts whatever their extension", async () => {
+    const fontBytes = new Uint8Array([0x00, 0x01, 0x00, 0x00, 1, 2, 3]);
+    const files = await readPptx(
+      await buildCustomPptx({ extraFiles: { "ppt/fonts/font.dat": fontBytes } }),
+    );
+    expect(files.fonts.get("ppt/fonts/font.dat")).toEqual(fontBytes);
+  });
+
   it("stores masters, layouts, and rels keyed by normalized path", async () => {
     const files = await readPptx(await buildCustomPptx());
     expect([...files.slideMasters.keys()]).toEqual(["ppt/slideMasters/slideMaster1.xml"]);
