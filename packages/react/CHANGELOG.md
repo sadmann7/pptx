@@ -1,5 +1,11 @@
 # @diceui/pptx
 
+## 0.2.2
+
+### Patch Changes
+
+- 5dee95f: Stop reading and writing refs during render, for React Compiler compatibility.
+
 ## 0.2.1
 
 ### Patch Changes
