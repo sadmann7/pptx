@@ -37,7 +37,7 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "Presentation.ThumbnailItemNumber";
  */
 const INTERSECTION_OBSERVER_ROOT_MARGIN = "200px 0px";
 
-interface CachedThumbnail {
+export interface CachedThumbnail {
   slideHandle: SlideHandle;
   revision: number;
 }
@@ -65,6 +65,37 @@ function wrapArray<T>(array: T[], startIndex: number): T[] {
 }
 
 /**
+ * Rendered miniatures kept for scrolling back to. Past this, the least
+ * recently shown ones that are off screen are released, so memory stays flat
+ * however long the deck is.
+ */
+export const THUMBNAIL_CACHE_LIMIT = 50;
+
+/** Marks a cached miniature as just shown: a Map iterates oldest first. */
+export function markThumbnailRecent(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  slideId: string,
+) {
+  const cached = slideHandleCache.get(slideId);
+  if (!cached) return;
+  slideHandleCache.delete(slideId);
+  slideHandleCache.set(slideId, cached);
+}
+
+/** Releases the least recently shown off-screen miniatures past the limit. */
+export function releaseOldThumbnails(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  keepId: string,
+) {
+  for (const [slideId, cached] of slideHandleCache) {
+    if (slideHandleCache.size <= THUMBNAIL_CACHE_LIMIT) return;
+    if (slideId === keepId || cached.slideHandle.element.parentElement) continue;
+    cached.slideHandle.dispose();
+    slideHandleCache.delete(slideId);
+  }
+}
+
+/**
  * Publishes `slideHandle` as the shared miniature for `slideId`.
  *
  * Returns `false` when a live entry for the current revision already holds the
@@ -82,8 +113,10 @@ function getIsThumbnailCached(
   if (cached) {
     if (cached.slideHandle !== slideHandle && cached.revision === revision) return false;
     cached.slideHandle.dispose();
+    slideHandleCache.delete(slideId);
   }
   slideHandleCache.set(slideId, { slideHandle, revision });
+  releaseOldThumbnails(slideHandleCache, slideId);
   return true;
 }
 
@@ -870,6 +903,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             const isAvailable = parent === null || parent === element;
 
             if (isCurrent && isAvailable) {
+              markThumbnailRecent(slideHandleCache, slide.id);
               attach(element, cached.slideHandle, true);
             } else {
               // Anything still attached here is stale, and it has to go before
@@ -944,7 +978,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       oldHandle.dispose();
       slideHandleRef.current = null;
       // Only the mount that published the entry may retire it; a private copy
-      // would otherwise evict a node still attached to another preview.
+      // would otherwise remove a node still attached to another preview.
       if (ownsCachedHandleRef.current) slideHandleCache.delete(slide.id);
       ownsCachedHandleRef.current = false;
 

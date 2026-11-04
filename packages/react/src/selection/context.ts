@@ -49,6 +49,9 @@ export interface SelectionBoxContextValue {
   node: SlideNode;
   /** The outline's current angle, including a rotation in progress. */
   rotation: number;
+  /** The outline's size on screen, in px. */
+  width: number;
+  height: number;
   showHandles: boolean;
   showRotateHandle: boolean;
 }

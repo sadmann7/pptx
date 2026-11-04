@@ -158,6 +158,10 @@ const ARRANGE = [
   { order: "back", label: "Send to back", shortcut: ["mod", "shift", "["] },
 ] as const satisfies readonly { order: NodeOrder; label: string; shortcut: readonly string[] }[];
 
+/** The font sizes OOXML allows, in points. */
+const MIN_FONT_SIZE = 1;
+const MAX_FONT_SIZE = 4000;
+
 /** Offered after the deck's own fonts. */
 const COMMON_FONTS = ["Arial", "Calibri", "Georgia", "Helvetica", "Times New Roman", "Verdana"];
 
@@ -450,13 +454,16 @@ function FontSelect({
             <ToolbarItem
               render={
                 <SelectTrigger size="sm" aria-label="Font" className="h-7 w-36 text-xs">
-                  <SelectValue>{value ?? "Font"}</SelectValue>
+                  {/* Blank when the selection mixes fonts, as in Google Slides. */}
+                  <SelectValue className="min-w-0">
+                    <span className="truncate">{value ?? ""}</span>
+                  </SelectValue>
                 </SelectTrigger>
               }
             />
           }
         />
-        <TooltipContent>Font</TooltipContent>
+        <TooltipContent>{value ? `Font: ${value}` : "Font"}</TooltipContent>
       </Tooltip>
       <SelectContent
         data-pptx-keep-selection=""
@@ -578,7 +585,12 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   }
 
   return (
-    <Toolbar aria-label="Edit presentation" data-pptx-keep-selection="" className="border-b p-1.5">
+    <Toolbar
+      aria-label="Edit presentation"
+      data-pptx-keep-selection=""
+      // One scrolling row on narrow screens, rather than rows that squeeze the slide.
+      className="border-b p-1.5 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:*:shrink-0"
+    >
       <ToolbarButton label="Open presentation" onClick={onOpen}>
         <FolderOpenIcon />
       </ToolbarButton>
@@ -743,17 +755,23 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
           />
           <ToolbarButton
             label="Decrease font size"
-            onClick={() => onFormat({ fontSize: Math.max(1, (textStyle.fontSize ?? 18) - 1) })}
+            disabled={textStyle.fontSize !== null && textStyle.fontSize <= MIN_FONT_SIZE}
+            onClick={() =>
+              onFormat({ fontSize: Math.max(MIN_FONT_SIZE, (textStyle.fontSize ?? 18) - 1) })
+            }
           >
             <MinusIcon />
           </ToolbarButton>
-          <span className="w-7 text-center text-xs tabular-nums">
+          <span className="min-w-7 px-0.5 text-center text-xs tabular-nums">
             <span className="sr-only">Font size </span>
             {textStyle.fontSize ?? "–"}
           </span>
           <ToolbarButton
             label="Increase font size"
-            onClick={() => onFormat({ fontSize: (textStyle.fontSize ?? 18) + 1 })}
+            disabled={textStyle.fontSize !== null && textStyle.fontSize >= MAX_FONT_SIZE}
+            onClick={() =>
+              onFormat({ fontSize: Math.min(MAX_FONT_SIZE, (textStyle.fontSize ?? 18) + 1) })
+            }
           >
             <PlusIcon />
           </ToolbarButton>
@@ -781,7 +799,12 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
         </>
       )}
 
-      <ToolbarItem render={<PresentationZoomSelect className="ml-auto" aria-label="Zoom" />} />
+      <ToolbarItem
+        disabled={!isReady}
+        render={
+          <PresentationZoomSelect className="ml-auto" aria-label="Zoom" disabled={!isReady} />
+        }
+      />
     </Toolbar>
   );
 }

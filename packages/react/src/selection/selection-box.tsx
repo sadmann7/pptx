@@ -116,7 +116,14 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
       return (
         <SelectionBoxContext.Provider
           key={node.id}
-          value={{ node, rotation, showHandles, showRotateHandle }}
+          value={{
+            node,
+            rotation,
+            width: rect.w * zoom,
+            height: rect.h * zoom,
+            showHandles,
+            showRotateHandle,
+          }}
         >
           {renderElement(
             "div",

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import type { PresentationStore } from "@diceui/pptx";
 import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
 import { cn } from "@pptx/ui/lib/utils";
 
@@ -24,7 +25,8 @@ interface PresentationPlaygroundProps {
  */
 export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
   const store = useCreatePresentationStore();
-  const layout = getPlaygroundLayout(React.use(searchParams).layout);
+  const params = React.use(searchParams);
+  const layout = getPlaygroundLayout(params.layout);
 
   return (
     <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col p-4">
@@ -34,6 +36,81 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
         header={layout === "default" ? <PresentationDebugToolbar /> : undefined}
         toolbar={layout !== "compact"}
       />
+      {process.env.NODE_ENV === "development" && params.data && (
+        <DataToggle store={store} initial={params.data} />
+      )}
+    </div>
+  );
+}
+
+const DATASETS = [
+  { value: "demo", label: "Demo data", src: "/assets/after-the-needle-drops-mat.pptx" },
+  { value: "worst", label: "Worst case", src: "/assets/worst-case/worst.pptx" },
+  { value: "one", label: "One slide", src: "/assets/worst-case/one.pptx" },
+  { value: "many", label: "300 slides", src: "/assets/worst-case/many.pptx" },
+  { value: "empty", label: "Empty", src: null },
+] as const;
+
+type Dataset = (typeof DATASETS)[number]["value"];
+
+/**
+ * Dev-only, and only with `?data=` (e.g. `/pg?data=worst`): loads a fixture
+ * deck through `store.load`, the way a user's file arrives, to see the editor
+ * with worst-case data. `?data=` keeps the choice.
+ */
+function DataToggle({
+  store,
+  initial,
+}: {
+  store: PresentationStore;
+  initial: Awaited<SearchParams>[number];
+}) {
+  const [dataset, setDataset] = React.useState<Dataset | null>(
+    () => DATASETS.find((option) => option.value === initial)?.value ?? null,
+  );
+
+  React.useEffect(() => {
+    if (!dataset) return;
+    const src = DATASETS.find((option) => option.value === dataset)?.src;
+    if (!src) {
+      store.reset();
+      return;
+    }
+    let cancelled = false;
+    fetch(src)
+      .then((response) => response.blob())
+      .then((blob) => {
+        if (!cancelled) return store.load(blob, { defaultSlideIndex: 0, readOnly: false });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [dataset, store]);
+
+  function select(value: Dataset) {
+    setDataset(value);
+    const url = new URL(window.location.href);
+    url.searchParams.set("data", value);
+    window.history.replaceState(null, "", url);
+  }
+
+  return (
+    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-0.5 rounded-full border border-input bg-background p-0.5 font-sans text-xs shadow-sm">
+      {DATASETS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={dataset === option.value}
+          onClick={() => select(option.value)}
+          className={cn(
+            "rounded-full px-3 py-1 whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+            dataset === option.value && "bg-muted text-foreground",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -1148,7 +1148,8 @@ function applyCharacterStyle(rPr: Element, style: TextStyle): void {
     rPr.setAttribute("strike", style.strikethrough ? "sngStrike" : "noStrike");
   }
   if (style.fontSize !== undefined) {
-    if (style.fontSize !== null && !(style.fontSize > 0)) {
+    // OOXML allows 1–4000pt (`a:rPr@sz` 100–400000); PowerPoint rejects the rest.
+    if (style.fontSize !== null && !(style.fontSize >= 1 && style.fontSize <= 4000)) {
       throw new Error(`applyEdit: invalid font size "${style.fontSize}".`);
     }
     setOrRemoveAttr(

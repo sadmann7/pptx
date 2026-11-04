@@ -64,6 +64,21 @@ function runSummary(shape: ShapeNodeData, paragraphIndex = 0) {
 }
 
 describe("setTextStyle", () => {
+  it("rejects font sizes outside 1–4000pt", async () => {
+    const pres = await openEditable([textShape(2, `<a:p>${run("Hello")}</a:p>`)]);
+    const edit = (fontSize: number) =>
+      applyEdit(pres, {
+        type: "setTextStyle",
+        slideId: pres.slides[0].id,
+        nodeId: "2",
+        style: { fontSize },
+      });
+
+    await expect(edit(0.5)).rejects.toThrow("invalid font size");
+    await expect(edit(4001)).rejects.toThrow("invalid font size");
+    await expect(edit(4000)).resolves.toBeDefined();
+  });
+
   it("formats the whole text body when no range is given", async () => {
     const pres = await openEditable([
       textShape(2, `<a:p>${run("Hello")}${run(" world")}</a:p><a:p><a:endParaRPr/></a:p>`),

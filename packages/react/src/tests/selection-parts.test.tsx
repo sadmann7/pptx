@@ -55,6 +55,34 @@ describe("default parts", () => {
   });
 });
 
+describe("handles on small and flat shapes", () => {
+  it("moves handles outside a tiny shape and shows only a flat line's ends", async () => {
+    const { store, container, selectAll } = await renderOverlay();
+    const slideId = store.getState().activeSlideId!;
+    await act(async () => {
+      await store.edit({
+        type: "batch",
+        operations: [
+          { type: "setNodeTransform", slideId, nodeId: "2", size: { w: 6, h: 6 } },
+          { type: "setNodeTransform", slideId, nodeId: "3", size: { w: 400, h: 0 } },
+        ],
+      });
+    });
+    selectAll();
+
+    const [tiny, line] = container.querySelectorAll<HTMLElement>("[data-selection-box]");
+    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-resize-grip]");
+    expect(tinyHandles).toHaveLength(8);
+    const nw = tiny.querySelector<HTMLElement>('[data-resize-grip="nw"]')!;
+    expect(nw.style.transform).toBe("translate(calc(-50% + -12px), calc(-50% + -12px))");
+
+    const lineGrips = Array.from(line.querySelectorAll("[data-resize-grip]")).map((grip) =>
+      grip.getAttribute("data-resize-grip"),
+    );
+    expect(lineGrips.sort()).toEqual(["e", "w"]);
+  });
+});
+
 describe("composed parts", () => {
   it("renders the app's parts unstyled, with class names from state", async () => {
     const { container, selectAll } = await renderOverlay(

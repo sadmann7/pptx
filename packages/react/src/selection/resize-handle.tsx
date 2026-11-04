@@ -19,6 +19,44 @@ const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
   w: { left: 0, top: "50%" },
 };
 
+/** Below this many screen px, handles on that axis sit outside the box, so its inside stays draggable. */
+const SMALL_SIZE = 24;
+
+/** How far outside a small box its handles sit, in screen px. */
+const SMALL_OFFSET = 12;
+
+/**
+ * Handles that only change a flat axis (a line's height) are left out, so a
+ * line shows its two ends, as in Google Slides.
+ */
+function isGripShown(direction: GripDirection, width: number, height: number): boolean {
+  const changesHeight = direction.includes("n") || direction.includes("s");
+  const changesWidth = direction.includes("e") || direction.includes("w");
+  if (height < 1 && width >= 1) return !changesHeight;
+  if (width < 1 && height >= 1) return !changesWidth;
+  return true;
+}
+
+function getGripOffset(direction: GripDirection, width: number, height: number) {
+  const x =
+    width < SMALL_SIZE
+      ? direction.includes("e")
+        ? SMALL_OFFSET
+        : direction.includes("w")
+          ? -SMALL_OFFSET
+          : 0
+      : 0;
+  const y =
+    height < SMALL_SIZE
+      ? direction.includes("s")
+        ? SMALL_OFFSET
+        : direction.includes("n")
+          ? -SMALL_OFFSET
+          : 0
+      : 0;
+  return { x, y };
+}
+
 /** The current state of one resize handle. */
 export interface ResizeHandleState {
   /** Which edge or corner the handle drags. */
@@ -29,7 +67,8 @@ export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeH
 
 /**
  * The resize handles of a selected shape: one per edge and corner, centered
- * on the outline. Hidden while dragging, editing text, and on rotated shapes.
+ * on the outline. On a shape too small to grab between them they sit just
+ * outside it, and a flat line shows only its two ends. Hidden while dragging.
  *
  * Unstyled when composed: give it a size, or it is a zero-size target.
  *
@@ -45,35 +84,40 @@ export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
     }
     if (!box.showHandles) return null;
 
-    return GRIP_DIRECTIONS.map((direction) => (
-      <React.Fragment key={direction}>
-        {renderElement(
-          "div",
-          { render, className, style },
-          {
-            state: { direction },
-            ref: forwardedRef,
-            props: [
+    return GRIP_DIRECTIONS.filter((direction) => isGripShown(direction, box.width, box.height)).map(
+      (direction) => {
+        const offset = getGripOffset(direction, box.width, box.height);
+        return (
+          <React.Fragment key={direction}>
+            {renderElement(
+              "div",
+              { render, className, style },
               {
-                "aria-hidden": true,
-                "data-resize-grip": direction,
-                onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
-                  onGripPointerDown(event, direction, box.node.id),
-                style: {
-                  position: "absolute",
-                  ...GRIP_POSITIONS[direction],
-                  transform: "translate(-50%, -50%)",
-                  cursor: getGripCursor(direction, box.rotation),
-                  pointerEvents: "auto",
-                  touchAction: "none",
-                },
+                state: { direction },
+                ref: forwardedRef,
+                props: [
+                  {
+                    "aria-hidden": true,
+                    "data-resize-grip": direction,
+                    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
+                      onGripPointerDown(event, direction, box.node.id),
+                    style: {
+                      position: "absolute",
+                      ...GRIP_POSITIONS[direction],
+                      transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                      cursor: getGripCursor(direction, box.rotation),
+                      pointerEvents: "auto",
+                      touchAction: "none",
+                    },
+                  },
+                  resizeHandleProps,
+                ],
               },
-              resizeHandleProps,
-            ],
-          },
-        )}
-      </React.Fragment>
-    ));
+            )}
+          </React.Fragment>
+        );
+      },
+    );
   },
 );
 
