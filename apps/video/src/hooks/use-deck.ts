@@ -55,20 +55,20 @@ export function useDeck(file: string) {
   }, [continueRender, handle]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    fetch(staticFile(file))
+    const controller = new AbortController();
+    fetch(staticFile(file), { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error(`${file}: ${r.status}.`);
         return r.arrayBuffer();
       })
       .then((buf) => {
-        if (!cancelled) setData(buf);
+        if (!controller.signal.aborted) setData(buf);
       })
       .catch((err) => {
-        if (!cancelled) cancelRender(err);
+        if (!controller.signal.aborted) cancelRender(err);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       stopWaitRef.current?.();
       release();
     };

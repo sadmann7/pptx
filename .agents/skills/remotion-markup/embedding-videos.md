@@ -57,8 +57,8 @@ return (
 Wrap the video in a `<Sequence>` to delay when it appears:
 
 ```tsx
-import { Sequence, staticFile } from "remotion";
 import { Video } from "@remotion/media";
+import { Sequence, staticFile } from "remotion";
 
 const { fps } = useVideoConfig();
 

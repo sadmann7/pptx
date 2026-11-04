@@ -12,8 +12,9 @@ Remotion applies a `scale()` transform to the video container, which affects val
 ## Measuring element dimensions
 
 ```tsx
-import { useCurrentScale } from "remotion";
 import { useRef, useEffect, useState } from "react";
+
+import { useCurrentScale } from "remotion";
 
 export const MyComponent = () => {
   const ref = useRef<HTMLDivElement>(null);

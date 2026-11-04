@@ -55,8 +55,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
-import { AbsoluteFill, useDelayRender, useVideoConfig } from "remotion";
+
 import maplibregl from "maplibre-gl";
+import { AbsoluteFill, useDelayRender, useVideoConfig } from "remotion";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const zurich: [number, number] = [8.5417, 47.3769];
@@ -114,8 +115,10 @@ This example shows the recommended pattern for route animations:
 - Frame 0 is prepared before `continueRender()`.
 
 ```tsx
-import * as turf from "@turf/turf";
 import { useEffect, useRef, useState } from "react";
+
+import * as turf from "@turf/turf";
+import maplibregl, { type GeoJSONSource, type Map } from "maplibre-gl";
 import {
   AbsoluteFill,
   Easing,
@@ -124,7 +127,6 @@ import {
   useDelayRender,
   useVideoConfig,
 } from "remotion";
-import maplibregl, { type GeoJSONSource, type Map } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const zurich: [number, number] = [8.5417, 47.3769];
