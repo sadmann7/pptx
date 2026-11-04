@@ -72,7 +72,7 @@ function PresentationSelection({
       data-slot="presentation-selection"
       // A fixed blue rather than a theme color: slides bring their own colors,
       // light or dark whatever the app's theme is.
-      className={cn("[--presentation-selection:oklch(0.546_0.245_262.881)]", className)}
+      className={cn("[--presentation-selection:#1a73e8]", className)}
       {...props}
     >
       {children ?? (
@@ -97,7 +97,7 @@ function PresentationSelectionBox({
     <PresentationPrimitive.SelectionBox
       data-slot="presentation-selection-box"
       className={withClassName(
-        "shadow-[0_0_0_1.5px_var(--presentation-selection)] data-[mode=text]:shadow-[0_0_0_2px_var(--presentation-selection)]",
+        "outline-2 -outline-offset-1 outline-(--presentation-selection)",
         className,
       )}
       {...props}

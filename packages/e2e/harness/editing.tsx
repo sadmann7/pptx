@@ -18,7 +18,7 @@ import { createRoot } from "react-dom/client";
 const file = new URLSearchParams(location.search).get("file") ?? "basic.pptx";
 
 function Toolbar() {
-  const { mode, nodeIds, textStyle, setTextStyle, setParagraphStyle, insertTextBox } =
+  const { mode, nodeIds, textStyle, setTextStyle, setParagraphStyle, insertTextBox, startDrawing } =
     useSelection();
 
   return (
@@ -47,6 +47,20 @@ function Toolbar() {
         </button>
         <button type="button" data-testid="text-box" onClick={() => void insertTextBox()}>
           Text box
+        </button>
+        <button
+          type="button"
+          data-testid="draw-text-box"
+          onClick={() => startDrawing({ type: "textBox" })}
+        >
+          Draw text box
+        </button>
+        <button
+          type="button"
+          data-testid="draw-ellipse"
+          onClick={() => startDrawing({ type: "shape", geometry: "ellipse" })}
+        >
+          Draw ellipse
         </button>
         <output data-testid="state">
           {JSON.stringify({ mode, nodeIds, bold: textStyle?.bold ?? null })}

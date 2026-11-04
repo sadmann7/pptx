@@ -354,6 +354,103 @@ test.describe("text boxes", () => {
   });
 });
 
+test.describe("drawing", () => {
+  const lastNode = (page: Page) =>
+    page.evaluate(() => {
+      const nodes = window.__editStore!.getActiveSlide()!.nodes;
+      const node = nodes[nodes.length - 1] as unknown as {
+        presetGeometry?: string;
+        position: { x: number; y: number };
+        size: { w: number; h: number };
+      };
+      return { count: nodes.length, ...node };
+    });
+
+  test("places a text box where the slide is clicked, ready to type in", async ({ page }) => {
+    const { overlay } = await open(page);
+    await page.getByTestId("draw-text-box").click();
+    await expect(overlay).toHaveCSS("cursor", "crosshair");
+
+    const slide = (await page
+      .locator("[data-pptx-selection]")
+      .locator("xpath=../..")
+      .boundingBox())!;
+    const before = await lastNode(page);
+    await page.mouse.click(slide.x + 40, slide.y + 400);
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    // Resize handles stay while typing, as in Google Slides.
+    await expect(page.locator("[data-resize-grip]")).toHaveCount(8);
+    const node = await lastNode(page);
+    expect(node.count).toBe(before.count + 1);
+    expect(node.position.x * (slide.width / 1280)).toBeCloseTo(40, -1);
+    await expect(overlay).not.toHaveCSS("cursor", "crosshair");
+
+    // Left empty, it goes away once editing moves elsewhere.
+    await page.mouse.click(slide.x + slide.width - 40, slide.y + 400);
+    await expect.poll(async () => (await lastNode(page)).count).toBe(before.count);
+  });
+
+  test("draws a shape the size of the drag and selects it", async ({ page }) => {
+    const { overlay } = await open(page);
+    await page.getByTestId("draw-ellipse").click();
+    const slide = (await page
+      .locator("[data-pptx-selection]")
+      .locator("xpath=../..")
+      .boundingBox())!;
+    const scale = slide.width / 1280;
+    await page.mouse.move(slide.x + 600 * scale, slide.y + 300 * scale);
+    await page.mouse.down();
+    await page.mouse.move(slide.x + 800 * scale, slide.y + 400 * scale, { steps: 5 });
+    await expect(page.locator("[data-marquee][data-draw]")).toBeVisible();
+    await page.mouse.up();
+
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    const node = await lastNode(page);
+    expect(node.presetGeometry).toBe("ellipse");
+    expect(node.size.w).toBeCloseTo(200, -1);
+    expect(node.size.h).toBeCloseTo(100, -1);
+  });
+
+  test("selects a text box on click, edits it on a second, and selects it from its frame", async ({
+    page,
+  }) => {
+    const { overlay } = await open(page);
+    const slide = (await page
+      .locator("[data-pptx-selection]")
+      .locator("xpath=../..")
+      .boundingBox())!;
+    await page.getByTestId("draw-text-box").click();
+    await page.mouse.click(slide.x + 40, slide.y + 400);
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await page.keyboard.type("Hello");
+    await page.mouse.click(slide.x + slide.width - 40, slide.y + 400);
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+
+    const box = (await page.locator("[data-pptx-node-id]").last().boundingBox())!;
+    const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.click(center.x, center.y);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    await page.mouse.click(center.x, center.y);
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    const frame = (await page.locator("[data-selection-box]").first().boundingBox())!;
+    await page.mouse.click(frame.x + frame.width / 2, frame.y + 1);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    const before = await lastNode(page);
+    await page.keyboard.press("Delete");
+    await expect.poll(async () => (await lastNode(page)).count).toBe(before.count - 1);
+  });
+
+  test("disarms with Escape", async ({ page }) => {
+    const { overlay } = await open(page);
+    await page.getByTestId("draw-ellipse").click();
+    await expect(overlay).toHaveCSS("cursor", "crosshair");
+    await page.keyboard.press("Escape");
+    await expect(overlay).not.toHaveCSS("cursor", "crosshair");
+  });
+});
+
 test.describe("outlines", () => {
   test("draws a shape's outline", async ({ page }) => {
     await open(page);

@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import type {
+  AddShapeOperation,
   AddTextBoxOperation,
   NodeOrder,
   ParagraphStyle,
@@ -30,18 +31,24 @@ export function getIsKeepSelectionTarget(target: EventTarget | null): boolean {
   return element?.closest(`[${KEEP_SELECTION_ATTRIBUTE}]`) != null;
 }
 
+/** What a click or drag on the slide places, once `startDrawing` arms it. */
+export type DrawTool = { type: "textBox" } | { type: "shape"; geometry: string };
+
 export interface SelectionSnapshot {
   /** Slide the selection belongs to. */
   slideId: string | null;
   mode: SelectionState["mode"];
   nodeIds: string[];
   textStyle: ActiveTextStyle | null;
+  drawTool: DrawTool | null;
 }
 
 /** Commands the mounted `Presentation.Selection` serves. */
 export interface SelectionController {
-  select: (nodeIds: string[]) => void;
+  /** `focus` moves focus to the overlay, so typing starts the shapes' text. */
+  select: (nodeIds: string[], focus?: boolean) => void;
   editText: (nodeId: string) => void;
+  startDrawing: (tool: DrawTool | null) => void;
   duplicate: () => Promise<void>;
   remove: () => Promise<void>;
   reorder: (order: NodeOrder) => Promise<void>;
@@ -54,6 +61,7 @@ const IDLE_SNAPSHOT: SelectionSnapshot = {
   mode: "idle",
   nodeIds: [],
   textStyle: null,
+  drawTool: null,
 };
 
 function getIsSameTextStyle(a: ActiveTextStyle | null, b: ActiveTextStyle | null): boolean {
@@ -68,7 +76,10 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
     a.mode === b.mode &&
     a.nodeIds.length === b.nodeIds.length &&
     a.nodeIds.every((id, index) => id === b.nodeIds[index]) &&
-    getIsSameTextStyle(a.textStyle, b.textStyle)
+    getIsSameTextStyle(a.textStyle, b.textStyle) &&
+    a.drawTool?.type === b.drawTool?.type &&
+    (a.drawTool?.type !== "shape" ||
+      a.drawTool.geometry === (b.drawTool as { geometry?: string } | null)?.geometry)
   );
 }
 
@@ -148,10 +159,17 @@ export interface UseSelectionResult {
    */
   editText: (nodeId: string) => void;
 
+  /** The armed draw tool, or `null`. */
+  drawTool: DrawTool | null;
+
   /**
-   * Adds a text box to the active slide, centered unless `position` is given,
-   * and starts editing it. Resolves with the new node's id.
+   * Arms a draw tool, like Google Slides' text box and shape tools: the slide
+   * shows a crosshair, and a click places the text box or shape at its default
+   * size there, or a drag draws it (Shift keeps it square). A text box then
+   * starts editing and a shape is selected. Escape or `null` disarms it.
    */
+  startDrawing: (tool: DrawTool | null) => void;
+
   /** Duplicates the selected shapes, like Ctrl/Cmd+D, and selects the copies. */
   duplicate: () => Promise<void>;
 
@@ -161,8 +179,22 @@ export interface UseSelectionResult {
   /** Moves the selected shapes in the stacking order, keeping their order among themselves. */
   reorder: (order: NodeOrder) => Promise<void>;
 
+  /**
+   * Adds a text box to the active slide, centered unless `position` is given,
+   * and starts editing it. Resolves with the new node's id.
+   */
   insertTextBox: (
     options?: Omit<AddTextBoxOperation, "type" | "slideId">,
+  ) => Promise<string | undefined>;
+
+  /**
+   * Adds a preset shape (e.g. "rect", "ellipse") to the active slide,
+   * centered unless `position` is given, and selects it: typing then starts
+   * its text. Resolves with the new node's id.
+   */
+  insertShape: (
+    geometry: string,
+    options?: Omit<AddShapeOperation, "type" | "slideId" | "geometry">,
   ) => Promise<string | undefined>;
 
   /**
@@ -238,10 +270,15 @@ export function useSelection(): UseSelectionResult {
     nodeIds,
     nodes,
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
+    drawTool: snapshot.slideId === slideId ? snapshot.drawTool : null,
     select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
     clear: React.useCallback(() => channel.getController()?.select([]), [channel]),
     editText: React.useCallback(
       (nodeId: string) => channel.getController()?.editText(nodeId),
+      [channel],
+    ),
+    startDrawing: React.useCallback(
+      (tool: DrawTool | null) => requireController(channel).startDrawing(tool),
       [channel],
     ),
     duplicate: React.useCallback(async () => requireController(channel).duplicate(), [channel]),
@@ -262,6 +299,26 @@ export function useSelection(): UseSelectionResult {
         });
         const nodeId = createdNodeIds?.[0];
         if (nodeId) controller.editText(nodeId);
+        return nodeId;
+      },
+      [channel, store],
+    ),
+    insertShape: React.useCallback(
+      async (
+        geometry: string,
+        options?: Omit<AddShapeOperation, "type" | "slideId" | "geometry">,
+      ) => {
+        const controller = requireController(channel);
+        const activeSlideId = store.getState().activeSlideId;
+        if (!activeSlideId) return undefined;
+        const { createdNodeIds } = await store.edit({
+          type: "addShape",
+          slideId: activeSlideId,
+          geometry,
+          ...options,
+        });
+        const nodeId = createdNodeIds?.[0];
+        if (nodeId) controller.select([nodeId], true);
         return nodeId;
       },
       [channel, store],

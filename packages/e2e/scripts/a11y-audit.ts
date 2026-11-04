@@ -35,6 +35,9 @@ async function audit(page: Page, state: string): Promise<void> {
     .include("[data-pptx-keep-selection]")
     // The slide is the deck's own content, with the author's colors.
     .exclude("[data-slot=presentation-slide] [data-pptx-node-id]")
+    // Non-modal popups add focus guards: aria-hidden sentinels that pass Tab
+    // focus straight on into or out of the popup, never keeping it.
+    .exclude("[data-base-ui-focus-guard]")
     // Thumbnails are named "Slide N" and their miniature is aria-hidden, but
     // axe still counts the miniature's text as the option's visible label.
     .disableRules(["label-content-name-mismatch"])

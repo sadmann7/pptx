@@ -4,22 +4,11 @@ import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
 import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
 
-/** A circular arrow, outlined in white so it reads on any background. */
-const ROTATE_CURSOR_SVG =
-  "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>" +
-  "<g fill='none' stroke-linecap='round'>" +
-  "<path d='M19 12a7 7 0 1 1-7-7' stroke='white' stroke-width='4'/>" +
-  "<path d='M19 12a7 7 0 1 1-7-7' stroke='black' stroke-width='1.75'/>" +
-  "</g>" +
-  "<path d='M15.5 5 11 1.5v7z' fill='black' stroke='white' stroke-width='1' stroke-linejoin='round'/>" +
-  "</svg>";
-
 /**
- * The cursor over a rotate handle and while rotating. Apps can swap it with
- * `--presentation-rotate-cursor`; browsers without SVG cursors fall back to
- * `grab`.
+ * The cursor over a rotate handle and while rotating: a crosshair, like Google
+ * Slides. Apps can swap it with `--presentation-rotate-cursor`.
  */
-export const ROTATE_CURSOR = `var(--presentation-rotate-cursor, url("data:image/svg+xml,${encodeURIComponent(ROTATE_CURSOR_SVG)}") 12 12, grab)`;
+export const ROTATE_CURSOR = "var(--presentation-rotate-cursor, crosshair)";
 
 const ROTATE_HANDLE_NAME = "Presentation.RotateHandle";
 

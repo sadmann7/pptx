@@ -440,6 +440,50 @@ describe("addTextBox", () => {
   });
 });
 
+describe("addShape", () => {
+  it("adds a theme-styled preset shape, centered, on top", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, { type: "addShape", slideId, geometry: "ellipse" });
+
+    expect(result.createdNodeIds).toEqual(["3"]);
+    const shape = pres.slides[0].nodes[1] as ShapeNodeData;
+    expect(shape.presetGeometry).toBe("ellipse");
+    expect(shape.isTextBox).toBeFalsy();
+    expect(shape.size).toEqual({ w: pres.width / 4, h: pres.width / 4 });
+    expect(shape.position.x).toBeCloseTo((pres.width - shape.size.w) / 2);
+
+    const xml = await (await savedZip(pres)).file(slideId)!.async("string");
+    expect(xml).toContain('name="Ellipse 2"');
+    expect(xml).toMatch(/<a:fillRef idx="1"><a:schemeClr val="accent1"\/><\/a:fillRef>/);
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[1] as ShapeNodeData;
+    expect(reopened.presetGeometry).toBe("ellipse");
+
+    result.undo();
+    expect(ids(pres)).toEqual(["2"]);
+  });
+
+  it("takes size and position, and rejects names that aren't presets", async () => {
+    const pres = await openEditable([""]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "addShape",
+      slideId,
+      geometry: "rightArrow",
+      size: { w: 200, h: 50 },
+      position: { x: 10, y: 20 },
+    });
+
+    const shape = pres.slides[0].nodes[0] as ShapeNodeData;
+    expect(shape.size).toEqual({ w: 200, h: 50 });
+    expect(shape.position).toEqual({ x: 10, y: 20 });
+    await expect(
+      applyEdit(pres, { type: "addShape", slideId, geometry: 'rect"/><x' }),
+    ).rejects.toThrow("not a preset geometry");
+  });
+});
+
 describe("setOutline", () => {
   const lineOf = async (pres: PresentationData) => {
     const xml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");

@@ -97,11 +97,10 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
         rect = resizeRects?.get(node.id) ?? rect;
       }
       const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
-      const showHandles = showResizeHandles && !isDragging && !isRotating && !isTextMode;
+      const showHandles = showResizeHandles && !isDragging && !isRotating;
       const showRotateHandle =
         showResizeHandles &&
         !isDragging &&
-        !isTextMode &&
         state.mode !== "resize" &&
         // PowerPoint doesn't rotate tables or charts.
         node.nodeType !== "table" &&
@@ -133,8 +132,9 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                   "data-rotating": isRotating ? "" : undefined,
                   children: (
                     <>
-                      {children}
+                      {/* Under the handles, which sit on the frame too. */}
                       {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
+                      {children}
                     </>
                   ),
                   style: {

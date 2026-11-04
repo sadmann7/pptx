@@ -46,7 +46,7 @@ describe("default parts", () => {
     const boxes = container.querySelectorAll<HTMLElement>("[data-selection-box]");
     expect(boxes).toHaveLength(2);
     for (const box of boxes) {
-      expect(box.style.boxShadow).toContain("--presentation-selection");
+      expect(box.style.outline).toContain("--presentation-selection");
       expect(box.getAttribute("data-mode")).toBe("selected");
       const handles = box.querySelectorAll<HTMLElement>("[data-resize-grip]");
       expect(handles).toHaveLength(8);

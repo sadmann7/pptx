@@ -2,9 +2,10 @@
 
 import * as React from "react";
 
-import type { NodeOrder, PresentationStore, TextStyle } from "@diceui/pptx";
+import type { NodeOrder, ParagraphAlign, PresentationStore, TextStyle } from "@diceui/pptx";
 import {
   getPresentationFonts,
+  getPresetShapePath,
   useHistory,
   usePresentation,
   useSelection,
@@ -36,6 +37,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
@@ -81,21 +84,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/too
 import { useIsMac } from "@pptx/ui/hooks/use-is-mac";
 import { cn } from "@pptx/ui/lib/utils";
 import {
-  AArrowDownIcon,
-  AArrowUpIcon,
   BaselineIcon,
   BoldIcon,
-  CopyIcon,
   CopyPlusIcon,
   DownloadIcon,
   FolderOpenIcon,
   ImageIcon,
   ItalicIcon,
   LayersIcon,
+  MinusIcon,
   PaintBucketIcon,
   PlusIcon,
   PresentationIcon,
   Redo2Icon,
+  ShapesIcon,
   SquareDashedIcon,
   StrikethroughIcon,
   TextAlignCenterIcon,
@@ -315,10 +317,55 @@ function ToolbarButton({
   );
 }
 
+interface ToolbarMenuTriggerProps {
+  label: string;
+  disabled?: boolean;
+  /** Shows the trigger pressed, e.g. while its tool is armed. */
+  active?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+/** A menu's trigger button in the toolbar, with a tooltip like the other buttons. */
+function ToolbarMenuTrigger({
+  label,
+  disabled,
+  active,
+  className,
+  children,
+}: ToolbarMenuTriggerProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <DropdownMenuTrigger
+            render={
+              <ToolbarItem
+                aria-label={label}
+                disabled={disabled}
+                render={
+                  <Button
+                    variant={active ? "secondary" : "ghost"}
+                    size="icon-sm"
+                    className={className}
+                  />
+                }
+              />
+            }
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface ColorMenuProps {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  disabled: boolean;
+  disabled?: boolean;
   value?: string | null;
   onSelect: (color: string) => void;
   /** Offers a "none" choice, e.g. to remove an outline. */
@@ -336,23 +383,15 @@ function ColorMenu({
   onNone,
 }: ColorMenuProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <ToolbarItem
-            aria-label={label}
-            disabled={disabled}
-            render={<Button variant="ghost" size="icon-sm" className="relative" />}
-          />
-        }
-      >
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label={label} disabled={disabled} className="relative">
         <Icon />
         <span
           aria-hidden="true"
           className="absolute inset-x-1.5 bottom-1 h-0.5 rounded-full border border-border"
           style={{ backgroundColor: value ?? "transparent" }}
         />
-      </DropdownMenuTrigger>
+      </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label={label} className="w-auto">
         <div className="grid grid-cols-5 gap-1 p-1">
           {COLORS.map((color) => (
@@ -377,11 +416,9 @@ function ColorMenu({
 }
 
 function FontSelect({
-  disabled,
   value,
   onChange,
 }: {
-  disabled: boolean;
   value: string | null;
   onChange: (fontFamily: string) => void;
 }) {
@@ -403,38 +440,61 @@ function FontSelect({
 
   return (
     <Select
+      modal={false}
       value={value ?? ""}
       onValueChange={(next) => next && onChange(String(next))}
-      disabled={disabled}
     >
-      <ToolbarItem
-        render={
-          <SelectTrigger size="sm" aria-label="Font" className="h-7 w-36 text-xs">
-            <SelectValue>{value ?? "Font"}</SelectValue>
-          </SelectTrigger>
-        }
-      />
-      <SelectContent data-pptx-keep-selection="" alignItemWithTrigger={false}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <ToolbarItem
+              render={
+                <SelectTrigger size="sm" aria-label="Font" className="h-7 w-36 text-xs">
+                  <SelectValue>{value ?? "Font"}</SelectValue>
+                </SelectTrigger>
+              }
+            />
+          }
+        />
+        <TooltipContent>Font</TooltipContent>
+      </Tooltip>
+      <SelectContent
+        data-pptx-keep-selection=""
+        alignItemWithTrigger={false}
+        align="start"
+        className="w-56"
+      >
         {deckFonts.length > 0 && (
           <SelectGroup>
             <SelectLabel>In this presentation</SelectLabel>
             {deckFonts.map((font) => (
-              <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                {font}
-              </SelectItem>
+              <FontItem key={font} font={font} />
             ))}
           </SelectGroup>
         )}
         <SelectGroup>
           <SelectLabel>Other fonts</SelectLabel>
           {otherFonts.map((font) => (
-            <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-              {font}
-            </SelectItem>
+            <FontItem key={font} font={font} />
           ))}
         </SelectGroup>
       </SelectContent>
     </Select>
+  );
+}
+
+/** A font in the font list, in its own face, truncated to the list's width. */
+function FontItem({ font }: { font: string }) {
+  return (
+    <SelectItem
+      value={font}
+      title={font}
+      // Lets the item text shrink so a long name truncates.
+      className="*:first:min-w-0 *:first:shrink"
+      style={{ fontFamily: font }}
+    >
+      <span className="truncate">{font}</span>
+    </SelectItem>
   );
 }
 
@@ -448,13 +508,15 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   const { slideId, goTo } = useSlide();
   const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
   const {
+    mode,
     nodes,
     textStyle,
     select,
     clear,
     setTextStyle,
     setParagraphStyle,
-    insertTextBox,
+    drawTool,
+    startDrawing,
     duplicate,
     remove,
     reorder,
@@ -548,28 +610,18 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
         <PlusIcon />
       </ToolbarButton>
       <ToolbarButton
-        label="Duplicate slide"
-        disabled={!isReady}
-        onClick={() => slideId && run(() => store.edit({ type: "duplicateSlide", slideId }))}
-      >
-        <CopyPlusIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        label="Delete slide"
-        disabled={!isReady}
-        onClick={() => slideId && run(() => store.edit({ type: "deleteSlide", slideId }))}
-      >
-        <Trash2Icon />
-      </ToolbarButton>
-      <ToolbarSeparator />
-
-      <ToolbarButton
         label="Text box"
         disabled={!isReady}
-        onClick={() => run(() => insertTextBox())}
+        pressed={drawTool?.type === "textBox"}
+        onClick={() => startDrawing(drawTool?.type === "textBox" ? null : { type: "textBox" })}
       >
         <TypeIcon />
       </ToolbarButton>
+      <ShapeMenu
+        disabled={!isReady}
+        active={drawTool?.type === "shape"}
+        onSelect={(geometry) => startDrawing({ type: "shape", geometry })}
+      />
       <ToolbarButton
         label="Image"
         disabled={!isReady}
@@ -584,145 +636,255 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
         hidden
         onChange={(event) => run(() => onImageChange(event))}
       />
-      <ToolbarSeparator />
 
-      <FontSelect
-        disabled={!hasText}
-        value={textStyle?.fontFamily ?? null}
-        onChange={(fontFamily) => onFormat({ fontFamily })}
-      />
-      <ToolbarButton
-        label="Decrease font size"
-        disabled={!hasText}
-        onClick={() => onFormat({ fontSize: Math.max(1, (textStyle?.fontSize ?? 18) - 2) })}
-      >
-        <AArrowDownIcon />
-      </ToolbarButton>
-      <span className="w-8 text-center text-xs text-muted-foreground tabular-nums">
-        <span className="sr-only">Font size </span>
-        {textStyle?.fontSize ?? "–"}
-      </span>
-      <ToolbarButton
-        label="Increase font size"
-        disabled={!hasText}
-        onClick={() => onFormat({ fontSize: (textStyle?.fontSize ?? 18) + 2 })}
-      >
-        <AArrowUpIcon />
-      </ToolbarButton>
-      {TEXT_TOGGLES.map(({ key, label, icon: Icon }) => (
-        <ToolbarButton
-          key={key}
-          label={label}
-          pressed={textStyle?.[key] ?? false}
-          disabled={!hasText}
-          onClick={() => onFormat({ [key]: !textStyle?.[key] })}
-        >
-          <Icon />
-        </ToolbarButton>
-      ))}
-      <ColorMenu
-        label="Text color"
-        icon={BaselineIcon}
-        disabled={!hasText}
-        value={textStyle?.color}
-        onSelect={(color) => onFormat({ color })}
-      />
-      {ALIGNMENTS.map(({ align, label, icon: Icon }) => (
-        <ToolbarButton
-          key={align}
-          label={label}
-          pressed={textStyle?.align === align}
-          disabled={!hasText}
-          onClick={() => run(() => setParagraphStyle({ align }))}
-        >
-          <Icon />
-        </ToolbarButton>
-      ))}
-      <ToolbarSeparator />
+      {isReady && nodes.length === 0 && (
+        <>
+          <ToolbarSeparator />
+          <ColorMenu
+            label="Background"
+            icon={PaintBucketIcon}
+            onSelect={(color) =>
+              run(() => store.edit({ type: "setSlideBackground", slideId, color }))
+            }
+            noneLabel="Reset to layout"
+            onNone={() =>
+              run(() => store.edit({ type: "setSlideBackground", slideId, color: null }))
+            }
+          />
+        </>
+      )}
 
-      <ColorMenu
-        label="Fill"
-        icon={PaintBucketIcon}
-        disabled={shapes.length === 0}
-        onSelect={(color) =>
-          editNodes(shapes, (nodeId) => ({
-            type: "setSolidFill",
-            slideId: slideId!,
-            nodeId,
-            color,
-          }))
-        }
-      />
-      <ColorMenu
-        label="Outline"
-        icon={SquareDashedIcon}
-        disabled={outlined.length === 0}
-        onSelect={(color) =>
-          editNodes(outlined, (nodeId) => ({
-            type: "setOutline",
-            slideId: slideId!,
-            nodeId,
-            color,
-            width: 1.5,
-          }))
-        }
-        noneLabel="No outline"
-        onNone={() =>
-          editNodes(outlined, (nodeId) => ({
-            type: "setOutline",
-            slideId: slideId!,
-            nodeId,
-            color: null,
-          }))
-        }
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <ToolbarItem
-              aria-label="Arrange"
-              disabled={nodes.length === 0}
-              render={<Button variant="ghost" size="icon-sm" />}
+      {nodes.length > 0 && mode !== "text" && (
+        <>
+          <ToolbarSeparator />
+          {shapes.length > 0 && (
+            <ColorMenu
+              label="Fill"
+              icon={PaintBucketIcon}
+              onSelect={(color) =>
+                editNodes(shapes, (nodeId) => ({
+                  type: "setSolidFill",
+                  slideId: slideId!,
+                  nodeId,
+                  color,
+                }))
+              }
             />
-          }
-        >
-          <LayersIcon />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent data-pptx-keep-selection="" aria-label="Arrange" className="w-44">
-          {ARRANGE.map(({ order, label, shortcut }) => (
-            <DropdownMenuItem key={order} onClick={() => run(() => reorder(order))}>
-              {label}
-              <DropdownMenuShortcut>
-                <Shortcut keys={shortcut} />
-              </DropdownMenuShortcut>
-            </DropdownMenuItem>
+          )}
+          {outlined.length > 0 && (
+            <ColorMenu
+              label="Outline"
+              icon={SquareDashedIcon}
+              onSelect={(color) =>
+                editNodes(outlined, (nodeId) => ({
+                  type: "setOutline",
+                  slideId: slideId!,
+                  nodeId,
+                  color,
+                  width: 1.5,
+                }))
+              }
+              noneLabel="No outline"
+              onNone={() =>
+                editNodes(outlined, (nodeId) => ({
+                  type: "setOutline",
+                  slideId: slideId!,
+                  nodeId,
+                  color: null,
+                }))
+              }
+            />
+          )}
+          <DropdownMenu modal={false}>
+            <ToolbarMenuTrigger label="Arrange">
+              <LayersIcon />
+            </ToolbarMenuTrigger>
+            <DropdownMenuContent data-pptx-keep-selection="" aria-label="Arrange" className="w-48">
+              {ARRANGE.map(({ order, label, shortcut }) => (
+                <DropdownMenuItem key={order} onClick={() => run(() => reorder(order))}>
+                  {label}
+                  <DropdownMenuShortcut>
+                    <Shortcut keys={shortcut} />
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => run(duplicate)}>
+                Duplicate
+                <DropdownMenuShortcut>
+                  <Shortcut keys={["mod", "D"]} />
+                </DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() =>
+                  run(async () => {
+                    await remove();
+                    clear();
+                  })
+                }
+              >
+                Delete
+                <DropdownMenuShortcut>
+                  <Shortcut keys={["Delete"]} />
+                </DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      )}
+
+      {hasText && (
+        <>
+          <ToolbarSeparator />
+          <FontSelect
+            value={textStyle.fontFamily ?? null}
+            onChange={(fontFamily) => onFormat({ fontFamily })}
+          />
+          <ToolbarButton
+            label="Decrease font size"
+            onClick={() => onFormat({ fontSize: Math.max(1, (textStyle.fontSize ?? 18) - 1) })}
+          >
+            <MinusIcon />
+          </ToolbarButton>
+          <span className="w-7 text-center text-xs tabular-nums">
+            <span className="sr-only">Font size </span>
+            {textStyle.fontSize ?? "–"}
+          </span>
+          <ToolbarButton
+            label="Increase font size"
+            onClick={() => onFormat({ fontSize: (textStyle.fontSize ?? 18) + 1 })}
+          >
+            <PlusIcon />
+          </ToolbarButton>
+          <ToolbarSeparator />
+          {TEXT_TOGGLES.map(({ key, label, icon: Icon }) => (
+            <ToolbarButton
+              key={key}
+              label={label}
+              pressed={textStyle[key]}
+              onClick={() => onFormat({ [key]: !textStyle[key] })}
+            >
+              <Icon />
+            </ToolbarButton>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <ToolbarButton
-        label="Duplicate"
-        shortcut={["mod", "D"]}
-        disabled={nodes.length === 0}
-        onClick={() => run(duplicate)}
-      >
-        <CopyIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        label="Delete"
-        shortcut={["Delete"]}
-        disabled={nodes.length === 0}
-        onClick={() =>
-          run(async () => {
-            await remove();
-            clear();
-          })
-        }
-      >
-        <Trash2Icon className="text-destructive" />
-      </ToolbarButton>
+          <ColorMenu
+            label="Text color"
+            icon={BaselineIcon}
+            value={textStyle.color}
+            onSelect={(color) => onFormat({ color })}
+          />
+          <AlignMenu
+            value={textStyle.align}
+            onSelect={(align) => run(() => setParagraphStyle({ align }))}
+          />
+        </>
+      )}
 
       <ToolbarItem render={<PresentationZoomSelect className="ml-auto" aria-label="Zoom" />} />
     </Toolbar>
+  );
+}
+
+const SHAPES = [
+  { geometry: "rect", label: "Rectangle" },
+  { geometry: "roundRect", label: "Rounded rectangle" },
+  { geometry: "ellipse", label: "Oval" },
+  { geometry: "triangle", label: "Triangle" },
+  { geometry: "rtTriangle", label: "Right triangle" },
+  { geometry: "diamond", label: "Diamond" },
+  { geometry: "pentagon", label: "Pentagon" },
+  { geometry: "hexagon", label: "Hexagon" },
+  { geometry: "star5", label: "Star" },
+  { geometry: "heart", label: "Heart" },
+  { geometry: "chevron", label: "Chevron" },
+  { geometry: "wedgeRoundRectCallout", label: "Callout" },
+  { geometry: "rightArrow", label: "Right arrow" },
+  { geometry: "leftArrow", label: "Left arrow" },
+  { geometry: "upArrow", label: "Up arrow" },
+  { geometry: "downArrow", label: "Down arrow" },
+];
+
+const SHAPE_PREVIEW_SIZE = 18;
+
+function ShapeMenu({
+  disabled,
+  active,
+  onSelect,
+}: {
+  disabled: boolean;
+  active: boolean;
+  onSelect: (geometry: string) => void;
+}) {
+  return (
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label="Shape" disabled={disabled} active={active}>
+        <ShapesIcon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent
+        data-pptx-keep-selection=""
+        aria-label="Shape"
+        // The armed slide takes focus, so Escape disarms it.
+        finalFocus={false}
+        className="w-auto"
+      >
+        <div className="grid grid-cols-4 gap-0.5">
+          {SHAPES.map(({ geometry, label }) => (
+            <DropdownMenuItem
+              key={geometry}
+              aria-label={label}
+              title={label}
+              className="size-8 justify-center p-0"
+              onClick={() => onSelect(geometry)}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox={`-1 -1 ${SHAPE_PREVIEW_SIZE + 2} ${SHAPE_PREVIEW_SIZE + 2}`}
+                className="size-4.5 overflow-visible"
+              >
+                <path
+                  d={getPresetShapePath(geometry, SHAPE_PREVIEW_SIZE, SHAPE_PREVIEW_SIZE)}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </DropdownMenuItem>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function AlignMenu({
+  value,
+  onSelect,
+}: {
+  value: ParagraphAlign | null;
+  onSelect: (align: ParagraphAlign) => void;
+}) {
+  const current = ALIGNMENTS.find(({ align }) => align === value) ?? ALIGNMENTS[0];
+  return (
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label="Align">
+        <current.icon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Align" className="w-40">
+        <DropdownMenuRadioGroup
+          value={value ?? ""}
+          onValueChange={(align) => onSelect(align as ParagraphAlign)}
+        >
+          {ALIGNMENTS.map(({ align, label, icon: Icon }) => (
+            <DropdownMenuRadioItem key={align} value={align}>
+              <Icon />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

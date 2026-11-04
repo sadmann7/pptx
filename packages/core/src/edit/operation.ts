@@ -250,6 +250,21 @@ export interface AddTextBoxOperation {
   text?: string;
 }
 
+/**
+ * Insert a preset shape, styled from the theme like PowerPoint's: accent fill,
+ * a darker outline, and light centered text.
+ */
+export interface AddShapeOperation {
+  type: "addShape";
+  slideId: string;
+  /** Preset geometry (`a:prstGeom@prst`), e.g. "rect", "ellipse", "rightArrow". */
+  geometry: string;
+  /** Size in px. Defaults to a quarter of the slide's width, square. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+}
+
 /** Set a shape's or picture's outline. Omitted fields are left as they are. */
 export interface SetOutlineOperation {
   type: "setOutline";
@@ -305,6 +320,7 @@ export type EditOperation =
   | AddImageOperation
   | PasteNodesOperation
   | AddTextBoxOperation
+  | AddShapeOperation
   | SetOutlineOperation
   | BatchOperation;
 
@@ -362,6 +378,8 @@ export async function applyEdit(
       return applyPasteNodes(presentation, op);
     case "addTextBox":
       return applyAddTextBox(presentation, op);
+    case "addShape":
+      return applyAddShape(presentation, op);
     case "setOutline":
       return applySetOutline(presentation, op);
     case "batch":
@@ -1901,20 +1919,14 @@ async function applyPasteNodes(
 /** One line of 18pt text, plus the default insets. */
 const TEXT_BOX_HEIGHT = 40;
 
-function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditResult {
-  const sourcePackage = requirePkg(pres);
-  const slide = findSlide(pres, op.slideId);
-  materializeSlide(pres, slide);
-  const spTree = requireSpTree(pres, slide);
-  const doc = spTree.ownerDocument;
+type ElementBuilder = (
+  qualifiedName: string,
+  attrs?: Record<string, string>,
+  ...children: Node[]
+) => Element;
 
-  const size = op.size ?? { w: pres.width / 3, h: TEXT_BOX_HEIGHT };
-  const position = op.position ?? {
-    x: (pres.width - size.w) / 2,
-    y: (pres.height - size.h) / 2,
-  };
-  const id = nextShapeId(spTree);
-  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+function elementBuilder(doc: Document): ElementBuilder {
+  return (qualifiedName, attrs = {}, ...children) => {
     const element = doc.createElementNS(
       qualifiedName.startsWith("a:") ? A_NS : P_NS,
       qualifiedName,
@@ -1923,46 +1935,29 @@ function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditR
     for (const child of children) element.appendChild(child);
     return element;
   };
-  const text = doc.createElementNS(A_NS, "a:t");
-  text.textContent = op.text ?? "";
-  const paragraph = op.text
-    ? el(
-        "a:p",
-        {},
-        el("a:r", {}, el("a:rPr", { lang: "en-US" }), text),
-        el("a:endParaRPr", { lang: "en-US" }),
-      )
-    : el("a:p", {}, el("a:endParaRPr", { lang: "en-US" }));
-  const sp = el(
-    "p:sp",
+}
+
+function xfrm(el: ElementBuilder, position: NodePosition, size: NodeSize): Element {
+  return el(
+    "a:xfrm",
     {},
-    el(
-      "p:nvSpPr",
-      {},
-      el("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
-      el("p:cNvSpPr", { txBox: "1" }),
-      el("p:nvPr"),
-    ),
-    el(
-      "p:spPr",
-      {},
-      el(
-        "a:xfrm",
-        {},
-        el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
-        el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
-      ),
-      el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
-      el("a:noFill"),
-    ),
-    el(
-      "p:txBody",
-      {},
-      el("a:bodyPr", { wrap: "square", rtlCol: "0" }, el("a:spAutoFit")),
-      el("a:lstStyle"),
-      paragraph,
-    ),
+    el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+    el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
   );
+}
+
+/** Appends a new top-level shape built by `build`, given its id, to a slide. */
+function insertNewShape(
+  pres: PresentationData,
+  slideId: string,
+  build: (el: ElementBuilder, id: number) => Element,
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+
+  const sp = build(elementBuilder(spTree.ownerDocument), nextShapeId(spTree));
   const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst");
   insertChild(spTree, sp, extLst ?? null);
   const node = parseAddedNode(pres, slide, sp);
@@ -1978,6 +1973,102 @@ function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditR
       sourcePackage.markDirty(slide.id);
     },
   };
+}
+
+function centered(pres: PresentationData, size: NodeSize): NodePosition {
+  return { x: (pres.width - size.w) / 2, y: (pres.height - size.h) / 2 };
+}
+
+function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditResult {
+  const size = op.size ?? { w: pres.width / 3, h: TEXT_BOX_HEIGHT };
+  const position = op.position ?? centered(pres, size);
+  return insertNewShape(pres, op.slideId, (el, id) => {
+    const paragraph = op.text
+      ? el(
+          "a:p",
+          {},
+          el("a:r", {}, el("a:rPr", { lang: "en-US" }), el("a:t")),
+          el("a:endParaRPr", { lang: "en-US" }),
+        )
+      : el("a:p", {}, el("a:endParaRPr", { lang: "en-US" }));
+    const text = paragraph.getElementsByTagNameNS(A_NS, "t")[0];
+    if (text) text.textContent = op.text ?? "";
+    return el(
+      "p:sp",
+      {},
+      el(
+        "p:nvSpPr",
+        {},
+        el("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
+        el("p:cNvSpPr", { txBox: "1" }),
+        el("p:nvPr"),
+      ),
+      el(
+        "p:spPr",
+        {},
+        xfrm(el, position, size),
+        el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+        el("a:noFill"),
+      ),
+      el(
+        "p:txBody",
+        {},
+        el("a:bodyPr", { wrap: "square", rtlCol: "0" }, el("a:spAutoFit")),
+        el("a:lstStyle"),
+        paragraph,
+      ),
+    );
+  });
+}
+
+const PRESET_NAME = /^[a-zA-Z0-9]+$/;
+
+function applyAddShape(pres: PresentationData, op: AddShapeOperation): EditResult {
+  if (!PRESET_NAME.test(op.geometry)) {
+    throw new Error(`applyEdit: "${op.geometry}" is not a preset geometry name.`);
+  }
+  const side = pres.width / 4;
+  const size = op.size ?? { w: side, h: side };
+  const position = op.position ?? centered(pres, size);
+  const name = op.geometry.charAt(0).toUpperCase() + op.geometry.slice(1);
+  return insertNewShape(pres, op.slideId, (el, id) =>
+    el(
+      "p:sp",
+      {},
+      el(
+        "p:nvSpPr",
+        {},
+        el("p:cNvPr", { id: String(id), name: `${name} ${id - 1}` }),
+        el("p:cNvSpPr"),
+        el("p:nvPr"),
+      ),
+      el(
+        "p:spPr",
+        {},
+        xfrm(el, position, size),
+        el("a:prstGeom", { prst: op.geometry }, el("a:avLst")),
+      ),
+      el(
+        "p:style",
+        {},
+        el(
+          "a:lnRef",
+          { idx: "2" },
+          el("a:schemeClr", { val: "accent1" }, el("a:shade", { val: "50000" })),
+        ),
+        el("a:fillRef", { idx: "1" }, el("a:schemeClr", { val: "accent1" })),
+        el("a:effectRef", { idx: "0" }, el("a:schemeClr", { val: "accent1" })),
+        el("a:fontRef", { idx: "minor" }, el("a:schemeClr", { val: "lt1" })),
+      ),
+      el(
+        "p:txBody",
+        {},
+        el("a:bodyPr", { rtlCol: "0", anchor: "ctr" }),
+        el("a:lstStyle"),
+        el("a:p", {}, el("a:pPr", { algn: "ctr" }), el("a:endParaRPr", { lang: "en-US" })),
+      ),
+    ),
+  );
 }
 
 /** spPr children that come after `a:ln` in the schema sequence. */

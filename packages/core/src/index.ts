@@ -13,6 +13,7 @@ export type {
 export { applyEdit, copyNodes } from "./edit/operation";
 export type {
   AddImageOperation,
+  AddShapeOperation,
   AddTextBoxOperation,
   AddSlideOperation,
   BatchOperation,
@@ -59,6 +60,7 @@ export type {
   PresentationData,
 } from "./model/presentation";
 export type { LayoutData } from "./model/layout";
+export { getPresetShapePath } from "./geometry/preset";
 export { getPresentationFonts } from "./model/presentation-fonts";
 export type { PresentationFonts } from "./model/presentation-fonts";
 

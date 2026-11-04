@@ -6555,6 +6555,10 @@ export function getMultiPathPreset(
   return gen ? gen(w, h, adjustments) : null;
 }
 
+/**
+ * SVG path data for a preset geometry (`a:prstGeom@prst`) drawn in a `w` × `h`
+ * box, e.g. for a shape picker's previews. Unknown names draw a rectangle.
+ */
 export function getPresetShapePath(
   shapeType: string,
   w: number,

@@ -171,6 +171,19 @@ describe("useSelection", () => {
     expect(selection.current!.mode).toBe("idle");
   });
 
+  it("inserts a shape and selects it", async () => {
+    const { store, overlay, selection } = await renderEditor();
+
+    let nodeId: string | undefined;
+    await act(async () => {
+      nodeId = await selection.current!.insertShape("ellipse");
+    });
+    const shape = store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as ShapeNodeData;
+    expect(shape.presetGeometry).toBe("ellipse");
+    await waitFor(() => expect(selection.current!.nodeIds).toEqual([nodeId]));
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
   it("drops a selected copy that undo removed", async () => {
     const { store, selection } = await renderEditor();
     act(() => selection.current!.select(["2"]));

@@ -148,24 +148,23 @@ Must be placed inside `Presentation.Slide`.
 
 ### Interaction model
 
-| Action                                 | Behavior                         |
-| -------------------------------------- | -------------------------------- |
-| Click text box / placeholder           | Select + enter text edit mode    |
-| Click regular shape                    | Select                           |
-| Double-click regular shape             | Enter text edit mode             |
-| Type while shape selected              | Enter text edit mode             |
-| Drag shape                             | Move                             |
-| Drag border of text box (in text mode) | Move while keeping text mode     |
-| Drag resize handle                     | Resize                           |
-| Shift + drag corner handle             | Resize preserving aspect ratio   |
-| Ctrl/Cmd + A                           | Select all                       |
-| Shift / Ctrl / Cmd + click             | Toggle shape in/out of selection |
-| Drag empty canvas                      | Marquee select                   |
-| Delete / Backspace                     | Delete selected                  |
-| Arrow keys                             | Nudge (1 px; Shift = 10 px)      |
-| Ctrl/Cmd + Z                           | Undo                             |
-| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z   | Redo                             |
-| Escape                                 | Exit text mode → deselect        |
+| Action                                | Behavior                         |
+| ------------------------------------- | -------------------------------- |
+| Click shape                           | Select                           |
+| Click selected shape, or double-click | Enter text edit mode             |
+| Type while shape selected             | Enter text edit mode             |
+| Drag shape                            | Move                             |
+| Click or drag frame (in text mode)    | Leave text mode; select or move  |
+| Drag resize handle                    | Resize                           |
+| Shift + drag corner handle            | Resize preserving aspect ratio   |
+| Ctrl/Cmd + A                          | Select all                       |
+| Shift / Ctrl / Cmd + click            | Toggle shape in/out of selection |
+| Drag empty canvas                     | Marquee select                   |
+| Delete / Backspace                    | Delete selected                  |
+| Arrow keys                            | Nudge (1 px; Shift = 10 px)      |
+| Ctrl/Cmd + Z                          | Undo                             |
+| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z  | Redo                             |
+| Escape                                | Exit text mode → deselect        |
 
 Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
 
@@ -174,7 +173,7 @@ Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in t
 Control the accent color with a CSS variable:
 
 ```css
---presentation-selection: #2563eb; /* default */
+--presentation-selection: #1a73e8; /* default */
 ```
 
 ```tsx

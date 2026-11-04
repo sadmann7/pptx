@@ -43,7 +43,7 @@ export type {
 export type { ComponentRenderFn, RenderProp } from "./render";
 
 export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection/channel";
-export type { UseSelectionResult } from "./selection/channel";
+export type { DrawTool, UseSelectionResult } from "./selection/channel";
 export type { ActiveTextStyle } from "./selection/text-range";
 
 export type {
@@ -66,6 +66,7 @@ export type {
 
 export type {
   AddImageOperation,
+  AddShapeOperation,
   AddTextBoxOperation,
   AddSlideOperation,
   BatchOperation,
@@ -100,4 +101,4 @@ export type {
   TextStyle,
 } from "@diceui/pptx-core";
 
-export { copyNodes, getPresentationFonts } from "@diceui/pptx-core";
+export { copyNodes, getPresentationFonts, getPresetShapePath } from "@diceui/pptx-core";

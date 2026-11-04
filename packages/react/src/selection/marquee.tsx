@@ -10,16 +10,18 @@ const MARQUEE_NAME = "Presentation.Marquee";
 export interface MarqueeProps extends StatefulPrimitiveProps<"div", Record<string, never>> {}
 
 /**
- * The rubber band drawn while dragging across empty canvas to select.
+ * The rubber band drawn while dragging across empty canvas to select, or
+ * while drawing a new text box or shape with a draw tool.
  *
- * Place inside `Presentation.Selection`. Carries `data-marquee`.
+ * Place inside `Presentation.Selection`. Carries `data-marquee`, and
+ * `data-draw` while drawing.
  */
 export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function Marquee(
   { render, className, style, ...marqueeProps },
   forwardedRef,
 ) {
   const { state, frameRef } = useSelectionParts(MARQUEE_NAME);
-  if (state.mode !== "marquee") return null;
+  if (state.mode !== "marquee" && state.mode !== "draw") return null;
   if (!isBandDrag(state.startX, state.startY, state.curX, state.curY)) return null;
   // State coordinates are viewport-relative; the frame is the positioning context.
   const origin = frameRef.current?.getBoundingClientRect();
@@ -34,6 +36,7 @@ export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function M
       props: [
         {
           "data-marquee": "",
+          "data-draw": state.mode === "draw" ? "" : undefined,
           style: {
             position: "absolute",
             left: Math.min(state.startX, state.curX) - origin.left,

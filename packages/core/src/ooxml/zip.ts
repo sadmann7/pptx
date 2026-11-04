@@ -504,7 +504,9 @@ async function readPptxInternal(
     }
 
     // --- Themes ---
-    if (/^ppt\/theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
+    // A master finds its theme by relationship, so some generators nest it
+    // (ppt/slideMasters/theme/theme2.xml); match a theme/ folder at any depth.
+    if (/^ppt\/(?:[^/]+\/)*theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.themes,
         normalizedPath,
@@ -514,7 +516,7 @@ async function readPptxInternal(
     }
 
     // --- Theme Overrides (used by chart parts) ---
-    if (/^ppt\/theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
+    if (/^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
       if (result.themeOverrides) {
         setPathMapEntry(
           result.themeOverrides,

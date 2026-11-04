@@ -87,6 +87,22 @@ describe("readPptx media and auxiliary parts", () => {
     expect(files.slides.has("ppt/slides/charts/chart1.xml")).toBe(false);
   });
 
+  it("categorizes themes nested in another part's folder (e.g. ppt/slideMasters/theme)", async () => {
+    const themeXml = `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`;
+    const files = await readPptx(
+      await buildCustomPptx({
+        extraFiles: {
+          "ppt/slideMasters/theme/theme2.xml": themeXml,
+          "ppt/slideMasters/theme/themeOverride1.xml": themeXml,
+        },
+      }),
+    );
+    expect(files.themes.get("ppt/slideMasters/theme/theme2.xml")).toBe(themeXml);
+    expect(files.themes.has("ppt/slideMasters/theme/themeOverride1.xml")).toBe(false);
+    expect(files.themeOverrides?.has("ppt/slideMasters/theme/themeOverride1.xml")).toBe(true);
+    expect(files.slideMasters.size).toBe(1);
+  });
+
   it("leaves uncategorized parts (e.g. notesSlides) out of the result", async () => {
     const files = await readPptx(
       await buildCustomPptx({

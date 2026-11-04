@@ -24,6 +24,7 @@ import {
 import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
+import type { DrawTool } from "./channel";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { SelectionPartsContext } from "./context";
@@ -157,8 +158,8 @@ export type InternalState =
       dy: number;
       /** True once movement exceeded the drag threshold; gates the commit. */
       moved: boolean;
-      /** Move started from text-mode border drag: return to text mode after. */
-      resumeText?: boolean;
+      /** The pressed shape was already the only one selected: a click edits its text. */
+      wasSelected?: boolean;
       /**
        * Selection to apply if this gesture turns out to be a click rather than
        * a drag. Set only for Shift/Ctrl presses, where a click toggles the
@@ -167,6 +168,15 @@ export type InternalState =
       clickIds?: string[];
       /** Smart guides for what the drag snapped to. */
       guides?: SnapGuideData[];
+    }
+  | {
+      /** Dragging out a new text box or shape with an armed draw tool. */
+      mode: "draw";
+      tool: DrawTool;
+      startX: number;
+      startY: number;
+      curX: number;
+      curY: number;
     }
   | {
       mode: "marquee";
@@ -236,7 +246,7 @@ export interface SelectionChangeEvent {
 /** The current interaction state of the edit layer. */
 export interface SelectionState {
   /** Interaction mode of the selection. */
-  mode: "idle" | "selected" | "move" | "resize" | "rotate" | "text" | "marquee";
+  mode: "idle" | "selected" | "move" | "resize" | "rotate" | "text" | "marquee" | "draw";
 
   /**
    * The slide node currently selected, or `null` when nothing is selected.
@@ -364,6 +374,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const rootContext = React.useContext(RootContext);
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
+  const [drawTool, setDrawTool] = React.useState<DrawTool | null>(null);
 
   const stateRef = useLatestRef(state);
 
@@ -525,18 +536,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function nodeHasText(nodeId: string): boolean {
     const node = slide!.nodes.find((node) => node.id === nodeId);
     return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
-  }
-
-  /**
-   * PowerPoint: a single click starts text editing only on dedicated text
-   * boxes and placeholders. Regular shapes with text select on click and
-   * need a double click (or typing) to edit.
-   */
-  function nodeEditsOnClick(nodeId: string): boolean {
-    const node = slide!.nodes.find((node) => node.id === nodeId);
-    if (node?.nodeType !== "shape") return false;
-    const shape = node as ShapeNodeData;
-    return Boolean(shape.textBody) && (Boolean(shape.isTextBox) || Boolean(shape.placeholder));
   }
 
   function commitEdit<T>(
@@ -1007,11 +1006,34 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     );
   }
 
+  /**
+   * An empty text box goes away once editing moves elsewhere, as in
+   * PowerPoint and Google Slides. Returns whether it was removed.
+   */
+  function removeIfEmptyTextBox(current: Extract<InternalState, { mode: "text" }>): boolean {
+    const { nodeId, editingElement } = current;
+    const node = slide?.nodes.find((n) => n.id === nodeId);
+    if (!slideId || node?.nodeType !== "shape" || !(node as ShapeNodeData).isTextBox) return false;
+    const readBack = readBackTextBody(editingElement);
+    if (readBack.some((paragraph) => paragraph.runs.some((run) => run.text.length > 0))) {
+      return false;
+    }
+    editingElement.contentEditable = "false";
+    editingElement.style.cursor = "";
+    commitEdit(
+      () => store.edit({ type: "deleteNode", slideId, nodeId }),
+      undefined,
+      () => onNodeDelete?.(nodeId),
+      (error) => onNodeDelete?.(nodeId, error),
+    );
+    return true;
+  }
+
   function doExitTextMode(
     current: Extract<InternalState, { mode: "text" }>,
     nextNodeId?: string | null,
   ): void {
-    commitTextEdits(current);
+    if (nextNodeId === undefined || !removeIfEmptyTextBox(current)) commitTextEdits(current);
 
     if (nextNodeId === null) {
       setState({ mode: "idle" });
@@ -1099,7 +1121,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // Ids of nodes still on the slide: an undo can remove a selected copy.
       nodeIds: selectedNodesRef.current.map((node) => node.id),
       textStyle: readTextStyle(),
+      drawTool,
     });
+  }
+
+  function startDrawing(tool: DrawTool | null): void {
+    const current = stateRef.current;
+    if (current.mode === "text") commitTextEdits(current);
+    setState({ mode: "idle" });
+    setDrawTool(tool);
+    rootRef.current?.focus({ preventScroll: true });
+  }
+
+  /** Places what a draw gesture drew: dragged out to `rect`, or clicked at `at`. */
+  async function insertDrawn(tool: DrawTool, rect: Rect | null, at: NodePosition): Promise<void> {
+    if (!slideId) return;
+    const placement = rect
+      ? { position: { x: rect.x, y: rect.y }, size: { w: rect.w, h: rect.h } }
+      : { position: at };
+    const { createdNodeIds } = await store.edit(
+      tool.type === "textBox"
+        ? { type: "addTextBox", slideId, ...placement }
+        : { type: "addShape", slideId, geometry: tool.geometry, ...placement },
+    );
+    const nodeId = createdNodeIds?.[0];
+    if (!nodeId) return;
+    if (tool.type === "textBox") editTextRef.current(nodeId);
+    else selectNodesRef.current([nodeId], true);
   }
 
   function editText(nodeId: string): void {
@@ -1109,11 +1157,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     resumeTextEditing(nodeId);
   }
 
-  function selectNodes(nodeIds: string[]): void {
+  function selectNodes(nodeIds: string[], focus = false): void {
     const ids = nodeIds.filter((id) => slide?.nodes.some((node) => node.id === id));
     const current = stateRef.current;
     if (current.mode === "text") commitTextEdits(current);
     setState(ids.length > 0 ? { mode: "selected", nodeIds: ids } : { mode: "idle" });
+    if (focus) rootRef.current?.focus({ preventScroll: true });
   }
 
   /**
@@ -1196,9 +1245,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const enterTextModeRef = useLatestRef(enterTextMode);
   const commitTextEditsRef = useLatestRef(commitTextEdits);
   const doExitTextModeRef = useLatestRef(doExitTextMode);
+  const removeIfEmptyTextBoxRef = useLatestRef(removeIfEmptyTextBox);
   const publishSelectionRef = useLatestRef(publishSelection);
   const selectNodesRef = useLatestRef(selectNodes);
   const editTextRef = useLatestRef(editText);
+  const startDrawingRef = useLatestRef(startDrawing);
   const duplicateSelectionRef = useLatestRef(duplicateSelection);
   const deleteSelectionRef = useLatestRef(deleteSelection);
   const reorderSelectionRef = useLatestRef(reorderSelection);
@@ -1207,8 +1258,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   React.useEffect(
     () =>
       selectionChannel.register({
-        select: (nodeIds) => selectNodesRef.current(nodeIds),
+        select: (nodeIds, focus) => selectNodesRef.current(nodeIds, focus),
         editText: (nodeId) => editTextRef.current(nodeId),
+        startDrawing: (tool) => startDrawingRef.current(tool),
         duplicate: () => duplicateSelectionRef.current(),
         remove: () => deleteSelectionRef.current(),
         reorder: (order) => reorderSelectionRef.current(order),
@@ -1219,6 +1271,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       selectionChannel,
       selectNodesRef,
       editTextRef,
+      startDrawingRef,
       duplicateSelectionRef,
       deleteSelectionRef,
       reorderSelectionRef,
@@ -1234,7 +1287,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     publishSelectionRef.current();
     const frameId = requestAnimationFrame(() => publishSelectionRef.current());
     return () => cancelAnimationFrame(frameId);
-  }, [selectionKey, mode, slideRevision, publishSelectionRef]);
+  }, [selectionKey, mode, slideRevision, drawTool, publishSelectionRef]);
 
   // In text mode, follow the caret: remember the range for toolbar presses,
   // and republish so the toolbar's toggles track the text under the caret.
@@ -1294,7 +1347,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         // mousedown focus change from blurring the overlay; without it,
         // typing right after this click would go nowhere.
         event.preventDefault();
-        commitTextEditsRef.current(currentState);
+        if (!removeIfEmptyTextBoxRef.current(currentState)) {
+          commitTextEditsRef.current(currentState);
+        }
         rootRef.current?.setPointerCapture(event.pointerId);
         rootRef.current?.focus({ preventScroll: true });
         setState({
@@ -1382,7 +1437,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
     };
-  }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef]);
+  }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef, removeIfEmptyTextBoxRef]);
 
   const copySelectionRef = useLatestRef(copySelection);
   const pasteClipboardRef = useLatestRef(pasteClipboard);
@@ -1489,6 +1544,25 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [slideRevision, stateRef, enterTextModeRef, publishSelectionRef]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+    if (drawTool && !isTextMode) {
+      if (event.button !== 0) {
+        setDrawTool(null);
+        return;
+      }
+      event.preventDefault();
+      clearDocumentSelection();
+      rootRef.current?.setPointerCapture(event.pointerId);
+      rootRef.current?.focus();
+      setState({
+        mode: "draw",
+        tool: drawTool,
+        startX: event.clientX,
+        startY: event.clientY,
+        curX: event.clientX,
+        curY: event.clientY,
+      });
+      return;
+    }
     if (event.button === 2 && !isTextMode) {
       // PowerPoint: right-clicking a shape outside the selection selects it, so
       // a context menu acts on what was clicked. Empty canvas clears it.
@@ -1578,6 +1652,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // starts, `nodeIds` has already absorbed this shape and can no longer
       // tell whether the click should add it or take it back out.
       clickIds: additive ? toggleSelection(selectedIds, nodeId) : undefined,
+      wasSelected: selectedIds.length === 1 && selectedIds[0] === nodeId,
     });
   }
 
@@ -1587,12 +1662,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     nodeId: string,
   ): void {
     debugLog("grip pointerdown", { grip, nodeId, mode: state.mode, button: event.button });
-    if (event.button !== 0 || !selectedIds.includes(nodeId) || isTextMode) return;
+    if (event.button !== 0 || !selectedIds.includes(nodeId)) return;
     event.stopPropagation();
     // See onPointerDown: stop selection extension / native drag initiation.
     event.preventDefault();
+    // Handles show while editing text, as in Google Slides: pressing one ends it.
+    if (state.mode === "text") commitTextEdits(state);
     clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
+    rootRef.current?.focus({ preventScroll: true });
     setState({
       mode: "resize",
       nodeIds: selectedIds,
@@ -1613,15 +1691,17 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const rotateOriginRef = React.useRef<Map<string, string>>(new Map());
 
   function onRotatePointerDown(event: React.PointerEvent<HTMLDivElement>, nodeId: string): void {
-    if (event.button !== 0 || !selectedIds.includes(nodeId) || isTextMode) return;
+    if (event.button !== 0 || !selectedIds.includes(nodeId)) return;
     const node = selectedNodes.find((selected) => selected.id === nodeId);
     const frame = frameRef.current?.getBoundingClientRect();
     if (!node || !frame) return;
     event.stopPropagation();
     // See onPointerDown: stop selection extension / native drag initiation.
     event.preventDefault();
+    if (state.mode === "text") commitTextEdits(state);
     clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
+    rootRef.current?.focus({ preventScroll: true });
 
     rotateOriginRef.current = new Map(
       selectedNodes.map((selected) => [
@@ -1667,6 +1747,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * frame to move the box without leaving your edits behind). Commits the
    * text first, then starts a move drag.
    */
+  /**
+   * Pressing the frame of a shape being edited ends the editing, like Google
+   * Slides: a click leaves the shape selected, and a drag moves it.
+   */
   function onBorderPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || state.mode !== "text") return;
     event.preventDefault();
@@ -1686,7 +1770,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       dx: 0,
       dy: 0,
       moved: false,
-      resumeText: true,
     });
   }
 
@@ -1707,6 +1790,18 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (state.mode === "marquee") {
       setState({ ...state, curX: event.clientX, curY: event.clientY });
+      return;
+    }
+
+    if (state.mode === "draw") {
+      let curX = event.clientX;
+      let curY = event.clientY;
+      if (event.shiftKey) {
+        const side = Math.max(Math.abs(curX - state.startX), Math.abs(curY - state.startY));
+        curX = state.startX + Math.sign(curX - state.startX || 1) * side;
+        curY = state.startY + Math.sign(curY - state.startY || 1) * side;
+      }
+      setState({ ...state, curX, curY });
       return;
     }
 
@@ -1781,6 +1876,23 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   function onPointerUp(): void {
+    if (state.mode === "draw") {
+      const { tool, startX, startY, curX, curY } = state;
+      setDrawTool(null);
+      setState({ mode: "idle" });
+      const a = clientToSlide(startX, startY);
+      const b = clientToSlide(curX, curY);
+      const rect: Rect | null = isBandDrag(startX, startY, curX, curY)
+        ? {
+            x: Math.min(a.x, b.x),
+            y: Math.min(a.y, b.y),
+            w: Math.abs(a.x - b.x),
+            h: Math.abs(a.y - b.y),
+          }
+        : null;
+      runShortcut(() => insertDrawn(tool, rect, a));
+      return;
+    }
     if (state.mode === "marquee") {
       const { startX, startY, curX, curY, baseIds } = state;
       if (!isBandDrag(startX, startY, curX, curY)) {
@@ -1812,7 +1924,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const nextIds = mergeSelection(baseIds, contained);
       setState(nextIds.length > 0 ? { mode: "selected", nodeIds: nextIds } : { mode: "idle" });
     } else if (state.mode === "move") {
-      const { nodeIds, primaryId, dx, dy, moved, resumeText, clickIds } = state;
+      const { nodeIds, primaryId, dx, dy, moved, clickIds, wasSelected } = state;
 
       if (moved && selectedNodes.length > 0) {
         const movingNodes = selectedNodes;
@@ -1851,7 +1963,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           },
           () => {
             for (const id of nodeIds) onNodeTransform?.(id);
-            if (resumeText) resumeTextEditing(primaryId);
           },
           (error) => {
             for (const id of nodeIds) onNodeTransform?.(id, error);
@@ -1866,20 +1977,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           }
         }
 
-        // Text boxes / placeholders → edit immediately. Everything else
-        // (regular shapes, even with text) → select; they edit on
-        // double-click or by typing. Clicking a member of a multi-selection
-        // without dragging collapses the selection to it (PowerPoint).
+        // Like Google Slides, a click selects; clicking the selected shape
+        // again edits its text (as do a double-click and typing). Clicking a
+        // member of a multi-selection without dragging collapses the
+        // selection to it.
         if (clickIds) {
           // Shift/Ctrl+click: toggle only, never open the caret.
           setState(
             clickIds.length > 0 ? { mode: "selected", nodeIds: clickIds } : { mode: "idle" },
           );
-        } else if (resumeText) {
-          // Border click without drag: back to editing (caret at end). The
-          // text commit may re-render the slide, so wait for the new DOM.
-          resumeTextEditing(primaryId);
-        } else if (nodeEditsOnClick(primaryId)) {
+        } else if (wasSelected && nodeHasText(primaryId)) {
           enterTextMode(primaryId, state.startX, state.startY);
         } else {
           setState({ mode: "selected", nodeIds: [primaryId] });
@@ -1995,6 +2102,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     } else if (state.mode === "rotate") {
       restoreRotation();
       setState({ mode: "selected", nodeIds: state.nodeIds });
+    } else if (state.mode === "draw") {
+      setState({ mode: "idle" });
     } else if (state.mode === "marquee") {
       const { baseIds } = state;
       setState(baseIds.length > 0 ? { mode: "selected", nodeIds: baseIds } : { mode: "idle" });
@@ -2174,6 +2283,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // level) so they survive the slide-change remount of this component.
     if (isTextMode) return;
 
+    if (drawTool && event.key === "Escape") {
+      event.preventDefault();
+      setDrawTool(null);
+      return;
+    }
+
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
@@ -2343,11 +2458,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             // A drag captures the pointer onto the overlay, so the handle's
             // cursor has to come along or it reverts mid-drag.
             cursor:
-              state.mode === "rotate"
-                ? ROTATE_CURSOR
-                : state.mode === "resize"
-                  ? getGripCursor(state.grip, grippedNode?.rotation ?? 0)
-                  : undefined,
+              drawTool || state.mode === "draw"
+                ? "crosshair"
+                : state.mode === "rotate"
+                  ? ROTATE_CURSOR
+                  : state.mode === "resize"
+                    ? getGripCursor(state.grip, grippedNode?.rotation ?? 0)
+                    : undefined,
             outline: "none",
             touchAction: "none",
           },
@@ -2430,16 +2547,18 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 const DEFAULT_PARTS = (
   <>
     <SelectionBox
-      style={({ mode }) => ({
-        boxShadow: `0 0 0 ${mode === "text" ? "2" : "1.5"}px var(--presentation-selection, #2563eb)`,
-      })}
+      style={{
+        // Centered on the edge, over the shape's own outline.
+        outline: "2px solid var(--presentation-selection, #1a73e8)",
+        outlineOffset: -1,
+      }}
     >
       <ResizeHandle
         style={{
           width: 9,
           height: 9,
           background: "#fff",
-          border: "1.5px solid var(--presentation-selection, #2563eb)",
+          border: "1.5px solid var(--presentation-selection, #1a73e8)",
           borderRadius: 2,
         }}
       />
@@ -2448,7 +2567,7 @@ const DEFAULT_PARTS = (
           width: 10,
           height: 10,
           background: "#fff",
-          border: "1.5px solid var(--presentation-selection, #2563eb)",
+          border: "1.5px solid var(--presentation-selection, #1a73e8)",
           borderRadius: "50%",
         }}
       />
@@ -2456,8 +2575,8 @@ const DEFAULT_PARTS = (
     <SnapGuide style={{ background: "var(--presentation-snap-guide, #f43f5e)" }} />
     <Marquee
       style={{
-        border: "1px solid var(--presentation-selection, #2563eb)",
-        background: "color-mix(in srgb, var(--presentation-selection, #2563eb) 10%, transparent)",
+        border: "1px solid var(--presentation-selection, #1a73e8)",
+        background: "color-mix(in srgb, var(--presentation-selection, #1a73e8) 10%, transparent)",
       }}
     />
   </>
