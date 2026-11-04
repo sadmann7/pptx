@@ -30,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@pptx/ui/components/dropdown-menu";
 import {
@@ -40,6 +41,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@pptx/ui/components/empty";
+import { Kbd, KbdGroup } from "@pptx/ui/components/kbd";
 import {
   Presentation,
   PresentationContent,
@@ -69,6 +71,7 @@ import {
   ToolbarSeparator,
 } from "@pptx/ui/components/toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/tooltip";
+import { useIsMac } from "@pptx/ui/hooks/use-is-mac";
 import { cn } from "@pptx/ui/lib/utils";
 import {
   AArrowDownIcon,
@@ -140,11 +143,11 @@ const TEXT_TOGGLES = [
 ] as const;
 
 const ARRANGE = [
-  { order: "front", label: "Bring to front" },
-  { order: "forward", label: "Bring forward" },
-  { order: "backward", label: "Send backward" },
-  { order: "back", label: "Send to back" },
-] as const satisfies readonly { order: NodeOrder; label: string }[];
+  { order: "front", label: "Bring to front", shortcut: ["mod", "shift", "]"] },
+  { order: "forward", label: "Bring forward", shortcut: ["mod", "]"] },
+  { order: "backward", label: "Send backward", shortcut: ["mod", "["] },
+  { order: "back", label: "Send to back", shortcut: ["mod", "shift", "["] },
+] as const satisfies readonly { order: NodeOrder; label: string; shortcut: readonly string[] }[];
 
 /** Offered after the deck's own fonts. */
 const COMMON_FONTS = ["Arial", "Calibri", "Georgia", "Helvetica", "Times New Roman", "Verdana"];
@@ -249,10 +252,25 @@ function EditorEmpty({ fileInputId }: { fileInputId: string }) {
   );
 }
 
+const APPLE_KEYS: Record<string, string> = { mod: "⌘", shift: "⇧", alt: "⌥" };
+const OTHER_KEYS: Record<string, string> = { mod: "Ctrl", shift: "Shift", alt: "Alt" };
+
+function Shortcut({ keys, className }: { keys: readonly string[]; className?: string }) {
+  const isMac = useIsMac();
+  const names = isMac ? APPLE_KEYS : OTHER_KEYS;
+  return (
+    <KbdGroup className={className}>
+      {keys.map((key) => (
+        <Kbd key={key}>{names[key] ?? key}</Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
+
 interface ToolbarButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
-  /** Shown in the tooltip after the label. */
-  shortcut?: string;
+  /** Keys shown in the tooltip; `"mod"` is ⌘ on Apple platforms and Ctrl elsewhere. */
+  shortcut?: string[];
   /** Makes the button a toggle, announced as pressed or not. */
   pressed?: boolean;
 }
@@ -284,7 +302,7 @@ function ToolbarButton({
       />
       <TooltipContent>
         {label}
-        {shortcut && <span className="ml-1.5 text-muted-foreground">{shortcut}</span>}
+        {shortcut && <Shortcut keys={shortcut} className="ml-1.5" />}
       </TooltipContent>
     </Tooltip>
   );
@@ -501,10 +519,20 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
       </ToolbarButton>
       <ToolbarSeparator />
 
-      <ToolbarButton label="Undo" shortcut="Ctrl/⌘Z" disabled={!canUndo} onClick={() => undo()}>
+      <ToolbarButton
+        label="Undo"
+        shortcut={["mod", "Z"]}
+        disabled={!canUndo}
+        onClick={() => undo()}
+      >
         <Undo2Icon />
       </ToolbarButton>
-      <ToolbarButton label="Redo" shortcut="Ctrl/⌘⇧Z" disabled={!canRedo} onClick={() => run(redo)}>
+      <ToolbarButton
+        label="Redo"
+        shortcut={["mod", "shift", "Z"]}
+        disabled={!canRedo}
+        onClick={() => run(redo)}
+      >
         <Redo2Icon />
       </ToolbarButton>
       <ToolbarSeparator />
@@ -654,16 +682,19 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
           <LayersIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent data-pptx-keep-selection="" aria-label="Arrange" className="w-44">
-          {ARRANGE.map(({ order, label }) => (
+          {ARRANGE.map(({ order, label, shortcut }) => (
             <DropdownMenuItem key={order} onClick={() => run(() => reorder(order))}>
               {label}
+              <DropdownMenuShortcut>
+                <Shortcut keys={shortcut} />
+              </DropdownMenuShortcut>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
       <ToolbarButton
         label="Duplicate"
-        shortcut="Ctrl/⌘D"
+        shortcut={["mod", "D"]}
         disabled={nodes.length === 0}
         onClick={() => run(duplicate)}
       >
@@ -671,7 +702,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
       </ToolbarButton>
       <ToolbarButton
         label="Delete"
-        shortcut="Del"
+        shortcut={["Delete"]}
         disabled={nodes.length === 0}
         onClick={() =>
           run(async () => {
