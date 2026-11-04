@@ -68,7 +68,7 @@ export interface ShapeNodeData extends BaseNodeData {
 /**
  * Parses a single text paragraph (`a:p`).
  */
-function parseParagraph(pNode: SafeXmlNode): TextParagraph {
+export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   const pPr = pNode.child("pPr");
   const level = pPr.numAttr("lvl") ?? 0;
 

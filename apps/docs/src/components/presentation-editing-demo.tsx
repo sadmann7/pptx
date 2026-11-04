@@ -2,8 +2,14 @@
 
 import * as React from "react";
 
-import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, useHistory, usePresentation } from "@diceui/pptx";
+import type { PresentationStore, TextStyle } from "@diceui/pptx";
+import {
+  useCreatePresentationStore,
+  useHistory,
+  usePresentation,
+  useSelection,
+  useSlide,
+} from "@diceui/pptx";
 import type { DragEndEvent, DragStartEvent, DropAnimation } from "@dnd-kit/core";
 import {
   DndContext,
@@ -36,7 +42,21 @@ import {
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@pptx/ui/components/tooltip";
-import { Redo2Icon, Undo2Icon } from "lucide-react";
+import {
+  AArrowDownIcon,
+  AArrowUpIcon,
+  BoldIcon,
+  ItalicIcon,
+  PlusIcon,
+  Redo2Icon,
+  StrikethroughIcon,
+  TextAlignCenterIcon,
+  TextAlignEndIcon,
+  TextAlignJustifyIcon,
+  TextAlignStartIcon,
+  UnderlineIcon,
+  Undo2Icon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
@@ -73,9 +93,10 @@ export function PresentationEditingDemo() {
   }, []);
 
   return (
-    <div className="not-prose flex h-100 flex-col overflow-hidden rounded-lg border">
+    <div className="not-prose flex h-[calc(100dvh-(--spacing(32)))] flex-col overflow-hidden rounded-lg border">
       <PresentationProvider store={store}>
         <PresentationToolbar store={store} />
+        <FormattingToolbar store={store} />
         <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
@@ -162,6 +183,127 @@ function PresentationToolbar({ store }: { store: PresentationStore }) {
         <TooltipContent>Redo</TooltipContent>
       </Tooltip>
       <PresentationZoomSelect />
+    </div>
+  );
+}
+
+const TEXT_COLORS = ["#111827", "#DC2626", "#2563EB", "#16A34A"];
+
+const ALIGNMENTS = [
+  { align: "left", label: "Align left", icon: TextAlignStartIcon },
+  { align: "center", label: "Align center", icon: TextAlignCenterIcon },
+  { align: "right", label: "Align right", icon: TextAlignEndIcon },
+  { align: "justify", label: "Justify", icon: TextAlignJustifyIcon },
+] as const;
+
+/**
+ * Formats the selected shapes, or the selected text while editing. The
+ * `data-pptx-keep-selection` attribute keeps pressing it from clearing the
+ * selection or ending text editing.
+ */
+function FormattingToolbar({ store }: { store: PresentationStore }) {
+  const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
+  const { slideId, goTo } = useSlide();
+  const disabled = !textStyle;
+
+  function onFormat(style: TextStyle) {
+    setTextStyle(style).catch(() => toast.error("Formatting failed"));
+  }
+
+  function onFontSizeStep(step: number) {
+    onFormat({ fontSize: Math.max(1, (textStyle?.fontSize ?? 18) + step) });
+  }
+
+  async function onAddSlide() {
+    try {
+      const { createdSlideId } = await store.edit({
+        type: "addSlide",
+        afterSlideId: slideId ?? undefined,
+      });
+      if (createdSlideId) goTo(createdSlideId);
+    } catch {
+      toast.error("Could not add a slide");
+    }
+  }
+
+  const toggles = [
+    { key: "bold", label: "Bold", icon: BoldIcon },
+    { key: "italic", label: "Italic", icon: ItalicIcon },
+    { key: "underline", label: "Underline", icon: UnderlineIcon },
+    { key: "strikethrough", label: "Strikethrough", icon: StrikethroughIcon },
+  ] as const;
+
+  return (
+    <div data-pptx-keep-selection="" className="flex items-center gap-1 border-b p-1.5">
+      <Button variant="ghost" size="sm" onClick={() => void onAddSlide()}>
+        <PlusIcon />
+        New slide
+      </Button>
+      <div className="mx-1 h-5 w-px bg-border" />
+      {toggles.map(({ key, label, icon: Icon }) => (
+        <Button
+          key={key}
+          aria-label={label}
+          aria-pressed={textStyle?.[key] ?? false}
+          variant={textStyle?.[key] ? "secondary" : "ghost"}
+          size="icon-sm"
+          disabled={disabled}
+          onClick={() => onFormat({ [key]: !textStyle?.[key] })}
+        >
+          <Icon />
+        </Button>
+      ))}
+      <div className="mx-1 h-5 w-px bg-border" />
+      <Button
+        aria-label="Decrease font size"
+        variant="ghost"
+        size="icon-sm"
+        disabled={disabled}
+        onClick={() => onFontSizeStep(-2)}
+      >
+        <AArrowDownIcon />
+      </Button>
+      <span className="w-8 text-center text-xs text-muted-foreground tabular-nums">
+        {textStyle?.fontSize ?? "–"}
+      </span>
+      <Button
+        aria-label="Increase font size"
+        variant="ghost"
+        size="icon-sm"
+        disabled={disabled}
+        onClick={() => onFontSizeStep(2)}
+      >
+        <AArrowUpIcon />
+      </Button>
+      <div className="mx-1 h-5 w-px bg-border" />
+      {TEXT_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          aria-label={`Text color ${color}`}
+          aria-pressed={textStyle?.color === color}
+          disabled={disabled}
+          className="size-5 rounded-full border ring-offset-1 ring-offset-background disabled:opacity-50 aria-pressed:ring-2 aria-pressed:ring-ring"
+          style={{ backgroundColor: color }}
+          onClick={() => onFormat({ color })}
+        />
+      ))}
+      <div className="mx-1 h-5 w-px bg-border" />
+      {ALIGNMENTS.map(({ align, label, icon: Icon }) => (
+        <Button
+          key={align}
+          aria-label={label}
+          aria-pressed={textStyle?.align === align}
+          variant={textStyle?.align === align ? "secondary" : "ghost"}
+          size="icon-sm"
+          disabled={disabled}
+          onClick={() =>
+            void setParagraphStyle({ align }).catch(() => toast.error("Formatting failed"))
+          }
+        >
+          <Icon />
+        </Button>
+      ))}
     </div>
   );
 }

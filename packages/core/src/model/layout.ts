@@ -19,6 +19,8 @@ export interface PlaceholderEntry {
 }
 
 export interface LayoutData {
+  /** Display name from `p:cSld/@name` (e.g. "Title and Content"). */
+  name?: string;
   colorMapOverride?: Map<string, string>;
   background?: SafeXmlNode;
   placeholders: PlaceholderEntry[];
@@ -208,6 +210,7 @@ export function parseLayout(root: SafeXmlNode): LayoutData {
   const showMasterSp = parseDefaultTrueBoolAttr(root.attr("showMasterSp"));
 
   return {
+    name: cSld.attr("name") || undefined,
     colorMapOverride,
     background,
     placeholders,

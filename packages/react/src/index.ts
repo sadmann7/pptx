@@ -37,6 +37,10 @@ export type {
 
 export type { ComponentRenderFn, RenderProp } from "./render";
 
+export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection-channel";
+export type { UseSelectionResult } from "./selection-channel";
+export type { ActiveTextStyle } from "./text-range";
+
 export type {
   AutoFitPadding,
   EditEvent,
@@ -56,18 +60,28 @@ export type {
 } from "./store";
 
 export type {
+  AddSlideOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
   DuplicateSlideOperation,
   EditOperation,
   EditResult,
+  LayoutData,
   MoveSlideOperation,
+  ParagraphAlign,
+  ParagraphStyle,
   PresentationData,
   SetNodeTransformOperation,
+  SetParagraphStyleOperation,
+  SetSlideBackgroundOperation,
   SetSolidFillOperation,
   SetTextBodyOperation,
   SetTextBodyParagraph,
   SetTextBodyRun,
   SetTextRunOperation,
+  SetTextStyleOperation,
+  TextPosition,
+  TextRange,
+  TextStyle,
 } from "@diceui/pptx-core";

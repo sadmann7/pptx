@@ -1,10 +1,14 @@
 import * as React from "react";
 
 import type {
+  EditOperation,
   NodePosition,
+  ParagraphStyle,
   SetTextBodyParagraph,
   ShapeNodeData,
   SlideNode,
+  TextRange,
+  TextStyle,
 } from "@diceui/pptx-core";
 import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
@@ -19,6 +23,20 @@ import {
 import { useLatestRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { mergeRefs, renderElement } from "./render";
+import { getIsKeepSelectionTarget, getSelectionChannel } from "./selection-channel";
+import type { ActiveTextStyle } from "./text-range";
+import {
+  cleanText,
+  expandToWord,
+  getActiveTextStyle,
+  getDomPoint,
+  getParagraphElements,
+  getParagraphText,
+  getRangeRuns,
+  getTextRange,
+} from "./text-range";
+
+export { cleanText };
 
 const SELECTION_NAME = "Presentation.Selection";
 
@@ -135,6 +153,9 @@ function getIsPresentationTarget(
   if (target === document || target === document.body || target === document.documentElement) {
     return true;
   }
+  // An editor toolbar is part of the deck's UI: undo after pressing Bold
+  // undoes the bold.
+  if (getIsKeepSelectionTarget(target)) return true;
   return boundary?.contains(target) ?? false;
 }
 
@@ -320,14 +341,6 @@ export function getPasteboardOverhang(
   return overhang;
 }
 
-/**
- * Strip zero-width spaces: line-height spacer spans from the renderer must
- * not reach the model.
- */
-export function cleanText(raw: string | null | undefined): string {
-  return (raw ?? "").replace(/\u200B/g, "");
-}
-
 function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
   // Empty placeholders also render a prompt overlay ("Click to add text")
   // whose paragraphs carry the paragraph attribute; skip it: only the real
@@ -352,21 +365,9 @@ function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
  */
 export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
-
-  const children = Array.from(container.children).filter(
-    (element) => element instanceof HTMLElement,
-  ) as HTMLElement[];
-
-  const paragraphDivs = children.filter(
-    (element) => element.dataset[PPTX_DATASET.run] === undefined,
-  );
-  const effectiveDivs =
-    paragraphDivs.length > 0 && paragraphDivs.length === children.length
-      ? paragraphDivs
-      : [container];
   let lastSourceParagraph = 0;
 
-  for (const paragraphDiv of effectiveDivs) {
+  for (const paragraphDiv of getParagraphElements(container)) {
     const paragraphIndexAttr = paragraphDiv.dataset?.[PPTX_DATASET.paragraph];
     const sourceParagraphIndex =
       paragraphIndexAttr !== undefined ? Number(paragraphIndexAttr) : lastSourceParagraph;
@@ -487,6 +488,17 @@ type InternalState =
       nodeId: string;
       editingElement: HTMLElement;
     };
+
+/** Text range to put back after a formatting edit re-renders the text being edited. */
+interface TextRestore {
+  nodeId: string;
+  range: TextRange;
+  /**
+   * Whether to move focus back into the text. Off while the toolbar is typing
+   * into a field of its own (a font size box), which must keep focus.
+   */
+  focus: boolean;
+}
 
 /** The selection as reported to `onSelectionChange`. */
 export interface SelectionChangeEvent {
@@ -615,6 +627,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // typed text is re-wrapped with this template so it keeps the run's
   // styling.
   const runTemplateRef = React.useRef<{ nodeId: string; span: HTMLElement } | null>(null);
+
+  // The last text range selected in text mode. Pressing a toolbar moves focus
+  // (and often the document selection) out of the text, so formatting reads
+  // the range from here once the live selection has left.
+  const savedRangeRef = React.useRef<Range | null>(null);
+
+  // Set by a formatting edit in text mode, consumed when the re-rendered text
+  // is re-entered.
+  const pendingRestoreRef = React.useRef<TextRestore | null>(null);
 
   // Edit revision of the active slide. A bump means SlideImpl will replace
   // the slide DOM in its effect; the text-mode repair effect below uses this
@@ -774,6 +795,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     clientX?: number,
     clientY?: number,
     insertText?: string,
+    restore?: TextRestore | null,
   ): void {
     const shapeElement = getShapeElement(nodeId);
     const textElement = shapeElement ? textContainerOf(shapeElement) : null;
@@ -824,9 +846,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // into the text; the state render below keeps it disabled.
     if (rootRef.current) rootRef.current.style.pointerEvents = "none";
 
-    textElement.focus({ preventScroll: true });
+    savedRangeRef.current = null;
+    if (restore?.focus !== false) textElement.focus({ preventScroll: true });
 
-    if (clientX !== undefined && clientY !== undefined) {
+    if (restore) {
+      restoreTextRange(textElement, restore);
+    } else if (clientX !== undefined && clientY !== undefined) {
       placeCaretAtPoint(clientX, clientY);
     } else {
       placeCaretAtEnd(textElement);
@@ -834,7 +859,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     // PowerPoint: typing while a shape is selected starts editing with that
     // keystroke as the first character.
-    if (insertText) {
+    if (insertText && !restore && !insertTextNatively(textElement, insertText)) {
       insertTextAtCaret(textElement, nodeId, insertText);
     }
 
@@ -929,6 +954,30 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function runTemplateFor(nodeId: string): HTMLElement | null {
     const entry = runTemplateRef.current;
     return entry && entry.nodeId === nodeId ? entry.span : null;
+  }
+
+  /**
+   * Inserts the keystroke that started text editing the way typing does, so it
+   * lands on the browser's undo stack: Cmd/Ctrl+Z in text mode is native undo,
+   * and a character inserted by mutating the DOM would be invisible to it.
+   *
+   * Only when the caret is inside a run's text, where native insertion keeps
+   * the run's styling. Returns false otherwise (or without `execCommand`), and
+   * the caller falls back to `insertTextAtCaret`.
+   */
+  function insertTextNatively(editingElement: HTMLElement, data: string): boolean {
+    const anchor = window.getSelection()?.anchorNode;
+    if (
+      !anchor ||
+      anchor.nodeType !== Node.TEXT_NODE ||
+      !anchor.textContent ||
+      !editingElement.contains(anchor) ||
+      !anchor.parentElement?.closest(`[${PPTX_ATTRS.run}]`) ||
+      typeof document.execCommand !== "function"
+    ) {
+      return false;
+    }
+    return document.execCommand("insertText", false, data);
   }
 
   /**
@@ -1171,9 +1220,227 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
+  /** Puts a model text range back into freshly rendered text. */
+  function restoreTextRange(textElement: HTMLElement, restore: TextRestore): void {
+    const start = getDomPoint(textElement, restore.range.start);
+    const end = getDomPoint(textElement, restore.range.end);
+    if (!start || !end) return;
+    const range = document.createRange();
+    range.setStart(...start);
+    range.setEnd(...end);
+    savedRangeRef.current = range;
+    if (!restore.focus) return;
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range.cloneRange());
+  }
+
+  /** The text container being edited, re-resolved if a re-render replaced it. */
+  function getEditingContainer(
+    current: Extract<InternalState, { mode: "text" }>,
+  ): HTMLElement | null {
+    if (current.editingElement.isConnected) return current.editingElement;
+    const shapeElement = getShapeElement(current.nodeId);
+    return shapeElement ? textContainerOf(shapeElement) : null;
+  }
+
+  /** The text range to format: the live selection in the text, else the saved one. */
+  function getEditingDomRange(container: HTMLElement): Range | null {
+    const selection = window.getSelection();
+    const live = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    for (const range of [live, savedRangeRef.current]) {
+      if (
+        range &&
+        container.contains(range.startContainer) &&
+        container.contains(range.endContainer)
+      ) {
+        return range;
+      }
+    }
+    return null;
+  }
+
+  function readTextStyle(): ActiveTextStyle | null {
+    const current = stateRef.current;
+    if (current.mode === "text") {
+      const container = getEditingContainer(current);
+      if (!container) return null;
+      const range = getEditingDomRange(container);
+      if (range) {
+        const { runs, paragraphs } = getRangeRuns(container, range);
+        return getActiveTextStyle(runs, paragraphs);
+      }
+      return getActiveTextStyle(
+        Array.from(container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`)),
+        getParagraphElements(container),
+      );
+    }
+
+    const runs: HTMLElement[] = [];
+    const paragraphs: HTMLElement[] = [];
+    for (const nodeId of selectedIdsRef.current) {
+      const shapeElement = getShapeElement(nodeId);
+      const container = shapeElement ? textContainerOf(shapeElement) : null;
+      if (!container) continue;
+      const containerParagraphs = getParagraphElements(container);
+      const containerRuns = container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`);
+      paragraphs.push(...containerParagraphs);
+      runs.push(...(containerRuns.length > 0 ? containerRuns : containerParagraphs));
+    }
+    return getActiveTextStyle(runs, paragraphs);
+  }
+
+  const selectionChannel = getSelectionChannel(store);
+
+  function publishSelection(): void {
+    selectionChannel.publish({
+      slideId,
+      mode: stateRef.current.mode,
+      nodeIds: selectedIdsRef.current,
+      textStyle: readTextStyle(),
+    });
+  }
+
+  /** `useSelection().select()`: selects nodes on this slide, ending text editing. */
+  function selectNodes(nodeIds: string[]): void {
+    const ids = nodeIds.filter((id) => slide?.nodes.some((node) => node.id === id));
+    const current = stateRef.current;
+    if (current.mode === "text") commitTextEdits(current);
+    setState(ids.length > 0 ? { mode: "selected", nodeIds: ids } : { mode: "idle" });
+  }
+
+  /**
+   * `useSelection().setTextStyle()` and `setParagraphStyle()`.
+   *
+   * In text mode, uncommitted typing is committed in the same batch, so the
+   * formatting lands on the text as shown and the whole thing is one undo
+   * step. The slide re-renders afterwards, and the repair effect puts the
+   * caret or selection back.
+   */
+  async function applyFormat(
+    kind: "text" | "paragraph",
+    style: TextStyle | ParagraphStyle,
+  ): Promise<void> {
+    if (!slide || !slideId) return;
+    const toOperation = (nodeId: string, range?: TextRange): EditOperation =>
+      kind === "text"
+        ? { type: "setTextStyle", slideId, nodeId, style: style as TextStyle, range }
+        : { type: "setParagraphStyle", slideId, nodeId, style: style as ParagraphStyle, range };
+
+    const current = stateRef.current;
+    if (current.mode !== "text") {
+      const operations = selectedNodesRef.current
+        .filter((node) => nodeHasText(node.id))
+        .map((node) => toOperation(node.id));
+      if (operations.length === 0) return;
+      await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+      return;
+    }
+
+    const { nodeId } = current;
+    const container = getEditingContainer(current);
+    const node = slide.nodes.find((n) => n.id === nodeId);
+    if (!container || !node) return;
+
+    const readBack = readBackTextBody(container);
+    const changed = textBodyChanged(node, readBack);
+    // Text read back from editing drops line breaks; untouched text keeps them.
+    const countBreaks = !changed;
+    const domRange = getEditingDomRange(container);
+    const caretRange = domRange ? getTextRange(container, domRange, countBreaks) : null;
+
+    let range = caretRange ?? undefined;
+    if (
+      range &&
+      kind === "text" &&
+      range.start.paragraphIndex === range.end.paragraphIndex &&
+      range.start.offset === range.end.offset
+    ) {
+      // A caret formats the word it touches, like PowerPoint. In an empty
+      // paragraph it formats the paragraph mark, so typed text picks it up.
+      const { paragraphIndex, offset } = range.start;
+      const paragraph = getParagraphElements(container)[paragraphIndex];
+      const text = paragraph ? getParagraphText(paragraph, countBreaks) : "";
+      if (text.length > 0) {
+        const word = expandToWord(text, offset);
+        if (!word) return;
+        range = {
+          start: { paragraphIndex, offset: word[0] },
+          end: { paragraphIndex, offset: word[1] },
+        };
+      }
+    }
+
+    const operations: EditOperation[] = [];
+    if (changed) operations.push({ type: "setTextBody", slideId, nodeId, paragraphs: readBack });
+    operations.push(toOperation(nodeId, range));
+
+    pendingRestoreRef.current = caretRange
+      ? {
+          nodeId,
+          range: caretRange,
+          focus:
+            !getIsNativeUndoTarget(document.activeElement) ||
+            container.contains(document.activeElement),
+        }
+      : null;
+    try {
+      await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+    } catch (error) {
+      pendingRestoreRef.current = null;
+      throw error;
+    }
+  }
+
   const enterTextModeRef = useLatestRef(enterTextMode);
   const commitTextEditsRef = useLatestRef(commitTextEdits);
   const doExitTextModeRef = useLatestRef(doExitTextMode);
+  const publishSelectionRef = useLatestRef(publishSelection);
+  const selectNodesRef = useLatestRef(selectNodes);
+  const applyFormatRef = useLatestRef(applyFormat);
+
+  React.useEffect(
+    () =>
+      selectionChannel.register({
+        select: (nodeIds) => selectNodesRef.current(nodeIds),
+        setTextStyle: (style) => applyFormatRef.current("text", style),
+        setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
+      }),
+    [selectionChannel, selectNodesRef, applyFormatRef],
+  );
+
+  // Publish to `useSelection` when the selection, the mode, or the slide's
+  // content changes. An edit replaces the slide DOM in SlideImpl's effect,
+  // which runs after this one (it is a parent), so the text style is read
+  // again a frame later from the fresh DOM.
+  React.useEffect(() => {
+    publishSelectionRef.current();
+    const frameId = requestAnimationFrame(() => publishSelectionRef.current());
+    return () => cancelAnimationFrame(frameId);
+  }, [selectionKey, mode, slideRevision, publishSelectionRef]);
+
+  // In text mode, follow the caret: remember the range for toolbar presses,
+  // and republish so the toolbar's toggles track the text under the caret.
+  React.useEffect(() => {
+    if (!isTextMode) return;
+
+    function onSelectionChange(): void {
+      const currentState = stateRef.current;
+      if (currentState.mode !== "text") return;
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = currentState.editingElement;
+        if (container.contains(range.startContainer) && container.contains(range.endContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
+      publishSelectionRef.current();
+    }
+
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [isTextMode, stateRef, publishSelectionRef]);
 
   // When in text mode the overlay has pointerEvents: none, so we must listen
   // on the document for clicks-outside and Escape.
@@ -1189,6 +1456,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // Clicks on the overlay's own children (border move strips) are
       // handled by their own handlers.
       if (rootRef.current?.contains(event.target as Node)) return;
+
+      // A toolbar formats the text being edited, so pressing it must not end
+      // editing. The text range is remembered (see `savedRangeRef`).
+      if (getIsKeepSelectionTarget(event.target)) return;
 
       const wrapper = rootRef.current?.parentElement?.parentElement;
       if (!wrapper) return;
@@ -1233,7 +1504,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
-      if (event.key === "Escape") {
+      // Escape inside a toolbar closes its popover, not the text editing.
+      if (event.key === "Escape" && !getIsKeepSelectionTarget(event.target)) {
         event.preventDefault();
         doExitTextModeRef.current(currentState);
         return;
@@ -1302,6 +1574,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * survive it out of reach: focus leaves the overlay and `onKeyDown` is a
    * React handler on it, so Escape stops arriving.
    *
+   * Presses inside UI marked `data-pptx-keep-selection` (editor toolbars and
+   * their popovers) don't count as outside.
+   *
    * Deselecting on release rather than on press is what keeps touch usable.
    * A scroll begins as a pointerdown on whatever is under the finger, so
    * acting there would drop the selection every time the deck was scrolled.
@@ -1323,6 +1598,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (stateRef.current.mode === "idle") return;
       // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
+      // Toolbars act on the selection, so pressing them must keep it.
+      if (getIsKeepSelectionTarget(event.target)) return;
       pending = true;
     }
 
@@ -1362,10 +1639,18 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       });
       if (currentState.editingElement.isConnected) return;
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
-      enterTextModeRef.current(currentState.nodeId);
+      const restore =
+        pendingRestoreRef.current?.nodeId === currentState.nodeId
+          ? pendingRestoreRef.current
+          : null;
+      pendingRestoreRef.current = null;
+      enterTextModeRef.current(currentState.nodeId, undefined, undefined, undefined, restore);
+      // Re-read the toolbar state from the fresh text, which moves no caret
+      // (and fires no selectionchange) when focus stayed in the toolbar.
+      publishSelectionRef.current();
     });
     return () => cancelAnimationFrame(frameId);
-  }, [slideRevision, stateRef, enterTextModeRef]);
+  }, [slideRevision, stateRef, enterTextModeRef, publishSelectionRef]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.button !== 0 || isTextMode) return;

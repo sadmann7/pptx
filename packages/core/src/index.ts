@@ -12,6 +12,7 @@ export type {
 
 export { applyEdit } from "./edit/operation";
 export type {
+  AddSlideOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
@@ -19,12 +20,20 @@ export type {
   EditOperation,
   EditResult,
   MoveSlideOperation,
+  ParagraphAlign,
+  ParagraphStyle,
   SetNodeTransformOperation,
+  SetParagraphStyleOperation,
+  SetSlideBackgroundOperation,
   SetSolidFillOperation,
   SetTextBodyOperation,
   SetTextBodyParagraph,
   SetTextBodyRun,
   SetTextRunOperation,
+  SetTextStyleOperation,
+  TextPosition,
+  TextRange,
+  TextStyle,
 } from "./edit/operation";
 export type { MediaResolver, ResolvedMedia } from "./media/resolve";
 export { PptxPackage } from "./ooxml/package";
@@ -40,6 +49,7 @@ export type {
   EmbeddedFontVariant,
   PresentationData,
 } from "./model/presentation";
+export type { LayoutData } from "./model/layout";
 
 export { serializePresentation } from "./model/serialize";
 export type { SerializedNode, SerializedPresentation, SerializedSlide } from "./model/serialize";

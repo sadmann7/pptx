@@ -1,6 +1,6 @@
 ---
 title: Editing
-description: Move, resize, and edit text in presentations.
+description: Move, resize, edit, and format text in presentations.
 ---
 
 <PresentationEditingDemo />
@@ -79,15 +79,13 @@ await store.edit({
   color: "#ef4444",
 });
 
-// Move a shape
+// Move a shape (slide pixels at 96 DPI)
 await store.edit({
   type: "setNodeTransform",
   slideId,
   nodeId,
-  x: 100,
-  y: 200,
-  width: 400,
-  height: 300,
+  position: { x: 100, y: 200 },
+  size: { w: 400, h: 300 },
 });
 
 // Edit text
@@ -101,7 +99,62 @@ await store.edit({
     },
   ],
 });
+
+// Format text: the whole text body, or a range of it
+await store.edit({
+  type: "setTextStyle",
+  slideId,
+  nodeId,
+  style: { bold: true, color: "#2563eb", fontFamily: "Arial", fontSize: 24 },
+  range: { start: { paragraphIndex: 0, offset: 0 }, end: { paragraphIndex: 0, offset: 5 } },
+});
+
+// Align paragraphs
+await store.edit({ type: "setParagraphStyle", slideId, nodeId, style: { align: "center" } });
+
+// Add a slide from a layout (defaults to the layout of `afterSlideId`)
+const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: slideId });
+
+// Set or clear (`null`) a slide's own background
+await store.edit({ type: "setSlideBackground", slideId, color: "#f8fafc" });
 ```
+
+In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
+
+`presentation.layouts` maps each layout's part path to its data, including its `name`, for a "new slide from layout" picker.
+
+## Formatting toolbar
+
+`useSelection` gives a toolbar the overlay's selection and formatting commands that work in both modes. While text is being edited they format the selected text, or the word at the caret. Otherwise they format all the text in the selected shapes.
+
+Pressing a toolbar would normally count as a press outside the slide, which clears the selection and ends text editing. Mark the toolbar with `data-pptx-keep-selection` to prevent that. Mark the content of its popovers and menus as well, since they usually render in a portal outside the toolbar. Undo shortcuts pressed inside marked UI apply to the deck.
+
+```tsx
+import { useSelection } from "@diceui/pptx";
+
+function FormattingToolbar() {
+  const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
+
+  return (
+    <div data-pptx-keep-selection="">
+      <button
+        aria-pressed={textStyle?.bold ?? false}
+        disabled={!textStyle}
+        onClick={() => void setTextStyle({ bold: !textStyle?.bold })}
+      >
+        Bold
+      </button>
+      <button disabled={!textStyle} onClick={() => void setParagraphStyle({ align: "center" })}>
+        Center
+      </button>
+    </div>
+  );
+}
+```
+
+`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `nodeIds`, `nodes`, `select(nodeIds)`, and `clear()`.
+
+Formatting while text is being edited commits the pending typing in the same edit, so the two undo together. The caret or selection comes back afterwards, and focus returns to the text unless the toolbar is typing into a field of its own, such as a font size box.
 
 ## Batch operations
 
@@ -110,7 +163,7 @@ Group multiple edits into a single undoable step with `"batch"`:
 ```tsx
 await store.edit({
   type: "batch",
-  ops: [
+  operations: [
     { type: "deleteNode", slideId, nodeId: "2" },
     { type: "deleteNode", slideId, nodeId: "3" },
   ],

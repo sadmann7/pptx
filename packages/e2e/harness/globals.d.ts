@@ -4,6 +4,7 @@
  * The harness (main.ts) assigns these; specs and the debugging scripts poll
  * them to know when a render settled and to reach into the loaded deck.
  */
+import type { PresentationStore } from "@diceui/pptx";
 import type { SerializedPresentation } from "@diceui/pptx-core";
 import type { EmbeddedFontError } from "@diceui/pptx-core/fonts";
 
@@ -31,6 +32,10 @@ declare global {
     /** Re-renders another slide of the already loaded deck. */
     __showSlide?: (index: number) => Promise<void>;
     __getStructure?: () => SerializedPresentation;
+    /** True once the editing harness has an editable deck loaded. */
+    __editingReady?: boolean;
+    /** The editing harness's store, for reading the edited model. */
+    __editStore?: PresentationStore;
     /** True once the thumbnail harness has a loaded deck mounted. */
     __thumbnailsReady?: boolean;
     /**

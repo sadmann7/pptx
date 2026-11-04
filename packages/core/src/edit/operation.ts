@@ -14,6 +14,7 @@
 import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
+import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
 import { materializeSlide, PresentationData } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
@@ -118,6 +119,92 @@ export interface SetTextBodyRun {
   sourceRun?: [number, number];
 }
 
+/** A caret position inside a text body: a paragraph and a character offset in it. */
+export interface TextPosition {
+  paragraphIndex: number;
+  /** Character offset into the paragraph's text (the joined text of its runs). */
+  offset: number;
+}
+
+/** A span of text inside one shape's text body. `end` is exclusive. */
+export interface TextRange {
+  start: TextPosition;
+  end: TextPosition;
+}
+
+/**
+ * Character formatting. Omitted fields are left as they are; `null` removes
+ * the run's own value so it inherits from the paragraph, layout, or master.
+ */
+export interface TextStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  /** Hex color, with or without leading `#` (e.g. "FF0000"). */
+  color?: string | null;
+  /** Latin typeface (e.g. "Arial"). */
+  fontFamily?: string | null;
+  /** Font size in points. */
+  fontSize?: number | null;
+}
+
+/**
+ * Apply character formatting to a shape's text. Without `range` the whole
+ * text body is formatted, including the end-of-paragraph marks so new text
+ * typed into an empty paragraph picks the formatting up.
+ */
+export interface SetTextStyleOperation {
+  type: "setTextStyle";
+  slideId: string;
+  nodeId: string;
+  style: TextStyle;
+  range?: TextRange;
+}
+
+export type ParagraphAlign = "left" | "center" | "right" | "justify";
+
+/** Paragraph formatting. Omitted fields are left as they are. */
+export interface ParagraphStyle {
+  align?: ParagraphAlign;
+}
+
+/**
+ * Apply paragraph formatting to a shape's text. Without `range` every
+ * paragraph is formatted; with it, every paragraph the range touches.
+ */
+export interface SetParagraphStyleOperation {
+  type: "setParagraphStyle";
+  slideId: string;
+  nodeId: string;
+  style: ParagraphStyle;
+  range?: TextRange;
+}
+
+/**
+ * Add a slide built from a layout, with the layout's content placeholders
+ * (empty), the way PowerPoint's New Slide does.
+ */
+export interface AddSlideOperation {
+  type: "addSlide";
+  /**
+   * Layout part path (a key of `presentation.layouts`, e.g.
+   * "ppt/slideLayouts/slideLayout2.xml"). Defaults to the layout of
+   * `afterSlideId`, or of the last slide.
+   */
+  layoutId?: string;
+  /** Insert after this slide. Defaults to the end of the deck. */
+  afterSlideId?: string;
+}
+
+/** Set a slide's own background, or clear it to inherit the layout's. */
+export interface SetSlideBackgroundOperation {
+  type: "setSlideBackground";
+  slideId: string;
+  /** Hex color, with or without leading `#`. `null` removes the slide's own background. */
+  color: string | null;
+}
+
 /**
  * Applies several operations as one atomic edit with a single undo (e.g.
  * moving a multi-selection). Sub-operations are applied in order and undone
@@ -137,6 +224,10 @@ export type EditOperation =
   | DuplicateSlideOperation
   | DeleteSlideOperation
   | SetTextBodyOperation
+  | SetTextStyleOperation
+  | SetParagraphStyleOperation
+  | AddSlideOperation
+  | SetSlideBackgroundOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -144,7 +235,7 @@ export interface EditResult {
   affectedSlideIds: string[];
   /** Restores XML, model, and dirty state. Apply undos in reverse order. */
   undo: () => void;
-  /** Id of the slide created by `duplicateSlide`. */
+  /** Id of the slide created by `duplicateSlide` or `addSlide`. */
   createdSlideId?: string;
 }
 
@@ -173,6 +264,14 @@ export async function applyEdit(
       return applyDuplicateSlide(presentation, op);
     case "deleteSlide":
       return applyDeleteSlide(presentation, op);
+    case "setTextStyle":
+      return applySetTextStyle(presentation, op);
+    case "setParagraphStyle":
+      return applySetParagraphStyle(presentation, op);
+    case "addSlide":
+      return applyAddSlide(presentation, op);
+    case "setSlideBackground":
+      return applySetSlideBackground(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -199,6 +298,10 @@ async function applyBatch(presentation: PresentationData, op: BatchOperation): P
     undo: () => {
       for (let i = results.length - 1; i >= 0; i--) results[i].undo();
     },
+    createdSlideId: results.reduce<string | undefined>(
+      (id, result) => result.createdSlideId ?? id,
+      undefined,
+    ),
   };
 }
 
@@ -318,6 +421,15 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
 // setTextBody
 // ---------------------------------------------------------------------------
 
+/**
+ * The `a:p` children of a text body. A direct-children scan rather than
+ * `getElementsByTagNameNS`, whose namespace matching is unreliable in some
+ * DOM implementations (happy-dom misses the paragraphs entirely).
+ */
+function childParagraphs(txBodyElement: Element): Element[] {
+  return Array.from(txBodyElement.children).filter((child) => child.localName === "p");
+}
+
 function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
@@ -339,7 +451,7 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
   // Snapshot original <a:p> elements (for undo) and keep them by index for
   // cloning pPr/rPr from source references.
-  const origParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
+  const origParagraphElements = childParagraphs(txBodyElement);
   const origParagraphs = prevParagraphs;
 
   // Collect source run XML elements indexed by [pIdx][rIdx].
@@ -477,7 +589,7 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     affectedSlideIds: [slide.id],
     undo: () => {
       // Remove new <a:p> elements.
-      const currentParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
+      const currentParagraphElements = childParagraphs(txBodyElement);
       for (const paragraphElement of currentParagraphElements) {
         removeChild(paragraphElement);
       }
@@ -745,11 +857,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   }
   const shape = node as ShapeNodeData;
 
-  const colorMatch = /^#?([0-9a-fA-F]{6})$/.exec(op.color);
-  if (!colorMatch) {
-    throw new Error(`applyEdit: invalid color "${op.color}"; expected 6-digit hex.`);
-  }
-  const color = colorMatch[1].toUpperCase();
+  const color = parseHexColor(op.color);
 
   const spPrElement = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
   const doc = spPrElement.ownerDocument;
@@ -797,6 +905,322 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
       sourcePackage.markDirty(slide.id);
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// setTextStyle / setParagraphStyle
+// ---------------------------------------------------------------------------
+
+/** rPr fill children (EG_FillProperties). */
+const RPR_FILL_LOCAL_NAMES = new Set([
+  "noFill",
+  "solidFill",
+  "gradFill",
+  "blipFill",
+  "pattFill",
+  "grpFill",
+]);
+/** rPr children that come after `a:latin` in the schema sequence. */
+const RPR_AFTER_LATIN_LOCAL_NAMES = new Set([
+  "ea",
+  "cs",
+  "sym",
+  "hlinkClick",
+  "hlinkMouseOver",
+  "rtl",
+  "extLst",
+]);
+/** rPr children that come after the fill in the schema sequence. */
+const RPR_AFTER_FILL_LOCAL_NAMES = new Set([
+  "effectLst",
+  "effectDag",
+  "highlight",
+  "uLnTx",
+  "uLn",
+  "uFillTx",
+  "uFill",
+  "latin",
+  ...RPR_AFTER_LATIN_LOCAL_NAMES,
+]);
+
+const ALIGN_TO_OOXML: Record<ParagraphAlign, string> = {
+  left: "l",
+  center: "ctr",
+  right: "r",
+  justify: "just",
+};
+
+function parseHexColor(value: string): string {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(value);
+  if (!match) {
+    throw new Error(`applyEdit: invalid color "${value}"; expected 6-digit hex.`);
+  }
+  return match[1].toUpperCase();
+}
+
+function firstChildIn(parent: Element, localNames: ReadonlySet<string>): Element | null {
+  for (const child of parent.children) {
+    if (localNames.has(child.localName)) return child;
+  }
+  return null;
+}
+
+function childNamed(parent: Element, localName: string): Element | null {
+  for (const child of parent.children) {
+    if (child.localName === localName) return child;
+  }
+  return null;
+}
+
+function runText(run: Element): string {
+  return childNamed(run, "t")?.textContent ?? "";
+}
+
+/** Character length of a run-like element, matching `TextParagraph.runs` text. */
+function runLength(run: Element): number {
+  return run.localName === "br" || run.localName === "tab" ? 1 : runText(run).length;
+}
+
+/** Splits an `a:r` at `at` characters; the original keeps the left part. Returns the right part. */
+function splitRun(run: Element, at: number): Element {
+  const text = runText(run);
+  const right = run.cloneNode(true) as Element;
+  childNamed(run, "t")!.textContent = text.slice(0, at);
+  childNamed(right, "t")!.textContent = text.slice(at);
+  run.parentNode!.insertBefore(right, run.nextSibling);
+  return right;
+}
+
+function ensureRunProperties(run: Element): Element {
+  const existing = childNamed(run, "rPr");
+  if (existing) return existing;
+  const rPr = run.ownerDocument.createElementNS(A_NS, "a:rPr");
+  // rPr is the first child of a:r, a:br and a:fld.
+  run.insertBefore(rPr, run.firstElementChild);
+  return rPr;
+}
+
+function setBoolAttr(element: Element, name: string, value: boolean | undefined): void {
+  if (value !== undefined) element.setAttribute(name, value ? "1" : "0");
+}
+
+/** Writes `style` onto character properties (`a:rPr` or `a:endParaRPr`). */
+function applyCharacterStyle(rPr: Element, style: TextStyle): void {
+  const doc = rPr.ownerDocument;
+
+  setBoolAttr(rPr, "b", style.bold);
+  setBoolAttr(rPr, "i", style.italic);
+  if (style.underline !== undefined) rPr.setAttribute("u", style.underline ? "sng" : "none");
+  if (style.strikethrough !== undefined) {
+    rPr.setAttribute("strike", style.strikethrough ? "sngStrike" : "noStrike");
+  }
+  if (style.fontSize !== undefined) {
+    if (style.fontSize !== null && !(style.fontSize > 0)) {
+      throw new Error(`applyEdit: invalid font size "${style.fontSize}".`);
+    }
+    setOrRemoveAttr(
+      rPr,
+      "sz",
+      style.fontSize === null ? undefined : String(Math.round(style.fontSize * 100)),
+    );
+  }
+
+  if (style.color !== undefined) {
+    for (const child of Array.from(rPr.children)) {
+      if (RPR_FILL_LOCAL_NAMES.has(child.localName)) child.remove();
+    }
+    if (style.color !== null) {
+      const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+      const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+      srgb.setAttribute("val", parseHexColor(style.color));
+      solidFill.appendChild(srgb);
+      rPr.insertBefore(solidFill, firstChildIn(rPr, RPR_AFTER_FILL_LOCAL_NAMES));
+    }
+  }
+
+  if (style.fontFamily !== undefined) {
+    let latin = childNamed(rPr, "latin");
+    if (style.fontFamily === null) {
+      latin?.remove();
+    } else {
+      if (!latin) {
+        latin = doc.createElementNS(A_NS, "a:latin");
+        rPr.insertBefore(latin, firstChildIn(rPr, RPR_AFTER_LATIN_LOCAL_NAMES));
+      }
+      latin.setAttribute("typeface", style.fontFamily);
+    }
+  }
+}
+
+/**
+ * Formats the characters `[from, to)` of a detached `a:p` clone, splitting runs
+ * at the range edges. `whole` formats every run and the paragraph mark.
+ */
+function styleParagraph(
+  paragraph: Element,
+  from: number,
+  to: number,
+  style: TextStyle,
+  whole: boolean,
+): void {
+  let position = 0;
+  let hasRuns = false;
+
+  for (const child of Array.from(paragraph.children)) {
+    if (!RUN_LOCAL_NAMES.has(child.localName)) continue;
+    hasRuns = true;
+    const runStart = position;
+    const runEnd = position + runLength(child);
+    position = runEnd;
+    if (child.localName === "tab") continue;
+
+    if (whole) {
+      applyCharacterStyle(ensureRunProperties(child), style);
+      continue;
+    }
+
+    const lo = Math.max(from, runStart);
+    const hi = Math.min(to, runEnd);
+    if (lo >= hi) continue;
+
+    // Fields and breaks can't be split: format them whole when touched.
+    if (child.localName !== "r") {
+      applyCharacterStyle(ensureRunProperties(child), style);
+      continue;
+    }
+
+    let target = child;
+    let targetStart = runStart;
+    if (lo > targetStart) {
+      target = splitRun(target, lo - targetStart);
+      targetStart = lo;
+    }
+    if (hi < runEnd) splitRun(target, hi - targetStart);
+    applyCharacterStyle(ensureRunProperties(target), style);
+  }
+
+  // The paragraph mark carries the formatting for text typed at the end of
+  // the paragraph, and for an empty paragraph's first keystroke.
+  let endParaRPr = childNamed(paragraph, "endParaRPr");
+  if (!endParaRPr && whole && !hasRuns) {
+    endParaRPr = paragraph.ownerDocument.createElementNS(A_NS, "a:endParaRPr");
+    paragraph.appendChild(endParaRPr);
+  }
+  if (endParaRPr && (whole || to >= position)) applyCharacterStyle(endParaRPr, style);
+}
+
+/** Ordered `[paragraphIndex, from, to]` spans a range covers, or every paragraph. */
+function paragraphSpans(
+  paragraphCount: number,
+  range: TextRange | undefined,
+): [index: number, from: number, to: number][] {
+  if (!range) {
+    return Array.from({ length: paragraphCount }, (_, index) => [index, 0, Infinity]);
+  }
+  let { start, end } = range;
+  if (
+    start.paragraphIndex > end.paragraphIndex ||
+    (start.paragraphIndex === end.paragraphIndex && start.offset > end.offset)
+  ) {
+    [start, end] = [end, start];
+  }
+  if (start.paragraphIndex < 0 || end.paragraphIndex >= paragraphCount) {
+    throw new Error(
+      `applyEdit: text range paragraphs ${start.paragraphIndex}-${end.paragraphIndex} are out of bounds.`,
+    );
+  }
+  const spans: [number, number, number][] = [];
+  for (let index = start.paragraphIndex; index <= end.paragraphIndex; index++) {
+    spans.push([
+      index,
+      index === start.paragraphIndex ? start.offset : 0,
+      index === end.paragraphIndex ? end.offset : Infinity,
+    ]);
+  }
+  return spans;
+}
+
+/**
+ * Rewrites some of a shape's paragraphs. Each `a:p` is cloned, mutated
+ * detached, and swapped in, so undo is a swap back and the model paragraph is
+ * re-parsed from the clone.
+ */
+function rewriteParagraphs(
+  pres: PresentationData,
+  slideId: string,
+  nodeId: string,
+  rewrite: (paragraphCount: number) => [index: number, mutate: (paragraph: Element) => void][],
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  const node = findNode(pres, slide, nodeId);
+  if (node.nodeType !== "shape" || !node.textBody) {
+    throw new Error(`applyEdit: node "${nodeId}" has no editable text body.`);
+  }
+  const textBody = (node as ShapeNodeData).textBody!;
+  const txBodyElement = requireElement(node.source.child("txBody"), "txBody");
+  const paragraphElements = childParagraphs(txBodyElement);
+
+  const prevParagraphs = textBody.paragraphs;
+  const nextParagraphs = [...prevParagraphs];
+  const swaps: [original: Element, clone: Element][] = [];
+
+  for (const [index, mutate] of rewrite(paragraphElements.length)) {
+    const original = paragraphElements[index];
+    if (!original) continue;
+    const clone = original.cloneNode(true) as Element;
+    mutate(clone);
+    insertChild(txBodyElement, clone, original);
+    removeChild(original);
+    nextParagraphs[index] = parseParagraph(new SafeXmlNode(clone));
+    swaps.push([original, clone]);
+  }
+
+  textBody.paragraphs = nextParagraphs;
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      for (const [original, clone] of swaps.reverse()) {
+        insertChild(txBodyElement, original, clone);
+        removeChild(clone);
+      }
+      textBody.paragraphs = prevParagraphs;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function applySetTextStyle(pres: PresentationData, op: SetTextStyleOperation): EditResult {
+  // Validate up front so a bad value fails before any paragraph is touched.
+  if (op.style.color) parseHexColor(op.style.color);
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+    paragraphSpans(count, op.range).map(([index, from, to]) => [
+      index,
+      (paragraph) => styleParagraph(paragraph, from, to, op.style, !op.range),
+    ]),
+  );
+}
+
+function applySetParagraphStyle(
+  pres: PresentationData,
+  op: SetParagraphStyleOperation,
+): EditResult {
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+    paragraphSpans(count, op.range).map(([index]) => [
+      index,
+      (paragraph) => {
+        let pPr = childNamed(paragraph, "pPr");
+        if (!pPr) {
+          pPr = paragraph.ownerDocument.createElementNS(A_NS, "a:pPr");
+          // pPr is the first child of a:p.
+          paragraph.insertBefore(pPr, paragraph.firstElementChild);
+        }
+        if (op.style.align) pPr.setAttribute("algn", ALIGN_TO_OOXML[op.style.align]);
+      },
+    ]),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -958,14 +1382,46 @@ async function applyDuplicateSlide(
   const sourceIndex = pres.slides.indexOf(source);
   const { element: sourceSldIdElement } = findSldIdEntry(ctx, op.slideId);
 
-  const newPath = nextSlidePartPath(sourcePackage);
-  const newRelsPath = relsPathFor(newPath);
-
   const slideText = await sourcePackage.readText(source.id);
   if (slideText === undefined) {
     throw new Error(`applyEdit: slide part "${source.id}" is missing from the package.`);
   }
   const slideRelsText = await sourcePackage.readText(relsPathFor(source.id));
+
+  return insertSlidePart(pres, ctx, {
+    slideText,
+    slideRelsText,
+    contentTypeFrom: source.id,
+    afterSldIdElement: sourceSldIdElement,
+    index: sourceIndex + 1,
+  });
+}
+
+interface InsertSlidePartOptions {
+  slideText: string;
+  slideRelsText: string | undefined;
+  /** Existing slide part whose content type override to copy. */
+  contentTypeFrom?: string;
+  /** Insert the `p:sldId` after this entry; `null` appends. */
+  afterSldIdElement: Element | null;
+  /** Position of the new slide in the deck. */
+  index: number;
+}
+
+/**
+ * Registers a new slide part on the package (part, rels, content type,
+ * presentation relationship, and `p:sldId`) and parses it into the model.
+ */
+async function insertSlidePart(
+  pres: PresentationData,
+  ctx: SlideListContext,
+  options: InsertSlidePartOptions,
+): Promise<EditResult> {
+  const { sourcePackage } = ctx;
+  const { slideText, slideRelsText, contentTypeFrom, afterSldIdElement, index } = options;
+
+  const newPath = nextSlidePartPath(sourcePackage);
+  const newRelsPath = relsPathFor(newPath);
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
   // --- Package parts ---
@@ -977,9 +1433,9 @@ async function applyDuplicateSlide(
   // --- [Content_Types].xml: add an Override for the new part ---
   const ctRoot = parseXml(ctText);
   const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
-  const sourceOverride = ctRoot
-    .children("Override")
-    .find((o) => o.attr("PartName") === `/${source.id}`);
+  const sourceOverride = contentTypeFrom
+    ? ctRoot.children("Override").find((o) => o.attr("PartName") === `/${contentTypeFrom}`)
+    : undefined;
   const overrideElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Override");
   overrideElement.setAttribute("PartName", `/${newPath}`);
   overrideElement.setAttribute(
@@ -1000,22 +1456,22 @@ async function applyDuplicateSlide(
   insertChild(relsRootElement, relElement, null);
   sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
-  // --- presentation.xml: sldId entry directly after the source slide ---
+  // --- presentation.xml: sldId entry directly after the anchor slide ---
   const sldIdElement = ctx.lstElement.ownerDocument.createElementNS(P_NS, "p:sldId");
   sldIdElement.setAttribute("id", String(nextSldIdNumber(ctx)));
   sldIdElement.setAttributeNS(R_NS, "r:id", newRId);
-  insertChild(ctx.lstElement, sldIdElement, sourceSldIdElement.nextElementSibling);
+  insertChild(ctx.lstElement, sldIdElement, afterSldIdElement?.nextElementSibling ?? null);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
-  // --- Model: parse the copy through the regular slide pipeline ---
+  // --- Model: parse the new part through the regular slide pipeline ---
   const newRoot = parseXml(slideText);
   sourcePackage.registerXmlRoot(newPath, newRoot);
   const newRels = parseRels(slideRelsText ?? "");
-  const newSlide = parseSlide(newRoot, sourceIndex + 1, newRels, newPath, pres.diagramDrawings);
+  const newSlide = parseSlide(newRoot, index, newRels, newPath, pres.diagramDrawings);
   if (newSlide.layoutIndex) {
     newSlide.layoutIndex = resolveRelTarget("ppt/slides", newSlide.layoutIndex);
   }
-  pres.slides.splice(sourceIndex + 1, 0, newSlide);
+  pres.slides.splice(index, 0, newSlide);
   reindexSlides(pres);
   materializeSlide(pres, newSlide);
 
@@ -1031,6 +1487,163 @@ async function applyDuplicateSlide(
       sourcePackage.markDirty(PRESENTATION_PATH);
       pres.slides.splice(pres.slides.indexOf(newSlide), 1);
       reindexSlides(pres);
+    },
+  };
+}
+
+// --- addSlide ----------------------------------------------------------------
+
+const SLIDE_LAYOUT_REL_TYPE =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout";
+/** Layout placeholders PowerPoint leaves off a new slide (header/footer furniture). */
+const SKIPPED_PLACEHOLDER_TYPES = new Set(["dt", "ftr", "sldNum", "hdr"]);
+
+const EMPTY_SLIDE_XML =
+  `<p:sld xmlns:a="${A_NS}" xmlns:r="${R_NS}" xmlns:p="${P_NS}">` +
+  "<p:cSld><p:spTree>" +
+  '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
+  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
+  "</p:spTree></p:cSld>" +
+  "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>" +
+  "</p:sld>";
+
+/**
+ * Builds slide XML holding an empty copy of each content placeholder on the
+ * layout. The copies carry only the `p:ph` reference, so position, size and
+ * text styles keep inheriting from the layout.
+ */
+function buildSlideFromLayout(layoutSpTree: SafeXmlNode): string {
+  const root = parseXml(EMPTY_SLIDE_XML);
+  const rootElement = requireElement(root, "slide root");
+  const doc = rootElement.ownerDocument;
+  const spTree = requireElement(root.child("cSld").child("spTree"), "spTree");
+
+  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [name, value] of Object.entries(attrs)) element.setAttribute(name, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+
+  let nextId = 2;
+  for (const sp of layoutSpTree.children("sp")) {
+    const nvSpPr = sp.child("nvSpPr");
+    const ph = nvSpPr.child("nvPr").child("ph");
+    const phElement = ph.element;
+    if (!phElement || SKIPPED_PLACEHOLDER_TYPES.has(ph.attr("type") ?? "")) continue;
+
+    const phCopy = doc.importNode(phElement, true) as Element;
+    phCopy.removeAttribute("hasCustomPrompt");
+    const id = nextId++;
+    const name = nvSpPr.child("cNvPr").attr("name") ?? `Placeholder ${id - 1}`;
+
+    spTree.appendChild(
+      el(
+        "p:sp",
+        {},
+        el(
+          "p:nvSpPr",
+          {},
+          el("p:cNvPr", { id: String(id), name }),
+          el("p:cNvSpPr", {}, el("a:spLocks", { noGrp: "1" })),
+          el("p:nvPr", {}, phCopy),
+        ),
+        el("p:spPr"),
+        el(
+          "p:txBody",
+          {},
+          el("a:bodyPr"),
+          el("a:lstStyle"),
+          el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
+        ),
+      ),
+    );
+  }
+
+  return serializePartText(rootElement, "");
+}
+
+async function applyAddSlide(pres: PresentationData, op: AddSlideOperation): Promise<EditResult> {
+  const ctx = await loadSlideListContext(pres);
+  const anchor = op.afterSlideId
+    ? findSlide(pres, op.afterSlideId)
+    : pres.slides[pres.slides.length - 1];
+
+  const layoutId = op.layoutId ?? anchor?.layoutIndex ?? pres.layouts.keys().next().value;
+  const layout = layoutId ? pres.layouts.get(layoutId) : undefined;
+  if (!layoutId || !layout) {
+    throw new Error(`applyEdit: unknown slide layout "${layoutId ?? ""}".`);
+  }
+
+  // Slides live in ppt/slides/, so the layout target is relative to it.
+  const layoutTarget = `../${layoutId.replace(/^ppt\//, "")}`;
+  const slideRelsText =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+    `<Relationships xmlns="${RELS_NS}">` +
+    `<Relationship Id="rId1" Type="${SLIDE_LAYOUT_REL_TYPE}" Target="${layoutTarget}"/>` +
+    "</Relationships>";
+
+  return insertSlidePart(pres, ctx, {
+    slideText: buildSlideFromLayout(layout.spTree),
+    slideRelsText,
+    contentTypeFrom: anchor?.id,
+    afterSldIdElement: anchor
+      ? findSldIdEntry(ctx, anchor.id).element
+      : (sldIdElements(ctx).at(-1) ?? null),
+    index: anchor ? pres.slides.indexOf(anchor) + 1 : pres.slides.length,
+  });
+}
+
+// --- setSlideBackground ------------------------------------------------------
+
+function applySetSlideBackground(
+  pres: PresentationData,
+  op: SetSlideBackgroundOperation,
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const color = op.color === null ? null : parseHexColor(op.color);
+
+  const cSld = sourcePackage.getXmlRoot(slide.id)?.child("cSld");
+  const cSldElement = cSld ? requireElement(cSld, "cSld") : null;
+  if (!cSldElement) throw new Error(`applyEdit: slide part "${slide.id}" is not loaded.`);
+
+  const prevBackground = slide.background;
+  const oldBg = childNamed(cSldElement, "bg");
+  const ref = oldBg?.nextElementSibling ?? cSldElement.firstElementChild;
+
+  let newBg: Element | null = null;
+  if (color !== null) {
+    const doc = cSldElement.ownerDocument;
+    newBg = doc.createElementNS(P_NS, "p:bg");
+    const bgPr = doc.createElementNS(P_NS, "p:bgPr");
+    const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+    const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+    srgb.setAttribute("val", color);
+    solidFill.appendChild(srgb);
+    bgPr.appendChild(solidFill);
+    bgPr.appendChild(doc.createElementNS(A_NS, "a:effectLst"));
+    newBg.appendChild(bgPr);
+  }
+
+  if (oldBg) removeChild(oldBg);
+  // p:bg is the first child of p:cSld.
+  if (newBg) insertChild(cSldElement, newBg, ref);
+  slide.background = newBg ? new SafeXmlNode(newBg) : undefined;
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      const restoreRef = newBg?.nextElementSibling ?? cSldElement.firstElementChild;
+      if (newBg) removeChild(newBg);
+      if (oldBg) insertChild(cSldElement, oldBg, restoreRef);
+      slide.background = prevBackground;
+      sourcePackage.markDirty(slide.id);
     },
   };
 }
