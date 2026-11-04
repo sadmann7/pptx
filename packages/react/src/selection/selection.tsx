@@ -950,7 +950,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
-  /** Puts a model text range back into freshly rendered text. */
   function restoreTextRange(textElement: HTMLElement, restore: TextRestore): void {
     const start = getDomPoint(textElement, restore.range.start);
     const end = getDomPoint(textElement, restore.range.end);
@@ -1031,7 +1030,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
-  /** `useSelection().select()`: selects nodes on this slide, ending text editing. */
   function selectNodes(nodeIds: string[]): void {
     const ids = nodeIds.filter((id) => slide?.nodes.some((node) => node.id === id));
     const current = stateRef.current;
@@ -1040,12 +1038,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * `useSelection().setTextStyle()` and `setParagraphStyle()`.
-   *
    * In text mode, uncommitted typing is committed in the same batch, so the
-   * formatting lands on the text as shown and the whole thing is one undo
-   * step. The slide re-renders afterwards, and the repair effect puts the
-   * caret or selection back.
+   * formatting applies to the text as shown and undoes in one step.
    */
   async function applyFormat(
     kind: "text" | "paragraph",

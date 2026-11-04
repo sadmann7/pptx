@@ -38,10 +38,8 @@ export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(functi
 
   return (state.guides ?? []).map((guide) => {
     const isVertical = guide.axis === "x";
-    // Run the line across the whole slide, as editors do, rather than only
-    // between what lined up: a resize snaps the shape's own edge, and a short
-    // guide there would just look like its outline changing color. Reach past
-    // the slide for shapes that overhang it.
+    // Across the whole slide: a guide only between what lined up sits on the
+    // resized shape's own edge and reads as a recolored outline.
     const start = Math.min(0, guide.start);
     const end = Math.max(isVertical ? slideHeight : slideWidth, guide.end);
     const length = (end - start) * zoom;

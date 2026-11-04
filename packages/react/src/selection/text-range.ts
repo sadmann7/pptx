@@ -1,11 +1,3 @@
-/**
- * Mapping between the rendered text DOM and model text positions, plus the
- * formatting a toolbar shows for the current text.
- *
- * Positions follow `TextParagraph.runs`: a paragraph's offset counts the
- * characters of its runs, with a line break (`a:br`) as one character.
- */
-
 import type {
   ParagraphAlign,
   SetTextBodyParagraph,

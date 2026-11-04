@@ -1,9 +1,3 @@
-/**
- * Pure geometry for the selection overlay: moving, resizing, rotating, and
- * selecting, in slide pixels. Kept apart from the component so it can be
- * tested without rendering anything.
- */
-
 import type { NodePosition, SlideNode } from "@diceui/pptx-core";
 
 /** Degrees Shift steps a rotation by. */
@@ -12,7 +6,7 @@ export const ROTATION_STEP = 15;
 /** An angle in degrees, wrapped into [0, 360). */
 export function normalizeAngle(degrees: number): number {
   const wrapped = ((degrees % 360) + 360) % 360;
-  // Snap floating-point noise (359.9999…) back to whole degrees' neighbors.
+  // Floating-point error can leave 359.9999…, which is 0.
   return Math.abs(wrapped - 360) < 1e-6 ? 0 : wrapped;
 }
 

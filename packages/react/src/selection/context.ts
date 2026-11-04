@@ -1,9 +1,3 @@
-/**
- * How `Presentation.Selection` hands its state to the overlay parts drawn
- * inside it, and how `Presentation.SelectionBox` hands each shape to the
- * handles inside it.
- */
-
 import * as React from "react";
 
 import type { SlideNode } from "@diceui/pptx-core";

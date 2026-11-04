@@ -1,13 +1,3 @@
-/**
- * Smart-guide snapping for moving and resizing shapes, the way PowerPoint and
- * Google Slides do it: an edge or center of what is being dragged that comes
- * within a few pixels of an edge or center of the slide or another shape
- * snaps onto it, and a guide line shows what it lined up with.
- *
- * Everything is in slide pixels. Callers pass the threshold already divided
- * by zoom, so snapping feels the same at every zoom level.
- */
-
 interface SnapRect {
   x: number;
   y: number;
@@ -166,7 +156,6 @@ export function snapResize(
   return { dx: nextDx, dy: nextDy, guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }) };
 }
 
-/** Bounding box of several rects. */
 export function getUnionRect(rects: SnapRect[]): SnapRect | null {
   if (rects.length === 0) return null;
   let x1 = Infinity;
