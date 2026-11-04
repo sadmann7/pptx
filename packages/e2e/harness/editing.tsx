@@ -18,7 +18,8 @@ import { createRoot } from "react-dom/client";
 const file = new URLSearchParams(location.search).get("file") ?? "basic.pptx";
 
 function Toolbar() {
-  const { mode, nodeIds, textStyle, setTextStyle, setParagraphStyle } = useSelection();
+  const { mode, nodeIds, textStyle, setTextStyle, setParagraphStyle, insertTextBox } =
+    useSelection();
 
   return (
     <>
@@ -43,6 +44,9 @@ function Toolbar() {
           onClick={() => void setParagraphStyle({ align: "left" })}
         >
           Left
+        </button>
+        <button type="button" data-testid="text-box" onClick={() => void insertTextBox()}>
+          Text box
         </button>
         <output data-testid="state">
           {JSON.stringify({ mode, nodeIds, bold: textStyle?.bold ?? null })}

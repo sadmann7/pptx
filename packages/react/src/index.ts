@@ -66,6 +66,7 @@ export type {
 
 export type {
   AddImageOperation,
+  AddTextBoxOperation,
   AddSlideOperation,
   BatchOperation,
   DeleteNodeOperation,
@@ -76,12 +77,16 @@ export type {
   EditResult,
   LayoutData,
   MoveSlideOperation,
+  NodeClipboard,
   NodeOrder,
   ParagraphAlign,
   ParagraphStyle,
+  PasteNodesOperation,
   PresentationData,
+  PresentationFonts,
   ReorderNodeOperation,
   SetNodeTransformOperation,
+  SetOutlineOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
   SetSolidFillOperation,
@@ -94,3 +99,5 @@ export type {
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
+
+export { copyNodes, getPresentationFonts } from "@diceui/pptx-core";

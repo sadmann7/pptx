@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { ParagraphStyle, SlideNode, TextStyle } from "@diceui/pptx-core";
+import type { AddTextBoxOperation, ParagraphStyle, SlideNode, TextStyle } from "@diceui/pptx-core";
 
 import { useSlide, useStoreContext } from "../context";
 import type { Store } from "../store";
@@ -35,6 +35,7 @@ export interface SelectionSnapshot {
 /** Commands the mounted `Presentation.Selection` serves. */
 export interface SelectionController {
   select: (nodeIds: string[]) => void;
+  editText: (nodeId: string) => void;
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
 }
@@ -133,6 +134,20 @@ export interface UseSelectionResult {
   clear: () => void;
 
   /**
+   * Starts editing a shape's text, caret at the end. Waits for a slide
+   * re-render, so it works right after an edit that created the shape.
+   */
+  editText: (nodeId: string) => void;
+
+  /**
+   * Adds a text box to the active slide, centered unless `position` is given,
+   * and starts editing it. Resolves with the new node's id.
+   */
+  insertTextBox: (
+    options?: Omit<AddTextBoxOperation, "type" | "slideId">,
+  ) => Promise<string | undefined>;
+
+  /**
    * Formats text. In text mode this applies to the selected text, or to the
    * word at the caret; otherwise to all text in the selected shapes. One undo
    * step. Resolves once the edit is applied.
@@ -204,6 +219,26 @@ export function useSelection(): UseSelectionResult {
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
     select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
     clear: React.useCallback(() => channel.getController()?.select([]), [channel]),
+    editText: React.useCallback(
+      (nodeId: string) => channel.getController()?.editText(nodeId),
+      [channel],
+    ),
+    insertTextBox: React.useCallback(
+      async (options?: Omit<AddTextBoxOperation, "type" | "slideId">) => {
+        const controller = requireController(channel);
+        const activeSlideId = store.getState().activeSlideId;
+        if (!activeSlideId) return undefined;
+        const { createdNodeIds } = await store.edit({
+          type: "addTextBox",
+          slideId: activeSlideId,
+          ...options,
+        });
+        const nodeId = createdNodeIds?.[0];
+        if (nodeId) controller.editText(nodeId);
+        return nodeId;
+      },
+      [channel, store],
+    ),
     setTextStyle: React.useCallback(
       async (style: TextStyle) => requireController(channel).setTextStyle(style),
       [channel],

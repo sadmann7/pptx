@@ -299,3 +299,97 @@ test.describe("images", () => {
     expect(box.width).toBeCloseTo(120, 0);
   });
 });
+
+test.describe("text boxes", () => {
+  /** The text of the most recently added node, as the overlay currently shows it. */
+  function lastNodeText(page: Page) {
+    return page.evaluate(() => {
+      const nodes = window.__editStore!.getActiveSlide()!.nodes;
+      const id = nodes[nodes.length - 1].id;
+      const element = document.querySelector(`[data-pptx-node-id="${id}"]`);
+      return (element?.textContent ?? "").replace(/\u200B/g, "");
+    });
+  }
+
+  test("inserts a text box ready to type in, with native undo", async ({ page }) => {
+    const { overlay } = await open(page);
+    await page.getByTestId("text-box").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await expect
+      .poll(() => page.evaluate(() => (document.activeElement as HTMLElement)?.isContentEditable))
+      .toBe(true);
+
+    await page.keyboard.type("Hi");
+    await expect.poll(() => lastNodeText(page)).toBe("Hi");
+    // Each keystroke undoes in turn, the first one included.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(() => lastNodeText(page)).toBe("H");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(() => lastNodeText(page)).toBe("");
+
+    await page.keyboard.type("Hello");
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    const text = await page.evaluate(() => {
+      const nodes = window.__editStore!.getActiveSlide()!.nodes as unknown as {
+        textBody: { paragraphs: { runs: { text: string }[] }[] };
+      }[];
+      return nodes[nodes.length - 1].textBody.paragraphs[0].runs.map((run) => run.text).join("");
+    });
+    expect(text).toContain("Hello");
+  });
+
+  test("undoes the first keystroke typed into an empty selected box", async ({ page }) => {
+    const { overlay } = await open(page);
+    await page.getByTestId("text-box").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    await page.keyboard.type("X");
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await expect.poll(() => lastNodeText(page)).toBe("X");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(() => lastNodeText(page)).toBe("");
+  });
+});
+
+test.describe("outlines", () => {
+  test("draws a shape's outline", async ({ page }) => {
+    await open(page);
+    await page.evaluate(async () => {
+      const store = window.__editStore!;
+      await store.edit({
+        type: "setOutline",
+        slideId: store.getActiveSlide()!.id,
+        nodeId: "2",
+        color: "#00FF00",
+        width: 4,
+      });
+    });
+
+    const stroke = page.locator('[data-pptx-node-id="2"] [stroke]').first();
+    await expect(stroke).toHaveAttribute("stroke", /#00ff00|rgb\(0, ?255, ?0\)/i);
+  });
+});
+
+test.describe("clipboard", () => {
+  test("copies and pastes a shape with the keyboard", async ({ page }) => {
+    const { overlay, shape } = await open(page);
+    await shape.click();
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("ControlOrMeta+v");
+
+    const count = () => page.evaluate(() => window.__editStore!.getActiveSlide()!.nodes.length);
+    await expect.poll(count).toBe(2);
+    const positions = await page.evaluate(() =>
+      window.__editStore!.getActiveSlide()!.nodes.map((node) => node.position),
+    );
+    expect(positions[1].x).toBeCloseTo(positions[0].x + 10);
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(count).toBe(1);
+  });
+});

@@ -165,9 +165,19 @@ export function resizeRotatedRect(
   const radians = (rotation * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
-
   const local = resizeRect(origin, grip, dx * cos + dy * sin, -dx * sin + dy * cos, lockAspect);
-  // How far the center moved, in the shape's axes, turned back to the slide's.
+  return placeRotated(origin, rotation, local);
+}
+
+/**
+ * Where a rect resized in its own axes lands once rotated: the center moves by
+ * the local offset turned into slide axes, so the anchored edges stay put.
+ */
+function placeRotated(origin: Rect, rotation: number, local: Rect): Rect {
+  if (rotation === 0) return local;
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
   const offsetX = local.x + local.w / 2 - (origin.x + origin.w / 2);
   const offsetY = local.y + local.h / 2 - (origin.y + origin.h / 2);
   const centerX = origin.x + origin.w / 2 + offsetX * cos - offsetY * sin;
@@ -228,9 +238,9 @@ export function scaleRectFromGrip(rect: Rect, grip: GripDirection, scale: Resize
 }
 
 /**
- * Where each selected shape lands mid-resize. A lone rotated shape resizes
- * along its own axes; otherwise every shape scales by the factors the gripped
- * one did, each in place.
+ * Where each selected shape lands mid-resize. The gripped shape resizes along
+ * its own axes, and every other shape scales by the same factors along its
+ * own axes, each anchored at its own edges opposite the grip.
  */
 export function getResizedRects(
   nodes: SlideNode[],
@@ -241,13 +251,18 @@ export function getResizedRects(
   lockAspect: boolean,
 ): Map<string, Rect> {
   const origin = getNodeRect(grippedNode);
-  if (grippedNode.rotation !== 0) {
-    return new Map([
-      [grippedNode.id, resizeRotatedRect(origin, grippedNode.rotation, grip, dx, dy, lockAspect)],
-    ]);
-  }
-  const scale = gripScale(origin, grip, dx, dy, lockAspect);
-  return new Map(nodes.map((node) => [node.id, scaleRectFromGrip(getNodeRect(node), grip, scale)]));
+  const resized = resizeRotatedRect(origin, grippedNode.rotation, grip, dx, dy, lockAspect);
+  const scale: ResizeScale = {
+    x: origin.w === 0 ? 1 : resized.w / origin.w,
+    y: origin.h === 0 ? 1 : resized.h / origin.h,
+  };
+  return new Map(
+    nodes.map((node) => {
+      if (node === grippedNode) return [node.id, resized];
+      const rect = getNodeRect(node);
+      return [node.id, placeRotated(rect, node.rotation, scaleRectFromGrip(rect, grip, scale))];
+    }),
+  );
 }
 
 export interface PasteboardOverhang {

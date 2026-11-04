@@ -14,6 +14,7 @@
 import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
+import type { PictureNodeData } from "../model/nodes/picture";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
 import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
@@ -24,7 +25,7 @@ import {
 } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
-import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
+import { isExternalTargetMode, parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
 import { degToAngle, emuToPx, pxToEmu } from "../ooxml/unit";
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import {
@@ -237,6 +238,29 @@ export interface ReorderNodeOperation {
   order: NodeOrder;
 }
 
+/** Insert a text box on top of a slide. */
+export interface AddTextBoxOperation {
+  type: "addTextBox";
+  slideId: string;
+  /** Size in px. Defaults to a third of the slide's width, one line tall. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+  /** Initial text. Defaults to empty. */
+  text?: string;
+}
+
+/** Set a shape's or picture's outline. Omitted fields are left as they are. */
+export interface SetOutlineOperation {
+  type: "setOutline";
+  slideId: string;
+  nodeId: string;
+  /** Hex color, with or without leading `#`. `null` removes the outline. */
+  color?: string | null;
+  /** Width in points. */
+  width?: number;
+}
+
 /** Insert a picture on top of a slide. */
 export interface AddImageOperation {
   type: "addImage";
@@ -279,6 +303,9 @@ export type EditOperation =
   | DuplicateNodeOperation
   | ReorderNodeOperation
   | AddImageOperation
+  | PasteNodesOperation
+  | AddTextBoxOperation
+  | SetOutlineOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -331,6 +358,12 @@ export async function applyEdit(
       return applyReorderNode(presentation, op);
     case "addImage":
       return applyAddImage(presentation, op);
+    case "pasteNodes":
+      return applyPasteNodes(presentation, op);
+    case "addTextBox":
+      return applyAddTextBox(presentation, op);
+    case "setOutline":
+      return applySetOutline(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -683,7 +716,15 @@ interface XfrmHandle {
  * them requires writing a new one into the slide part).
  */
 function getOrCreateXfrm(node: SlideNode): XfrmHandle {
-  const sourceElement = requireElement(node.source, "node element");
+  return getOrCreateXfrmOn(node.source, node.nodeType, node.id);
+}
+
+function getOrCreateXfrmOn(
+  source: SafeXmlNode,
+  nodeType: SlideNode["nodeType"],
+  label: string,
+): XfrmHandle {
+  const sourceElement = requireElement(source, "node element");
   const doc = sourceElement.ownerDocument;
 
   let container: Element;
@@ -691,15 +732,15 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
   let xfrmNs: string;
   let insertRef: Element | null;
 
-  if (node.nodeType === "table" || node.nodeType === "chart") {
+  if (nodeType === "table" || nodeType === "chart") {
     // Graphic frames carry p:xfrm directly, between nvGraphicFramePr and a:graphic.
     container = sourceElement;
     xfrmQualified = "p:xfrm";
     xfrmNs = P_NS;
-    insertRef = node.source.child("graphic").element;
+    insertRef = source.child("graphic").element;
   } else {
-    const prName = node.nodeType === "group" ? "grpSpPr" : "spPr";
-    container = requireElement(node.source.child(prName), `${prName} of node "${node.id}"`);
+    const prName = nodeType === "group" ? "grpSpPr" : "spPr";
+    container = requireElement(source.child(prName), `${prName} of node "${label}"`);
     xfrmQualified = "a:xfrm";
     xfrmNs = A_NS;
     // xfrm is the first element in the shape-properties sequence.
@@ -1498,6 +1539,463 @@ function nextMediaPath(pres: PresentationData, extension: string): string {
   return `ppt/media/image${index}.${extension}`;
 }
 
+interface PartChange {
+  undo: () => void;
+}
+
+/** Adds a media part, declaring its extension's content type when the deck lacks it. */
+async function addMediaPart(
+  pres: PresentationData,
+  extension: string,
+  contentType: string,
+  data: Uint8Array,
+): Promise<PartChange & { path: string; target: string }> {
+  const sourcePackage = requirePkg(pres);
+  const path = nextMediaPath(pres, extension);
+  sourcePackage.setEntry(path, data);
+  pres.media.set(path, data);
+
+  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
+  const ctRoot = parseXml(ctText);
+  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
+  const hasDefault = ctRoot
+    .children("Default")
+    .some((entry) => entry.attr("Extension")?.toLowerCase() === extension);
+  if (!hasDefault) {
+    const defaultElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Default");
+    defaultElement.setAttribute("Extension", extension);
+    defaultElement.setAttribute("ContentType", contentType);
+    insertChild(ctRootElement, defaultElement, ctRootElement.firstElementChild);
+    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
+  }
+
+  return {
+    path,
+    // Slides live in ppt/slides/, so media is one level up.
+    target: `../media/${path.slice("ppt/media/".length)}`,
+    undo: () => {
+      sourcePackage.deleteEntry(path);
+      pres.media.delete(path);
+      if (!hasDefault) sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
+    },
+  };
+}
+
+/** Adds relationships to a slide's rels part, creating the part when missing. */
+async function addSlideRels(
+  pres: PresentationData,
+  slide: SlideData,
+  entries: RelEntry[],
+): Promise<PartChange & { ids: string[] }> {
+  const sourcePackage = requirePkg(pres);
+  const relsPath = relsPathFor(slide.id);
+  const existingText = await sourcePackage.readText(relsPath);
+  const relsText =
+    existingText ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="${RELS_NS}"/>`;
+  const relsRootElement = requireElement(parseXml(relsText), "slide rels root");
+  const taken = new Map([...slide.rels, ...parseRels(relsText)]);
+
+  const ids = entries.map((entry) => {
+    const id = nextRelId(taken);
+    taken.set(id, entry);
+    const relElement = relsRootElement.ownerDocument.createElementNS(RELS_NS, "Relationship");
+    relElement.setAttribute("Id", id);
+    relElement.setAttribute("Type", entry.type);
+    relElement.setAttribute("Target", entry.target);
+    if (entry.targetMode) relElement.setAttribute("TargetMode", entry.targetMode);
+    insertChild(relsRootElement, relElement, null);
+    slide.rels.set(id, entry);
+    return id;
+  });
+  sourcePackage.setEntry(relsPath, serializePartText(relsRootElement, relsText));
+
+  return {
+    ids,
+    undo: () => {
+      for (const id of ids) slide.rels.delete(id);
+      if (existingText === undefined) sourcePackage.deleteEntry(relsPath);
+      else sourcePackage.setEntry(relsPath, existingText);
+    },
+  };
+}
+
+/** A relationship copied nodes refer to, with the media part's bytes when it's internal. */
+export interface ClipboardRelationship {
+  type: string;
+  target: string;
+  targetMode?: string;
+  media?: { data: Uint8Array; contentType: string; extension: string };
+}
+
+/** Nodes copied off a slide, self-contained so they paste into any deck. */
+export interface NodeClipboard {
+  /** Each copied node's XML, in stacking order. */
+  nodes: string[];
+  /** Relationships the XML refers to, keyed by the ids it uses. */
+  relationships: Record<string, ClipboardRelationship>;
+  /** Nodes left out because they refer to parts other than images (charts, diagrams, video). */
+  omittedNodeIds: string[];
+}
+
+function relationshipIdsIn(element: Element): string[] {
+  const ids: string[] = [];
+  const visit = (current: Element) => {
+    for (const attr of Array.from(current.attributes)) {
+      if (attr.namespaceURI === R_NS && attr.value) ids.push(attr.value);
+    }
+    for (const child of current.children) visit(child);
+  };
+  visit(element);
+  return ids;
+}
+
+function contentTypeOf(ctRoot: SafeXmlNode, partPath: string): string | undefined {
+  const override = ctRoot.children("Override").find((o) => o.attr("PartName") === `/${partPath}`);
+  if (override) return override.attr("ContentType");
+  const extension = partPath.slice(partPath.lastIndexOf(".") + 1).toLowerCase();
+  return ctRoot
+    .children("Default")
+    .find((entry) => entry.attr("Extension")?.toLowerCase() === extension)
+    ?.attr("ContentType");
+}
+
+/**
+ * Copies top-level nodes for `pasteNodes`, in their stacking order. Nodes that
+ * inherit their position (placeholders) get it written out, and the image
+ * parts they use travel with them.
+ */
+export async function copyNodes(
+  pres: PresentationData,
+  slideId: string,
+  nodeIds: string[],
+): Promise<NodeClipboard> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  materializeSlide(pres, slide);
+  const serializer = new XMLSerializer();
+
+  // Capture everything from the slide before the first await: a cut deletes
+  // the nodes right after copying them.
+  const captured = slide.nodes
+    .filter((node) => nodeIds.includes(node.id))
+    .map((node) => {
+      const element = requireElement(node.source, "node element");
+      const copy = element.cloneNode(true) as Element;
+      const xfrm = getOrCreateXfrmOn(new SafeXmlNode(copy), node.nodeType, node.id);
+      if (xfrm.created) {
+        xfrm.offElement.setAttribute("x", String(pxToEmu(node.position.x)));
+        xfrm.offElement.setAttribute("y", String(pxToEmu(node.position.y)));
+        xfrm.extElement.setAttribute("cx", String(pxToEmu(node.size.w)));
+        xfrm.extElement.setAttribute("cy", String(pxToEmu(node.size.h)));
+      }
+      const rels = relationshipIdsIn(element).flatMap((id) => {
+        const rel = slide.rels.get(id);
+        return rel ? [[id, rel] as const] : [];
+      });
+      return { id: node.id, xml: serializer.serializeToString(copy), rels };
+    });
+
+  const ctRoot = parseXml((await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "");
+  const clipboard: NodeClipboard = { nodes: [], relationships: {}, omittedNodeIds: [] };
+
+  for (const node of captured) {
+    const relationships: Record<string, ClipboardRelationship> = {};
+    let supported = true;
+
+    for (const [id, rel] of node.rels) {
+      if (isExternalTargetMode(rel.targetMode)) {
+        relationships[id] = { type: rel.type, target: rel.target, targetMode: rel.targetMode };
+        continue;
+      }
+      if (rel.type !== IMAGE_REL_TYPE) {
+        supported = false;
+        break;
+      }
+      const partPath = resolveRelTarget("ppt/slides", rel.target);
+      const data = pres.media.get(partPath) ?? (await sourcePackage.readBytes(partPath));
+      const extension = partPath.slice(partPath.lastIndexOf(".") + 1).toLowerCase();
+      const contentType = contentTypeOf(ctRoot, partPath);
+      if (!data || !contentType) {
+        supported = false;
+        break;
+      }
+      relationships[id] = {
+        type: rel.type,
+        target: rel.target,
+        media: { data, contentType, extension },
+      };
+    }
+    if (!supported) {
+      clipboard.omittedNodeIds.push(node.id);
+      continue;
+    }
+
+    clipboard.nodes.push(node.xml);
+    Object.assign(clipboard.relationships, relationships);
+  }
+  return clipboard;
+}
+
+/** Paste nodes from `copyNodes`, from this deck or another, on top of a slide. */
+export interface PasteNodesOperation {
+  type: "pasteNodes";
+  slideId: string;
+  clipboard: NodeClipboard;
+  /**
+   * How far the pasted nodes sit from where they were copied, in px.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  offset?: NodePosition;
+}
+
+/** A media part in the deck holding exactly these bytes, if there is one. */
+async function findMediaPart(
+  pres: PresentationData,
+  data: Uint8Array,
+): Promise<string | undefined> {
+  const sourcePackage = requirePkg(pres);
+  for (const path of sourcePackage.paths()) {
+    if (!path.startsWith("ppt/media/")) continue;
+    const existing = pres.media.get(path) ?? (await sourcePackage.readBytes(path));
+    if (existing?.length === data.length && existing.every((byte, i) => byte === data[i])) {
+      return path;
+    }
+  }
+  return undefined;
+}
+
+async function applyPasteNodes(
+  pres: PresentationData,
+  op: PasteNodesOperation,
+): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const partChanges: PartChange[] = [];
+  const transformChanges: PartChange[] = [];
+
+  // Media the deck already has (always, when pasting within it) is reused.
+  const oldIds = Object.keys(op.clipboard.relationships);
+  const entries: RelEntry[] = [];
+  for (const id of oldIds) {
+    const rel = op.clipboard.relationships[id];
+    if (!rel.media) {
+      entries.push({ type: rel.type, target: rel.target, targetMode: rel.targetMode });
+      continue;
+    }
+    const existing = await findMediaPart(pres, rel.media.data);
+    if (existing) {
+      entries.push({ type: rel.type, target: `../media/${existing.slice("ppt/media/".length)}` });
+      continue;
+    }
+    const media = await addMediaPart(
+      pres,
+      rel.media.extension,
+      rel.media.contentType,
+      rel.media.data,
+    );
+    partChanges.push(media);
+    entries.push({ type: rel.type, target: media.target });
+  }
+  const rels = await addSlideRels(pres, slide, entries);
+  partChanges.push(rels);
+  const newIds = new Map(oldIds.map((id, index) => [id, rels.ids[index]]));
+
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst") ?? null;
+  let nextId = nextShapeId(spTree);
+  const pasted: { element: Element; node: SlideNode }[] = [];
+  for (const xml of op.clipboard.nodes) {
+    const element = spTree.ownerDocument.importNode(
+      requireElement(parseXml(xml), "node"),
+      true,
+    ) as Element;
+    const visit = (current: Element) => {
+      for (const attr of Array.from(current.attributes)) {
+        if (attr.namespaceURI === R_NS) attr.value = newIds.get(attr.value) ?? attr.value;
+      }
+      if (current.localName === "cNvPr") current.setAttribute("id", String(nextId++));
+      for (const child of current.children) visit(child);
+    };
+    visit(element);
+    insertChild(spTree, element, extLst);
+    const node = parseAddedNode(pres, slide, element);
+    slide.nodes.push(node);
+    pasted.push({ element, node });
+
+    if (op.offset && (op.offset.x !== 0 || op.offset.y !== 0)) {
+      transformChanges.push(
+        applySetNodeTransform(pres, {
+          type: "setNodeTransform",
+          slideId: slide.id,
+          nodeId: node.id,
+          position: { x: node.position.x + op.offset.x, y: node.position.y + op.offset.y },
+        }),
+      );
+    }
+  }
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: pasted.map(({ node }) => node.id),
+    undo: () => {
+      for (const change of transformChanges.reverse()) change.undo();
+      for (const { element, node } of pasted) {
+        removeChild(element);
+        slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      }
+      for (const change of partChanges.reverse()) change.undo();
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+/** One line of 18pt text, plus the default insets. */
+const TEXT_BOX_HEIGHT = 40;
+
+function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const doc = spTree.ownerDocument;
+
+  const size = op.size ?? { w: pres.width / 3, h: TEXT_BOX_HEIGHT };
+  const position = op.position ?? {
+    x: (pres.width - size.w) / 2,
+    y: (pres.height - size.h) / 2,
+  };
+  const id = nextShapeId(spTree);
+  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [attr, value] of Object.entries(attrs)) element.setAttribute(attr, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+  const text = doc.createElementNS(A_NS, "a:t");
+  text.textContent = op.text ?? "";
+  const paragraph = op.text
+    ? el(
+        "a:p",
+        {},
+        el("a:r", {}, el("a:rPr", { lang: "en-US" }), text),
+        el("a:endParaRPr", { lang: "en-US" }),
+      )
+    : el("a:p", {}, el("a:endParaRPr", { lang: "en-US" }));
+  const sp = el(
+    "p:sp",
+    {},
+    el(
+      "p:nvSpPr",
+      {},
+      el("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
+      el("p:cNvSpPr", { txBox: "1" }),
+      el("p:nvPr"),
+    ),
+    el(
+      "p:spPr",
+      {},
+      el(
+        "a:xfrm",
+        {},
+        el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+        el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+      ),
+      el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+      el("a:noFill"),
+    ),
+    el(
+      "p:txBody",
+      {},
+      el("a:bodyPr", { wrap: "square", rtlCol: "0" }, el("a:spAutoFit")),
+      el("a:lstStyle"),
+      paragraph,
+    ),
+  );
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst");
+  insertChild(spTree, sp, extLst ?? null);
+  const node = parseAddedNode(pres, slide, sp);
+  slide.nodes.push(node);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [node.id],
+    undo: () => {
+      removeChild(sp);
+      slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+/** spPr children that come after `a:ln` in the schema sequence. */
+const AFTER_LINE_LOCAL_NAMES = new Set(["effectLst", "effectDag", "scene3d", "sp3d", "extLst"]);
+
+function applySetOutline(pres: PresentationData, op: SetOutlineOperation): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  if (node.nodeType !== "shape" && node.nodeType !== "picture") {
+    throw new Error(
+      `applyEdit: setOutline only supports shapes and pictures, got "${node.nodeType}".`,
+    );
+  }
+  if (op.width !== undefined && !(op.width >= 0)) {
+    throw new Error(`applyEdit: invalid outline width "${op.width}".`);
+  }
+  const color = op.color ? parseHexColor(op.color) : op.color;
+
+  const spPr = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
+  const original = childNamed(spPr, "ln");
+  const ref = original?.nextElementSibling ?? firstChildIn(spPr, AFTER_LINE_LOCAL_NAMES);
+  const line = original
+    ? (original.cloneNode(true) as Element)
+    : spPr.ownerDocument.createElementNS(A_NS, "a:ln");
+
+  if (op.width !== undefined) line.setAttribute("w", String(Math.round(op.width * 12700)));
+  if (color !== undefined) {
+    // The fill is the first child of a:ln.
+    for (const child of Array.from(line.children)) {
+      if (RPR_FILL_LOCAL_NAMES.has(child.localName)) child.remove();
+    }
+    const fill = spPr.ownerDocument.createElementNS(
+      A_NS,
+      color === null ? "a:noFill" : "a:solidFill",
+    );
+    if (color !== null) {
+      const srgb = spPr.ownerDocument.createElementNS(A_NS, "a:srgbClr");
+      srgb.setAttribute("val", color);
+      fill.appendChild(srgb);
+    }
+    line.insertBefore(fill, line.firstElementChild);
+  }
+
+  if (original) removeChild(original);
+  insertChild(spPr, line, ref);
+  const lined = node as ShapeNodeData | PictureNodeData;
+  const previousLine = lined.line;
+  lined.line = new SafeXmlNode(line);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      const restoreRef = line.nextElementSibling;
+      removeChild(line);
+      if (original) insertChild(spPr, original, restoreRef);
+      lined.line = previousLine;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
 async function applyAddImage(pres: PresentationData, op: AddImageOperation): Promise<EditResult> {
   const sourcePackage = requirePkg(pres);
   const extension = IMAGE_EXTENSIONS[op.contentType];
@@ -1521,43 +2019,9 @@ async function applyAddImage(pres: PresentationData, op: AddImageOperation): Pro
     y: (pres.height - size.h) / 2,
   };
 
-  // --- Media part ---
-  const mediaPath = nextMediaPath(pres, extension);
-  sourcePackage.setEntry(mediaPath, op.data);
-  pres.media.set(mediaPath, op.data);
-
-  // --- [Content_Types].xml: a Default for the extension, if missing ---
-  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
-  const ctRoot = parseXml(ctText);
-  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
-  const hasDefault = ctRoot
-    .children("Default")
-    .some((entry) => entry.attr("Extension")?.toLowerCase() === extension);
-  if (!hasDefault) {
-    const defaultElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Default");
-    defaultElement.setAttribute("Extension", extension);
-    defaultElement.setAttribute("ContentType", op.contentType);
-    insertChild(ctRootElement, defaultElement, ctRootElement.firstElementChild);
-    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
-  }
-
-  // --- Slide relationship ---
-  const relsPath = relsPathFor(slide.id);
-  const existingRelsText = await sourcePackage.readText(relsPath);
-  const relsText =
-    existingRelsText ??
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="${RELS_NS}"/>`;
-  const relsRoot = parseXml(relsText);
-  const relsRootElement = requireElement(relsRoot, "slide rels root");
-  const rId = nextRelId(new Map([...slide.rels, ...parseRels(relsText)]));
-  const target = `../media/${mediaPath.slice("ppt/media/".length)}`;
-  const relElement = relsRootElement.ownerDocument.createElementNS(RELS_NS, "Relationship");
-  relElement.setAttribute("Id", rId);
-  relElement.setAttribute("Type", IMAGE_REL_TYPE);
-  relElement.setAttribute("Target", target);
-  insertChild(relsRootElement, relElement, null);
-  sourcePackage.setEntry(relsPath, serializePartText(relsRootElement, relsText));
-  slide.rels.set(rId, { type: IMAGE_REL_TYPE, target });
+  const media = await addMediaPart(pres, extension, op.contentType, op.data);
+  const rels = await addSlideRels(pres, slide, [{ type: IMAGE_REL_TYPE, target: media.target }]);
+  const [rId] = rels.ids;
 
   // --- p:pic, on top of everything else ---
   const id = nextShapeId(spTree);
@@ -1610,12 +2074,8 @@ async function applyAddImage(pres: PresentationData, op: AddImageOperation): Pro
     undo: () => {
       removeChild(pic);
       slide.nodes.splice(slide.nodes.indexOf(picNode), 1);
-      slide.rels.delete(rId);
-      if (existingRelsText === undefined) sourcePackage.deleteEntry(relsPath);
-      else sourcePackage.setEntry(relsPath, existingRelsText);
-      if (!hasDefault) sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
-      sourcePackage.deleteEntry(mediaPath);
-      pres.media.delete(mediaPath);
+      rels.undo();
+      media.undo();
       sourcePackage.markDirty(slide.id);
     },
   };

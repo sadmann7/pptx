@@ -97,13 +97,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
         rect = resizeRects?.get(node.id) ?? rect;
       }
       const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
-      // A rotated shape resizes along its own axes only when selected alone.
-      const showHandles =
-        showResizeHandles &&
-        (node.rotation === 0 || selectedNodes.length === 1) &&
-        !isDragging &&
-        !isRotating &&
-        !isTextMode;
+      const showHandles = showResizeHandles && !isDragging && !isRotating && !isTextMode;
       const showRotateHandle =
         showResizeHandles &&
         !isDragging &&

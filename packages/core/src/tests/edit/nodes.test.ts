@@ -8,10 +8,11 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
-import { applyEdit, readImageSize } from "../../edit/operation";
+import { applyEdit, copyNodes, readImageSize } from "../../edit/operation";
 import type { PictureNodeData } from "../../model/nodes/picture";
 import type { ShapeNodeData } from "../../model/nodes/shape";
 import { buildPresentation, PresentationData } from "../../model/presentation";
+import { getPresentationFonts } from "../../model/presentation-fonts";
 import { writePptx } from "../../ooxml/writer";
 import { readPptx } from "../../ooxml/zip";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
@@ -276,5 +277,245 @@ describe("readImageSize", () => {
     expect(readImageSize(jpeg)).toEqual({ w: 400, h: 300 });
 
     expect(readImageSize(new Uint8Array([1, 2, 3]))).toBeUndefined();
+  });
+});
+
+describe("copyNodes and pasteNodes", () => {
+  const placeholder = `<p:sp>
+<p:nvSpPr><p:cNvPr id="2" name="Title 1"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+<p:spPr/>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Title</a:t></a:r></a:p></p:txBody>
+</p:sp>`;
+  const layoutTitle = `<p:sp>
+<p:nvSpPr><p:cNvPr id="2" name="Title 1"/><p:cNvSpPr/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="457200" y="274638"/><a:ext cx="8229600" cy="1143000"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></p:txBody>
+</p:sp>`;
+
+  it("pastes shapes on top of a slide with fresh ids, one undo step", async () => {
+    const pres = await openEditable([textShape(2, "A"), textShape(3, "B", 3657600)]);
+    const slideId = pres.slides[0].id;
+    const clipboard = await copyNodes(pres, slideId, ["3", "2"]);
+    expect(clipboard.nodes).toHaveLength(2);
+
+    const result = await applyEdit(pres, { type: "pasteNodes", slideId, clipboard });
+
+    expect(result.createdNodeIds).toEqual(["4", "5"]);
+    expect(ids(pres)).toEqual(["2", "3", "4", "5"]);
+    // Stacking order is kept, and nothing moves without an offset.
+    const texts = pres.slides[0].nodes.map(
+      (node) => (node as ShapeNodeData).textBody!.paragraphs[0].runs[0].text,
+    );
+    expect(texts).toEqual(["A", "B", "A", "B"]);
+    expect(pres.slides[0].nodes[2].position).toEqual(pres.slides[0].nodes[0].position);
+    expect(ids(await saveAndReopen(pres))).toEqual(["2", "3", "4", "5"]);
+
+    result.undo();
+    expect(ids(pres)).toEqual(["2", "3"]);
+  });
+
+  it("offsets pasted shapes", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+    const clipboard = await copyNodes(pres, slideId, ["2"]);
+    const original = pres.slides[0].nodes[0].position;
+
+    await applyEdit(pres, { type: "pasteNodes", slideId, clipboard, offset: { x: 10, y: 20 } });
+    expect(pres.slides[0].nodes[1].position).toEqual({ x: original.x + 10, y: original.y + 20 });
+  });
+
+  it("writes out an inherited position so it survives another deck", async () => {
+    const buffer = await buildCustomPptx({ slides: [placeholder], layoutShapesXml: layoutTitle });
+    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+    const clipboard = await copyNodes(pres, pres.slides[0].id, ["2"]);
+
+    expect(clipboard.nodes[0]).toContain('<a:off x="457200" y="274638"/>');
+    expect(clipboard.nodes[0]).toContain('<a:ext cx="8229600" cy="1143000"/>');
+    // The source slide itself is untouched.
+    const sourceXml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");
+    expect(sourceXml).not.toContain('<a:off x="457200"');
+  });
+
+  it("brings a picture's image into another deck, and reuses it within one", async () => {
+    const source = await openEditable([""]);
+    const sourceSlide = source.slides[0].id;
+    await applyEdit(source, {
+      type: "addImage",
+      slideId: sourceSlide,
+      data: pngBytes(40, 20),
+      contentType: "image/png",
+    });
+    const clipboard = await copyNodes(source, sourceSlide, ["2"]);
+    expect(Object.values(clipboard.relationships)[0].media?.extension).toBe("png");
+
+    // Within the same deck the image part is shared.
+    await applyEdit(source, { type: "pasteNodes", slideId: sourceSlide, clipboard });
+    const [first, second] = source.slides[0].nodes as PictureNodeData[];
+    expect(source.slides[0].rels.get(second.blipEmbed!)?.target).toBe(
+      source.slides[0].rels.get(first.blipEmbed!)?.target,
+    );
+    expect([...source.media.keys()]).toEqual(["ppt/media/image1.png"]);
+
+    // Into another deck, the image comes along.
+    const target = await openEditable([textShape(2, "A")]);
+    const targetSlide = target.slides[0].id;
+    const result = await applyEdit(target, {
+      type: "pasteNodes",
+      slideId: targetSlide,
+      clipboard,
+    });
+    const pasted = target.slides[0].nodes[1] as PictureNodeData;
+    expect(pasted.nodeType).toBe("picture");
+    expect(pasted.size).toEqual({ w: 40, h: 20 });
+    expect(target.media.get("ppt/media/image1.png")).toEqual(pngBytes(40, 20));
+    const reopened = await saveAndReopen(target);
+    expect(reopened.slides[0].nodes[1].nodeType).toBe("picture");
+    expect(reopened.media.has("ppt/media/image1.png")).toBe(true);
+
+    result.undo();
+    expect(ids(target)).toEqual(["2"]);
+    expect(target.media.has("ppt/media/image1.png")).toBe(false);
+    expect((await savedZip(target)).file("ppt/media/image1.png")).toBeNull();
+  });
+
+  it("leaves out nodes that refer to parts other than images", async () => {
+    const linked = textShape(3, "Jump").replace(
+      "<a:r><a:t>",
+      '<a:r><a:rPr><a:hlinkClick r:id="rId9" action="ppaction://hlinksldjump"/></a:rPr><a:t>',
+    );
+    const buffer = await buildCustomPptx({
+      slides: [`${textShape(2, "A")}\n${linked}`],
+      extraFiles: {
+        "ppt/slides/_rels/slide1.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slide1.xml"/>
+</Relationships>`,
+      },
+    });
+    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+
+    const clipboard = await copyNodes(pres, pres.slides[0].id, ["2", "3"]);
+    expect(clipboard.nodes).toHaveLength(1);
+    expect(clipboard.omittedNodeIds).toEqual(["3"]);
+  });
+});
+
+describe("addTextBox", () => {
+  it("adds an empty text box, centered, on top", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, { type: "addTextBox", slideId });
+
+    expect(result.createdNodeIds).toEqual(["3"]);
+    const box = pres.slides[0].nodes[1] as ShapeNodeData;
+    expect(box.isTextBox).toBe(true);
+    expect(box.size.w).toBeCloseTo(pres.width / 3);
+    expect(box.position.x).toBeCloseTo((pres.width - box.size.w) / 2);
+    expect(box.textBody!.paragraphs).toHaveLength(1);
+    expect(box.textBody!.paragraphs[0].runs).toEqual([]);
+
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[1] as ShapeNodeData;
+    expect(reopened.isTextBox).toBe(true);
+
+    result.undo();
+    expect(ids(pres)).toEqual(["2"]);
+  });
+
+  it("takes text, size, and position", async () => {
+    const pres = await openEditable([""]);
+    await applyEdit(pres, {
+      type: "addTextBox",
+      slideId: pres.slides[0].id,
+      text: "Hello",
+      size: { w: 200, h: 50 },
+      position: { x: 10, y: 20 },
+    });
+
+    const box = pres.slides[0].nodes[0] as ShapeNodeData;
+    expect(box.textBody!.paragraphs[0].runs.map((run) => run.text)).toEqual(["Hello"]);
+    expect(box.size).toEqual({ w: 200, h: 50 });
+    expect(box.position).toEqual({ x: 10, y: 20 });
+  });
+});
+
+describe("setOutline", () => {
+  const lineOf = async (pres: PresentationData) => {
+    const xml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");
+    return /<a:ln[ >].*?<\/a:ln>|<a:ln[^>]*\/>/s.exec(xml)?.[0];
+  };
+
+  it("sets an outline's color and width, after the fill", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "setOutline",
+      slideId,
+      nodeId: "2",
+      color: "#336699",
+      width: 2,
+    });
+
+    expect(await lineOf(pres)).toBe(
+      '<a:ln w="25400"><a:solidFill><a:srgbClr val="336699"/></a:solidFill></a:ln>',
+    );
+    const shape = pres.slides[0].nodes[0] as ShapeNodeData;
+    expect(shape.line?.attr("w")).toBe("25400");
+    const spPrChildren = shape.source
+      .child("spPr")
+      .allChildren()
+      .map((child) => child.localName);
+    expect(spPrChildren).toEqual(["xfrm", "prstGeom", "ln"]);
+
+    result.undo();
+    expect(await lineOf(pres)).toBeUndefined();
+    expect((pres.slides[0].nodes[0] as ShapeNodeData).line).toBeUndefined();
+  });
+
+  it("changes one field at a time, and removes the outline with null", async () => {
+    const pres = await openEditable([textShape(2, "A")]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: "FF0000", width: 1 });
+
+    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", width: 3 });
+    expect(await lineOf(pres)).toBe(
+      '<a:ln w="38100"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln>',
+    );
+
+    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: null });
+    expect(await lineOf(pres)).toBe('<a:ln w="38100"><a:noFill/></a:ln>');
+  });
+
+  it("rejects nodes without an outline and bad values", async () => {
+    const pres = await openEditable([group(2, textShape(3, "A"))]);
+    const slideId = pres.slides[0].id;
+    await expect(
+      applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: "000000" }),
+    ).rejects.toThrow(/only supports shapes and pictures/);
+  });
+});
+
+describe("getPresentationFonts", () => {
+  it("lists the theme fonts and the other fonts the text uses", async () => {
+    const run = (typeface: string) =>
+      `<a:r><a:rPr><a:latin typeface="${typeface}"/></a:rPr><a:t>x</a:t></a:r>`;
+    const shape = textShape(2, "A").replace(
+      "<a:p><a:r><a:t>A</a:t></a:r></a:p>",
+      `<a:p>${run("Georgia")}${run("+mj-lt")}${run("Calibri")}${run("Arial")}</a:p>`,
+    );
+    const buffer = await buildCustomPptx({
+      slides: [shape],
+      majorLatin: "Calibri Light",
+      minorLatin: "Calibri",
+    });
+    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+
+    expect(getPresentationFonts(pres)).toEqual({
+      theme: { heading: "Calibri Light", body: "Calibri" },
+      embedded: [],
+      used: ["Arial", "Georgia"],
+    });
   });
 });

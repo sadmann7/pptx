@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { Rect } from "../selection/geometry";
-import { getGripCursor, getNodeBounds, resizeRect, resizeRotatedRect } from "../selection/geometry";
+import {
+  getGripCursor,
+  getNodeBounds,
+  getResizedRects,
+  resizeRect,
+  resizeRotatedRect,
+} from "../selection/geometry";
 
 /** Where a point given in a rect's own axes (0-1 across it) sits on the slide once rotated. */
 function toSlide(rect: Rect, rotation: number, u: number, v: number) {
@@ -76,5 +82,28 @@ describe("getNodeBounds", () => {
     expect(bounds.y).toBeCloseTo(50);
     expect(bounds.w).toBeCloseTo(100);
     expect(bounds.h).toBeCloseTo(200);
+  });
+});
+
+describe("getResizedRects", () => {
+  const node = (id: string, x: number, rotation: number) =>
+    ({ id, position: { x, y: 100 }, size: { w: 200, h: 100 }, rotation }) as never;
+
+  it("scales every shape by the gripped one's factors, along each shape's own axes", () => {
+    const gripped = node("a", 100, 0);
+    const turned = node("b", 400, 90);
+    const rects = getResizedRects([gripped, turned], gripped, "e", 100, 0, false);
+
+    // The gripped shape grew 1.5× wide; the turned one grows 1.5× along its own width.
+    expect(rects.get("a")).toEqual({ x: 100, y: 100, w: 300, h: 100 });
+    const b = rects.get("b")!;
+    expect(b.w).toBeCloseTo(300);
+    expect(b.h).toBeCloseTo(100);
+
+    // Its west edge (the top, turned 90°) stays put.
+    const before = toSlide({ x: 400, y: 100, w: 200, h: 100 }, 90, 0, 0.5);
+    const after = toSlide(b, 90, 0, 0.5);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
   });
 });

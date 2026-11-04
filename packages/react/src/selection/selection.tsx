@@ -2,6 +2,7 @@ import * as React from "react";
 
 import type {
   EditOperation,
+  EditResult,
   NodeOrder,
   NodePosition,
   ParagraphStyle,
@@ -10,7 +11,7 @@ import type {
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
-import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
+import { copyNodes, PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
 import {
   RootContext,
@@ -24,6 +25,7 @@ import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
+import { CLIPBOARD_TYPE, stashNodes, takeStash } from "./clipboard";
 import { SelectionPartsContext } from "./context";
 import type { GripDirection, Rect } from "./geometry";
 import {
@@ -114,6 +116,8 @@ function getIsPresentationTarget(
   if (getIsKeepSelectionTarget(target)) return true;
   return boundary?.contains(target) ?? false;
 }
+
+const PASTABLE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif"]);
 
 function getIsUndoEvent(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey)) return false;
@@ -345,6 +349,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const { zoom } = useZoom();
 
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const rootContext = React.useContext(RootContext);
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
@@ -597,7 +602,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     // PowerPoint: typing while a shape is selected starts editing with that
     // keystroke as the first character.
-    if (insertText && !restore && !insertTextNatively(textElement, insertText)) {
+    if (insertText && !restore && !insertTextNatively(textElement, nodeId, insertText)) {
       insertTextAtCaret(textElement, nodeId, insertText);
     }
 
@@ -699,23 +704,76 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * lands on the browser's undo stack: Cmd/Ctrl+Z in text mode is native undo,
    * and a character inserted by mutating the DOM would be invisible to it.
    *
-   * Only when the caret is inside a run's text, where native insertion keeps
-   * the run's styling. Returns false otherwise (or without `execCommand`), and
-   * the caller falls back to `insertTextAtCaret`.
+   * When the caret isn't inside a run's text (an empty placeholder), a styled
+   * span holding a zero-width space goes in first, so the native insertion
+   * lands inside it and keeps the run's styling. Returns false without
+   * `execCommand`, and the caller falls back to `insertTextAtCaret`.
    */
-  function insertTextNatively(editingElement: HTMLElement, data: string): boolean {
-    const anchor = window.getSelection()?.anchorNode;
+  function insertTextNatively(editingElement: HTMLElement, nodeId: string, data: string): boolean {
+    const selection = window.getSelection();
+    const anchor = selection?.anchorNode;
     if (
+      !selection?.isCollapsed ||
       !anchor ||
-      anchor.nodeType !== Node.TEXT_NODE ||
-      !anchor.textContent ||
       !editingElement.contains(anchor) ||
-      !anchor.parentElement?.closest(`[${PPTX_ATTRS.run}]`) ||
       typeof document.execCommand !== "function"
     ) {
       return false;
     }
-    return document.execCommand("insertText", false, data);
+
+    const isInRunText =
+      anchor.nodeType === Node.TEXT_NODE &&
+      Boolean(anchor.textContent) &&
+      Boolean(anchor.parentElement?.closest(`[${PPTX_ATTRS.run}]`));
+    if (isInRunText) return document.execCommand("insertText", false, data);
+
+    const host = insertRunHost(editingElement, nodeId, "\u200B");
+    setCaret(host, host.length);
+    if (!document.execCommand("insertText", false, data)) {
+      host.parentElement?.remove();
+      return false;
+    }
+    removePlaceholderBreak(host, data);
+    return true;
+  }
+
+  /**
+   * Puts a styled run span holding `text` at the caret: inside the empty run
+   * span the caret sits in, or a clone of the shape's template span (else a
+   * plain span inheriting the paragraph's styling) in the caret's paragraph.
+   * Returns the span's text node.
+   */
+  function insertRunHost(editingElement: HTMLElement, nodeId: string, text: string): Text {
+    const selection = window.getSelection()!;
+    const anchor = selection.anchorNode!;
+    const anchorElement =
+      anchor instanceof Element ? (anchor as HTMLElement) : anchor.parentElement;
+    const textNode = document.createTextNode(text);
+
+    const runSpan = anchorElement?.closest<HTMLElement>(`[${PPTX_ATTRS.run}]`);
+    if (runSpan) {
+      runSpan.appendChild(textNode);
+      return textNode;
+    }
+
+    const template = runTemplateFor(nodeId);
+    const span = template
+      ? (template.cloneNode(false) as HTMLElement)
+      : document.createElement("span");
+    span.appendChild(textNode);
+    if (anchorElement?.closest(`[${PPTX_ATTRS.paragraph}]`)) {
+      selection.getRangeAt(0).insertNode(span);
+    } else {
+      // Caret sits at the container level (e.g. caret fallback when all run
+      // spans were destroyed): inserting there would land the span *below*
+      // the paragraph div, on its own line. Append into the last paragraph
+      // instead.
+      const paras = editingElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
+      const lastPara = paras[paras.length - 1];
+      if (lastPara) lastPara.appendChild(span);
+      else selection.getRangeAt(0).insertNode(span);
+    }
+    return textNode;
   }
 
   /**
@@ -753,31 +811,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     // Caret is on a bare div (run spans destroyed, or the shape never had
-    // any, e.g. a plain rectangle you just started typing into: wrap the
-    // insertion in a clone of the template span when one was captured, else
-    // a plain span that inherits the paragraph's styling. Read-back emits it
-    // without a sourceRun and the edit falls back to paragraph defaults.
-    const template = runTemplateFor(nodeId);
-    const span = template
-      ? (template.cloneNode(false) as HTMLElement)
-      : document.createElement("span");
-    const textNode = document.createTextNode(data);
-    span.appendChild(textNode);
-    if (anchorElement?.closest(`[${PPTX_ATTRS.paragraph}]`)) {
-      selection.getRangeAt(0).insertNode(span);
-    } else {
-      // Caret sits at the container level (e.g. caret fallback when all run
-      // spans were destroyed): inserting there would land the span *below*
-      // the paragraph div, on its own line. Append into the last paragraph
-      // instead.
-      const paras = editingElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
-      const lastPara = paras[paras.length - 1];
-      if (lastPara) lastPara.appendChild(span);
-      else selection.getRangeAt(0).insertNode(span);
-    }
-    removePlaceholderBreak(span, data);
+    // any, e.g. a plain rectangle you just started typing into): wrap the
+    // insertion in a run span. Read-back emits it without a sourceRun and the
+    // edit falls back to paragraph defaults.
+    const textNode = insertRunHost(editingElement, nodeId, data);
+    removePlaceholderBreak(textNode, data);
     setCaret(textNode, textNode.length);
-    debugLog("rewrapped typing in run span", { spanHtml: span.outerHTML.slice(0, 200) });
     return true;
   }
 
@@ -815,7 +854,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return;
     }
 
-    if (insertTextAtCaret(editingElement, nodeId, event.data)) {
+    // Insert through the browser's editing pipeline so the keystroke stays
+    // on its undo stack; fall back to placing it by hand.
+    if (
+      insertTextNatively(editingElement, nodeId, event.data) ||
+      insertTextAtCaret(editingElement, nodeId, event.data)
+    ) {
       event.preventDefault();
     }
   }
@@ -1038,6 +1082,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
+  function editText(nodeId: string): void {
+    const current = stateRef.current;
+    if (current.mode === "text") commitTextEdits(current);
+    setState({ mode: "selected", nodeIds: [nodeId] });
+    resumeTextEditing(nodeId);
+  }
+
   function selectNodes(nodeIds: string[]): void {
     const ids = nodeIds.filter((id) => slide?.nodes.some((node) => node.id === id));
     const current = stateRef.current;
@@ -1129,16 +1180,18 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const doExitTextModeRef = useLatestRef(doExitTextMode);
   const publishSelectionRef = useLatestRef(publishSelection);
   const selectNodesRef = useLatestRef(selectNodes);
+  const editTextRef = useLatestRef(editText);
   const applyFormatRef = useLatestRef(applyFormat);
 
   React.useEffect(
     () =>
       selectionChannel.register({
         select: (nodeIds) => selectNodesRef.current(nodeIds),
+        editText: (nodeId) => editTextRef.current(nodeId),
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
       }),
-    [selectionChannel, selectNodesRef, applyFormatRef],
+    [selectionChannel, selectNodesRef, editTextRef, applyFormatRef],
   );
 
   // Publish to `useSelection` when the selection, the mode, or the slide's
@@ -1298,6 +1351,25 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("input", onDocInput, true);
     };
   }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef]);
+
+  const copySelectionRef = useLatestRef(copySelection);
+  const pasteClipboardRef = useLatestRef(pasteClipboard);
+
+  // Text mode keeps the browser's own clipboard for the text being edited.
+  React.useEffect(() => {
+    if (isTextMode) return;
+    const onCopy = (event: ClipboardEvent) => copySelectionRef.current(event, false);
+    const onCut = (event: ClipboardEvent) => copySelectionRef.current(event, true);
+    const onPaste = (event: ClipboardEvent) => pasteClipboardRef.current(event);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCut);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCut);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, [isTextMode, copySelectionRef, pasteClipboardRef]);
 
   /**
    * A press outside the overlay deselects, the way clicking off the canvas
@@ -1917,6 +1989,117 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     );
   }
 
+  function deleteSelection(): void {
+    const nodeIds = selectedNodesRef.current.map((n) => n.id);
+    commitEdit(
+      () =>
+        store.edit(
+          nodeIds.length === 1
+            ? { type: "deleteNode", slideId: slideId!, nodeId: nodeIds[0] }
+            : {
+                type: "batch",
+                operations: nodeIds.map((nodeId) => ({
+                  type: "deleteNode" as const,
+                  slideId: slideId!,
+                  nodeId,
+                })),
+              },
+        ),
+      undefined,
+      () => {
+        setState({ mode: "idle" });
+        for (const nodeId of nodeIds) onNodeDelete?.(nodeId);
+      },
+      (error) => {
+        for (const nodeId of nodeIds) onNodeDelete?.(nodeId, error);
+      },
+    );
+  }
+
+  /**
+   * Whether a clipboard event is the deck's: aimed at the presentation or an
+   * editor toolbar, and not at a field with its own clipboard.
+   */
+  function getIsDeckClipboardEvent(event: ClipboardEvent): boolean {
+    if (getIsNativeUndoTarget(event.target)) return false;
+    return getIsPresentationTarget(event.target, rootContext?.current ?? rootRef.current);
+  }
+
+  function copySelection(event: ClipboardEvent, cut: boolean): void {
+    const nodes = selectedNodesRef.current;
+    if (!presentation || !slideId || nodes.length === 0 || !event.clipboardData) return;
+    if (!getIsDeckClipboardEvent(event)) return;
+    event.preventDefault();
+
+    const token = stashNodes(
+      presentation,
+      slideId,
+      copyNodes(
+        presentation,
+        slideId,
+        nodes.map((node) => node.id),
+      ),
+    );
+    event.clipboardData.setData(CLIPBOARD_TYPE, token);
+    // Other apps get the shapes' text.
+    const text = nodes
+      .flatMap((node) =>
+        node.nodeType === "shape"
+          ? ((node as ShapeNodeData).textBody?.paragraphs.map((paragraph) =>
+              paragraph.runs.map((run) => run.text).join(""),
+            ) ?? [])
+          : [],
+      )
+      .join("\n");
+    if (text) event.clipboardData.setData("text/plain", text);
+    if (cut) deleteSelection();
+  }
+
+  /** Pastes shapes copied in this page, or else an image file from the system clipboard. */
+  function pasteClipboard(event: ClipboardEvent): void {
+    const data = event.clipboardData;
+    if (!presentation || !slideId || !data || !getIsDeckClipboardEvent(event)) return;
+    const selectCreated = (result: EditResult) => {
+      if (result.createdNodeIds?.length) {
+        setState({ mode: "selected", nodeIds: result.createdNodeIds });
+      }
+    };
+
+    const token = data.getData(CLIPBOARD_TYPE);
+    const stashed = token ? takeStash(token, presentation, slideId) : null;
+    if (stashed) {
+      event.preventDefault();
+      commitEdit(
+        async () =>
+          store.edit({
+            type: "pasteNodes",
+            slideId,
+            clipboard: await stashed.clipboard,
+            offset: { x: stashed.offset, y: stashed.offset },
+          }),
+        undefined,
+        selectCreated,
+      );
+      return;
+    }
+
+    const image = Array.from(data.files).find((file) => PASTABLE_IMAGE_TYPES.has(file.type));
+    if (!image) return;
+    event.preventDefault();
+    commitEdit(
+      async () =>
+        store.edit({
+          type: "addImage",
+          slideId,
+          data: new Uint8Array(await image.arrayBuffer()),
+          contentType: image.type,
+          name: image.name || undefined,
+        }),
+      undefined,
+      selectCreated,
+    );
+  }
+
   /** PowerPoint's Ctrl+D: copies land just above their originals, selected. */
   function duplicateSelection(): void {
     const operations = selectedNodes.map((node) => ({
@@ -2016,30 +2199,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      const nodeIds = selectedNodes.map((n) => n.id);
-      commitEdit(
-        () =>
-          store.edit(
-            nodeIds.length === 1
-              ? { type: "deleteNode", slideId: slideId!, nodeId: nodeIds[0] }
-              : {
-                  type: "batch",
-                  operations: nodeIds.map((nodeId) => ({
-                    type: "deleteNode" as const,
-                    slideId: slideId!,
-                    nodeId,
-                  })),
-                },
-          ),
-        undefined,
-        () => {
-          setState({ mode: "idle" });
-          for (const nodeId of nodeIds) onNodeDelete?.(nodeId);
-        },
-        (error) => {
-          for (const nodeId of nodeIds) onNodeDelete?.(nodeId, error);
-        },
-      );
+      deleteSelection();
       return;
     }
 

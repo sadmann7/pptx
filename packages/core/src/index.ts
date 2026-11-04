@@ -10,11 +10,13 @@ export type {
   ThumbnailRenderOptions,
 } from "./viewer";
 
-export { applyEdit } from "./edit/operation";
+export { applyEdit, copyNodes } from "./edit/operation";
 export type {
   AddImageOperation,
+  AddTextBoxOperation,
   AddSlideOperation,
   BatchOperation,
+  ClipboardRelationship,
   DeleteNodeOperation,
   DeleteSlideOperation,
   DuplicateNodeOperation,
@@ -22,11 +24,14 @@ export type {
   EditOperation,
   EditResult,
   MoveSlideOperation,
+  NodeClipboard,
   NodeOrder,
   ParagraphAlign,
   ParagraphStyle,
+  PasteNodesOperation,
   ReorderNodeOperation,
   SetNodeTransformOperation,
+  SetOutlineOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
   SetSolidFillOperation,
@@ -54,6 +59,8 @@ export type {
   PresentationData,
 } from "./model/presentation";
 export type { LayoutData } from "./model/layout";
+export { getPresentationFonts } from "./model/presentation-fonts";
+export type { PresentationFonts } from "./model/presentation-fonts";
 
 export { serializePresentation } from "./model/serialize";
 export type { SerializedNode, SerializedPresentation, SerializedSlide } from "./model/serialize";

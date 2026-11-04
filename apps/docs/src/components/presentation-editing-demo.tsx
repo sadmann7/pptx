@@ -48,6 +48,7 @@ import {
   BoldIcon,
   ItalicIcon,
   ImageIcon,
+  TypeIcon,
   PlusIcon,
   Redo2Icon,
   StrikethroughIcon,
@@ -203,7 +204,7 @@ const ALIGNMENTS = [
  * selection or ending text editing.
  */
 function FormattingToolbar({ store }: { store: PresentationStore }) {
-  const { textStyle, select, setTextStyle, setParagraphStyle } = useSelection();
+  const { textStyle, select, setTextStyle, setParagraphStyle, insertTextBox } = useSelection();
   const { slideId, goTo } = useSlide();
   const disabled = !textStyle;
 
@@ -263,6 +264,14 @@ function FormattingToolbar({ store }: { store: PresentationStore }) {
       <Button variant="ghost" size="sm" onClick={() => imageInputRef.current?.click()}>
         <ImageIcon />
         Image
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => void insertTextBox().catch(() => toast.error("Could not add a text box"))}
+      >
+        <TypeIcon />
+        Text
       </Button>
       <input
         ref={imageInputRef}

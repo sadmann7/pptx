@@ -28,6 +28,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with Delete or Backspace
 - **Duplicate** the selection with Ctrl/Cmd+D
+- **Copy, cut, and paste** shapes with Ctrl/Cmd+C, X, and V, within a deck or between decks on the page; paste an image to insert it
 - **Arrange** with Ctrl/Cmd+] and Ctrl/Cmd+[ (one step forward or backward), or with Shift held (to the front or back)
 - **Nudge** with the arrow keys (1 px, or 10 px while holding Shift)
 - **Undo** and **redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
@@ -92,7 +93,7 @@ Like the other primitives, every part accepts `render`, and `className` and `sty
 />
 ```
 
-Resize handles are hidden while dragging and while editing text. A rotated shape resizes along its own axes when it is selected alone; in a multi-selection it has no resize handles. The rotate handle sits `--presentation-rotate-handle-offset` (`20px`) above the middle of the top edge and turns with the outline; it is hidden while moving, resizing, or editing text, and on tables and charts. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
+Resize handles are hidden while dragging and while editing text. A rotated shape resizes along its own axes. In a multi-selection, every shape scales by the same factors as the one whose handle is dragged, each along its own axes. The rotate handle sits `--presentation-rotate-handle-offset` (`20px`) above the middle of the top edge and turns with the outline; it is hidden while moving, resizing, or editing text, and on tables and charts. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
 
 ### Theming the default look
 
@@ -214,7 +215,17 @@ await store.edit({
   contentType: file.type, // "image/png", "image/jpeg", or "image/gif"
   name: file.name,
 });
+
+// Add a text box (centered and empty by default), and set a shape's outline
+await store.edit({ type: "addTextBox", slideId, text: "Hello" });
+await store.edit({ type: "setOutline", slideId, nodeId, color: "#0f172a", width: 1.5 }); // `color: null` removes it
+
+// Copy shapes out of one deck and paste them into another (or the same one)
+const clipboard = await copyNodes(sourceDeck, sourceSlideId, nodeIds);
+await targetStore.edit({ type: "pasteNodes", slideId: targetSlideId, clipboard });
 ```
+
+`copyNodes` takes the images the shapes use along with them, and paste reuses any that the deck already has. Shapes that refer to other parts, such as charts, diagrams, and video, are left out and listed in `clipboard.omittedNodeIds`.
 
 In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
 
@@ -249,7 +260,9 @@ function FormattingToolbar() {
 }
 ```
 
-`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `nodeIds`, `nodes`, `select(nodeIds)`, and `clear()`.
+`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `editText(nodeId)` to start editing a shape's text, and `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it.
+
+For a font picker, `getPresentationFonts(presentation)` lists the theme's heading and body fonts, the fonts embedded in the file, and the other fonts the deck's text uses.
 
 Formatting while text is being edited commits the pending typing in the same edit, so the two undo together. The caret or selection comes back afterwards, and focus returns to the text unless the toolbar is typing into a field of its own, such as a font size box.
 

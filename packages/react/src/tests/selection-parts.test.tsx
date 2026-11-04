@@ -290,7 +290,7 @@ describe("rotating", () => {
     expect(store.getActiveSlide()!.nodes[0].rotation).toBe(0);
   });
 
-  it("keeps the rotate handle on rotated shapes, without resize handles", async () => {
+  it("keeps rotate and resize handles on rotated shapes in a multi-selection", async () => {
     const { overlay, container, drag } = await renderRotatable();
     drag(30);
     await act(async () => {
@@ -300,7 +300,7 @@ describe("rotating", () => {
     await waitFor(() => {
       expect(container.querySelectorAll("[data-rotate-handle]")).toHaveLength(2);
     });
-    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(16);
   });
 });
 
@@ -412,6 +412,127 @@ describe("arrange shortcuts", () => {
       fireEvent.keyDown(overlay, { key: "{", code: "BracketLeft", ctrlKey: true, shiftKey: true });
     });
     await waitFor(() => expect(ids()).toEqual(["3", "2"]));
+  });
+});
+
+describe("clipboard", () => {
+  function clipboardEvent(type: string, data: Map<string, string>, files: File[] = []): Event {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: {
+        setData: (format: string, value: string) => data.set(format, value),
+        getData: (format: string) => data.get(format) ?? "",
+        files,
+      },
+    });
+    return event;
+  }
+
+  async function renderDeck() {
+    const selection: { current: UseSelectionResult | null } = { current: null };
+    function Grab() {
+      selection.current = useSelection();
+      return null;
+    }
+    const rendered = await renderOverlay(
+      <>
+        <Grab />
+        <Presentation.SelectionBox />
+      </>,
+    );
+    const nodes = () => rendered.store.getActiveSlide()!.nodes;
+    return { ...rendered, selection, nodes };
+  }
+
+  it("copies shapes and pastes them a step along on the same slide", async () => {
+    const { overlay, selection, nodes } = await renderDeck();
+    act(() => selection.current!.select(["2"]));
+    const data = new Map<string, string>();
+
+    act(() => {
+      overlay.dispatchEvent(clipboardEvent("copy", data));
+    });
+    expect(data.get("application/x-diceui-pptx")).toBeTruthy();
+    expect(data.get("text/plain")).toBe("Slide 1");
+
+    const original = nodes()[0].position;
+    await act(async () => {
+      overlay.dispatchEvent(clipboardEvent("paste", data));
+    });
+    await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(["2", "3", "4"]));
+    expect(nodes()[2].position).toEqual({ x: original.x + 10, y: original.y + 10 });
+    expect(selection.current!.nodeIds).toEqual(["4"]);
+
+    await act(async () => {
+      overlay.dispatchEvent(clipboardEvent("paste", data));
+    });
+    await waitFor(() => expect(nodes()).toHaveLength(4));
+    expect(nodes()[3].position).toEqual({ x: original.x + 20, y: original.y + 20 });
+  });
+
+  it("cuts shapes", async () => {
+    const { overlay, selection, nodes } = await renderDeck();
+    act(() => selection.current!.select(["3"]));
+    const data = new Map<string, string>();
+
+    await act(async () => {
+      overlay.dispatchEvent(clipboardEvent("cut", data));
+    });
+    await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(["2"]));
+
+    await act(async () => {
+      overlay.dispatchEvent(clipboardEvent("paste", data));
+    });
+    await waitFor(() => expect(nodes()).toHaveLength(2));
+  });
+
+  it("pastes into another deck on the page, where the shape lands in place", async () => {
+    const first = await renderDeck();
+    const second = await renderDeck();
+    act(() => first.selection.current!.select(["2"]));
+    const data = new Map<string, string>();
+
+    act(() => {
+      first.overlay.dispatchEvent(clipboardEvent("copy", data));
+    });
+    await act(async () => {
+      second.overlay.dispatchEvent(clipboardEvent("paste", data));
+    });
+
+    await waitFor(() => expect(second.nodes()).toHaveLength(3));
+    expect(first.nodes()).toHaveLength(2);
+    expect(second.nodes()[2].position).toEqual(first.nodes()[0].position);
+  });
+
+  it("inserts an image file pasted from the system clipboard", async () => {
+    const { overlay, selection, nodes } = await renderDeck();
+    const png = new Uint8Array(24);
+    png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    new DataView(png.buffer).setUint32(16, 30);
+    new DataView(png.buffer).setUint32(20, 20);
+    const file = new File([png], "pasted.png", { type: "image/png" });
+
+    await act(async () => {
+      overlay.dispatchEvent(clipboardEvent("paste", new Map(), [file]));
+    });
+
+    await waitFor(() => expect(nodes()).toHaveLength(3));
+    expect(nodes()[2].nodeType).toBe("picture");
+    expect(nodes()[2].size).toEqual({ w: 30, h: 20 });
+    expect(selection.current!.nodeIds).toEqual([nodes()[2].id]);
+  });
+
+  it("leaves clipboard events in text fields alone", async () => {
+    const { container, selection } = await renderDeck();
+    act(() => selection.current!.select(["2"]));
+    const input = document.createElement("input");
+    container.appendChild(input);
+    const data = new Map<string, string>();
+
+    const event = clipboardEvent("copy", data);
+    input.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(data.size).toBe(0);
   });
 });
 
