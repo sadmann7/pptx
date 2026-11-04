@@ -76,6 +76,21 @@ const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   },
 ];
 
+/** Degrees Shift steps a rotation by. */
+export const ROTATION_STEP = 15;
+
+/** An angle in degrees, wrapped into [0, 360). */
+export function normalizeAngle(degrees: number): number {
+  const wrapped = ((degrees % 360) + 360) % 360;
+  // Snap floating-point noise (359.9999…) back to whole degrees' neighbors.
+  return Math.abs(wrapped - 360) < 1e-6 ? 0 : wrapped;
+}
+
+/** The pointer's angle around a center, in degrees, clockwise from the x axis. */
+function getPointerAngle(centerX: number, centerY: number, x: number, y: number): number {
+  return (Math.atan2(y - centerY, x - centerX) * 180) / Math.PI;
+}
+
 /** Minimum shape size (slide px) a resize can shrink to. */
 export const MIN_SIZE = 8;
 
@@ -490,6 +505,19 @@ type InternalState =
       guides?: SnapGuideData[];
     }
   | {
+      mode: "rotate";
+      nodeIds: string[];
+      /** The node whose handle is being dragged; its angle is what Shift steps. */
+      gripNodeId: string;
+      /** Center of the gripped node, in client pixels: the pivot. */
+      centerX: number;
+      centerY: number;
+      /** Pointer angle around the center at pointer-down, in degrees. */
+      startAngle: number;
+      /** Degrees added to every selected node's rotation. */
+      delta: number;
+    }
+  | {
       mode: "text";
       nodeId: string;
       editingElement: HTMLElement;
@@ -518,7 +546,7 @@ export interface SelectionChangeEvent {
 /** The current interaction state of the edit layer. */
 export interface SelectionState {
   /** Interaction mode of the selection. */
-  mode: "idle" | "selected" | "move" | "resize" | "text" | "marquee";
+  mode: "idle" | "selected" | "move" | "resize" | "rotate" | "text" | "marquee";
 
   /**
    * The slide node currently selected, or `null` when nothing is selected.
@@ -669,7 +697,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const slideRevision = useSlideRevision(store, slideId);
 
   const selectedIds: string[] =
-    state.mode === "selected" || state.mode === "move" || state.mode === "resize"
+    state.mode === "selected" ||
+    state.mode === "move" ||
+    state.mode === "resize" ||
+    state.mode === "rotate"
       ? state.nodeIds
       : state.mode === "text"
         ? [state.nodeId]
@@ -1789,6 +1820,62 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
+   * Shape transforms captured when a rotate drag starts. The drag previews by
+   * rotating the shape elements directly; cancelling puts these back.
+   */
+  const rotateOriginRef = React.useRef<Map<string, string>>(new Map());
+
+  function onRotatePointerDown(event: React.PointerEvent<HTMLDivElement>, nodeId: string): void {
+    if (event.button !== 0 || !selectedIds.includes(nodeId) || isTextMode) return;
+    const node = selectedNodes.find((selected) => selected.id === nodeId);
+    const frame = frameRef.current?.getBoundingClientRect();
+    if (!node || !frame) return;
+    event.stopPropagation();
+    // See onPointerDown: stop selection extension / native drag initiation.
+    event.preventDefault();
+    clearDocumentSelection();
+    rootRef.current?.setPointerCapture(event.pointerId);
+
+    rotateOriginRef.current = new Map(
+      selectedNodes.map((selected) => [
+        selected.id,
+        getShapeElement(selected.id)?.style.transform ?? "",
+      ]),
+    );
+    const rect = getNodeRect(node);
+    const centerX = frame.left + (rect.x + rect.w / 2) * zoom;
+    const centerY = frame.top + (rect.y + rect.h / 2) * zoom;
+    setState({
+      mode: "rotate",
+      nodeIds: selectedIds,
+      gripNodeId: nodeId,
+      centerX,
+      centerY,
+      startAngle: getPointerAngle(centerX, centerY, event.clientX, event.clientY),
+      delta: 0,
+    });
+  }
+
+  /** Previews a rotation on the shape elements, keeping their flips. */
+  function previewRotation(delta: number): void {
+    for (const node of selectedNodes) {
+      const shapeElement = getShapeElement(node.id);
+      if (!shapeElement) continue;
+      const original = rotateOriginRef.current.get(node.id) ?? "";
+      const flips = original.replace(/rotate\([^)]*\)\s*/, "");
+      shapeElement.style.transform =
+        `rotate(${normalizeAngle(node.rotation + delta)}deg) ${flips}`.trim();
+    }
+  }
+
+  function restoreRotation(): void {
+    for (const [nodeId, transform] of rotateOriginRef.current) {
+      const shapeElement = getShapeElement(nodeId);
+      if (shapeElement) shapeElement.style.transform = transform;
+    }
+  }
+
+  /**
    * Dragging the border strips while editing text (PowerPoint: grab the
    * frame to move the box without leaving your edits behind). Commits the
    * text first, then starts a move drag.
@@ -1833,6 +1920,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (state.mode === "marquee") {
       setState({ ...state, curX: event.clientX, curY: event.clientY });
+      return;
+    }
+
+    if (state.mode === "rotate") {
+      const grippedNode = selectedNodes.find((node) => node.id === state.gripNodeId);
+      if (!grippedNode) return;
+      const turned =
+        getPointerAngle(state.centerX, state.centerY, event.clientX, event.clientY) -
+        state.startAngle;
+      // Shift steps the gripped shape's angle by 15°, as in PowerPoint.
+      let angle = grippedNode.rotation + turned;
+      if (event.shiftKey) angle = Math.round(angle / ROTATION_STEP) * ROTATION_STEP;
+      const delta = angle - grippedNode.rotation;
+      previewRotation(delta);
+      setState({ ...state, delta });
       return;
     }
 
@@ -1995,6 +2097,30 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           setState({ mode: "selected", nodeIds: [primaryId] });
         }
       }
+    } else if (state.mode === "rotate") {
+      const { nodeIds, delta } = state;
+      const rotatingNodes = selectedNodes;
+      setState({ mode: "selected", nodeIds });
+      if (normalizeAngle(delta) === 0) {
+        restoreRotation();
+        return;
+      }
+      const operations = rotatingNodes.map((node) => ({
+        type: "setNodeTransform" as const,
+        slideId: slideId!,
+        nodeId: node.id,
+        rotation: normalizeAngle(node.rotation + delta),
+      }));
+      commitEdit(
+        () => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
+        restoreRotation,
+        () => {
+          for (const id of nodeIds) onNodeTransform?.(id);
+        },
+        (error) => {
+          for (const id of nodeIds) onNodeTransform?.(id, error);
+        },
+      );
     } else if (state.mode === "resize") {
       const { nodeIds, gripNodeId, grip, dx, dy, lockAspect } = state;
       const resizingNodes = selectedNodes;
@@ -2082,6 +2208,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
       setState({ mode: "selected", nodeIds: state.nodeIds });
     } else if (state.mode === "resize") {
+      setState({ mode: "selected", nodeIds: state.nodeIds });
+    } else if (state.mode === "rotate") {
+      restoreRotation();
       setState({ mode: "selected", nodeIds: state.nodeIds });
     } else if (state.mode === "marquee") {
       const { baseIds } = state;
@@ -2248,8 +2377,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     resizeScale,
                     showResizeHandles: !isBanding,
                     frameRef,
+                    slideWidth: presentation.width,
+                    slideHeight: presentation.height,
                     onGripPointerDown,
                     onBorderPointerDown,
+                    onRotatePointerDown,
                   }}
                 >
                   {children ?? DEFAULT_PARTS}
@@ -2362,12 +2494,16 @@ interface SelectionPartsContextValue {
   showResizeHandles: boolean;
   /** The slide-origin frame the parts are positioned in. */
   frameRef: React.RefObject<HTMLDivElement | null>;
+  /** Slide size in slide pixels: snap guides run across all of it. */
+  slideWidth: number;
+  slideHeight: number;
   onGripPointerDown: (
     event: React.PointerEvent<HTMLDivElement>,
     grip: GripDirection,
     nodeId: string,
   ) => void;
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onRotatePointerDown: (event: React.PointerEvent<HTMLDivElement>, nodeId: string) => void;
 }
 
 const SelectionPartsContext = React.createContext<SelectionPartsContextValue | null>(null);
@@ -2382,13 +2518,17 @@ function useSelectionParts(partName: string): SelectionPartsContextValue {
 
 interface SelectionBoxContextValue {
   node: SlideNode;
+  /** The outline's current angle, including a rotation in progress. */
+  rotation: number;
   showHandles: boolean;
+  showRotateHandle: boolean;
 }
 
 const SelectionBoxContext = React.createContext<SelectionBoxContextValue | null>(null);
 
 const SELECTION_BOX_NAME = "Presentation.SelectionBox";
 const RESIZE_HANDLE_NAME = "Presentation.ResizeHandle";
+const ROTATE_HANDLE_NAME = "Presentation.RotateHandle";
 const SNAP_GUIDE_NAME = "Presentation.SnapGuide";
 const MARQUEE_NAME = "Presentation.Marquee";
 
@@ -2402,6 +2542,12 @@ export interface SelectionBoxState {
 
   /** Whether the selection is being dragged. */
   dragging: boolean;
+
+  /** Whether the selection is being rotated. */
+  rotating: boolean;
+
+  /** The outline's angle in degrees, including a rotation in progress. */
+  rotation: number;
 }
 
 export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", SelectionBoxState> {}
@@ -2413,7 +2559,8 @@ export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", Selecti
  * Place inside `Presentation.Selection`, with `Presentation.ResizeHandle`
  * inside it for handles.
  *
- * Carries `data-selection-box`, `data-mode`, and `data-dragging`.
+ * Carries `data-selection-box`, `data-mode`, `data-dragging`, and
+ * `data-rotating`.
  */
 export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
   function SelectionBox(
@@ -2428,6 +2575,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
     // a press that only toggles the selection (Shift+click) would otherwise blink
     // them off and back on.
     const isDragging = state.mode === "move" && state.moved;
+    const isRotating = state.mode === "rotate";
 
     return selectedNodes.map((node) => {
       let rect = getNodeRect(node);
@@ -2436,11 +2584,31 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
       } else if (state.mode === "resize" && resizeScale) {
         rect = scaleRectFromGrip(rect, state.grip, resizeScale);
       }
-      const showHandles = showResizeHandles && node.rotation === 0 && !isDragging && !isTextMode;
-      const boxState: SelectionBoxState = { node, mode: state.mode, dragging: isDragging };
+      const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
+      // Resizing works in slide axes, so a rotated shape has no resize handles.
+      const showHandles =
+        showResizeHandles && node.rotation === 0 && !isDragging && !isRotating && !isTextMode;
+      const showRotateHandle =
+        showResizeHandles &&
+        !isDragging &&
+        !isTextMode &&
+        state.mode !== "resize" &&
+        // PowerPoint doesn't rotate tables or charts.
+        node.nodeType !== "table" &&
+        node.nodeType !== "chart";
+      const boxState: SelectionBoxState = {
+        node,
+        mode: state.mode,
+        dragging: isDragging,
+        rotating: isRotating,
+        rotation,
+      };
 
       return (
-        <SelectionBoxContext.Provider key={node.id} value={{ node, showHandles }}>
+        <SelectionBoxContext.Provider
+          key={node.id}
+          value={{ node, rotation, showHandles, showRotateHandle }}
+        >
           {renderElement(
             "div",
             { render, className, style },
@@ -2452,6 +2620,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                   "data-selection-box": "",
                   "data-mode": state.mode,
                   "data-dragging": isDragging ? "" : undefined,
+                  "data-rotating": isRotating ? "" : undefined,
                   children: (
                     <>
                       {children}
@@ -2464,7 +2633,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                     top: rect.y * zoom,
                     width: rect.w * zoom,
                     height: rect.h * zoom,
-                    transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
+                    transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
                     pointerEvents: "none",
                   },
                 },
@@ -2547,6 +2716,69 @@ export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
   },
 );
 
+/** The current state of a rotate handle. */
+export interface RotateHandleState {
+  /** The shape's angle in degrees, including a rotation in progress. */
+  rotation: number;
+
+  /** Whether the shape is being rotated. */
+  rotating: boolean;
+}
+
+export interface RotateHandleProps extends StatefulPrimitiveProps<"div", RotateHandleState> {}
+
+/**
+ * The rotation handle of a selected shape, above the middle of its top edge.
+ * Drag it to rotate the selection around the shape's center; hold Shift to
+ * step by 15°. Rotates with the outline, and is hidden while moving,
+ * resizing, editing text, and on tables and charts.
+ *
+ * Its distance above the outline is `--presentation-rotate-handle-offset`
+ * (20px by default). Unstyled when composed: give it a size.
+ *
+ * Place inside `Presentation.SelectionBox`. Carries `data-rotate-handle`, and
+ * `data-rotating` while dragged.
+ */
+export const RotateHandle = React.forwardRef<HTMLDivElement, RotateHandleProps>(
+  function RotateHandle({ render, className, style, ...rotateHandleProps }, forwardedRef) {
+    const { state, onRotatePointerDown } = useSelectionParts(ROTATE_HANDLE_NAME);
+    const box = React.useContext(SelectionBoxContext);
+    if (!box) {
+      throw new Error(`\`${ROTATE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
+    }
+    if (!box.showRotateHandle) return null;
+    const isRotating = state.mode === "rotate";
+
+    return renderElement(
+      "div",
+      { render, className, style },
+      {
+        state: { rotation: box.rotation, rotating: isRotating },
+        ref: forwardedRef,
+        props: [
+          {
+            "aria-hidden": true,
+            "data-rotate-handle": "",
+            "data-rotating": isRotating ? "" : undefined,
+            onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
+              onRotatePointerDown(event, box.node.id),
+            style: {
+              position: "absolute",
+              left: "50%",
+              top: "calc(-1 * var(--presentation-rotate-handle-offset, 20px))",
+              transform: "translate(-50%, -50%)",
+              cursor: isRotating ? "grabbing" : "grab",
+              pointerEvents: "auto",
+              touchAction: "none",
+            },
+          },
+          rotateHandleProps,
+        ],
+      },
+    );
+  },
+);
+
 /** The current state of one snap guide. */
 export interface SnapGuideState {
   /** `"x"` for a vertical line, `"y"` for a horizontal one. */
@@ -2560,7 +2792,7 @@ export interface SnapGuideProps extends StatefulPrimitiveProps<"div", SnapGuideS
 
 /**
  * The guides shown while a move or resize snaps: one line per edge or center
- * that lined up, spanning everything aligned on it.
+ * that lined up, running across the whole slide.
  *
  * The element is the line itself, `--presentation-snap-guide-width` thick
  * (1px by default) and centered on the snapped position, so a background
@@ -2573,12 +2805,18 @@ export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(functi
   { render, className, style, ...snapGuideProps },
   forwardedRef,
 ) {
-  const { state, zoom } = useSelectionParts(SNAP_GUIDE_NAME);
+  const { state, zoom, slideWidth, slideHeight } = useSelectionParts(SNAP_GUIDE_NAME);
   if (state.mode !== "move" && state.mode !== "resize") return null;
 
   return (state.guides ?? []).map((guide) => {
     const isVertical = guide.axis === "x";
-    const length = (guide.end - guide.start) * zoom;
+    // Run the line across the whole slide, as editors do, rather than only
+    // between what lined up: a resize snaps the shape's own edge, and a short
+    // guide there would just look like its outline changing color. Reach past
+    // the slide for shapes that overhang it.
+    const start = Math.min(0, guide.start);
+    const end = Math.max(isVertical ? slideHeight : slideWidth, guide.end);
+    const length = (end - start) * zoom;
     const thickness = "var(--presentation-snap-guide-width, 1px)";
     return (
       <React.Fragment key={`${guide.axis}:${guide.position}`}>
@@ -2594,8 +2832,8 @@ export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(functi
                 "data-snap-guide": guide.axis,
                 style: {
                   position: "absolute",
-                  left: isVertical ? guide.position * zoom : guide.start * zoom,
-                  top: isVertical ? guide.start * zoom : guide.position * zoom,
+                  left: isVertical ? guide.position * zoom : start * zoom,
+                  top: isVertical ? start * zoom : guide.position * zoom,
                   width: isVertical ? thickness : length,
                   height: isVertical ? length : thickness,
                   transform: isVertical ? "translateX(-50%)" : "translateY(-50%)",
@@ -2674,6 +2912,15 @@ const DEFAULT_PARTS = (
           borderRadius: 2,
         }}
       />
+      <RotateHandle
+        style={{
+          width: 10,
+          height: 10,
+          background: "#fff",
+          border: "1.5px solid var(--presentation-selection, #2563eb)",
+          borderRadius: "50%",
+        }}
+      />
     </SelectionBox>
     <SnapGuide style={{ background: "var(--presentation-snap-guide, #f43f5e)" }} />
     <Marquee
@@ -2729,6 +2976,11 @@ export namespace SelectionBox {
 export namespace ResizeHandle {
   export type State = ResizeHandleState;
   export type Props = ResizeHandleProps;
+}
+
+export namespace RotateHandle {
+  export type State = RotateHandleState;
+  export type Props = RotateHandleProps;
 }
 
 export namespace SnapGuide {

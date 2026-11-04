@@ -1,6 +1,6 @@
 /**
- * The overlay's parts: `SelectionBox`, `ResizeHandle`, `SnapGuide`, and
- * `Marquee` compose inside `Presentation.Selection` to restyle or replace its
+ * The overlay's parts: `SelectionBox`, `ResizeHandle`, `RotateHandle`,
+ * `SnapGuide`, and `Marquee` compose inside `Presentation.Selection` to restyle or replace its
  * look, and render the defaults when it has no children.
  */
 import * as React from "react";
@@ -9,7 +9,9 @@ import { act } from "react";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { Presentation } from "../index";
+import { Presentation, useSelection } from "../index";
+import type { UseSelectionResult } from "../index";
+import { normalizeAngle } from "../selection";
 import { editableStore } from "./test-utils";
 
 async function renderOverlay(children?: React.ReactNode) {
@@ -175,5 +177,167 @@ describe("part placement", () => {
     );
 
     vi.restoreAllMocks();
+  });
+});
+
+describe("rotating", () => {
+  /**
+   * Selects shape 2 alone and returns a pointer helper around its center. With
+   * layout zeroed in happy-dom, client coordinates are slide pixels times zoom.
+   */
+  async function renderRotatable() {
+    const rendered = await renderOverlay();
+    const node = rendered.store.getActiveSlide()!.nodes[0];
+    const { zoom } = rendered.store.getState();
+    const cx = (node.position.x + node.size.w / 2) * zoom;
+    const cy = (node.position.y + node.size.h / 2) * zoom;
+
+    act(() => {
+      rendered.overlay.focus();
+      fireEvent.keyDown(rendered.overlay, { key: "a", ctrlKey: true });
+    });
+    const handle = rendered.container.querySelector<HTMLElement>("[data-rotate-handle]")!;
+
+    /** Presses above the center, then drags to `degrees` clockwise from there. */
+    function drag(degrees: number, init: { shiftKey?: boolean } = {}) {
+      const radians = ((degrees - 90) * Math.PI) / 180;
+      act(() => {
+        fireEvent.pointerDown(handle, { button: 0, clientX: cx, clientY: cy - 100, pointerId: 1 });
+      });
+      act(() => {
+        fireEvent.pointerMove(rendered.overlay, {
+          clientX: cx + 100 * Math.cos(radians),
+          clientY: cy + 100 * Math.sin(radians),
+          buttons: 1,
+          pointerId: 1,
+          ...init,
+        });
+      });
+    }
+
+    return { ...rendered, node, handle, drag };
+  }
+
+  it("shows a rotate handle on each selected outline", async () => {
+    const { container } = await renderRotatable();
+    const boxes = container.querySelectorAll("[data-selection-box]");
+    expect(boxes).toHaveLength(2);
+    for (const box of boxes) {
+      expect(box.querySelectorAll("[data-rotate-handle]")).toHaveLength(1);
+    }
+  });
+
+  it("rotates the selection by the angle dragged around the shape", async () => {
+    const { store, overlay, container, drag } = await renderRotatable();
+    drag(90);
+    expect(overlay.getAttribute("data-mode")).toBe("rotate");
+
+    // The outline follows the drag; resize handles step aside.
+    const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
+    expect(box.style.transform).toBe("rotate(90deg)");
+    expect(box.hasAttribute("data-rotating")).toBe(true);
+    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+    const rotations = store.getActiveSlide()!.nodes.map((node) => Math.round(node.rotation));
+    expect(rotations).toEqual([90, 90]);
+
+    act(() => {
+      store.undo();
+    });
+    expect(store.getActiveSlide()!.nodes.map((node) => node.rotation)).toEqual([0, 0]);
+  });
+
+  it("steps by 15 degrees with Shift held", async () => {
+    const { store, overlay, drag } = await renderRotatable();
+    drag(50, { shiftKey: true });
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+    expect(store.getActiveSlide()!.nodes[0].rotation).toBe(45);
+  });
+
+  it("puts the shape back when the drag is cancelled", async () => {
+    const { store, overlay, container, drag } = await renderRotatable();
+    const shape = container.querySelector<HTMLElement>('[data-pptx-node-id="2"]')!;
+    const before = shape.style.transform;
+
+    drag(90);
+    expect(shape.style.transform).toContain("rotate(90deg)");
+    act(() => {
+      fireEvent.pointerCancel(overlay, { pointerId: 1 });
+    });
+
+    expect(shape.style.transform).toBe(before);
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+    expect(store.getActiveSlide()!.nodes[0].rotation).toBe(0);
+  });
+
+  it("keeps the rotate handle on rotated shapes, without resize handles", async () => {
+    const { overlay, container, drag } = await renderRotatable();
+    drag(30);
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-rotate-handle]")).toHaveLength(2);
+    });
+    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(0);
+  });
+});
+
+describe("normalizeAngle", () => {
+  it("wraps angles into [0, 360)", () => {
+    expect(normalizeAngle(0)).toBe(0);
+    expect(normalizeAngle(360)).toBe(0);
+    expect(normalizeAngle(-90)).toBe(270);
+    expect(normalizeAngle(450)).toBe(90);
+    expect(normalizeAngle(359.9999999)).toBe(0);
+  });
+});
+
+describe("snap guides", () => {
+  it("run across the whole slide, not just along the snapped edge", async () => {
+    const selection: { current: UseSelectionResult | null } = { current: null };
+    function Grab() {
+      selection.current = useSelection();
+      return null;
+    }
+
+    const { store, container, overlay } = await renderOverlay(
+      <>
+        <Grab />
+        <Presentation.SelectionBox>
+          <Presentation.ResizeHandle />
+        </Presentation.SelectionBox>
+        <Presentation.SnapGuide />
+      </>,
+    );
+    const { zoom, presentation } = store.getState();
+    act(() => selection.current!.select(["2"]));
+
+    // Shape 2's right edge sits at 416px and shape 3's left edge at 500px:
+    // dragging the east handle 81px lands 3px short, inside the threshold.
+    const handle = container.querySelector<HTMLElement>('[data-resize-grip="e"]')!;
+    act(() => {
+      fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+    });
+    act(() => {
+      fireEvent.pointerMove(overlay, { clientX: 81 * zoom, clientY: 0, buttons: 1, pointerId: 1 });
+    });
+
+    const guide = container.querySelector<HTMLElement>('[data-snap-guide="x"]')!;
+    expect(guide.style.left).toBe(`${500 * zoom}px`);
+    expect(guide.style.top).toBe("0px");
+    expect(guide.style.height).toBe(`${presentation!.height * zoom}px`);
+
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+    const node = store.getActiveSlide()!.nodes[0];
+    expect(node.position.x + node.size.w).toBeCloseTo(500);
   });
 });

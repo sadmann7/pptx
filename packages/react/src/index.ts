@@ -7,6 +7,8 @@ export type {
   MarqueeProps,
   ResizeHandleProps,
   ResizeHandleState,
+  RotateHandleProps,
+  RotateHandleState,
   SelectionBoxProps,
   SelectionBoxState,
   SelectionChangeEvent,

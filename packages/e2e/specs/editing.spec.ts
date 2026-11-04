@@ -208,3 +208,29 @@ test.describe("snapping", () => {
     expect(Math.abs(x - centeredX - 3)).toBeLessThan(1);
   });
 });
+
+test.describe("rotating", () => {
+  test("rotates a shape by dragging its rotate handle", async ({ page }) => {
+    const { overlay, shape } = await open(page);
+    await shape.click();
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
+    const knob = (await page.locator("[data-rotate-handle]").boundingBox())!;
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+
+    // A quarter turn clockwise: from above the center to its right.
+    await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(centerX + 60, centerY - 60, { steps: 4 });
+    await page.mouse.move(centerX + 150, centerY, { steps: 4 });
+    await expect(overlay).toHaveAttribute("data-mode", "rotate");
+    await page.mouse.up();
+
+    await expect
+      .poll(() => page.evaluate(() => window.__editStore!.getActiveSlide()!.nodes[0].rotation))
+      .toBeCloseTo(90, 0);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+  });
+});

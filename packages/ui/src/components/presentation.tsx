@@ -77,6 +77,7 @@ function PresentationSelection({
         <>
           <PresentationSelectionBox>
             <PresentationResizeHandle />
+            <PresentationRotateHandle />
           </PresentationSelectionBox>
           <PresentationSnapGuide />
           <PresentationMarquee />
@@ -111,6 +112,22 @@ function PresentationResizeHandle({
       data-slot="presentation-resize-handle"
       className={withClassName(
         "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-background shadow-xs",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationRotateHandle({
+  className,
+  ...props
+}: PresentationPrimitive.RotateHandle.Props) {
+  return (
+    <PresentationPrimitive.RotateHandle
+      data-slot="presentation-rotate-handle"
+      className={withClassName(
+        "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-background shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
         className,
       )}
       {...props}
@@ -346,6 +363,7 @@ export {
   PresentationMarquee,
   PresentationProvider,
   PresentationResizeHandle,
+  PresentationRotateHandle,
   PresentationSelection,
   PresentationSelectionBox,
   PresentationSlide,
