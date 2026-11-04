@@ -99,6 +99,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
   return renderElement(
     "div",
     { render },
+    // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
     {
       state: { status, index },
       ref: forwardedRef,

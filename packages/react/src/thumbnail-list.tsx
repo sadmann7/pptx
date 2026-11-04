@@ -273,20 +273,14 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       [tabStopListenersRef],
     );
 
-    const mediaCacheRef = React.useRef<{ key: object; cache: Map<string, string> } | null>(null);
-    if (!mediaCacheRef.current || mediaCacheRef.current.key !== presentation) {
-      mediaCacheRef.current = { key: presentation ?? {}, cache: new Map() };
-    }
-    const mediaUrlCache = mediaCacheRef.current.cache;
-
-    const slideHandleCacheRef = React.useRef<{
-      key: object;
-      cache: Map<string, CachedThumbnail>;
-    } | null>(null);
-    if (!slideHandleCacheRef.current || slideHandleCacheRef.current.key !== presentation) {
-      slideHandleCacheRef.current = { key: presentation ?? {}, cache: new Map() };
-    }
-    const slideHandleCache = slideHandleCacheRef.current.cache;
+    // Fresh caches per presentation; the effect below disposes the old ones.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- presentation is the cache key
+    const mediaUrlCache = React.useMemo(() => new Map<string, string>(), [presentation]);
+    const slideHandleCache = React.useMemo(
+      () => new Map<string, CachedThumbnail>(),
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- presentation is the cache key
+      [presentation],
+    );
 
     React.useEffect(() => {
       const slideHandles = slideHandleCache;
@@ -370,8 +364,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     // Moves focus once per presentation load, to wherever `initialFocus` says.
     // The ref is marked before anything else so a load that wants no focus
     // cannot be revisited when the active slide changes later.
-    const initialFocusRef = React.useRef(initialFocus);
-    initialFocusRef.current = initialFocus;
+    const initialFocusRef = useLatestRef(initialFocus);
 
     React.useEffect(() => {
       if (!presentation || autoFocusedPresentationRef.current === presentation) return;
@@ -394,7 +387,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
         element = activeItem ?? items.values().next().value;
       }
       element?.focus({ preventScroll: true });
-    }, [presentation, activeSlideId, itemsRef]);
+    }, [presentation, activeSlideId, itemsRef, initialFocusRef]);
 
     // Keeps tab stop in sync with undo/redo slide changes.
     React.useEffect(() => {
@@ -1017,6 +1010,7 @@ export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailIt
     return renderElement(
       "span",
       { render },
+      // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
       {
         state: {
           isActive: itemContext.isActive,
