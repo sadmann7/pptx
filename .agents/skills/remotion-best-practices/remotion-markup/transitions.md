@@ -45,8 +45,8 @@ import { fade } from "@remotion/transitions/fade";
 Any React component can be used as an overlay. For a ready-made effect, see the **light-leaks** rule.
 
 ```tsx
-import { TransitionSeries } from "@remotion/transitions";
 import { LightLeak } from "@remotion/light-leaks";
+import { TransitionSeries } from "@remotion/transitions";
 
 <TransitionSeries>
   <TransitionSeries.Sequence durationInFrames={60}>
@@ -66,9 +66,9 @@ import { LightLeak } from "@remotion/light-leaks";
 Transitions and overlays can coexist in the same `<TransitionSeries>`, but an overlay cannot be adjacent to a transition or another overlay.
 
 ```tsx
+import { LightLeak } from "@remotion/light-leaks";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { LightLeak } from "@remotion/light-leaks";
 
 <TransitionSeries>
   <TransitionSeries.Sequence durationInFrames={60}>
@@ -109,11 +109,11 @@ import { LightLeak } from "@remotion/light-leaks";
 Import transitions from their respective modules:
 
 ```tsx
+import { clockWipe } from "@remotion/transitions/clock-wipe";
 import { fade } from "@remotion/transitions/fade";
+import { flip } from "@remotion/transitions/flip";
 import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
-import { flip } from "@remotion/transitions/flip";
-import { clockWipe } from "@remotion/transitions/clock-wipe";
 ```
 
 ## Slide transition with direction

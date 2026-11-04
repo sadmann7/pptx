@@ -185,24 +185,25 @@ function PresentationThumbnailList({
   React.useEffect(() => {
     if (!isMobile || !open) return;
 
-    let pendingPointerId: number | null = null;
+    // Pointers that went down outside the sheet; a tap outside closes it.
+    const pendingPointerIds = new Set<number>();
 
     function isInside(target: Node) {
       return !!listRef.current?.contains(target) || !!triggerRef.current?.contains(target);
     }
 
     function onPointerDown(event: PointerEvent) {
-      pendingPointerId = isInside(event.target as Node) ? null : event.pointerId;
+      if (!isInside(event.target as Node)) pendingPointerIds.add(event.pointerId);
     }
 
     function onPointerUp(event: PointerEvent) {
-      const isPendingPointer = pendingPointerId === event.pointerId;
-      pendingPointerId = null;
-      if (isPendingPointer && !isInside(event.target as Node)) setOpen(false);
+      if (pendingPointerIds.delete(event.pointerId) && !isInside(event.target as Node)) {
+        setOpen(false);
+      }
     }
 
-    function onPointerCancel() {
-      pendingPointerId = null;
+    function onPointerCancel(event: PointerEvent) {
+      pendingPointerIds.delete(event.pointerId);
     }
 
     function onKeyDown(event: KeyboardEvent) {

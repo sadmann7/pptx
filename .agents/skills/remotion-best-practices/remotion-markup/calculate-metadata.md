@@ -30,6 +30,7 @@ Use the [`getVideoDuration`](../mediabunny/get-video-duration.md) and [`getVideo
 
 ```tsx
 import { CalculateMetadataFunction } from "remotion";
+
 import { getVideoDuration } from "./get-video-duration";
 
 const calculateMetadata: CalculateMetadataFunction<Props> = async ({ props }) => {
@@ -47,8 +48,9 @@ Use the [`getVideoDimensions`](../mediabunny/get-video-dimensions.md) skill to g
 
 ```tsx
 import { CalculateMetadataFunction } from "remotion";
-import { getVideoDuration } from "./get-video-duration";
+
 import { getVideoDimensions } from "./get-video-dimensions";
+import { getVideoDuration } from "./get-video-duration";
 
 const calculateMetadata: CalculateMetadataFunction<Props> = async ({ props }) => {
   const dimensions = await getVideoDimensions(props.videoSrc);

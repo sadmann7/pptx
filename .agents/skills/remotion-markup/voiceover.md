@@ -56,6 +56,7 @@ Use [`calculateMetadata`](./calculate-metadata.md) to measure the [audio duratio
 
 ```tsx
 import { CalculateMetadataFunction, staticFile } from "remotion";
+
 import { getAudioDuration } from "./get-audio-duration";
 
 const FPS = 30;

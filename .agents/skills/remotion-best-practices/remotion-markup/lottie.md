@@ -29,8 +29,9 @@ To import a Lottie animation:
 - Render the Lottie animation using the `Lottie` component from the `@remotion/lottie` package
 
 ```tsx
-import { Lottie, LottieAnimationData } from "@remotion/lottie";
 import { useEffect, useState } from "react";
+
+import { Lottie, LottieAnimationData } from "@remotion/lottie";
 import { cancelRender, continueRender, delayRender } from "remotion";
 
 export const MyAnimation = () => {

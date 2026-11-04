@@ -82,6 +82,7 @@ Use `<Still>` for single-frame images. It does not require `durationInFrames` or
 
 ```tsx
 import { Still } from "remotion";
+
 import { Thumbnail } from "./Thumbnail";
 
 export const RemotionRoot = () => {

@@ -67,8 +67,9 @@ if (!mapboxAccessToken) {
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
-import { AbsoluteFill, useDelayRender, useVideoConfig } from "remotion";
+
 import mapboxgl from "mapbox-gl";
+import { AbsoluteFill, useDelayRender, useVideoConfig } from "remotion";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const zurich: [number, number] = [8.5417, 47.3769];
@@ -133,8 +134,10 @@ This example shows the recommended pattern for route animations:
 - Frame 0 is prepared before `continueRender()`.
 
 ```tsx
-import * as turf from "@turf/turf";
 import { useEffect, useRef, useState } from "react";
+
+import * as turf from "@turf/turf";
+import mapboxgl, { type GeoJSONSource, type Map } from "mapbox-gl";
 import {
   AbsoluteFill,
   Easing,
@@ -143,7 +146,6 @@ import {
   useDelayRender,
   useVideoConfig,
 } from "remotion";
-import mapboxgl, { type GeoJSONSource, type Map } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const zurich: [number, number] = [8.5417, 47.3769];
