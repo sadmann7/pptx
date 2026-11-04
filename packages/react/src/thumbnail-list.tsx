@@ -480,6 +480,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
             props: [
               {
                 role: "listbox",
+                "aria-label": "Slides",
                 "aria-orientation": "vertical",
                 tabIndex: hasTabStop ? -1 : 0,
                 onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
@@ -643,6 +644,7 @@ export const ThumbnailItem = React.memo(
       ? { "aria-hidden": true, inert: true, tabIndex: -1 }
       : {
           role: "option",
+          "aria-label": `Slide ${displayIndex + 1}`,
           "aria-selected": isActive,
           "aria-posinset": displayIndex + 1,
           "aria-setsize": setSize,

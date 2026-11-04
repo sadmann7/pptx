@@ -11,6 +11,7 @@
     "shoot": "tsx scripts/shoot.ts",
     "probe": "tsx scripts/probe.ts",
     "faults": "tsx scripts/faults.ts",
+    "a11y": "tsx scripts/a11y-audit.ts",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -24,6 +25,7 @@
     "@diceui/pptx-core": "workspace:*"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@blazediff/ssim": "^1.7.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "catalog:",

@@ -70,7 +70,9 @@ function PresentationSelection({
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
-      className={cn("[--presentation-selection:var(--ring)]", className)}
+      // A fixed blue rather than a theme color: slides bring their own colors,
+      // light or dark whatever the app's theme is.
+      className={cn("[--presentation-selection:oklch(0.546_0.245_262.881)]", className)}
       {...props}
     >
       {children ?? (
@@ -111,7 +113,7 @@ function PresentationResizeHandle({
     <PresentationPrimitive.ResizeHandle
       data-slot="presentation-resize-handle"
       className={withClassName(
-        "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-background shadow-xs",
+        "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-white shadow-xs",
         className,
       )}
       {...props}
@@ -127,7 +129,7 @@ function PresentationRotateHandle({
     <PresentationPrimitive.RotateHandle
       data-slot="presentation-rotate-handle"
       className={withClassName(
-        "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-background shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
+        "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-white shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
         className,
       )}
       {...props}

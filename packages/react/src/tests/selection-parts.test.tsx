@@ -536,6 +536,49 @@ describe("clipboard", () => {
   });
 });
 
+describe("keyboard and screen readers", () => {
+  it("moves through the shapes with Tab, then lets focus move on", async () => {
+    const { overlay } = await renderOverlay();
+    const status = () => overlay.querySelector('[role="status"]')!.textContent;
+    const tab = (shiftKey = false) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        overlay.dispatchEvent(event);
+      });
+      return event.defaultPrevented;
+    };
+
+    act(() => overlay.focus());
+    expect(tab()).toBe(true);
+    expect(status()).toBe("Rect 1 selected");
+    expect(tab()).toBe(true);
+    expect(status()).toBe("Rect 1 B selected");
+
+    // Past the last shape, Tab is the browser's again.
+    expect(tab()).toBe(false);
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+    expect(status()).toBe("");
+
+    expect(tab(true)).toBe(true);
+    expect(status()).toBe("Rect 1 B selected");
+    expect(tab(true)).toBe(true);
+    expect(status()).toBe("Rect 1 selected");
+    expect(tab(true)).toBe(false);
+  });
+
+  it("announces multi-selections", async () => {
+    const { overlay, selectAll } = await renderOverlay();
+    selectAll();
+    expect(overlay.querySelector('[role="status"]')!.textContent).toBe("2 shapes selected");
+    expect(overlay.getAttribute("aria-label")).toBe("Slide editor");
+  });
+});
+
 describe("normalizeAngle", () => {
   it("wraps angles into [0, 360)", () => {
     expect(normalizeAngle(0)).toBe(0);

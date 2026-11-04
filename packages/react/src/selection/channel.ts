@@ -1,6 +1,12 @@
 import * as React from "react";
 
-import type { AddTextBoxOperation, ParagraphStyle, SlideNode, TextStyle } from "@diceui/pptx-core";
+import type {
+  AddTextBoxOperation,
+  NodeOrder,
+  ParagraphStyle,
+  SlideNode,
+  TextStyle,
+} from "@diceui/pptx-core";
 
 import { useSlide, useStoreContext } from "../context";
 import type { Store } from "../store";
@@ -36,6 +42,9 @@ export interface SelectionSnapshot {
 export interface SelectionController {
   select: (nodeIds: string[]) => void;
   editText: (nodeId: string) => void;
+  duplicate: () => Promise<void>;
+  remove: () => Promise<void>;
+  reorder: (order: NodeOrder) => Promise<void>;
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
 }
@@ -143,6 +152,15 @@ export interface UseSelectionResult {
    * Adds a text box to the active slide, centered unless `position` is given,
    * and starts editing it. Resolves with the new node's id.
    */
+  /** Duplicates the selected shapes, like Ctrl/Cmd+D, and selects the copies. */
+  duplicate: () => Promise<void>;
+
+  /** Deletes the selected shapes, like Delete. */
+  remove: () => Promise<void>;
+
+  /** Moves the selected shapes in the stacking order, keeping their order among themselves. */
+  reorder: (order: NodeOrder) => Promise<void>;
+
   insertTextBox: (
     options?: Omit<AddTextBoxOperation, "type" | "slideId">,
   ) => Promise<string | undefined>;
@@ -221,6 +239,12 @@ export function useSelection(): UseSelectionResult {
     clear: React.useCallback(() => channel.getController()?.select([]), [channel]),
     editText: React.useCallback(
       (nodeId: string) => channel.getController()?.editText(nodeId),
+      [channel],
+    ),
+    duplicate: React.useCallback(async () => requireController(channel).duplicate(), [channel]),
+    remove: React.useCallback(async () => requireController(channel).remove(), [channel]),
+    reorder: React.useCallback(
+      async (order: NodeOrder) => requireController(channel).reorder(order),
       [channel],
     ),
     insertTextBox: React.useCallback(

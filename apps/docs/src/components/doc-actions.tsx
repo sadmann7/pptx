@@ -140,6 +140,7 @@ function PageMenu({ markdownUrl, className, ...props }: PageMenuProps) {
       <DropdownMenuTrigger
         render={
           <Button
+            aria-label="More page actions"
             variant="secondary"
             size="icon-sm"
             className={cn("size-7 [&_svg:not([class*='size-'])]:size-3.5", className)}

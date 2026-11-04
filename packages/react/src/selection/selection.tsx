@@ -117,6 +117,18 @@ function getIsPresentationTarget(
   return boundary?.contains(target) ?? false;
 }
 
+const VISUALLY_HIDDEN: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
 const PASTABLE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif"]);
 
 function getIsUndoEvent(event: KeyboardEvent): boolean {
@@ -397,6 +409,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isSoloSelection = selectedNodes.length === 1;
 
   const isTextMode = state.mode === "text";
+  const announcement = isTextMode
+    ? `Editing text in ${selectedNode?.name || "shape"}`
+    : selectedNodes.length === 1
+      ? `${selectedNode?.name || "Shape"} selected`
+      : selectedNodes.length > 1
+        ? `${selectedNodes.length} shapes selected`
+        : "";
   const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
 
   // Selection transitions happen across ~25 pointer/keyboard paths, several of
@@ -1181,6 +1200,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const publishSelectionRef = useLatestRef(publishSelection);
   const selectNodesRef = useLatestRef(selectNodes);
   const editTextRef = useLatestRef(editText);
+  const duplicateSelectionRef = useLatestRef(duplicateSelection);
+  const deleteSelectionRef = useLatestRef(deleteSelection);
+  const reorderSelectionRef = useLatestRef(reorderSelection);
   const applyFormatRef = useLatestRef(applyFormat);
 
   React.useEffect(
@@ -1188,10 +1210,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       selectionChannel.register({
         select: (nodeIds) => selectNodesRef.current(nodeIds),
         editText: (nodeId) => editTextRef.current(nodeId),
+        duplicate: () => duplicateSelectionRef.current(),
+        remove: () => deleteSelectionRef.current(),
+        reorder: (order) => reorderSelectionRef.current(order),
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
       }),
-    [selectionChannel, selectNodesRef, editTextRef, applyFormatRef],
+    [
+      selectionChannel,
+      selectNodesRef,
+      editTextRef,
+      duplicateSelectionRef,
+      deleteSelectionRef,
+      reorderSelectionRef,
+      applyFormatRef,
+    ],
   );
 
   // Publish to `useSelection` when the selection, the mode, or the slide's
@@ -1989,31 +2022,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     );
   }
 
-  function deleteSelection(): void {
+  /** Runs an action from a shortcut, where nobody awaits it. */
+  function runShortcut(action: () => Promise<void>): void {
+    action().catch((err) => console.warn("[pptx] edit failed:", err));
+  }
+
+  async function deleteSelection(): Promise<void> {
     const nodeIds = selectedNodesRef.current.map((n) => n.id);
-    commitEdit(
-      () =>
-        store.edit(
-          nodeIds.length === 1
-            ? { type: "deleteNode", slideId: slideId!, nodeId: nodeIds[0] }
-            : {
-                type: "batch",
-                operations: nodeIds.map((nodeId) => ({
-                  type: "deleteNode" as const,
-                  slideId: slideId!,
-                  nodeId,
-                })),
-              },
-        ),
-      undefined,
-      () => {
-        setState({ mode: "idle" });
-        for (const nodeId of nodeIds) onNodeDelete?.(nodeId);
-      },
-      (error) => {
-        for (const nodeId of nodeIds) onNodeDelete?.(nodeId, error);
-      },
-    );
+    if (nodeIds.length === 0 || !slideId) return;
+    try {
+      await store.edit(
+        nodeIds.length === 1
+          ? { type: "deleteNode", slideId, nodeId: nodeIds[0] }
+          : {
+              type: "batch",
+              operations: nodeIds.map((nodeId) => ({
+                type: "deleteNode" as const,
+                slideId,
+                nodeId,
+              })),
+            },
+      );
+    } catch (error) {
+      for (const nodeId of nodeIds) onNodeDelete?.(nodeId, error);
+      throw error;
+    }
+    setState({ mode: "idle" });
+    for (const nodeId of nodeIds) onNodeDelete?.(nodeId);
   }
 
   /**
@@ -2052,7 +2087,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       )
       .join("\n");
     if (text) event.clipboardData.setData("text/plain", text);
-    if (cut) deleteSelection();
+    if (cut) runShortcut(deleteSelection);
   }
 
   /** Pastes shapes copied in this page, or else an image file from the system clipboard. */
@@ -2101,39 +2136,38 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /** PowerPoint's Ctrl+D: copies land just above their originals, selected. */
-  function duplicateSelection(): void {
-    const operations = selectedNodes.map((node) => ({
+  async function duplicateSelection(): Promise<void> {
+    if (!slideId) return;
+    const operations = selectedNodesRef.current.map((node) => ({
       type: "duplicateNode" as const,
-      slideId: slideId!,
+      slideId,
       nodeId: node.id,
     }));
-    commitEdit(
-      () => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
-      undefined,
-      (result) => {
-        if (result.createdNodeIds?.length) {
-          setState({ mode: "selected", nodeIds: result.createdNodeIds });
-        }
-      },
+    if (operations.length === 0) return;
+    const result = await store.edit(
+      operations.length === 1 ? operations[0] : { type: "batch", operations },
     );
+    if (result.createdNodeIds?.length) {
+      setState({ mode: "selected", nodeIds: result.createdNodeIds });
+    }
   }
 
-  function reorderSelection(order: NodeOrder): void {
+  async function reorderSelection(order: NodeOrder): Promise<void> {
+    if (!slide || !slideId) return;
     // Move the selected nodes one at a time from the end they travel toward,
     // so they keep their order among themselves.
-    const stacked = [...selectedNodes].sort(
-      (a, b) => slide!.nodes.indexOf(a) - slide!.nodes.indexOf(b),
+    const stacked = [...selectedNodesRef.current].sort(
+      (a, b) => slide.nodes.indexOf(a) - slide.nodes.indexOf(b),
     );
     if (order === "back" || order === "forward") stacked.reverse();
     const operations = stacked.map((node) => ({
       type: "reorderNode" as const,
-      slideId: slideId!,
+      slideId,
       nodeId: node.id,
       order,
     }));
-    commitEdit(() =>
-      store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
-    );
+    if (operations.length === 0) return;
+    await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
@@ -2146,6 +2180,22 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
+    // PowerPoint: Tab and Shift+Tab move through the slide's shapes. Past the
+    // last one, focus moves on as usual, so the keyboard is never trapped.
+    if (event.key === "Tab" && !mod && !event.altKey && slide && slide.nodes.length > 0) {
+      const nodes = slide.nodes;
+      const step = event.shiftKey ? -1 : 1;
+      const current = isSoloSelection ? nodes.indexOf(selectedNodes[0]) : -1;
+      const next = current === -1 ? (event.shiftKey ? nodes.length - 1 : 0) : current + step;
+      if (next < 0 || next >= nodes.length) {
+        setState({ mode: "idle" });
+        return;
+      }
+      event.preventDefault();
+      setState({ mode: "selected", nodeIds: [nodes[next].id] });
+      return;
+    }
+
     if (mod && key === "a") {
       event.preventDefault();
       const allIds = slide!.nodes.map((n) => n.id);
@@ -2157,7 +2207,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     if (mod && key === "d") {
       event.preventDefault();
-      duplicateSelection();
+      runShortcut(duplicateSelection);
       return;
     }
 
@@ -2165,7 +2215,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (mod && (event.code === "BracketRight" || event.code === "BracketLeft")) {
       event.preventDefault();
       const up = event.code === "BracketRight";
-      reorderSelection(event.shiftKey ? (up ? "front" : "back") : up ? "forward" : "backward");
+      const order = event.shiftKey ? (up ? "front" : "back") : up ? "forward" : "backward";
+      runShortcut(() => reorderSelection(order));
       return;
     }
 
@@ -2199,7 +2250,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      deleteSelection();
+      runShortcut(deleteSelection);
       return;
     }
 
@@ -2230,6 +2281,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       props: [
         {
           role: "application",
+          "aria-label": "Slide editor",
           "data-pptx-selection": "",
           "data-mode": state.mode,
           tabIndex: 0,
@@ -2275,6 +2327,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                 >
                   {children ?? DEFAULT_PARTS}
                 </SelectionPartsContext.Provider>
+              </div>
+              <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
+                {announcement}
               </div>
             </>
           ),
