@@ -869,6 +869,50 @@ describe("multi-selection handles", () => {
   });
 });
 
+describe("right-click", () => {
+  function rightClick(overlay: HTMLElement, target: HTMLElement | null): void {
+    hitTarget = target;
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 2, clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerUp(overlay, { button: 2, pointerId: 1 });
+    });
+  }
+
+  it("selects the shape under the pointer", async () => {
+    const onSelectionChange = vi.fn();
+    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+
+    rightClick(overlay, shapeElements[1]);
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ nodeIds: ["3"] }));
+  });
+
+  it("keeps a selection that already includes the shape", async () => {
+    const onSelectionChange = vi.fn();
+    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    rightClick(overlay, shapeElements[1]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ nodeIds: ["2", "3"] }),
+    );
+  });
+
+  it("clears the selection on empty canvas", async () => {
+    const { overlay } = await renderSelection();
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    rightClick(overlay, null);
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
+  });
+});
+
 describe("pressing outside the overlay", () => {
   /** Selects every shape, leaving the overlay focused and in `selected`. */
   async function withSelection() {

@@ -136,6 +136,51 @@ export function getNodeRect(node: SlideNode): Rect {
   return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
 }
 
+/** The slide-axis box a node covers once rotated about its center. */
+export function getNodeBounds(node: SlideNode): Rect {
+  const rect = getNodeRect(node);
+  if (node.rotation === 0) return rect;
+  const radians = (node.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  const w = rect.w * cos + rect.h * sin;
+  const h = rect.w * sin + rect.h * cos;
+  return { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h };
+}
+
+/**
+ * Resizes a rotated shape from one of its handles. The drag is measured along
+ * the shape's own axes, and the edges opposite the handle stay put on the
+ * slide. `origin` is the box before rotation, which turns about its center.
+ */
+export function resizeRotatedRect(
+  origin: Rect,
+  rotation: number,
+  grip: GripDirection,
+  dx: number,
+  dy: number,
+  lockAspect = false,
+): Rect {
+  if (rotation === 0) return resizeRect(origin, grip, dx, dy, lockAspect);
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+
+  const local = resizeRect(origin, grip, dx * cos + dy * sin, -dx * sin + dy * cos, lockAspect);
+  // How far the center moved, in the shape's axes, turned back to the slide's.
+  const offsetX = local.x + local.w / 2 - (origin.x + origin.w / 2);
+  const offsetY = local.y + local.h / 2 - (origin.y + origin.h / 2);
+  const centerX = origin.x + origin.w / 2 + offsetX * cos - offsetY * sin;
+  const centerY = origin.y + origin.h / 2 + offsetX * sin + offsetY * cos;
+  return { x: centerX - local.w / 2, y: centerY - local.h / 2, w: local.w, h: local.h };
+}
+
+/** The resize cursor for a handle on a shape turned by `rotation` degrees. */
+export function getGripCursor(grip: GripDirection, rotation: number): string {
+  const steps = Math.round(normalizeAngle(rotation) / 45);
+  return GRIP_CURSORS[GRIP_DIRECTIONS[(GRIP_DIRECTIONS.indexOf(grip) + steps) % 8]];
+}
+
 /** Factors a resize drag scaled the dragged shape by, per axis. */
 export interface ResizeScale {
   x: number;
@@ -182,6 +227,29 @@ export function scaleRectFromGrip(rect: Rect, grip: GripDirection, scale: Resize
   };
 }
 
+/**
+ * Where each selected shape lands mid-resize. A lone rotated shape resizes
+ * along its own axes; otherwise every shape scales by the factors the gripped
+ * one did, each in place.
+ */
+export function getResizedRects(
+  nodes: SlideNode[],
+  grippedNode: SlideNode,
+  grip: GripDirection,
+  dx: number,
+  dy: number,
+  lockAspect: boolean,
+): Map<string, Rect> {
+  const origin = getNodeRect(grippedNode);
+  if (grippedNode.rotation !== 0) {
+    return new Map([
+      [grippedNode.id, resizeRotatedRect(origin, grippedNode.rotation, grip, dx, dy, lockAspect)],
+    ]);
+  }
+  const scale = gripScale(origin, grip, dx, dy, lockAspect);
+  return new Map(nodes.map((node) => [node.id, scaleRectFromGrip(getNodeRect(node), grip, scale)]));
+}
+
 export interface PasteboardOverhang {
   left: number;
   top: number;
@@ -203,18 +271,7 @@ export function getPasteboardOverhang(
 ): PasteboardOverhang {
   const overhang = { left: 0, top: 0, right: 0, bottom: 0 };
   for (const node of nodes) {
-    let { x, y, w, h } = getNodeRect(node);
-    if (node.rotation !== 0) {
-      const radians = (node.rotation * Math.PI) / 180;
-      const halfW = (Math.abs(Math.cos(radians)) * w + Math.abs(Math.sin(radians)) * h) / 2;
-      const halfH = (Math.abs(Math.sin(radians)) * w + Math.abs(Math.cos(radians)) * h) / 2;
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-      x = cx - halfW;
-      y = cy - halfH;
-      w = halfW * 2;
-      h = halfH * 2;
-    }
+    const { x, y, w, h } = getNodeBounds(node);
     overhang.left = Math.max(overhang.left, -x);
     overhang.top = Math.max(overhang.top, -y);
     overhang.right = Math.max(overhang.right, x + w - slideWidth);

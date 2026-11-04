@@ -1,0 +1,80 @@
+import { describe, expect, it } from "vitest";
+
+import type { Rect } from "../selection/geometry";
+import { getGripCursor, getNodeBounds, resizeRect, resizeRotatedRect } from "../selection/geometry";
+
+/** Where a point given in a rect's own axes (0-1 across it) sits on the slide once rotated. */
+function toSlide(rect: Rect, rotation: number, u: number, v: number) {
+  const radians = (rotation * Math.PI) / 180;
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const lx = (u - 0.5) * rect.w;
+  const ly = (v - 0.5) * rect.h;
+  return {
+    x: cx + lx * Math.cos(radians) - ly * Math.sin(radians),
+    y: cy + lx * Math.sin(radians) + ly * Math.cos(radians),
+  };
+}
+
+const ORIGIN: Rect = { x: 100, y: 100, w: 200, h: 100 };
+
+describe("resizeRotatedRect", () => {
+  it("matches resizeRect when not rotated", () => {
+    expect(resizeRotatedRect(ORIGIN, 0, "se", 30, 20)).toEqual(resizeRect(ORIGIN, "se", 30, 20));
+  });
+
+  it("measures the drag along the shape's own axes", () => {
+    // Turned 90°, the shape's width runs down the slide: dragging the east
+    // handle down by 40 widens it by 40, and sideways does nothing.
+    const down = resizeRotatedRect(ORIGIN, 90, "e", 0, 40);
+    expect(down.w).toBeCloseTo(240);
+    expect(down.h).toBeCloseTo(100);
+    const sideways = resizeRotatedRect(ORIGIN, 90, "e", 40, 0);
+    expect(sideways.w).toBeCloseTo(200);
+  });
+
+  it.each([
+    ["e", 0, 0.5, 90, 0, 40],
+    ["w", 1, 0.5, 30, -25, 10],
+    ["se", 0, 0, 135, 20, -35],
+    ["n", 0.5, 1, 210, 15, 15],
+  ] as const)("keeps the edge opposite the %s handle in place", (grip, u, v, rotation, dx, dy) => {
+    const before = toSlide(ORIGIN, rotation, u, v);
+    const after = toSlide(resizeRotatedRect(ORIGIN, rotation, grip, dx, dy), rotation, u, v);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it("keeps the aspect ratio with a locked corner drag", () => {
+    const next = resizeRotatedRect(ORIGIN, 45, "se", 50, 50, true);
+    expect(next.w / next.h).toBeCloseTo(2);
+  });
+});
+
+describe("getGripCursor", () => {
+  it("turns the resize cursor with the shape", () => {
+    expect(getGripCursor("n", 0)).toBe("ns-resize");
+    expect(getGripCursor("n", 45)).toBe("nesw-resize");
+    expect(getGripCursor("n", 90)).toBe("ew-resize");
+    expect(getGripCursor("e", 90)).toBe("ns-resize");
+    expect(getGripCursor("nw", 180)).toBe("nwse-resize");
+    expect(getGripCursor("n", -90)).toBe("ew-resize");
+  });
+});
+
+describe("getNodeBounds", () => {
+  const node = (rotation: number) =>
+    ({ position: { x: 100, y: 100 }, size: { w: 200, h: 100 }, rotation }) as never;
+
+  it("is the node's box when not rotated", () => {
+    expect(getNodeBounds(node(0))).toEqual(ORIGIN);
+  });
+
+  it("covers the rotated shape, about its center", () => {
+    const bounds = getNodeBounds(node(90));
+    expect(bounds.x).toBeCloseTo(150);
+    expect(bounds.y).toBeCloseTo(50);
+    expect(bounds.w).toBeCloseTo(100);
+    expect(bounds.h).toBeCloseTo(200);
+  });
+});

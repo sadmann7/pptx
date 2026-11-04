@@ -304,6 +304,57 @@ describe("rotating", () => {
   });
 });
 
+describe("resizing a rotated shape", () => {
+  it("shows handles on a lone rotated shape and resizes along its axes", async () => {
+    const selection: { current: UseSelectionResult | null } = { current: null };
+    function Grab() {
+      selection.current = useSelection();
+      return null;
+    }
+    const { store, container, overlay } = await renderOverlay(
+      <>
+        <Grab />
+        <Presentation.SelectionBox>
+          <Presentation.ResizeHandle />
+        </Presentation.SelectionBox>
+      </>,
+    );
+    const slideId = store.getActiveSlide()!.id;
+    await act(async () => {
+      await store.edit({ type: "setNodeTransform", slideId, nodeId: "2", rotation: 90 });
+    });
+    act(() => selection.current!.select(["2"]));
+
+    const handles = container.querySelectorAll<HTMLElement>("[data-resize-grip]");
+    expect(handles).toHaveLength(8);
+    // The east handle points down the slide now, and its cursor says so.
+    const east = container.querySelector<HTMLElement>('[data-resize-grip="e"]')!;
+    expect(east.style.cursor).toBe("ns-resize");
+
+    const before = store.getActiveSlide()!.nodes[0];
+    const { w, h } = before.size;
+    const centerY = before.position.y + h / 2;
+    const { zoom } = store.getState();
+    act(() => {
+      fireEvent.pointerDown(east, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+    });
+    act(() => {
+      fireEvent.pointerMove(overlay, { clientX: 0, clientY: 40 * zoom, buttons: 1, pointerId: 1 });
+    });
+    expect(overlay.style.cursor).toBe("ns-resize");
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+
+    const after = store.getActiveSlide()!.nodes[0];
+    expect(after.size.w).toBeCloseTo(w + 40);
+    expect(after.size.h).toBeCloseTo(h);
+    expect(after.rotation).toBe(90);
+    // The west edge, now the top of the turned shape, stays put.
+    expect(after.position.y + after.size.h / 2 - after.size.w / 2).toBeCloseTo(centerY - w / 2);
+  });
+});
+
 describe("normalizeAngle", () => {
   it("wraps angles into [0, 360)", () => {
     expect(normalizeAngle(0)).toBe(0);

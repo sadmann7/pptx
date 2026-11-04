@@ -5,7 +5,7 @@ import type { SlideNode } from "@diceui/pptx-core";
 import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
 import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
-import { getNodeRect, normalizeAngle, scaleRectFromGrip } from "./geometry";
+import { getNodeRect, normalizeAngle } from "./geometry";
 import type { SelectionState } from "./selection";
 
 const FRAME_GRAB_SIZE = 10;
@@ -79,7 +79,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
     { render, className, style, children, ...selectionBoxProps },
     forwardedRef,
   ) {
-    const { state, zoom, selectedNodes, resizeScale, showResizeHandles, onBorderPointerDown } =
+    const { state, zoom, selectedNodes, resizeRects, showResizeHandles, onBorderPointerDown } =
       useSelectionParts(SELECTION_BOX_NAME);
 
     const isTextMode = state.mode === "text";
@@ -93,13 +93,17 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
       let rect = getNodeRect(node);
       if (state.mode === "move" && state.moved) {
         rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
-      } else if (state.mode === "resize" && resizeScale) {
-        rect = scaleRectFromGrip(rect, state.grip, resizeScale);
+      } else if (state.mode === "resize") {
+        rect = resizeRects?.get(node.id) ?? rect;
       }
       const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
-      // Resizing works in slide axes, so a rotated shape has no resize handles.
+      // A rotated shape resizes along its own axes only when selected alone.
       const showHandles =
-        showResizeHandles && node.rotation === 0 && !isDragging && !isRotating && !isTextMode;
+        showResizeHandles &&
+        (node.rotation === 0 || selectedNodes.length === 1) &&
+        !isDragging &&
+        !isRotating &&
+        !isTextMode;
       const showRotateHandle =
         showResizeHandles &&
         !isDragging &&

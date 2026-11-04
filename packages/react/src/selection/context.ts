@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { SlideNode } from "@diceui/pptx-core";
 
-import type { GripDirection, ResizeScale } from "./geometry";
+import type { GripDirection, Rect } from "./geometry";
 import type { InternalState } from "./selection";
 
 /**
@@ -13,7 +13,8 @@ export interface SelectionPartsContextValue {
   state: InternalState;
   zoom: number;
   selectedNodes: SlideNode[];
-  resizeScale: ResizeScale | null;
+  /** Where each shape lands mid-resize. */
+  resizeRects: Map<string, Rect> | null;
   /**
    * False mid-band: the handles are unreachable then (the pointer is captured)
    * and would sit under the rubber band. Until the band starts, the press is

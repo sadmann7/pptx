@@ -4,7 +4,7 @@ import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
 import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
 import type { GripDirection } from "./geometry";
-import { GRIP_CURSORS, GRIP_DIRECTIONS } from "./geometry";
+import { GRIP_DIRECTIONS, getGripCursor } from "./geometry";
 
 const RESIZE_HANDLE_NAME = "Presentation.ResizeHandle";
 
@@ -63,7 +63,7 @@ export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
                   position: "absolute",
                   ...GRIP_POSITIONS[direction],
                   transform: "translate(-50%, -50%)",
-                  cursor: GRIP_CURSORS[direction],
+                  cursor: getGripCursor(direction, box.rotation),
                   pointerEvents: "auto",
                   touchAction: "none",
                 },

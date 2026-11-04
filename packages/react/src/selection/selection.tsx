@@ -28,16 +28,16 @@ import type { GripDirection, Rect } from "./geometry";
 import {
   constrainMove,
   DRAG_THRESHOLD,
-  GRIP_CURSORS,
+  getGripCursor,
+  getNodeBounds,
+  getResizedRects,
   getNodeRect,
   getPasteboardOverhang,
   getPointerAngle,
-  gripScale,
   isBandDrag,
   mergeSelection,
   normalizeAngle,
   ROTATION_STEP,
-  scaleRectFromGrip,
   toggleSelection,
 } from "./geometry";
 import { Marquee } from "./marquee";
@@ -426,9 +426,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const grippedNode =
     state.mode === "resize" ? selectedNodes.find((node) => node.id === state.gripNodeId) : null;
-  const resizeScale =
+  const resizeRects =
     state.mode === "resize" && grippedNode
-      ? gripScale(getNodeRect(grippedNode), state.grip, state.dx, state.dy, state.lockAspect)
+      ? getResizedRects(
+          selectedNodes,
+          grippedNode,
+          state.grip,
+          state.dx,
+          state.dy,
+          state.lockAspect,
+        )
       : null;
 
   // Pasteboard hit area: shapes dragged past the slide edge render unclipped
@@ -1377,6 +1384,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [slideRevision, stateRef, enterTextModeRef, publishSelectionRef]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+    if (event.button === 2 && !isTextMode) {
+      // PowerPoint: right-clicking a shape outside the selection selects it, so
+      // a context menu acts on what was clicked. Empty canvas clears it.
+      const nodeId = hitTest(event.clientX, event.clientY);
+      if (!nodeId) setState({ mode: "idle" });
+      else if (!selectedIds.includes(nodeId)) setState({ mode: "selected", nodeIds: [nodeId] });
+      return;
+    }
     if (event.button !== 0 || isTextMode) return;
 
     const nodeId = hitTest(event.clientX, event.clientY);
@@ -1574,7 +1589,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function getSnapTargets(draggedIds: string[]): Rect[] {
     const targets: Rect[] = [{ x: 0, y: 0, w: presentation!.width, h: presentation!.height }];
     for (const node of slide!.nodes) {
-      if (!draggedIds.includes(node.id)) targets.push(getNodeRect(node));
+      if (!draggedIds.includes(node.id)) targets.push(getNodeBounds(node));
     }
     return targets;
   }
@@ -1620,7 +1635,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // locks and unlocks the axis. The constrained (and snapped) deltas are
       // what lands in state, so pointer-up commits them without re-deriving.
       const delta = constrainMove(dx, dy, event.shiftKey);
-      const bounds = getUnionRect(selectedNodes.map(getNodeRect));
+      const bounds = getUnionRect(selectedNodes.map(getNodeBounds));
       const next =
         moved && isSnapping && bounds
           ? snapMove(bounds, delta.x, delta.y, getSnapTargets(state.nodeIds), threshold, {
@@ -1644,7 +1659,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const lockAspect = event.shiftKey;
       const grippedNode = selectedNodes.find((node) => node.id === state.gripNodeId);
       const next =
-        isSnapping && grippedNode
+        // Snapping lines up slide-axis edges, which a rotated shape doesn't have.
+        isSnapping && grippedNode && grippedNode.rotation === 0
           ? snapResize(
               getNodeRect(grippedNode),
               state.grip,
@@ -1679,7 +1695,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       };
       const contained = slide!.nodes
         .filter((node) => {
-          const nodeRect = getNodeRect(node);
+          const nodeRect = getNodeBounds(node);
           return (
             nodeRect.x >= box.x &&
             nodeRect.y >= box.y &&
@@ -1804,13 +1820,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         baseRect: grippedNode ? getNodeRect(grippedNode) : null,
       });
       if (grippedNode && (dx !== 0 || dy !== 0)) {
-        // Dragging one shape's handle scales the whole selection by the factors
-        // that shape was scaled by, each shape anchored in place (PowerPoint).
-        const scale = gripScale(getNodeRect(grippedNode), grip, dx, dy, lockAspect);
-        const transforms = resizingNodes.map((node) => ({
-          nodeId: node.id,
-          rect: scaleRectFromGrip(getNodeRect(node), grip, scale),
-        }));
+        const rects = getResizedRects(resizingNodes, grippedNode, grip, dx, dy, lockAspect);
+        const transforms = [...rects].map(([nodeId, rect]) => ({ nodeId, rect }));
         commitEdit(
           () =>
             store.edit(
@@ -2041,7 +2052,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     state,
                     zoom,
                     selectedNodes,
-                    resizeScale,
+                    resizeRects,
                     showResizeHandles: !isBanding,
                     frameRef,
                     slideWidth: presentation.width,
@@ -2072,7 +2083,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
               state.mode === "rotate"
                 ? ROTATE_CURSOR
                 : state.mode === "resize"
-                  ? GRIP_CURSORS[state.grip]
+                  ? getGripCursor(state.grip, grippedNode?.rotation ?? 0)
                   : undefined,
             outline: "none",
             touchAction: "none",

@@ -22,6 +22,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Move** shapes by dragging them
 - **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock the aspect ratio)
 - **Rotate** shapes with the handle above the selection (hold Shift to step by 15°)
+- **Right-click** a shape to select it before opening a context menu; right-clicking empty canvas clears the selection
 - **Snap** to the slide's edges and center and to other shapes while moving or resizing, with guides showing what lined up (see [Snapping](#snapping))
 - **Edit text** inline: single-click a text box, or double-click or start typing on any shape
 - **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
@@ -89,7 +90,7 @@ Like the other primitives, every part accepts `render`, and `className` and `sty
 />
 ```
 
-Resize handles are hidden while dragging, while editing text, and on rotated shapes. The rotate handle sits `--presentation-rotate-handle-offset` (`20px`) above the middle of the top edge and turns with the outline; it is hidden while moving, resizing, or editing text, and on tables and charts. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
+Resize handles are hidden while dragging and while editing text. A rotated shape resizes along its own axes when it is selected alone; in a multi-selection it has no resize handles. The rotate handle sits `--presentation-rotate-handle-offset` (`20px`) above the middle of the top edge and turns with the outline; it is hidden while moving, resizing, or editing text, and on tables and charts. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
 
 ### Theming the default look
 

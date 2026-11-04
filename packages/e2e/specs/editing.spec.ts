@@ -233,4 +233,38 @@ test.describe("rotating", () => {
       .toBeCloseTo(90, 0);
     await expect(overlay).toHaveAttribute("data-mode", "selected");
   });
+
+  test("resizes a rotated shape along its own axes", async ({ page }) => {
+    const { overlay, shape } = await open(page);
+    await page.evaluate(async () => {
+      const store = window.__editStore!;
+      const slideId = store.getActiveSlide()!.id;
+      await store.edit({ type: "setNodeTransform", slideId, nodeId: "2", rotation: 90 });
+    });
+    await shape.click();
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    const readGeometry = () =>
+      page.evaluate(() => {
+        const node = window.__editStore!.getActiveSlide()!.nodes[0];
+        const centerX = node.position.x + node.size.w / 2;
+        // Turned 90°, the shape's height runs across the slide.
+        return { w: node.size.w, h: node.size.h, left: centerX - node.size.h / 2 };
+      });
+    const before = await readGeometry();
+
+    // The north handle now sits on the right side: drag it further right.
+    const handle = (await page.locator('[data-resize-grip="n"]').boundingBox())!;
+    const x = handle.x + handle.width / 2;
+    const y = handle.y + handle.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 30, y, { steps: 5 });
+    await page.mouse.up();
+
+    await expect.poll(async () => (await readGeometry()).h).toBeCloseTo(before.h + 30, 0);
+    const after = await readGeometry();
+    expect(after.w).toBeCloseTo(before.w, 1);
+    expect(after.left).toBeCloseTo(before.left, 1);
+  });
 });

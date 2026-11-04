@@ -8,10 +8,10 @@ import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./co
 const ROTATE_CURSOR_SVG =
   "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>" +
   "<g fill='none' stroke-linecap='round'>" +
-  "<path d='M5 12a7 7 0 1 1 7 7' stroke='white' stroke-width='4'/>" +
-  "<path d='M5 12a7 7 0 1 1 7 7' stroke='black' stroke-width='1.75'/>" +
+  "<path d='M19 12a7 7 0 1 1-7-7' stroke='white' stroke-width='4'/>" +
+  "<path d='M19 12a7 7 0 1 1-7-7' stroke='black' stroke-width='1.75'/>" +
   "</g>" +
-  "<path d='M8.5 19 13 15.5v7z' fill='black' stroke='white' stroke-width='1' stroke-linejoin='round'/>" +
+  "<path d='M15.5 5 11 1.5v7z' fill='black' stroke='white' stroke-width='1' stroke-linejoin='round'/>" +
   "</svg>";
 
 /**
