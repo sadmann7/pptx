@@ -273,7 +273,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       [tabStopListenersRef],
     );
 
-    // Fresh caches per presentation; the effect below disposes the old ones.
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- presentation is the cache key
     const mediaUrlCache = React.useMemo(() => new Map<string, string>(), [presentation]);
     const slideHandleCache = React.useMemo(

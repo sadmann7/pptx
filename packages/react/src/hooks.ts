@@ -1,7 +1,6 @@
 import * as React from "react";
 
 function useLazyRef<T>(fn: () => T): React.RefObject<T> {
-  // A state initializer runs once, without reading a ref during render.
   const [ref] = React.useState(() => ({ current: fn() }));
   return ref;
 }
