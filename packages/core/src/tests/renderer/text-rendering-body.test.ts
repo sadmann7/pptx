@@ -109,6 +109,7 @@ describe("bodyPr normAutofit", () => {
     // 32pt × 62.5% = 20pt.
     expect(parseFloat(run!.style.fontSize)).toBeCloseTo(20, 3);
     expect(parseFloat(paragraph.style.fontSize)).toBeCloseTo(20, 3);
+    expect(container.getAttribute("data-pptx-font-scale")).toBe("0.625");
   });
 
   it("applies lnSpcReduction to the paragraph line-height", async () => {
@@ -129,6 +130,29 @@ describe("bodyPr normAutofit", () => {
     const [paragraph] = paragraphsOf(container);
     const bullet = spansOf(paragraph).find((s) => s.textContent === "• ");
     expect(parseFloat(bullet!.style.fontSize)).toBeCloseTo(10, 3);
+  });
+});
+
+describe("empty paragraphs", () => {
+  it("take bold, italic, and decorations from endParaRPr", async () => {
+    const container = await renderBody(
+      `<a:bodyPr/>`,
+      `<a:p><a:r><a:rPr/><a:t>MARKER</a:t></a:r></a:p>` +
+        `<a:p><a:endParaRPr lang="en-US" b="1" i="1" u="sng" strike="sngStrike"/></a:p>`,
+    );
+    const [, paragraph] = paragraphsOf(container);
+    expect(paragraph.style.fontWeight).toBe("bold");
+    expect(paragraph.style.fontStyle).toBe("italic");
+    expect(paragraph.style.textDecoration).toBe("underline line-through");
+  });
+
+  it("leave toggles to the runs when they have text", async () => {
+    const container = await renderBody(
+      `<a:bodyPr/>`,
+      `<a:p><a:r><a:rPr/><a:t>MARKER</a:t></a:r><a:endParaRPr lang="en-US" b="1"/></a:p>`,
+    );
+    const [paragraph] = paragraphsOf(container);
+    expect(paragraph.style.fontWeight).toBe("");
   });
 });
 

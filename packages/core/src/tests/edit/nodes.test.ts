@@ -519,3 +519,80 @@ describe("getPresentationFonts", () => {
     });
   });
 });
+
+describe("review fixes", () => {
+  it("formats the paragraph mark of an empty <a:p/> at a caret", async () => {
+    const pres = await openEditable([
+      textShape(2, "A").replace("<a:p><a:r><a:t>A</a:t></a:r></a:p>", "<a:p/>"),
+    ]);
+    await applyEdit(pres, {
+      type: "setTextStyle",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      style: { bold: true },
+      range: { start: { paragraphIndex: 0, offset: 0 }, end: { paragraphIndex: 0, offset: 0 } },
+    });
+    const paragraph = (pres.slides[0].nodes[0] as ShapeNodeData).textBody!.paragraphs[0];
+    expect(paragraph.endParaRPr?.attr("b")).toBe("1");
+  });
+
+  it("points connectors in a duplicated group at the copies", async () => {
+    const connector = (id: number, start: number, end: number) =>
+      `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="Connector ${id}"/><p:cNvCxnSpPr><a:stCxn id="${start}" idx="0"/><a:endCxn id="${end}" idx="0"/></p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="0"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom></p:spPr></p:cxnSp>`;
+    const pres = await openEditable([
+      textShape(9, "Outside", 5486400),
+      group(2, textShape(3, "A"), textShape(4, "B", 1828800), connector(5, 3, 9)),
+    ]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, { type: "duplicateNode", slideId, nodeId: "2" });
+
+    const xml = await (await savedZip(pres)).file(slideId)!.async("string");
+    const copy = xml.slice(xml.lastIndexOf("<p:grpSp>"));
+    // The copied group is 10 and its "A" is 11: the connector follows the
+    // copy, and still ends at the shape outside the group.
+    expect(copy).toContain('<a:stCxn id="11" idx="0"/>');
+    expect(copy).toContain('<a:endCxn id="9" idx="0"/>');
+  });
+
+  it("reorders and duplicates OLE objects as whole frames", async () => {
+    const ole = `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="3" name="Object 2"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="914400" y="914400"/><a:ext cx="914400" cy="914400"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/presentationml/2006/ole"><p:oleObj r:id="rId5" progId="Excel.Sheet.12"><p:embed/><p:pic><p:nvPicPr><p:cNvPr id="0" name=""/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId6"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic></p:oleObj></a:graphicData></a:graphic></p:graphicFrame>`;
+    const pres = await openEditable([textShape(2, "A"), ole]);
+    const slideId = pres.slides[0].id;
+    expect(ids(pres)).toEqual(["2", "3"]);
+
+    await applyEdit(pres, { type: "reorderNode", slideId, nodeId: "3", order: "back" });
+    expect(ids(pres)).toEqual(["3", "2"]);
+    await applyEdit(pres, { type: "duplicateNode", slideId, nodeId: "3" });
+
+    const reopened = await saveAndReopen(pres);
+    expect(reopened.slides[0].nodes.map((node) => node.nodeType)).toEqual([
+      "picture",
+      "picture",
+      "shape",
+    ]);
+  });
+
+  it("doesn't reuse an undone image's media path", async () => {
+    const pres = await openEditable([""]);
+    const slideId = pres.slides[0].id;
+    const first = await applyEdit(pres, {
+      type: "addImage",
+      slideId,
+      data: pngBytes(10, 10),
+      contentType: "image/png",
+    });
+    first.undo();
+    await applyEdit(pres, {
+      type: "addImage",
+      slideId,
+      data: pngBytes(20, 20),
+      contentType: "image/png",
+    });
+
+    const picture = pres.slides[0].nodes[0] as PictureNodeData;
+    expect(pres.slides[0].rels.get(picture.blipEmbed!)?.target).toBe("../media/image2.png");
+  });
+});

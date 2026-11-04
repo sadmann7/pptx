@@ -5,8 +5,10 @@ import {
   getActiveTextStyle,
   getDomPoint,
   getParagraphText,
+  getRangeRuns,
   getTextPosition,
   getTextRange,
+  readBackTextBody,
 } from "../selection/text-range";
 
 /** A rendered text container: paragraphs of run spans, as the renderer emits them. */
@@ -24,17 +26,16 @@ describe("getTextPosition", () => {
     const container = textContainer(BULLETED);
     const world = container.querySelector('[data-pptx-r="1"]')!.firstChild!;
 
-    expect(getTextPosition(container, world, 2, true)).toEqual({ paragraphIndex: 0, offset: 8 });
+    expect(getTextPosition(container, world, 2)).toEqual({ paragraphIndex: 0, offset: 8 });
     container.remove();
   });
 
-  it("counts a rendered line break as one character only when asked", () => {
+  it("counts a rendered line break as one character", () => {
     const container = textContainer(BULLETED);
     const lines = container.querySelector('[data-pptx-r="2"]')!.firstChild!;
 
-    expect(getTextPosition(container, lines, 1, true)).toEqual({ paragraphIndex: 1, offset: 5 });
-    expect(getTextPosition(container, lines, 1, false)).toEqual({ paragraphIndex: 1, offset: 4 });
-    expect(getParagraphText(container.children[1] as HTMLElement, true)).toBe("Two\nlines");
+    expect(getTextPosition(container, lines, 1)).toEqual({ paragraphIndex: 1, offset: 5 });
+    expect(getParagraphText(container.children[1] as HTMLElement)).toBe("Two\nlines");
     container.remove();
   });
 
@@ -43,19 +44,19 @@ describe("getTextPosition", () => {
     const firstParagraph = container.children[0];
 
     // After the bullet and the first run.
-    expect(getTextPosition(container, firstParagraph, 2, true)).toEqual({
+    expect(getTextPosition(container, firstParagraph, 2)).toEqual({
       paragraphIndex: 0,
       offset: 6,
     });
-    expect(getTextPosition(container, container, 1, true)).toEqual({
+    expect(getTextPosition(container, container, 1)).toEqual({
       paragraphIndex: 1,
       offset: 0,
     });
-    expect(getTextPosition(container, container, 2, true)).toEqual({
+    expect(getTextPosition(container, container, 2)).toEqual({
       paragraphIndex: 1,
       offset: 9,
     });
-    expect(getTextPosition(container, document.body, 0, true)).toBeNull();
+    expect(getTextPosition(container, document.body, 0)).toBeNull();
     container.remove();
   });
 
@@ -65,7 +66,7 @@ describe("getTextPosition", () => {
     range.setStart(container.querySelector('[data-pptx-r="1"]')!.firstChild!, 1);
     range.setEnd(container.children[1].querySelector('[data-pptx-r="0"]')!.firstChild!, 2);
 
-    expect(getTextRange(container, range, true)).toEqual({
+    expect(getTextRange(container, range)).toEqual({
       start: { paragraphIndex: 0, offset: 7 },
       end: { paragraphIndex: 1, offset: 2 },
     });
@@ -84,7 +85,7 @@ describe("getDomPoint", () => {
       { paragraphIndex: 1, offset: 6 },
     ]) {
       const point = getDomPoint(container, position)!;
-      expect(getTextPosition(container, point[0], point[1], true)).toEqual(position);
+      expect(getTextPosition(container, point[0], point[1])).toEqual(position);
     }
     expect(getDomPoint(container, { paragraphIndex: 5, offset: 0 })).toBeNull();
     container.remove();
@@ -132,6 +133,60 @@ describe("getActiveTextStyle", () => {
       fontSize: 24,
     });
     expect(getActiveTextStyle([], paragraphs)).toBeNull();
+    container.remove();
+  });
+});
+
+describe("getActiveTextStyle font size", () => {
+  it("reports the size the file stores, before autofit shrinks it", () => {
+    const container = textContainer(
+      `<div data-pptx-p="0"><span data-pptx-r="0" style="font-size: 15pt">A</span></div>`,
+    );
+    container.setAttribute("data-pptx-font-scale", "0.625");
+    const runs = Array.from(container.querySelectorAll<HTMLElement>("[data-pptx-r]"));
+
+    expect(getActiveTextStyle(runs, [])?.fontSize).toBe(24);
+    container.remove();
+  });
+});
+
+describe("getRangeRuns", () => {
+  it("skips a run the range only touches at its edge", () => {
+    const container = textContainer(BULLETED);
+    const [hello, world] = Array.from(container.querySelectorAll<HTMLElement>("[data-pptx-r]"));
+    const range = document.createRange();
+    range.setStart(hello.firstChild!, 0);
+    range.setEnd(world.firstChild!, 0);
+
+    expect(getRangeRuns(container, range).runs).toEqual([hello]);
+    container.remove();
+  });
+});
+
+describe("readBackTextBody", () => {
+  it("keeps rendered line breaks and drops the trailing one", () => {
+    const container = textContainer(
+      `${BULLETED}<div data-pptx-p="2"><span data-pptx-r="0">End</span><br></div>`,
+    );
+
+    expect(readBackTextBody(container)).toEqual([
+      {
+        sourceParagraphIndex: 0,
+        runs: [
+          { text: "Hello ", sourceRun: [0, 0] },
+          { text: "world", sourceRun: [0, 1] },
+        ],
+      },
+      {
+        sourceParagraphIndex: 1,
+        runs: [
+          { text: "Two", sourceRun: [1, 0] },
+          { text: "\n", sourceRun: [1, 0] },
+          { text: "lines", sourceRun: [1, 2] },
+        ],
+      },
+      { sourceParagraphIndex: 2, runs: [{ text: "End", sourceRun: [2, 0] }] },
+    ]);
     container.remove();
   });
 });

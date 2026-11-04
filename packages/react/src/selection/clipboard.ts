@@ -5,7 +5,7 @@ import type { NodeClipboard, PresentationData } from "@diceui/pptx-core";
  * in this page, since packaging their images is async and a copy event has to
  * set its data synchronously.
  */
-export const CLIPBOARD_TYPE = "application/x-diceui-pptx";
+const CLIPBOARD_TYPE = "application/x-diceui-pptx";
 
 /** The px each repeated paste onto the copied slide shifts by, as in PowerPoint. */
 export const PASTE_OFFSET = 10;
@@ -19,6 +19,30 @@ interface Stash {
 }
 
 let stash: Stash | null = null;
+
+const TOKEN_ATTRIBUTE = "data-diceui-pptx";
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+/**
+ * Writes a stash token, and the shapes' text for other apps. The token also
+ * rides in the HTML: some clipboards (headless Firefox, for one) drop custom
+ * types and keep only text and HTML.
+ */
+export function writeClipboardToken(data: DataTransfer, token: string, text: string): void {
+  data.setData(CLIPBOARD_TYPE, token);
+  const paragraphs = text ? text.split("\n").map((line) => `<p>${escapeHtml(line)}</p>`) : [];
+  data.setData("text/html", `<span ${TOKEN_ATTRIBUTE}="${token}"></span>${paragraphs.join("")}`);
+  if (text) data.setData("text/plain", text);
+}
+
+export function readClipboardToken(data: DataTransfer): string | null {
+  const token = data.getData(CLIPBOARD_TYPE);
+  if (token) return token;
+  return new RegExp(`${TOKEN_ATTRIBUTE}="([\\w-]+)"`).exec(data.getData("text/html"))?.[1] ?? null;
+}
 
 export function stashNodes(
   presentation: PresentationData,

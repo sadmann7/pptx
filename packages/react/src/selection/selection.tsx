@@ -25,7 +25,7 @@ import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
-import { CLIPBOARD_TYPE, stashNodes, takeStash } from "./clipboard";
+import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { SelectionPartsContext } from "./context";
 import type { GripDirection, Rect } from "./geometry";
 import {
@@ -1096,7 +1096,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     selectionChannel.publish({
       slideId,
       mode: stateRef.current.mode,
-      nodeIds: selectedIdsRef.current,
+      // Ids of nodes still on the slide: an undo can remove a selected copy.
+      nodeIds: selectedNodesRef.current.map((node) => node.id),
       textStyle: readTextStyle(),
     });
   }
@@ -1146,10 +1147,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     const readBack = readBackTextBody(container);
     const changed = textBodyChanged(node, readBack);
-    // Text read back from editing drops line breaks; untouched text keeps them.
-    const countBreaks = !changed;
     const domRange = getEditingDomRange(container);
-    const caretRange = domRange ? getTextRange(container, domRange, countBreaks) : null;
+    const caretRange = domRange ? getTextRange(container, domRange) : null;
 
     let range = caretRange ?? undefined;
     if (
@@ -1162,7 +1161,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // paragraph it formats the paragraph mark, so typed text picks it up.
       const { paragraphIndex, offset } = range.start;
       const paragraph = getParagraphElements(container)[paragraphIndex];
-      const text = paragraph ? getParagraphText(paragraph, countBreaks) : "";
+      const text = paragraph ? getParagraphText(paragraph) : "";
       if (text.length > 0) {
         const word = expandToWord(text, offset);
         if (!word) return;
@@ -2075,8 +2074,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         nodes.map((node) => node.id),
       ),
     );
-    event.clipboardData.setData(CLIPBOARD_TYPE, token);
-    // Other apps get the shapes' text.
     const text = nodes
       .flatMap((node) =>
         node.nodeType === "shape"
@@ -2086,7 +2083,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           : [],
       )
       .join("\n");
-    if (text) event.clipboardData.setData("text/plain", text);
+    writeClipboardToken(event.clipboardData, token, text);
     if (cut) runShortcut(deleteSelection);
   }
 
@@ -2100,7 +2097,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
     };
 
-    const token = data.getData(CLIPBOARD_TYPE);
+    const token = readClipboardToken(data);
     const stashed = token ? takeStash(token, presentation, slideId) : null;
     if (stashed) {
       event.preventDefault();

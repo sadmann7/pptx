@@ -792,6 +792,7 @@ export function renderTextBody(
     const lsr = normAutofit.numAttr("lnSpcReduction");
     if (lsr !== undefined) lnSpcReduction = lsr / 100000; // e.g., 20000 = 20%
   }
+  if (fontScale !== 1) container.dataset[PPTX_DATASET.fontScale] = String(fontScale);
 
   const bulletCounters = new Map<string, number>();
   const visibleParagraphIndexes = textBody.paragraphs
@@ -943,6 +944,24 @@ export function renderTextBody(
     const paraDefaultStyle: MergedRunStyle = { ...defaultRunStyle };
     if (!hasVisibleRuns && paragraph.endParaRPr) {
       mergeRunProps(paraDefaultStyle, paragraph.endParaRPr, ctx);
+    }
+    // Toggles only on empty paragraphs: runs set them when on but not when
+    // off, so a non-bold run would otherwise inherit a bold paragraph.
+    if (!hasVisibleRuns) {
+      const endBold = paragraph.endParaRPr?.attr("b") !== undefined;
+      const endItalic = paragraph.endParaRPr?.attr("i") !== undefined;
+      if (endBold ? paraDefaultStyle.bold : (options?.cellTextBold ?? paraDefaultStyle.bold)) {
+        paraDiv.style.fontWeight = "bold";
+      }
+      if (
+        endItalic ? paraDefaultStyle.italic : (options?.cellTextItalic ?? paraDefaultStyle.italic)
+      ) {
+        paraDiv.style.fontStyle = "italic";
+      }
+      const decorations: string[] = [];
+      if (paraDefaultStyle.underline) decorations.push("underline");
+      if (paraDefaultStyle.strikethrough) decorations.push("line-through");
+      if (decorations.length > 0) paraDiv.style.textDecoration = decorations.join(" ");
     }
     paraDiv.style.color =
       options?.fontRefColor ?? options?.cellTextColor ?? paraDefaultStyle.color ?? "#000000";

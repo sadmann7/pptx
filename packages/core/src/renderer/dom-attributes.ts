@@ -19,6 +19,8 @@ export const PPTX_ATTRS = {
   placeholderPrompt: "data-pptx-placeholder-prompt",
   /** Wrapper of an empty placeholder shape. */
   placeholderEmpty: "data-pptx-placeholder-empty",
+  /** Text container shrunk by `normAutofit`; the value is the font scale (0–1). */
+  fontScale: "data-pptx-font-scale",
 } as const;
 
 /**
@@ -30,4 +32,5 @@ export const PPTX_DATASET = {
   paragraph: "pptxP",
   run: "pptxR",
   bullet: "pptxBullet",
+  fontScale: "pptxFontScale",
 } as const;

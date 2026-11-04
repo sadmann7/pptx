@@ -171,6 +171,20 @@ describe("useSelection", () => {
     expect(selection.current!.mode).toBe("idle");
   });
 
+  it("drops a selected copy that undo removed", async () => {
+    const { store, selection } = await renderEditor();
+    act(() => selection.current!.select(["2"]));
+
+    await act(() => selection.current!.duplicate());
+    const [copyId] = selection.current!.nodeIds;
+    expect(copyId).not.toBe("2");
+    expect(selection.current!.nodes.map((node) => node.id)).toEqual([copyId]);
+
+    await act(() => store.undo());
+    expect(selection.current!.nodeIds).toEqual([]);
+    expect(selection.current!.nodes).toEqual([]);
+  });
+
   it("formats every selected shape's text as one undo step", async () => {
     const { store, overlay, selection } = await renderEditor();
     act(() => {

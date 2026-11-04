@@ -7,7 +7,8 @@
  * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
  * slide-level edit operations depend on.
  */
-import type { EditOperation, ShapeNodeData } from "@diceui/pptx-core";
+import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
+import { buildPresentation, readPptx } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { EditEvent, HistoryChangeEvent, SlideChangeEvent } from "../store";
@@ -482,5 +483,34 @@ describe("history lifecycle", () => {
     expect(store.canRedo()).toBe(false);
     expect(store.getState().revision).toBe(0);
     expect(store.getSlideRevision(slideId)).toBe(0);
+  });
+});
+
+describe("overlapping edits", () => {
+  function png(width: number): Uint8Array {
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    new DataView(bytes.buffer).setUint32(16, width);
+    new DataView(bytes.buffer).setUint32(20, 10);
+    return bytes;
+  }
+
+  it("applies edits one at a time, so neither loses its relationship", async () => {
+    const store = await editableStore();
+    const slideId = store.getActiveSlide()!.id;
+
+    await Promise.all([
+      store.edit({ type: "addImage", slideId, data: png(10), contentType: "image/png" }),
+      store.edit({ type: "addImage", slideId, data: png(20), contentType: "image/png" }),
+    ]);
+
+    const saved = await store.save();
+    const reopened = buildPresentation(await readPptx(saved.slice().buffer));
+    const slide = reopened.slides.find((candidate) => candidate.id === slideId)!;
+    const pictures = slide.nodes.filter((node) => node.nodeType === "picture") as PictureNodeData[];
+    expect(pictures).toHaveLength(2);
+    for (const picture of pictures) {
+      expect(slide.rels.get(picture.blipEmbed!)?.target).toMatch(/^\.\.\/media\/image\d\.png$/);
+    }
   });
 });

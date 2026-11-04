@@ -60,12 +60,8 @@ function isRenderedBreak(element: HTMLBRElement): boolean {
   return element.nextSibling !== null;
 }
 
-/**
- * Text-bearing leaves of a paragraph in order, skipping bullets. Line breaks
- * count only when `countBreaks` is set: a paragraph rendered straight from
- * the model has them, while text read back after editing drops them.
- */
-function getTextLeaves(paragraph: HTMLElement, countBreaks: boolean): (Text | HTMLBRElement)[] {
+/** Text-bearing leaves of a paragraph in order, skipping bullets. */
+function getTextLeaves(paragraph: HTMLElement): (Text | HTMLBRElement)[] {
   const leaves: (Text | HTMLBRElement)[] = [];
   const walker = document.createTreeWalker(
     paragraph,
@@ -80,7 +76,7 @@ function getTextLeaves(paragraph: HTMLElement, countBreaks: boolean): (Text | HT
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (node.nodeType === Node.TEXT_NODE) {
       leaves.push(node as Text);
-    } else if (countBreaks && node instanceof HTMLBRElement && isRenderedBreak(node)) {
+    } else if (node instanceof HTMLBRElement && isRenderedBreak(node)) {
       leaves.push(node);
     }
   }
@@ -92,8 +88,8 @@ function getLeafLength(leaf: Text | HTMLBRElement): number {
 }
 
 /** The text of a paragraph element as the model counts it. */
-export function getParagraphText(paragraph: HTMLElement, countBreaks: boolean): string {
-  return getTextLeaves(paragraph, countBreaks)
+export function getParagraphText(paragraph: HTMLElement): string {
+  return getTextLeaves(paragraph)
     .map((leaf) => (leaf instanceof HTMLBRElement ? "\n" : cleanText(leaf.data)))
     .join("");
 }
@@ -103,7 +99,6 @@ export function getTextPosition(
   container: HTMLElement,
   node: Node,
   offset: number,
-  countBreaks: boolean,
 ): TextPosition | null {
   const paragraphs = getParagraphElements(container);
 
@@ -114,7 +109,7 @@ export function getTextPosition(
     const last = paragraphs.length - 1;
     return {
       paragraphIndex: last,
-      offset: getParagraphText(paragraphs[last], countBreaks).length,
+      offset: getParagraphText(paragraphs[last]).length,
     };
   }
 
@@ -126,7 +121,7 @@ export function getTextPosition(
   point.setStart(node, offset);
 
   let count = 0;
-  for (const leaf of getTextLeaves(paragraph, countBreaks)) {
+  for (const leaf of getTextLeaves(paragraph)) {
     if (leaf === node) {
       count += cleanText((leaf as Text).data.slice(0, offset)).length;
       break;
@@ -139,19 +134,15 @@ export function getTextPosition(
 }
 
 /** Maps a DOM range inside a text container to a model text range. */
-export function getTextRange(
-  container: HTMLElement,
-  range: AbstractRange,
-  countBreaks: boolean,
-): TextRange | null {
-  const start = getTextPosition(container, range.startContainer, range.startOffset, countBreaks);
-  const end = getTextPosition(container, range.endContainer, range.endOffset, countBreaks);
+export function getTextRange(container: HTMLElement, range: AbstractRange): TextRange | null {
+  const start = getTextPosition(container, range.startContainer, range.startOffset);
+  const end = getTextPosition(container, range.endContainer, range.endOffset);
   return start && end ? { start, end } : null;
 }
 
 /**
  * Maps a model text position back to a DOM point in freshly rendered text.
- * The inverse of `getTextPosition` with breaks counted.
+ * The inverse of `getTextPosition`.
  */
 export function getDomPoint(
   container: HTMLElement,
@@ -161,7 +152,7 @@ export function getDomPoint(
   if (!paragraph) return null;
 
   let remaining = position.offset;
-  for (const leaf of getTextLeaves(paragraph, true)) {
+  for (const leaf of getTextLeaves(paragraph)) {
     const length = getLeafLength(leaf);
     if (remaining <= length && leaf instanceof Text) return [leaf, remaining];
     if (remaining === 0) {
@@ -197,13 +188,17 @@ function toHexColor(cssColor: string): string | null {
 }
 
 /**
- * The rendered font size in points. The renderer writes sizes inline in `pt`,
- * which CSS `zoom` leaves alone, unlike the computed pixel size.
+ * The font size in points as the file stores it: the inline `pt` size, which
+ * CSS `zoom` leaves alone unlike the computed size, divided by the
+ * `normAutofit` scale the renderer marks on the text container.
  */
 function getFontSize(element: HTMLElement): number | null {
+  const scale = Number(
+    element.closest<HTMLElement>(`[${PPTX_ATTRS.fontScale}]`)?.dataset[PPTX_DATASET.fontScale] ?? 1,
+  );
   for (let current: HTMLElement | null = element; current; current = current.parentElement) {
     const size = current.style.fontSize;
-    if (size.endsWith("pt")) return Math.round(Number.parseFloat(size) * 10) / 10;
+    if (size.endsWith("pt")) return Math.round((Number.parseFloat(size) / scale) * 10) / 10;
     if (current.dataset[PPTX_DATASET.nodeId] !== undefined) break;
   }
   return null;
@@ -260,6 +255,19 @@ export function getActiveTextStyle(
   };
 }
 
+/** The text of `node` inside `range`; empty when the range only touches its edge. */
+function getSelectedText(range: Range, node: Node): string {
+  const overlap = document.createRange();
+  overlap.selectNodeContents(node);
+  if (overlap.compareBoundaryPoints(Range.START_TO_START, range) < 0) {
+    overlap.setStart(range.startContainer, range.startOffset);
+  }
+  if (overlap.compareBoundaryPoints(Range.END_TO_END, range) > 0) {
+    overlap.setEnd(range.endContainer, range.endOffset);
+  }
+  return cleanText(overlap.toString());
+}
+
 /**
  * Run spans a DOM range touches inside a text container. A collapsed caret
  * reads the run it sits in, falling back to its paragraph's first run (or the
@@ -279,12 +287,9 @@ export function getRangeRuns(
   const allRuns = Array.from(container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`));
 
   if (!live.collapsed) {
-    const runs = allRuns.filter((run) => {
-      if (!live.intersectsNode(run)) return false;
-      // A range that ends at a run's very start (or starts at its very end)
-      // touches it without selecting any of its text.
-      return live.comparePoint(run, run.childNodes.length) > -1 && live.comparePoint(run, 0) < 1;
-    });
+    const runs = allRuns.filter(
+      (run) => live.intersectsNode(run) && getSelectedText(live, run).length > 0,
+    );
     if (runs.length > 0) return { runs, paragraphs };
   }
 
@@ -358,7 +363,9 @@ function readRunsFromParagraphElement(
         lastSourceRun = sourceRun;
       }
     } else if (child instanceof HTMLBRElement) {
-      // Browsers insert <br> for empty paragraphs; skip.
+      // A line break the renderer emitted for an a:br; the <br> a browser
+      // adds to keep an empty line open has nothing after it.
+      if (isRenderedBreak(child)) runs.push({ text: "\n", sourceRun: lastSourceRun });
     } else if (child.nodeType === Node.TEXT_NODE) {
       const text = cleanText(child.textContent);
       if (text.length > 0) {

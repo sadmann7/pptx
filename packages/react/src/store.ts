@@ -1008,7 +1008,24 @@ export function createStore(): Store {
     emitSlideChange(previousSlideId, "edit");
   }
 
-  async function edit(op: EditOperation): Promise<EditResult> {
+  /**
+   * Edits read and rewrite shared parts (relationships, content types) across
+   * awaits, so two in flight could overwrite each other. Each one waits for
+   * the previous to settle.
+   */
+  let editQueue: Promise<unknown> = Promise.resolve();
+
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = editQueue.then(task, task);
+    editQueue = run.catch(() => {});
+    return run;
+  }
+
+  function edit(op: EditOperation): Promise<EditResult> {
+    return enqueue(() => applyQueuedEdit(op));
+  }
+
+  async function applyQueuedEdit(op: EditOperation): Promise<EditResult> {
     const { presentation, status } = state;
     if (!presentation || status !== "ready") {
       throw new Error("PresentationStore.edit: no presentation is loaded.");
@@ -1054,7 +1071,11 @@ export function createStore(): Store {
     return true;
   }
 
-  async function redo(): Promise<boolean> {
+  function redo(): Promise<boolean> {
+    return enqueue(applyQueuedRedo);
+  }
+
+  async function applyQueuedRedo(): Promise<boolean> {
     const previousHistory = historySnapshot();
     const entry = redoStack.pop();
     if (!entry) return false;

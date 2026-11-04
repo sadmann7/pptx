@@ -8,7 +8,7 @@ import type {
   TextStyle,
 } from "@diceui/pptx-core";
 
-import { useSlide, useStoreContext } from "../context";
+import { useSlide, useSlideRevision, useStoreContext } from "../context";
 import type { Store } from "../store";
 import type { SelectionState } from "./selection";
 import type { ActiveTextStyle } from "./text-range";
@@ -218,6 +218,8 @@ export function useSelection(): UseSelectionResult {
     () => IDLE_SNAPSHOT,
   );
   const { slide, slideId } = useSlide();
+  // Edits mutate nodes in place; the revision is what tells the hook to re-read them.
+  const revision = useSlideRevision(store, slideId);
 
   const nodeIds = snapshot.slideId === slideId ? snapshot.nodeIds : IDLE_SNAPSHOT.nodeIds;
   const nodes = React.useMemo(
@@ -227,7 +229,8 @@ export function useSelection(): UseSelectionResult {
             .map((id) => slide.nodes.find((node) => node.id === id))
             .filter((node): node is SlideNode => node !== undefined)
         : [],
-    [slide, nodeIds],
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision is the change signal for in-place edits
+    [slide, nodeIds, revision],
   );
 
   return {

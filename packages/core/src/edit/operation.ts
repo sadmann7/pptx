@@ -435,6 +435,18 @@ function findNode(pres: PresentationData, slide: SlideData, nodeId: string): Sli
   return node;
 }
 
+/**
+ * The node's element in the slide's shape tree. A node's source can sit
+ * deeper, such as the fallback picture inside an OLE object's frame.
+ */
+function topLevelElement(node: SlideNode): Element {
+  let element = requireElement(node.source, "node element");
+  while (element.parentElement && element.parentElement.localName !== "spTree") {
+    element = element.parentElement;
+  }
+  return element;
+}
+
 function requireElement(node: SafeXmlNode, what: string): Element {
   const element = node.element;
   if (!element) throw new Error(`applyEdit: ${what} is missing.`);
@@ -1205,7 +1217,7 @@ function styleParagraph(
   // The paragraph mark carries the formatting for text typed at the end of
   // the paragraph, and for an empty paragraph's first keystroke.
   let endParaRPr = childNamed(paragraph, "endParaRPr");
-  if (!endParaRPr && whole && !hasRuns) {
+  if (!endParaRPr && !hasRuns) {
     endParaRPr = paragraph.ownerDocument.createElementNS(A_NS, "a:endParaRPr");
     paragraph.appendChild(endParaRPr);
   }
@@ -1335,7 +1347,7 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
-  const element = requireElement(node.source, "node element");
+  const element = topLevelElement(node);
   const parentElement = element.parentElement;
   if (!parentElement)
     throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
@@ -1391,6 +1403,29 @@ function nextShapeId(spTree: Element): number {
   return max + 1;
 }
 
+/**
+ * Gives every shape in a copied element a fresh id from `nextId`, a group's
+ * children included, and points connectors inside it at the copies.
+ * Connections to shapes outside the copy are left alone.
+ */
+function renumberShapes(copy: Element, nextId: number): number {
+  const ids = new Map<string, string>();
+  for (const cNvPr of descendantsNamed(copy, "cNvPr")) {
+    const id = String(nextId++);
+    const previous = cNvPr.getAttribute("id");
+    if (previous) ids.set(previous, id);
+    cNvPr.setAttribute("id", id);
+  }
+  for (const connection of [
+    ...descendantsNamed(copy, "stCxn"),
+    ...descendantsNamed(copy, "endCxn"),
+  ]) {
+    const id = ids.get(connection.getAttribute("id") ?? "");
+    if (id) connection.setAttribute("id", id);
+  }
+  return nextId;
+}
+
 /** Parses a node element added to a slide, with its placeholder inheritance resolved. */
 function parseAddedNode(pres: PresentationData, slide: SlideData, element: Element): SlideNode {
   const node = parseRenderableChild(new SafeXmlNode(element), {
@@ -1410,18 +1445,14 @@ async function applyDuplicateNode(
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
-  const element = requireElement(node.source, "node element");
+  const element = topLevelElement(node);
   const parentElement = element.parentElement;
   if (!parentElement) {
     throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
   }
 
   const copy = element.cloneNode(true) as Element;
-  // Every shape in the copy, a group's children included, needs a fresh id.
-  let nextId = nextShapeId(requireSpTree(pres, slide));
-  for (const cNvPr of descendantsNamed(copy, "cNvPr")) {
-    cNvPr.setAttribute("id", String(nextId++));
-  }
+  renumberShapes(copy, nextShapeId(requireSpTree(pres, slide)));
   insertChild(parentElement, copy, element.nextElementSibling);
 
   const copyNode = parseAddedNode(pres, slide, copy);
@@ -1456,7 +1487,7 @@ function applyReorderNode(pres: PresentationData, op: ReorderNodeOperation): Edi
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
-  const element = requireElement(node.source, "node element");
+  const element = topLevelElement(node);
   const parentElement = element.parentElement;
   if (!parentElement) {
     throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
@@ -1474,7 +1505,7 @@ function applyReorderNode(pres: PresentationData, op: ReorderNodeOperation): Edi
 
   // Place the element next to the node it swaps with, so XML children the
   // model doesn't render keep their places.
-  const neighbor = requireElement(slide.nodes[toIndex].source, "node element");
+  const neighbor = topLevelElement(slide.nodes[toIndex]);
   const originalNext = element.nextElementSibling;
   removeChild(element);
   insertChild(parentElement, element, toIndex > fromIndex ? neighbor.nextElementSibling : neighbor);
@@ -1532,11 +1563,25 @@ export function readImageSize(data: Uint8Array): NodeSize | undefined {
   return undefined;
 }
 
+/**
+ * Media paths handed out this session. An undone image frees its path in the
+ * package, but a renderer may still cache a blob URL under it, so a new image
+ * must not take it over.
+ */
+const issuedMediaPaths = new WeakMap<PresentationData, Set<string>>();
+
 function nextMediaPath(pres: PresentationData, extension: string): string {
-  const taken = new Set([...requirePkg(pres).paths(), ...pres.media.keys()]);
+  let issued = issuedMediaPaths.get(pres);
+  if (!issued) {
+    issued = new Set();
+    issuedMediaPaths.set(pres, issued);
+  }
+  const taken = new Set([...requirePkg(pres).paths(), ...pres.media.keys(), ...issued]);
   let index = 1;
   while (taken.has(`ppt/media/image${index}.${extension}`)) index++;
-  return `ppt/media/image${index}.${extension}`;
+  const path = `ppt/media/image${index}.${extension}`;
+  issued.add(path);
+  return path;
 }
 
 interface PartChange {
@@ -1680,7 +1725,7 @@ export async function copyNodes(
   const captured = slide.nodes
     .filter((node) => nodeIds.includes(node.id))
     .map((node) => {
-      const element = requireElement(node.source, "node element");
+      const element = topLevelElement(node);
       const copy = element.cloneNode(true) as Element;
       const xfrm = getOrCreateXfrmOn(new SafeXmlNode(copy), node.nodeType, node.id);
       if (xfrm.created) {
@@ -1816,10 +1861,10 @@ async function applyPasteNodes(
       for (const attr of Array.from(current.attributes)) {
         if (attr.namespaceURI === R_NS) attr.value = newIds.get(attr.value) ?? attr.value;
       }
-      if (current.localName === "cNvPr") current.setAttribute("id", String(nextId++));
       for (const child of current.children) visit(child);
     };
     visit(element);
+    nextId = renumberShapes(element, nextId);
     insertChild(spTree, element, extLst);
     const node = parseAddedNode(pres, slide, element);
     slide.nodes.push(node);
