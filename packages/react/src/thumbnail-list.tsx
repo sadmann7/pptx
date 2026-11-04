@@ -526,6 +526,11 @@ export interface ThumbnailItemState {
    * 0-based position of this slide in the presentation.
    */
   displayIndex: number;
+
+  /**
+   * `true` when the slide is hidden from the slide show.
+   */
+  isHidden: boolean;
 }
 
 /** Triggered when a thumbnail is about to become the active slide. */
@@ -598,6 +603,12 @@ export const ThumbnailItem = React.memo(
 
     const displayIndex = useSlideIndex(store, slideId);
 
+    const isHidden = useStoreSelector(
+      store,
+      (s) => s.presentation?.slides.find((slide) => slide.id === slideId)?.hidden === true,
+      false,
+    );
+
     const setSize = useStoreSelector(store, (s) => s.presentation?.slides.length ?? 0, 0);
 
     const { onItemRegister, onItemUnregister } = rovingContext;
@@ -616,7 +627,7 @@ export const ThumbnailItem = React.memo(
       () => false,
     );
 
-    const state: ThumbnailItemState = { slideId, isActive, displayIndex };
+    const state: ThumbnailItemState = { slideId, isActive, displayIndex, isHidden };
 
     /**
      * Single navigation path for both click and focus, so a consumer's veto
@@ -644,7 +655,7 @@ export const ThumbnailItem = React.memo(
       ? { "aria-hidden": true, inert: true, tabIndex: -1 }
       : {
           role: "option",
-          "aria-label": `Slide ${displayIndex + 1}`,
+          "aria-label": `Slide ${displayIndex + 1}${isHidden ? " (hidden)" : ""}`,
           "aria-selected": isActive,
           "aria-posinset": displayIndex + 1,
           "aria-setsize": setSize,
@@ -697,6 +708,7 @@ export const ThumbnailItem = React.memo(
               {
                 type: "button",
                 "data-active": isActive || undefined,
+                "data-hidden": isHidden || undefined,
                 "data-slide-id": slideId,
                 style: { width: "100%" },
                 ...optionProps,

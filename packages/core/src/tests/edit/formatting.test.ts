@@ -352,3 +352,24 @@ describe("setSlideBackground", () => {
     expect(reopened.slides[0].nodes).toHaveLength(1);
   });
 });
+
+describe("setSlideHidden", () => {
+  it("hides and shows a slide, and undoes", async () => {
+    const pres = await openEditable([textShape(2, `<a:p>${run("A")}</a:p>`)]);
+    const slideId = pres.slides[0].id;
+
+    const hide = await applyEdit(pres, { type: "setSlideHidden", slideId, hidden: true });
+    expect(pres.slides[0].hidden).toBe(true);
+    expect((await saveAndReopen(pres)).slides[0].hidden).toBe(true);
+
+    const show = await applyEdit(pres, { type: "setSlideHidden", slideId, hidden: false });
+    expect(pres.slides[0].hidden).toBeFalsy();
+    expect((await saveAndReopen(pres)).slides[0].hidden).toBeFalsy();
+
+    show.undo();
+    expect(pres.slides[0].hidden).toBe(true);
+    hide.undo();
+    expect(pres.slides[0].hidden).toBeFalsy();
+    expect((await saveAndReopen(pres)).slides[0].hidden).toBeFalsy();
+  });
+});
