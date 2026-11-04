@@ -12,16 +12,20 @@ export type {
 
 export { applyEdit } from "./edit/operation";
 export type {
+  AddImageOperation,
   AddSlideOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
+  DuplicateNodeOperation,
   DuplicateSlideOperation,
   EditOperation,
   EditResult,
   MoveSlideOperation,
+  NodeOrder,
   ParagraphAlign,
   ParagraphStyle,
+  ReorderNodeOperation,
   SetNodeTransformOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,

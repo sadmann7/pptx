@@ -594,14 +594,21 @@ function resolvePlaceholderInheritance(pres: PresentationData): void {
 
 function resolveSlidePlaceholderInheritance(pres: PresentationData, slide: SlideData): void {
   if (slide.placeholderInheritanceResolved) return;
+  resolveSlideNodePlaceholders(pres, slide, slide.nodes);
+  slide.placeholderInheritanceResolved = true;
+}
 
+/** Resolves placeholder inheritance for nodes on `slide`, such as ones an edit added. */
+export function resolveSlideNodePlaceholders(
+  pres: PresentationData,
+  slide: SlideData,
+  nodes: SlideNode[],
+): void {
   const layoutPath = pres.slideToLayout.get(slide.index) || slide.layoutIndex;
   const layout = layoutPath ? pres.layouts.get(layoutPath) : undefined;
   const masterPath = layoutPath ? pres.layoutToMaster.get(layoutPath) : undefined;
   const master = masterPath ? pres.masters.get(masterPath) : undefined;
-
-  resolveNodesPlaceholders(slide.nodes, layout, master);
-  slide.placeholderInheritanceResolved = true;
+  resolveNodesPlaceholders(nodes, layout, master);
 }
 
 export function materializeSlide(pres: PresentationData, slide: SlideData): void {

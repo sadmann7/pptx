@@ -65,18 +65,22 @@ export type {
 } from "./store";
 
 export type {
+  AddImageOperation,
   AddSlideOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
+  DuplicateNodeOperation,
   DuplicateSlideOperation,
   EditOperation,
   EditResult,
   LayoutData,
   MoveSlideOperation,
+  NodeOrder,
   ParagraphAlign,
   ParagraphStyle,
   PresentationData,
+  ReorderNodeOperation,
   SetNodeTransformOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,

@@ -355,6 +355,66 @@ describe("resizing a rotated shape", () => {
   });
 });
 
+describe("arrange shortcuts", () => {
+  async function renderWithSelection() {
+    const selection: { current: UseSelectionResult | null } = { current: null };
+    function Grab() {
+      selection.current = useSelection();
+      return null;
+    }
+    const rendered = await renderOverlay(
+      <>
+        <Grab />
+        <Presentation.SelectionBox />
+      </>,
+    );
+    const ids = () => rendered.store.getActiveSlide()!.nodes.map((node) => node.id);
+    return { ...rendered, selection, ids };
+  }
+
+  it("duplicates the selection with Ctrl/Cmd+D and selects the copies", async () => {
+    const { store, overlay, selectAll, selection, ids } = await renderWithSelection();
+    selectAll();
+
+    await act(async () => {
+      fireEvent.keyDown(overlay, { key: "d", metaKey: true });
+    });
+    await waitFor(() => expect(ids()).toEqual(["2", "4", "3", "5"]));
+    expect(selection.current!.nodeIds).toEqual(["4", "5"]);
+
+    act(() => {
+      store.undo();
+    });
+    expect(ids()).toEqual(["2", "3"]);
+  });
+
+  it.each([
+    ["BracketRight", true, "front", ["3", "2"]],
+    ["BracketRight", false, "forward", ["3", "2"]],
+  ] as const)(
+    "reorders with Ctrl/Cmd+%s (Shift: %s, %s)",
+    async (code, shiftKey, _order, expected) => {
+      const { overlay, selection, ids } = await renderWithSelection();
+      act(() => selection.current!.select(["2"]));
+
+      await act(async () => {
+        fireEvent.keyDown(overlay, { key: "]", code, ctrlKey: true, shiftKey });
+      });
+      await waitFor(() => expect(ids()).toEqual(expected));
+    },
+  );
+
+  it("sends a node back with Ctrl/Cmd+Shift+[", async () => {
+    const { overlay, selection, ids } = await renderWithSelection();
+    act(() => selection.current!.select(["3"]));
+
+    await act(async () => {
+      fireEvent.keyDown(overlay, { key: "{", code: "BracketLeft", ctrlKey: true, shiftKey: true });
+    });
+    await waitFor(() => expect(ids()).toEqual(["3", "2"]));
+  });
+});
+
 describe("normalizeAngle", () => {
   it("wraps angles into [0, 360)", () => {
     expect(normalizeAngle(0)).toBe(0);

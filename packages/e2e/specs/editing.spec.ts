@@ -268,3 +268,34 @@ test.describe("rotating", () => {
     expect(after.left).toBeCloseTo(before.left, 1);
   });
 });
+
+test.describe("images", () => {
+  test("renders an inserted image straight away", async ({ page }) => {
+    await open(page);
+    const nodeId = await page.evaluate(async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 120;
+      canvas.height = 60;
+      const context = canvas.getContext("2d")!;
+      context.fillStyle = "#16a34a";
+      context.fillRect(0, 0, 120, 60);
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), "image/png"),
+      );
+      const store = window.__editStore!;
+      const { createdNodeIds } = await store.edit({
+        type: "addImage",
+        slideId: store.getActiveSlide()!.id,
+        data: new Uint8Array(await blob.arrayBuffer()),
+        contentType: "image/png",
+      });
+      return createdNodeIds![0];
+    });
+
+    const image = page.locator(`[data-pptx-node-id="${nodeId}"] img`);
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(120);
+    const box = (await image.boundingBox())!;
+    expect(box.width).toBeCloseTo(120, 0);
+  });
+});

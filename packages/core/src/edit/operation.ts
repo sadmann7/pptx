@@ -13,10 +13,15 @@
 
 import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
+import { parseRenderableChild } from "../model/nodes/parser";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
 import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
-import { materializeSlide, PresentationData } from "../model/presentation";
+import {
+  materializeSlide,
+  PresentationData,
+  resolveSlideNodePlaceholders,
+} from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
 import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
@@ -206,6 +211,49 @@ export interface SetSlideBackgroundOperation {
 }
 
 /**
+ * Copy a top-level node onto the same slide, just above the original in the
+ * stacking order.
+ */
+export interface DuplicateNodeOperation {
+  type: "duplicateNode";
+  slideId: string;
+  nodeId: string;
+  /**
+   * How far the copy sits from the original, in px.
+   *
+   * @default { x: 10, y: 10 }
+   */
+  offset?: NodePosition;
+}
+
+export type NodeOrder = "front" | "back" | "forward" | "backward";
+
+/** Move a top-level node in the slide's stacking order. */
+export interface ReorderNodeOperation {
+  type: "reorderNode";
+  slideId: string;
+  nodeId: string;
+  /** To the top or bottom of the stack, or one step up or down. */
+  order: NodeOrder;
+}
+
+/** Insert a picture on top of a slide. */
+export interface AddImageOperation {
+  type: "addImage";
+  slideId: string;
+  /** The image file's bytes. */
+  data: Uint8Array;
+  /** `"image/png"`, `"image/jpeg"`, or `"image/gif"`. */
+  contentType: string;
+  /** Size in px. Defaults to the image's own size, scaled down to fit the slide. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+  /** Shape name, also used as the picture's alt text. */
+  name?: string;
+}
+
+/**
  * Applies several operations as one atomic edit with a single undo (e.g.
  * moving a multi-selection). Sub-operations are applied in order and undone
  * in reverse. If one fails midway, the already-applied ones are rolled back.
@@ -228,6 +276,9 @@ export type EditOperation =
   | SetParagraphStyleOperation
   | AddSlideOperation
   | SetSlideBackgroundOperation
+  | DuplicateNodeOperation
+  | ReorderNodeOperation
+  | AddImageOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -237,6 +288,8 @@ export interface EditResult {
   undo: () => void;
   /** Id of the slide created by `duplicateSlide` or `addSlide`. */
   createdSlideId?: string;
+  /** Ids of the nodes created by `duplicateNode` or `addImage`. */
+  createdNodeIds?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +325,12 @@ export async function applyEdit(
       return applyAddSlide(presentation, op);
     case "setSlideBackground":
       return applySetSlideBackground(presentation, op);
+    case "duplicateNode":
+      return applyDuplicateNode(presentation, op);
+    case "reorderNode":
+      return applyReorderNode(presentation, op);
+    case "addImage":
+      return applyAddImage(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -302,6 +361,9 @@ async function applyBatch(presentation: PresentationData, op: BatchOperation): P
       (id, result) => result.createdSlideId ?? id,
       undefined,
     ),
+    createdNodeIds: results.some((result) => result.createdNodeIds)
+      ? results.flatMap((result) => result.createdNodeIds ?? [])
+      : undefined,
   };
 }
 
@@ -1249,6 +1311,311 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
     undo: () => {
       insertChild(parentElement, element, domRef);
       slide.nodes.splice(modelIndex, 0, node);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// duplicateNode / reorderNode / addImage
+// ---------------------------------------------------------------------------
+
+const DEFAULT_DUPLICATE_OFFSET: NodePosition = { x: 10, y: 10 };
+
+function descendantsNamed(root: Element, localName: string): Element[] {
+  const found: Element[] = [];
+  const visit = (element: Element) => {
+    if (element.localName === localName) found.push(element);
+    for (const child of element.children) visit(child);
+  };
+  visit(root);
+  return found;
+}
+
+/** The slide's spTree element; new nodes go in it. */
+function requireSpTree(pres: PresentationData, slide: SlideData): Element {
+  const root = requirePkg(pres).getXmlRoot(slide.id);
+  const spTree = root?.child("cSld").child("spTree");
+  if (!spTree) throw new Error(`applyEdit: slide part "${slide.id}" is not loaded.`);
+  return requireElement(spTree, "spTree");
+}
+
+/** The next free shape id on a slide. Ids must be unique across the whole part. */
+function nextShapeId(spTree: Element): number {
+  let max = 0;
+  for (const cNvPr of descendantsNamed(spTree, "cNvPr")) {
+    const id = Number(cNvPr.getAttribute("id"));
+    if (Number.isFinite(id)) max = Math.max(max, id);
+  }
+  return max + 1;
+}
+
+/** Parses a node element added to a slide, with its placeholder inheritance resolved. */
+function parseAddedNode(pres: PresentationData, slide: SlideData, element: Element): SlideNode {
+  const node = parseRenderableChild(new SafeXmlNode(element), {
+    rels: slide.rels,
+    partPath: slide.id,
+    diagramDrawings: pres.diagramDrawings,
+  });
+  if (!node) throw new Error(`applyEdit: <${element.localName}> is not a renderable node.`);
+  resolveSlideNodePlaceholders(pres, slide, [node]);
+  return node;
+}
+
+async function applyDuplicateNode(
+  pres: PresentationData,
+  op: DuplicateNodeOperation,
+): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  const element = requireElement(node.source, "node element");
+  const parentElement = element.parentElement;
+  if (!parentElement) {
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
+  }
+
+  const copy = element.cloneNode(true) as Element;
+  // Every shape in the copy, a group's children included, needs a fresh id.
+  let nextId = nextShapeId(requireSpTree(pres, slide));
+  for (const cNvPr of descendantsNamed(copy, "cNvPr")) {
+    cNvPr.setAttribute("id", String(nextId++));
+  }
+  insertChild(parentElement, copy, element.nextElementSibling);
+
+  const copyNode = parseAddedNode(pres, slide, copy);
+  const index = slide.nodes.indexOf(node) + 1;
+  slide.nodes.splice(index, 0, copyNode);
+
+  // Write the copy's full transform: an inherited placeholder position has to
+  // become its own before it can be offset.
+  const offset = op.offset ?? DEFAULT_DUPLICATE_OFFSET;
+  const transform = applySetNodeTransform(pres, {
+    type: "setNodeTransform",
+    slideId: slide.id,
+    nodeId: copyNode.id,
+    position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
+    size: { ...node.size },
+  });
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [copyNode.id],
+    undo: () => {
+      transform.undo();
+      removeChild(copy);
+      slide.nodes.splice(slide.nodes.indexOf(copyNode), 1);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function applyReorderNode(pres: PresentationData, op: ReorderNodeOperation): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  const element = requireElement(node.source, "node element");
+  const parentElement = element.parentElement;
+  if (!parentElement) {
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
+  }
+
+  const fromIndex = slide.nodes.indexOf(node);
+  const last = slide.nodes.length - 1;
+  const toIndex = {
+    front: last,
+    back: 0,
+    forward: Math.min(fromIndex + 1, last),
+    backward: Math.max(fromIndex - 1, 0),
+  }[op.order];
+  if (toIndex === fromIndex) return { affectedSlideIds: [], undo: () => {} };
+
+  // Place the element next to the node it swaps with, so XML children the
+  // model doesn't render keep their places.
+  const neighbor = requireElement(slide.nodes[toIndex].source, "node element");
+  const originalNext = element.nextElementSibling;
+  removeChild(element);
+  insertChild(parentElement, element, toIndex > fromIndex ? neighbor.nextElementSibling : neighbor);
+  slide.nodes.splice(fromIndex, 1);
+  slide.nodes.splice(toIndex, 0, node);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      removeChild(element);
+      insertChild(parentElement, element, originalNext);
+      slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      slide.nodes.splice(fromIndex, 0, node);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+const IMAGE_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image";
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpeg",
+  "image/gif": "gif",
+};
+
+/** Pixel size from a PNG, GIF, or JPEG header, or undefined when it can't be read. */
+export function readImageSize(data: Uint8Array): NodeSize | undefined {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  if (data.length >= 24 && view.getUint32(0) === 0x89504e47) {
+    return { w: view.getUint32(16), h: view.getUint32(20) };
+  }
+  if (data.length >= 10 && data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) {
+    return { w: view.getUint16(6, true), h: view.getUint16(8, true) };
+  }
+  if (data.length >= 4 && data[0] === 0xff && data[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < data.length) {
+      if (data[offset] !== 0xff) return undefined;
+      const marker = data[offset + 1];
+      const length = view.getUint16(offset + 2);
+      // SOF0-SOF15 carry the frame size; C4, C8, and CC are other segments.
+      if (
+        marker >= 0xc0 &&
+        marker <= 0xcf &&
+        marker !== 0xc4 &&
+        marker !== 0xc8 &&
+        marker !== 0xcc
+      ) {
+        return { w: view.getUint16(offset + 7), h: view.getUint16(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+  }
+  return undefined;
+}
+
+function nextMediaPath(pres: PresentationData, extension: string): string {
+  const taken = new Set([...requirePkg(pres).paths(), ...pres.media.keys()]);
+  let index = 1;
+  while (taken.has(`ppt/media/image${index}.${extension}`)) index++;
+  return `ppt/media/image${index}.${extension}`;
+}
+
+async function applyAddImage(pres: PresentationData, op: AddImageOperation): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const extension = IMAGE_EXTENSIONS[op.contentType];
+  if (!extension) {
+    throw new Error(`applyEdit: unsupported image type "${op.contentType}".`);
+  }
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const doc = spTree.ownerDocument;
+
+  // --- Size and position: natural size, scaled down to fit the slide ---
+  let size = op.size;
+  if (!size) {
+    const natural = readImageSize(op.data) ?? { w: pres.width / 2, h: pres.height / 2 };
+    const scale = Math.min(1, (pres.width * 0.8) / natural.w, (pres.height * 0.8) / natural.h);
+    size = { w: natural.w * scale, h: natural.h * scale };
+  }
+  const position = op.position ?? {
+    x: (pres.width - size.w) / 2,
+    y: (pres.height - size.h) / 2,
+  };
+
+  // --- Media part ---
+  const mediaPath = nextMediaPath(pres, extension);
+  sourcePackage.setEntry(mediaPath, op.data);
+  pres.media.set(mediaPath, op.data);
+
+  // --- [Content_Types].xml: a Default for the extension, if missing ---
+  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
+  const ctRoot = parseXml(ctText);
+  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
+  const hasDefault = ctRoot
+    .children("Default")
+    .some((entry) => entry.attr("Extension")?.toLowerCase() === extension);
+  if (!hasDefault) {
+    const defaultElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Default");
+    defaultElement.setAttribute("Extension", extension);
+    defaultElement.setAttribute("ContentType", op.contentType);
+    insertChild(ctRootElement, defaultElement, ctRootElement.firstElementChild);
+    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
+  }
+
+  // --- Slide relationship ---
+  const relsPath = relsPathFor(slide.id);
+  const existingRelsText = await sourcePackage.readText(relsPath);
+  const relsText =
+    existingRelsText ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="${RELS_NS}"/>`;
+  const relsRoot = parseXml(relsText);
+  const relsRootElement = requireElement(relsRoot, "slide rels root");
+  const rId = nextRelId(new Map([...slide.rels, ...parseRels(relsText)]));
+  const target = `../media/${mediaPath.slice("ppt/media/".length)}`;
+  const relElement = relsRootElement.ownerDocument.createElementNS(RELS_NS, "Relationship");
+  relElement.setAttribute("Id", rId);
+  relElement.setAttribute("Type", IMAGE_REL_TYPE);
+  relElement.setAttribute("Target", target);
+  insertChild(relsRootElement, relElement, null);
+  sourcePackage.setEntry(relsPath, serializePartText(relsRootElement, relsText));
+  slide.rels.set(rId, { type: IMAGE_REL_TYPE, target });
+
+  // --- p:pic, on top of everything else ---
+  const id = nextShapeId(spTree);
+  const name = op.name ?? `Picture ${id - 1}`;
+  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [attr, value] of Object.entries(attrs)) element.setAttribute(attr, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+  const blip = el("a:blip");
+  blip.setAttributeNS(R_NS, "r:embed", rId);
+  const pic = el(
+    "p:pic",
+    {},
+    el(
+      "p:nvPicPr",
+      {},
+      el("p:cNvPr", { id: String(id), name, descr: name }),
+      el("p:cNvPicPr", {}, el("a:picLocks", { noChangeAspect: "1" })),
+      el("p:nvPr"),
+    ),
+    el("p:blipFill", {}, blip, el("a:stretch", {}, el("a:fillRect"))),
+    el(
+      "p:spPr",
+      {},
+      el(
+        "a:xfrm",
+        {},
+        el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+        el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+      ),
+      el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+    ),
+  );
+  // extLst, when present, has to stay the last child of spTree.
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst");
+  insertChild(spTree, pic, extLst ?? null);
+
+  const picNode = parseAddedNode(pres, slide, pic);
+  slide.nodes.push(picNode);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [picNode.id],
+    undo: () => {
+      removeChild(pic);
+      slide.nodes.splice(slide.nodes.indexOf(picNode), 1);
+      slide.rels.delete(rId);
+      if (existingRelsText === undefined) sourcePackage.deleteEntry(relsPath);
+      else sourcePackage.setEntry(relsPath, existingRelsText);
+      if (!hasDefault) sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
+      sourcePackage.deleteEntry(mediaPath);
+      pres.media.delete(mediaPath);
       sourcePackage.markDirty(slide.id);
     },
   };

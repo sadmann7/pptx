@@ -2,6 +2,7 @@ import * as React from "react";
 
 import type {
   EditOperation,
+  NodeOrder,
   NodePosition,
   ParagraphStyle,
   ShapeNodeData,
@@ -514,10 +515,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return Boolean(shape.textBody) && (Boolean(shape.isTextBox) || Boolean(shape.placeholder));
   }
 
-  function commitEdit(
-    action: () => Promise<unknown>,
+  function commitEdit<T>(
+    action: () => Promise<T>,
     onRollback?: () => void,
-    onSuccess?: () => void,
+    onSuccess?: (result: T) => void,
     onFailure?: (error: unknown) => void,
   ): void {
     action().then(onSuccess, (err) => {
@@ -1916,6 +1917,42 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     );
   }
 
+  /** PowerPoint's Ctrl+D: copies land just above their originals, selected. */
+  function duplicateSelection(): void {
+    const operations = selectedNodes.map((node) => ({
+      type: "duplicateNode" as const,
+      slideId: slideId!,
+      nodeId: node.id,
+    }));
+    commitEdit(
+      () => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
+      undefined,
+      (result) => {
+        if (result.createdNodeIds?.length) {
+          setState({ mode: "selected", nodeIds: result.createdNodeIds });
+        }
+      },
+    );
+  }
+
+  function reorderSelection(order: NodeOrder): void {
+    // Move the selected nodes one at a time from the end they travel toward,
+    // so they keep their order among themselves.
+    const stacked = [...selectedNodes].sort(
+      (a, b) => slide!.nodes.indexOf(a) - slide!.nodes.indexOf(b),
+    );
+    if (order === "back" || order === "forward") stacked.reverse();
+    const operations = stacked.map((node) => ({
+      type: "reorderNode" as const,
+      slideId: slideId!,
+      nodeId: node.id,
+      order,
+    }));
+    commitEdit(() =>
+      store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
+    );
+  }
+
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
     // Text mode keys are handled by the document listener; this handler
     // only triggers when the overlay div has focus (selected/idle modes).
@@ -1934,6 +1971,20 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     if (selectedNodes.length === 0) return;
+
+    if (mod && key === "d") {
+      event.preventDefault();
+      duplicateSelection();
+      return;
+    }
+
+    // Ctrl/Cmd+] and [ step through the stack; with Shift, to the front or back.
+    if (mod && (event.code === "BracketRight" || event.code === "BracketLeft")) {
+      event.preventDefault();
+      const up = event.code === "BracketRight";
+      reorderSelection(event.shiftKey ? (up ? "front" : "back") : up ? "forward" : "backward");
+      return;
+    }
 
     if (
       (event.key === "F2" || event.key === "Enter") &&

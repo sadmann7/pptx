@@ -47,6 +47,7 @@ import {
   AArrowUpIcon,
   BoldIcon,
   ItalicIcon,
+  ImageIcon,
   PlusIcon,
   Redo2Icon,
   StrikethroughIcon,
@@ -202,7 +203,7 @@ const ALIGNMENTS = [
  * selection or ending text editing.
  */
 function FormattingToolbar({ store }: { store: PresentationStore }) {
-  const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
+  const { textStyle, select, setTextStyle, setParagraphStyle } = useSelection();
   const { slideId, goTo } = useSlide();
   const disabled = !textStyle;
 
@@ -226,6 +227,26 @@ function FormattingToolbar({ store }: { store: PresentationStore }) {
     }
   }
 
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
+
+  async function onImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !slideId) return;
+    try {
+      const { createdNodeIds } = await store.edit({
+        type: "addImage",
+        slideId,
+        data: new Uint8Array(await file.arrayBuffer()),
+        contentType: file.type,
+        name: file.name,
+      });
+      if (createdNodeIds) select(createdNodeIds);
+    } catch {
+      toast.error("Could not insert the image");
+    }
+  }
+
   const toggles = [
     { key: "bold", label: "Bold", icon: BoldIcon },
     { key: "italic", label: "Italic", icon: ItalicIcon },
@@ -239,6 +260,17 @@ function FormattingToolbar({ store }: { store: PresentationStore }) {
         <PlusIcon />
         New slide
       </Button>
+      <Button variant="ghost" size="sm" onClick={() => imageInputRef.current?.click()}>
+        <ImageIcon />
+        Image
+      </Button>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif"
+        className="hidden"
+        onChange={(event) => void onImageChange(event)}
+      />
       <div className="mx-1 h-5 w-px bg-border" />
       {toggles.map(({ key, label, icon: Icon }) => (
         <Button

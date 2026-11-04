@@ -27,6 +27,8 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Edit text** inline: single-click a text box, or double-click or start typing on any shape
 - **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with Delete or Backspace
+- **Duplicate** the selection with Ctrl/Cmd+D
+- **Arrange** with Ctrl/Cmd+] and Ctrl/Cmd+[ (one step forward or backward), or with Shift held (to the front or back)
 - **Nudge** with the arrow keys (1 px, or 10 px while holding Shift)
 - **Undo** and **redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
 
@@ -199,6 +201,19 @@ const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: sl
 
 // Set or clear (`null`) a slide's own background
 await store.edit({ type: "setSlideBackground", slideId, color: "#f8fafc" });
+
+// Duplicate a shape (offset 10px by default) and change the stacking order
+const { createdNodeIds } = await store.edit({ type: "duplicateNode", slideId, nodeId });
+await store.edit({ type: "reorderNode", slideId, nodeId, order: "front" }); // or "back", "forward", "backward"
+
+// Insert an image: its own size scaled to fit, centered, unless you pass `size` and `position`
+await store.edit({
+  type: "addImage",
+  slideId,
+  data: new Uint8Array(await file.arrayBuffer()),
+  contentType: file.type, // "image/png", "image/jpeg", or "image/gif"
+  name: file.name,
+});
 ```
 
 In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
