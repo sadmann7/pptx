@@ -86,10 +86,25 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
   };
 }
 
+/**
+ * `PrimitiveProps` whose `className` and `style` may also be functions of the
+ * component's state, as in Base UI, for parts whose look follows their state.
+ */
+export type StatefulPrimitiveProps<Tag extends React.ElementType, State> = Omit<
+  PrimitiveProps<Tag, State>,
+  "className" | "style"
+> & {
+  /** Class names, or a function returning them from the component's state. */
+  className?: string | ((state: State) => string | undefined);
+
+  /** Inline styles, or a function returning them from the component's state. */
+  style?: React.CSSProperties | ((state: State) => React.CSSProperties | undefined);
+};
+
 export interface RenderElementComponentProps<S, P = AnyProps> {
   render?: RenderProp<S, P>;
-  className?: string;
-  style?: React.CSSProperties;
+  className?: string | ((state: S) => string | undefined);
+  style?: React.CSSProperties | ((state: S) => React.CSSProperties | undefined);
 }
 
 export interface RenderElementParams<S, E extends Element, Tag extends IntrinsicTag> {
@@ -138,8 +153,14 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
   componentProps: RenderElementComponentProps<S, RenderFunctionProps<Tag>>,
   params: RenderElementParams<S, E, Tag>,
 ): AnyProps {
-  const { render, className, style } = componentProps;
-  const { ref, props } = params;
+  const { render } = componentProps;
+  const { ref, props, state } = params;
+  const className =
+    typeof componentProps.className === "function"
+      ? componentProps.className(state)
+      : componentProps.className;
+  const style =
+    typeof componentProps.style === "function" ? componentProps.style(state) : componentProps.style;
 
   const outProps = Array.isArray(props)
     ? props.reduce<AnyProps>((acc, p) => (p ? mergeProps(acc, p as AnyProps) : acc), {})

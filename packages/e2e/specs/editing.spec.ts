@@ -145,3 +145,66 @@ test.describe("editing toolbar", () => {
     await expect(overlay).toHaveAttribute("data-mode", "text");
   });
 });
+
+test.describe("snapping", () => {
+  /** The shape's committed x, and where its center would sit on the slide's center. */
+  function readGeometry(page: Page) {
+    return page.evaluate(() => {
+      const store = window.__editStore!;
+      const node = store.getActiveSlide()!.nodes[0];
+      const width = store.getState().presentation!.width;
+      return { x: node.position.x, centeredX: width / 2 - node.size.w / 2 };
+    });
+  }
+
+  /** Drags shape 2 so its center ends `offset` px right of the slide's center. */
+  async function dragNearCenter(page: Page, offset: number, modifiers: "Alt"[] = []) {
+    const { x, centeredX } = await readGeometry(page);
+    const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    // The harness renders at zoom 1, so slide pixels are screen pixels.
+    const travel = centeredX - x + offset;
+
+    for (const key of modifiers) await page.keyboard.down(key);
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + travel / 2, startY, { steps: 5 });
+    await page.mouse.move(startX + travel, startY, { steps: 5 });
+    return {
+      release: async () => {
+        await page.mouse.up();
+        for (const key of modifiers) await page.keyboard.up(key);
+      },
+    };
+  }
+
+  test("snaps a dragged shape onto the slide's center with a guide", async ({ page }) => {
+    await open(page);
+    const drag = await dragNearCenter(page, 3);
+
+    await expect(page.locator('[data-snap-guide="x"]')).toBeVisible();
+    await drag.release();
+    await expect(page.locator("[data-snap-guide]")).toHaveCount(0);
+
+    await expect
+      .poll(async () => {
+        const { x, centeredX } = await readGeometry(page);
+        return Math.abs(x - centeredX);
+      })
+      .toBeLessThan(0.01);
+  });
+
+  test("places freely with Alt held", async ({ page }) => {
+    await open(page);
+    const { x: before } = await readGeometry(page);
+    const drag = await dragNearCenter(page, 3, ["Alt"]);
+
+    await expect(page.locator("[data-snap-guide]")).toHaveCount(0);
+    await drag.release();
+
+    await expect.poll(async () => (await readGeometry(page)).x).not.toBe(before);
+    const { x, centeredX } = await readGeometry(page);
+    expect(Math.abs(x - centeredX - 3)).toBeLessThan(1);
+  });
+});

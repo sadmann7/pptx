@@ -21,9 +21,11 @@ import {
   useZoom,
 } from "./context";
 import { useLatestRef } from "./hooks";
-import type { PrimitiveProps } from "./render";
+import type { PrimitiveProps, StatefulPrimitiveProps } from "./render";
 import { mergeRefs, renderElement } from "./render";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./selection-channel";
+import type { SnapGuide as SnapGuideData } from "./snap";
+import { getUnionRect, SNAP_THRESHOLD, snapMove, snapResize } from "./snap";
 import type { ActiveTextStyle } from "./text-range";
 import {
   cleanText,
@@ -458,6 +460,8 @@ type InternalState =
        * shape instead of selecting it or entering text.
        */
       clickIds?: string[];
+      /** Smart guides for what the drag snapped to. */
+      guides?: SnapGuideData[];
     }
   | {
       mode: "marquee";
@@ -482,6 +486,8 @@ type InternalState =
       dx: number;
       dy: number;
       lockAspect: boolean;
+      /** Smart guides for what the resized edges snapped to. */
+      guides?: SnapGuideData[];
     }
   | {
       mode: "text";
@@ -570,6 +576,22 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   onSelectionChange?: (event: SelectionChangeEvent) => void;
 
   /**
+   * Whether moving and resizing snap to the slide's edges and center and to
+   * other shapes' edges and centers, with guides showing what lined up. Hold
+   * Alt (Option) while dragging to place freely.
+   *
+   * @default true
+   */
+  snapping?: boolean;
+
+  /**
+   * How close, in screen pixels, an edge or center has to come to snap.
+   *
+   * @default 6
+   */
+  snapThreshold?: number;
+
+  /**
    * Event handler called when the interaction mode changes, e.g. entering
    * text editing or starting a drag. Useful for disabling toolbars
    * mid-gesture.
@@ -608,6 +630,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     onTextChange,
     onSelectionChange,
     onModeChange,
+    snapping = true,
+    snapThreshold = SNAP_THRESHOLD,
+    children,
     ...selectionImplProps
   },
   forwardedRef,
@@ -618,6 +643,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const { zoom } = useZoom();
 
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
 
   const stateRef = useLatestRef(state);
@@ -1790,6 +1816,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
+  /** What a drag can snap to: the slide, and every shape not being dragged. */
+  function getSnapTargets(draggedIds: string[]): Rect[] {
+    const targets: Rect[] = [{ x: 0, y: 0, w: presentation!.width, h: presentation!.height }];
+    for (const node of slide!.nodes) {
+      if (!draggedIds.includes(node.id)) targets.push(getNodeRect(node));
+    }
+    return targets;
+  }
+
   function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
     // No button held: not a drag. Guard against stale-state moves that can
     // occur between setState({ mode: "selected" }) in onPointerUp and the
@@ -1804,28 +1839,54 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (state.mode !== "move" && state.mode !== "resize") return;
     const dx = (event.clientX - state.startX) / zoom;
     const dy = (event.clientY - state.startY) / zoom;
+    // Alt places freely, as in PowerPoint. The threshold is in screen pixels.
+    const isSnapping = snapping && !event.altKey;
+    const threshold = snapThreshold / zoom;
 
     if (state.mode === "move") {
       const moved =
         state.moved ||
         Math.hypot(event.clientX - state.startX, event.clientY - state.startY) > DRAG_THRESHOLD;
       // Track Shift live (as with resize) so holding or releasing it mid-drag
-      // locks and unlocks the axis. The constrained deltas are what lands in
-      // state, so pointer-up commits the straight move without re-deriving it.
+      // locks and unlocks the axis. The constrained (and snapped) deltas are
+      // what lands in state, so pointer-up commits them without re-deriving.
       const delta = constrainMove(dx, dy, event.shiftKey);
+      const bounds = getUnionRect(selectedNodes.map(getNodeRect));
+      const next =
+        moved && isSnapping && bounds
+          ? snapMove(bounds, delta.x, delta.y, getSnapTargets(state.nodeIds), threshold, {
+              // An axis Shift locked stays put rather than snapping off it.
+              x: !(event.shiftKey && delta.x === 0),
+              y: !(event.shiftKey && delta.y === 0),
+            })
+          : { dx: delta.x, dy: delta.y, guides: [] };
       if (moved) {
         for (const node of selectedNodes) {
           const shapeElement = getShapeElement(node.id);
           if (shapeElement) {
-            shapeElement.style.left = `${node.position.x + delta.x}px`;
-            shapeElement.style.top = `${node.position.y + delta.y}px`;
+            shapeElement.style.left = `${node.position.x + next.dx}px`;
+            shapeElement.style.top = `${node.position.y + next.dy}px`;
           }
         }
       }
-      setState({ ...state, dx: delta.x, dy: delta.y, moved });
+      setState({ ...state, dx: next.dx, dy: next.dy, moved, guides: next.guides });
     } else {
       // Track Shift live so holding/releasing it mid-drag toggles the lock.
-      setState({ ...state, dx, dy, lockAspect: event.shiftKey });
+      const lockAspect = event.shiftKey;
+      const grippedNode = selectedNodes.find((node) => node.id === state.gripNodeId);
+      const next =
+        isSnapping && grippedNode
+          ? snapResize(
+              getNodeRect(grippedNode),
+              state.grip,
+              dx,
+              dy,
+              getSnapTargets(state.nodeIds),
+              threshold,
+              lockAspect,
+            )
+          : { dx, dy, guides: [] };
+      setState({ ...state, dx: next.dx, dy: next.dy, lockAspect, guides: next.guides });
     }
   }
 
@@ -2169,6 +2230,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                * positioning context whose origin is the slide's top-left.
                */}
               <div
+                ref={frameRef}
                 style={{
                   position: "absolute",
                   left: pasteboard.left * zoom,
@@ -2178,27 +2240,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   pointerEvents: "none",
                 }}
               >
-                {selectedNodes.map((node) => (
-                  <SelectionBox
-                    key={node.id}
-                    node={node}
-                    state={state}
-                    zoom={zoom}
-                    resizeScale={resizeScale}
-                    // Grips are unreachable mid-band (the pointer is captured)
-                    // and would sit under the rubber band, so only the outline
-                    // of the base selection shows while it is being extended.
-                    // Until the band starts, the press is still just a click and
-                    // must not blink the handles of what is already selected.
-                    showResizeGrips={!isBanding}
-                    onGripPointerDown={onGripPointerDown}
-                    onBorderPointerDown={onBorderPointerDown}
-                  />
-                ))}
+                <SelectionPartsContext.Provider
+                  value={{
+                    state,
+                    zoom,
+                    selectedNodes,
+                    resizeScale,
+                    showResizeHandles: !isBanding,
+                    frameRef,
+                    onGripPointerDown,
+                    onBorderPointerDown,
+                  }}
+                >
+                  {children ?? DEFAULT_PARTS}
+                </SelectionPartsContext.Provider>
               </div>
-              {state.mode === "marquee" && (
-                <MarqueeBox state={state} rootElement={rootRef.current} />
-              )}
             </>
           ),
           style: {
@@ -2285,13 +2341,27 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   );
 });
 
-interface SelectionBoxProps {
-  node: SlideNode;
+// ---------------------------------------------------------------------------
+// Overlay parts
+// ---------------------------------------------------------------------------
+
+/**
+ * What the overlay hands its parts. Internal: each part exposes only its own
+ * state, so the overlay's interaction state stays free to change.
+ */
+interface SelectionPartsContextValue {
   state: InternalState;
   zoom: number;
+  selectedNodes: SlideNode[];
   resizeScale: ResizeScale | null;
-  /** False mid-band, when the grips are unreachable anyway. */
-  showResizeGrips: boolean;
+  /**
+   * False mid-band: the handles are unreachable then (the pointer is captured)
+   * and would sit under the rubber band. Until the band starts, the press is
+   * still a click and must not blink the handles of what is already selected.
+   */
+  showResizeHandles: boolean;
+  /** The slide-origin frame the parts are positioned in. */
+  frameRef: React.RefObject<HTMLDivElement | null>;
   onGripPointerDown: (
     event: React.PointerEvent<HTMLDivElement>,
     grip: GripDirection,
@@ -2300,51 +2370,113 @@ interface SelectionBoxProps {
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
-function SelectionBox({
-  node,
-  state,
-  zoom,
-  resizeScale,
-  showResizeGrips,
-  onGripPointerDown,
-  onBorderPointerDown,
-}: SelectionBoxProps) {
-  let rect = getNodeRect(node);
-  if (state.mode === "move" && state.moved) {
-    rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
-  } else if (state.mode === "resize" && resizeScale) {
-    rect = scaleRectFromGrip(rect, state.grip, resizeScale);
+const SelectionPartsContext = React.createContext<SelectionPartsContextValue | null>(null);
+
+function useSelectionParts(partName: string): SelectionPartsContextValue {
+  const context = React.useContext(SelectionPartsContext);
+  if (!context) {
+    throw new Error(`\`${partName}\` must be used within \`Presentation.Selection\`.`);
   }
-
-  const isTextMode = state.mode === "text";
-  // Handles hide once a drag is actually under way, not merely on pointer-down:
-  // a press that only toggles the selection (Shift+click) would otherwise blink
-  // them off and back on.
-  const isDragging = state.mode === "move" && state.moved;
-  const showGrips = showResizeGrips && node.rotation === 0 && !isDragging && !isTextMode;
-
-  return (
-    <div
-      data-selection-box=""
-      style={{
-        position: "absolute",
-        left: rect.x * zoom,
-        top: rect.y * zoom,
-        width: rect.w * zoom,
-        height: rect.h * zoom,
-        transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
-        boxShadow: `0 0 0 ${isTextMode ? "2" : "1.5"}px var(--presentation-selection, #2563eb)`,
-        cursor: isTextMode ? "text" : "move",
-        pointerEvents: "none",
-      }}
-    >
-      {showGrips && (
-        <ResizeGrips onGripPointerDown={(event, grip) => onGripPointerDown(event, grip, node.id)} />
-      )}
-      {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
-    </div>
-  );
+  return context;
 }
+
+interface SelectionBoxContextValue {
+  node: SlideNode;
+  showHandles: boolean;
+}
+
+const SelectionBoxContext = React.createContext<SelectionBoxContextValue | null>(null);
+
+const SELECTION_BOX_NAME = "Presentation.SelectionBox";
+const RESIZE_HANDLE_NAME = "Presentation.ResizeHandle";
+const SNAP_GUIDE_NAME = "Presentation.SnapGuide";
+const MARQUEE_NAME = "Presentation.Marquee";
+
+/** The current state of one selection outline. */
+export interface SelectionBoxState {
+  /** The selected shape the outline belongs to. */
+  node: SlideNode;
+
+  /** Interaction mode of the overlay. `"text"` while the shape's text is edited. */
+  mode: SelectionState["mode"];
+
+  /** Whether the selection is being dragged. */
+  dragging: boolean;
+}
+
+export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", SelectionBoxState> {}
+
+/**
+ * The outline around each selected shape. Rendered once per selected shape,
+ * following it through moves, resizes, and rotation.
+ *
+ * Place inside `Presentation.Selection`, with `Presentation.ResizeHandle`
+ * inside it for handles.
+ *
+ * Carries `data-selection-box`, `data-mode`, and `data-dragging`.
+ */
+export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
+  function SelectionBox(
+    { render, className, style, children, ...selectionBoxProps },
+    forwardedRef,
+  ) {
+    const { state, zoom, selectedNodes, resizeScale, showResizeHandles, onBorderPointerDown } =
+      useSelectionParts(SELECTION_BOX_NAME);
+
+    const isTextMode = state.mode === "text";
+    // Handles hide once a drag is actually under way, not merely on pointer-down:
+    // a press that only toggles the selection (Shift+click) would otherwise blink
+    // them off and back on.
+    const isDragging = state.mode === "move" && state.moved;
+
+    return selectedNodes.map((node) => {
+      let rect = getNodeRect(node);
+      if (state.mode === "move" && state.moved) {
+        rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
+      } else if (state.mode === "resize" && resizeScale) {
+        rect = scaleRectFromGrip(rect, state.grip, resizeScale);
+      }
+      const showHandles = showResizeHandles && node.rotation === 0 && !isDragging && !isTextMode;
+      const boxState: SelectionBoxState = { node, mode: state.mode, dragging: isDragging };
+
+      return (
+        <SelectionBoxContext.Provider key={node.id} value={{ node, showHandles }}>
+          {renderElement(
+            "div",
+            { render, className, style },
+            {
+              state: boxState,
+              ref: forwardedRef,
+              props: [
+                {
+                  "data-selection-box": "",
+                  "data-mode": state.mode,
+                  "data-dragging": isDragging ? "" : undefined,
+                  children: (
+                    <>
+                      {children}
+                      {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
+                    </>
+                  ),
+                  style: {
+                    position: "absolute",
+                    left: rect.x * zoom,
+                    top: rect.y * zoom,
+                    width: rect.w * zoom,
+                    height: rect.h * zoom,
+                    transform: node.rotation !== 0 ? `rotate(${node.rotation}deg)` : undefined,
+                    pointerEvents: "none",
+                  },
+                },
+                selectionBoxProps,
+              ],
+            },
+          )}
+        </SelectionBoxContext.Provider>
+      );
+    });
+  },
+);
 
 const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
   nw: { left: 0, top: 0 },
@@ -2357,66 +2489,201 @@ const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
   w: { left: 0, top: "50%" },
 };
 
-interface ResizeGripsProps {
-  onGripPointerDown: (event: React.PointerEvent<HTMLDivElement>, grip: GripDirection) => void;
+/** The current state of one resize handle. */
+export interface ResizeHandleState {
+  /** Which edge or corner the handle drags. */
+  direction: GripDirection;
 }
 
-function ResizeGrips({ onGripPointerDown }: ResizeGripsProps) {
-  return GRIP_DIRECTIONS.map((direction) => (
-    <div
-      key={direction}
-      aria-hidden="true"
-      data-resize-grip={direction}
-      onPointerDown={(event) => onGripPointerDown(event, direction)}
-      style={{
-        position: "absolute",
-        ...GRIP_POSITIONS[direction],
-        width: 9,
-        height: 9,
-        marginLeft: -4.5,
-        marginTop: -4.5,
-        background: "#fff",
-        border: "1.5px solid var(--presentation-selection, #2563eb)",
-        borderRadius: 2,
-        cursor: GRIP_CURSORS[direction],
-        pointerEvents: "auto",
-        touchAction: "none",
-      }}
-    />
-  ));
+export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeHandleState> {}
+
+/**
+ * The resize handles of a selected shape: one per edge and corner, centered
+ * on the outline. Hidden while dragging, editing text, and on rotated shapes.
+ *
+ * Unstyled when composed: give it a size, or it is a zero-size target.
+ *
+ * Place inside `Presentation.SelectionBox`. Carries `data-resize-grip`, set
+ * to its direction.
+ */
+export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
+  function ResizeHandle({ render, className, style, ...resizeHandleProps }, forwardedRef) {
+    const { onGripPointerDown } = useSelectionParts(RESIZE_HANDLE_NAME);
+    const box = React.useContext(SelectionBoxContext);
+    if (!box) {
+      throw new Error(`\`${RESIZE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
+    }
+    if (!box.showHandles) return null;
+
+    return GRIP_DIRECTIONS.map((direction) => (
+      <React.Fragment key={direction}>
+        {renderElement(
+          "div",
+          { render, className, style },
+          {
+            state: { direction },
+            ref: forwardedRef,
+            props: [
+              {
+                "aria-hidden": true,
+                "data-resize-grip": direction,
+                onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
+                  onGripPointerDown(event, direction, box.node.id),
+                style: {
+                  position: "absolute",
+                  ...GRIP_POSITIONS[direction],
+                  transform: "translate(-50%, -50%)",
+                  cursor: GRIP_CURSORS[direction],
+                  pointerEvents: "auto",
+                  touchAction: "none",
+                },
+              },
+              resizeHandleProps,
+            ],
+          },
+        )}
+      </React.Fragment>
+    ));
+  },
+);
+
+/** The current state of one snap guide. */
+export interface SnapGuideState {
+  /** `"x"` for a vertical line, `"y"` for a horizontal one. */
+  axis: SnapGuideData["axis"];
+
+  /** Where the line sits on its axis, in slide pixels. */
+  position: number;
 }
 
-interface MarqueeBoxProps {
-  state: Extract<InternalState, { mode: "marquee" }>;
-  rootElement: HTMLElement | null;
-}
+export interface SnapGuideProps extends StatefulPrimitiveProps<"div", SnapGuideState> {}
 
-function MarqueeBox({ state, rootElement }: MarqueeBoxProps) {
-  // State coords are viewport-relative; the overlay is our positioning context.
-  const origin = rootElement?.getBoundingClientRect();
-  if (!origin) return null;
-  const left = Math.min(state.startX, state.curX) - origin.left;
-  const top = Math.min(state.startY, state.curY) - origin.top;
-  const width = Math.abs(state.curX - state.startX);
-  const height = Math.abs(state.curY - state.startY);
+/**
+ * The guides shown while a move or resize snaps: one line per edge or center
+ * that lined up, spanning everything aligned on it.
+ *
+ * The element is the line itself, `--presentation-snap-guide-width` thick
+ * (1px by default) and centered on the snapped position, so a background
+ * color draws it.
+ *
+ * Place inside `Presentation.Selection`. Carries `data-snap-guide`, set to
+ * its axis.
+ */
+export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(function SnapGuide(
+  { render, className, style, ...snapGuideProps },
+  forwardedRef,
+) {
+  const { state, zoom } = useSelectionParts(SNAP_GUIDE_NAME);
+  if (state.mode !== "move" && state.mode !== "resize") return null;
+
+  return (state.guides ?? []).map((guide) => {
+    const isVertical = guide.axis === "x";
+    const length = (guide.end - guide.start) * zoom;
+    const thickness = "var(--presentation-snap-guide-width, 1px)";
+    return (
+      <React.Fragment key={`${guide.axis}:${guide.position}`}>
+        {renderElement(
+          "div",
+          { render, className, style },
+          {
+            state: { axis: guide.axis, position: guide.position },
+            ref: forwardedRef,
+            props: [
+              {
+                "aria-hidden": true,
+                "data-snap-guide": guide.axis,
+                style: {
+                  position: "absolute",
+                  left: isVertical ? guide.position * zoom : guide.start * zoom,
+                  top: isVertical ? guide.start * zoom : guide.position * zoom,
+                  width: isVertical ? thickness : length,
+                  height: isVertical ? length : thickness,
+                  transform: isVertical ? "translateX(-50%)" : "translateY(-50%)",
+                  pointerEvents: "none",
+                },
+              },
+              snapGuideProps,
+            ],
+          },
+        )}
+      </React.Fragment>
+    );
+  });
+});
+
+export interface MarqueeProps extends StatefulPrimitiveProps<"div", Record<string, never>> {}
+
+/**
+ * The rubber band drawn while dragging across empty canvas to select.
+ *
+ * Place inside `Presentation.Selection`. Carries `data-marquee`.
+ */
+export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function Marquee(
+  { render, className, style, ...marqueeProps },
+  forwardedRef,
+) {
+  const { state, frameRef } = useSelectionParts(MARQUEE_NAME);
+  if (state.mode !== "marquee") return null;
   if (!isBandDrag(state.startX, state.startY, state.curX, state.curY)) return null;
+  // State coordinates are viewport-relative; the frame is the positioning context.
+  const origin = frameRef.current?.getBoundingClientRect();
+  if (!origin) return null;
 
-  return (
-    <div
-      data-marquee=""
+  return renderElement(
+    "div",
+    { render, className, style },
+    {
+      state: {},
+      ref: forwardedRef,
+      props: [
+        {
+          "data-marquee": "",
+          style: {
+            position: "absolute",
+            left: Math.min(state.startX, state.curX) - origin.left,
+            top: Math.min(state.startY, state.curY) - origin.top,
+            width: Math.abs(state.curX - state.startX),
+            height: Math.abs(state.curY - state.startY),
+            pointerEvents: "none",
+          },
+        },
+        marqueeProps,
+      ],
+    },
+  );
+});
+
+/**
+ * The parts `Presentation.Selection` renders without children: the default
+ * look, built from the same parts an app composes, themed through the
+ * `--presentation-selection` and `--presentation-snap-guide` variables.
+ */
+const DEFAULT_PARTS = (
+  <>
+    <SelectionBox
+      style={({ mode }) => ({
+        boxShadow: `0 0 0 ${mode === "text" ? "2" : "1.5"}px var(--presentation-selection, #2563eb)`,
+      })}
+    >
+      <ResizeHandle
+        style={{
+          width: 9,
+          height: 9,
+          background: "#fff",
+          border: "1.5px solid var(--presentation-selection, #2563eb)",
+          borderRadius: 2,
+        }}
+      />
+    </SelectionBox>
+    <SnapGuide style={{ background: "var(--presentation-snap-guide, #f43f5e)" }} />
+    <Marquee
       style={{
-        position: "absolute",
-        left,
-        top,
-        width,
-        height,
         border: "1px solid var(--presentation-selection, #2563eb)",
         background: "color-mix(in srgb, var(--presentation-selection, #2563eb) 10%, transparent)",
-        pointerEvents: "none",
       }}
     />
-  );
-}
+  </>
+);
 
 interface FrameGrabHitboxesProps {
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -2452,4 +2719,23 @@ function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
 export namespace Selection {
   export type State = SelectionState;
   export type Props = SelectionProps;
+}
+
+export namespace SelectionBox {
+  export type State = SelectionBoxState;
+  export type Props = SelectionBoxProps;
+}
+
+export namespace ResizeHandle {
+  export type State = ResizeHandleState;
+  export type Props = ResizeHandleProps;
+}
+
+export namespace SnapGuide {
+  export type State = SnapGuideState;
+  export type Props = SnapGuideProps;
+}
+
+export namespace Marquee {
+  export type Props = MarqueeProps;
 }

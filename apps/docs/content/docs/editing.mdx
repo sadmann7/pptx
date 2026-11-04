@@ -21,6 +21,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 
 - **Move** shapes by dragging them
 - **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock the aspect ratio)
+- **Snap** to the slide's edges and center and to other shapes while moving or resizing, with guides showing what lined up (see [Snapping](#snapping))
 - **Edit text** inline: single-click a text box, or double-click or start typing on any shape
 - **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with Delete or Backspace
@@ -36,6 +37,81 @@ Undo and redo shortcuts are disabled by default to avoid conflicts with the surr
 When enabled, they are bound on the document rather than the overlay, so they keep working when undo switches slides or when focus moves to a thumbnail after a keyboard reorder. Only keystrokes aimed at the presentation act on the deck: the boundary is `Presentation.Root` when there is one, otherwise the overlay itself. Text fields are always left alone.
 
 For full control, leave `undoRedoShortcuts` disabled and call `store.undo()` and `store.redo()`.
+
+## Snapping
+
+Moving and resizing snap to the slide's edges and center and to the edges and centers of the other shapes. A multi-selection snaps as one block, and a resize snaps only the edges it moves. Hold Alt (Option) while dragging to place a shape freely.
+
+```tsx
+// Snap from further away
+<Presentation.Selection snapThreshold={10} />
+
+// No snapping
+<Presentation.Selection snapping={false} />
+```
+
+`snapThreshold` is in screen pixels, so snapping feels the same at every zoom level. It defaults to `6`.
+
+## Styling the overlay
+
+The overlay is built from parts. Without children, `Presentation.Selection` renders all of them with a default look. Compose them to restyle or leave some out:
+
+```tsx
+<Presentation.Selection>
+  <Presentation.SelectionBox className="ring-1 ring-blue-500 data-[mode=text]:ring-2">
+    <Presentation.ResizeHandle className="size-2.5 rounded-full border border-blue-500 bg-white" />
+  </Presentation.SelectionBox>
+  <Presentation.SnapGuide className="bg-pink-500" />
+  <Presentation.Marquee className="border border-blue-500 bg-blue-500/10" />
+</Presentation.Selection>
+```
+
+Each part is written once and rendered as many times as needed: one outline per selected shape, eight handles per outline, and one guide per line that snapped. The overlay positions them; how they look is up to you. Composed parts are unstyled, so give handles a size.
+
+| Part                        | Rendered                                 | State                      | Attributes                                         |
+| --------------------------- | ---------------------------------------- | -------------------------- | -------------------------------------------------- |
+| `Presentation.SelectionBox` | Once per selected shape                  | `node`, `mode`, `dragging` | `data-selection-box`, `data-mode`, `data-dragging` |
+| `Presentation.ResizeHandle` | Eight per outline, inside `SelectionBox` | `direction`                | `data-resize-grip` (`nw`, `n`, `ne`, ...)          |
+| `Presentation.SnapGuide`    | Once per snapped line while dragging     | `axis`, `position`         | `data-snap-guide` (`x` or `y`)                     |
+| `Presentation.Marquee`      | While dragging across empty canvas       |                            | `data-marquee`                                     |
+
+Like the other primitives, every part accepts `render`, and `className` and `style` can also be functions of the part's state:
+
+```tsx
+// Corner handles only
+<Presentation.ResizeHandle
+  className={({ direction }) =>
+    direction.length === 2 ? "size-2.5 rounded-full border bg-white" : "hidden"
+  }
+/>
+```
+
+Handles are hidden while dragging, while editing text, and on rotated shapes. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
+
+### Theming the default look
+
+The default parts read their colors from CSS variables. Set them on `Presentation.Selection` or on any ancestor:
+
+| Variable                          | Default   | Styles                                         |
+| --------------------------------- | --------- | ---------------------------------------------- |
+| `--presentation-selection`        | `#2563eb` | Selection outline, resize handles, and marquee |
+| `--presentation-snap-guide`       | `#f43f5e` | Snap guides                                    |
+| `--presentation-snap-guide-width` | `1px`     | Snap guide thickness                           |
+
+```css
+.editor {
+  --presentation-selection: var(--ring);
+  --presentation-snap-guide: #f97316;
+}
+```
+
+Inline styles only override the properties they set, so CSS that targets a part's attributes can add anything else (shadows, opacity, transitions) without `!important`:
+
+```css
+[data-snap-guide] {
+  box-shadow: 0 0 4px var(--presentation-snap-guide);
+}
+```
 
 ## Edit callbacks
 

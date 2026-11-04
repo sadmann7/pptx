@@ -62,11 +62,80 @@ function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.
   );
 }
 
-function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
+function PresentationSelection({
+  className,
+  children,
+  ...props
+}: PresentationPrimitive.Selection.Props) {
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
       className={cn("[--presentation-selection:var(--ring)]", className)}
+      {...props}
+    >
+      {children ?? (
+        <>
+          <PresentationSelectionBox>
+            <PresentationResizeHandle />
+          </PresentationSelectionBox>
+          <PresentationSnapGuide />
+          <PresentationMarquee />
+        </>
+      )}
+    </PresentationPrimitive.Selection>
+  );
+}
+
+function PresentationSelectionBox({
+  className,
+  ...props
+}: PresentationPrimitive.SelectionBox.Props) {
+  return (
+    <PresentationPrimitive.SelectionBox
+      data-slot="presentation-selection-box"
+      className={withClassName(
+        "shadow-[0_0_0_1.5px_var(--presentation-selection)] data-[mode=text]:shadow-[0_0_0_2px_var(--presentation-selection)]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationResizeHandle({
+  className,
+  ...props
+}: PresentationPrimitive.ResizeHandle.Props) {
+  return (
+    <PresentationPrimitive.ResizeHandle
+      data-slot="presentation-resize-handle"
+      className={withClassName(
+        "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-background shadow-xs",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationSnapGuide({ className, ...props }: PresentationPrimitive.SnapGuide.Props) {
+  return (
+    <PresentationPrimitive.SnapGuide
+      data-slot="presentation-snap-guide"
+      className={withClassName("bg-(--presentation-snap-guide,#f43f5e)", className)}
+      {...props}
+    />
+  );
+}
+
+function PresentationMarquee({ className, ...props }: PresentationPrimitive.Marquee.Props) {
+  return (
+    <PresentationPrimitive.Marquee
+      data-slot="presentation-marquee"
+      className={withClassName(
+        "border border-(--presentation-selection) bg-[color-mix(in_oklch,var(--presentation-selection)_10%,transparent)]",
+        className,
+      )}
       {...props}
     />
   );
@@ -262,14 +331,25 @@ function PresentationThumbnailList({
   );
 }
 
+function withClassName<State>(
+  base: string,
+  className: string | ((state: State) => string | undefined) | undefined,
+) {
+  return (state: State) => cn(base, typeof className === "function" ? className(state) : className);
+}
+
 export {
   Presentation,
   PresentationContent,
   PresentationError,
   PresentationLoading,
+  PresentationMarquee,
   PresentationProvider,
+  PresentationResizeHandle,
   PresentationSelection,
+  PresentationSelectionBox,
   PresentationSlide,
+  PresentationSnapGuide,
   PresentationThumbnailItem,
   PresentationThumbnailItemNumber,
   PresentationThumbnailItemPreview,
