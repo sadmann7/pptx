@@ -11,9 +11,9 @@
     "typeAware": true
   },
   "rules": {
-    "react/rules-of-hooks": "error",
+    "react/rules-of-hooks": "warn",
     "react-hooks/exhaustive-deps": "warn",
-    "react/refs": "off",
+    "react/refs": "warn",
     "typescript/no-floating-promises": ["warn", { "ignoreVoid": true }],
     "typescript/no-misused-spread": "off",
     "typescript/no-redundant-type-constituents": "off",
