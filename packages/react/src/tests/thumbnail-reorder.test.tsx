@@ -97,30 +97,6 @@ describe("consumer-driven reordering", () => {
     expect(renderedOrder()).toEqual([first, second, third]);
   });
 
-  it("marks a slide hidden by a setSlideHidden edit", async () => {
-    const store = await editableStore();
-    const slideId = store.getState().presentation!.slides[1].id;
-
-    render(
-      <Presentation.Provider store={store}>
-        <Presentation.ThumbnailList />
-      </Presentation.Provider>,
-    );
-    const item = () => screen.getAllByRole("option")[1];
-    expect(item().hasAttribute("data-hidden")).toBe(false);
-
-    await act(async () => {
-      await store.edit({ type: "setSlideHidden", slideId, hidden: true });
-    });
-    expect(item().hasAttribute("data-hidden")).toBe(true);
-    expect(item().getAttribute("aria-label")).toBe("Slide 2 (hidden)");
-
-    await act(async () => {
-      store.undo();
-    });
-    expect(item().hasAttribute("data-hidden")).toBe(false);
-  });
-
   it("keeps the item numbers in step with the new positions", async () => {
     const store = await editableStore();
     // The slides array is reordered in place, so hold the id, not the index.

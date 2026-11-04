@@ -204,9 +204,6 @@ const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: sl
 // Set or clear (`null`) a slide's own background
 await store.edit({ type: "setSlideBackground", slideId, color: "#f8fafc" });
 
-// Hide a slide from the slide show (thumbnails get `data-hidden`), or show it again
-await store.edit({ type: "setSlideHidden", slideId, hidden: true });
-
 // Duplicate a shape (offset 10px by default) and change the stacking order
 const { createdNodeIds } = await store.edit({ type: "duplicateNode", slideId, nodeId });
 await store.edit({ type: "reorderNode", slideId, nodeId, order: "front" }); // or "back", "forward", "backward"

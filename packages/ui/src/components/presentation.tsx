@@ -202,7 +202,7 @@ function PresentationThumbnailItemPreview({
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
       className={cn(
-        "w-full overflow-hidden rounded-sm group-data-hidden/thumbnail:opacity-40 data-pending:animate-pulse data-pending:bg-muted",
+        "w-full overflow-hidden rounded-sm data-pending:animate-pulse data-pending:bg-muted",
         className,
       )}
       {...props}
@@ -218,7 +218,7 @@ function PresentationThumbnailItemNumber({
     <PresentationPrimitive.ThumbnailItemNumber
       data-slot="presentation-thumbnail-item-number"
       className={cn(
-        "block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums group-data-hidden/thumbnail:line-through",
+        "block text-center font-mono text-xs leading-none text-muted-foreground tabular-nums",
         className,
       )}
       {...props}
@@ -235,7 +235,7 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "group/thumbnail relative flex w-full cursor-pointer gap-1.5 rounded-md border p-1.5 outline-none hover:bg-accent",
+        "relative flex w-full cursor-pointer gap-1.5 rounded-md border p-1.5 outline-none hover:bg-accent",
         "ring-2 ring-transparent transition-[color,ring] duration-100 focus:ring-ring data-active:bg-accent",
         className,
       )}

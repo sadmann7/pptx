@@ -34,7 +34,6 @@ export type {
   SetOutlineOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
-  SetSlideHiddenOperation,
   SetSolidFillOperation,
   SetTextBodyOperation,
   SetTextBodyParagraph,

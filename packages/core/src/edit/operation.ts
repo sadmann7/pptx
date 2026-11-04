@@ -203,13 +203,6 @@ export interface AddSlideOperation {
   afterSlideId?: string;
 }
 
-/** Hide a slide from the slide show, or show it again. */
-export interface SetSlideHiddenOperation {
-  type: "setSlideHidden";
-  slideId: string;
-  hidden: boolean;
-}
-
 /** Set a slide's own background, or clear it to inherit the layout's. */
 export interface SetSlideBackgroundOperation {
   type: "setSlideBackground";
@@ -307,7 +300,6 @@ export type EditOperation =
   | SetParagraphStyleOperation
   | AddSlideOperation
   | SetSlideBackgroundOperation
-  | SetSlideHiddenOperation
   | DuplicateNodeOperation
   | ReorderNodeOperation
   | AddImageOperation
@@ -360,8 +352,6 @@ export async function applyEdit(
       return applyAddSlide(presentation, op);
     case "setSlideBackground":
       return applySetSlideBackground(presentation, op);
-    case "setSlideHidden":
-      return applySetSlideHidden(presentation, op);
     case "duplicateNode":
       return applyDuplicateNode(presentation, op);
     case "reorderNode":
@@ -2527,30 +2517,6 @@ function applySetSlideBackground(
       slide.background = prevBackground;
       sourcePackage.markDirty(slide.id);
     },
-  };
-}
-
-function applySetSlideHidden(pres: PresentationData, op: SetSlideHiddenOperation): EditResult {
-  const sourcePackage = requirePkg(pres);
-  const slide = findSlide(pres, op.slideId);
-  materializeSlide(pres, slide);
-  const root = sourcePackage.getXmlRoot(slide.id);
-  if (!root) throw new Error(`applyEdit: slide part "${slide.id}" is not loaded.`);
-  const rootElement = requireElement(root, "p:sld");
-
-  const prevShow = rootElement.getAttribute("show");
-  const prevHidden = slide.hidden;
-  const apply = (show: string | null, hidden: boolean | undefined) => {
-    if (show === null) rootElement.removeAttribute("show");
-    else rootElement.setAttribute("show", show);
-    slide.hidden = hidden;
-    sourcePackage.markDirty(slide.id);
-  };
-  apply(op.hidden ? "0" : null, op.hidden || undefined);
-
-  return {
-    affectedSlideIds: [slide.id],
-    undo: () => apply(prevShow, prevHidden),
   };
 }
 

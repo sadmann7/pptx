@@ -30,10 +30,6 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@pptx/ui/components/context-menu";
 import {
@@ -92,8 +88,6 @@ import {
   CopyIcon,
   CopyPlusIcon,
   DownloadIcon,
-  EyeIcon,
-  EyeOffIcon,
   FolderOpenIcon,
   ImageIcon,
   ItalicIcon,
@@ -265,23 +259,8 @@ function EditorEmpty({ fileInputId }: { fileInputId: string }) {
   );
 }
 
-const APPLE_KEYS: Record<string, string> = {
-  mod: "⌘",
-  ctrl: "⌃",
-  shift: "⇧",
-  alt: "⌥",
-  ArrowUp: "↑",
-  ArrowDown: "↓",
-  Delete: "⌫",
-};
-const OTHER_KEYS: Record<string, string> = {
-  mod: "Ctrl",
-  ctrl: "Ctrl",
-  shift: "Shift",
-  alt: "Alt",
-  ArrowUp: "↑",
-  ArrowDown: "↓",
-};
+const APPLE_KEYS: Record<string, string> = { mod: "⌘", shift: "⇧", alt: "⌥" };
+const OTHER_KEYS: Record<string, string> = { mod: "Ctrl", shift: "Shift", alt: "Alt" };
 
 function Shortcut({ keys, className }: { keys: readonly string[]; className?: string }) {
   const isMac = useIsMac();
@@ -756,6 +735,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
   const actions = useSlideActions(store);
   const [menuSlideId, setMenuSlideId] = React.useState<string | null>(null);
+  const menuItemRef = React.useRef<HTMLElement | null>(null);
 
   /**
    * Order to paint while a drop is being committed. `store.edit()` is async, so
@@ -838,16 +818,25 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       <ContextMenuTrigger
         className="contents"
         onContextMenuCapture={(event) => {
-          // Like PowerPoint, right-clicking a thumbnail selects its slide.
-          const item = (event.target as Element).closest<HTMLElement>("[data-slide-id]");
-          const slideId = item?.dataset.slideId ?? null;
-          setMenuSlideId(slideId);
-          if (slideId) store.goTo(slideId);
+          // Like PowerPoint, right-clicking a thumbnail selects it, and it
+          // keeps focus once the menu closes.
+          const item = (event.target as Element).closest<HTMLElement>("[role=option]");
+          item?.focus();
+          menuItemRef.current = item;
+          setMenuSlideId(item?.dataset.slideId ?? null);
         }}
       >
         {list}
       </ContextMenuTrigger>
-      <SlideMenuContent slideId={menuSlideId} actions={actions} />
+      <SlideMenuContent
+        slideId={menuSlideId}
+        actions={actions}
+        // Focus returns to the thumbnail, unless an action moves it on.
+        finalFocus={() => menuItemRef.current ?? false}
+        onAction={() => {
+          menuItemRef.current = null;
+        }}
+      />
     </ContextMenu>
   );
 }
@@ -856,15 +845,14 @@ interface SlideActions {
   add: (afterSlideId?: string) => Promise<void>;
   duplicate: (slideId: string) => Promise<void>;
   remove: (slideId: string) => Promise<void>;
-  setHidden: (slideId: string, hidden: boolean) => Promise<void>;
-  move: (slideId: string, to: "up" | "down" | "start" | "end") => Promise<void>;
-  setBackground: (slideId: string, color: string | null) => Promise<void>;
-  isHidden: (slideId: string) => boolean;
-  canMove: (slideId: string, to: "up" | "down" | "start" | "end") => boolean;
+  move: (slideId: string, to: SlideMove) => Promise<void>;
+  canMove: (slideId: string, to: SlideMove) => boolean;
   canRemove: boolean;
 }
 
-/** Focuses a slide's thumbnail once the edit that moved or made it renders. */
+type SlideMove = "up" | "down" | "start" | "end";
+
+/** Focuses a slide's thumbnail once the edit that made or moved it renders. */
 function focusThumbnail(slideId: string) {
   requestAnimationFrame(() => {
     document
@@ -883,10 +871,9 @@ function useSlideActions(store: PresentationStore): SlideActions {
     return slides.findIndex((slide) => slide.id === slideId);
   }
 
-  function targetIndex(slideId: string, to: "up" | "down" | "start" | "end") {
-    const index = indexOf(slideId);
-    if (to === "up") return index - 1;
-    if (to === "down") return index + 1;
+  function targetIndex(slideId: string, to: SlideMove) {
+    if (to === "up") return indexOf(slideId) - 1;
+    if (to === "down") return indexOf(slideId) + 1;
     return to === "start" ? 0 : slides.length - 1;
   }
 
@@ -905,17 +892,10 @@ function useSlideActions(store: PresentationStore): SlideActions {
       const activeSlideId = store.getActiveSlide()?.id;
       if (activeSlideId) focusThumbnail(activeSlideId);
     },
-    async setHidden(slideId, hidden) {
-      await store.edit({ type: "setSlideHidden", slideId, hidden });
-    },
     async move(slideId, to) {
       await store.edit({ type: "moveSlide", slideId, toIndex: targetIndex(slideId, to) });
       focusThumbnail(slideId);
     },
-    async setBackground(slideId, color) {
-      await store.edit({ type: "setSlideBackground", slideId, color });
-    },
-    isHidden: (slideId) => slides[indexOf(slideId)]?.hidden === true,
     canMove(slideId, to) {
       const index = targetIndex(slideId, to);
       return index >= 0 && index < slides.length && index !== indexOf(slideId);
@@ -924,121 +904,7 @@ function useSlideActions(store: PresentationStore): SlideActions {
   };
 }
 
-const MOVES = [
-  { to: "up", label: "Up", shortcut: ["mod", "ArrowUp"] },
-  { to: "down", label: "Down", shortcut: ["mod", "ArrowDown"] },
-  { to: "start", label: "To beginning", shortcut: ["mod", "shift", "ArrowUp"] },
-  { to: "end", label: "To end", shortcut: ["mod", "shift", "ArrowDown"] },
-] as const;
-
-interface SlideMenuContentProps {
-  /** The slide right-clicked, or `null` for the empty space below the thumbnails. */
-  slideId: string | null;
-  actions: SlideActions;
-}
-
-function SlideMenuContent({ slideId, actions }: SlideMenuContentProps) {
-  function run(action: () => Promise<unknown>) {
-    action().catch(onEditError);
-  }
-
-  if (!slideId) {
-    return (
-      <ContextMenuContent aria-label="Slides" className="w-52">
-        <ContextMenuItem onClick={() => run(() => actions.add())}>
-          <PlusIcon />
-          New slide
-          <ContextMenuShortcut>
-            <Shortcut keys={["ctrl", "M"]} />
-          </ContextMenuShortcut>
-        </ContextMenuItem>
-      </ContextMenuContent>
-    );
-  }
-
-  const isHidden = actions.isHidden(slideId);
-  return (
-    <ContextMenuContent aria-label="Slide" className="w-56">
-      <ContextMenuItem onClick={() => run(() => actions.add(slideId))}>
-        <PlusIcon />
-        New slide
-        <ContextMenuShortcut>
-          <Shortcut keys={["ctrl", "M"]} />
-        </ContextMenuShortcut>
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => actions.duplicate(slideId))}>
-        <CopyPlusIcon />
-        Duplicate slide
-        <ContextMenuShortcut>
-          <Shortcut keys={["mod", "D"]} />
-        </ContextMenuShortcut>
-      </ContextMenuItem>
-      <ContextMenuItem
-        variant="destructive"
-        disabled={!actions.canRemove}
-        onClick={() => run(() => actions.remove(slideId))}
-      >
-        <Trash2Icon />
-        Delete slide
-        <ContextMenuShortcut>
-          <Shortcut keys={["Delete"]} />
-        </ContextMenuShortcut>
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={() => run(() => actions.setHidden(slideId, !isHidden))}>
-        {isHidden ? <EyeIcon /> : <EyeOffIcon />}
-        {isHidden ? "Show slide" : "Hide slide"}
-      </ContextMenuItem>
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>
-          <PaintBucketIcon />
-          Background
-        </ContextMenuSubTrigger>
-        <ContextMenuSubContent aria-label="Background">
-          {COLORS.map((color) => (
-            <ContextMenuItem
-              key={color.value}
-              onClick={() => run(() => actions.setBackground(slideId, color.value))}
-            >
-              <span
-                aria-hidden
-                className="size-3.5 rounded-sm border"
-                style={{ backgroundColor: color.value }}
-              />
-              {color.name}
-            </ContextMenuItem>
-          ))}
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => run(() => actions.setBackground(slideId, null))}>
-            Reset to layout
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>
-          <LayersIcon />
-          Move slide
-        </ContextMenuSubTrigger>
-        <ContextMenuSubContent aria-label="Move slide" className="w-56">
-          {MOVES.map(({ to, label, shortcut }) => (
-            <ContextMenuItem
-              key={to}
-              disabled={!actions.canMove(slideId, to)}
-              onClick={() => run(() => actions.move(slideId, to))}
-            >
-              {label}
-              <ContextMenuShortcut>
-                <Shortcut keys={shortcut} />
-              </ContextMenuShortcut>
-            </ContextMenuItem>
-          ))}
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-    </ContextMenuContent>
-  );
-}
-
-/** PowerPoint's thumbnail shortcuts, for a focused thumbnail. */
+/** PowerPoint's shortcuts for a focused thumbnail. */
 function onThumbnailKeyDown(
   event: React.KeyboardEvent<HTMLElement>,
   slideId: string,
@@ -1049,6 +915,7 @@ function onThumbnailKeyDown(
   if ((event.key === "Delete" || event.key === "Backspace") && !mod) {
     if (actions.canRemove) action = () => actions.remove(slideId);
   } else if (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "m") {
+    // Ctrl on every platform: ⌘M minimizes the window on macOS.
     action = () => actions.add(slideId);
   } else if (mod && event.key.toLowerCase() === "d") {
     action = () => actions.duplicate(slideId);
@@ -1060,6 +927,52 @@ function onThumbnailKeyDown(
   if (!action) return;
   event.preventDefault();
   action().catch(onEditError);
+}
+
+interface SlideMenuContentProps {
+  /** The slide right-clicked, or `null` for the empty space below the thumbnails. */
+  slideId: string | null;
+  actions: SlideActions;
+  /** Runs when an item is chosen, before its edit. */
+  onAction: () => void;
+}
+
+function SlideMenuContent({
+  slideId,
+  actions,
+  onAction,
+  ...props
+}: SlideMenuContentProps & React.ComponentProps<typeof ContextMenuContent>) {
+  function run(action: () => Promise<unknown>) {
+    onAction();
+    action().catch(onEditError);
+  }
+
+  return (
+    <ContextMenuContent aria-label="Slide" className="w-44" {...props}>
+      <ContextMenuItem onClick={() => run(() => actions.add(slideId ?? undefined))}>
+        <PlusIcon />
+        New slide
+      </ContextMenuItem>
+      {slideId && (
+        <>
+          <ContextMenuItem onClick={() => run(() => actions.duplicate(slideId))}>
+            <CopyPlusIcon />
+            Duplicate slide
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            disabled={!actions.canRemove}
+            onClick={() => run(() => actions.remove(slideId))}
+          >
+            <Trash2Icon />
+            Delete slide
+          </ContextMenuItem>
+        </>
+      )}
+    </ContextMenuContent>
+  );
 }
 
 interface SortableThumbnailItemProps {
