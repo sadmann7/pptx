@@ -497,6 +497,9 @@ importers:
       sharp:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@26.6.6)
+      source-map-js:
+        specifier: ^1.2.2
+        version: 1.2.2
       tsx:
         specifier: 'catalog:'
         version: 4.23.15

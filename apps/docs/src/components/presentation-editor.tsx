@@ -427,10 +427,13 @@ function FontSelect({
   onChange: (fontFamily: string) => void;
 }) {
   const { presentation, revision } = usePresentation();
+  // Listing the deck's fonts reads every slide, so only while the list is open:
+  // a drag or an edit would otherwise rescan the deck on every commit.
+  const [open, setOpen] = React.useState(false);
   const fonts = React.useMemo(
-    () => (presentation ? getPresentationFonts(presentation) : null),
+    () => (open && presentation ? getPresentationFonts(presentation) : null),
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- edits mutate the deck in place; revision is the change signal
-    [presentation, revision],
+    [open, presentation, revision],
   );
   const deckFonts = [
     fonts?.theme.heading,
@@ -445,6 +448,8 @@ function FontSelect({
   return (
     <Select
       modal={false}
+      open={open}
+      onOpenChange={setOpen}
       value={value ?? ""}
       onValueChange={(next) => next && onChange(String(next))}
     >

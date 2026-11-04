@@ -70,8 +70,6 @@ function PresentationSelection({
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
-      // A fixed blue rather than a theme color: slides bring their own colors,
-      // light or dark whatever the app's theme is.
       className={cn("[--presentation-selection:#1a73e8]", className)}
       {...props}
     >
@@ -201,10 +199,7 @@ function PresentationThumbnailItemPreview({
   return (
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
-      className={cn(
-        "w-full overflow-hidden rounded-sm data-pending:animate-pulse data-pending:bg-muted",
-        className,
-      )}
+      className={cn("w-full overflow-hidden rounded-sm data-pending:bg-muted", className)}
       {...props}
     />
   );
@@ -273,7 +268,6 @@ function PresentationThumbnailList({
   React.useEffect(() => {
     if (!isMobile || !open) return;
 
-    // Pointers that went down outside the sheet; a tap outside closes it.
     const pendingPointerIds = new Set<number>();
 
     function isInside(target: Node) {

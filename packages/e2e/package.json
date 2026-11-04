@@ -12,6 +12,9 @@
     "probe": "tsx scripts/probe.ts",
     "faults": "tsx scripts/faults.ts",
     "a11y": "tsx scripts/a11y-audit.ts",
+    "bench-deck": "tsx scripts/bench-deck.ts",
+    "profile:editor": "tsx scripts/profile.ts",
+    "perf:trace": "tsx scripts/perf-trace.ts",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -36,6 +39,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "sharp": "^0.35.5",
+    "source-map-js": "^1.2.2",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "^8.3.5"
