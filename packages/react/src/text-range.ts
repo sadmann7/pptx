@@ -6,7 +6,14 @@
  * characters of its runs, with a line break (`a:br`) as one character.
  */
 
-import type { ParagraphAlign, TextPosition, TextRange } from "@diceui/pptx-core";
+import type {
+  ParagraphAlign,
+  SetTextBodyParagraph,
+  ShapeNodeData,
+  SlideNode,
+  TextPosition,
+  TextRange,
+} from "@diceui/pptx-core";
 import { PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
 
 /** Formatting of the current text, as a toolbar shows it. */
@@ -297,4 +304,99 @@ export function getRangeRuns(
   if (!paragraph) return { runs: [], paragraphs };
   const firstRun = paragraph.querySelector<HTMLElement>(`[${PPTX_ATTRS.run}]`);
   return { runs: [firstRun ?? paragraph], paragraphs: [paragraph] };
+}
+
+export function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
+  // Empty placeholders also render a prompt overlay ("Click to add text")
+  // whose paragraphs carry the paragraph attribute; skip it: only the real
+  // text container is editable.
+  for (const paragraphElement of Array.from(
+    shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
+  )) {
+    if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
+    return paragraphElement.parentElement;
+  }
+  return null;
+}
+
+export function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
+  return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
+}
+
+/**
+ * Walks the edited contentEditable container and produces a `setTextBody`
+ * paragraphs payload. Uses the paragraph/run data attributes (see
+ * `PPTX_ATTRS`) to map back to source indices for style inheritance.
+ */
+export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
+  const paragraphs: SetTextBodyParagraph[] = [];
+  let lastSourceParagraph = 0;
+
+  for (const paragraphDiv of getParagraphElements(container)) {
+    const paragraphIndexAttr = paragraphDiv.dataset?.[PPTX_DATASET.paragraph];
+    const sourceParagraphIndex =
+      paragraphIndexAttr !== undefined ? Number(paragraphIndexAttr) : lastSourceParagraph;
+    lastSourceParagraph = sourceParagraphIndex;
+
+    const runs = readRunsFromParagraphElement(paragraphDiv, sourceParagraphIndex);
+    paragraphs.push({ sourceParagraphIndex, runs });
+  }
+
+  return paragraphs;
+}
+
+function readRunsFromParagraphElement(
+  paragraphDiv: HTMLElement,
+  defaultSourceParagraph: number,
+): SetTextBodyParagraph["runs"] {
+  const runs: SetTextBodyParagraph["runs"] = [];
+  let lastSourceRun: [number, number] | undefined;
+
+  for (const child of Array.from(paragraphDiv.childNodes)) {
+    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.bullet] !== undefined) {
+      continue;
+    }
+
+    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.run] !== undefined) {
+      const runIndex = Number(child.dataset[PPTX_DATASET.run]);
+      const sourceRun: [number, number] = [defaultSourceParagraph, runIndex];
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun });
+        lastSourceRun = sourceRun;
+      }
+    } else if (child instanceof HTMLBRElement) {
+      // Browsers insert <br> for empty paragraphs; skip.
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun: lastSourceRun });
+      }
+    } else if (child instanceof HTMLElement) {
+      const text = cleanText(child.textContent);
+      if (text.length > 0) {
+        runs.push({ text, sourceRun: lastSourceRun });
+      }
+    }
+  }
+
+  if (runs.length === 0) {
+    runs.push({ text: "", sourceRun: lastSourceRun });
+  }
+
+  return runs;
+}
+
+export function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
+  if (node.nodeType !== "shape") return false;
+  const shape = node as ShapeNodeData;
+  const paragraphs = shape.textBody?.paragraphs;
+  if (!paragraphs) return false;
+  if (paragraphs.length !== readBack.length) return true;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const origText = paragraphs[i].runs.map((run) => run.text ?? "").join("");
+    const newText = readBack[i].runs.map((run) => run.text).join("");
+    if (origText !== newText) return true;
+  }
+  return false;
 }

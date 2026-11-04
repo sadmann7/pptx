@@ -4,7 +4,6 @@ import type {
   EditOperation,
   NodePosition,
   ParagraphStyle,
-  SetTextBodyParagraph,
   ShapeNodeData,
   SlideNode,
   TextRange,
@@ -21,11 +20,33 @@ import {
   useZoom,
 } from "./context";
 import { useLatestRef } from "./hooks";
-import type { PrimitiveProps, StatefulPrimitiveProps } from "./render";
+import { Marquee } from "./marquee";
+import type { PrimitiveProps } from "./render";
 import { mergeRefs, renderElement } from "./render";
+import { ResizeHandle } from "./resize-handle";
+import { ROTATE_CURSOR, RotateHandle } from "./rotate-handle";
+import { SelectionBox } from "./selection-box";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./selection-channel";
+import { SelectionPartsContext } from "./selection-context";
+import type { GripDirection, Rect } from "./selection-geometry";
+import {
+  constrainMove,
+  DRAG_THRESHOLD,
+  GRIP_CURSORS,
+  getNodeRect,
+  getPasteboardOverhang,
+  getPointerAngle,
+  gripScale,
+  isBandDrag,
+  mergeSelection,
+  normalizeAngle,
+  ROTATION_STEP,
+  scaleRectFromGrip,
+  toggleSelection,
+} from "./selection-geometry";
 import type { SnapGuide as SnapGuideData } from "./snap";
 import { getUnionRect, SNAP_THRESHOLD, snapMove, snapResize } from "./snap";
+import { SnapGuide } from "./snap-guide";
 import type { ActiveTextStyle } from "./text-range";
 import {
   cleanText,
@@ -36,102 +57,19 @@ import {
   getParagraphText,
   getRangeRuns,
   getTextRange,
+  placeholderPromptOf,
+  readBackTextBody,
+  textBodyChanged,
+  textContainerOf,
 } from "./text-range";
-
-export { cleanText };
 
 const SELECTION_NAME = "Presentation.Selection";
 
 const ENABLE_DEBUG_LOG = false;
 
-const FRAME_GRAB_SIZE = 10;
-
-const FRAME_GRAB_INSET = FRAME_GRAB_SIZE / 2;
-
-/** Top, bottom, left, and right frame grab hitboxes straddling the selection border. */
-const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
-  {
-    left: -FRAME_GRAB_INSET,
-    right: -FRAME_GRAB_INSET,
-    top: -FRAME_GRAB_INSET,
-    height: FRAME_GRAB_SIZE,
-  },
-  {
-    left: -FRAME_GRAB_INSET,
-    right: -FRAME_GRAB_INSET,
-    bottom: -FRAME_GRAB_INSET,
-    height: FRAME_GRAB_SIZE,
-  },
-  {
-    left: -FRAME_GRAB_INSET,
-    top: FRAME_GRAB_INSET,
-    bottom: FRAME_GRAB_INSET,
-    width: FRAME_GRAB_SIZE,
-  },
-  {
-    right: -FRAME_GRAB_INSET,
-    top: FRAME_GRAB_INSET,
-    bottom: FRAME_GRAB_INSET,
-    width: FRAME_GRAB_SIZE,
-  },
-];
-
-/** Degrees Shift steps a rotation by. */
-export const ROTATION_STEP = 15;
-
-/** An angle in degrees, wrapped into [0, 360). */
-export function normalizeAngle(degrees: number): number {
-  const wrapped = ((degrees % 360) + 360) % 360;
-  // Snap floating-point noise (359.9999…) back to whole degrees' neighbors.
-  return Math.abs(wrapped - 360) < 1e-6 ? 0 : wrapped;
-}
-
-/** The pointer's angle around a center, in degrees, clockwise from the x axis. */
-function getPointerAngle(centerX: number, centerY: number, x: number, y: number): number {
-  return (Math.atan2(y - centerY, x - centerX) * 180) / Math.PI;
-}
-
-/** Minimum shape size (slide px) a resize can shrink to. */
-export const MIN_SIZE = 8;
-
-/** Screen-px movement before a pointer-down becomes a drag instead of a click. */
-export const DRAG_THRESHOLD = 3;
-
-const GRIP_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-export type GripDirection = (typeof GRIP_DIRECTIONS)[number];
-
-const GRIP_CURSORS: Record<GripDirection, string> = {
-  nw: "nwse-resize",
-  n: "ns-resize",
-  ne: "nesw-resize",
-  e: "ew-resize",
-  se: "nwse-resize",
-  s: "ns-resize",
-  sw: "nesw-resize",
-  w: "ew-resize",
-};
-
-const CORNER_GRIPS: ReadonlySet<GripDirection> = new Set(["nw", "ne", "se", "sw"]);
-
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
 function debugLog(...args: unknown[]): void {
   if (!ENABLE_DEBUG_LOG) return;
   console.debug("[pptx-selection]", ...args);
-}
-
-/**
- * Whether a press on empty canvas has travelled far enough to be a rubber band
- * rather than a click. Below the threshold nothing about the selection has
- * changed yet, so the band stays invisible and the handles stay up.
- */
-export function isBandDrag(startX: number, startY: number, curX: number, curY: number): boolean {
-  return Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
 }
 
 /**
@@ -188,272 +126,7 @@ function getIsRedoEvent(event: KeyboardEvent): boolean {
   return key === "z" && event.shiftKey;
 }
 
-/**
- * Applies a resize drag (slide-px deltas) to the original rect, clamped to
- * MIN_SIZE. With `lockAspect` (Shift held), corner handles scale both
- * dimensions proportionally around the opposite corner, like PowerPoint.
- */
-export function resizeRect(
-  origin: Rect,
-  grip: GripDirection,
-  dx: number,
-  dy: number,
-  lockAspect = false,
-): Rect {
-  let { x, y, w, h } = origin;
-
-  if (grip.includes("e")) w = origin.w + dx;
-  if (grip.includes("s")) h = origin.h + dy;
-  if (grip.includes("w")) {
-    w = origin.w - dx;
-    x = origin.x + dx;
-  }
-  if (grip.includes("n")) {
-    h = origin.h - dy;
-    y = origin.y + dy;
-  }
-
-  if (lockAspect && CORNER_GRIPS.has(grip) && origin.w > 0 && origin.h > 0) {
-    let scale =
-      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
-    scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
-    w = origin.w * scale;
-    h = origin.h * scale;
-    if (grip.includes("w")) x = origin.x + origin.w - w;
-    if (grip.includes("n")) y = origin.y + origin.h - h;
-    return { x, y, w, h };
-  }
-
-  if (w < MIN_SIZE) {
-    if (grip.includes("w")) x = origin.x + origin.w - MIN_SIZE;
-    w = MIN_SIZE;
-  }
-  if (h < MIN_SIZE) {
-    if (grip.includes("n")) y = origin.y + origin.h - MIN_SIZE;
-    h = MIN_SIZE;
-  }
-
-  return { x, y, w, h };
-}
-
-/**
- * Applies a move drag (slide-px deltas). With `lockAxis` (Shift held) the
- * larger delta wins and the other is dropped, so the shape travels straight
- * along one axis like PowerPoint. Ties keep the horizontal delta.
- */
-export function constrainMove(dx: number, dy: number, lockAxis = false): NodePosition {
-  if (!lockAxis) return { x: dx, y: dy };
-  return Math.abs(dx) >= Math.abs(dy) ? { x: dx, y: 0 } : { x: 0, y: dy };
-}
-
-/**
- * Union of an existing selection and the ids a marquee just enclosed, in
- * selection order. Additive banding only ever grows the selection: unlike
- * Shift+click it does not toggle an already selected shape back out, which
- * would otherwise drop shapes the band swept over.
- */
-export function mergeSelection(baseIds: string[], addedIds: string[]): string[] {
-  const baseIdsSet = new Set(baseIds);
-  return [...baseIds, ...addedIds.filter((id) => !baseIdsSet.has(id))];
-}
-
-/**
- * Shift/Ctrl+click semantics: add the shape to the selection, or take it back
- * out when it is already selected.
- */
-export function toggleSelection(selectedIds: string[], nodeId: string): string[] {
-  return selectedIds.includes(nodeId)
-    ? selectedIds.filter((id) => id !== nodeId)
-    : [...selectedIds, nodeId];
-}
-
-export function getNodeRect(node: SlideNode): Rect {
-  return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
-}
-
-/** Factors a resize drag scaled the dragged shape by, per axis. */
-export interface ResizeScale {
-  x: number;
-  y: number;
-}
-
-/**
- * How much a resize drag scaled the shape whose handle was grabbed. A side
- * handle leaves the other axis at 1, and a zero-extent axis cannot define a
- * factor, so it reports 1 rather than dividing by zero.
- */
-export function gripScale(
-  origin: Rect,
-  grip: GripDirection,
-  dx: number,
-  dy: number,
-  lockAspect = false,
-): ResizeScale {
-  const next = resizeRect(origin, grip, dx, dy, lockAspect);
-  return {
-    x: origin.w === 0 ? 1 : next.w / origin.w,
-    y: origin.h === 0 ? 1 : next.h / origin.h,
-  };
-}
-
-/**
- * Scales a rect by the factors the dragged shape was scaled by, anchored at the
- * edges opposite the grip, matching `resizeRect`.
- *
- * PowerPoint resizes every shape in a multi-selection when one shape's handle
- * is dragged, but it scales each in place: the gaps between them do not scale,
- * which is why scaling a layout proportionally needs Scale Height/Width in the
- * Size pane instead. Applied to the dragged shape itself this reproduces
- * `resizeRect` exactly, clamps included.
- */
-export function scaleRectFromGrip(rect: Rect, grip: GripDirection, scale: ResizeScale): Rect {
-  const w = Math.max(MIN_SIZE, rect.w * scale.x);
-  const h = Math.max(MIN_SIZE, rect.h * scale.y);
-  return {
-    x: grip.includes("w") ? rect.x + rect.w - w : rect.x,
-    y: grip.includes("n") ? rect.y + rect.h - h : rect.y,
-    w,
-    h,
-  };
-}
-
-export interface PasteboardOverhang {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
-
-/**
- * How far the slide's nodes overhang each slide edge, in slide-space px.
- * Zero on every side when all shapes sit within the slide bounds. Used to
- * size the pasteboard area around the slide in edit mode: both the visible
- * margin (so off-slide shapes stay scrollable into view) and the selection
- * event surface (so they stay clickable).
- */
-export function getPasteboardOverhang(
-  nodes: SlideNode[],
-  slideWidth: number,
-  slideHeight: number,
-): PasteboardOverhang {
-  const overhang = { left: 0, top: 0, right: 0, bottom: 0 };
-  for (const node of nodes) {
-    let { x, y, w, h } = getNodeRect(node);
-    if (node.rotation !== 0) {
-      const radians = (node.rotation * Math.PI) / 180;
-      const halfW = (Math.abs(Math.cos(radians)) * w + Math.abs(Math.sin(radians)) * h) / 2;
-      const halfH = (Math.abs(Math.sin(radians)) * w + Math.abs(Math.cos(radians)) * h) / 2;
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-      x = cx - halfW;
-      y = cy - halfH;
-      w = halfW * 2;
-      h = halfH * 2;
-    }
-    overhang.left = Math.max(overhang.left, -x);
-    overhang.top = Math.max(overhang.top, -y);
-    overhang.right = Math.max(overhang.right, x + w - slideWidth);
-    overhang.bottom = Math.max(overhang.bottom, y + h - slideHeight);
-  }
-  return overhang;
-}
-
-function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
-  // Empty placeholders also render a prompt overlay ("Click to add text")
-  // whose paragraphs carry the paragraph attribute; skip it: only the real
-  // text container is editable.
-  for (const paragraphElement of Array.from(
-    shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
-  )) {
-    if (paragraphElement.closest(`[${PPTX_ATTRS.placeholderPrompt}]`)) continue;
-    return paragraphElement.parentElement;
-  }
-  return null;
-}
-
-function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
-  return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
-}
-
-/**
- * Walks the edited contentEditable container and produces a `setTextBody`
- * paragraphs payload. Uses the paragraph/run data attributes (see
- * `PPTX_ATTRS`) to map back to source indices for style inheritance.
- */
-export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
-  const paragraphs: SetTextBodyParagraph[] = [];
-  let lastSourceParagraph = 0;
-
-  for (const paragraphDiv of getParagraphElements(container)) {
-    const paragraphIndexAttr = paragraphDiv.dataset?.[PPTX_DATASET.paragraph];
-    const sourceParagraphIndex =
-      paragraphIndexAttr !== undefined ? Number(paragraphIndexAttr) : lastSourceParagraph;
-    lastSourceParagraph = sourceParagraphIndex;
-
-    const runs = readRunsFromParagraphElement(paragraphDiv, sourceParagraphIndex);
-    paragraphs.push({ sourceParagraphIndex, runs });
-  }
-
-  return paragraphs;
-}
-
-function readRunsFromParagraphElement(
-  paragraphDiv: HTMLElement,
-  defaultSourceParagraph: number,
-): SetTextBodyParagraph["runs"] {
-  const runs: SetTextBodyParagraph["runs"] = [];
-  let lastSourceRun: [number, number] | undefined;
-
-  for (const child of Array.from(paragraphDiv.childNodes)) {
-    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.bullet] !== undefined) {
-      continue;
-    }
-
-    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.run] !== undefined) {
-      const runIndex = Number(child.dataset[PPTX_DATASET.run]);
-      const sourceRun: [number, number] = [defaultSourceParagraph, runIndex];
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun });
-        lastSourceRun = sourceRun;
-      }
-    } else if (child instanceof HTMLBRElement) {
-      // Browsers insert <br> for empty paragraphs; skip.
-    } else if (child.nodeType === Node.TEXT_NODE) {
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun: lastSourceRun });
-      }
-    } else if (child instanceof HTMLElement) {
-      const text = cleanText(child.textContent);
-      if (text.length > 0) {
-        runs.push({ text, sourceRun: lastSourceRun });
-      }
-    }
-  }
-
-  if (runs.length === 0) {
-    runs.push({ text: "", sourceRun: lastSourceRun });
-  }
-
-  return runs;
-}
-
-export function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
-  if (node.nodeType !== "shape") return false;
-  const shape = node as ShapeNodeData;
-  const paragraphs = shape.textBody?.paragraphs;
-  if (!paragraphs) return false;
-  if (paragraphs.length !== readBack.length) return true;
-  for (let i = 0; i < paragraphs.length; i++) {
-    const origText = paragraphs[i].runs.map((run) => run.text ?? "").join("");
-    const newText = readBack[i].runs.map((run) => run.text).join("");
-    if (origText !== newText) return true;
-  }
-  return false;
-}
-
-type InternalState =
+export type InternalState =
   | { mode: "idle" }
   | { mode: "selected"; nodeIds: string[] }
   | {
@@ -2399,6 +2072,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             bottom: -pasteboard.bottom * zoom,
             // In text mode let clicks through to the contentEditable element.
             pointerEvents: isTextMode ? "none" : "auto",
+            // A drag captures the pointer onto the overlay, so the handle's
+            // cursor has to come along or it reverts mid-drag.
+            cursor:
+              state.mode === "rotate"
+                ? ROTATE_CURSOR
+                : state.mode === "resize"
+                  ? GRIP_CURSORS[state.grip]
+                  : undefined,
             outline: "none",
             touchAction: "none",
           },
@@ -2473,424 +2154,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   );
 });
 
-// ---------------------------------------------------------------------------
-// Overlay parts
-// ---------------------------------------------------------------------------
-
-/**
- * What the overlay hands its parts. Internal: each part exposes only its own
- * state, so the overlay's interaction state stays free to change.
- */
-interface SelectionPartsContextValue {
-  state: InternalState;
-  zoom: number;
-  selectedNodes: SlideNode[];
-  resizeScale: ResizeScale | null;
-  /**
-   * False mid-band: the handles are unreachable then (the pointer is captured)
-   * and would sit under the rubber band. Until the band starts, the press is
-   * still a click and must not blink the handles of what is already selected.
-   */
-  showResizeHandles: boolean;
-  /** The slide-origin frame the parts are positioned in. */
-  frameRef: React.RefObject<HTMLDivElement | null>;
-  /** Slide size in slide pixels: snap guides run across all of it. */
-  slideWidth: number;
-  slideHeight: number;
-  onGripPointerDown: (
-    event: React.PointerEvent<HTMLDivElement>,
-    grip: GripDirection,
-    nodeId: string,
-  ) => void;
-  onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onRotatePointerDown: (event: React.PointerEvent<HTMLDivElement>, nodeId: string) => void;
-}
-
-const SelectionPartsContext = React.createContext<SelectionPartsContextValue | null>(null);
-
-function useSelectionParts(partName: string): SelectionPartsContextValue {
-  const context = React.useContext(SelectionPartsContext);
-  if (!context) {
-    throw new Error(`\`${partName}\` must be used within \`Presentation.Selection\`.`);
-  }
-  return context;
-}
-
-interface SelectionBoxContextValue {
-  node: SlideNode;
-  /** The outline's current angle, including a rotation in progress. */
-  rotation: number;
-  showHandles: boolean;
-  showRotateHandle: boolean;
-}
-
-const SelectionBoxContext = React.createContext<SelectionBoxContextValue | null>(null);
-
-const SELECTION_BOX_NAME = "Presentation.SelectionBox";
-const RESIZE_HANDLE_NAME = "Presentation.ResizeHandle";
-const ROTATE_HANDLE_NAME = "Presentation.RotateHandle";
-const SNAP_GUIDE_NAME = "Presentation.SnapGuide";
-const MARQUEE_NAME = "Presentation.Marquee";
-
-/** The current state of one selection outline. */
-export interface SelectionBoxState {
-  /** The selected shape the outline belongs to. */
-  node: SlideNode;
-
-  /** Interaction mode of the overlay. `"text"` while the shape's text is edited. */
-  mode: SelectionState["mode"];
-
-  /** Whether the selection is being dragged. */
-  dragging: boolean;
-
-  /** Whether the selection is being rotated. */
-  rotating: boolean;
-
-  /** The outline's angle in degrees, including a rotation in progress. */
-  rotation: number;
-}
-
-export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", SelectionBoxState> {}
-
-/**
- * The outline around each selected shape. Rendered once per selected shape,
- * following it through moves, resizes, and rotation.
- *
- * Place inside `Presentation.Selection`, with `Presentation.ResizeHandle`
- * inside it for handles.
- *
- * Carries `data-selection-box`, `data-mode`, `data-dragging`, and
- * `data-rotating`.
- */
-export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
-  function SelectionBox(
-    { render, className, style, children, ...selectionBoxProps },
-    forwardedRef,
-  ) {
-    const { state, zoom, selectedNodes, resizeScale, showResizeHandles, onBorderPointerDown } =
-      useSelectionParts(SELECTION_BOX_NAME);
-
-    const isTextMode = state.mode === "text";
-    // Handles hide once a drag is actually under way, not merely on pointer-down:
-    // a press that only toggles the selection (Shift+click) would otherwise blink
-    // them off and back on.
-    const isDragging = state.mode === "move" && state.moved;
-    const isRotating = state.mode === "rotate";
-
-    return selectedNodes.map((node) => {
-      let rect = getNodeRect(node);
-      if (state.mode === "move" && state.moved) {
-        rect = { ...rect, x: rect.x + state.dx, y: rect.y + state.dy };
-      } else if (state.mode === "resize" && resizeScale) {
-        rect = scaleRectFromGrip(rect, state.grip, resizeScale);
-      }
-      const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
-      // Resizing works in slide axes, so a rotated shape has no resize handles.
-      const showHandles =
-        showResizeHandles && node.rotation === 0 && !isDragging && !isRotating && !isTextMode;
-      const showRotateHandle =
-        showResizeHandles &&
-        !isDragging &&
-        !isTextMode &&
-        state.mode !== "resize" &&
-        // PowerPoint doesn't rotate tables or charts.
-        node.nodeType !== "table" &&
-        node.nodeType !== "chart";
-      const boxState: SelectionBoxState = {
-        node,
-        mode: state.mode,
-        dragging: isDragging,
-        rotating: isRotating,
-        rotation,
-      };
-
-      return (
-        <SelectionBoxContext.Provider
-          key={node.id}
-          value={{ node, rotation, showHandles, showRotateHandle }}
-        >
-          {renderElement(
-            "div",
-            { render, className, style },
-            {
-              state: boxState,
-              ref: forwardedRef,
-              props: [
-                {
-                  "data-selection-box": "",
-                  "data-mode": state.mode,
-                  "data-dragging": isDragging ? "" : undefined,
-                  "data-rotating": isRotating ? "" : undefined,
-                  children: (
-                    <>
-                      {children}
-                      {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
-                    </>
-                  ),
-                  style: {
-                    position: "absolute",
-                    left: rect.x * zoom,
-                    top: rect.y * zoom,
-                    width: rect.w * zoom,
-                    height: rect.h * zoom,
-                    transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
-                    pointerEvents: "none",
-                  },
-                },
-                selectionBoxProps,
-              ],
-            },
-          )}
-        </SelectionBoxContext.Provider>
-      );
-    });
-  },
-);
-
-const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
-  nw: { left: 0, top: 0 },
-  n: { left: "50%", top: 0 },
-  ne: { left: "100%", top: 0 },
-  e: { left: "100%", top: "50%" },
-  se: { left: "100%", top: "100%" },
-  s: { left: "50%", top: "100%" },
-  sw: { left: 0, top: "100%" },
-  w: { left: 0, top: "50%" },
-};
-
-/** The current state of one resize handle. */
-export interface ResizeHandleState {
-  /** Which edge or corner the handle drags. */
-  direction: GripDirection;
-}
-
-export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeHandleState> {}
-
-/**
- * The resize handles of a selected shape: one per edge and corner, centered
- * on the outline. Hidden while dragging, editing text, and on rotated shapes.
- *
- * Unstyled when composed: give it a size, or it is a zero-size target.
- *
- * Place inside `Presentation.SelectionBox`. Carries `data-resize-grip`, set
- * to its direction.
- */
-export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
-  function ResizeHandle({ render, className, style, ...resizeHandleProps }, forwardedRef) {
-    const { onGripPointerDown } = useSelectionParts(RESIZE_HANDLE_NAME);
-    const box = React.useContext(SelectionBoxContext);
-    if (!box) {
-      throw new Error(`\`${RESIZE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
-    }
-    if (!box.showHandles) return null;
-
-    return GRIP_DIRECTIONS.map((direction) => (
-      <React.Fragment key={direction}>
-        {renderElement(
-          "div",
-          { render, className, style },
-          {
-            state: { direction },
-            ref: forwardedRef,
-            props: [
-              {
-                "aria-hidden": true,
-                "data-resize-grip": direction,
-                onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
-                  onGripPointerDown(event, direction, box.node.id),
-                style: {
-                  position: "absolute",
-                  ...GRIP_POSITIONS[direction],
-                  transform: "translate(-50%, -50%)",
-                  cursor: GRIP_CURSORS[direction],
-                  pointerEvents: "auto",
-                  touchAction: "none",
-                },
-              },
-              resizeHandleProps,
-            ],
-          },
-        )}
-      </React.Fragment>
-    ));
-  },
-);
-
-/** The current state of a rotate handle. */
-export interface RotateHandleState {
-  /** The shape's angle in degrees, including a rotation in progress. */
-  rotation: number;
-
-  /** Whether the shape is being rotated. */
-  rotating: boolean;
-}
-
-export interface RotateHandleProps extends StatefulPrimitiveProps<"div", RotateHandleState> {}
-
-/**
- * The rotation handle of a selected shape, above the middle of its top edge.
- * Drag it to rotate the selection around the shape's center; hold Shift to
- * step by 15°. Rotates with the outline, and is hidden while moving,
- * resizing, editing text, and on tables and charts.
- *
- * Its distance above the outline is `--presentation-rotate-handle-offset`
- * (20px by default). Unstyled when composed: give it a size.
- *
- * Place inside `Presentation.SelectionBox`. Carries `data-rotate-handle`, and
- * `data-rotating` while dragged.
- */
-export const RotateHandle = React.forwardRef<HTMLDivElement, RotateHandleProps>(
-  function RotateHandle({ render, className, style, ...rotateHandleProps }, forwardedRef) {
-    const { state, onRotatePointerDown } = useSelectionParts(ROTATE_HANDLE_NAME);
-    const box = React.useContext(SelectionBoxContext);
-    if (!box) {
-      throw new Error(`\`${ROTATE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
-    }
-    if (!box.showRotateHandle) return null;
-    const isRotating = state.mode === "rotate";
-
-    return renderElement(
-      "div",
-      { render, className, style },
-      {
-        state: { rotation: box.rotation, rotating: isRotating },
-        ref: forwardedRef,
-        props: [
-          {
-            "aria-hidden": true,
-            "data-rotate-handle": "",
-            "data-rotating": isRotating ? "" : undefined,
-            onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
-              onRotatePointerDown(event, box.node.id),
-            style: {
-              position: "absolute",
-              left: "50%",
-              top: "calc(-1 * var(--presentation-rotate-handle-offset, 20px))",
-              transform: "translate(-50%, -50%)",
-              cursor: isRotating ? "grabbing" : "grab",
-              pointerEvents: "auto",
-              touchAction: "none",
-            },
-          },
-          rotateHandleProps,
-        ],
-      },
-    );
-  },
-);
-
-/** The current state of one snap guide. */
-export interface SnapGuideState {
-  /** `"x"` for a vertical line, `"y"` for a horizontal one. */
-  axis: SnapGuideData["axis"];
-
-  /** Where the line sits on its axis, in slide pixels. */
-  position: number;
-}
-
-export interface SnapGuideProps extends StatefulPrimitiveProps<"div", SnapGuideState> {}
-
-/**
- * The guides shown while a move or resize snaps: one line per edge or center
- * that lined up, running across the whole slide.
- *
- * The element is the line itself, `--presentation-snap-guide-width` thick
- * (1px by default) and centered on the snapped position, so a background
- * color draws it.
- *
- * Place inside `Presentation.Selection`. Carries `data-snap-guide`, set to
- * its axis.
- */
-export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(function SnapGuide(
-  { render, className, style, ...snapGuideProps },
-  forwardedRef,
-) {
-  const { state, zoom, slideWidth, slideHeight } = useSelectionParts(SNAP_GUIDE_NAME);
-  if (state.mode !== "move" && state.mode !== "resize") return null;
-
-  return (state.guides ?? []).map((guide) => {
-    const isVertical = guide.axis === "x";
-    // Run the line across the whole slide, as editors do, rather than only
-    // between what lined up: a resize snaps the shape's own edge, and a short
-    // guide there would just look like its outline changing color. Reach past
-    // the slide for shapes that overhang it.
-    const start = Math.min(0, guide.start);
-    const end = Math.max(isVertical ? slideHeight : slideWidth, guide.end);
-    const length = (end - start) * zoom;
-    const thickness = "var(--presentation-snap-guide-width, 1px)";
-    return (
-      <React.Fragment key={`${guide.axis}:${guide.position}`}>
-        {renderElement(
-          "div",
-          { render, className, style },
-          {
-            state: { axis: guide.axis, position: guide.position },
-            ref: forwardedRef,
-            props: [
-              {
-                "aria-hidden": true,
-                "data-snap-guide": guide.axis,
-                style: {
-                  position: "absolute",
-                  left: isVertical ? guide.position * zoom : start * zoom,
-                  top: isVertical ? start * zoom : guide.position * zoom,
-                  width: isVertical ? thickness : length,
-                  height: isVertical ? length : thickness,
-                  transform: isVertical ? "translateX(-50%)" : "translateY(-50%)",
-                  pointerEvents: "none",
-                },
-              },
-              snapGuideProps,
-            ],
-          },
-        )}
-      </React.Fragment>
-    );
-  });
-});
-
-export interface MarqueeProps extends StatefulPrimitiveProps<"div", Record<string, never>> {}
-
-/**
- * The rubber band drawn while dragging across empty canvas to select.
- *
- * Place inside `Presentation.Selection`. Carries `data-marquee`.
- */
-export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function Marquee(
-  { render, className, style, ...marqueeProps },
-  forwardedRef,
-) {
-  const { state, frameRef } = useSelectionParts(MARQUEE_NAME);
-  if (state.mode !== "marquee") return null;
-  if (!isBandDrag(state.startX, state.startY, state.curX, state.curY)) return null;
-  // State coordinates are viewport-relative; the frame is the positioning context.
-  const origin = frameRef.current?.getBoundingClientRect();
-  if (!origin) return null;
-
-  return renderElement(
-    "div",
-    { render, className, style },
-    {
-      state: {},
-      ref: forwardedRef,
-      props: [
-        {
-          "data-marquee": "",
-          style: {
-            position: "absolute",
-            left: Math.min(state.startX, state.curX) - origin.left,
-            top: Math.min(state.startY, state.curY) - origin.top,
-            width: Math.abs(state.curX - state.startX),
-            height: Math.abs(state.curY - state.startY),
-            pointerEvents: "none",
-          },
-        },
-        marqueeProps,
-      ],
-    },
-  );
-});
-
 /**
  * The parts `Presentation.Selection` renders without children: the default
  * look, built from the same parts an app composes, themed through the
@@ -2932,62 +2195,7 @@ const DEFAULT_PARTS = (
   </>
 );
 
-interface FrameGrabHitboxesProps {
-  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
-}
-
-/**
- * Invisible grab hitboxes straddling the selection frame while editing text.
- * Dragging them moves the shape (PowerPoint: grab the frame to move).
- * Each hitbox extends both inward and outward from the border line.
- */
-function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
-  return (
-    <>
-      {FRAME_GRAB_HITBOXES.map((style, index) => (
-        <div
-          key={index}
-          aria-hidden="true"
-          data-border-move=""
-          onPointerDown={onPointerDown}
-          style={{
-            position: "absolute",
-            ...style,
-            cursor: "move",
-            pointerEvents: "auto",
-            touchAction: "none",
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
 export namespace Selection {
   export type State = SelectionState;
   export type Props = SelectionProps;
-}
-
-export namespace SelectionBox {
-  export type State = SelectionBoxState;
-  export type Props = SelectionBoxProps;
-}
-
-export namespace ResizeHandle {
-  export type State = ResizeHandleState;
-  export type Props = ResizeHandleProps;
-}
-
-export namespace RotateHandle {
-  export type State = RotateHandleState;
-  export type Props = RotateHandleProps;
-}
-
-export namespace SnapGuide {
-  export type State = SnapGuideState;
-  export type Props = SnapGuideProps;
-}
-
-export namespace Marquee {
-  export type Props = MarqueeProps;
 }

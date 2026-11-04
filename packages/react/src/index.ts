@@ -3,20 +3,12 @@ export * as Presentation from "./primitives";
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
-export type {
-  MarqueeProps,
-  ResizeHandleProps,
-  ResizeHandleState,
-  RotateHandleProps,
-  RotateHandleState,
-  SelectionBoxProps,
-  SelectionBoxState,
-  SelectionChangeEvent,
-  SelectionProps,
-  SelectionState,
-  SnapGuideProps,
-  SnapGuideState,
-} from "./selection";
+export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
+export type { MarqueeProps } from "./marquee";
+export type { ResizeHandleProps, ResizeHandleState } from "./resize-handle";
+export type { RotateHandleProps, RotateHandleState } from "./rotate-handle";
+export type { SelectionBoxProps, SelectionBoxState } from "./selection-box";
+export type { SnapGuideProps, SnapGuideState } from "./snap-guide";
 export type { SlideProps, SlideState } from "./slide";
 export type {
   ThumbnailItemNumberProps,

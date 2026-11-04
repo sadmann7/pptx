@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Presentation, useSelection } from "../index";
 import type { UseSelectionResult } from "../index";
-import { normalizeAngle } from "../selection";
+import { normalizeAngle } from "../selection-geometry";
 import { editableStore } from "./test-utils";
 
 async function renderOverlay(children?: React.ReactNode) {
@@ -250,6 +250,21 @@ describe("rotating", () => {
     expect(store.getActiveSlide()!.nodes.map((node) => node.rotation)).toEqual([0, 0]);
   });
 
+  it("shows the rotate cursor on the handle and keeps it through the drag", async () => {
+    const { overlay, handle, drag } = await renderRotatable();
+    expect(handle.style.cursor).toContain("--presentation-rotate-cursor");
+    expect(overlay.style.cursor).toBe("");
+
+    drag(45);
+    // The drag captures the pointer onto the overlay, which takes the cursor.
+    expect(overlay.style.cursor).toContain("--presentation-rotate-cursor");
+
+    await act(async () => {
+      fireEvent.pointerUp(overlay, { pointerId: 1 });
+    });
+    expect(overlay.style.cursor).toBe("");
+  });
+
   it("steps by 15 degrees with Shift held", async () => {
     const { store, overlay, drag } = await renderRotatable();
     drag(50, { shiftKey: true });
@@ -328,6 +343,9 @@ describe("snap guides", () => {
     act(() => {
       fireEvent.pointerMove(overlay, { clientX: 81 * zoom, clientY: 0, buttons: 1, pointerId: 1 });
     });
+
+    // The resize cursor follows the captured pointer onto the overlay.
+    expect(overlay.style.cursor).toBe("ew-resize");
 
     const guide = container.querySelector<HTMLElement>('[data-snap-guide="x"]')!;
     expect(guide.style.left).toBe(`${500 * zoom}px`);
