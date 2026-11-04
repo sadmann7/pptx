@@ -3,12 +3,12 @@ export * as Presentation from "./primitives";
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
-export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection";
-export type { MarqueeProps } from "./marquee";
-export type { ResizeHandleProps, ResizeHandleState } from "./resize-handle";
-export type { RotateHandleProps, RotateHandleState } from "./rotate-handle";
-export type { SelectionBoxProps, SelectionBoxState } from "./selection-box";
-export type { SnapGuideProps, SnapGuideState } from "./snap-guide";
+export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection/selection";
+export type { MarqueeProps } from "./selection/marquee";
+export type { ResizeHandleProps, ResizeHandleState } from "./selection/resize-handle";
+export type { RotateHandleProps, RotateHandleState } from "./selection/rotate-handle";
+export type { SelectionBoxProps, SelectionBoxState } from "./selection/selection-box";
+export type { SnapGuideProps, SnapGuideState } from "./selection/snap-guide";
 export type { SlideProps, SlideState } from "./slide";
 export type {
   ThumbnailItemNumberProps,
@@ -42,9 +42,9 @@ export type {
 
 export type { ComponentRenderFn, RenderProp } from "./render";
 
-export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection-channel";
-export type { UseSelectionResult } from "./selection-channel";
-export type { ActiveTextStyle } from "./text-range";
+export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection/channel";
+export type { UseSelectionResult } from "./selection/channel";
+export type { ActiveTextStyle } from "./selection/text-range";
 
 export type {
   AutoFitPadding,

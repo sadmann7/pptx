@@ -1,10 +1,10 @@
 import * as React from "react";
 
-import type { StatefulPrimitiveProps } from "./render";
-import { renderElement } from "./render";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./selection-context";
-import type { GripDirection } from "./selection-geometry";
-import { GRIP_CURSORS, GRIP_DIRECTIONS } from "./selection-geometry";
+import type { StatefulPrimitiveProps } from "../render";
+import { renderElement } from "../render";
+import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
+import type { GripDirection } from "./geometry";
+import { GRIP_CURSORS, GRIP_DIRECTIONS } from "./geometry";
 
 const RESIZE_HANDLE_NAME = "Presentation.ResizeHandle";
 

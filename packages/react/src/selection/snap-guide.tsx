@@ -1,8 +1,8 @@
 import * as React from "react";
 
-import type { StatefulPrimitiveProps } from "./render";
-import { renderElement } from "./render";
-import { useSelectionParts } from "./selection-context";
+import type { StatefulPrimitiveProps } from "../render";
+import { renderElement } from "../render";
+import { useSelectionParts } from "./context";
 import type { SnapGuide as SnapGuideData } from "./snap";
 
 const SNAP_GUIDE_NAME = "Presentation.SnapGuide";

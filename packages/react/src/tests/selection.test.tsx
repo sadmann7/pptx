@@ -6,8 +6,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
-import type { SelectionChangeEvent } from "../selection";
-import type { GripDirection, Rect } from "../selection-geometry";
+import type { GripDirection, Rect } from "../selection/geometry";
 import {
   constrainMove,
   getNodeRect,
@@ -17,9 +16,10 @@ import {
   resizeRect,
   scaleRectFromGrip,
   toggleSelection,
-} from "../selection-geometry";
+} from "../selection/geometry";
+import type { SelectionChangeEvent } from "../selection/selection";
+import { cleanText, readBackTextBody, textBodyChanged } from "../selection/text-range";
 import { createStore } from "../store";
-import { cleanText, readBackTextBody, textBodyChanged } from "../text-range";
 import { editableStore } from "./test-utils";
 
 /**

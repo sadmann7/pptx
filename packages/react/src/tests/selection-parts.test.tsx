@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Presentation, useSelection } from "../index";
 import type { UseSelectionResult } from "../index";
-import { normalizeAngle } from "../selection-geometry";
+import { normalizeAngle } from "../selection/geometry";
 import { editableStore } from "./test-utils";
 
 async function renderOverlay(children?: React.ReactNode) {

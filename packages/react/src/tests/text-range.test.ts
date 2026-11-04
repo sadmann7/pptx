@@ -7,7 +7,7 @@ import {
   getParagraphText,
   getTextPosition,
   getTextRange,
-} from "../text-range";
+} from "../selection/text-range";
 
 /** A rendered text container: paragraphs of run spans, as the renderer emits them. */
 function textContainer(html: string): HTMLElement {

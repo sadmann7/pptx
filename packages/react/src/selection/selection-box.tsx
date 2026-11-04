@@ -2,11 +2,11 @@ import * as React from "react";
 
 import type { SlideNode } from "@diceui/pptx-core";
 
-import type { StatefulPrimitiveProps } from "./render";
-import { renderElement } from "./render";
+import type { StatefulPrimitiveProps } from "../render";
+import { renderElement } from "../render";
+import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
+import { getNodeRect, normalizeAngle, scaleRectFromGrip } from "./geometry";
 import type { SelectionState } from "./selection";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./selection-context";
-import { getNodeRect, normalizeAngle, scaleRectFromGrip } from "./selection-geometry";
 
 const FRAME_GRAB_SIZE = 10;
 

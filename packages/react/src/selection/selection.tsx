@@ -18,17 +18,13 @@ import {
   useSlideRevision,
   useStoreContext,
   useZoom,
-} from "./context";
-import { useLatestRef } from "./hooks";
-import { Marquee } from "./marquee";
-import type { PrimitiveProps } from "./render";
-import { mergeRefs, renderElement } from "./render";
-import { ResizeHandle } from "./resize-handle";
-import { ROTATE_CURSOR, RotateHandle } from "./rotate-handle";
-import { SelectionBox } from "./selection-box";
-import { getIsKeepSelectionTarget, getSelectionChannel } from "./selection-channel";
-import { SelectionPartsContext } from "./selection-context";
-import type { GripDirection, Rect } from "./selection-geometry";
+} from "../context";
+import { useLatestRef } from "../hooks";
+import type { PrimitiveProps } from "../render";
+import { mergeRefs, renderElement } from "../render";
+import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
+import { SelectionPartsContext } from "./context";
+import type { GripDirection, Rect } from "./geometry";
 import {
   constrainMove,
   DRAG_THRESHOLD,
@@ -43,7 +39,11 @@ import {
   ROTATION_STEP,
   scaleRectFromGrip,
   toggleSelection,
-} from "./selection-geometry";
+} from "./geometry";
+import { Marquee } from "./marquee";
+import { ResizeHandle } from "./resize-handle";
+import { ROTATE_CURSOR, RotateHandle } from "./rotate-handle";
+import { SelectionBox } from "./selection-box";
 import type { SnapGuide as SnapGuideData } from "./snap";
 import { getUnionRect, SNAP_THRESHOLD, snapMove, snapResize } from "./snap";
 import { SnapGuide } from "./snap-guide";

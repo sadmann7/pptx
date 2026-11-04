@@ -1,9 +1,9 @@
 import * as React from "react";
 
-import type { StatefulPrimitiveProps } from "./render";
-import { renderElement } from "./render";
-import { useSelectionParts } from "./selection-context";
-import { isBandDrag } from "./selection-geometry";
+import type { StatefulPrimitiveProps } from "../render";
+import { renderElement } from "../render";
+import { useSelectionParts } from "./context";
+import { isBandDrag } from "./geometry";
 
 const MARQUEE_NAME = "Presentation.Marquee";
 

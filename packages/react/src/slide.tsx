@@ -14,7 +14,7 @@ import {
 import { useLatestRef, useLazyRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
-import { getPasteboardOverhang } from "./selection-geometry";
+import { getPasteboardOverhang } from "./selection/geometry";
 import type { PresentationStatus } from "./store";
 
 const SLIDE_NAME = "Presentation.Slide";

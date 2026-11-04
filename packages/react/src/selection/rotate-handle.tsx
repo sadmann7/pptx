@@ -1,8 +1,8 @@
 import * as React from "react";
 
-import type { StatefulPrimitiveProps } from "./render";
-import { renderElement } from "./render";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./selection-context";
+import type { StatefulPrimitiveProps } from "../render";
+import { renderElement } from "../render";
+import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
 
 /** A circular arrow, outlined in white so it reads on any background. */
 const ROTATE_CURSOR_SVG =

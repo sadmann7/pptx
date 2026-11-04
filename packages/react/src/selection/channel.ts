@@ -2,9 +2,9 @@ import * as React from "react";
 
 import type { ParagraphStyle, SlideNode, TextStyle } from "@diceui/pptx-core";
 
-import { useSlide, useStoreContext } from "./context";
+import { useSlide, useStoreContext } from "../context";
+import type { Store } from "../store";
 import type { SelectionState } from "./selection";
-import type { Store } from "./store";
 import type { ActiveTextStyle } from "./text-range";
 
 /**

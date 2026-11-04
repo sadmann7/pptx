@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getUnionRect, snapMove, snapResize } from "../snap";
+import { getUnionRect, snapMove, snapResize } from "../selection/snap";
 
 const SLIDE = { x: 0, y: 0, w: 960, h: 540 };
 const BOX = { x: 100, y: 100, w: 100, h: 50 };

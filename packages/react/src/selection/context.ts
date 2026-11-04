@@ -8,8 +8,8 @@ import * as React from "react";
 
 import type { SlideNode } from "@diceui/pptx-core";
 
+import type { GripDirection, ResizeScale } from "./geometry";
 import type { InternalState } from "./selection";
-import type { GripDirection, ResizeScale } from "./selection-geometry";
 
 /**
  * What the overlay hands its parts. Internal: each part exposes only its own
