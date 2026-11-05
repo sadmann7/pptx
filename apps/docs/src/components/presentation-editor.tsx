@@ -110,27 +110,28 @@ import {
   AlignVerticalJustifyCenterIcon,
   AlignVerticalJustifyEndIcon,
   AlignVerticalJustifyStartIcon,
+  BanIcon,
   BaselineIcon,
   BetweenHorizontalEndIcon,
   BetweenHorizontalStartIcon,
   BetweenVerticalEndIcon,
   BetweenVerticalStartIcon,
   BoldIcon,
+  CheckIcon,
   CopyPlusIcon,
   DownloadIcon,
   FolderOpenIcon,
   Grid2x2PlusIcon,
-  Grid3x3Icon,
   ImageIcon,
   ItalicIcon,
   LayersIcon,
   MinusIcon,
   PaintBucketIcon,
+  PencilLineIcon,
   PlusIcon,
   PresentationIcon,
   Redo2Icon,
   ShapesIcon,
-  SquareDashedIcon,
   StrikethroughIcon,
   TableCellsMergeIcon,
   TableCellsSplitIcon,
@@ -153,17 +154,18 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
 };
 
+/** Tailwind's palette, as in shadcn/ui, in hex since slides store sRGB. */
 const COLORS = [
   { name: "Black", value: "#000000" },
-  { name: "Gray", value: "#6B7280" },
+  { name: "Neutral", value: "#737373" },
   { name: "White", value: "#FFFFFF" },
-  { name: "Red", value: "#DC2626" },
-  { name: "Orange", value: "#EA580C" },
-  { name: "Yellow", value: "#CA8A04" },
-  { name: "Green", value: "#16A34A" },
-  { name: "Blue", value: "#2563EB" },
-  { name: "Purple", value: "#7C3AED" },
-  { name: "Pink", value: "#DB2777" },
+  { name: "Red", value: "#E7000B" },
+  { name: "Orange", value: "#FF6900" },
+  { name: "Amber", value: "#FE9A00" },
+  { name: "Green", value: "#00A63E" },
+  { name: "Blue", value: "#155DFC" },
+  { name: "Violet", value: "#7F22FE" },
+  { name: "Pink", value: "#E60076" },
 ];
 
 const ALIGNMENTS = [
@@ -460,6 +462,7 @@ function ColorMenu({
   noneLabel,
   onNone,
 }: ColorMenuProps) {
+  const current = value?.toUpperCase() ?? null;
   return (
     <DropdownMenu modal={false}>
       <ToolbarMenuTrigger label={label} disabled={disabled} className="relative">
@@ -471,26 +474,45 @@ function ColorMenu({
         />
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label={label} className="w-auto">
-        <div className="grid grid-cols-5 gap-1 p-1">
+        {onNone && (
+          <>
+            <DropdownMenuItem onClick={onNone}>
+              <BanIcon />
+              {noneLabel}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <div className="grid grid-cols-5 gap-1.5 p-1">
           {COLORS.map((color) => (
             <DropdownMenuItem
               key={color.value}
               aria-label={color.name}
-              className="size-6 rounded-full border p-0 focus:ring-2 focus:ring-ring"
+              title={color.name}
+              className="size-6 justify-center rounded-full p-0 ring-1 ring-foreground/10 transition-transform duration-150 ease-out ring-inset hover:scale-[1.08] focus-visible:ring-2 focus-visible:ring-ring active:scale-95 motion-reduce:transition-none"
               style={{ backgroundColor: color.value }}
               onClick={() => onSelect(color.value)}
-            />
+            >
+              {current === color.value && (
+                <CheckIcon
+                  className={cn("size-3.5", getIsLight(color.value) ? "text-black" : "text-white")}
+                />
+              )}
+            </DropdownMenuItem>
           ))}
         </div>
-        {onNone && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onNone}>{noneLabel}</DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+/** Whether a check mark on the color reads better in black than in white. */
+function getIsLight(hex: string): boolean {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
 function FontSelect({
@@ -907,7 +929,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
               {outlined.length > 0 && (
                 <ColorMenu
                   label="Outline"
-                  icon={SquareDashedIcon}
+                  icon={PencilLineIcon}
                   onSelect={(color) =>
                     editNodes(outlined, (nodeId) => ({
                       type: "setOutline",
@@ -977,8 +999,8 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 onNone={() => run(() => setTableCellStyle({ fill: null }))}
               />
               <ColorMenu
-                label="Borders"
-                icon={Grid3x3Icon}
+                label="Border color"
+                icon={PencilLineIcon}
                 onSelect={(color) => run(() => setTableCellStyle({ borders: { color } }))}
                 noneLabel="No borders"
                 onNone={() => run(() => setTableCellStyle({ borders: null }))}
@@ -1630,7 +1652,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
             {outlined.length > 0 && slideId && (
               <ColorMenu
                 label="Outline"
-                icon={SquareDashedIcon}
+                icon={PencilLineIcon}
                 onSelect={(color) =>
                   editNodes(outlined, (nodeId) => ({
                     type: "setOutline",
