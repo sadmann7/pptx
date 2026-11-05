@@ -1036,6 +1036,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
   const actions = useSlideActions(store);
   const [menuSlideId, setMenuSlideId] = React.useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuItemRef = React.useRef<HTMLElement | null>(null);
 
   /**
@@ -1093,7 +1094,12 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
           {() => (
             <>
               {orderedIds.map((slideId) => (
-                <SortableThumbnailItem key={slideId} slideId={slideId} actions={actions} />
+                <SortableThumbnailItem
+                  key={slideId}
+                  slideId={slideId}
+                  actions={actions}
+                  isMenuOpen={isMenuOpen && slideId === menuSlideId}
+                />
               ))}
               <DragOverlay dropAnimation={DROP_ANIMATION}>
                 {draggedId ? (
@@ -1115,7 +1121,13 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   );
 
   return (
-    <ContextMenu>
+    <ContextMenu
+      onOpenChange={(open, { reason }) => {
+        setIsMenuOpen(open);
+        // The click outside moves focus itself; returning it first would flash the ring.
+        if (reason === "outside-press") menuItemRef.current = null;
+      }}
+    >
       <ContextMenuTrigger
         className="contents"
         onContextMenuCapture={(event) => {
@@ -1279,9 +1291,10 @@ function SlideMenuContent({
 interface SortableThumbnailItemProps {
   slideId: string;
   actions: SlideActions;
+  isMenuOpen: boolean;
 }
 
-function SortableThumbnailItem({ slideId, actions }: SortableThumbnailItemProps) {
+function SortableThumbnailItem({ slideId, actions, isMenuOpen }: SortableThumbnailItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slideId,
   });
@@ -1298,7 +1311,8 @@ function SortableThumbnailItem({ slideId, actions }: SortableThumbnailItemProps)
       style={{ transform: CSS.Transform.toString(transform), transition }}
       // The overlay carries the thumbnail during the drag, so what stays in the
       // list is just the slot it will land in.
-      className={isDragging ? "opacity-30" : undefined}
+      // The menu takes focus while open; keep the ring on the slide it acts on.
+      className={cn(isDragging && "opacity-30", isMenuOpen && "ring-ring")}
       onSelect={(event) => {
         // Pressing a thumbnail focuses it, and focus navigates. Suppress that
         // while dragging so the deck does not jump mid-gesture.
