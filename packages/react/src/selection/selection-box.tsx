@@ -60,16 +60,6 @@ export interface SelectionBoxState {
 
 export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", SelectionBoxState> {}
 
-/**
- * The outline around each selected shape. Rendered once per selected shape,
- * following it through moves, resizes, and rotation.
- *
- * Place inside `Presentation.Selection`, with `Presentation.ResizeHandle`
- * inside it for handles.
- *
- * Carries `data-selection-box`, `data-mode`, `data-dragging`, and
- * `data-rotating`.
- */
 export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
   function SelectionBox(
     { render, className, style, children, ...selectionBoxProps },

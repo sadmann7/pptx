@@ -120,13 +120,6 @@ export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   onZoomChange?: (event: ZoomChangeEvent) => void;
 }
 
-/**
- * Scrollable container that centers the slide and optionally auto-fits it
- * to the available space.
- *
- * Native `<div>` props are composed (not overwritten) with internals.
- * Place `<Presentation.Slide>` inside to render the current slide.
- */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   {
     autoFit = false,

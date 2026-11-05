@@ -9,13 +9,6 @@ const MARQUEE_NAME = "Presentation.Marquee";
 
 export interface MarqueeProps extends StatefulPrimitiveProps<"div", Record<string, never>> {}
 
-/**
- * The rubber band drawn while dragging across empty canvas to select, or
- * while drawing a new text box or shape with a draw tool.
- *
- * Place inside `Presentation.Selection`. Carries `data-marquee`, and
- * `data-draw` while drawing.
- */
 export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function Marquee(
   { render, className, style, ...marqueeProps },
   forwardedRef,

@@ -56,16 +56,6 @@ export interface ResizeHandleState {
 
 export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeHandleState> {}
 
-/**
- * The resize handles of a selected shape: one per edge and corner, centered
- * on the outline. On a shape too small to grab between them they sit just
- * outside it, and a flat line shows only its two ends. Hidden while dragging.
- *
- * Unstyled when composed: give it a size, or it is a zero-size target.
- *
- * Place inside `Presentation.SelectionBox`. Carries `data-resize-handle`, set
- * to its direction.
- */
 export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
   function ResizeHandle({ render, className, style, ...resizeHandleProps }, forwardedRef) {
     const { onGripPointerDown } = useSelectionParts(RESIZE_HANDLE_NAME);

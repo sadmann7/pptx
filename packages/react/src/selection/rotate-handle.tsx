@@ -23,18 +23,6 @@ export interface RotateHandleState {
 
 export interface RotateHandleProps extends StatefulPrimitiveProps<"div", RotateHandleState> {}
 
-/**
- * The rotation handle of a selected shape, above the middle of its top edge.
- * Drag it to rotate the selection around the shape's center; hold Shift to
- * step by 15°. Rotates with the outline, and is hidden while moving or
- * resizing, and on tables and charts.
- *
- * Its distance above the outline is `--presentation-rotate-handle-offset`
- * (20px by default). Unstyled when composed: give it a size.
- *
- * Place inside `Presentation.SelectionBox`. Carries `data-rotate-handle`, and
- * `data-rotating` while dragged.
- */
 export const RotateHandle = React.forwardRef<HTMLDivElement, RotateHandleProps>(
   function RotateHandle({ render, className, style, ...rotateHandleProps }, forwardedRef) {
     const { state, onRotatePointerDown } = useSelectionParts(ROTATE_HANDLE_NAME);

@@ -244,19 +244,6 @@ export interface ThumbnailListProps extends Omit<
     | (() => boolean | void | HTMLElement | null);
 }
 
-/**
- * Scrollable `listbox` container listing all slide thumbnails.
- * Renders nothing until the presentation is `"ready"`.
- *
- * All slide buttons are mounted immediately (cheap empty containers).
- * Thumbnail content is rendered lazily; each preview uses an
- * IntersectionObserver with a generous `rootMargin` so content fills in
- * before the element scrolls into view. For normal scrolling the transition
- * is invisible; rapid drag may briefly reveal a pending placeholder.
- *
- * Handles keyboard navigation (↑↓ / Home / End) with roving focus so only
- * the active item lives in the tab order at any time.
- */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList(
     { render, children, loop = false, initialFocus = false, ...thumbnailListProps },
@@ -603,9 +590,6 @@ export interface ThumbnailItemProps extends Omit<
   decorative?: boolean;
 }
 
-/**
- * Clickable `option` button for a single slide in a `ThumbnailList`.
- */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
     { slideId, children, render, onSelect, decorative = false, ...thumbnailItemProps },
@@ -749,14 +733,6 @@ export interface ThumbnailItemPreviewProps extends PrimitiveProps<
   ThumbnailItemPreviewState
 > {}
 
-/**
- * Renders the slide miniature for the enclosing `ThumbnailItem`, just before
- * it scrolls into view. Rapid scrollbar drag may briefly show a pending
- * placeholder.
- *
- * Rendered DOM is kept in the list's cache, so scrolling back re-attaches it
- * instantly.
- */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
@@ -1012,9 +988,6 @@ export interface ThumbnailItemNumberProps extends PrimitiveProps<
   { isActive: boolean; displayIndex: number; slideId: string }
 > {}
 
-/**
- * Renders the 1-based slide number for the enclosing `ThumbnailItem`.
- */
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
   function ThumbnailItemNumber({ children, render, ...thumbnailItemNumberProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);

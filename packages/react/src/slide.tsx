@@ -59,16 +59,6 @@ export interface SlideProps extends PrimitiveProps<"div", SlideState> {
   onNodeError?: (nodeId: string, error: unknown) => void;
 }
 
-/**
- * Renders the active slide inside a centered wrapper `<div>`.
- *
- * The wrapper always mounts so that sibling layout is stable. Slide content
- * is absent until the presentation is `"ready"`. Use `<Presentation.Loading>`
- * and `<Presentation.Error>` alongside this component to cover other states.
- *
- * The wrapper carries a `data-status` attribute matching the store status,
- * enabling css-driven state styles without extra js.
- */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, render, onNodeError, ...slideProps },
   forwardedRef,

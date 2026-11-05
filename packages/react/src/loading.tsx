@@ -23,10 +23,6 @@ export interface LoadingProps extends Omit<PrimitiveProps<"div", LoadingState>, 
   children?: React.ReactNode | ((progress: number) => React.ReactNode);
 }
 
-/**
- * Renders its children only while the presentation is in the `"loading"` state.
- * Place anywhere inside `<Presentation.Root>`.
- */
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
   { children, render, ...loadingProps },
   forwardedRef,

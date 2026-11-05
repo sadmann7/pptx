@@ -28,22 +28,6 @@ export interface ProviderProps {
   children?: React.ReactNode;
 }
 
-/**
- * Provides a `PresentationStore` to descendants without rendering any DOM.
- *
- * Use this when a component needs `usePresentation`/`useSlide`/`useZoom`
- * but must live outside `<Presentation.Root>`'s DOM tree (e.g. a debug bar
- * or toolbar positioned as a sibling so it doesn't join `Root`'s layout).
- *
- * ```tsx
- * const store = useCreatePresentationStore();
- *
- * <Presentation.Provider store={store}>
- *   <DebugBar />
- *   <Presentation.Root>…</Presentation.Root> // inherits the store from Provider
- * </Presentation.Provider>
- * ```
- */
 export function Provider({ store, children }: ProviderProps) {
   return <Context.Provider value={store}>{children}</Context.Provider>;
 }

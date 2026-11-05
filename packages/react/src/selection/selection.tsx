@@ -34,10 +34,10 @@ import {
   DRAG_THRESHOLD,
   getGripCursor,
   getNodeBounds,
-  getResizedRects,
   getNodeRect,
   getPasteboardOverhang,
   getPointerAngle,
+  getResizedRects,
   isBandDrag,
   mergeSelection,
   normalizeAngle,
@@ -335,28 +335,6 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   onModeChange?: (mode: SelectionState["mode"], previousMode: SelectionState["mode"]) => void;
 }
 
-/**
- * PowerPoint-style shape selection and manipulation overlay.
- *
- * Place inside `<Presentation.Slide>`. Renders nothing unless the loaded
- * presentation was opened with `readOnly={false}`.
- *
- * Interaction model mirrors PowerPoint and Google Slides:
- * - Click a shape → select it. Click it again, double-click, or type → edit its text.
- * - Drag any shape → move it (a multi-selection moves as a unit).
- * - Escape from text editing → select the shape (handles appear).
- * - Escape from selection → deselect.
- * - Shift/Ctrl/Cmd+click toggles shapes in and out of the selection.
- * - Shift+drag a shape → move it along one axis only.
- * - Ctrl/Cmd+drag a shape duplicates it in PowerPoint; unsupported here, so the
- *   press only toggles the selection.
- * - Drag on empty canvas → marquee-select fully enclosed shapes.
- * - Shift/Ctrl/Cmd+drag on empty canvas → add the enclosed shapes to the selection.
- * - Every selected shape keeps its own handles, and dragging any one of them
- *   scales the whole selection, each shape in place.
- * - Ctrl/Cmd+A selects every shape on the slide.
- * - Arrow keys nudge, Delete removes: applied to the whole selection.
- */
 const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function SelectionImpl(
   {
     render,
@@ -2515,21 +2493,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   );
 });
 
-/**
- * Thin outer wrapper that keys the inner component by `slideId`. When the
- * slide changes, React unmounts and remounts `SelectionImpl`, naturally
- * resetting its local state (selection, text-editing refs). Shape IDs are
- * reused across slides, so a stale selection would otherwise bleed onto the
- * new slide; the key swap is the React-idiomatic way to scope local state
- * to the current context without effect-driven resets.
- *
- * Undo/redo shortcuts are handled here, at document level, rather than in
- * `SelectionImpl`: they are store operations that don't need selection state,
- * and they must survive the remount when an undo navigates to another slide.
- * Being on the document does not make them the page's: they only act on
- * keystrokes aimed at the presentation (see `getIsPresentationTarget`), so an
- * app that owns Ctrl/Cmd+Z elsewhere keeps it.
- */
 export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(function Selection(
   { undoRedoShortcuts = false, onUndo, onRedo, ...selectionProps },
   forwardedRef,
@@ -2547,6 +2510,9 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
   const editable = presentation?.sourcePackage != null;
 
+  // On the document rather than in SelectionImpl, so an undo that changes the
+  // slide (and remounts it) still lands. Only keystrokes aimed at the
+  // presentation count, so an app that owns Ctrl/Cmd+Z elsewhere keeps it.
   React.useEffect(() => {
     if (!editable || !undoRedoShortcuts) return;
 
@@ -2584,6 +2550,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   if (!slideId) return null;
 
   return (
+    // Keyed by slide: shape ids repeat across slides, so a remount keeps a
+    // stale selection from landing on the new one.
     <SelectionImpl key={slideId} ref={mergeRefs(overlayRef, forwardedRef)} {...selectionProps} />
   );
 });

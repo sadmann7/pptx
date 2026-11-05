@@ -18,17 +18,6 @@ export interface SnapGuideState {
 
 export interface SnapGuideProps extends StatefulPrimitiveProps<"div", SnapGuideState> {}
 
-/**
- * The guides shown while a move or resize snaps: one line per edge or center
- * that lined up, running across the whole slide.
- *
- * The element is the line itself, `--presentation-snap-guide-width` thick
- * (1px by default) and centered on the snapped position, so a background
- * color draws it.
- *
- * Place inside `Presentation.Selection`. Carries `data-snap-guide`, set to
- * its axis.
- */
 export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(function SnapGuide(
   { render, className, style, ...snapGuideProps },
   forwardedRef,
