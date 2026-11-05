@@ -10,6 +10,7 @@ import type {
   SlideNode,
   TableCellAddress,
   TableCellRange,
+  TableCellStyle,
   TableNodeData,
   TextRange,
   TextStyle,
@@ -1499,6 +1500,55 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
+  async function applyCellStyle(style: TableCellStyle): Promise<void> {
+    if (!slide || !slideId) return;
+    const current = stateRef.current;
+    if (current.mode !== "text") {
+      const operations: EditOperation[] = selectedNodesRef.current
+        .filter((node) => node.nodeType === "table")
+        .map((node) => ({ type: "setTableCellStyle", slideId, nodeId: node.id, style }));
+      if (operations.length === 0) return;
+      await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+      return;
+    }
+
+    const { nodeId, cell } = current;
+    const container = getEditingContainer(current);
+    const node = slide.nodes.find((n) => n.id === nodeId);
+    if (!cell || !container || node?.nodeType !== "table") return;
+    const readBack = readBackTextBody(container);
+    const operations: EditOperation[] = [];
+    if (textBodyChanged(node, readBack, cell)) {
+      operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
+    }
+    operations.push({
+      type: "setTableCellStyle",
+      slideId,
+      nodeId,
+      style,
+      from: cell,
+      to: current.rangeEnd ?? cell,
+    });
+    const domRange = getEditingDomRange(container);
+    const caretRange = domRange ? getTextRange(container, domRange) : null;
+    pendingRestoreRef.current = caretRange
+      ? {
+          nodeId,
+          cell,
+          range: caretRange,
+          focus:
+            !getIsNativeUndoTarget(document.activeElement) ||
+            container.contains(document.activeElement),
+        }
+      : null;
+    try {
+      await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+    } catch (error) {
+      pendingRestoreRef.current = null;
+      throw error;
+    }
+  }
+
   async function applyFormat(
     kind: "text" | "paragraph",
     style: TextStyle | ParagraphStyle,
@@ -1803,6 +1853,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const prepareTextHistoryRef = useLatestRef(prepareTextHistory);
   const getSelectionRectRef = useLatestRef(getSelectionRect);
   const changeTableRef = useLatestRef(changeTable);
+  const applyCellStyleRef = useLatestRef(applyCellStyle);
 
   React.useEffect(
     () =>
@@ -1816,6 +1867,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
         changeTable: (change) => changeTableRef.current(change),
+        setTableCellStyle: (style) => applyCellStyleRef.current(style),
         prepareTextHistory: (target) => prepareTextHistoryRef.current(target),
         getSelectionRect: () => getSelectionRectRef.current(),
         getOverlayElement: () => rootRef.current,
@@ -1832,6 +1884,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       prepareTextHistoryRef,
       getSelectionRectRef,
       changeTableRef,
+      applyCellStyleRef,
       rootRef,
     ],
   );

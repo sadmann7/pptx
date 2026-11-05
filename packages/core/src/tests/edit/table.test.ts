@@ -435,3 +435,83 @@ describe("merging table cells", () => {
     ).rejects.toThrow("no merged cell");
   });
 });
+
+describe("table cell style", () => {
+  const twoByTwo = () =>
+    table(2, [
+      [cell("A"), cell("B")],
+      [cell("C"), cell("D")],
+    ]);
+
+  it("fills, aligns, and borders a range, saves, and undoes", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "setTableCellStyle",
+      slideId,
+      nodeId: "2",
+      from: { row: 0, column: 0 },
+      to: { row: 0, column: 0 },
+      style: { fill: "#ff0000", verticalAlign: "middle", borders: { color: "00ff00", width: 2 } },
+    });
+
+    const tcPr = (row: number, column: number) => tableOf(pres).rows[row].cells[column].properties;
+    expect(tcPr(0, 0)?.child("solidFill").child("srgbClr").attr("val")).toBe("FF0000");
+    expect(tcPr(0, 0)?.attr("anchor")).toBe("ctr");
+    expect(tcPr(0, 0)?.child("lnR").attr("w")).toBe("25400");
+    expect(
+      tcPr(0, 0)
+        ?.children()
+        .map((child) => child.localName),
+    ).toEqual(["lnL", "lnR", "lnT", "lnB", "solidFill"]);
+    expect(tcPr(0, 1)?.child("lnL").child("solidFill").exists()).toBe(true);
+    expect(tcPr(1, 0)?.child("lnT").child("solidFill").exists()).toBe(true);
+    expect(tcPr(1, 1)?.child("lnL").exists()).toBe(false);
+
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(reopened.rows[0].cells[0].properties?.attr("anchor")).toBe("ctr");
+
+    result.undo();
+    expect(tcPr(0, 0)?.child("solidFill").exists()).toBe(false);
+  });
+
+  it("formats the whole table without a range, and clears fills and borders", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "setTableCellStyle",
+      slideId,
+      nodeId: "2",
+      style: { fill: null, borders: null },
+    });
+    for (const row of tableOf(pres).rows) {
+      for (const tableCell of row.cells) {
+        expect(tableCell.properties?.child("noFill").exists()).toBe(true);
+        expect(tableCell.properties?.child("lnB").child("noFill").exists()).toBe(true);
+      }
+    }
+  });
+
+  it("sets which parts of the table style show", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "setTableOptions",
+      slideId,
+      nodeId: "2",
+      options: { headerRow: true, bandedRows: true },
+    });
+    expect(tableOf(pres).properties?.attr("firstRow")).toBe("1");
+    expect(tableOf(pres).properties?.attr("bandRow")).toBe("1");
+
+    await applyEdit(pres, {
+      type: "setTableOptions",
+      slideId,
+      nodeId: "2",
+      options: { headerRow: false },
+    });
+    expect(tableOf(pres).properties?.attr("firstRow")).toBeUndefined();
+    expect(tableOf(pres).properties?.attr("bandRow")).toBe("1");
+  });
+});

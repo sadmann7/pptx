@@ -296,6 +296,45 @@ export interface SetTableGridOperation {
   rowHeights?: number[];
 }
 
+export type TableCellVerticalAlign = "top" | "middle" | "bottom";
+
+/** Cell formatting. Omitted fields are left as they are. */
+export interface TableCellStyle {
+  /** Hex fill color, or `null` for no fill. */
+  fill?: string | null;
+  /** Every border of the cells: a hex color and width in points, or `null` for none. */
+  borders?: { color: string; width?: number } | null;
+  verticalAlign?: TableCellVerticalAlign;
+}
+
+/** Format table cells: a rectangle between two cells, or every cell. */
+export interface SetTableCellStyleOperation {
+  type: "setTableCellStyle";
+  slideId: string;
+  nodeId: string;
+  style: TableCellStyle;
+  /** Opposite corners of the cells to format. Defaults to the whole table. */
+  from?: TableCellAddress;
+  to?: TableCellAddress;
+}
+
+/** Which parts of its table style a table shows. Omitted fields are left as they are. */
+export interface TableOptions {
+  headerRow?: boolean;
+  totalRow?: boolean;
+  bandedRows?: boolean;
+  firstColumn?: boolean;
+  lastColumn?: boolean;
+  bandedColumns?: boolean;
+}
+
+export interface SetTableOptionsOperation {
+  type: "setTableOptions";
+  slideId: string;
+  nodeId: string;
+  options: TableOptions;
+}
+
 /** Merge a rectangle of table cells into one, keeping all their text. */
 export interface MergeTableCellsOperation {
   type: "mergeTableCells";
@@ -398,6 +437,8 @@ export type EditOperation =
   | SetTableGridOperation
   | MergeTableCellsOperation
   | SplitTableCellOperation
+  | SetTableCellStyleOperation
+  | SetTableOptionsOperation
   | InsertTableRowOperation
   | DeleteTableRowOperation
   | InsertTableColumnOperation
@@ -471,6 +512,10 @@ export async function applyEdit(
       return applyAddTable(presentation, op);
     case "setTableGrid":
       return applySetTableGrid(presentation, op);
+    case "setTableCellStyle":
+      return applySetTableCellStyle(presentation, op);
+    case "setTableOptions":
+      return applySetTableOptions(presentation, op);
     case "mergeTableCells":
       return applyMergeTableCells(presentation, op);
     case "splitTableCell":
@@ -2416,6 +2461,131 @@ function findTable(pres: PresentationData, slideId: string, nodeId: string): Tab
   const node = findNode(pres, findSlide(pres, slideId), nodeId);
   if (node.nodeType !== "table") throw new Error(`applyEdit: node "${nodeId}" is not a table.`);
   return node as TableNodeData;
+}
+
+const TCPR_LINES = ["lnL", "lnR", "lnT", "lnB"] as const;
+const TCPR_FILLS = new Set(["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"]);
+const TCPR_AFTER_FILL = new Set(["headers", "extLst"]);
+const VERTICAL_ALIGN_TO_OOXML: Record<TableCellVerticalAlign, string> = {
+  top: "t",
+  middle: "ctr",
+  bottom: "b",
+};
+const OPPOSITE_LINE = { lnL: "lnR", lnR: "lnL", lnT: "lnB", lnB: "lnT" } as const;
+
+function ensureCellProperties(tc: Element): Element {
+  const existing = childNamed(tc, "tcPr");
+  if (existing) return existing;
+  const tcPr = tc.ownerDocument.createElementNS(A_NS, "a:tcPr");
+  tc.insertBefore(tcPr, firstChildIn(tc, new Set(["extLst"])));
+  return tcPr;
+}
+
+function solidFillElement(doc: Document, color: string): Element {
+  const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+  const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+  srgb.setAttribute("val", parseHexColor(color));
+  solidFill.appendChild(srgb);
+  return solidFill;
+}
+
+function setCellLine(
+  tc: Element,
+  name: (typeof TCPR_LINES)[number],
+  borders: TableCellStyle["borders"],
+): void {
+  const tcPr = ensureCellProperties(tc);
+  const doc = tc.ownerDocument;
+  childNamed(tcPr, name)?.remove();
+  const line = doc.createElementNS(A_NS, `a:${name}`);
+  line.setAttribute("w", String(Math.round((borders?.width ?? 1) * 12700)));
+  line.appendChild(
+    borders ? solidFillElement(doc, borders.color) : doc.createElementNS(A_NS, "a:noFill"),
+  );
+  const later = TCPR_LINES.slice(TCPR_LINES.indexOf(name) + 1) as string[];
+  const before = Array.from(tcPr.children).find(
+    (child) => later.includes(child.localName) || !TCPR_LINES.includes(child.localName as never),
+  );
+  tcPr.insertBefore(line, before ?? null);
+}
+
+function applySetTableCellStyle(
+  pres: PresentationData,
+  op: SetTableCellStyleOperation,
+): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  const { fill, borders, verticalAlign } = op.style;
+  if (fill) parseHexColor(fill);
+  if (borders) {
+    parseHexColor(borders.color);
+    if (borders.width !== undefined && !(borders.width > 0)) {
+      throw new Error(`applyEdit: invalid border width "${borders.width}".`);
+    }
+  }
+  const lastRow = table.rows.length - 1;
+  const lastColumn = table.columns.length - 1;
+  const { start, end } =
+    op.from && op.to
+      ? getTableCellRange(table, op.from, op.to)
+      : { start: { row: 0, column: 0 }, end: { row: lastRow, column: lastColumn } };
+
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const cells = tableRows(tbl).map(rowCells);
+    const doc = tbl.ownerDocument;
+    for (let row = start.row; row <= end.row; row++) {
+      for (let column = start.column; column <= end.column; column++) {
+        const tc = cells[row]?.[column];
+        if (!tc) continue;
+        const tcPr = ensureCellProperties(tc);
+        if (fill !== undefined) {
+          for (const child of Array.from(tcPr.children)) {
+            if (TCPR_FILLS.has(child.localName)) child.remove();
+          }
+          tcPr.insertBefore(
+            fill === null ? doc.createElementNS(A_NS, "a:noFill") : solidFillElement(doc, fill),
+            firstChildIn(tcPr, TCPR_AFTER_FILL),
+          );
+        }
+        if (verticalAlign) tcPr.setAttribute("anchor", VERTICAL_ALIGN_TO_OOXML[verticalAlign]);
+        if (borders === undefined) continue;
+        for (const name of TCPR_LINES) setCellLine(tc, name, borders);
+        // A shared edge is drawn by one of its two cells, so the neighbor gets it too.
+        const neighbors = {
+          lnL: column === start.column ? cells[row]?.[column - 1] : undefined,
+          lnR: column === end.column ? cells[row]?.[column + 1] : undefined,
+          lnT: row === start.row ? cells[row - 1]?.[column] : undefined,
+          lnB: row === end.row ? cells[row + 1]?.[column] : undefined,
+        };
+        for (const name of TCPR_LINES) {
+          const neighbor = neighbors[name];
+          if (neighbor) setCellLine(neighbor, OPPOSITE_LINE[name], borders);
+        }
+      }
+    }
+  });
+}
+
+const TABLE_OPTION_ATTRS: Record<keyof TableOptions, string> = {
+  headerRow: "firstRow",
+  totalRow: "lastRow",
+  bandedRows: "bandRow",
+  firstColumn: "firstCol",
+  lastColumn: "lastCol",
+  bandedColumns: "bandCol",
+};
+
+function applySetTableOptions(pres: PresentationData, op: SetTableOptionsOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    let tblPr = childNamed(tbl, "tblPr");
+    if (!tblPr) {
+      tblPr = tbl.ownerDocument.createElementNS(A_NS, "a:tblPr");
+      tbl.insertBefore(tblPr, tbl.firstElementChild);
+    }
+    for (const [key, attr] of Object.entries(TABLE_OPTION_ATTRS)) {
+      const value = op.options[key as keyof TableOptions];
+      if (value !== undefined) setOrRemoveAttr(tblPr, attr, value ? "1" : undefined);
+    }
+  });
 }
 
 function applyMergeTableCells(pres: PresentationData, op: MergeTableCellsOperation): EditResult {

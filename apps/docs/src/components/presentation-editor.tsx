@@ -7,7 +7,9 @@ import type {
   ParagraphAlign,
   PresentationStore,
   TableCellAddress,
+  TableCellVerticalAlign,
   TableChange,
+  TableOptions,
   TextStyle,
   UseSelectionResult,
 } from "@diceui/pptx";
@@ -48,6 +50,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -104,6 +107,9 @@ import {
 import { useIsMac } from "@pptx/ui/hooks/use-is-mac";
 import { cn } from "@pptx/ui/lib/utils";
 import {
+  AlignVerticalJustifyCenterIcon,
+  AlignVerticalJustifyEndIcon,
+  AlignVerticalJustifyStartIcon,
   BaselineIcon,
   BetweenHorizontalEndIcon,
   BetweenHorizontalStartIcon,
@@ -114,6 +120,7 @@ import {
   DownloadIcon,
   FolderOpenIcon,
   Grid2x2PlusIcon,
+  Grid3x3Icon,
   ImageIcon,
   ItalicIcon,
   LayersIcon,
@@ -701,6 +708,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     cell,
     cellRange,
     changeTable,
+    setTableCellStyle,
     duplicate,
     remove,
     reorder,
@@ -712,6 +720,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   const isReady = status === "ready" && slideId != null;
   const hasText = textStyle != null;
   const shapes = nodes.filter((node) => node.nodeType === "shape");
+  const table = nodes.length === 1 && nodes[0].nodeType === "table" ? nodes[0] : null;
   const outlined = nodes.filter((node) => node.nodeType === "shape" || node.nodeType === "picture");
 
   function run(action: () => Promise<unknown>) {
@@ -954,13 +963,47 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 value={textStyle.align}
                 onSelect={(align) => run(() => setParagraphStyle({ align }))}
               />
-              {cell && (
-                <TableEditMenu
-                  canMerge={cellRange !== null}
-                  canSplit={getCanSplitCell(nodes, cell)}
-                  onSelect={(change) => run(() => changeTable(change))}
-                />
-              )}
+            </>
+          )}
+
+          {table && (
+            <>
+              <ToolbarSeparator />
+              <ColorMenu
+                label="Cell fill"
+                icon={PaintBucketIcon}
+                onSelect={(fill) => run(() => setTableCellStyle({ fill }))}
+                noneLabel="No fill"
+                onNone={() => run(() => setTableCellStyle({ fill: null }))}
+              />
+              <ColorMenu
+                label="Borders"
+                icon={Grid3x3Icon}
+                onSelect={(color) => run(() => setTableCellStyle({ borders: { color } }))}
+                noneLabel="No borders"
+                onNone={() => run(() => setTableCellStyle({ borders: null }))}
+              />
+              <CellAlignMenu
+                onSelect={(verticalAlign) => run(() => setTableCellStyle({ verticalAlign }))}
+              />
+              <TableEditMenu
+                hasCell={cell !== null}
+                canMerge={cellRange !== null}
+                canSplit={getCanSplitCell(nodes, cell)}
+                headerRow={table.properties?.attr("firstRow") === "1"}
+                bandedRows={table.properties?.attr("bandRow") === "1"}
+                onSelect={(change) => run(() => changeTable(change))}
+                onOptionsChange={(options) =>
+                  run(() =>
+                    store.edit({
+                      type: "setTableOptions",
+                      slideId: slideId!,
+                      nodeId: table.id,
+                      options,
+                    }),
+                  )
+                }
+              />
             </>
           )}
 
@@ -1139,13 +1182,21 @@ function TableMenu({
 }
 
 function TableEditMenu({
+  hasCell,
   canMerge,
   canSplit,
+  headerRow,
+  bandedRows,
   onSelect,
+  onOptionsChange,
 }: {
+  hasCell: boolean;
   canMerge: boolean;
   canSplit: boolean;
+  headerRow: boolean;
+  bandedRows: boolean;
   onSelect: (change: TableChange) => void;
+  onOptionsChange: (options: TableOptions) => void;
 }) {
   return (
     <DropdownMenu modal={false}>
@@ -1154,7 +1205,7 @@ function TableEditMenu({
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
-          <DropdownMenuItem key={label} onClick={() => onSelect(change)}>
+          <DropdownMenuItem key={label} disabled={!hasCell} onClick={() => onSelect(change)}>
             <Icon />
             {label}
           </DropdownMenuItem>
@@ -1170,8 +1221,54 @@ function TableEditMenu({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {TABLE_DELETES.map(({ change, label }) => (
-          <DropdownMenuItem key={label} variant="destructive" onClick={() => onSelect(change)}>
+          <DropdownMenuItem
+            key={label}
+            variant="destructive"
+            disabled={!hasCell}
+            onClick={() => onSelect(change)}
+          >
             <Trash2Icon />
+            {label}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={headerRow}
+          onCheckedChange={(checked) => onOptionsChange({ headerRow: checked })}
+        >
+          Header row
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={bandedRows}
+          onCheckedChange={(checked) => onOptionsChange({ bandedRows: checked })}
+        >
+          Banded rows
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const CELL_ALIGNMENTS = [
+  { align: "top", label: "Top", icon: AlignVerticalJustifyStartIcon },
+  { align: "middle", label: "Middle", icon: AlignVerticalJustifyCenterIcon },
+  { align: "bottom", label: "Bottom", icon: AlignVerticalJustifyEndIcon },
+] as const satisfies readonly {
+  align: TableCellVerticalAlign;
+  label: string;
+  icon: React.ElementType;
+}[];
+
+function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign) => void }) {
+  return (
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label="Vertical align">
+        <AlignVerticalJustifyCenterIcon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Vertical align" className="w-36">
+        {CELL_ALIGNMENTS.map(({ align, label, icon: Icon }) => (
+          <DropdownMenuItem key={align} onClick={() => onSelect(align)}>
+            <Icon />
             {label}
           </DropdownMenuItem>
         ))}

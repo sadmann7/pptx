@@ -572,6 +572,33 @@ describe("tables", () => {
     expect(tableOf().rows[1].cells[1].vMerge).toBe(false);
   });
 
+  it("styles the cell range, the edited cell, or the whole selected table", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    const fills = () =>
+      (
+        editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData
+      ).rows.flatMap((row) =>
+        row.cells.map((cell) => cell.properties?.child("solidFill").child("srgbClr").attr("val")),
+      );
+
+    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#ff0000" }));
+    expect(fills()).toEqual(["FF0000", undefined, undefined, undefined]);
+    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+
+    const target = editor.container.querySelector<HTMLElement>('[data-pptx-cell="1,1"]')!;
+    act(() => {
+      fireEvent.pointerDown(target, { button: 0, shiftKey: true, pointerId: 1 });
+    });
+    await waitFor(() => expect(editor.selection.current!.cellRange).not.toBeNull());
+    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#00ff00" }));
+    expect(fills()).toEqual(["00FF00", "00FF00", "00FF00", "00FF00"]);
+
+    act(() => editor.selection.current!.select([nodeId]));
+    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#0000ff" }));
+    expect(fills()).toEqual(["0000FF", "0000FF", "0000FF", "0000FF"]);
+  });
+
   it("formats every cell of a selected table", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);

@@ -9,6 +9,7 @@ import type {
   SlideNode,
   TableCellAddress,
   TableCellRange,
+  TableCellStyle,
   TextStyle,
 } from "@diceui/pptx-core";
 
@@ -69,6 +70,7 @@ export interface SelectionController {
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
   changeTable: (change: TableChange) => Promise<void>;
+  setTableCellStyle: (style: TableCellStyle) => Promise<void>;
   prepareTextHistory: (target: EventTarget | null) => boolean;
   getSelectionRect: () => DOMRect | null;
   getOverlayElement: () => HTMLElement | null;
@@ -279,6 +281,12 @@ export interface UseSelectionResult {
   changeTable: (change: TableChange) => Promise<void>;
 
   /**
+   * Sets the fill, borders, or vertical alignment of the selected `cellRange`,
+   * the cell being edited, or every cell of the selected tables.
+   */
+  setTableCellStyle: (style: TableCellStyle) => Promise<void>;
+
+  /**
    * Formats text. In text mode this applies to the selected text, or to the
    * word at the caret; otherwise to all text in the selected shapes. One undo
    * step. Resolves once the edit is applied.
@@ -447,6 +455,10 @@ export function useSelection(): UseSelectionResult {
     ),
     changeTable: React.useCallback(
       async (change: TableChange) => requireController(channel).changeTable(change),
+      [channel],
+    ),
+    setTableCellStyle: React.useCallback(
+      async (style: TableCellStyle) => requireController(channel).setTableCellStyle(style),
       [channel],
     ),
     setTextStyle: React.useCallback(
