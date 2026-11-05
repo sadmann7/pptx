@@ -54,6 +54,7 @@ export interface SelectionController {
   reorder: (order: NodeOrder) => Promise<void>;
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
+  prepareTextHistory: (target: EventTarget | null) => boolean;
 }
 
 const IDLE_SNAPSHOT: SelectionSnapshot = {

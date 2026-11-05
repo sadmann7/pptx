@@ -11,4 +11,4 @@ Add editing toolbar support and more PowerPoint-style editing to `Presentation.S
 - Resize handles sit outside shapes too small to grab between them, and a flat line shows only its two ends.
 - The thumbnail list keeps at most 50 rendered miniatures, so memory stays flat on long decks.
 - Re-exports `copyNodes`, `getPresentationFonts`, and `getPresetShapePath` with the new operation types.
-- Edits, undo, and redo run one at a time; `undo()` now returns a promise, like `redo()`. Line breaks survive text editing.
+- Edits, undo, and redo run one at a time; `undo()` now returns a promise, like `redo()`. Line breaks survive text editing, and Ctrl/Cmd+Z in a text box undoes formatting applied to it.

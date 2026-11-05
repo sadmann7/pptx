@@ -871,7 +871,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     // The browser's editing pipeline keeps the keystroke on its undo stack;
-    // placing it by hand is the fallback
+    // placing it by hand is the fallback.
     if (
       insertTextNatively(editingElement, nodeId, event.data) ||
       insertTextAtCaret(editingElement, nodeId, event.data)
@@ -923,7 +923,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       selection.removeAllRanges();
       selection.addRange(range);
     } catch {
-      // Ignore caret placement failures.
+      // A failed caret placement leaves the caret where it was.
     }
   }
 
@@ -941,7 +941,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         fixupCaretAnchor(selection);
       }
     } catch {
-      // Ignore caret placement failures.
+      // A failed caret placement leaves the caret where it was.
     }
   }
 
@@ -952,7 +952,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function fixupCaretAnchor(selection: Selection): void {
     const anchor = selection.anchorNode;
     if (!(anchor instanceof HTMLElement)) return;
-    // Prefer a run in the paragraph under the caret, else anywhere in scope.
+    // A run in the paragraph under the caret wins, else any run in scope.
     const paragraphDiv = anchor.closest<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`);
     snapCaretIntoRun(paragraphDiv ?? anchor);
   }
@@ -1167,6 +1167,26 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * In text mode, uncommitted typing is committed in the same batch, so the
    * formatting applies to the text as shown and undoes in one step.
    */
+  /**
+   * Formatting commits and re-renders the text, so the browser's own undo has
+   * nothing left to undo: Ctrl/Cmd+Z goes to the deck instead, as in Google
+   * Slides. Typing not yet committed stays with the browser's undo.
+   */
+  function prepareTextHistory(target: EventTarget | null): boolean {
+    const current = stateRef.current;
+    if (current.mode !== "text" || !slide || !(target instanceof Node)) return false;
+    const container = getEditingContainer(current);
+    const node = slide.nodes.find((n) => n.id === current.nodeId);
+    if (!container || !node || !container.contains(target)) return false;
+    if (textBodyChanged(node, readBackTextBody(container))) return false;
+    const domRange = getEditingDomRange(container);
+    const caretRange = domRange ? getTextRange(container, domRange) : null;
+    pendingRestoreRef.current = caretRange
+      ? { nodeId: current.nodeId, range: caretRange, focus: true }
+      : null;
+    return true;
+  }
+
   async function applyFormat(
     kind: "text" | "paragraph",
     style: TextStyle | ParagraphStyle,
@@ -1252,6 +1272,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const deleteSelectionRef = useLatestRef(deleteSelection);
   const reorderSelectionRef = useLatestRef(reorderSelection);
   const applyFormatRef = useLatestRef(applyFormat);
+  const prepareTextHistoryRef = useLatestRef(prepareTextHistory);
 
   React.useEffect(
     () =>
@@ -1264,6 +1285,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         reorder: (order) => reorderSelectionRef.current(order),
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
+        prepareTextHistory: (target) => prepareTextHistoryRef.current(target),
       }),
     [
       selectionChannel,
@@ -1274,6 +1296,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       deleteSelectionRef,
       reorderSelectionRef,
       applyFormatRef,
+
+      prepareTextHistoryRef,
     ],
   );
 
@@ -1311,7 +1335,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [isTextMode, stateRef, publishSelectionRef]);
 
   // In text mode the overlay has pointerEvents: none, so clicks outside and
-  // Escape are only visible on the document
+  // Escape are only visible on the document.
   React.useEffect(() => {
     if (!isTextMode) return;
 
@@ -1591,7 +1615,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // Without preventDefault, a drag silently extends a text selection across
     // the slide, and the NEXT press inside that selection starts a native
     // drag-and-drop of it; the pointer stream is cancelled (not-allowed
-    // cursor, no pointerup) and the gesture goes dead
+    // cursor, no pointerup) and the gesture goes dead.
     event.preventDefault();
     clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
@@ -2253,7 +2277,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   async function reorderSelection(order: NodeOrder): Promise<void> {
     if (!slide || !slideId) return;
     // Moving one at a time from the end they travel toward keeps the selected
-    // nodes' order among themselves
+    // nodes' order among themselves.
     const stacked = [...selectedNodesRef.current].sort(
       (a, b) => slide.nodes.indexOf(a) - slide.nodes.indexOf(b),
     );
@@ -2372,7 +2396,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  // Bail out below every hook, never above one: returning early before the
+  // The early return sits below every hook, never above one: returning before the
   // effects would change the hook count between renders, which React rejects.
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
@@ -2503,17 +2527,24 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     if (!editable || !undoRedoShortcuts) return;
 
     function onDocKeyDown(event: KeyboardEvent): void {
-      if (getIsNativeUndoTarget(event.target)) return;
+      const isUndo = getIsUndoEvent(event);
+      if (!isUndo && !getIsRedoEvent(event)) return;
       const boundary = rootRef?.current ?? overlayRef.current;
       if (!getIsPresentationTarget(event.target, boundary)) return;
+      if (
+        getIsNativeUndoTarget(event.target) &&
+        !getSelectionChannel(store).getController()?.prepareTextHistory(event.target)
+      ) {
+        return;
+      }
 
-      if (getIsUndoEvent(event)) {
+      if (isUndo) {
         event.preventDefault();
         store.undo().then(
           (success) => onUndoRef.current?.(success ? "success" : "empty"),
           (error) => onUndoRef.current?.("empty", error),
         );
-      } else if (getIsRedoEvent(event)) {
+      } else {
         event.preventDefault();
         store.redo().then(
           (success) => onRedoRef.current?.(success ? "success" : "empty"),

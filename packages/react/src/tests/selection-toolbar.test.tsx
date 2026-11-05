@@ -43,10 +43,12 @@ async function renderEditor() {
 
   const { container, getByTestId } = render(
     <Presentation.Provider store={store}>
-      <Toolbar />
-      <Presentation.Slide>
-        <Presentation.Selection />
-      </Presentation.Slide>
+      <Presentation.Root>
+        <Toolbar />
+        <Presentation.Slide>
+          <Presentation.Selection undoRedoShortcuts />
+        </Presentation.Slide>
+      </Presentation.Root>
     </Presentation.Provider>,
   );
 
@@ -224,6 +226,22 @@ describe("useSelection", () => {
     const shape = store.getActiveSlide()!.nodes.find((node) => node.id === "2") as ShapeNodeData;
     expect(shape.textBody!.paragraphs[0].properties?.attr("algn")).toBe("ctr");
     await waitFor(() => expect(selection.current!.textStyle?.align).toBe("center"));
+  });
+
+  it("undoes formatting with Ctrl+Z without leaving the text", async () => {
+    const { store, overlay, selection, editText, selectText } = await renderEditor();
+    const text = await editText("2");
+    selectText(text, 0, 5);
+
+    await act(() => selection.current!.setTextStyle({ italic: true }));
+    expect(shapeRuns(store, "2")[0]).toEqual({ text: "Slide", b: undefined, i: "1" });
+
+    const editable = overlay.ownerDocument.querySelector<HTMLElement>("[contenteditable]")!;
+    await act(async () => {
+      fireEvent.keyDown(editable, { key: "z", ctrlKey: true });
+    });
+    await waitFor(() => expect(shapeRuns(store, "2")[0].i).toBeUndefined());
+    expect(overlay.getAttribute("data-mode")).toBe("text");
   });
 
   it("formats the selected text in text mode after focus moved to the toolbar", async () => {
