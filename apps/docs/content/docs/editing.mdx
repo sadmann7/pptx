@@ -153,7 +153,7 @@ Each edit callback receives `(status, error?)` for undo/redo (where `status` is 
 Use `store.edit()` to apply changes from outside the UI (for example, from a toolbar button). Edit operations have full undo/redo support.
 
 ```tsx
-import { useCreatePresentationStore } from "@diceui/pptx";
+import { copyNodes, useCreatePresentationStore } from "@diceui/pptx";
 
 const store = useCreatePresentationStore();
 
@@ -181,6 +181,7 @@ await store.edit({
   nodeId,
   paragraphs: [
     {
+      sourceParagraphIndex: 0, // copy this paragraph's formatting; -1 for none
       runs: [{ text: "Hello world" }],
     },
   ],
@@ -217,12 +218,14 @@ await store.edit({
   name: file.name,
 });
 
-// Add a text box (centered and empty by default), and set a shape's outline
+// Add a text box (centered and empty by default)
 await store.edit({ type: "addTextBox", slideId, text: "Hello" });
 
 // Add a preset shape ("rect", "ellipse", "rightArrow", …), styled from the theme like PowerPoint's
 await store.edit({ type: "addShape", slideId, geometry: "roundRect" });
-await store.edit({ type: "setOutline", slideId, nodeId, color: "#0f172a", width: 1.5 }); // `color: null` removes it
+
+// Set a shape's or picture's outline (width in points); `color: null` removes it
+await store.edit({ type: "setOutline", slideId, nodeId, color: "#0f172a", width: 1.5 });
 
 // Copy shapes out of one deck and paste them into another (or the same one)
 const clipboard = await copyNodes(sourceDeck, sourceSlideId, nodeIds);
@@ -233,13 +236,15 @@ await targetStore.edit({ type: "pasteNodes", slideId: targetSlideId, clipboard }
 
 In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
 
+Edits that create nodes (`addTextBox`, `addShape`, `addImage`, `duplicateNode`, and `pasteNodes`) return their ids in `createdNodeIds`.
+
 `presentation.layouts` maps each layout's part path to its data, including its `name`, for a "new slide from layout" picker.
 
 ## Formatting toolbar
 
 `useSelection` gives a toolbar the overlay's selection and formatting commands that work in both modes. While text is being edited they format the selected text, or the word at the caret. Otherwise they format all the text in the selected shapes.
 
-Pressing a toolbar would normally count as a press outside the slide, which clears the selection and ends text editing. Mark the toolbar with `data-pptx-keep-selection` to prevent that. Mark the content of its popovers and menus as well, since they usually render in a portal outside the toolbar. Undo shortcuts pressed inside marked UI apply to the deck.
+Pressing a toolbar would normally count as a press outside the slide, which clears the selection and ends text editing. Mark the toolbar with `data-pptx-keep-selection` (exported as `KEEP_SELECTION_ATTRIBUTE`) to prevent that. Mark the content of its popovers and menus as well, since they usually render in a portal outside the toolbar. Undo shortcuts pressed inside marked UI apply to the deck.
 
 ```tsx
 import { useSelection } from "@diceui/pptx";
@@ -355,11 +360,7 @@ Render the overlay inside `Presentation.ThumbnailList` so the copy can reach the
 
 The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt/Option+↑, for example) pass through untouched.
 
-The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. Here it is in full:
-
-<include lang="tsx" meta='title="presentation-editing-demo.tsx"'>
-  ../../src/components/presentation-editing-demo.tsx
-</include>
+The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. See `SortableThumbnailList` in [presentation-editor.tsx](https://github.com/sadmann7/pptx/blob/main/apps/docs/src/components/presentation-editor.tsx).
 
 ## Unsaved changes
 

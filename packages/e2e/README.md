@@ -1,8 +1,8 @@
 # @diceui/pptx-e2e
 
-Browser tests for the renderer, and the tooling for debugging what they catch.
-Everything runs against a Vite harness that renders one slide of one deck in
-isolation, with no viewer, React, or docs app in the way.
+Browser tests for the renderer and editor, and the tooling for debugging what
+they catch. Everything runs against a Vite harness that renders one slide of
+one deck in isolation, with no viewer or docs app in the way.
 
 ## Running the tests
 
@@ -25,6 +25,7 @@ The Playwright config starts the harness itself, so no dev server is needed.
 | `navigation`     | switching slides in a loaded deck                                    |
 | `exported-decks` | every slide of an exported deck renders with content and no failures |
 | `oracle`         | SSIM and painted coverage against PNGs exported from real PowerPoint |
+| `editing`        | a toolbar outside the slide formats text without ending the editing  |
 
 Structural specs are the cheapest place to pin a parser fix; reach for pixels
 only when the bug is in how something rasterizes.
@@ -47,6 +48,10 @@ against the copy of the decoder it costs the bundle.
 the core decode fixtures) because every deck committed here embeds plain EOT,
 where decoding is a header strip. Point it at a real deck instead with
 `FONT_PERF_DECK=decks/whatever.pptx`, which measures the deck as it is.
+
+The docs editor is profiled with `pnpm profile:editor` against a production
+docs build; see `editor-perf-notes.md` at the repo root for the setup. `pnpm a11y`
+runs axe over the docs playground and editing page against a docs dev server.
 
 `pnpm tsx scripts/scan-fonts.mts` prints what each deck's font parts are, what
 wrote them, and what decoding them costs; it takes directories as arguments, so

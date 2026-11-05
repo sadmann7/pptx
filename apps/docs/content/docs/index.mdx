@@ -8,8 +8,9 @@ description: Composable primitives for viewing and editing PowerPoint presentati
 ## Features
 
 - **Rendering**: Shapes, preset and custom geometries, gradients, pattern fills, shadows, tables, charts, images, and embedded fonts.
-- **Editing**: Move, resize (with aspect-ratio lock), multi-select, marquee, inline text editing, and full undo/redo.
-- **Keyboard shortcuts**: Arrow nudge, Delete, Escape, and Ctrl/Cmd+A matching PowerPoint behavior, plus opt-in Ctrl/Cmd+Z/Y.
+- **Editing**: Move, resize (with aspect-ratio lock), rotate, snap with guides, multi-select, marquee, copy and paste, inline text editing, and full undo/redo.
+- **Formatting toolbar**: `useSelection` formats text and paragraphs, and inserts text boxes and shapes, with draw tools that place them where the slide is clicked or dragged.
+- **Keyboard shortcuts**: Arrow nudge, Delete, Escape, Tab, Ctrl/Cmd+A, duplicate, copy and paste, and arrange, matching PowerPoint behavior, plus opt-in Ctrl/Cmd+Z/Y.
 - **Embedded fonts**: Decodes and registers ODTTF/MTX fonts from the PPTX so slides render with the original typefaces.
 - **Thumbnail strip**: Slide list with lazy miniature rendering and a shared render queue so large decks never block the main thread.
 - **Auto-fit zoom**: Slide scales to fill the viewport and re-fits on window resize.

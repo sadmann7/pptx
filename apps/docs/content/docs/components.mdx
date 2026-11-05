@@ -8,7 +8,7 @@ description: API reference for all Presentation primitives.
 The outermost component. Creates an internal store (or inherits one from `Presentation.Provider`), loads the file, and provides context to all descendants.
 
 ```tsx
-import * as Presentation from "@diceui/pptx";
+import { Presentation } from "@diceui/pptx";
 
 <Presentation.Root
   file={file}
@@ -123,7 +123,7 @@ The wrapper carries a `data-status` attribute matching the current load status:
 
 ## Selection
 
-PowerPoint-style editing overlay. Enables drag-to-move, resize, inline text editing, multi-select, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
+PowerPoint-style editing overlay. Enables drag-to-move, resize, rotation, snapping, inline text editing, multi-select, copy and paste, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
 
 Must be placed inside `Presentation.Slide`.
 
@@ -148,23 +148,28 @@ Must be placed inside `Presentation.Slide`.
 
 ### Interaction model
 
-| Action                                | Behavior                         |
-| ------------------------------------- | -------------------------------- |
-| Click shape                           | Select                           |
-| Click selected shape, or double-click | Enter text edit mode             |
-| Type while shape selected             | Enter text edit mode             |
-| Drag shape                            | Move                             |
-| Click or drag frame (in text mode)    | Leave text mode; select or move  |
-| Drag resize handle                    | Resize                           |
-| Shift + drag corner handle            | Resize preserving aspect ratio   |
-| Ctrl/Cmd + A                          | Select all                       |
-| Shift / Ctrl / Cmd + click            | Toggle shape in/out of selection |
-| Drag empty canvas                     | Marquee select                   |
-| Delete / Backspace                    | Delete selected                  |
-| Arrow keys                            | Nudge (1 px; Shift = 10 px)      |
-| Ctrl/Cmd + Z                          | Undo                             |
-| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z  | Redo                             |
-| Escape                                | Exit text mode → deselect        |
+| Action                                  | Behavior                                     |
+| --------------------------------------- | -------------------------------------------- |
+| Click shape                             | Select                                       |
+| Click selected shape, or double-click   | Enter text edit mode                         |
+| Type, Enter, or F2 while shape selected | Enter text edit mode                         |
+| Drag shape                              | Move (Shift = one axis; Alt = no snapping)   |
+| Click or drag frame (in text mode)      | Leave text mode; select or move              |
+| Drag resize handle                      | Resize                                       |
+| Shift + drag corner handle              | Resize preserving aspect ratio               |
+| Drag rotate handle                      | Rotate (Shift = 15° steps)                   |
+| Ctrl/Cmd + A                            | Select all                                   |
+| Shift / Ctrl / Cmd + click              | Toggle shape in/out of selection             |
+| Drag empty canvas                       | Marquee select                               |
+| Tab / Shift + Tab                       | Select the next or previous shape            |
+| Delete / Backspace                      | Delete selected                              |
+| Ctrl/Cmd + D                            | Duplicate                                    |
+| Ctrl/Cmd + C, X, V                      | Copy, cut, paste                             |
+| Ctrl/Cmd + ] or [                       | Forward or backward (Shift = front or back)  |
+| Arrow keys                              | Nudge (1 px; Shift = 10 px)                  |
+| Ctrl/Cmd + Z                            | Undo                                         |
+| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z    | Redo                                         |
+| Escape                                  | Disarm draw tool → exit text mode → deselect |
 
 Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
 
@@ -180,11 +185,13 @@ Control the accent color with a CSS variable:
 <Presentation.Selection className="[--presentation-selection:var(--ring)]" />
 ```
 
+The overlay is composed from `Presentation.SelectionBox`, `Presentation.ResizeHandle`, `Presentation.RotateHandle`, `Presentation.SnapGuide`, and `Presentation.Marquee`. See [Styling the overlay](/docs/editing#styling-the-overlay) for the parts and the other CSS variables, and [Formatting toolbar](/docs/editing#formatting-toolbar) for `useSelection`.
+
 <AutoTypeTable path="types/presentation.ts" name="SelectionProps" />
 
 ## ThumbnailList
 
-Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. The cache keeps at most 50 previews, releasing the least recently shown off-screen ones, so memory stays flat on long decks. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
 
 ```tsx
 <Presentation.ThumbnailList loop />

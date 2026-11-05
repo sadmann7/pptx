@@ -10,4 +10,5 @@ Add editing toolbar support and more PowerPoint-style editing to `Presentation.S
 - A click now selects a text box or placeholder; click again, double-click, or type to edit. An empty text box is removed when editing moves elsewhere, and the default selection color is `#1a73e8`.
 - Resize handles sit outside shapes too small to grab between them, and a flat line shows only its two ends.
 - The thumbnail list keeps at most 50 rendered miniatures, so memory stays flat on long decks.
+- Re-exports `copyNodes`, `getPresentationFonts`, and `getPresetShapePath` with the new operation types.
 - Edits, undo, and redo run one at a time, and line breaks survive text editing.
