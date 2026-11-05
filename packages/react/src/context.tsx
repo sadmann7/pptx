@@ -25,26 +25,9 @@ export interface ProviderProps {
   /** The `PresentationStore` to make available to descendants. */
   store: Store;
 
-  /** The children to render inside the provider. */
   children?: React.ReactNode;
 }
 
-/**
- * Provides a `PresentationStore` to descendants without rendering any DOM.
- *
- * Use this when a component needs `usePresentation`/`useSlide`/`useZoom`
- * but must live outside `<Presentation.Root>`'s DOM tree (e.g. a debug bar
- * or toolbar positioned as a sibling so it doesn't join `Root`'s layout).
- *
- * ```tsx
- * const store = useCreatePresentationStore();
- *
- * <Presentation.Provider store={store}>
- *   <DebugBar />
- *   <Presentation.Root>…</Presentation.Root> // inherits the store from Provider
- * </Presentation.Provider>
- * ```
- */
 export function Provider({ store, children }: ProviderProps) {
   return <Context.Provider value={store}>{children}</Context.Provider>;
 }
@@ -156,9 +139,7 @@ export function useStoreSelector<T>(
   );
 }
 
-/**
- * Subscribes to a slide's edit revision (`store.getSlideRevision`).
- */
+/** Subscribes to `store.getSlideRevision`. */
 export function useSlideRevision(store: Store, slideId: string | null | undefined): number {
   return React.useSyncExternalStore(
     store.subscribe,
@@ -179,9 +160,7 @@ export function useSlideContentRevision(store: Store, slideId: string | null | u
   );
 }
 
-/**
- * Subscribes to a slide's 0-based index (`store.getSlideIndex`).
- */
+/** Subscribes to `store.getSlideIndex`. */
 export function useSlideIndex(store: Store, slideId: string): number {
   return React.useSyncExternalStore(
     store.subscribe,
@@ -281,7 +260,7 @@ export interface UseSlideResult {
 export function useSlide(): UseSlideResult {
   const store = useStoreContext("useSlide");
 
-  // Subscribe to primitives/stable refs only; new object literals on every call cause infinite loops.
+  // Primitives/stable refs only; new object literals on every call cause infinite loops.
   const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
   // Stable object ref that only changes on new file load, not on slide navigation.
   const presentation = useStoreSelector(store, (s) => s.presentation, null);
@@ -387,8 +366,8 @@ export interface UseHistoryResult {
    */
   isDirty: boolean;
 
-  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
-  undo: () => boolean;
+  /** Revert the most recent edit. Resolves `false` when the undo stack is empty. */
+  undo: () => Promise<boolean>;
 
   /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
   redo: () => Promise<boolean>;
@@ -401,7 +380,7 @@ export interface UseHistoryResult {
  *
  * ```tsx
  * const { canUndo, undo } = useHistory();
- * <button disabled={!canUndo} onClick={undo}>Undo</button>
+ * <button disabled={!canUndo} onClick={() => void undo()}>Undo</button>
  * ```
  */
 export function useHistory(): UseHistoryResult {

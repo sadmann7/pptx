@@ -8,7 +8,7 @@ description: Build a presentation viewer in minutes.
 The minimal setup renders the active slide with a thumbnail strip.
 
 ```tsx
-import * as Presentation from "@diceui/pptx";
+import { Presentation } from "@diceui/pptx";
 
 export function Viewer({ file }: { file: File }) {
   return (
@@ -62,7 +62,7 @@ export function Viewer({ file }: { file: File }) {
 Add `readOnly={false}` when loading, then place `Presentation.Selection` inside `Presentation.Slide`:
 
 ```tsx
-import * as Presentation from "@diceui/pptx";
+import { Presentation } from "@diceui/pptx";
 
 export function Editor({ file }: { file: File }) {
   return (
@@ -92,8 +92,7 @@ export function Editor({ file }: { file: File }) {
 For programmatic navigation, editing, and saving, create a store explicitly:
 
 ```tsx
-import * as Presentation from "@diceui/pptx";
-import { useCreatePresentationStore } from "@diceui/pptx";
+import { Presentation, useCreatePresentationStore } from "@diceui/pptx";
 
 export function Editor() {
   const store = useCreatePresentationStore();

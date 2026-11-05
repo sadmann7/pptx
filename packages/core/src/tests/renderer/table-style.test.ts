@@ -80,10 +80,6 @@ describe("getPredefinedTableStyle", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Full pipeline: built-in style referenced by GUID from a slide table
-// ---------------------------------------------------------------------------
-
 function tableCell(text: string): string {
   return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
 }
@@ -157,7 +153,7 @@ describe("built-in table styles through the render pipeline", () => {
     const headerCells = [...rows[0].querySelectorAll("td")];
     expect(headerCells).toHaveLength(2);
     for (const td of headerCells) {
-      // firstRow: fill = accent1 (theme: 4472C4)
+      // firstRow: fill = accent1 (theme: 4472C4).
       expect(td.style.backgroundColor.toUpperCase()).toBe("#4472C4");
     }
 

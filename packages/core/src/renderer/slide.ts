@@ -1,12 +1,4 @@
-﻿/**
- * Renders a complete OOXML slide into DOM elements.
- *
- * Entry points are {@link renderSlide} (full interactive render with async
- * media) and {@link renderThumbnail} (lightweight static miniature). Both
- * share the same node pipeline but differ in async work and post-processing.
- */
-
-import type { ECharts } from "echarts";
+﻿import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "../media/pdf";
 import { BaseNodeData } from "../model/nodes/base";
@@ -28,10 +20,6 @@ import { renderGroup } from "./group";
 import { renderImage } from "./image";
 import { renderShape } from "./shape";
 import { renderTable } from "./table";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface SlideRendererOptions {
   /** Called when a single node fails to render. */
@@ -78,14 +66,7 @@ export interface SlideHandle {
   [Symbol.dispose](): void;
 }
 
-// ---------------------------------------------------------------------------
-// Node Dispatch
-// ---------------------------------------------------------------------------
-
-/**
- * Dispatch a typed node to its appropriate renderer.
- * This function is also passed into GroupRenderer for recursive child rendering.
- */
+/** Also passed to `renderGroup` for recursive child rendering. */
 function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
   switch (node.nodeType) {
     case "shape":
@@ -99,7 +80,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "chart":
       return renderChart(node as ChartNodeData, ctx);
     default: {
-      // Unknown node type: render as empty positioned div
+      // Unknown node type: render as empty positioned div.
       const el = document.createElement("div");
       el.style.position = "absolute";
       el.style.left = `${node.position.x}px`;
@@ -111,13 +92,6 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Error Placeholder
-// ---------------------------------------------------------------------------
-
-/**
- * Creates a visual error placeholder at the node's position.
- */
 function createErrorPlaceholder(node: BaseNodeData): HTMLElement {
   const el = document.createElement("div");
   el.style.position = "absolute";
@@ -140,10 +114,6 @@ function createErrorPlaceholder(node: BaseNodeData): HTMLElement {
   el.title = `Failed to render node: ${node.id} (${node.name})`;
   return el;
 }
-
-// ---------------------------------------------------------------------------
-// Master/Layout Shape Parsing
-// ---------------------------------------------------------------------------
 
 interface TemplateShapeCacheEntry {
   nodes: BaseNodeData[];
@@ -175,17 +145,16 @@ function parseTemplateShapes(
   };
 
   for (const child of spTree.allChildren()) {
-    // Skip ALL placeholder shapes: they're templates, not renderable content
+    // Skip ALL placeholder shapes: they're templates, not renderable content.
     if (isPlaceholderNode(child)) continue;
 
     try {
       const node = parseRenderableChild(child, parseContext);
-      // Skip empty/invisible nodes (0x0 size and no text)
       if (node && (node.size.w > 0 || node.size.h > 0)) {
         nodes.push(node);
       }
     } catch {
-      // Skip unparseable template shapes silently
+      // An unparseable template shape is left out rather than failing the slide.
     }
   }
   return nodes;
@@ -221,13 +190,9 @@ function getTemplateShapes(
  * Persistent, hidden, layout-contained host used to connect slide containers
  * to the document during render so text-autofit measurement works.
  *
- * A single host is created lazily and reused by every `renderSlide()` call.
- * The previous approach appended each slide container directly to
- * `document.body` (with per-call style mutation) and removed it afterwards;
- * two full-document layout invalidations per slide. With a persistent
- * `contain: strict` host, appending/removing slide subtrees only invalidates
- * layout inside the host, never the surrounding page. This is what makes
- * rendering thumbnails during scroll feasible.
+ * Created lazily and reused by every `renderSlide()` call. Because the host is
+ * `contain: strict`, appending/removing slide subtrees only invalidates layout
+ * inside it, never the surrounding page, which keeps rendering during scroll cheap.
  */
 let measurementHost: HTMLElement | null = null;
 
@@ -280,10 +245,6 @@ function temporarilyConnectForMeasurement(container: HTMLElement): () => void {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Main Slide Render Function
-// ---------------------------------------------------------------------------
-
 /**
  * Options for `renderThumbnail()`.
  */
@@ -321,7 +282,6 @@ export function renderThumbnail(
   const isSharedCache = !!options?.mediaUrlCache;
 
   const ctx = createRenderContext(presentation, slide, options?.mediaUrlCache);
-  // Signal to all renderers that they are in thumbnail mode.
   ctx.thumbnail = true;
   // No asyncTasks array; async work is never started in thumbnail mode.
 
@@ -333,15 +293,13 @@ export function renderThumbnail(
   container.style.backgroundColor = "#FFFFFF";
   resetTypography(container);
 
-  // No measurement host: skip the temporarilyConnectForMeasurement call
-  // that renderSlide uses for text autofit. This avoids two full-document
-  // layout invalidations per slide.
+  // No measurement host: thumbnails skip text-autofit measurement.
 
   try {
     try {
       renderBackground(ctx, container);
     } catch {
-      // Non-fatal
+      // Non-fatal.
     }
 
     if (slide.showMasterSp && ctx.layout.showMasterSp) {
@@ -361,7 +319,7 @@ export function renderThumbnail(
         try {
           container.appendChild(renderNode(node, masterCtx));
         } catch {
-          // Non-fatal
+          // Non-fatal.
         }
       }
     }
@@ -383,7 +341,7 @@ export function renderThumbnail(
         try {
           container.appendChild(renderNode(node, layoutCtx));
         } catch {
-          // Non-fatal
+          // Non-fatal.
         }
       }
     }
@@ -392,11 +350,11 @@ export function renderThumbnail(
       try {
         container.appendChild(renderNode(node, ctx));
       } catch {
-        // Non-fatal; skip failed nodes silently in thumbnail mode
+        // Non-fatal; skip failed nodes silently in thumbnail mode.
       }
     }
   } catch {
-    // Outer guard for any unexpected renderer failure
+    // Outer guard for any unexpected renderer failure.
   }
 
   const mediaUrlCache = ctx.mediaUrlCache;
@@ -442,7 +400,6 @@ export function renderSlide(
   const asyncTasks: Promise<void>[] = [];
   const cleanups: (() => void)[] = [];
 
-  // Create render context (resolves slide -> layout -> master -> theme chain)
   const ctx = createRenderContext(
     presentation,
     slide,
@@ -459,7 +416,6 @@ export function renderSlide(
     ctx.placeholderPrompts = true;
   }
 
-  // Create slide container
   const container = document.createElement("div");
   container.style.position = "relative";
   container.style.width = `${presentation.width}px`;
@@ -472,17 +428,15 @@ export function renderSlide(
   const restoreMeasurementMount = temporarilyConnectForMeasurement(container);
 
   try {
-    // Render background
     try {
       renderBackground(ctx, container);
     } catch (error) {
       options?.onNodeError?.("__background__", error);
     }
 
-    // --- Render master template shapes (behind layout and slide) ---
-    // Respect showMasterSp flags:
+    // showMasterSp:
     //  - layout.showMasterSp === false  → skip master shapes
-    //  - slide.showMasterSp === false   → skip both master AND layout shapes
+    //  - slide.showMasterSp === false   → skip both master AND layout shapes.
     if (slide.showMasterSp && ctx.layout.showMasterSp) {
       const masterCtx: RenderContext = {
         ...ctx,
@@ -501,12 +455,11 @@ export function renderSlide(
           const el = renderNode(node, masterCtx);
           container.appendChild(el);
         } catch {
-          // Master shape errors are non-fatal
+          // Master shape errors are non-fatal.
         }
       }
     }
 
-    // --- Render layout template shapes ---
     if (slide.showMasterSp) {
       const layoutCtx: RenderContext = {
         ...ctx,
@@ -525,12 +478,11 @@ export function renderSlide(
           const el = renderNode(node, layoutCtx);
           container.appendChild(el);
         } catch {
-          // Layout shape errors are non-fatal
+          // Layout shape errors are non-fatal.
         }
       }
     }
 
-    // --- Render slide shapes (on top) ---
     for (const node of slide.nodes) {
       try {
         const el = renderNode(node, ctx);
@@ -549,7 +501,6 @@ export function renderSlide(
     restoreMeasurementMount();
   }
 
-  // Build SlideHandle
   let disposed = false;
   const mediaUrlCache = ctx.mediaUrlCache;
   const ready = Promise.allSettled(asyncTasks).then(() => undefined);
@@ -558,11 +509,11 @@ export function renderSlide(
     if (disposed) return;
     disposed = true;
 
-    // Detach observers before tearing down what they watch
+    // Detach observers before tearing down what they watch.
     for (const cleanup of cleanups) cleanup();
     cleanups.length = 0;
 
-    // Dispose chart instances whose DOM is inside this slide container
+    // Dispose chart instances whose DOM is inside this slide container.
     if (chartInstances) {
       for (const chart of chartInstances) {
         if (!chart.isDisposed() && container.contains(chart.getDom())) {
@@ -572,7 +523,7 @@ export function renderSlide(
       }
     }
 
-    // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache)
+    // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache).
     if (!isSharedCache) {
       for (const url of mediaUrlCache.values()) {
         URL.revokeObjectURL(url);

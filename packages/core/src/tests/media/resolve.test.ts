@@ -129,7 +129,7 @@ describe("findMediaByTargetAsync", () => {
 
 describe("getOrCreateBlobUrl", () => {
   it("creates a blob URL in happy-dom and caches it per media path", () => {
-    // happy-dom implements URL.createObjectURL; this asserts we can rely on it.
+    // Guards the assumption that happy-dom implements URL.createObjectURL.
     expect(typeof URL.createObjectURL).toBe("function");
 
     const cache = new Map<string, string>();

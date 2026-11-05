@@ -1,15 +1,4 @@
-﻿/**
- * Converts TableNodeData into positioned HTML table elements.
- *
- * Table style behavior follows:
- * - OOXML ECMA-376 §21.1.3.15 tblPr: firstRow, firstCol, bandRow, bandCol, lastRow, lastCol
- *   are attributes; when not specified they default to off (no styling).
- * - references/pptxjs (gen-table.ts, get-table-row-style.ts, get-table-cell-params.ts):
- *   reads tblPr attrs only (e.g. firstCol === "1"), applies style parts when attr is "1",
- *   and uses tcTxStyle from each part for cell text color/font (a:tcTxStyle under firstRow, firstCol, etc.).
- */
-
-import { TableCell, TableNodeData } from "../model/nodes/table";
+﻿import { TableCell, TableNodeData } from "../model/nodes/table";
 import { parseOoxmlBool } from "../ooxml/boolean";
 import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
@@ -54,10 +43,6 @@ function clearCssFillBackground(el: HTMLElement): void {
   el.style.backgroundSize = "";
 }
 
-// ---------------------------------------------------------------------------
-// Table Style Lookup
-// ---------------------------------------------------------------------------
-
 /**
  * Finds a table style node by its ID from presentation.tableStyles.
  * tableStyles XML structure: <a:tblStyleLst> <a:tblStyle styleId="{UUID}" ...>
@@ -79,13 +64,13 @@ function findTableStyle(
       return style;
     }
   }
-  // Also check from root if tableStyles IS the tblStyleLst
+  // Also check from root if tableStyles IS the tblStyleLst.
   for (const style of tblStyleLst.children()) {
     if (style.localName === "tblStyle" && style.attr("styleId") === tableStyleId) {
       return style;
     }
   }
-  // Fallback: check predefined (built-in) Office table styles not embedded in the PPTX
+  // Fallback: check predefined (built-in) Office table styles not embedded in the PPTX.
   return getPredefinedTableStyle(tableStyleId);
 }
 
@@ -103,8 +88,8 @@ function getStyleSections(
 ): SafeXmlNode[] {
   const sections: SafeXmlNode[] = [];
 
-  // Style parts enabled only when tblPr has attribute "1" (or true); per spec default is off.
-  // pptxjs uses attrs only (firstCol === "1"); we also accept child elements for compatibility.
+  // Style parts are off unless tblPr sets them to "1" (or true). pptxjs reads
+  // attributes only; child elements are accepted too for compatibility.
   const flag = (attrName: string, childName: string): boolean => {
     if (!tblPr) return false;
     const attr = tblPr.attr(attrName);
@@ -122,11 +107,11 @@ function getStyleSections(
   const isFirstCol = flag("firstCol", "firstCol");
   const isLastCol = flag("lastCol", "lastCol");
 
-  // wholeTbl is the base (lowest priority)
+  // wholeTbl is the base (lowest priority).
   const wholeTbl = tblStyle.child("wholeTbl");
   if (wholeTbl.exists()) sections.push(wholeTbl);
 
-  // Banding (applied on top of wholeTbl)
+  // Banding (applied on top of wholeTbl).
   if (bandRow) {
     const effectiveRow = isFirstRow ? rowIdx - 1 : rowIdx;
     if (effectiveRow >= 0 && effectiveRow % 2 === 1) {
@@ -148,7 +133,7 @@ function getStyleSections(
     }
   }
 
-  // Special rows/cols (highest priority, override banding)
+  // Special rows/cols (highest priority, override banding).
   if (isFirstRow && rowIdx === 0) {
     const s = tblStyle.child("firstRow");
     if (s.exists()) sections.push(s);
@@ -193,15 +178,15 @@ function getEffectiveTableStyleTextProps(
 
     const props: TableStyleTextProps = {};
 
-    // Bold: b="on" or b="off" (OOXML CT_TableStyleTextStyle)
+    // Bold: b="on" or b="off" (OOXML CT_TableStyleTextStyle).
     const b = tcTxStyle.attr("b");
     if (b !== undefined) props.bold = parseOoxmlBool(b);
 
-    // Italic: i="on" or i="off"
+    // Italic: i="on" or i="off".
     const italic = tcTxStyle.attr("i");
     if (italic !== undefined) props.italic = parseOoxmlBool(italic);
 
-    // Color: child elements (schemeClr, solidFill, srgbClr, etc.)
+    // Color: child elements (schemeClr, solidFill, srgbClr, etc.).
     for (const child of tcTxStyle.allChildren()) {
       const tag = child.localName;
       if (
@@ -224,7 +209,7 @@ function getEffectiveTableStyleTextProps(
       }
     }
 
-    // Font family: <font><latin>/<ea>/<cs> typeface or <fontRef idx="major|minor">
+    // Font family: <font><latin>/<ea>/<cs> typeface or <fontRef idx="major|minor">.
     const font = tcTxStyle.child("font");
     if (font.exists()) {
       const latin = font.child("latin").attr("typeface");
@@ -260,7 +245,6 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
   const fill = tcStyle.child("fill");
   if (!fill.exists()) return false;
 
-  // noFill
   const noFill = fill.child("noFill");
   if (noFill.exists()) {
     clearCssFillBackground(td);
@@ -268,7 +252,6 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
     return true;
   }
 
-  // solidFill
   const solidFill = fill.child("solidFill");
   if (solidFill.exists()) {
     clearCssFillBackground(td);
@@ -283,14 +266,14 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
     return true;
   }
 
-  // gradFill / pattFill
+  // gradFill / pattFill.
   const directFillCss = resolveFill(fill, ctx);
   if (directFillCss) {
     applyCssFillBackground(td, directFillCss);
     return true;
   }
 
-  // fillRef (theme fill reference)
+  // fillRef (theme fill reference).
   const fillRef = fill.child("fillRef");
   if (fillRef.exists()) {
     const { fillCss } = resolveThemeFillReference(fillRef, ctx);
@@ -329,7 +312,7 @@ function collectStyleBorders(
 
   // Map insideH/insideV to individual cell borders:
   // insideH → bottom for non-last rows, top for non-first rows
-  // insideV → right for non-last cols, left for non-first cols
+  // insideV → right for non-last cols, left for non-first cols.
   const insideH = tcBdr.child("insideH");
   if (insideH.exists() && rowIdx !== undefined && totalRows !== undefined) {
     if (rowIdx < totalRows - 1) {
@@ -353,7 +336,7 @@ function collectStyleBorders(
     const sideNode = tcBdr.child(xmlName);
     if (!sideNode.exists()) continue;
 
-    // Direct <a:ln> element
+    // Direct <a:ln> element.
     const ln = sideNode.child("ln");
     if (ln.exists()) {
       const noFill = ln.child("noFill");
@@ -366,17 +349,16 @@ function collectStyleBorders(
       continue;
     }
 
-    // <a:lnRef>: reference to theme line style (common in table styles)
+    // <a:lnRef>: reference to theme line style (common in table styles).
     const lnRef = sideNode.child("lnRef");
     if (lnRef.exists()) {
       const idx = lnRef.numAttr("idx") ?? 0;
       if (idx === 0) continue; // idx 0 = no line
 
-      // Resolve color from the lnRef's child color element
+      // The lnRef's color comes from its child color element.
       const { color, alpha } = resolveColor(lnRef, ctx);
       const hex = color.startsWith("#") ? color : `#${color}`;
 
-      // Get width from theme line style
       let width = 1; // default 1px
       if (ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
         const themeLn = ctx.theme.lineStyles[idx - 1];
@@ -403,7 +385,7 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
   const tblBg = tblStyle.child("tblBg");
   if (!tblBg.exists()) return;
 
-  // fillRef: references a theme fill style with a color override
+  // fillRef: references a theme fill style with a color override.
   const fillRef = tblBg.child("fillRef");
   if (fillRef.exists()) {
     const { fillCss } = resolveThemeFillReference(fillRef, ctx);
@@ -411,7 +393,6 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
     return;
   }
 
-  // solidFill
   const solidFill = tblBg.child("solidFill");
   if (solidFill.exists()) {
     clearCssFillBackground(table);
@@ -513,13 +494,6 @@ function tableFlipTransform(node: TableNodeData): string {
   return transforms.join(" ");
 }
 
-// ---------------------------------------------------------------------------
-// Table Rendering
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a table node into an absolutely-positioned HTML element.
- */
 export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
   // A table's true size is defined by its grid (sum of gridCol widths and
   // tr heights), not by the graphicFrame extent. PowerPoint ignores the
@@ -542,7 +516,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   // would cut off cell content mid-row.
   wrapper.style.overflow = "visible";
 
-  // Apply transforms
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -557,13 +530,11 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     wrapper.style.transform = transforms.join(" ");
   }
 
-  // Resolve table style
   const tblStyle = findTableStyle(node.tableStyleId, ctx);
   const tblPr = node.properties;
   const totalRows = node.rows.length;
   const totalCols = node.columns.length;
 
-  // Create table element
   const table = document.createElement("table");
   // Separate borders (with zero spacing, so the geometry matches the collapsed
   // model) keep every cell's background covering its whole border box. Under
@@ -581,12 +552,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   table.style.height = "100%";
   table.style.tableLayout = "fixed";
 
-  // Apply table background from table style (tblBg)
   if (tblStyle) {
     applyTableBackground(table, tblStyle, ctx);
   }
 
-  // Column widths
   const totalWidth = node.columns.reduce((sum, w) => sum + w, 0);
   if (totalWidth > 0 && node.columns.length > 0) {
     const colgroup = document.createElement("colgroup");
@@ -598,11 +567,8 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     table.appendChild(colgroup);
   }
 
-  // Compute total row height so we can express each row as a proportion
   const totalRowHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
 
-  // Render rows.
-  //
   // Shared edges are painted by the cell above/left of them: `bottomEdges`
   // holds, per grid column, the bottom border of the cell that last covered it,
   // and `leftEdge` the right border of the previous cell in the row. A cell
@@ -621,8 +587,8 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     const row = node.rows[rowIdx];
     const tr = document.createElement("tr");
     if (row.height > 0 && totalRowHeight > 0) {
-      // Use percentage heights so rows stay proportional within the
-      // table's constrained height instead of expanding beyond it.
+      // Percentages keep rows proportional within the table's constrained
+      // height instead of expanding beyond it.
       tr.style.height = `${(row.height / totalRowHeight) * 100}%`;
     }
 
@@ -633,7 +599,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     let rowFill: string | null | undefined;
     let filledCols = 0;
     for (const cell of row.cells) {
-      // Skip merged cells
       if (cell.hMerge || cell.vMerge) {
         // Horizontal merge continuation cells are already accounted for by the
         // origin cell's gridSpan. Vertical continuations still occupy their
@@ -647,7 +612,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       const td = document.createElement("td");
       td.style.overflow = "hidden";
 
-      // Spanning
       if (cell.gridSpan > 1) {
         td.colSpan = cell.gridSpan;
       }
@@ -655,12 +619,12 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
         td.rowSpan = cell.rowSpan;
       }
 
-      // Apply table style first (as base), then direct tcPr overrides
+      // Table style is the base; direct tcPr overrides it below.
       const borders: CellBorders = {};
       let sections: SafeXmlNode[] = [];
       if (tblStyle) {
         sections = getStyleSections(tblStyle, rowIdx, colIdx, totalRows, totalCols, tblPr);
-        // Apply sections in order (later sections override earlier ones)
+        // Later sections override earlier ones.
         for (const section of sections) {
           const tcStyle = section.child("tcStyle");
           if (tcStyle.exists()) {
@@ -670,7 +634,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // Apply direct cell properties (override table style)
       applyCellProperties(td, cell, ctx, borders);
 
       if (leftEdge !== undefined) delete borders.left;
@@ -696,11 +659,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       rowFill = mergeRowFill(rowFill, td);
       filledCols += cell.gridSpan;
 
-      // Resolve table style text properties (color, bold, italic from tcTxStyle)
+      // Table style text properties (color, bold, italic) come from tcTxStyle.
       const textProps =
         sections.length > 0 ? getEffectiveTableStyleTextProps(sections, ctx) : undefined;
 
-      // Render text inside cell
       if (cell.textBody) {
         const textTarget = tableFlipTransform(node) ? document.createElement("div") : td;
         const counterFlip = tableFlipTransform(node);
@@ -751,10 +713,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-// ---------------------------------------------------------------------------
-// Cell Property Application
-// ---------------------------------------------------------------------------
-
 /**
  * Applies table cell properties (tcPr) to a <td> element, collecting the cell's
  * borders into `borders` (they are painted later, once per shared edge).
@@ -771,7 +729,7 @@ function applyCellProperties(
     td.style.overflow = "visible";
   }
 
-  // Fill (overrides table style fill)
+  // Fill (overrides table style fill).
   if (tcPr) {
     const noFill = tcPr.child("noFill");
     if (noFill.exists()) {
@@ -795,27 +753,25 @@ function applyCellProperties(
       }
     }
 
-    // Borders (override table style borders)
+    // Borders (override table style borders).
     collectBorder(borders, tcPr, "lnT", "top", ctx);
     collectBorder(borders, tcPr, "lnB", "bottom", ctx);
     collectBorder(borders, tcPr, "lnL", "left", ctx);
     collectBorder(borders, tcPr, "lnR", "right", ctx);
   }
 
-  // Margins / Padding
   const marL = tcPr?.numAttr("marL");
   const marR = tcPr?.numAttr("marR");
   const marT = tcPr?.numAttr("marT");
   const marB = tcPr?.numAttr("marB");
 
-  // Default margin is 91440 EMU (0.1 inch) = ~9.6px
+  // Default margin is 91440 EMU (0.1 inch) = ~9.6px.
   const defaultMargin = 91440;
   td.style.paddingLeft = `${emuToPx(marL ?? defaultMargin)}px`;
   td.style.paddingRight = `${emuToPx(marR ?? defaultMargin)}px`;
   td.style.paddingTop = `${emuToPx(marT ?? 45720)}px`;
   td.style.paddingBottom = `${emuToPx(marB ?? 45720)}px`;
 
-  // Vertical alignment
   const anchor = tcPr?.attr("anchor");
   const alignMap: Record<string, string> = {
     t: "top",
@@ -825,9 +781,6 @@ function applyCellProperties(
   td.style.verticalAlign = alignMap[anchor || "t"] || "top";
 }
 
-/**
- * Collect a single cell border from a tcPr line node.
- */
 function collectBorder(
   borders: CellBorders,
   tcPr: SafeXmlNode,

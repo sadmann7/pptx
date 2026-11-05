@@ -1,5 +1,3 @@
-/** Parses `--flag value` options for the debugging scripts. */
-
 export interface ArgSpec {
   numbers?: readonly string[];
   strings?: readonly string[];

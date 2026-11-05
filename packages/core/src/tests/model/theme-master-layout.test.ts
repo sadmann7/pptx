@@ -91,10 +91,6 @@ describe("theme font references through the pipeline", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Direct parser unit tests for uncovered branches
-// ---------------------------------------------------------------------------
-
 describe("parseTheme", () => {
   it("parses a clrScheme when the themeElements wrapper is missing", () => {
     const root = parseXml(`<a:theme ${A_NS}>

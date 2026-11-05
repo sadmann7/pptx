@@ -62,11 +62,97 @@ function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.
   );
 }
 
-function PresentationSelection({ className, ...props }: PresentationPrimitive.Selection.Props) {
+function PresentationSelection({
+  className,
+  children,
+  ...props
+}: PresentationPrimitive.Selection.Props) {
   return (
     <PresentationPrimitive.Selection
       data-slot="presentation-selection"
-      className={cn("[--presentation-selection:var(--ring)]", className)}
+      className={cn("[--presentation-selection:#1a73e8]", className)}
+      {...props}
+    >
+      {children ?? (
+        <>
+          <PresentationSelectionBox>
+            <PresentationResizeHandle />
+            <PresentationRotateHandle />
+          </PresentationSelectionBox>
+          <PresentationSnapGuide />
+          <PresentationMarquee />
+        </>
+      )}
+    </PresentationPrimitive.Selection>
+  );
+}
+
+function PresentationSelectionBox({
+  className,
+  ...props
+}: PresentationPrimitive.SelectionBox.Props) {
+  return (
+    <PresentationPrimitive.SelectionBox
+      data-slot="presentation-selection-box"
+      className={withClassName(
+        "outline-2 -outline-offset-1 outline-(--presentation-selection)",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationResizeHandle({
+  className,
+  ...props
+}: PresentationPrimitive.ResizeHandle.Props) {
+  return (
+    <PresentationPrimitive.ResizeHandle
+      data-slot="presentation-resize-handle"
+      className={withClassName(
+        "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-white shadow-xs",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationRotateHandle({
+  className,
+  ...props
+}: PresentationPrimitive.RotateHandle.Props) {
+  return (
+    <PresentationPrimitive.RotateHandle
+      data-slot="presentation-rotate-handle"
+      className={withClassName(
+        "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-white shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function PresentationSnapGuide({ className, ...props }: PresentationPrimitive.SnapGuide.Props) {
+  return (
+    <PresentationPrimitive.SnapGuide
+      data-slot="presentation-snap-guide"
+      className={withClassName("bg-(--presentation-snap-guide,#f43f5e)", className)}
+      {...props}
+    />
+  );
+}
+
+function PresentationMarquee({ className, ...props }: PresentationPrimitive.Marquee.Props) {
+  return (
+    <PresentationPrimitive.Marquee
+      data-slot="presentation-marquee"
+      className={withClassName(
+        "border border-(--presentation-selection) bg-[color-mix(in_oklch,var(--presentation-selection)_10%,transparent)]",
+        className,
+      )}
       {...props}
     />
   );
@@ -113,10 +199,7 @@ function PresentationThumbnailItemPreview({
   return (
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
-      className={cn(
-        "w-full overflow-hidden rounded-sm data-pending:animate-pulse data-pending:bg-muted",
-        className,
-      )}
+      className={cn("w-full overflow-hidden rounded-sm data-pending:bg-muted", className)}
       {...props}
     />
   );
@@ -185,7 +268,6 @@ function PresentationThumbnailList({
   React.useEffect(() => {
     if (!isMobile || !open) return;
 
-    // Pointers that went down outside the sheet; a tap outside closes it.
     const pendingPointerIds = new Set<number>();
 
     function isInside(target: Node) {
@@ -262,14 +344,26 @@ function PresentationThumbnailList({
   );
 }
 
+function withClassName<State>(
+  base: string,
+  className: string | ((state: State) => string | undefined) | undefined,
+) {
+  return (state: State) => cn(base, typeof className === "function" ? className(state) : className);
+}
+
 export {
   Presentation,
   PresentationContent,
   PresentationError,
   PresentationLoading,
+  PresentationMarquee,
   PresentationProvider,
+  PresentationResizeHandle,
+  PresentationRotateHandle,
   PresentationSelection,
+  PresentationSelectionBox,
   PresentationSlide,
+  PresentationSnapGuide,
   PresentationThumbnailItem,
   PresentationThumbnailItemNumber,
   PresentationThumbnailItemPreview,

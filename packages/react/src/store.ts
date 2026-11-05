@@ -41,6 +41,8 @@ export type AutoFitPadding = number | Partial<SidePadding>;
 interface HistoryEntry {
   op: EditOperation;
   result: EditResult;
+  /** The slide that was active before the edit, where undoing it returns. */
+  activeSlideId: string | null;
 }
 
 /** Accepted input formats for `store.load()` and the `file` prop. */
@@ -415,14 +417,10 @@ export interface Store {
    */
   getSlideIndex: (slideId: string) => number;
 
-  /**
-   * Returns the 0-based index of the active slide, or `-1` when none is active.
-   */
+  /** Returns the 0-based index of the active slide, or `-1` when none is active. */
   getActiveSlideIndex: () => number;
 
-  /**
-   * Returns the active `SlideData`, or `null` when none is active.
-   */
+  /** Returns the active `SlideData`, or `null` when none is active. */
   getActiveSlide: () => PresentationData["slides"][number] | null;
 
   /** Returns `true` when there is a next slide to navigate to. */
@@ -450,8 +448,11 @@ export interface Store {
    */
   edit: (op: EditOperation) => Promise<EditResult>;
 
-  /** Reverts the most recent edit. Returns `false` when the undo stack is empty. */
-  undo: () => boolean;
+  /**
+   * Reverts the most recent edit, after any edit still in flight. Resolves
+   * `false` when the undo stack is empty.
+   */
+  undo: () => Promise<boolean>;
 
   /** Re-applies the most recently undone edit. Resolves `false` when the redo stack is empty. */
   redo: () => Promise<boolean>;
@@ -748,15 +749,15 @@ export function createStore(): Store {
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
       const startSlide = presentation.slides[startIndex];
 
-      // Capture raw XML for priority font detection before materialization
-      // clears it (lazy mode).
+      // Priority font detection needs the raw XML, which materialization
+      // clears in lazy mode.
       const startSlideXml = startSlide?.sourceXml;
 
       // The active slide's nodes must be reliable the moment the store
       // reports "ready", even in lazy mode.
       if (startSlide) materializeSlide(presentation, startSlide);
 
-      // Decode embedded fonts while still "loading" and wait for all of them,
+      // Embedded fonts decode while still "loading", and all of them are awaited,
       // so no font can swap in after slides are visible (no FOUT). The font
       // pipeline is a lazily imported chunk; decks without embedded fonts
       // (or embedFonts: false) never fetch it.
@@ -765,7 +766,7 @@ export function createStore(): Store {
           await import("@diceui/pptx-core/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
-        // Expand the progress budget by the now-known decode workload.
+        // The decode workload is only known now, so it widens the progress budget.
         // Dedupe: the fonts map can alias one part under two paths.
         let fontBytes = 0;
         for (const part of new Set(presentation.fonts.values())) {
@@ -973,6 +974,7 @@ export function createStore(): Store {
     prevActiveIndex: number,
     navigateToFirstAffected = false,
     transformOnly = false,
+    fallbackSlideId: string | null = null,
   ): void {
     const { presentation } = state;
     if (!presentation) return;
@@ -991,7 +993,10 @@ export function createStore(): Store {
     const activeGone = activeSlideId !== null && !slideIndexById.has(activeSlideId);
     if (activeGone || activeSlideId === null) {
       const fallbackIndex = clamp(prevActiveIndex, 0, presentation.slides.length - 1);
-      activeSlideId = presentation.slides[fallbackIndex]?.id ?? null;
+      activeSlideId =
+        fallbackSlideId !== null && slideIndexById.has(fallbackSlideId)
+          ? fallbackSlideId
+          : (presentation.slides[fallbackIndex]?.id ?? null);
     }
     // Undo/redo: jump to the slide the action touched so the user sees the
     // change (PowerPoint behavior). Only when that slide still exists.
@@ -1008,7 +1013,24 @@ export function createStore(): Store {
     emitSlideChange(previousSlideId, "edit");
   }
 
-  async function edit(op: EditOperation): Promise<EditResult> {
+  /**
+   * Edits read and rewrite shared parts (relationships, content types) across
+   * awaits, so two in flight could overwrite each other. Each one waits for
+   * the previous to settle.
+   */
+  let editQueue: Promise<unknown> = Promise.resolve();
+
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = editQueue.then(task, task);
+    editQueue = run.catch(() => {});
+    return run;
+  }
+
+  function edit(op: EditOperation): Promise<EditResult> {
+    return enqueue(() => applyQueuedEdit(op));
+  }
+
+  async function applyQueuedEdit(op: EditOperation): Promise<EditResult> {
     const { presentation, status } = state;
     if (!presentation || status !== "ready") {
       throw new Error("PresentationStore.edit: no presentation is loaded.");
@@ -1021,6 +1043,7 @@ export function createStore(): Store {
 
     const previousHistory = historySnapshot();
     const prevActiveIndex = getActiveSlideIndex();
+    const activeSlideId = state.activeSlideId;
     const result = await applyEdit(presentation, op);
 
     // A new edit made while below the save point discards the path back to
@@ -1028,7 +1051,7 @@ export function createStore(): Store {
     // the next save.
     if (savedUndoDepth > undoStack.length) savedUndoDepth = -1;
 
-    undoStack.push({ op, result });
+    undoStack.push({ op, result, activeSlideId });
     redoStack = [];
     commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
     emitEvent("edit", { operation: op, result, source: "edit" });
@@ -1036,7 +1059,11 @@ export function createStore(): Store {
     return result;
   }
 
-  function undo(): boolean {
+  function undo(): Promise<boolean> {
+    return enqueue(async () => applyQueuedUndo());
+  }
+
+  function applyQueuedUndo(): boolean {
     const previousHistory = historySnapshot();
     const entry = undoStack.pop();
     if (!entry) return false;
@@ -1048,13 +1075,17 @@ export function createStore(): Store {
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
-    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op));
+    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op), entry.activeSlideId);
     emitEvent("edit", { operation: entry.op, result: entry.result, source: "undo" });
     emitHistoryChange(previousHistory);
     return true;
   }
 
-  async function redo(): Promise<boolean> {
+  function redo(): Promise<boolean> {
+    return enqueue(applyQueuedRedo);
+  }
+
+  async function applyQueuedRedo(): Promise<boolean> {
     const previousHistory = historySnapshot();
     const entry = redoStack.pop();
     if (!entry) return false;
@@ -1063,7 +1094,7 @@ export function createStore(): Store {
 
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, entry.op);
-    undoStack.push({ op: entry.op, result });
+    undoStack.push({ op: entry.op, result, activeSlideId: entry.activeSlideId });
     commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
     emitEvent("edit", { operation: entry.op, result, source: "redo" });
     emitHistoryChange(previousHistory);

@@ -54,7 +54,7 @@ describe("parseChartXml: bar chart", () => {
   it("derives bar gaps from the OOXML gapWidth default", () => {
     const series = option.series as AnyRecord[];
     expect(series[0].barGap).toBe("0%");
-    // gapWidth 150 with 2 clustered series → 150/(200+150) ≈ 43%
+    // gapWidth 150 with 2 clustered series → 150/(200+150) ≈ 43%.
     expect(series[0].barCategoryGap).toBe("43%");
   });
 
@@ -63,7 +63,7 @@ describe("parseChartXml: bar chart", () => {
   });
 
   it("applies a PowerPoint-like nice range to the value axis", () => {
-    // data max 30 → interval 5, headroom to 35, floor at 0
+    // data max 30 → interval 5, headroom to 35, floor at 0.
     expect(option.yAxis).toMatchObject({ type: "value", min: 0, max: 35, interval: 5 });
   });
 
@@ -182,7 +182,7 @@ ${seriesXml(0, "S", ["A"], [1])}
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
     expect(option.grid.borderColor).toBe("#FF0000");
-    // 12700 EMU = 1pt = 1.333px
+    // 12700 EMU = 1pt = 1.333px.
     expect(option.grid.borderWidth).toBeCloseTo(1.333, 3);
   });
 
@@ -195,7 +195,7 @@ ${seriesXml(1, "B", ["X"], [2])}
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
     expect(option.series[0].stack).toBe("total");
-    // stacked bars share one slot → 150/(100+150) = 60%
+    // stacked bars share one slot → 150/(100+150) = 60%.
     expect(option.series[0].barCategoryGap).toBe("60%");
   });
 
@@ -234,7 +234,7 @@ ${seriesXml(0, "Solo", ["A", "B"], [1, 2])}
 </c:barChart>
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
-    // darkened accent palette cycles per point
+    // darkened accent palette cycles per point.
     expect(option.series[0].data[0]).toMatchObject({ itemStyle: { color: "#3c64ac" } });
   });
 
@@ -441,7 +441,7 @@ ${seriesXml(0, "Rings", ["A", "B"], [1, 2])}
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
     expect(option.series[0].type).toBe("pie");
-    // outer 82%, inner = round(82 × 40%) = 33%
+    // outer 82%, inner = round(82 × 40%) = 33%.
     expect(option.series[0].radius).toEqual(["33%", "82%"]);
     expect(option.series[0].center).toEqual(["50%", "55%"]);
   });
@@ -636,7 +636,7 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
 });
 
 describe("renderChart via renderSlide (happy-dom)", () => {
-  // NOTE: full ECharts initialization is intentionally NOT exercised here.
+  // Full ECharts initialization is intentionally NOT exercised here.
   // The chart renderer is hard-wired to the echarts CanvasRenderer, and
   // happy-dom's <canvas> has no 2D context (getContext returns null), which
   // makes zrender's async paint loop throw unhandled errors. renderChart

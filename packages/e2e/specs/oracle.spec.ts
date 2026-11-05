@@ -52,7 +52,7 @@ for (const { name: deck, slides } of ALL_DECKS) {
         // slide and running SSIM over it is this spec's entire cost, and CI
         // runs on a platform with no baselines, so it was paying that in full
         // for a result it then threw away. The same slides were already being
-        // skipped there, so this changes when we give up, not what is covered.
+        // skipped there, so this changes when the spec gives up, not what is covered.
         // A blank or broken slide is still caught on every platform, by
         // exported-decks.spec.ts for the exported decks and by the screenshot
         // baselines in render.spec.ts and table-borders.spec.ts for the

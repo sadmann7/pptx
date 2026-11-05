@@ -25,10 +25,6 @@ export interface ErrorProps extends Omit<PrimitiveProps<"div", ErrorState>, "chi
   children?: React.ReactNode | ((error: GlobalError) => React.ReactNode);
 }
 
-/**
- * Renders its children only when the presentation failed to parse.
- * Place anywhere inside `<Presentation.Root>`.
- */
 export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error(
   { children, render, ...errorProps },
   forwardedRef,

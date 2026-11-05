@@ -1,8 +1,4 @@
-﻿/**
- * Renders grouped shapes with coordinate space remapping.
- */
-
-import { BaseNodeData } from "../model/nodes/base";
+﻿import { BaseNodeData } from "../model/nodes/base";
 import { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
 import type { ShapeNodeData } from "../model/nodes/shape";
@@ -114,20 +110,10 @@ function applyGroupEffects(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Group Rendering
-// ---------------------------------------------------------------------------
-
 /**
- * Renders a group node into an absolutely-positioned HTML element.
- *
- * Groups define a child coordinate space (childOffset + childExtent) that must
- * be remapped to the group's actual position and size. Each child's position
- * and size are transformed accordingly before rendering.
- *
- * @param node       The parsed group node data
- * @param ctx        The render context
- * @param renderNode A callback to render individual child nodes (avoids circular deps)
+ * Groups define a child coordinate space (childOffset + childExtent) that is
+ * remapped to the group's actual position and size before each child renders.
+ * `renderNode` is passed in to avoid a circular import.
  */
 export function renderGroup(
   node: GroupNodeData,
@@ -141,8 +127,8 @@ export function renderGroup(
   wrapper.style.width = `${node.size.w}px`;
   wrapper.style.height = `${node.size.h}px`;
 
-  // Apply group rotation. Group flips are applied by remapping child geometry below so text
-  // renderers can keep readable text upright instead of mirroring the entire DOM subtree.
+  // Group flips remap child geometry below instead, so text stays upright
+  // rather than mirroring the entire DOM subtree.
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -157,14 +143,12 @@ export function renderGroup(
   const groupW = node.size.w;
   const groupH = node.size.h;
 
-  // Resolve group fill from grpSpPr for children that use a:grpFill
+  // Children with a:grpFill take the group's fill from grpSpPr.
   const grpSpPr = node.source.child("grpSpPr");
   const childCtx: RenderContext = { ...ctx };
   if (grpSpPr.exists()) {
     applyGroupEffects(wrapper, node, ctx, grpSpPr);
 
-    // Check if the group itself has a fill (solidFill, gradFill, etc.)
-    // that children can inherit via grpFill
     const FILL_TAGS = ["solidFill", "gradFill", "blipFill", "pattFill"];
     for (const tag of FILL_TAGS) {
       if (grpSpPr.child(tag).exists()) {
@@ -172,7 +156,7 @@ export function renderGroup(
         break;
       }
     }
-    // If the group itself uses grpFill, propagate the parent's group fill
+    // If the group itself uses grpFill, propagate the parent's group fill.
     if (!childCtx.groupFillNode && grpSpPr.child("grpFill").exists() && ctx.groupFillNode) {
       childCtx.groupFillNode = ctx.groupFillNode;
     }
@@ -194,7 +178,7 @@ export function renderGroup(
     const firstPie = node.children.slice(0, 3).every((c) => prst(c) === "pie");
     const nextArrow = node.children.slice(3, 6).every((c) => prst(c) === "circularArrow");
     if (firstPie && nextArrow) {
-      // Use diagram extent center and a single circle size so the circle is centered and fits.
+      // One circle size around the diagram extent's center keeps the circle centered and fitting.
       const pieNodes = [0, 1, 2].map((i) => parseByIndex(i)).filter(Boolean);
       if (pieNodes.length === 3) {
         const pieW = Math.max(...pieNodes.map((n) => n!.size.w));
@@ -241,7 +225,7 @@ export function renderGroup(
       const childNode = parseByIndex(index);
       if (!childNode) continue;
 
-      // Remap child coordinates from child space to group space
+      // Remap child coordinates from child space to group space.
       if (chExt.w > 0 && chExt.h > 0) {
         const scaleX = groupW / chExt.w;
         const scaleY = groupH / chExt.h;
@@ -292,14 +276,14 @@ export function renderGroup(
         }
       }
 
-      // Overlap the 3 pie sectors at the same center so they form one circle
+      // Overlap the 3 pie sectors at the same center so they form one circle.
       if (pieCommon && index < 3 && childNode.nodeType === "shape") {
         const origW = childNode.size.w;
         const origH = childNode.size.h;
         const pieOffset = pieCenterOffsets?.get(index) ?? { x: 0, y: 0 };
         childNode.position = { x: pieCommon.x + pieOffset.x, y: pieCommon.y + pieOffset.y };
         childNode.size = { w: pieCommon.w, h: pieCommon.h };
-        // Scale text box so labels stay in the right sector (txXfrm was in original shape space)
+        // txXfrm is in the original shape space, so it scales with the shape to keep labels in their sector.
         const shapeNode = childNode as ShapeNodeData;
         if (origW > 0 && origH > 0 && shapeNode.textBoxBounds) {
           const tb = shapeNode.textBoxBounds;
@@ -315,7 +299,6 @@ export function renderGroup(
       const el = renderNode(childNode, childCtx);
       wrapper.appendChild(el);
     } catch {
-      // Per-child error handling: create error placeholder
       const errDiv = document.createElement("div");
       errDiv.style.position = "absolute";
       errDiv.style.border = "1px dashed #ff6b6b";
@@ -333,10 +316,6 @@ export function renderGroup(
 
   return wrapper;
 }
-
-// ---------------------------------------------------------------------------
-// Child Node Parsing
-// ---------------------------------------------------------------------------
 
 /**
  * Parses a raw XML child node from a group's spTree into a typed node object.

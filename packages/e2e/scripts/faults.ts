@@ -1,19 +1,9 @@
 import { chromium } from "@playwright/test";
 /**
- * Measures what the oracle's three numbers can actually catch, by injecting
- * known faults into a rendered slide and scoring the damaged render against
- * PowerPoint's export the way oracle.spec.ts does.
+ * Injects known faults into rendered slides and scores them against a control
+ * render, to check what the oracle's measures catch. Re-run whenever its
+ * tolerances change. Start the harness first (`pnpm harness`), then:
  *
- * Every fault is compared against a control render of the same slide, so a row
- * reads "this much of the fault showed up in each number". A fault no measure
- * reacts to is a hole in the gate; a control run that trips anything means a
- * tolerance is below the noise floor.
- *
- * This is what settled the ink measure's shape (see oracle.ts) and it should be
- * re-run whenever those tolerances or the grid change, since a gate tuned only
- * against the bug that motivated it proves nothing.
- *
- * Start the harness first (`pnpm harness`), then:
  *   pnpm faults
  *   pnpm faults --slide adventure-club-pin-and-paper:4 --fault hide-text
  */

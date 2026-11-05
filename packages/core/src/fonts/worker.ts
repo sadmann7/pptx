@@ -1,10 +1,3 @@
-/**
- * Web Worker entry for embedded-font decompression.
- *
- * Receives one job per message and posts the decoded TrueType bytes back
- * as a transferable ArrayBuffer (or `null` when decoding fails).
- */
-
 import { copyToArrayBuffer, decodeEmbeddedFontPart } from "./decode";
 import type { MtxErrorCode } from "./mtx";
 

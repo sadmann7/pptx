@@ -1,9 +1,4 @@
-﻿/**
- * Extracts color map, background, text styles,
- * and placeholder shapes from a p:sldMaster XML.
- */
-
-import { emuToPx } from "../ooxml/unit";
+﻿import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import type { PlaceholderEntry } from "./layout";
 
@@ -23,10 +18,6 @@ export interface MasterData {
   rels: Map<string, import("../ooxml/rel").RelEntry>;
 }
 
-/**
- * Checks whether a shape node contains a placeholder definition.
- * Looks for `p:nvSpPr > p:nvPr > p:ph` or `p:nvPicPr > p:nvPr > p:ph`.
- */
 function isPlaceholder(node: SafeXmlNode): boolean {
   for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
     const nvWrapper = node.child(wrapper);
@@ -39,9 +30,6 @@ function isPlaceholder(node: SafeXmlNode): boolean {
   return false;
 }
 
-/**
- * Extracts shape transform in EMU units.
- */
 function getShapeXfrmInEmu(
   node: SafeXmlNode,
 ): { offX: number; offY: number; cx: number; cy: number } | null {
@@ -158,10 +146,6 @@ function extractPlaceholderEntriesRecursive(
   return out;
 }
 
-/**
- * Parses all attributes of a node into a Map<string, string>.
- * Used for clrMap where every attribute is a color mapping entry.
- */
 function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   const result = new Map<string, string>();
   const el = node.element;
@@ -180,27 +164,21 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
 export function parseMaster(root: SafeXmlNode): MasterData {
   const cSld = root.child("cSld");
 
-  // --- Background ---
   const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
-  // --- Shape tree ---
   const spTree = cSld.child("spTree");
 
-  // --- Color map ---
   const clrMap = root.child("clrMap");
   const colorMap = parseAllAttributes(clrMap);
 
-  // --- Text styles ---
   const txStyles = root.child("txStyles");
   const titleStyle = txStyles.child("titleStyle");
   const bodyStyle = txStyles.child("bodyStyle");
   const otherStyle = txStyles.child("otherStyle");
 
-  // --- Default text style ---
   const defaultTextStyle = root.child("defaultTextStyle");
 
-  // --- Placeholders ---
   const placeholderEntries = extractPlaceholderEntriesRecursive(spTree, null);
   const placeholders = placeholderEntries.map((entry) => entry.node);
 

@@ -1,9 +1,4 @@
-﻿/**
- * Converts OOXML chart XML into ECharts option objects and mounts live
- * ECharts instances into the DOM.
- */
-
-import type * as echarts from "echarts";
+﻿import type * as echarts from "echarts";
 import {
   BarChart,
   CandlestickChart,
@@ -113,10 +108,6 @@ import { RenderContext } from "./context";
 
 export type { ChartFrameStyle } from "./chart/type";
 
-// ---------------------------------------------------------------------------
-// Local type helpers
-// ---------------------------------------------------------------------------
-
 /** Subset of ECharts label formatter callback params used in this renderer. */
 interface LabelFormatterParams {
   value: number | number[] | unknown;
@@ -155,16 +146,7 @@ interface GridOptionExtended extends echarts.GridComponentOption {
   borderWidth?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Chart Title
-// ---------------------------------------------------------------------------
-
-/**
- * Extracts chart title from chartSpace > chart > title.
- * Returns undefined when autoTitleDeleted is true (title was intentionally removed).
- */
 function extractChartTitle(chartNode: SafeXmlNode, seriesArr?: SeriesData[]): string | undefined {
-  // Respect autoTitleDeleted: if set, the title should not be shown
   const autoTitleDeleted = chartNode.child("autoTitleDeleted");
   if (parseOoxmlBoolElement(autoTitleDeleted)) {
     return undefined;
@@ -216,9 +198,6 @@ function buildChartTitleOption(
   };
 }
 
-/**
- * Extracts chart title manual layout (title > layout > manualLayout) to ECharts title position.
- */
 function extractTitleManualLayout(chartNode: SafeXmlNode): Partial<Record<"left" | "top", string>> {
   const manual = chartNode.child("title").child("layout").child("manualLayout");
   if (!manual.exists()) return {};
@@ -286,7 +265,7 @@ const OOXML_SYMBOL_MAP: Record<string, string> = {
   diamond: "diamond",
   triangle: "triangle",
   none: "none",
-  // Less common symbols: fallback to circle
+  // Less common symbols: fallback to circle.
   star: "circle",
   dash: "circle",
   dot: "circle",
@@ -369,13 +348,6 @@ function hasManualGrid(
   );
 }
 
-// ---------------------------------------------------------------------------
-// ECharts Option Builders
-// ---------------------------------------------------------------------------
-
-/**
- * Converts OOXML data label position to ECharts bar label position.
- */
 function mapBarLabelPosition(pos: string | undefined, isStacked: boolean): string {
   switch (pos) {
     case "outEnd":
@@ -710,11 +682,9 @@ function buildBarChartOption(
   const grouping = chartGrouping(chartTypeNode);
   const isHorizontal = barDir === "bar";
 
-  // Layout parameters
   const gapWidth = chartTypeNode.child("gapWidth").numAttr("val") ?? 150;
   const overlap = chartTypeNode.child("overlap").numAttr("val");
 
-  // Use categories from the first series that has them
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
   const titleOption = buildChartTitleOption(chartNode, seriesArr, ctx, 12);
@@ -740,7 +710,7 @@ function buildBarChartOption(
     : defaultVaryColors;
   const pointPalette = getVaryColorPointPalette(ctx, { darken: !isHorizontal });
 
-  // Parse data labels: in OOXML they can be on chart type (barChart) or on series (ser); try both
+  // OOXML puts data labels on the chart type (barChart) or on the series (ser).
   let sharedLabels = parseDataLabels(chartTypeNode, ctx);
   if (!sharedLabels) {
     const firstSer = chartTypeNode.children("ser")[0];
@@ -753,7 +723,6 @@ function buildBarChartOption(
     .map((x) => x.ser);
 
   const series: echarts.BarSeriesOption[] = seriesArr.map((s, idx) => {
-    // Capture formatCode for use in label formatter closure
     const fc = s.formatCode;
     const perSeriesLabels =
       parseDataLabels(serNodesByOrder[idx] ?? chartTypeNode, ctx) ?? sharedLabels;
@@ -783,7 +752,7 @@ function buildBarChartOption(
       return cfg.fontSize !== undefined ? markExplicitFontSize(label) : label;
     };
 
-    // Per-series label config (override shared)
+    // Per-series label config (override shared).
     const label: echarts.BarSeriesOption["label"] = buildLabel(perSeriesLabels);
     const dLblsNode = getDataLabelsNode(serNodesByOrder[idx], chartTypeNode);
     const pointOverrides = parsePointDataLabelOverrides(dLblsNode, ctx);
@@ -891,7 +860,7 @@ function buildBarChartOption(
   };
   applyAxisInfo(categoryAxisDef, categoryAxis, "category");
 
-  // Use a series-derived axis/tooltip format only when all series share it.
+  // A series-derived axis/tooltip format applies only when all series share it.
   const sharedSeriesFormat = getSharedSeriesFormatCode(seriesArr);
   const pctFormat =
     (isPercentStacked ? "0%" : undefined) ||
@@ -913,7 +882,7 @@ function buildBarChartOption(
   const hasTitle = !!titleOption;
   const gridTop = isHorizontal && hasTitle ? 60 : getGridTopPx(hasTitle, legendInfo);
   const legendTopPx = getLegendTopPx(hasTitle, legendInfo);
-  // When value axis is hidden, reduce left/right padding so bars use full width
+  // When value axis is hidden, reduce left/right padding so bars use full width.
   const leftAxis = isHorizontal ? categoryAxis : valueAxis;
   const bottomAxis = isHorizontal ? valueAxis : categoryAxis;
   const gridLeft = (isHorizontal ? 15 : valueAxis.deleted ? 4 : 18) + getAxisTitleSpacePx(leftAxis);
@@ -1369,14 +1338,12 @@ function buildRadarChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
 
-  // Categories come from the first series that has them
+  // Categories come from the first series that has them.
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
-  // Read valAx scaling for explicit min/max on radar
   const plotArea = chartNode.child("plotArea");
   const { valueAxis } = parseAxes(plotArea, ctx);
 
-  // Determine indicator max: prefer explicit valAx max, else compute from data + padding
   let indicatorMax: number;
   if (valueAxis.max !== undefined) {
     indicatorMax = valueAxis.max;
@@ -1403,7 +1370,6 @@ function buildRadarChartOption(
         ...(valueAxis.labelFontSize !== undefined ? { fontSize: valueAxis.labelFontSize } : {}),
       }
     : undefined;
-  // Read radar style to determine default marker/grid behavior
   const filledRadarLayering =
     radarStyle === "filled" ? { radarZ: 4, seriesZ: 2 } : { radarZ: undefined, seriesZ: undefined };
   const valueAxisId = chartTypeNode.children("axId")[1]?.attr("val");
@@ -1464,13 +1430,12 @@ function buildRadarChartOption(
     (radarHasTopLegend ? "58%" : radarStyle === "filled" ? "76%" : "86%");
 
   const radarData = seriesArr.map((s, idx) => {
-    // Reorder values to match the reversed category order
+    // Reorder values to match the reversed category order.
     const cwValues = s.values.length > 1 ? [s.values[0], ...s.values.slice(1).reverse()] : s.values;
     const echartsSymbol = mapOoxmlSymbol(s.markerSymbol);
-    // Show symbols if radarStyle is 'marker' or series has explicit marker
     const showSymbol =
       radarStyle === "marker" || (echartsSymbol !== undefined && echartsSymbol !== "none");
-    // PowerPoint radar charts fill the area with a semi-transparent version of the line color
+    // PowerPoint radar charts fill the area with a semi-transparent version of the line color.
     const isFilled = radarStyle === "filled";
     const color = s.colorHex ?? chartPalette?.[idx % chartPalette.length];
     const areaColor = typeof color === "string" ? buildFilledRadarAreaColor(color) : color;
@@ -1559,7 +1524,6 @@ function buildScatterChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
 
-  // Parse scatter-specific marker defaults from scatterStyle
   const scatterStyle = chartTypeNode.child("scatterStyle").attr("val") ?? "lineMarker";
   const scatterStyleDrawsLine =
     scatterStyle === "lineMarker" ||
@@ -1570,7 +1534,6 @@ function buildScatterChartOption(
   const scatterStyleHidesMarkers = scatterStyle === "line" || scatterStyle === "smooth";
 
   const series = seriesArr.map((s, idx) => {
-    // Use xValues if available (parsed from c:xVal), otherwise fall back to index
     const data = s.values.map((v, i) => {
       const x = s.xValues && i < s.xValues.length ? s.xValues[i] : i;
       return [x, v];
@@ -1661,10 +1624,6 @@ function buildScatterChartOption(
     series,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Bubble Chart
-// ---------------------------------------------------------------------------
 
 function applyBubbleAxisHeadroom(
   axisDef: Record<string, unknown>,
@@ -1815,10 +1774,6 @@ function buildBubbleChartOption(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Stock Chart (Candlestick)
-// ---------------------------------------------------------------------------
-
 function looksLikeDateCategory(label: string): boolean {
   return /^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(label.trim());
 }
@@ -1852,15 +1807,15 @@ function buildStockChartOption(
 
   // Stock charts have 3 (HLC) or 4 (OHLC) series:
   // OHLC order: open, high, low, close
-  // HLC order: high, low, close (open defaults to close → collapsed body)
+  // HLC order: high, low, close (open defaults to close → collapsed body).
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
-  // ECharts candlestick expects [open, close, low, high] per data point
+  // ECharts candlestick expects [open, close, low, high] per data point.
   const dataLen = categories.length || Math.max(...seriesArr.map((s) => s.values.length), 0);
   const candleData: number[][] = [];
 
   if (seriesArr.length >= 4) {
-    // OHLC: series 0=open, 1=high, 2=low, 3=close
+    // OHLC: series 0=open, 1=high, 2=low, 3=close.
     for (let i = 0; i < dataLen; i++) {
       candleData.push([
         seriesArr[0].values[i] ?? 0, // open
@@ -1870,7 +1825,7 @@ function buildStockChartOption(
       ]);
     }
   } else if (seriesArr.length >= 3) {
-    // HLC: series 0=high, 1=low, 2=close; open=close (collapsed body)
+    // HLC: series 0=high, 1=low, 2=close; open=close (collapsed body).
     for (let i = 0; i < dataLen; i++) {
       const close = seriesArr[2].values[i] ?? 0;
       candleData.push([
@@ -1881,7 +1836,7 @@ function buildStockChartOption(
       ]);
     }
   } else {
-    // Fallback: single series treated as close values with zero open
+    // Fallback: single series treated as close values with zero open.
     for (let i = 0; i < dataLen; i++) {
       const val = seriesArr[0]?.values[i] ?? 0;
       candleData.push([0, val, 0, val]);
@@ -1956,7 +1911,7 @@ function buildStockChartOption(
           type: "custom",
           name: seriesArr[2].name,
           coordinateSystem: "cartesian2d",
-          // data: [categoryIndex, high, low, close]
+          // data: [categoryIndex, high, low, close].
           data: Array.from({ length: dataLen }, (_, i) => [
             i,
             seriesArr[0].values[i] ?? 0,
@@ -2021,7 +1976,7 @@ function buildStockChartOption(
           name: seriesArr.length >= 3 ? seriesArr[2].name : seriesArr[0]?.name,
           data: candleData,
           itemStyle: {
-            // OOXML up/down colors from series spPr; fallback to standard financial convention
+            // OOXML up/down colors from series spPr; fallback to standard financial convention.
             color: pickSeriesStringColor(
               seriesArr[seriesArr.length >= 4 ? 3 : 2]?.colorHex,
               "#ec0000",
@@ -2056,13 +2011,6 @@ function buildStockChartOption(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Main Chart XML Parser
-// ---------------------------------------------------------------------------
-
-/**
- * Parses plotArea/layout/manualLayout to ECharts grid override.
- */
 interface ManualLayoutBox {
   x?: number;
   y?: number;
@@ -2396,7 +2344,6 @@ export function parseChartXml(
 ): ParseChartResult {
   const chartCtx = createChartRenderContext(chartXml, ctx);
   const chartPalette = buildChartPalette(chartXml, chartCtx, chartPath);
-  // Navigate: chartSpace > chart > plotArea
   const chart = chartXml.child("chart");
   const plotArea = chart.child("plotArea");
 
@@ -2407,7 +2354,6 @@ export function parseChartXml(
     };
   }
 
-  // Extract background colors
   const { chartBg, plotAreaBg } = extractBackgroundColors(chartXml, chart, chartCtx);
   const chartFrameStyle = extractChartFrameStyle(chartXml, chartCtx);
 
@@ -2458,7 +2404,7 @@ export function parseChartXml(
       }
     }
 
-    // Apply chart-space default font sizes to text elements that use hardcoded defaults
+    // Chart-space font sizes replace the hardcoded defaults.
     const defaultFs = extractChartDefaultFontSize(chartXml);
     if (defaultFs) {
       applyDefaultFontSizes(option, defaultFs);
@@ -2469,17 +2415,16 @@ export function parseChartXml(
     }
     applyDefaultTextColors(option);
 
-    // Adjust grid margins for legend placement (non-overlay)
+    // Adjust grid margins for legend placement (non-overlay).
     applyLegendGridMargins(option, chart, defaultFs);
 
-    // Apply PowerPoint-like nice axis range (adds headroom beyond data max)
+    // Apply PowerPoint-like nice axis range (adds headroom beyond data max).
     applyNiceAxisRange(option, chartSize);
 
     // The entrance animation is an ECharts default, not something the file asks
     // for, and it makes any captured frame a moving target.
     option.animation = false;
 
-    // Apply background colors
     if (chartBg) {
       option.backgroundColor = chartBg;
     }
@@ -2488,9 +2433,8 @@ export function parseChartXml(
     }
     if (plotAreaBg) {
       if (option.grid) {
-        // Apply plot area background via grid (for cartesian charts).
-        // Showing the grid also enables its default #ccc 1px border, which
-        // PowerPoint only draws when the plot area declares a line.
+        // Showing the grid for its background also enables its default #ccc 1px
+        // border, which PowerPoint only draws when the plot area declares a line.
         const grid = option.grid as GridOptionExtended;
         grid.backgroundColor = plotAreaBg;
         grid.show = true;
@@ -2518,7 +2462,6 @@ export function parseChartXml(
             .sort((a, b) => a.order - b.order)
         : entry.seriesArr;
 
-    // Build data table info when c:dTable exists
     const dTableMeta = parseDataTable(plotArea);
     const dataTable: DataTableInfo | undefined = dTableMeta
       ? {
@@ -2538,13 +2481,6 @@ export function parseChartXml(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Public Render Function
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a chart node into an HTML element with an ECharts instance.
- */
 export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.dataset.pptxChart = "";
@@ -2580,7 +2516,7 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     return wrapper;
   }
 
-  // Create chart container (clip content so legend/title stay inside)
+  // Clipped so the legend/title stay inside.
   const chartDiv = document.createElement("div");
   chartDiv.style.width = "100%";
   chartDiv.style.flex = "1";
@@ -2593,7 +2529,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
-  // Parse chart data and create ECharts option
   const chartTheme = ctx.presentation.chartThemes?.get(node.chartPath);
   const chartCtx = chartTheme ? { ...ctx, theme: chartTheme, colorCache: new Map() } : ctx;
   const { option, dataTable, chartFrameStyle } = parseChartXml(
@@ -2616,7 +2551,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     wrapper.appendChild(customLegend);
   }
 
-  // Append data table below chart when c:dTable exists
   if (dataTable) {
     const seriesColors = dataTable.seriesArr.map((s) => s.colorHex).filter(Boolean) as string[];
     const tableEl = buildDataTableElement(
@@ -2628,8 +2562,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
 
   const chartSet = ctx.chartInstances;
 
-  // Initialize ECharts after the element is attached to the DOM.
-  // Use requestAnimationFrame to ensure the container has dimensions.
   const chartReady = new Promise<void>((resolve) => {
     const finishInit = (): void => {
       initChart(chartDiv, option, chartSet, ctx.cleanups);
@@ -2670,7 +2602,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-/** Actually create ECharts instance, set option, and wire up resize. */
 function initChart(
   container: HTMLElement,
   option: echarts.EChartsOption,

@@ -1,9 +1,4 @@
-﻿/**
- * PPTX zip archive parser.
- * Extracts and categorizes all files from a .pptx (which is a zip archive).
- */
-
-import type { JSZipObject } from "jszip";
+﻿import type { JSZipObject } from "jszip";
 import JSZip from "jszip";
 
 import type { MediaResolver, ResolvedMedia } from "../media/resolve";
@@ -280,9 +275,7 @@ async function mapWithConcurrency<T>(
   await Promise.all(workers);
 }
 
-/**
- * Read a .pptx file buffer and extract all relevant parts, categorized by type.
- */
+/** Reads a .pptx buffer and extracts its parts, categorized by type. */
 export async function readPptx(
   buffer: ArrayBuffer,
   options: PptxReadOptions = {},
@@ -400,31 +393,26 @@ async function readPptxInternal(
   async function categorizeEntry(path: string, file: JSZipObject): Promise<void> {
     const normalizedPath = path.replace(/\\/g, "/");
 
-    // --- Content Types ---
     if (normalizedPath === "[Content_Types].xml") {
       result.contentTypes = await readZipTextEntry(normalizedPath, file, limitState);
       return;
     }
 
-    // --- Presentation ---
     if (normalizedPath === "ppt/presentation.xml") {
       result.presentation = await readZipTextEntry(normalizedPath, file, limitState);
       return;
     }
 
-    // --- Presentation Rels ---
     if (normalizedPath === "ppt/_rels/presentation.xml.rels") {
       result.presentationRels = await readZipTextEntry(normalizedPath, file, limitState);
       return;
     }
 
-    // --- Table Styles ---
     if (normalizedPath === "ppt/tableStyles.xml") {
       result.tableStyles = await readZipTextEntry(normalizedPath, file, limitState);
       return;
     }
 
-    // --- Media (binary) ---
     if (getIsMediaPath(normalizedPath)) {
       if (options.lazyMedia) {
         setPathMapEntry(lazyMediaEntries, normalizedPath, { path: normalizedPath, file });
@@ -436,14 +424,12 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Fonts (binary) ---
     if (getIsFontPath(normalizedPath)) {
       const bytes = await readZipBinaryEntry(normalizedPath, file, limitState);
       setPathMapEntry(result.fonts, normalizedPath, bytes);
       return;
     }
 
-    // --- Slide Rels (must check before slides to avoid false match) ---
     if (/^ppt\/slides\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slideRels,
@@ -453,7 +439,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Slides ---
     if (/^ppt\/slides\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slides,
@@ -463,7 +448,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Slide Layout Rels ---
     if (/^ppt\/slideLayouts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slideLayoutRels,
@@ -473,7 +457,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Slide Layouts ---
     if (/^ppt\/slideLayouts\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slideLayouts,
@@ -483,7 +466,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Slide Master Rels ---
     if (/^ppt\/slideMasters\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slideMasterRels,
@@ -493,7 +475,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Slide Masters ---
     if (/^ppt\/slideMasters\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.slideMasters,
@@ -503,8 +484,9 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Themes ---
-    if (/^ppt\/theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
+    // A master finds its theme by relationship, so some generators nest it
+    // (ppt/slideMasters/theme/theme2.xml); match a theme/ folder at any depth.
+    if (/^ppt\/(?:[^/]+\/)*theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.themes,
         normalizedPath,
@@ -513,8 +495,8 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Theme Overrides (used by chart parts) ---
-    if (/^ppt\/theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
+    // Theme overrides are referenced by chart parts.
+    if (/^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
       if (result.themeOverrides) {
         setPathMapEntry(
           result.themeOverrides,
@@ -528,8 +510,6 @@ async function readPptxInternal(
     // Chart parts canonically live in ppt/charts/, but the location is
     // relationship-defined, and some generators (e.g. Open XML SDK) nest them
     // per-slide (ppt/slides/charts/chart1.xml), so match any depth under ppt/.
-
-    // --- Chart Rels ---
     if (/^ppt\/(?:[^/]+\/)*charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
       if (result.chartRels) {
         setPathMapEntry(
@@ -541,7 +521,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Charts ---
     if (
       /^ppt\/(?:[^/]+\/)*charts\/(?!style[^/]*\.xml$)(?!colors[^/]*\.xml$)[^/]+\.xml$/.test(
         normalizedPath,
@@ -555,7 +534,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Chart Styles ---
     if (/^ppt\/(?:[^/]+\/)*charts\/style[^/]*\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.chartStyles,
@@ -565,7 +543,6 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Chart Colors ---
     if (/^ppt\/(?:[^/]+\/)*charts\/colors[^/]*\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.chartColors,
@@ -575,7 +552,7 @@ async function readPptxInternal(
       return;
     }
 
-    // --- Diagram Drawings (SmartArt fallback) ---
+    // SmartArt fallback drawings.
     if (/^ppt\/diagrams\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.diagramDrawings,

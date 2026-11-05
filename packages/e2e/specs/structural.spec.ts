@@ -28,7 +28,7 @@ test.describe("basic deck structure", () => {
       const rect = slide.nodes[0];
       expect(rect.nodeType).toBe("shape");
       expect(rect.presetGeometry).toBe("rect");
-      // off 914400,914400 ext 6096000x1828800 EMU
+      // off 914400,914400 ext 6096000x1828800 EMU.
       expect(rect.position.x).toBeCloseTo(96, 3);
       expect(rect.position.y).toBeCloseTo(96, 3);
       expect(rect.size.w).toBeCloseTo(640, 3);
@@ -102,7 +102,7 @@ test.describe("nested charts deck structure", () => {
       expect(slide.nodes).toHaveLength(1);
       const chart = slide.nodes[0];
       expect(chart.nodeType).toBe("chart");
-      // xfrm: off 914400,914400 ext 9144000x4572000 EMU
+      // xfrm: off 914400,914400 ext 9144000x4572000 EMU.
       expect(chart.position.x).toBeCloseTo(96, 3);
       expect(chart.position.y).toBeCloseTo(96, 3);
       expect(chart.size.w).toBeCloseTo(960, 3);

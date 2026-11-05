@@ -92,7 +92,7 @@ describe("theme line references (a:lnRef)", () => {
     const path = mainPath(element);
     // lnStyleLst[0] = ln w=6350 solidFill phClr; phClr = accent2 = ED7D31.
     expect(path.getAttribute("stroke")?.toLowerCase()).toBe("#ed7d31");
-    // 6350 EMU = 0.6667px at 96dpi
+    // 6350 EMU = 0.6667px at 96dpi.
     expect(Number(path.getAttribute("stroke-width"))).toBeCloseTo(0.6667, 3);
   });
 

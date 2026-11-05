@@ -1,13 +1,7 @@
-/**
- * CTF variable-length integers (MTX specification, section 6.1).
- *
- * Both types spend one byte on values in the common range and escape through
- * codes 250 and 253-255 for anything wider.
- */
-
 import type { Reader } from "./binary";
 import { fail } from "./error";
 
+// MTX spec §6.1: one byte for common values, escape codes 250 and 253-255 for wider ones.
 export function read255UShort(reader: Reader): number {
   const code = reader.u8();
   if (code === 253) return reader.u16be();

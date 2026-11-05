@@ -8,7 +8,7 @@ description: API reference for all Presentation primitives.
 The outermost component. Creates an internal store (or inherits one from `Presentation.Provider`), loads the file, and provides context to all descendants.
 
 ```tsx
-import * as Presentation from "@diceui/pptx";
+import { Presentation } from "@diceui/pptx";
 
 <Presentation.Root
   file={file}
@@ -123,7 +123,7 @@ The wrapper carries a `data-status` attribute matching the current load status:
 
 ## Selection
 
-PowerPoint-style editing overlay. Enables drag-to-move, resize, inline text editing, multi-select, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
+PowerPoint-style editing overlay. Enables drag-to-move, resize, rotation, snapping, inline text editing, multi-select, copy and paste, and keyboard shortcuts. Renders nothing unless the presentation was loaded with `readOnly={false}`.
 
 Must be placed inside `Presentation.Slide`.
 
@@ -148,24 +148,28 @@ Must be placed inside `Presentation.Slide`.
 
 ### Interaction model
 
-| Action                                 | Behavior                         |
-| -------------------------------------- | -------------------------------- |
-| Click text box / placeholder           | Select + enter text edit mode    |
-| Click regular shape                    | Select                           |
-| Double-click regular shape             | Enter text edit mode             |
-| Type while shape selected              | Enter text edit mode             |
-| Drag shape                             | Move                             |
-| Drag border of text box (in text mode) | Move while keeping text mode     |
-| Drag resize handle                     | Resize                           |
-| Shift + drag corner handle             | Resize preserving aspect ratio   |
-| Ctrl/Cmd + A                           | Select all                       |
-| Shift / Ctrl / Cmd + click             | Toggle shape in/out of selection |
-| Drag empty canvas                      | Marquee select                   |
-| Delete / Backspace                     | Delete selected                  |
-| Arrow keys                             | Nudge (1 px; Shift = 10 px)      |
-| Ctrl/Cmd + Z                           | Undo                             |
-| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z   | Redo                             |
-| Escape                                 | Exit text mode → deselect        |
+| Action                                                                                                                                                             | Behavior                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Click shape                                                                                                                                                        | Select                                                           |
+| Click selected shape, or double-click                                                                                                                              | Enter text edit mode                                             |
+| Type, <Kbd>Enter</Kbd>, or <Kbd>F2</Kbd> while shape selected                                                                                                      | Enter text edit mode                                             |
+| Drag shape                                                                                                                                                         | Move (<Kbd>Shift</Kbd> = one axis; <Kbd>Alt</Kbd> = no snapping) |
+| Click or drag frame (in text mode)                                                                                                                                 | Leave text mode; select or move                                  |
+| Drag resize handle                                                                                                                                                 | Resize                                                           |
+| <Kbd>Shift</Kbd> + drag corner handle                                                                                                                              | Resize preserving aspect ratio                                   |
+| Drag rotate handle                                                                                                                                                 | Rotate (<Kbd>Shift</Kbd> = 15° steps)                            |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>A</Kbd></KbdGroup>                                                                                                               | Select all                                                       |
+| <Kbd>Shift/Ctrl/Cmd</Kbd> + click                                                                                                                                  | Toggle shape in/out of selection                                 |
+| Drag empty canvas                                                                                                                                                  | Marquee select                                                   |
+| <Kbd>Tab</Kbd> / <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup>                                                                                               | Select the next or previous shape                                |
+| <Kbd>Delete</Kbd> / <Kbd>Backspace</Kbd>                                                                                                                           | Delete selected                                                  |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>D</Kbd></KbdGroup>                                                                                                               | Duplicate                                                        |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>C</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>X</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>V</Kbd></KbdGroup> | Copy, cut, paste                                                 |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>]</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>[</Kbd></KbdGroup>                                                        | Forward or backward (<Kbd>Shift</Kbd> = front or back)           |
+| Arrow keys                                                                                                                                                         | Nudge (1 px; <Kbd>Shift</Kbd> = 10 px)                           |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                                               | Undo                                                             |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Y</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Shift</Kbd><Kbd>Z</Kbd></KbdGroup>                                        | Redo                                                             |
+| <Kbd>Escape</Kbd>                                                                                                                                                  | Disarm draw tool → exit text mode → deselect                     |
 
 Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
 
@@ -174,18 +178,65 @@ Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in t
 Control the accent color with a CSS variable:
 
 ```css
---presentation-selection: #2563eb; /* default */
+--presentation-selection: #1a73e8; /* default */
 ```
 
 ```tsx
 <Presentation.Selection className="[--presentation-selection:var(--ring)]" />
 ```
 
+See [Formatting toolbar](/docs/editing#formatting-toolbar) for `useSelection`.
+
 <AutoTypeTable path="types/presentation.ts" name="SelectionProps" />
+
+### Overlay parts
+
+Compose these to restyle the overlay. They are unstyled, so give handles a size. See [Styling the overlay](/docs/editing#styling-the-overlay) for more.
+
+```tsx
+<Presentation.Selection>
+  <Presentation.SelectionBox className="ring-1 ring-blue-500">
+    <Presentation.ResizeHandle className="size-2.5 rounded-full border border-blue-500 bg-white" />
+    <Presentation.RotateHandle className="size-3 rounded-full border border-blue-500 bg-white" />
+  </Presentation.SelectionBox>
+  <Presentation.SnapGuide className="bg-orange-500" />
+  <Presentation.Marquee className="border border-blue-500 bg-blue-500/10" />
+</Presentation.Selection>
+```
+
+#### SelectionBox
+
+The outline around each selected shape.
+
+<AutoTypeTable path="types/presentation.ts" name="SelectionBoxProps" />
+
+#### ResizeHandle
+
+The handles on each edge and corner. Goes inside `SelectionBox`.
+
+<AutoTypeTable path="types/presentation.ts" name="ResizeHandleProps" />
+
+#### RotateHandle
+
+The handle above the shape for rotating. Goes inside `SelectionBox`.
+
+<AutoTypeTable path="types/presentation.ts" name="RotateHandleProps" />
+
+#### SnapGuide
+
+The lines shown when a shape snaps into place.
+
+<AutoTypeTable path="types/presentation.ts" name="SnapGuideProps" />
+
+#### Marquee
+
+The box drawn while dragging to select or to draw a shape.
+
+<AutoTypeTable path="types/presentation.ts" name="MarqueeProps" />
 
 ## ThumbnailList
 
-Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
+Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. The cache keeps at most 50 previews, releasing the least recently shown off-screen ones, so memory stays flat on long decks. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.
 
 ```tsx
 <Presentation.ThumbnailList loop />
@@ -248,7 +299,7 @@ Renders its children only while the presentation is in the `"loading"` state.
 Renders its children only when the presentation fails to parse.
 
 ```tsx
-<Presentation.Error>{(err) => <span>{err.message}</span>}</Presentation.Error>
+<Presentation.Error>{(error) => <span>{error.message}</span>}</Presentation.Error>
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="ErrorProps" />

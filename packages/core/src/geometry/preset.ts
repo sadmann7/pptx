@@ -1,18 +1,8 @@
-﻿/**
- * Preset shape SVG path generators for OOXML preset geometry types.
- *
- * Each generator takes width, height, and optional adjustment values,
- * returning an SVG path d-attribute string.
- *
- * Adjustment values follow OOXML convention: values are in 100000ths
- * (so 50000 = 50%).
- */
-
-import { shapeArc } from "./arc";
+﻿import { shapeArc } from "./arc";
 
 type PresetShapeGenerator = (w: number, h: number, adjustments?: Map<string, number>) => string;
 
-/** Helper: get adjustment value or default, converting from 100000ths to fraction. */
+/** Adjustment value as a fraction (OOXML stores 100000ths, so 50000 = 0.5). */
 function adj(
   adjustments: Map<string, number> | undefined,
   name: string,
@@ -22,8 +12,7 @@ function adj(
   return raw / 100000;
 }
 
-/** Helper: generate a regular polygon path (inscribed in bounding box). */
-/** Raw adj helper: get adjustment value without dividing by 100000. */
+/** Adjustment value in raw 100000ths. */
 function adjRaw(
   adjustments: Map<string, number> | undefined,
   name: string,
@@ -32,7 +21,6 @@ function adjRaw(
   return adjustments?.get(name) ?? defaultVal;
 }
 
-/** Helper: generate a star polygon. */
 function starShape(w: number, h: number, points: number, innerRatio: number = 0.4): string {
   const cx = w / 2;
   const cy = h / 2;
@@ -125,13 +113,7 @@ function mirrorAbsolutePathVertically(path: string, height: number): string {
   return out.join(" ");
 }
 
-// ---------------------------------------------------------------------------
-// Preset shape registry
-// ---------------------------------------------------------------------------
-
 export const presetShapes: Map<string, PresetShapeGenerator> = new Map();
-
-// ===== Basic Shapes =====
 
 presetShapes.set("rect", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
@@ -153,12 +135,12 @@ presetShapes.set("roundRect", (w, h, adjustments) => {
 });
 
 presetShapes.set("plaque", (w, h, adjustments) => {
-  // OOXML: adj default 16667, concave (inward) arc corners via negative sweep arcTo
+  // OOXML: adj default 16667, concave (inward) arc corners via negative sweep arcTo.
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 16667), 0), 50000);
   const x1 = (Math.min(w, h) * a) / 100000;
   const x2 = w - x1;
   const y2 = h - x1;
-  // Start at (0, x1), arcTo with negative sweep creates concave corner
+  // arcTo with a negative sweep makes the corner concave.
   const a1 = ooArcTo(0, x1, x1, x1, 90, -90); // top-left: ends at (x1, 0)
   const a2 = ooArcTo(x2, 0, x1, x1, 180, -90); // top-right: ends at (w, x1)
   const a3 = ooArcTo(w, y2, x1, x1, 270, -90); // bottom-right: ends at (x2, h)
@@ -176,7 +158,7 @@ presetShapes.set("plaque", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// Tab family: OOXML uses dx = sqrt(w²+h²)/20 (diagonal/20)
+// Tab family: OOXML uses dx = sqrt(w²+h²)/20 (diagonal/20).
 presetShapes.set("cornerTabs", (w, h) => {
   const dx = Math.sqrt(w * w + h * h) / 20;
   return [
@@ -268,7 +250,7 @@ presetShapes.set("hexagon", (w, h, adjustments) => {
   const x2 = w - x1;
   const _hc = w / 2;
   const vc = h / 2;
-  // dy1 = sin(shd2, 60°) = shd2 * sin(60°)
+  // dy1 = sin(shd2, 60°) = shd2 * sin(60°).
   const dy1 = shd2 * Math.sin((60 * Math.PI) / 180);
   const y1 = vc - dy1;
   const y2 = vc + dy1;
@@ -309,7 +291,7 @@ presetShapes.set("heptagon", (w, h) => {
   const swd2 = (hc * 102572) / 100000;
   const shd2 = ((h / 2) * 105210) / 100000;
   const svc = ((h / 2) * 105210) / 100000;
-  // Pre-computed trig ratios from OOXML spec (scaled by 100000)
+  // Pre-computed trig ratios from OOXML spec (scaled by 100000).
   const dx1 = (swd2 * 97493) / 100000; // cos(12.857°) ≈ sin(77.14°)
   const dx2 = (swd2 * 78183) / 100000; // cos(38.57°)
   const dx3 = (swd2 * 43388) / 100000; // cos(64.29°)
@@ -332,7 +314,7 @@ presetShapes.set("decagon", (w, h) => {
   const hc = w / 2;
   const vc = h / 2;
   const shd2 = (vc * 105146) / 100000;
-  // OOXML angles: 2160000=36°, 4320000=72°
+  // OOXML angles: 2160000=36°, 4320000=72°.
   const dx1 = hc * Math.cos((36 * Math.PI) / 180); // cos(wd2, 2160000)
   const dx2 = hc * Math.cos((72 * Math.PI) / 180); // cos(wd2, 4320000)
   const dy1 = shd2 * Math.sin((72 * Math.PI) / 180); // sin(shd2, 4320000)
@@ -379,7 +361,7 @@ presetShapes.set("dodecagon", (w, h) => {
 });
 
 presetShapes.set("parallelogram", (w, h, adjustments) => {
-  // OOXML: adj=25000, x2 = ss * a / 100000, path: M(l,b)→L(x2,t)→L(r,t)→L(r-x2,b)→Z
+  // OOXML: adj=25000, x2 = ss * a / 100000, path: M(l,b)→L(x2,t)→L(r,t)→L(r-x2,b)→Z.
   const ss = Math.min(w, h);
   const maxAdj = ss > 0 ? (100000 * w) / ss : 100000;
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 25000), 0), maxAdj);
@@ -389,7 +371,7 @@ presetShapes.set("parallelogram", (w, h, adjustments) => {
 });
 
 presetShapes.set("trapezoid", (w, h, adjustments) => {
-  // OOXML: adj=25000, x2 = ss * a / 100000, x3 = r - x2
+  // OOXML: adj=25000, x2 = ss * a / 100000, x3 = r - x2.
   const ss = Math.min(w, h);
   const maxAdj = ss > 0 ? (50000 * w) / ss : 50000;
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 25000), 0), maxAdj);
@@ -399,7 +381,7 @@ presetShapes.set("trapezoid", (w, h, adjustments) => {
 });
 
 presetShapes.set("nonIsoscelesTrapezoid", (w, h, adjustments) => {
-  // OOXML: Two independent top insets. adj1=25000, adj2=25000
+  // OOXML: Two independent top insets. adj1=25000, adj2=25000.
   const ss = Math.min(w, h);
   const maxAdj = ss > 0 ? (50000 * w) / ss : 50000;
   const a1 = Math.min(Math.max(adjRaw(adjustments, "adj1", 25000), 0), maxAdj);
@@ -413,7 +395,7 @@ presetShapes.set("nonIsoscelesTrapezoid", (w, h, adjustments) => {
 presetShapes.set("corner", (w, h, adjustments) => {
   // OOXML corner: two adjustments control horizontal and vertical arm thickness.
   // adj1 (default 50000) → vertical arm height from bottom: dy1 = ss * a1, y1 = h - dy1
-  // adj2 (default 50000) → horizontal arm width from left: x1 = ss * a2
+  // adj2 (default 50000) → horizontal arm width from left: x1 = ss * a2.
   const ss = Math.min(w, h);
   const a1 = Math.min(Math.max(adj(adjustments, "adj1", 50000), 0), 1);
   const a2 = Math.min(Math.max(adj(adjustments, "adj2", 50000), 0), 1);
@@ -432,15 +414,13 @@ presetShapes.set("diagStripe", (w, h, adjustments) => {
   return [`M0,${y2}`, `L${x2},0`, `L${w},0`, `L0,${h}`, "Z"].join(" ");
 });
 
-// ===== Star Shapes =====
-
 presetShapes.set("star4", (w, h, adjustments) => {
-  // OOXML default adj=12500 → innerRatio = 12500/50000 = 0.25
+  // OOXML default adj=12500 → innerRatio = 12500/50000 = 0.25.
   const a = adj(adjustments, "adj", 12500) * 2;
   return starShape(w, h, 4, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star5", (w, h, adjustments) => {
-  // OOXML: adj=19098, hf=105146, vf=110557; scaling factors for non-square bounding box
+  // OOXML: adj=19098, hf=105146, vf=110557; scaling factors for non-square bounding box.
   const aRaw = adjustments?.get("adj") ?? 19098;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 105146;
@@ -469,7 +449,7 @@ presetShapes.set("star5", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star6", (w, h, adjustments) => {
-  // OOXML: adj=28868, hf=115470; horizontal scaling factor
+  // OOXML: adj=28868, hf=115470; horizontal scaling factor.
   const aRaw = adjustments?.get("adj") ?? 28868;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 115470;
@@ -497,7 +477,7 @@ presetShapes.set("star6", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star7", (w, h, adjustments) => {
-  // OOXML star7: adj=34601, hf=102572, vf=105210; center shifted to svc
+  // OOXML star7: adj=34601, hf=102572, vf=105210; center shifted to svc.
   const aRaw = adjustments?.get("adj") ?? 34601;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const swd2 = ((w / 2) * 102572) / 100000;
@@ -524,13 +504,13 @@ presetShapes.set("star7", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star8", (w, h, adjustments) => {
-  // OOXML: iwd2 = wd2 * adj / 50000. adj default=37500 → innerRatio = 37500/50000 = 0.75
-  // adj() divides by 100000, so we multiply by 2 to get adj/50000.
+  // OOXML: iwd2 = wd2 * adj / 50000, default adj 37500 → inner ratio 0.75
+  // adj() divides by 100000, so doubling gives adj/50000.
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 8, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star10", (w, h, adjustments) => {
-  // OOXML: adj=42533, hf=105146; horizontal scaling factor
+  // OOXML: adj=42533, hf=105146; horizontal scaling factor.
   const aRaw = adjustments?.get("adj") ?? 42533;
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 105146;
@@ -558,27 +538,25 @@ presetShapes.set("star10", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star12", (w, h, adjustments) => {
-  // OOXML default adj=37500 → innerRatio = 0.75
+  // OOXML default adj=37500 → innerRatio = 0.75.
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 12, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star16", (w, h, adjustments) => {
-  // OOXML default adj=37500 → innerRatio = 0.75
+  // OOXML default adj=37500 → innerRatio = 0.75.
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 16, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star24", (w, h, adjustments) => {
-  // OOXML default adj=37500 → innerRatio = 0.75
+  // OOXML default adj=37500 → innerRatio = 0.75.
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 24, Math.min(Math.max(a, 0), 1));
 });
 presetShapes.set("star32", (w, h, adjustments) => {
-  // OOXML default adj=37500 → innerRatio = 0.75
+  // OOXML default adj=37500 → innerRatio = 0.75.
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 32, Math.min(Math.max(a, 0), 1));
 });
-
-// ===== Lines & Connectors =====
 
 // OOXML line: diagonal (0,0→w,h) when both extents are non-zero.
 // Keep explicit horizontal/vertical handling for zero-extent cases so 1px SVGs remain visible.
@@ -599,7 +577,7 @@ presetShapes.set("lineInv", (w, h) => {
   return `M${w},0 L0,${h}`;
 });
 
-// When one dimension is 0, draw horizontal or vertical line (same as 'line') so gradient and stroke are correct
+// When one dimension is 0, draw horizontal or vertical line (same as 'line') so gradient and stroke are correct.
 presetShapes.set("straightConnector1", (w, h) => {
   const safeH = h || 1;
   const safeW = w || 1;
@@ -629,7 +607,7 @@ presetShapes.set("curvedConnector2", (w, h) => {
 });
 
 presetShapes.set("curvedConnector3", (w, h, adjustments) => {
-  // OOXML: two cubic Bezier segments joined at midpoint (x2, vc)
+  // OOXML: two cubic Bezier segments joined at midpoint (x2, vc).
   const x2 = w * adj(adjustments, "adj1", 50000);
   const x1 = x2 / 2; // +/ l x2 2
   const x3 = (w + x2) / 2; // +/ r x2 2
@@ -640,7 +618,7 @@ presetShapes.set("curvedConnector3", (w, h, adjustments) => {
 });
 
 presetShapes.set("curvedConnector4", (w, h, adjustments) => {
-  // OOXML: three cubic Bezier segments
+  // OOXML: three cubic Bezier segments.
   const x2 = w * adj(adjustments, "adj1", 50000);
   const y4 = h * adj(adjustments, "adj2", 50000);
   const x1 = x2 / 2; // +/ l x2 2
@@ -660,7 +638,7 @@ presetShapes.set("curvedConnector4", (w, h, adjustments) => {
 });
 
 presetShapes.set("curvedConnector5", (w, h, adjustments) => {
-  // OOXML: four cubic Bezier segments
+  // OOXML: four cubic Bezier segments.
   const x3 = w * adj(adjustments, "adj1", 50000);
   const y4 = h * adj(adjustments, "adj2", 50000);
   const x6 = w * adj(adjustments, "adj3", 50000);
@@ -693,8 +671,6 @@ presetShapes.set("bentConnector5", (w, h, adjustments) => {
   const x2 = w * a3;
   return `M0,0 L${x1},0 L${x1},${y1} L${x2},${y1} L${x2},${h} L${w},${h}`;
 });
-
-// ===== Arrow Shapes =====
 
 presetShapes.set("rightArrow", (w, h, adjustments) => {
   const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio
@@ -810,7 +786,7 @@ presetShapes.set("downArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("rightArrowCallout", (w, h, adjustments) => {
-  // OOXML: Rectangle body + right-pointing arrowhead (11-point polygon, 4 adj)
+  // OOXML: Rectangle body + right-pointing arrowhead (11-point polygon, 4 adj).
   const ss = Math.min(w, h);
   const maxAdj2 = (50000 * h) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, maxAdj2));
@@ -846,7 +822,7 @@ presetShapes.set("rightArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftArrowCallout", (w, h, adjustments) => {
-  // OOXML: Mirror of rightArrowCallout; arrowhead points left
+  // OOXML: Mirror of rightArrowCallout; arrowhead points left.
   const ss = Math.min(w, h);
   const maxAdj2 = (50000 * h) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, maxAdj2));
@@ -882,7 +858,7 @@ presetShapes.set("leftArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("upArrowCallout", (w, h, adjustments) => {
-  // OOXML: Vertical variant; arrowhead points up
+  // OOXML: Vertical variant; arrowhead points up.
   const ss = Math.min(w, h);
   const maxAdj2 = (50000 * w) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, maxAdj2));
@@ -918,7 +894,7 @@ presetShapes.set("upArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("upDownArrowCallout", (w, h, adjustments) => {
-  // OOXML spec: 4 adjustments
+  // OOXML spec: 4 adjustments.
   const adj1Raw = adjustments?.get("adj1") ?? 25000;
   const adj2Raw = adjustments?.get("adj2") ?? 25000;
   const adj3Raw = adjustments?.get("adj3") ?? 25000;
@@ -965,7 +941,7 @@ presetShapes.set("upDownArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightArrowCallout", (w, h, adjustments) => {
-  // OOXML spec: 4 adjustments
+  // OOXML spec: 4 adjustments.
   const adj1Raw = adjustments?.get("adj1") ?? 25000;
   const adj2Raw = adjustments?.get("adj2") ?? 25000;
   const adj3Raw = adjustments?.get("adj3") ?? 25000;
@@ -1067,7 +1043,7 @@ presetShapes.set("uturnArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightArrow", (w, h, adjustments) => {
-  // OOXML: adj1=50000 (shaft width), adj2=50000 (head length based on ss)
+  // OOXML: adj1=50000 (shaft width), adj2=50000 (head length based on ss).
   const ss = Math.min(w, h);
   const hd2 = h / 2;
   const maxAdj2 = ss > 0 ? (50000 * w) / ss : 0;
@@ -1098,7 +1074,7 @@ presetShapes.set("leftRightArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftUpArrow", (w, h, adjustments) => {
-  // OOXML preset formula (presetShapeDefinitions.xml -> leftUpArrow)
+  // OOXML preset formula (presetShapeDefinitions.xml -> leftUpArrow).
   const rawAdj2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
   const maxAdj1 = rawAdj2 * 2;
   const rawAdj1 = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
@@ -1137,7 +1113,7 @@ presetShapes.set("leftUpArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("upDownArrow", (w, h, adjustments) => {
-  // OOXML spec: adj1=50000 (shaft width), adj2=50000 (head length on ss)
+  // OOXML spec: adj1=50000 (shaft width), adj2=50000 (head length on ss).
   const adj1Raw = adjustments?.get("adj1") ?? 50000;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
   const ss = Math.min(w, h);
@@ -1170,7 +1146,7 @@ presetShapes.set("notchedRightArrow", (w, h, adjustments) => {
   const headLen = ss * a2;
   const cy = h / 2;
   const shaftEnd = w - headLen;
-  // Notch depth: OOXML formula dxn = dy1 * dx2 / hd2 = shaftHalfH * headLen / (h/2)
+  // Notch depth: OOXML formula dxn = dy1 * dx2 / hd2 = shaftHalfH * headLen / (h/2).
   const notchDepth = cy > 0 ? (shaftHalfH * headLen) / cy : 0;
   return [
     `M0,${cy - shaftHalfH}`,
@@ -1227,11 +1203,11 @@ presetShapes.set("stripedRightArrow", (w, h, adjustments) => {
   const ssd8 = ss / 8;
   const x4 = (ss * 5) / 32;
   return [
-    // Stripe 1: 0 to ssd32
+    // Stripe 1: 0 to ssd32.
     `M0,${y1} L${ssd32},${y1} L${ssd32},${y2} L0,${y2} Z`,
-    // Stripe 2: ssd16 to ssd8
+    // Stripe 2: ssd16 to ssd8.
     `M${ssd16},${y1} L${ssd8},${y1} L${ssd8},${y2} L${ssd16},${y2} Z`,
-    // Main body + arrowhead: x4 to r
+    // Main body + arrowhead: x4 to r.
     `M${x4},${y1}`,
     `L${x5},${y1}`,
     `L${x5},0`,
@@ -1243,14 +1219,12 @@ presetShapes.set("stripedRightArrow", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// ===== Bent / Curved / Special Arrows =====
-
 presetShapes.set("bentArrow", (w, h, adjustments) => {
   // OOXML bentArrow: L-shaped arrow with rounded bend, arrowhead pointing right.
   // Uses 4 adjustments per ECMA-376 spec.
   const ss = Math.min(w, h);
 
-  // Constrained adjustments (raw values, not fractions; we do our own math)
+  // Raw adjustment values, not fractions, since the math below is OOXML's own.
   const adj2Raw = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
   const maxAdj1 = adj2Raw * 2;
   const adj1Raw = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
@@ -1283,7 +1257,7 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   //   SVG: A bd,bd 0 0,1 bd,dh2
   // Arc 2: inner bend; from (x3, y3), radii=bd2, 270°→180° (sweep -90°)
   //   Center at (x3, y3+bd2), endpoint at (x3-bd2, y3+bd2) = (th, y3+bd2)
-  //   SVG: A bd2,bd2 0 0,0 th,y6  where y6 = y3+bd2
+  //   SVG: A bd2,bd2 0 0,0 th,y6  where y6 = y3+bd2.
 
   const y6 = y3 + bd2;
 
@@ -1292,7 +1266,7 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
     `L0,${y5}`, // up left edge to arc start
   ];
 
-  // Outer arc (rounded bend, going from left edge up to top edge)
+  // Outer arc (rounded bend, going from left edge up to top edge).
   if (bd > 0.1) {
     parts.push(`A${bd},${bd} 0 0,1 ${bd},${dh2}`);
   } else {
@@ -1308,7 +1282,7 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
     `L${x3},${y3}`, // horizontal back toward bend
   );
 
-  // Inner arc (rounded bend, going from top down to right side of shaft)
+  // Inner arc (rounded bend, going from top down to right side of shaft).
   if (bd2 > 0.1) {
     parts.push(`A${bd2},${bd2} 0 0,0 ${th},${y6}`);
   } else {
@@ -1357,9 +1331,8 @@ presetShapes.set("bentUpArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("curvedRightArrow", (w, h, adjustments) => {
-  // Keep geometry aligned with OOXML preset math. Use local arc helper here
-  // because preset formulas mix positive/negative sweeps that do not map 1:1
-  // to the generic shapeArc() helper used in other shapes.
+  // A local arc helper, because the OOXML formulas mix positive/negative
+  // sweeps that do not map 1:1 to the generic shapeArc() helper.
   const adj1Raw = adjustments?.get("adj1") ?? 25000;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
   const adj3Raw = adjustments?.get("adj3") ?? 25000;
@@ -1520,12 +1493,6 @@ function buildCurvedVerticalArrowMultiPath(
   return mirrored.reverse();
 }
 
-/**
- * Converts OOXML arcTo to SVG arc endpoint and command string.
- * OOXML arcTo: wR, hR (radii), stAng, swAng (degrees).
- * Current point is at stAng on the arc ellipse.
- * Returns { path, endX, endY }.
- */
 presetShapes.set("curvedUpArrow", (w, h, adjustments) => {
   const arc = (
     cx: number,
@@ -1691,16 +1658,16 @@ function buildCircularArrowPath(
 
   const toRad60k = (a: number) => ((a / 60000) * Math.PI) / 180;
 
-  // OOXML formula helpers
+  // OOXML formula helpers.
   const ooxSin = (val: number, ang: number) => val * Math.sin(toRad60k(ang));
   const ooxCos = (val: number, ang: number) => val * Math.cos(toRad60k(ang));
   const cat2 = (r: number, ht: number, wt: number) => r * Math.cos(Math.atan2(wt, ht));
   const sat2 = (r: number, ht: number, wt: number) => r * Math.sin(Math.atan2(wt, ht));
-  // OOXML: at2(x, y) = atan2(y, x); first arg is x, second is y
+  // OOXML: at2(x, y) = atan2(y, x); first arg is x, second is y.
   const at2 = (x: number, y: number) => ((Math.atan2(y, x) * 180) / Math.PI) * 60000;
   const modF = (x: number, y: number, z: number) => Math.sqrt(x * x + y * y + z * z);
 
-  // Adjustments; leftCircularArrow has different OOXML defaults
+  // Adjustments; leftCircularArrow has different OOXML defaults.
   const isLeft = variant === "leftCircularArrow";
   const adj1 = adjustments?.get("adj1") ?? 12500;
   const adj2 = adjustments?.get("adj2") ?? (isLeft ? -1142319 : 1142319);
@@ -1725,7 +1692,7 @@ function buildCircularArrowPath(
   const rw3 = rw2 + th2;
   const rh3 = rh2 + th2;
 
-  // Point H (mid-radius at end angle)
+  // Point H (mid-radius at end angle).
   const wtH = ooxSin(rw3, enAng);
   const htH = ooxCos(rh3, enAng);
   const dxH = cat2(rw3, htH, wtH);
@@ -1733,7 +1700,6 @@ function buildCircularArrowPath(
   const xH = hc + dxH;
   const yH = vc + dyH;
 
-  // Compute max arrowhead angle
   const rI = Math.min(rw2, rh2);
   const u1 = dxH * dxH;
   const u2 = dyH * dyH;
@@ -1759,7 +1725,7 @@ function buildCircularArrowPath(
   const maxAng = Math.abs(u21);
   let aAng: number;
   if (isLeft) {
-    // leftCircularArrow: minAng = -abs(u21), a2 = -abs(adj2), aAng = pin(minAng, a2, 0)
+    // leftCircularArrow: minAng = -abs(u21), a2 = -abs(adj2), aAng = pin(minAng, a2, 0).
     const minAng = -maxAng;
     const a2 = -Math.abs(adj2);
     aAng = Math.max(minAng, Math.min(a2, 0));
@@ -1768,7 +1734,7 @@ function buildCircularArrowPath(
   }
   const ptAng = enAng + aAng;
 
-  // Point A (arrowhead tip)
+  // Point A (arrowhead tip).
   const wtA = ooxSin(rw3, ptAng);
   const htA = ooxCos(rh3, ptAng);
   const dxA = cat2(rw3, htA, wtA);
@@ -1776,7 +1742,7 @@ function buildCircularArrowPath(
   const xA = hc + dxA;
   const yA = vc + dyA;
 
-  // Point E (outer arc start)
+  // Point E (outer arc start).
   const wtE = ooxSin(rw1, stAng);
   const htE = ooxCos(rh1, stAng);
   const dxE = cat2(rw1, htE, wtE);
@@ -1784,7 +1750,7 @@ function buildCircularArrowPath(
   const xE = hc + dxE;
   const yE = vc + dyE;
 
-  // Points G and B (arrowhead base, offset from H by thh at angle ptAng)
+  // Points G and B (arrowhead base, offset from H by thh at angle ptAng).
   const dxG = ooxCos(thh, ptAng);
   const dyG = ooxSin(thh, ptAng);
   const xG = xH + dxG;
@@ -1792,13 +1758,13 @@ function buildCircularArrowPath(
   const xB = xH - dxG;
   const yB = yH - dyG;
 
-  // Scale to normalized circle for line-circle intersection
+  // Normalized to a unit circle for the line-circle intersection.
   const sx1 = xB - hc;
   const sy1 = yB - vc;
   const sx2 = xG - hc;
   const sy2 = yG - vc;
 
-  // Outer circle intersection
+  // Outer circle intersection.
   const rO = Math.min(rw1, rh1);
   const x1O = rw1 !== 0 ? (sx1 * rO) / rw1 : 0;
   const y1O = rh1 !== 0 ? (sy1 * rO) / rh1 : 0;
@@ -1837,7 +1803,7 @@ function buildCircularArrowPath(
   const q15 = q14 - q13;
   const dyF2 = q4 !== 0 ? q15 / q4 : 0;
 
-  // Pick intersection closest to G side
+  // The intersection closest to the G side.
   const q16 = x2O - dxF1;
   const q17 = x2O - dxF2;
   const q18 = y2O - dyF1;
@@ -1853,7 +1819,7 @@ function buildCircularArrowPath(
   const xF = hc + sdxF;
   const yF = vc + sdyF;
 
-  // Inner circle intersection
+  // Inner circle intersection.
   const x1I = rw2 !== 0 ? (sx1 * rI) / rw2 : 0;
   const y1I = rh2 !== 0 ? (sy1 * rI) / rh2 : 0;
   const x2I = rw2 !== 0 ? (sx2 * rI) / rw2 : 0;
@@ -1887,7 +1853,7 @@ function buildCircularArrowPath(
   const v15 = v14 - v13;
   const dyC2 = v4 !== 0 ? v15 / v4 : 0;
 
-  // Pick intersection closest to B side (x1I)
+  // The intersection closest to the B side (x1I).
   const v16 = x1I - dxC1;
   const v17 = x1I - dxC2;
   const v18 = y1I - dyC1;
@@ -1903,7 +1869,7 @@ function buildCircularArrowPath(
   const xC = hc + sdxC;
   const yC = vc + sdyC;
 
-  // Inner arc angles; leftCircularArrow uses intermediate istAng0/iswAng0
+  // Inner arc angles; leftCircularArrow uses intermediate istAng0/iswAng0.
   const ist0 = at2(sdxC, sdyC);
   const ist1 = ist0 + 21600000;
   const istAng0 = ist0 >= 0 ? ist0 : ist1;
@@ -1912,17 +1878,17 @@ function buildCircularArrowPath(
   let istAng: number;
   let iswAng: number;
   if (isLeft) {
-    // leftCircularArrow: iswAng0 always ≥ 0, then istAng shifted, iswAng negated
+    // leftCircularArrow: iswAng0 always ≥ 0, then istAng shifted, iswAng negated.
     const iswAng0 = isw1 >= 0 ? isw1 : isw1 + 21600000;
     istAng = istAng0 + iswAng0;
     iswAng = -iswAng0;
   } else {
-    // circularArrow: iswAng always ≤ 0 (clockwise inner arc)
+    // circularArrow: iswAng always ≤ 0 (clockwise inner arc).
     istAng = istAng0;
     iswAng = isw1 >= 0 ? isw1 - 21600000 : isw1;
   }
 
-  // Adjusted arrowhead points (clamp when too close)
+  // Adjusted arrowhead points (clamp when too close).
   const p1 = xF - xC;
   const p2 = yF - yC;
   const p3 = modF(p1, p2, 0);
@@ -1933,7 +1899,7 @@ function buildCircularArrowPath(
   const xBp = p5 >= 0 ? xC : xB;
   const yBp = p5 >= 0 ? yC : yB;
 
-  // Outer arc sweep angle
+  // Outer arc sweep angle.
   const en0 = at2(sdxF, sdyF);
   const en1 = en0 + 21600000;
   const en2 = en0 >= 0 ? en0 : en1;
@@ -1942,7 +1908,7 @@ function buildCircularArrowPath(
   let outerArcStAng: number;
   let outerArcSwAng: number;
   if (isLeft) {
-    // leftCircularArrow: swAng ≤ 0, then stAng0 = stAng + swAng, swAng0 = -swAng
+    // leftCircularArrow: swAng ≤ 0, then stAng0 = stAng + swAng, swAng0 = -swAng.
     const swAngRaw = sw0 >= 0 ? sw0 - 21600000 : sw0;
     outerArcStAng = stAng + swAngRaw; // stAng0
     outerArcSwAng = -swAngRaw; // swAng0 (positive)
@@ -1952,22 +1918,22 @@ function buildCircularArrowPath(
     outerArcSwAng = swAng;
   }
 
-  // Compute end points for SVG arcs using OOXML arcTo semantics
-  // Outer arc: from outerArcStAng sweeping outerArcSwAng
+  // End points follow OOXML arcTo semantics
+  // Outer arc: from outerArcStAng sweeping outerArcSwAng.
   const outerEndAng = outerArcStAng + outerArcSwAng;
   const wtOE = ooxSin(rw1, outerEndAng);
   const htOE = ooxCos(rh1, outerEndAng);
   const xOE = hc + cat2(rw1, htOE, wtOE);
   const yOE = vc + sat2(rh1, htOE, wtOE);
 
-  // Inner arc: from istAng sweeping iswAng
+  // Inner arc: from istAng sweeping iswAng.
   const innerEndAng = istAng + iswAng;
   const wtIE = ooxSin(rw2, innerEndAng);
   const htIE = ooxCos(rh2, innerEndAng);
   const xIE = hc + cat2(rw2, htIE, wtIE);
   const yIE = vc + sat2(rh2, htIE, wtIE);
 
-  // SVG arc flags
+  // SVG arc flags.
   const outerSweepDeg = Math.abs(outerArcSwAng / 60000);
   const outerLargeArc = outerSweepDeg > 180 ? 1 : 0;
   const outerSweepFlag = outerArcSwAng > 0 ? 1 : 0;
@@ -1978,7 +1944,7 @@ function buildCircularArrowPath(
 
   if (isLeft) {
     // leftCircularArrow path: M(xE) → L(xD) → inner arc → arrowhead → L(xF) → outer arc → Z
-    // Point D: inner arc start at stAng on rw2/rh2
+    // Point D: inner arc start at stAng on rw2/rh2.
     const wtD = ooxSin(rw2, stAng);
     const htD = ooxCos(rh2, stAng);
     const xD = hc + cat2(rw2, htD, wtD);
@@ -2018,7 +1984,7 @@ presetShapes.set("leftCircularArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightCircularArrow", (w, h, _adjustments) => {
-  // Build from the actual oracle PDF vector path (shape id 0177),
+  // Traced from the oracle PDF vector path (shape id 0177),
   // normalized to a 400x280 reference box.
   const sx = w / 400;
   const sy = h / 280;
@@ -2115,7 +2081,7 @@ presetShapes.set("quadArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("quadArrowCallout", (w, h, adjustments) => {
-  // OOXML: 28-point polygon with 4 arrowheads (4 adj)
+  // OOXML: 28-point polygon with 4 arrowheads (4 adj).
   const ss = Math.min(w, h);
   const hc = w / 2;
   const vc = h / 2;
@@ -2182,7 +2148,7 @@ presetShapes.set("quadArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightUpArrow", (w, h, adjustments) => {
-  // OOXML preset formula (presetShapeDefinitions.xml -> leftRightUpArrow)
+  // OOXML preset formula (presetShapeDefinitions.xml -> leftRightUpArrow).
   const rawAdj2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
   const maxAdj1 = rawAdj2 * 2;
   const rawAdj1 = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
@@ -2274,8 +2240,6 @@ presetShapes.set("swooshArrow", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// ===== Flowchart Shapes =====
-
 presetShapes.set("flowChartProcess", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
 presetShapes.set("flowChartDecision", (w, h) => {
@@ -2285,7 +2249,7 @@ presetShapes.set("flowChartDecision", (w, h) => {
 });
 
 presetShapes.set("flowChartTerminator", (w, h) => {
-  // OOXML: path w=21600 h=21600, wR=3475, hR=10800 (elliptical caps, not circular)
+  // OOXML: path w=21600 h=21600, wR=3475, hR=10800 (elliptical caps, not circular).
   const x1 = (w * 3475) / 21600;
   const x2 = (w * 18125) / 21600;
   const wR = x1; // w * 3475/21600
@@ -2301,7 +2265,7 @@ presetShapes.set("flowChartTerminator", (w, h) => {
 });
 
 presetShapes.set("flowChartDocument", (w, h) => {
-  // OOXML: path w=21600 h=21600, cubic (21600,17322)(10800,17322)(10800,23922)(0,20172)
+  // OOXML: path w=21600 h=21600, cubic (21600,17322)(10800,17322)(10800,23922)(0,20172).
   const y1 = (h * 17322) / 21600;
   const cy1 = y1; // h * 17322/21600
   const cy2 = (h * 23922) / 21600; // extends below h (overshoot for curve)
@@ -2312,7 +2276,7 @@ presetShapes.set("flowChartDocument", (w, h) => {
 });
 
 presetShapes.set("flowChartInputOutput", (w, h) => {
-  // OOXML: path w=5 h=5, points: (0,5)(1,0)(5,0)(4,5); offset = w/5
+  // OOXML: path w=5 h=5, points: (0,5)(1,0)(5,0)(4,5); offset = w/5.
   const offset = w / 5;
   return `M${offset},0 L${w},0 L${w - offset},${h} L0,${h} Z`;
 });
@@ -2320,17 +2284,17 @@ presetShapes.set("flowChartInputOutput", (w, h) => {
 presetShapes.set("flowChartPredefinedProcess", (w, h) => {
   const inset = w / 8;
   return [
-    // Outer rectangle
+    // Outer rectangle.
     `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
-    // Left inner line
+    // Left inner line.
     `M${inset},0 L${inset},${h}`,
-    // Right inner line
+    // Right inner line.
     `M${w - inset},0 L${w - inset},${h}`,
   ].join(" ");
 });
 
 presetShapes.set("flowChartAlternateProcess", (w, h) => {
-  // OOXML spec: corner radius = ssd6 = min(w,h)/6
+  // OOXML spec: corner radius = ssd6 = min(w,h)/6.
   const r = Math.min(w, h) / 6;
   return [
     `M${r},0`,
@@ -2352,7 +2316,7 @@ presetShapes.set("flowChartManualInput", (w, h) => {
 });
 
 presetShapes.set("flowChartManualOperation", (w, h) => {
-  // OOXML: path w=5 h=5: (0,0)→(5,0)→(4,5)→(1,5)→close → inset = w/5
+  // OOXML: path w=5 h=5: (0,0)→(5,0)→(4,5)→(1,5)→close → inset = w/5.
   return `M0,0 L${w},0 L${(w * 4) / 5},${h} L${w / 5},${h} Z`;
 });
 
@@ -2378,22 +2342,22 @@ presetShapes.set("flowChartInternalStorage", (w, h) => {
 });
 
 presetShapes.set("flowChartMagneticDisk", (w, h) => {
-  // OOXML spec: path w=6 h=6, top at y=1, arc hR=1 → ry = h/6
+  // OOXML spec: path w=6 h=6, top at y=1, arc hR=1 → ry = h/6.
   const ry = h / 6;
   const bodyTop = ry;
   const bodyBottom = h - ry;
   return [
-    // Top ellipse
+    // Top ellipse.
     `M0,${bodyTop}`,
     `A${w / 2},${ry} 0 1,1 ${w},${bodyTop}`,
-    // Right side down
+    // Right side down.
     `L${w},${bodyBottom}`,
-    // Bottom ellipse
+    // Bottom ellipse.
     `A${w / 2},${ry} 0 1,1 0,${bodyBottom}`,
-    // Left side up
+    // Left side up.
     `L0,${bodyTop}`,
     "Z",
-    // Top ellipse visible arc (back half)
+    // Top ellipse visible arc (back half).
     `M${w},${bodyTop}`,
     `A${w / 2},${ry} 0 1,1 0,${bodyTop}`,
   ].join(" ");
@@ -2401,7 +2365,7 @@ presetShapes.set("flowChartMagneticDisk", (w, h) => {
 
 presetShapes.set("flowChartDelay", (w, h) => {
   // OOXML: M(0,0) L(hc,0) arcTo(wd2,hd2, 270°, 180°) L(0,h) Z
-  // Arc from (hc,0) with wR=w/2 hR=h/2, stAng=270° swAng=180° → semicircle right side
+  // Arc from (hc,0) with wR=w/2 hR=h/2, stAng=270° swAng=180° → semicircle right side.
   const hc = w / 2;
   const a = ooArcTo(hc, 0, hc, h / 2, 270, 180);
   return [`M0,0`, `L${hc},0`, a.svg, `L0,${h}`, "Z"].join(" ");
@@ -2409,7 +2373,7 @@ presetShapes.set("flowChartDelay", (w, h) => {
 
 presetShapes.set("flowChartDisplay", (w, h) => {
   // OOXML: path w=6 h=6, points: (0,3)(1,0)(5,0) arcTo(1,3,270°,180°) (1,6) close
-  // Scaled: left point at (0, h/2), top-left at (w/6, 0), arc center at (5w/6, h/2)
+  // Scaled: left point at (0, h/2), top-left at (w/6, 0), arc center at (5w/6, h/2).
   const sx = w / 6;
   const sy = h / 6;
   const arcWR = sx; // wR = 1 * (w/6)
@@ -2447,9 +2411,9 @@ presetShapes.set("flowChartCollate", (w, h) => {
   const cx = w / 2;
   const cy = h / 2;
   return [
-    // top inverted triangle
+    // top inverted triangle.
     `M0,0 L${w},0 L${cx},${cy} Z`,
-    // bottom upright triangle
+    // bottom upright triangle.
     `M0,${h} L${w},${h} L${cx},${cy} Z`,
   ].join(" ");
 });
@@ -2479,34 +2443,34 @@ presetShapes.set("flowChartPunchedTape", (w, h) => {
     const sweep = swDeg > 0 ? 1 : 0;
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
-  // cd2 = 10800000 (180°)
+  // cd2 = 10800000 (180°).
   const wR = 5 * sx;
   const hR = 2 * sy;
   let x = 0,
     y = 2 * sy;
   const parts = [`M${x},${y}`];
-  // Top-left: stAng=cd2(180°), swAng=-cd2(-180°) → dips down
+  // Top-left: stAng=cd2(180°), swAng=-cd2(-180°) → dips down.
   let a = arcTo(x, y, wR, hR, 10800000, -10800000);
   parts.push(a.svg);
   x = a.endX;
   y = a.endY;
-  // Top-right: stAng=cd2(180°), swAng=+cd2(+180°) → bumps up
+  // Top-right: stAng=cd2(180°), swAng=+cd2(+180°) → bumps up.
   a = arcTo(x, y, wR, hR, 10800000, 10800000);
   parts.push(a.svg);
   x = a.endX;
   y = a.endY;
-  // Line to bottom-right
+  // Line to bottom-right.
   const bx = 20 * sx,
     by = 18 * sy;
   parts.push(`L${bx},${by}`);
   x = bx;
   y = by;
-  // Bottom-right: stAng=0, swAng=-cd2(-180°) → bumps up
+  // Bottom-right: stAng=0, swAng=-cd2(-180°) → bumps up.
   a = arcTo(x, y, wR, hR, 0, -10800000);
   parts.push(a.svg);
   x = a.endX;
   y = a.endY;
-  // Bottom-left: stAng=0, swAng=+cd2(+180°) → dips down
+  // Bottom-left: stAng=0, swAng=+cd2(+180°) → dips down.
   a = arcTo(x, y, wR, hR, 0, 10800000);
   parts.push(a.svg);
   parts.push("Z");
@@ -2514,7 +2478,7 @@ presetShapes.set("flowChartPunchedTape", (w, h) => {
 });
 
 presetShapes.set("flowChartPunchedCard", (w, h) => {
-  // OOXML spec: path w=5, h=5. Points: (0,1)(1,0)(5,0)(5,5)(0,5)
+  // OOXML spec: path w=5, h=5. Points: (0,1)(1,0)(5,0)(5,5)(0,5).
   const sx = w / 5;
   const sy = h / 5;
   return `M0,${sy} L${sx},0 L${w},0 L${w},${h} L0,${h} Z`;
@@ -2531,12 +2495,12 @@ presetShapes.set("flowChartSummingJunction", (w, h) => {
   const it = hd2 - idy;
   const ib = hd2 + idy;
   return [
-    // Circle
+    // Circle.
     `M0,${hd2}`,
     `A${wd2},${hd2} 0 1,1 ${w},${hd2}`,
     `A${wd2},${hd2} 0 1,1 0,${hd2}`,
     "Z",
-    // X cross
+    // X cross.
     `M${il},${it} L${ir},${ib}`,
     `M${ir},${it} L${il},${ib}`,
   ].join(" ");
@@ -2547,12 +2511,12 @@ presetShapes.set("flowChartOr", (w, h) => {
   const wd2 = w / 2;
   const hd2 = h / 2;
   return [
-    // Circle
+    // Circle.
     `M0,${hd2}`,
     `A${wd2},${hd2} 0 1,1 ${w},${hd2}`,
     `A${wd2},${hd2} 0 1,1 0,${hd2}`,
     "Z",
-    // + cross
+    // + cross.
     `M${wd2},0 L${wd2},${h}`,
     `M0,${hd2} L${w},${hd2}`,
   ].join(" ");
@@ -2560,7 +2524,7 @@ presetShapes.set("flowChartOr", (w, h) => {
 
 presetShapes.set("flowChartOnlineStorage", (w, h) => {
   // OOXML: Rounded left side rectangle with concave right cap.
-  // Normalized: left arc (convex) at x=w/6, right arc (concave) at x=w
+  // Normalized: left arc (convex) at x=w/6, right arc (concave) at x=w.
   const x1 = w / 6;
   return [
     `M${x1},0`,
@@ -2578,14 +2542,14 @@ presetShapes.set("flowChartMagneticDrum", (w, h) => {
   const x2 = (w * 5) / 6;
   const ry = h / 2;
   return [
-    // Body
+    // Body.
     `M${x1},0`,
     `L${x2},0`,
     `A${x1},${ry} 0 0,1 ${x2},${h}`,
     `L${x1},${h}`,
     `A${x1},${ry} 0 0,1 ${x1},0`,
     "Z",
-    // Right ellipse back-face (visible part)
+    // Right ellipse back-face (visible part).
     `M${x2},${h}`,
     `A${x1},${ry} 0 0,1 ${x2},0`,
   ].join(" ");
@@ -2620,7 +2584,6 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
     const sweep = swDeg > 0 ? 1 : 0;
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
-  // Start at bottom center: M(hc, b)
   let curX = hc;
   let curY = h;
   const a1 = arcTo(curX, curY, wd2, hd2, 90, 90); // cd4, cd4 → 90° to 180°
@@ -2644,16 +2607,16 @@ presetShapes.set("flowChartMultidocument", (w, h) => {
   const s = (x: number) => (w * x) / 21600;
   const t = (y: number) => (h * y) / 21600;
   return [
-    // Front doc (bottom layer, with wave)
+    // Front doc (bottom layer, with wave).
     `M0,${t(20782)}`,
     `C${s(9298)},${t(23542)} ${s(9298)},${t(18022)} ${s(18595)},${t(18022)}`,
     `L${s(18595)},${t(3675)} L0,${t(3675)} Z`,
-    // Middle doc
+    // Middle doc.
     `M${s(1532)},${t(3675)} L${s(1532)},${t(1815)} L${s(20000)},${t(1815)}`,
     `L${s(20000)},${t(16252)}`,
     `C${s(19298)},${t(16252)} ${s(18595)},${t(16352)} ${s(18595)},${t(16352)}`,
     `L${s(18595)},${t(3675)} Z`,
-    // Back doc (top layer)
+    // Back doc (top layer).
     `M${s(2972)},${t(1815)} L${s(2972)},0 L${w},0`,
     `L${w},${t(14392)}`,
     `C${s(20800)},${t(14392)} ${s(20000)},${t(14467)} ${s(20000)},${t(14467)}`,
@@ -2661,10 +2624,8 @@ presetShapes.set("flowChartMultidocument", (w, h) => {
   ].join(" ");
 });
 
-// ===== Callout Shapes =====
-
 presetShapes.set("wedgeRectCallout", (w, h, adjustments) => {
-  // OOXML spec: adaptive callout pointer on the edge closest to the tip
+  // OOXML spec: adaptive callout pointer on the edge closest to the tip.
   const hc = w / 2;
   const vc = h / 2;
   const dxPos = (w * (adjustments?.get("adj1") ?? -20833)) / 100000;
@@ -2675,12 +2636,12 @@ presetShapes.set("wedgeRectCallout", (w, h, adjustments) => {
   const ady = Math.abs(dyPos);
   const adq = Math.abs(dq);
   const dz = ady - adq;
-  // Notch bracket positions (7/12 or 2/12 depending on tip direction)
+  // Notch bracket positions (7/12 or 2/12 depending on tip direction).
   const x1 = (w * (dxPos >= 0 ? 7 : 2)) / 12;
   const x2 = (w * (dxPos >= 0 ? 10 : 5)) / 12;
   const y1 = (h * (dyPos >= 0 ? 7 : 2)) / 12;
   const y2 = (h * (dyPos >= 0 ? 10 : 5)) / 12;
-  // Conditional notch points per edge (collapse to edge if not the active edge)
+  // Conditional notch points per edge (collapse to edge if not the active edge).
   const xl = dz > 0 ? 0 : dxPos >= 0 ? 0 : xPos;
   const xt = dz > 0 ? (dyPos >= 0 ? x1 : xPos) : x1;
   const xr = dz > 0 ? w : dxPos >= 0 ? xPos : w;
@@ -2711,7 +2672,7 @@ presetShapes.set("wedgeRectCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("wedgeRoundRectCallout", (w, h, adjustments) => {
-  // OOXML spec: rounded rect with adaptive callout pointer
+  // OOXML spec: rounded rect with adaptive callout pointer.
   const hc = w / 2;
   const vc = h / 2;
   const ss = Math.min(w, h);
@@ -2770,7 +2731,7 @@ presetShapes.set("wedgeEllipseCallout", (w, h, adjustments) => {
   const ry = h / 2;
   const tipX = rx + w * ax;
   const tipY = ry + h * ay;
-  // Approximate: ellipse with a pointer
+  // Approximate: ellipse with a pointer.
   const angle = Math.atan2(tipY - ry, tipX - rx);
   const gapAngle = 0.15;
   const _x1 = rx + rx * Math.cos(angle - gapAngle);
@@ -2797,9 +2758,9 @@ presetShapes.set("cloudCallout", (w, h, adjustments) => {
   const ay = adj(adjustments, "adj2", 62500);
   const tipX = w / 2 + w * ax;
   const tipY = h / 2 + h * ay;
-  // Simplified cloud with callout circles
+  // Simplified cloud with callout circles.
   const cloud = presetShapes.get("cloud")!(w, h);
-  // Small circles leading to tip
+  // Small circles leading to tip.
   const cx = w / 2;
   const cy = h / 2;
   const dx = tipX - cx;
@@ -2812,7 +2773,7 @@ presetShapes.set("cloudCallout", (w, h, adjustments) => {
   const c2y = cy + dy * 0.75;
   return [
     cloud,
-    // Connector circles (approximated as small ellipses)
+    // Connector circles (approximated as small ellipses).
     `M${c1x + r1},${c1y} A${r1},${r1} 0 1,1 ${c1x - r1},${c1y} A${r1},${r1} 0 1,1 ${c1x + r1},${c1y} Z`,
     `M${c2x + r2},${c2y} A${r2},${r2} 0 1,1 ${c2x - r2},${c2y} A${r2},${r2} 0 1,1 ${c2x + r2},${c2y} Z`,
   ].join(" ");
@@ -2826,27 +2787,25 @@ presetShapes.set("borderCallout1", (w, h, adjustments) => {
   return `M0,0 L${w},0 L${w},${h} L0,${h} Z M${x1},${y1} L${x2},${y2}`;
 });
 
-// ===== Block / 3D Shapes =====
-
 presetShapes.set("cube", (w, h, adjustments) => {
   const a = adj(adjustments, "adj", 25000);
   const depth = Math.min(w, h) * a;
   return [
-    // Front face
+    // Front face.
     `M0,${depth} L${w - depth},${depth} L${w - depth},${h} L0,${h} Z`,
-    // Top face
+    // Top face.
     `M0,${depth} L${depth},0 L${w},0 L${w - depth},${depth} Z`,
-    // Right face
+    // Right face.
     `M${w - depth},${depth} L${w},0 L${w},${h - depth} L${w - depth},${h} Z`,
   ].join(" ");
 });
 
-// can is implemented as multiPathPreset (see multiPathPresets below)
+// can is implemented as multiPathPreset (see multiPathPresets below).
 
-// ribbon2 is implemented as multiPathPreset (see multiPathPresets below)
+// ribbon2 is implemented as multiPathPreset (see multiPathPresets below).
 
 presetShapes.set("plus", (w, h, adjustments) => {
-  // OOXML: adj=25000 (max 50000), x1 = ss * a / 100000 (uses ss for both x and y)
+  // OOXML: adj=25000 (max 50000), x1 = ss * a / 100000 (uses ss for both x and y).
   const ss = Math.min(w, h);
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 25000), 0), 50000);
   const x1 = (ss * a) / 100000;
@@ -2872,7 +2831,7 @@ presetShapes.set("plus", (w, h, adjustments) => {
 presetShapes.set("heart", (w, h) => {
   // OOXML spec: two cubic beziers from (hc, hd4) through (hc, b) and back.
   // dx1 = w*49/48 (slightly wider than w/2), dx2 = w*10/48
-  // y1 = t - hd3 (above top edge)
+  // y1 = t - hd3 (above top edge).
   const hc = w / 2;
   const hd4 = h / 4;
   const hd3 = h / 3;
@@ -2892,10 +2851,10 @@ presetShapes.set("heart", (w, h) => {
 });
 
 presetShapes.set("cloud", (w, h) => {
-  // OOXML cloud: 11 arcTo operations in 43200×43200 coordinate space
+  // OOXML cloud: 11 arcTo operations in 43200×43200 coordinate space.
   const sx = w / 43200;
   const sy = h / 43200;
-  // OOXML arcTo: wR/hR are radii, stAng/swAng in 60000ths of degree
+  // OOXML arcTo: wR/hR are radii, stAng/swAng in 60000ths of degree.
   const arcs: [number, number, number, number][] = [
     [6753, 9190, -11429249, 7426832],
     [5333, 7267, -8646143, 5396714],
@@ -2912,25 +2871,24 @@ presetShapes.set("cloud", (w, h) => {
   let curX = 3900 * sx;
   let curY = 14370 * sy;
   const parts = [`M${curX},${curY}`];
-  // Track position in unscaled 43200×43200 space for accurate arcTo computation.
-  // OOXML arcTo angles are visual (geometric ray) angles in the path coordinate space.
-  // Convert to parametric before computing center/endpoint positions.
+  // Position is tracked in unscaled 43200×43200 space for accurate arcTo math.
+  // OOXML arcTo angles are visual (geometric ray) angles in path space, so they
+  // become parametric before computing the center and end point.
   let ux = 3900,
     uy = 14370; // unscaled current position
   for (const [wR, hR, stAng60k, swAng60k] of arcs) {
     const stDeg = stAng60k / 60000;
     const swDeg = swAng60k / 60000;
-    // Visual→parametric using UNSCALED radii (path coordinate space)
+    // Visual→parametric using UNSCALED radii (path coordinate space).
     const stVisRad = (stDeg * Math.PI) / 180;
     const stRad = Math.atan2(wR * Math.sin(stVisRad), hR * Math.cos(stVisRad));
     const endVisRad = ((stDeg + swDeg) * Math.PI) / 180;
     const endRad = Math.atan2(wR * Math.sin(endVisRad), hR * Math.cos(endVisRad));
-    // Compute center and endpoint in unscaled space
     const acx = ux - wR * Math.cos(stRad);
     const acy = uy - hR * Math.sin(stRad);
     const endUX = acx + wR * Math.cos(endRad);
     const endUY = acy + hR * Math.sin(endRad);
-    // Scale to pixel space for SVG output
+    // SVG output is in pixel space.
     const endX = endUX * sx;
     const endY = endUY * sy;
     const rwS = wR * sx;
@@ -2947,21 +2905,19 @@ presetShapes.set("cloud", (w, h) => {
   return parts.join(" ");
 });
 
-// ===== Frame, Donut, Misc =====
-
 presetShapes.set("frame", (w, h, adjustments) => {
   const a = adj(adjustments, "adj1", 12500);
   const t = Math.min(w, h) * a;
   return [
-    // Outer rectangle
+    // Outer rectangle.
     `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
-    // Inner rectangle (counter-clockwise for hole)
+    // Inner rectangle (counter-clockwise for hole).
     `M${t},${t} L${t},${h - t} L${w - t},${h - t} L${w - t},${t} Z`,
   ].join(" ");
 });
 
 presetShapes.set("halfFrame", (w, h, adjustments) => {
-  // OOXML spec defaults: adj1=33333, adj2=33333
+  // OOXML spec defaults: adj1=33333, adj2=33333.
   const adj1Raw = adjustments?.get("adj1") ?? 33333;
   const adj2Raw = adjustments?.get("adj2") ?? 33333;
   const minWH = Math.min(w, h);
@@ -2979,7 +2935,7 @@ presetShapes.set("halfFrame", (w, h, adjustments) => {
 });
 
 presetShapes.set("donut", (w, h, adjustments) => {
-  // OOXML: adj=25000, dr = ss * a / 100000, inner radii = wd2-dr, hd2-dr
+  // OOXML: adj=25000, dr = ss * a / 100000, inner radii = wd2-dr, hd2-dr.
   const ss = Math.min(w, h);
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 25000), 0), 50000);
   const dr = (ss * a) / 100000;
@@ -2988,12 +2944,12 @@ presetShapes.set("donut", (w, h, adjustments) => {
   const iwd2 = Math.max(0, rx - dr);
   const ihd2 = Math.max(0, ry - dr);
   return [
-    // Outer circle (CW)
+    // Outer circle (CW).
     `M0,${ry}`,
     `A${rx},${ry} 0 1,1 ${w},${ry}`,
     `A${rx},${ry} 0 1,1 0,${ry}`,
     "Z",
-    // Inner circle (CCW for evenodd hole)
+    // Inner circle (CCW for evenodd hole).
     `M${dr},${ry}`,
     `A${iwd2},${ihd2} 0 1,0 ${w - dr},${ry}`,
     `A${iwd2},${ihd2} 0 1,0 ${dr},${ry}`,
@@ -3012,7 +2968,6 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const vc = h / 2;
   const iwd2 = rx - dr;
   const ihd2 = ry - dr;
-  // Compute diagonal angle and band intersection with inner ellipse
   const ang = Math.atan2(h, w); // at2(w, h) in OOXML: at2 x y = atan2(y, x)
   // Inner ellipse radius at diagonal angle
   const ct = ihd2 * Math.cos(ang);
@@ -3022,11 +2977,11 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const drd2 = dr / 2;
   const dang = Math.atan2(drd2, n);
   const dang2 = dang * 2;
-  // Sweep for inner arcs: -(180° - dang2) expressed as OOXML 60000ths then converted
+  // Sweep for inner arcs: -(180° - dang2) expressed as OOXML 60000ths then converted.
   const swAngRad = -(Math.PI - dang2);
   const stAng1 = ang - dang;
   const stAng2 = stAng1 - Math.PI;
-  // Compute points on inner ellipse for the two diagonal band arcs
+  // Points on the inner ellipse for the two diagonal band arcs.
   const innerPt = (angle: number) => {
     const ct2 = ihd2 * Math.cos(angle);
     const st2 = iwd2 * Math.sin(angle);
@@ -3036,7 +2991,7 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   };
   const p1 = innerPt(stAng1);
   const p2 = innerPt(stAng2);
-  // End points of arcs
+  // End points of arcs.
   const endAng1 = stAng1 + swAngRad;
   const endAng2 = stAng2 + swAngRad;
   const e1 = innerPt(endAng1);
@@ -3044,16 +2999,16 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const largeArc = Math.abs(swAngRad) > Math.PI ? 1 : 0;
   const sweep = swAngRad > 0 ? 1 : 0;
   return [
-    // Outer circle (CW)
+    // Outer circle (CW).
     `M0,${vc}`,
     `A${rx},${ry} 0 1,1 ${w},${vc}`,
     `A${rx},${ry} 0 1,1 0,${vc}`,
     "Z",
-    // First diagonal band arc (inner ellipse)
+    // First diagonal band arc (inner ellipse).
     `M${p1.x},${p1.y}`,
     `A${iwd2},${ihd2} 0 ${largeArc},${sweep} ${e1.x},${e1.y}`,
     "Z",
-    // Second diagonal band arc (opposite quadrant)
+    // Second diagonal band arc (opposite quadrant).
     `M${p2.x},${p2.y}`,
     `A${iwd2},${ihd2} 0 ${largeArc},${sweep} ${e2.x},${e2.y}`,
     "Z",
@@ -3093,8 +3048,6 @@ presetShapes.set("blockArc", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// ===== Gear Shapes =====
-
 presetShapes.set("gear6", (w, h, adjustments) => {
   const a1 = adjustments?.get("adj1") ?? 15000;
   const a2 = adjustments?.get("adj2") ?? 3526;
@@ -3123,7 +3076,7 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
   const rh = h / 2 - th; // inner ellipse height radius
   if (rw <= 0 || rh <= 0) return `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 
-  // OOXML: ha = at2(maxr, l3) where maxr=min(rw,rh), l3=th/2+lFD/2
+  // OOXML: ha = at2(maxr, l3) where maxr=min(rw,rh), l3=th/2+lFD/2.
   const l3 = th / 2 + lFD / 2;
   const maxr = Math.min(rw, rh);
   const ha = Math.atan2(l3, maxr); // half-angle of each tooth on the inner ellipse
@@ -3138,21 +3091,21 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
     const aStart = baseAngle - ha; // tooth base start angle (A point)
     const aEnd = baseAngle + ha; // tooth base end angle (D point)
 
-    // A and D: inner ellipse points at tooth base edges
+    // A and D: inner ellipse points at tooth base edges.
     const ax = cx + rw * Math.cos(aStart);
     const ay = cy + rh * Math.sin(aStart);
     const dx = cx + rw * Math.cos(aEnd);
     const dy = cy + rh * Math.sin(aEnd);
 
     // Per-tooth edge-perpendicular tip computation:
-    // Edge direction A→D
+    // Edge direction A→D.
     const edgeX = dx - ax;
     const edgeY = dy - ay;
     const edgeLen = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
 
     // Unit normal perpendicular to edge, pointing outward
-    // For clockwise winding (our standard), outward normal is (-edgeY, edgeX) / len
-    // Verify with radial dot product and flip if needed
+    // For clockwise winding (the default here), outward normal is (-edgeY, edgeX) / len
+    // Verify with radial dot product and flip if needed.
     const radX = Math.cos(baseAngle);
     const radY = Math.sin(baseAngle);
     let nx = radX;
@@ -3166,7 +3119,7 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
       ny = -ny;
     }
 
-    // Narrowing: slide A and D inward along edge by lFD
+    // Narrowing: slide A and D inward along edge by lFD.
     const ex = edgeLen > 0 ? edgeX / edgeLen : 0;
     const ey = edgeLen > 0 ? edgeY / edgeLen : 0;
     const axN = ax + ex * lFD; // A narrowed (moved toward D)
@@ -3174,14 +3127,14 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
     const dxN = dx - ex * lFD; // D narrowed (moved toward A)
     const dyN = dy - ey * lFD;
 
-    // B and C: tip points = narrowed base + th * outward normal
+    // B and C: tip points = narrowed base + th * outward normal.
     const bx = axN + nx * th;
     const by = ayN + ny * th;
     const _cx = dxN + nx * th;
     const _cy = dyN + ny * th;
 
     if (i === 0) {
-      // Start at the valley before first tooth
+      // The path opens at the valley before the first tooth.
       const prevEnd = (centerDegs[centerDegs.length - 1] * Math.PI) / 180 + ha;
       const prevIx = cx + rw * Math.cos(prevEnd);
       const prevIy = cy + rh * Math.sin(prevEnd);
@@ -3189,12 +3142,12 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
       parts.push(`A${rw},${rh} 0 0,1 ${ax},${ay}`);
     }
 
-    // Tooth: A→B→C→D
+    // Tooth: A→B→C→D.
     parts.push(`L${bx},${by}`);
     parts.push(`L${_cx},${_cy}`);
     parts.push(`L${dx},${dy}`);
 
-    // Arc along inner ring to next tooth
+    // Arc along inner ring to next tooth.
     if (i < centerDegs.length - 1) {
       const nextStart = (centerDegs[i + 1] * Math.PI) / 180 - ha;
       const nx2 = cx + rw * Math.cos(nextStart);
@@ -3206,10 +3159,8 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
   return parts.join(" ");
 }
 
-// ===== Misc Shapes =====
-
 presetShapes.set("mathPlus", (w, h, adjustments) => {
-  // OOXML: adj1=23520 (max 73490). dx1 = w*73490/200000, dx2 = ss*a/200000
+  // OOXML: adj1=23520 (max 73490). dx1 = w*73490/200000, dx2 = ss*a/200000.
   const ss = Math.min(w, h);
   const a1 = Math.min(Math.max(adjustments?.get("adj1") ?? 23520, 0), 73490);
   const dx1 = (w * 73490) / 200000;
@@ -3243,7 +3194,7 @@ presetShapes.set("mathPlus", (w, h, adjustments) => {
 });
 
 presetShapes.set("mathMinus", (w, h, adjustments) => {
-  // OOXML: adj1=23520 (max 100000). dy1 = h*a1/200000, dx1 = w*73490/200000
+  // OOXML: adj1=23520 (max 100000). dy1 = h*a1/200000, dx1 = w*73490/200000.
   const a1 = Math.min(Math.max(adjRaw(adjustments, "adj1", 23520), 0), 100000);
   const dy1 = (h * a1) / 200000;
   const dx1 = (w * 73490) / 200000;
@@ -3271,30 +3222,30 @@ presetShapes.set("mathMultiply", (w, h, adjustments) => {
   const dl = Math.sqrt(w * w + h * h);
   const rw = (dl * 51965) / 100000;
   const lM = dl - rw;
-  // xM, yM: half-distance along the diagonal from the outer tip to the outer tip
+  // xM, yM: half-distance along the diagonal from the outer tip to the outer tip.
   const xM = (ca * lM) / 2;
   const yM = (sa * lM) / 2;
-  // Perpendicular offset for arm thickness
+  // Perpendicular offset for arm thickness.
   const dxAM = (sa * th) / 2;
   const dyAM = (ca * th) / 2;
-  // xA, yA = upper-left outer tip (left side of arm), coordinates from (0,0)
+  // xA, yA = upper-left outer tip (left side of arm), coordinates from (0,0).
   const xA = xM - dxAM;
   const yA = yM + dyAM;
   const xB = xM + dxAM;
   const yB = yM - dyAM;
-  // yC = center notch: where the inner edge of one arm meets the inner edge of the other
+  // yC = center notch: where the inner edge of one arm meets the inner edge of the other.
   const xBC = hc - xB;
   const yBC = xBC * ta;
   const yC = yBC + yB;
-  // Mirror points for upper-right quadrant
+  // Mirrored into the upper-right quadrant.
   const xD = w - xB;
   const xE = w - xA;
-  // xF: where the arm inner edge meets vc (center y)
+  // xF: where the arm inner edge meets vc (center y).
   const yFE = vc - yA;
   const xFE = yFE / ta;
   const xF = xE - xFE;
   const xL = xA + xFE;
-  // Bottom half mirrors
+  // Bottom half mirrors.
   const yG = h - yA;
   const yH = h - yB;
   const yI = h - yC;
@@ -3341,17 +3292,17 @@ presetShapes.set("mathDivide", (w, h, adjustments) => {
   const x3 = hc + dx1;
 
   return [
-    // Top dot
+    // Top dot.
     `M${hc + rad},${y1 + rad} A${rad},${rad} 0 1,1 ${hc - rad},${y1 + rad} A${rad},${rad} 0 1,1 ${hc + rad},${y1 + rad} Z`,
-    // Bottom dot
+    // Bottom dot.
     `M${hc + rad},${y5 - rad} A${rad},${rad} 0 1,1 ${hc - rad},${y5 - rad} A${rad},${rad} 0 1,1 ${hc + rad},${y5 - rad} Z`,
-    // Bar
+    // Bar.
     `M${x1},${y3} L${x3},${y3} L${x3},${y4} L${x1},${y4} Z`,
   ].join(" ");
 });
 
 presetShapes.set("mathEqual", (w, h, adjustments) => {
-  // OOXML: adj1=23520 (bar thickness, max 36745), adj2=11760 (gap, max 100000-2*a1)
+  // OOXML: adj1=23520 (bar thickness, max 36745), adj2=11760 (gap, max 100000-2*a1).
   const adj1Raw = adjustments?.get("adj1") ?? 23520;
   const adj2Raw = adjustments?.get("adj2") ?? 11760;
   const a1 = Math.min(Math.max(adj1Raw, 0), 36745);
@@ -3518,7 +3469,7 @@ presetShapes.set("snip2SameRect", (w, h, adjustments) => {
 });
 
 presetShapes.set("snip2DiagRect", (w, h, adjustments) => {
-  // OOXML spec: diagonal snipped rectangle. adj1=top-left/bottom-right, adj2=top-right/bottom-left
+  // OOXML spec: diagonal snipped rectangle. adj1=top-left/bottom-right, adj2=top-right/bottom-left.
   const ss = Math.min(w, h);
   const a1 = Math.min(Math.max(adjustments?.get("adj1") ?? 0, 0), 50000);
   const a2 = Math.min(Math.max(adjustments?.get("adj2") ?? 16667, 0), 50000);
@@ -3552,17 +3503,17 @@ presetShapes.set("bevel", (w, h, adjustments) => {
   const a = adj(adjustments, "adj", 12500);
   const t = Math.min(w, h) * a;
   return [
-    // Outer
+    // Outer.
     `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
-    // Inner
+    // Inner.
     `M${t},${t} L${t},${h - t} L${w - t},${h - t} L${w - t},${t} Z`,
-    // Connecting triangles (top)
+    // Connecting triangles (top).
     `M0,0 L${w},0 L${w - t},${t} L${t},${t} Z`,
-    // Right
+    // Right.
     `M${w},0 L${w},${h} L${w - t},${h - t} L${w - t},${t} Z`,
-    // Bottom
+    // Bottom.
     `M${w},${h} L0,${h} L${t},${h - t} L${w - t},${h - t} Z`,
-    // Left
+    // Left.
     `M0,${h} L0,0 L${t},${t} L${t},${h - t} Z`,
   ].join(" ");
 });
@@ -3572,19 +3523,19 @@ presetShapes.set("foldedCorner", (w, h, adjustments) => {
   const fold = Math.min(w, h) * a * 0.7;
   return [
     `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
-    // Fold triangle
+    // Fold triangle.
     `M${w - fold},${h} L${w},${h} L${w},${h - fold}`,
   ].join(" ");
 });
 
-// smileyFace is implemented as multiPathPreset (see multiPathPresets below)
+// smileyFace is implemented as multiPathPreset (see multiPathPresets below).
 
 presetShapes.set("sun", (w, h, adjustments) => {
-  // OOXML spec: adj default=25000, pinned 12500..46875
+  // OOXML spec: adj default=25000, pinned 12500..46875.
   const adjRaw = adjustments?.get("adj") ?? 25000;
   const a = Math.min(Math.max(adjRaw, 12500), 46875);
   const g0 = 50000 - a;
-  // OOXML guide formulas
+  // OOXML guide formulas.
   const g1 = (g0 * 30274) / 32768;
   const g2 = (g0 * 12540) / 32768;
   const _g3 = g1 + 50000;
@@ -3603,7 +3554,7 @@ presetShapes.set("sun", (w, h, adjustments) => {
   const g16 = 100000 - g12;
   const g17 = 100000 - g13;
   const g18 = 100000 - g14;
-  // Pixel coordinates
+  // Pixel coordinates.
   const hc = w / 2;
   const vc = h / 2;
   const ox1 = (w * 18436) / 21600;
@@ -3635,23 +3586,23 @@ presetShapes.set("sun", (w, h, adjustments) => {
   const y18 = s(g18, h);
   const x19 = s(a, w);
   return [
-    // Ray 0: right
+    // Ray 0: right.
     `M${w},${vc} L${x15},${y18} L${x15},${y14} Z`,
-    // Ray 1: top-right
+    // Ray 1: top-right.
     `M${ox1},${oy1} L${x16},${y13} L${x17},${y12} Z`,
-    // Ray 2: top
+    // Ray 2: top.
     `M${hc},0 L${x18},${y10} L${x14},${y10} Z`,
-    // Ray 3: top-left
+    // Ray 3: top-left.
     `M${ox2},${oy1} L${x13},${y12} L${x12},${y13} Z`,
-    // Ray 4: left
+    // Ray 4: left.
     `M0,${vc} L${x10},${y14} L${x10},${y18} Z`,
-    // Ray 5: bottom-left
+    // Ray 5: bottom-left.
     `M${ox2},${oy2} L${x12},${y17} L${x13},${y16} Z`,
-    // Ray 6: bottom
+    // Ray 6: bottom.
     `M${hc},${h} L${x14},${y15} L${x18},${y15} Z`,
-    // Ray 7: bottom-right
+    // Ray 7: bottom-right.
     `M${ox1},${oy2} L${x17},${y16} L${x16},${y17} Z`,
-    // Center ellipse (arcTo from x19,vc with wR,hR, startAngle=180°, sweep=360°)
+    // Center ellipse (arcTo from x19,vc with wR,hR, startAngle=180°, sweep=360°).
     `M${x19},${vc}`,
     `A${wR},${hR} 0 1,1 ${x19 + 2 * wR},${vc}`,
     `A${wR},${hR} 0 1,1 ${x19},${vc}`,
@@ -3684,9 +3635,8 @@ presetShapes.set("moon", (w, h, adjustments) => {
 });
 
 presetShapes.set("lightningBolt", (w, h) => {
-  // Calibrated against OOXML preset rendering (PowerPoint PDF export):
-  // the old simplified 7-point bolt was too wide and lacked the inner notches.
-  // This normalized 11-point contour follows the default lightningBolt geometry.
+  // An 11-point contour calibrated against PowerPoint's PDF export of the
+  // default lightningBolt, inner notches included.
   return [
     `M${w * 0.3895},${0}`,
     `L${0},${h * 0.1821}`,
@@ -3704,19 +3654,19 @@ presetShapes.set("lightningBolt", (w, h) => {
 });
 
 presetShapes.set("bracketPair", (w, h, adjustments) => {
-  // OOXML: adj=16667 (max 50000), radius = ss * a / 100000
+  // OOXML: adj=16667 (max 50000), radius = ss * a / 100000.
   const ss = Math.min(w, h);
   const a = Math.min(Math.max(adjRaw(adjustments, "adj", 16667), 0), 50000);
   const r = (ss * a) / 100000;
   const x2 = w - r;
   const y2 = h - r;
   return [
-    // Left bracket: bottom-left arc → vertical → top-left arc
+    // Left bracket: bottom-left arc → vertical → top-left arc.
     `M${r},${h}`,
     `A${r},${r} 0 0,1 0,${y2}`,
     `L0,${r}`,
     `A${r},${r} 0 0,1 ${r},0`,
-    // Right bracket: top-right arc → vertical → bottom-right arc
+    // Right bracket: top-right arc → vertical → bottom-right arc.
     `M${x2},0`,
     `A${r},${r} 0 0,1 ${w},${r}`,
     `L${w},${y2}`,
@@ -3729,7 +3679,7 @@ presetShapes.set("bracePair", (w, h, adjustments) => {
   const r = Math.min(w, h) * a;
   const cy = h / 2;
   return [
-    // Left brace
+    // Left brace.
     `M${r * 2},0`,
     `A${r},${r} 0 0,0 ${r},${r}`,
     `L${r},${cy - r}`,
@@ -3737,7 +3687,7 @@ presetShapes.set("bracePair", (w, h, adjustments) => {
     `A${r},${r} 0 0,1 ${r},${cy + r}`,
     `L${r},${h - r}`,
     `A${r},${r} 0 0,0 ${r * 2},${h}`,
-    // Right brace
+    // Right brace.
     `M${w - r * 2},0`,
     `A${r},${r} 0 0,1 ${w - r},${r}`,
     `L${w - r},${cy - r}`,
@@ -3904,7 +3854,6 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
   );
 });
 
-// ===== Action Buttons =====
 // Action buttons are multi-path shapes: background rect + icon with darken fill + icon outline + rect outline.
 // OOXML spec uses ss*3/8 as the icon half-size (dx2), with the icon centred at (hc, vc).
 // Shapes with multiPathPresets entries below get proper 3D treatment. Remaining shapes
@@ -3912,21 +3861,14 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
 
 presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
-// Fallback rectangle for action buttons without multiPathPresets entry yet
-// actionButtonSound fallback removed; uses multiPathPresets entry below
-
 // Multi-path action button presets are registered after the multiPathPresets Map
 // declaration (see below in the multiPathPresets section).
 
-// ---------------------------------------------------------------------------
-// Action button icon paths (rendered as a second <path> with contrasting fill)
-// ---------------------------------------------------------------------------
+// Rendered as a second <path> with contrasting fill.
 const actionButtonIcons = new Map<string, (w: number, h: number) => string>();
 
-// actionButtonHome icon removed; uses multiPathPresets entry below
-
 actionButtonIcons.set("actionButtonForwardNext", (w, h) => {
-  // Right-pointing triangle (▶)
+  // Right-pointing triangle (▶).
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.3;
@@ -3934,7 +3876,7 @@ actionButtonIcons.set("actionButtonForwardNext", (w, h) => {
 });
 
 actionButtonIcons.set("actionButtonBackPrevious", (w, h) => {
-  // Left-pointing triangle (◀)
+  // Left-pointing triangle (◀).
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.3;
@@ -3954,18 +3896,18 @@ actionButtonIcons.set("actionButtonReturn", (w, h) => {
   const rightX = cx + s * 0.6;
   const r = (bottomY - topY) / 2; // semicircle radius
   return [
-    // Outer edge: bottom-left → right → arc up → left to arrowhead junction
+    // Outer edge: bottom-left → right → arc up → left to arrowhead junction.
     `M${leftX},${bottomY}`,
     `L${rightX},${bottomY}`,
     `A${r},${r} 0 0,1 ${rightX},${topY}`,
     `L${leftX + s * 0.15},${topY}`,
-    // Inner edge: top → right → arc down → bottom-left
+    // Inner edge: top → right → arc down → bottom-left.
     `L${leftX + s * 0.15},${topY + thick}`,
     `L${rightX - thick * 0.3},${topY + thick}`,
     `A${r - thick},${r - thick} 0 0,0 ${rightX - thick * 0.3},${bottomY - thick}`,
     `L${leftX},${bottomY - thick}`,
     `Z`,
-    // Arrowhead pointing left at top-left
+    // Arrowhead pointing left at top-left.
     `M${leftX - s * 0.3},${topY + thick / 2}`,
     `L${leftX + s * 0.15},${topY - s * 0.2}`,
     `L${leftX + s * 0.15},${topY + thick + s * 0.2}`,
@@ -3974,48 +3916,46 @@ actionButtonIcons.set("actionButtonReturn", (w, h) => {
 });
 
 actionButtonIcons.set("actionButtonBeginning", (w, h) => {
-  // Skip-to-beginning (|◀)
+  // Skip-to-beginning (|◀).
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.28;
   return [
-    // Left bar
+    // Left bar.
     `M${cx - s},${cy - s} L${cx - s + s * 0.2},${cy - s} L${cx - s + s * 0.2},${cy + s} L${cx - s},${cy + s} Z`,
-    // Left-pointing triangle
+    // Left-pointing triangle.
     `M${cx + s},${cy - s} L${cx - s + s * 0.35},${cy} L${cx + s},${cy + s} Z`,
   ].join(" ");
 });
 
 actionButtonIcons.set("actionButtonEnd", (w, h) => {
-  // Skip-to-end (▶|)
+  // Skip-to-end (▶|).
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.28;
   return [
-    // Right bar
+    // Right bar.
     `M${cx + s - s * 0.2},${cy - s} L${cx + s},${cy - s} L${cx + s},${cy + s} L${cx + s - s * 0.2},${cy + s} Z`,
-    // Right-pointing triangle
+    // Right-pointing triangle.
     `M${cx - s},${cy - s} L${cx + s - s * 0.35},${cy} L${cx - s},${cy + s} Z`,
   ].join(" ");
 });
 
-// actionButtonHelp icon removed; uses multiPathPresets entry below
-
 actionButtonIcons.set("actionButtonInformation", (w, h) => {
-  // Info icon (i)
+  // Info icon (i).
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.28;
   return [
-    // Dot
+    // Dot.
     `M${cx - s * 0.1},${cy - s * 0.65} L${cx + s * 0.1},${cy - s * 0.65} L${cx + s * 0.1},${cy - s * 0.4} L${cx - s * 0.1},${cy - s * 0.4} Z`,
-    // Stem
+    // Stem.
     `M${cx - s * 0.12},${cy - s * 0.2} L${cx + s * 0.12},${cy - s * 0.2} L${cx + s * 0.12},${cy + s * 0.65} L${cx - s * 0.12},${cy + s * 0.65} Z`,
   ].join(" ");
 });
 
 actionButtonIcons.set("actionButtonDocument", (w, h) => {
-  // Document with folded corner
+  // Document with folded corner.
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.28;
@@ -4029,10 +3969,6 @@ actionButtonIcons.set("actionButtonDocument", (w, h) => {
     `M${cx + dx - fold},${cy - dy} L${cx + dx - fold},${cy - dy + fold} L${cx + dx},${cy - dy + fold}`,
   ].join(" ");
 });
-
-// actionButtonSound icon removed; uses multiPathPresets entry below
-
-// actionButtonMovie icon is now rendered via multiPathPresets (see below).
 
 /**
  * Gets the SVG path for the icon overlay of an action button.
@@ -4048,15 +3984,12 @@ export function getActionButtonIconPath(
   return generator?.(w, h);
 }
 
-// ===== Aliases and common alternative names =====
+// flowChartOfflineStorage is implemented as multiPathPreset (see multiPathPresets below).
 
-// Some shapes are known by multiple names in different OOXML versions
-// flowChartOfflineStorage: registered as multiPathPreset (see below)
-
-// ribbon is implemented as multiPathPreset (see multiPathPresets below)
+// ribbon is implemented as multiPathPreset (see multiPathPresets below).
 
 presetShapes.set("wave", (w, h, adjustments) => {
-  // OOXML: adj1=12500 (max 20000), adj2=0 (phase shift, range -10000..10000)
+  // OOXML: adj1=12500 (max 20000), adj2=0 (phase shift, range -10000..10000).
   const a1 = Math.min(Math.max(adjRaw(adjustments, "adj1", 12500), 0), 20000);
   const a2 = Math.min(Math.max(adjRaw(adjustments, "adj2", 0), -10000), 10000);
   const y1 = (h * a1) / 100000;
@@ -4066,7 +3999,7 @@ presetShapes.set("wave", (w, h, adjustments) => {
   const y4 = h - y1; // bottom wave y
   const y5 = y4 - dy2;
   const y6 = y4 + dy2;
-  // Phase shift
+  // Phase shift.
   const of2 = (w * a2) / 50000;
   const dx2 = of2 < 0 ? 0 : of2;
   const dx5 = of2 < 0 ? of2 : 0;
@@ -4089,7 +4022,7 @@ presetShapes.set("wave", (w, h, adjustments) => {
 });
 
 presetShapes.set("doubleWave", (w, h, adjustments) => {
-  // OOXML: adj1=6250 (max 12500), adj2=0 (phase shift)
+  // OOXML: adj1=6250 (max 12500), adj2=0 (phase shift).
   const a1 = Math.min(Math.max(adjRaw(adjustments, "adj1", 6250), 0), 12500);
   const a2 = Math.min(Math.max(adjRaw(adjustments, "adj2", 0), -10000), 10000);
   const y1 = (h * a1) / 100000;
@@ -4134,7 +4067,7 @@ presetShapes.set("doubleWave", (w, h, adjustments) => {
 // (see multiPathPresets below) for accurate OOXML rendering with darkenLess shadows.
 
 presetShapes.set("irregularSeal1", (w, h) => {
-  // OOXML spec: exact coordinates on 21600x21600 grid
+  // OOXML spec: exact coordinates on 21600x21600 grid.
   const sx = (x: number) => (w * x) / 21600;
   const sy = (y: number) => (h * y) / 21600;
   return [
@@ -4267,7 +4200,7 @@ presetShapes.set("arc", (w, h, adjustments) => {
 presetShapes.set("chord", (w, h, adjustments) => {
   // OOXML chord: arc + chord line. Spec uses ellipse (arcTo wR="wd2" hR="hd2") per presetShapeDefinitions.
   // OOXML angles are "visual" (geometric) angles; the angle of the ray from center to the point.
-  // For ellipses (rx≠ry), convert to parametric angle: t = atan2(sin(θ)/ry, cos(θ)/rx)
+  // For ellipses (rx≠ry), convert to parametric angle: t = atan2(sin(θ)/ry, cos(θ)/rx).
   const adj1Raw = adjustments?.get("adj1") ?? 2700000; // default 45°
   const adj2Raw = adjustments?.get("adj2") ?? 16200000; // default 270°
   const startDeg = adj1Raw / 60000;
@@ -4277,7 +4210,7 @@ presetShapes.set("chord", (w, h, adjustments) => {
   const rx = w / 2;
   const ry = h / 2;
   const toRad = (d: number) => (d * Math.PI) / 180;
-  // Convert OOXML visual angles to parametric angles on the ellipse
+  // Convert OOXML visual angles to parametric angles on the ellipse.
   const visualToParam = (deg: number) =>
     Math.atan2(Math.sin(toRad(deg)) / ry, Math.cos(toRad(deg)) / rx);
   const startParam = visualToParam(startDeg);
@@ -4286,10 +4219,10 @@ presetShapes.set("chord", (w, h, adjustments) => {
   const y1 = cy + ry * Math.sin(startParam);
   const x2 = cx + rx * Math.cos(endParam);
   const y2 = cy + ry * Math.sin(endParam);
-  // Use OOXML visual sweep to determine large-arc-flag
+  // Use OOXML visual sweep to determine large-arc-flag.
   let sweepDeg = (((endDeg - startDeg) % 360) + 360) % 360;
   if (sweepDeg === 0 && startDeg !== endDeg) sweepDeg = 360;
-  // When adj1 == adj2, the chord covers the full ellipse (360° sweep)
+  // When adj1 == adj2, the chord covers the full ellipse (360° sweep).
   if (sweepDeg === 0) {
     return `M${cx - rx},${cy} A${rx},${ry} 0 1,1 ${cx + rx},${cy} A${rx},${ry} 0 1,1 ${cx - rx},${cy} Z`;
   }
@@ -4312,24 +4245,24 @@ presetShapes.set("funnel", (w, h) => {
 
   // Angle (in radians) where funnel sides are tangent to top ellipse.
   // OOXML: t1 = cos(wd2, 480000), t2 = sin(hd4, 480000) → da = atan2(t1, t2)
-  // 480000 = 8° in 60000ths of a degree
+  // 480000 = 8° in 60000ths of a degree.
   const ang8 = (8 * Math.PI) / 180;
   const t1 = wd2 * Math.cos(ang8);
   const t2 = hd4 * Math.sin(ang8);
   const da = Math.atan2(t2, t1); // radians
 
-  // Angles for the top rim arc (OOXML convention: sweep from stAng1 by swAng1)
+  // Angles for the top rim arc (OOXML convention: sweep from stAng1 by swAng1).
   const stAng1 = Math.PI - da; // cd2 - da
   const swAng1 = Math.PI + 2 * da; // cd2 + 2*da
 
-  // Sweep for the bottom spout arc
+  // Sweep for the bottom spout arc.
   const swAng3 = Math.PI - 2 * da; // cd2 - 2*da
 
-  // Bottom spout ellipse radii: 1/4 of top ellipse
+  // Bottom spout ellipse radii: 1/4 of top ellipse.
   const rw3 = wd2 / 4;
   const rh3 = hd4 / 4;
 
-  // Start point on top ellipse at stAng1 (visual angle → ellipse point)
+  // The path opens on the top ellipse at stAng1 (visual angle → ellipse point)
   // OOXML uses: n = (wR*hR) / mod(cos(hR,ang), sin(wR,ang), 0), then x = hc + cos(n,ang), y = hd4 + sin(n,ang)
   // This is equivalent to the parametric ellipse point at the "visual" angle.
   const ct1 = hd4 * Math.cos(stAng1);
@@ -4341,7 +4274,7 @@ presetShapes.set("funnel", (w, h) => {
   const x1 = hc + dx1;
   const y1 = hd4 + dy1;
 
-  // End point of top arc (at stAng1 + swAng1 = pi + da)
+  // End point of top arc (at stAng1 + swAng1 = pi + da).
   const endAng1 = stAng1 + swAng1;
   const ct1e = hd4 * Math.cos(endAng1);
   const st1e = wd2 * Math.sin(endAng1);
@@ -4352,7 +4285,7 @@ presetShapes.set("funnel", (w, h) => {
   const x1e = hc + dx1e;
   const y1e = hd4 + dy1e;
 
-  // Point on spout ellipse at angle da
+  // Point on spout ellipse at angle da.
   const vc3 = b - rh3; // vertical center of spout ellipse
   const ct3 = rh3 * Math.cos(da);
   const st3 = rw3 * Math.sin(da);
@@ -4363,7 +4296,7 @@ presetShapes.set("funnel", (w, h) => {
   const x3 = hc + dx3;
   const y2 = vc3 + dy3;
 
-  // End point of spout arc (at da + swAng3)
+  // End point of spout arc (at da + swAng3).
   const endAng3 = da + swAng3;
   const ct3e = rh3 * Math.cos(endAng3);
   const st3e = rw3 * Math.sin(endAng3);
@@ -4374,7 +4307,6 @@ presetShapes.set("funnel", (w, h) => {
   const x3e = hc + dx3e;
   const y2e = vc3 + dy3e;
 
-  // Determine arc flags
   const swDeg1 = (swAng1 * 180) / Math.PI;
   const largeArc1 = Math.abs(swDeg1) > 180 ? 1 : 0;
   const sweep1 = swAng1 > 0 ? 1 : 0;
@@ -4383,7 +4315,7 @@ presetShapes.set("funnel", (w, h) => {
   const largeArc3 = Math.abs(swDeg3) > 180 ? 1 : 0;
   const sweep3 = swAng3 > 0 ? 1 : 0;
 
-  // Sub-path 1: Funnel body (top arc → line to spout → spout arc → close)
+  // Sub-path 1: Funnel body (top arc → line to spout → spout arc → close).
   const body = [
     `M${x1},${y1}`,
     `A${wd2},${hd4} 0 ${largeArc1},${sweep1} ${x1e},${y1e}`,
@@ -4392,7 +4324,7 @@ presetShapes.set("funnel", (w, h) => {
     "Z",
   ].join(" ");
 
-  // Sub-path 2: Inset top ellipse (full ellipse, counter-clockwise for even-odd hole)
+  // Sub-path 2: Inset top ellipse (full ellipse, counter-clockwise for even-odd hole).
   const x2 = wd2 - rw2; // leftmost point of inset ellipse
   const x2r = wd2 + rw2; // rightmost point
   const inset = [
@@ -4404,16 +4336,6 @@ presetShapes.set("funnel", (w, h) => {
 
   return `${body} ${inset}`;
 });
-
-// ===== Fallback =====
-
-/**
- * Gets the SVG path for a preset shape, falling back to a simple rectangle
- * if the shape type is not implemented.
- */
-// ---------------------------------------------------------------------------
-// Preset shape overlays; additional paths for 3D-like shapes (lighter top face, etc.)
-// ---------------------------------------------------------------------------
 
 export interface PresetOverlay {
   /** SVG path d-attribute for the overlay */
@@ -4458,11 +4380,6 @@ export function getPresetOverlays(
   return gen ? gen(w, h, adjustments) : [];
 }
 
-// ---------------------------------------------------------------------------
-// Multi-path preset shapes; complex shapes with multiple SVG paths
-// Each path has its own fill modifier and stroke behavior, matching OOXML spec.
-// ---------------------------------------------------------------------------
-
 /** A single sub-path within a multi-path preset shape. */
 export interface PresetSubPath {
   /** SVG path d-attribute string */
@@ -4497,8 +4414,7 @@ type MultiPathPresetGenerator = (
 
 const multiPathPresets: Map<string, MultiPathPresetGenerator> = new Map();
 
-// ===== Action Button multi-path presets (OOXML spec-accurate) =====
-// Common helper: OOXML action button guide values
+// OOXML action button guide values.
 function _abGuides(w: number, h: number) {
   const ss = Math.min(w, h);
   const hc = w / 2,
@@ -4518,7 +4434,7 @@ function _abGuides(w: number, h: number) {
 }
 const _rect = (w: number, h: number) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 
-// actionButtonForwardNext (VBA 0130): right-pointing triangle ▶
+// actionButtonForwardNext (VBA 0130): right-pointing triangle ▶.
 multiPathPresets.set("actionButtonForwardNext", (w, h) => {
   const { g9, g10, g11, g12, vc } = _abGuides(w, h);
   const tri = `M${g12},${vc} L${g11},${g9} L${g11},${g10} Z`;
@@ -4535,7 +4451,7 @@ multiPathPresets.set("actionButtonForward", (w, h) => {
   return forwardNext ? forwardNext(w, h) : [];
 });
 
-// actionButtonBackPrevious (VBA 0129): left-pointing triangle ◀
+// actionButtonBackPrevious (VBA 0129): left-pointing triangle ◀.
 multiPathPresets.set("actionButtonBackPrevious", (w, h) => {
   const { g9, g10, g11, g12, vc } = _abGuides(w, h);
   const tri = `M${g11},${vc} L${g12},${g9} L${g12},${g10} Z`;
@@ -4547,7 +4463,7 @@ multiPathPresets.set("actionButtonBackPrevious", (w, h) => {
   ];
 });
 
-// actionButtonBeginning (VBA 0131): |◀ skip-to-start
+// actionButtonBeginning (VBA 0131): |◀ skip-to-start.
 multiPathPresets.set("actionButtonBeginning", (w, h) => {
   const { g9, g10, g11, g12, g13, vc } = _abGuides(w, h);
   const g14 = g13 / 8,
@@ -4565,7 +4481,7 @@ multiPathPresets.set("actionButtonBeginning", (w, h) => {
   ];
 });
 
-// actionButtonEnd (VBA 0132): ▶| skip-to-end
+// actionButtonEnd (VBA 0132): ▶| skip-to-end.
 multiPathPresets.set("actionButtonEnd", (w, h) => {
   const { g9, g10, g11, g12, g13, vc } = _abGuides(w, h);
   const g14 = (g13 * 3) / 4,
@@ -4611,7 +4527,7 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
   // Arc 3: from (g11, g20), wR=g17 hR=g17 stAng=180° swAng=-90°
   //   center = (g11+g17, g20) = (g25, g20), endpoint = (g25, g20+g17) = (g25, g10)
   // Arc 4: from (hc, g10), wR=g17 hR=g17 stAng=90° swAng=-90°
-  //   center = (hc, g10-g17), endpoint = (hc+g17, g10-g17)
+  //   center = (hc, g10-g17), endpoint = (hc+g17, g10-g17).
   const fillIcon = [
     `M${g12},${g21}`,
     `L${g23},${g9}`,
@@ -4631,45 +4547,8 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
     `Z`,
   ].join(" ");
 
-  // Outline path (path 2 in OOXML spec; traces shape with different arc winding)
-  // Starts from right outer edge, traces clockwise: outer right → outer bottom → outer left → inner left → inner bottom → inner right → arrow
-  // Arc A: from (g22, g20), wR=g17 hR=g17 stAng=0° swAng=90°
-  //   center = (g22-g17, g20) = (g22-g17, g20), endpoint = (g22-g17, g20+g17)
-  //   g22-g17 = g11+g14-g17 = g11 + g13*7/8 - g13*3/8 = g11 + g13/2 = g25 + g13/8 = hc? No.
-  //   Actually: g22 = g11+g14, g14 = g13*7/8, g17 = g13*3/8
-  //   g22 - g17 = g11 + g13*7/8 - g13*3/8 = g11 + g13*4/8 = g11 + g13/2 = hc (since hc = g11 + dx2 = g11 + g13/2)
-  //   Hmm wait, dx2 = ss*3/8 and g13 = ss*3/4. So g13/2 = ss*3/8 = dx2. So hc = g11 + dx2 = g11 + g13/2. Yes!
-  //   endpoint = (hc, g20+g17) = (hc, g10)? g20+g17 = (g9+g16)+g17 = g9+g13*5/8+g13*3/8 = g9+g13 = g9+ss*3/4
-  //   g10 = vc+dx2. g9+g13 = (vc-dx2) + 2*dx2 = vc+dx2 = g10. Yes! endpoint = (hc, g10) ✓ but wait...
-  //   Actually stAng=0° means start angle is 0°. center = (g22 - g17*cos(0), g20 - g17*sin(0)) = (g22-g17, g20).
-  //   endAng = 0+90 = 90°. endX = center.x + g17*cos(90°) = g22-g17. endY = center.y + g17*sin(90°) = g20+g17.
-  //   So endpoint = (g22-g17, g20+g17). Let's verify: g22-g17 = g11+g14-g17 = g11+g13*(7/8-3/8) = g11+g13/2 = g25+g13/8
-  //   Hmm, g25 = g11+g17 = g11+g13*3/8. g11+g13/2 = g11+g13*4/8. That's not g25, it's g25 + g13/8.
-  //   Actually let me just compute: g11+g13/2. g13/2 is not one of the named guides.
-  //   OK, the spec says after this arc: lnTo (g25, g10). So endpoint.x must be something, then line to g25.
-  //   endpoint.x = g22-g17 = g11+g14-g17 = g11+g13*7/8-g13*3/8 = g11+g13*4/8 = g11+g13/2.
-  //   Then lnTo (g25, g10) where g25 = g11+g13*3/8.
-  //   endpointY = g20+g17 = g10. So endpoint = (g11+g13/2, g10).
-  //   Line from there to (g25, g10) is horizontal. Makes sense.
-  // Arc B: from (g25, g10), wR=g17 hR=g17 stAng=90° swAng=90°
-  //   center = (g25, g10-g17), endAng=180°
-  //   endX = g25+g17*cos(180°) = g25-g17 = g11+g17-g17 = g11
-  //   endY = (g10-g17)+g17*sin(180°) = g10-g17 = g20
-  //   endpoint = (g11, g20). Then lnTo (g11, g21).
-  // Arc C: from (g26, g20), wR=g27 hR=g27 stAng=180° swAng=-90°
-  //   center = (g26+g27, g20) = (g26+g27, g20). g26+g27 = g11+g18+g13/8 = g11+g13/4+g13/8 = g11+g13*3/8 = g25
-  //   endAng = 180-90 = 90°. endX = g25+g27*cos(90°) = g25. endY = g20+g27*sin(90°) = g20+g27 = g19.
-  //   endpoint = (g25, g19). Hmm, but spec says lnTo(hc, g19) after this arc.
-  //   Wait: lnTo before spec says `<lnTo><pt x="hc" y="g19"/></lnTo>`. So endpoint is (g25, g19), then line to (hc, g19).
-  //   Hmm actually spec says: `<lnTo><pt x="hc" y="g19" /></lnTo>`.
-  //   Wait no: `L(hc, g19)` in the spec.
-  // Arc D: from (hc, g19), wR=g27 hR=g27 stAng=90° swAng=-90°
-  //   center = (hc, g19-g27), endAng = 0°.
-  //   endX = hc+g27*cos(0°) = hc+g27. g19-g27 = g20. endY = g20+g27*sin(0°) = g20.
-  //   endpoint = (hc+g27, g20). Hmm, but g24 = g11+g16 = g11+g13*5/8.
-  //   hc+g27 = g11+g13/2+g13/8 = g11+g13*5/8 = g24. So endpoint = (g24, g20).
-  //   Then lnTo (g24, g21). Then lnTo (hc, g21). Then lnTo (g23, g9). Close.
-
+  // Outline path (path 2 in the OOXML spec): the same contour with reversed arc
+  // winding. Arc A ends at (g11 + g13/2, g10), which has no named guide.
   const outline = [
     `M${g12},${g21}`,
     `L${g22},${g21}`,
@@ -4698,10 +4577,10 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
 });
 
 // actionButtonSound (VBA 0135): speaker icon with 3 sound wave lines
-// OOXML spec: 4 paths – bg+speaker cutout (norm), speaker fill (darken), speaker outline+waves (stroke), rect outline (stroke)
+// OOXML spec: 4 paths – bg+speaker cutout (norm), speaker fill (darken), speaker outline+waves (stroke), rect outline (stroke).
 multiPathPresets.set("actionButtonSound", (w, h) => {
   const { g9, g10, g11, g12, g13, hc: _hcS, vc } = _abGuides(w, h);
-  // Guide calculations from OOXML presetShapeDefinitions.xml
+  // Guide calculations from OOXML presetShapeDefinitions.xml.
   const g14 = g13 / 8;
   const g15 = (g13 * 5) / 16;
   const g16 = (g13 * 5) / 8;
@@ -4709,7 +4588,7 @@ multiPathPresets.set("actionButtonSound", (w, h) => {
   const g18 = (g13 * 3) / 4;
   const g19 = (g13 * 7) / 8;
 
-  // Absolute positions
+  // Absolute positions.
   const g20 = g9 + g14;
   const g21 = g9 + g15;
   const g22 = g9 + g17;
@@ -4718,10 +4597,10 @@ multiPathPresets.set("actionButtonSound", (w, h) => {
   const g25 = g11 + g16;
   const g26 = g11 + g18;
 
-  // Speaker shape (pentagon-like)
+  // Speaker shape (pentagon-like).
   const speaker = `M${g11},${g21} L${g11},${g22} L${g24},${g22} L${g25},${g10} L${g25},${g9} L${g24},${g21} Z`;
 
-  // Outline path: speaker outline (different winding) + 3 sound wave lines
+  // Outline path: speaker outline (different winding) + 3 sound wave lines.
   const speakerOutline = `M${g11},${g21} L${g24},${g21} L${g25},${g9} L${g25},${g10} L${g24},${g22} L${g11},${g22} Z`;
 
   const waveLine1 = `M${g26},${g21} L${g12},${g20}`; // top-right diagonal
@@ -4738,7 +4617,7 @@ multiPathPresets.set("actionButtonSound", (w, h) => {
   ];
 });
 
-// actionButtonInformation (VBA 0128): circle with "i" inside
+// actionButtonInformation (VBA 0128): circle with "i" inside.
 multiPathPresets.set("actionButtonInformation", (w, h) => {
   const { g9, g10, g11, g13, hc, vc: _vcI, dx2 } = _abGuides(w, h);
   const g14 = g13 / 32;
@@ -4774,10 +4653,10 @@ multiPathPresets.set("actionButtonInformation", (w, h) => {
 
 // actionButtonHome (VBA 0126): house icon with chimney and door
 // OOXML spec: 5 paths – bg+house cutout (norm), walls+chimney (darkenLess), roof+door (darken),
-// icon outline (stroke), rect outline (stroke)
+// icon outline (stroke), rect outline (stroke).
 multiPathPresets.set("actionButtonHome", (w, h) => {
   const { g9, g10, g11, g12, g13, hc, vc } = _abGuides(w, h);
-  // Guide calculations from OOXML presetShapeDefinitions.xml
+  // Guide calculations from OOXML presetShapeDefinitions.xml.
   const g14 = g13 / 16;
   const g15 = g13 / 8;
   const g16 = (g13 * 3) / 16;
@@ -4789,7 +4668,7 @@ multiPathPresets.set("actionButtonHome", (w, h) => {
   const g22 = (g13 * 13) / 16;
   const g23 = (g13 * 7) / 8;
 
-  // Absolute positions
+  // Absolute positions.
   const g24 = g9 + g14;
   const g25 = g9 + g16;
   const g26 = g9 + g17;
@@ -4802,32 +4681,32 @@ multiPathPresets.set("actionButtonHome", (w, h) => {
   const g33 = g11 + g23;
 
   // Path 0: background rect + full house outline cutout (norm, no stroke)
-  // House outline: roof triangle → right side → chimney → left side → base
+  // House outline: roof triangle → right side → chimney → left side → base.
   const houseOutline =
     `M${hc},${g9} ` +
     `L${g11},${vc} L${g28},${vc} L${g28},${g10} L${g33},${g10} L${g33},${vc} L${g12},${vc} ` +
     `L${g32},${g26} L${g32},${g24} L${g31},${g24} L${g31},${g25} Z`;
 
   // Path 1: walls + chimney (darkenLess, no stroke)
-  // Sub-path 1: chimney bar
+  // Sub-path 1: chimney bar.
   const chimney = `M${g32},${g26} L${g32},${g24} L${g31},${g24} L${g31},${g25} Z`;
-  // Sub-path 2: house body (walls) with door cutout
+  // Sub-path 2: house body (walls) with door cutout.
   const walls = `M${g28},${vc} L${g28},${g10} L${g29},${g10} L${g29},${g27} L${g30},${g27} L${g30},${g10} L${g33},${g10} L${g33},${vc} Z`;
 
-  // Path 2: roof triangle + door (darken, no stroke)
+  // Path 2: roof triangle + door (darken, no stroke).
   const roof = `M${hc},${g9} L${g11},${vc} L${g12},${vc} Z`;
   const door = `M${g29},${g27} L${g30},${g27} L${g30},${g10} L${g29},${g10} Z`;
 
-  // Path 3: icon outline with all detail lines (none fill, stroke)
+  // Path 3: icon outline with all detail lines (none fill, stroke).
   const iconOutline =
     `M${hc},${g9} ` +
     `L${g31},${g25} L${g31},${g24} L${g32},${g24} L${g32},${g26} L${g12},${vc} ` +
     `L${g33},${vc} L${g33},${g10} L${g28},${g10} L${g28},${vc} L${g11},${vc} Z ` +
-    // Chimney diagonal line
+    // Chimney diagonal line.
     `M${g31},${g25} L${g32},${g26} ` +
-    // Horizontal eave line
+    // Horizontal eave line.
     `M${g33},${vc} L${g28},${vc} ` +
-    // Door outline
+    // Door outline.
     `M${g29},${g10} L${g29},${g27} L${g30},${g27} L${g30},${g10}`;
 
   return [
@@ -4840,10 +4719,10 @@ multiPathPresets.set("actionButtonHome", (w, h) => {
 });
 
 // actionButtonHelp (VBA 0127): question mark "?" inside rectangle
-// OOXML spec: 4 paths – bg+icon cutout (norm), icon fill (darken), icon outline (stroke), rect outline (stroke)
+// OOXML spec: 4 paths – bg+icon cutout (norm), icon fill (darken), icon outline (stroke), rect outline (stroke).
 multiPathPresets.set("actionButtonHelp", (w, h) => {
   const { g9, g11, g13, hc, vc: _vcH } = _abGuides(w, h);
-  // Guide calculations from OOXML presetShapeDefinitions.xml
+  // Guide calculations from OOXML presetShapeDefinitions.xml.
   const g14 = g13 / 7;
   const g15 = (g13 * 3) / 14;
   const g16 = (g13 * 2) / 7;
@@ -4855,7 +4734,7 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
   const g41 = g13 / 14;
   const g42 = (g13 * 3) / 28;
 
-  // Absolute positions
+  // Absolute positions.
   const g27 = g9 + g16;
   const g29 = g9 + g21;
   const g30 = g9 + g23;
@@ -4865,7 +4744,7 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
   const g37 = g11 + g20;
 
   // Helper: OOXML arcTo → SVG arc segment
-  // Computes endpoint from center (derived from current point + start angle) and returns SVG A command
+  // Computes endpoint from center (derived from current point + start angle) and returns SVG A command.
   const arcSeg = (
     curX: number,
     curY: number,
@@ -4885,40 +4764,39 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
 
-  // Build question mark path following OOXML arcTo sequence exactly
-  // Start at (g33, g27)
+  // Follows the OOXML arcTo sequence exactly, starting at (g33, g27).
   let cx = g33,
     cy = g27;
 
-  // Arc 1: wR=g16 hR=g16 stAng=180° swAng=180° (top semicircle, clockwise)
+  // Arc 1: wR=g16 hR=g16 stAng=180° swAng=180° (top semicircle, clockwise).
   const a1 = arcSeg(cx, cy, g16, g16, 180, 180);
   cx = a1.endX;
   cy = a1.endY;
 
-  // Arc 2: wR=g14 hR=g15 stAng=0° swAng=90° (curve down right)
+  // Arc 2: wR=g14 hR=g15 stAng=0° swAng=90° (curve down right).
   const a2 = arcSeg(cx, cy, g14, g15, 0, 90);
   cx = a2.endX;
   cy = a2.endY;
 
-  // Arc 3: wR=g41 hR=g42 stAng=270° swAng=-90° (small reverse curve)
+  // Arc 3: wR=g41 hR=g42 stAng=270° swAng=-90° (small reverse curve).
   const a3 = arcSeg(cx, cy, g41, g42, 270, -90);
   // After arc 3, lines to stem
   // lnTo (g37, g30), (g36, g30), (g36, g29)
-  // then more arcs back up
+  // then more arcs back up.
 
-  // Arc 4: wR=g14 hR=g15 stAng=180° swAng=90° (inner curve going up)
+  // Arc 4: wR=g14 hR=g15 stAng=180° swAng=90° (inner curve going up).
   const a4 = arcSeg(g36, g29, g14, g15, 180, 90);
 
-  // Arc 5: wR=g41 hR=g42 stAng=90° swAng=-90° (small inner reverse curve)
+  // Arc 5: wR=g41 hR=g42 stAng=90° swAng=-90° (small inner reverse curve).
   const a5 = arcSeg(a4.endX, a4.endY, g41, g42, 90, -90);
 
-  // Arc 6: wR=g14 hR=g14 stAng=0° swAng=-180° (inner top semicircle, counter-clockwise)
+  // Arc 6: wR=g14 hR=g14 stAng=0° swAng=-180° (inner top semicircle, counter-clockwise).
   const a6 = arcSeg(a5.endX, a5.endY, g14, g14, 0, -180);
 
-  // Bottom dot circle at (hc, g31) with radius g42
+  // Bottom dot circle at (hc, g31) with radius g42.
   const dot = `M${hc},${g31} A${g42},${g42} 0 1,1 ${hc},${g31 + g42 * 2} A${g42},${g42} 0 1,1 ${hc},${g31} Z`;
 
-  // Question mark path (outer shape with arcs + stem + inner cutout arcs)
+  // Question mark path (outer shape with arcs + stem + inner cutout arcs).
   const qMark =
     `M${g33},${g27} ` +
     `${a1.svg} ` +
@@ -4939,7 +4817,7 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
   ];
 });
 
-// actionButtonDocument (VBA 0134): document with folded corner
+// actionButtonDocument (VBA 0134): document with folded corner.
 multiPathPresets.set("actionButtonDocument", (w, h) => {
   const ss = Math.min(w, h);
   const hc = w / 2,
@@ -4965,10 +4843,10 @@ multiPathPresets.set("actionButtonDocument", (w, h) => {
   ];
 });
 
-// actionButtonMovie (VBA 0136): film strip / camera icon
+// actionButtonMovie (VBA 0136): film strip / camera icon.
 multiPathPresets.set("actionButtonMovie", (w, h) => {
   const { g9, g11, g12, g13 } = _abGuides(w, h);
-  // Guide values from OOXML presetShapeDefinitions.xml (fractions of g13 = ss*3/4)
+  // Guide values from OOXML presetShapeDefinitions.xml (fractions of g13 = ss*3/4).
   const g14 = (g13 * 1455) / 21600;
   const g15 = (g13 * 1905) / 21600;
   const g16 = (g13 * 2325) / 21600;
@@ -4986,7 +4864,7 @@ multiPathPresets.set("actionButtonMovie", (w, h) => {
   const g28 = (g13 * 13342) / 21600;
   const g29 = (g13 * 14580) / 21600;
   const g30 = (g13 * 15592) / 21600;
-  // Composite guides: x = g11 + gN, y = g9 + gN
+  // Composite guides: x = g11 + gN, y = g9 + gN.
   const x31 = g11 + g14;
   const x32 = g11 + g15;
   const x33 = g11 + g16;
@@ -5034,7 +4912,7 @@ multiPathPresets.set("actionButtonMovie", (w, h) => {
   ];
 });
 
-// flowChartOfflineStorage (VBA 0139): inverted triangle with horizontal base line
+// flowChartOfflineStorage (VBA 0139): inverted triangle with horizontal base line.
 multiPathPresets.set("flowChartOfflineStorage", (w, h) => {
   const tri = `M0,0 L${w},0 L${w / 2},${h} Z`;
   const lineY = (h * 4) / 5;
@@ -5073,7 +4951,7 @@ multiPathPresets.set("cube", (w, h, adjustments) => {
 
 multiPathPresets.set("bevel", (w, h, adjustments) => {
   // OOXML bevel: picture-frame shape with 4 beveled faces + center rect.
-  // adj = bevel thickness (default 12500 = 12.5% of min(w,h))
+  // adj = bevel thickness (default 12500 = 12.5% of min(w,h)).
   const a = Math.min(Math.max(adj(adjustments, "adj", 12500), 0), 0.45);
   const t = Math.min(w, h) * a;
   const inner = `M${t},${t} L${w - t},${t} L${w - t},${h - t} L${t},${h - t} Z`;
@@ -5126,7 +5004,7 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
   const y1 = ly1 + hR;
   const y2 = ry2 - hR;
 
-  // Helper: compute OOXML arcTo → SVG arc segment
+  // Helper: compute OOXML arcTo → SVG arc segment.
   const arcTo = (
     curX: number,
     curY: number,
@@ -5146,7 +5024,7 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
     return { endX, endY, svg: `A${wR},${hRad} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
 
-  // Path 1: Main body (fill, no stroke)
+  // Path 1: Main body (fill, no stroke).
   const cx1 = hc,
     cy1 = ly1; // after lnTo (hc, ly1)
   const arc1a = arcTo(cx1, cy1, wd32, hR, 270, 180);
@@ -5175,13 +5053,13 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
     "Z",
   ].join(" ");
 
-  // Path 2: Center fold shadow (darkenLess, no stroke)
+  // Path 2: Center fold shadow (darkenLess, no stroke).
   const arc2a = arcTo(x3, y1, wd32, hR, 0, 90);
   const arc2b = arcTo(arc2a.endX, arc2a.endY, wd32, hR, 270, -180);
 
   const shadow = [`M${x3},${y1}`, arc2a.svg, arc2b.svg, `L${x3},${ry2}`, "Z"].join(" ");
 
-  // Path 3: Stroke outline (no fill); same as body + interior fold lines
+  // Path 3: Stroke outline (no fill); same as body + interior fold lines.
   const outline = [body, `M${x3},${y1} L${x3},${ry2}`, `M${x2},${y2} L${x2},${ly3}`].join(" ");
 
   return [
@@ -5193,7 +5071,7 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
 
 multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
   // OOXML ellipseRibbon: ribbon with parabolic curved bottom edge
-  // 3 paths: body (fill=norm), darkenLess shadow folds, outline (fill=none)
+  // 3 paths: body (fill=norm), darkenLess shadow folds, outline (fill=none).
   const adj1 = adjustments?.get("adj1") ?? 25000;
   const adj2 = adjustments?.get("adj2") ?? 50000;
   const adj3 = adjustments?.get("adj3") ?? 12500;
@@ -5215,7 +5093,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
 
   const dy1 = (h * a3) / 100000;
   const f1 = w > 0 ? (4 * dy1) / w : 0;
-  // Parabola: p(x) = f1 * x * (1 - x/w)
+  // Parabola: p(x) = f1 * x * (1 - x/w).
   const parab = (x: number) => f1 * (x - (x * x) / w);
 
   const y1 = parab(x3);
@@ -5223,7 +5101,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
   const cy1 = f1 * cx1; // Bezier control (approximation)
   const cx2 = w - cx1;
 
-  // q1 redefined: total fold height
+  // q1 redefined: total fold height.
   const q1 = (h * a1) / 100000;
   const dy3 = q1 - dy1;
 
@@ -5254,7 +5132,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
   const hc = w / 2;
   const wd8 = w / 8;
 
-  // Path 1: body fill (stroke=false)
+  // Path 1: body fill (stroke=false).
   const body = [
     `M0,0`,
     `Q${cx1},${cy1} ${x3},${y1}`,
@@ -5273,7 +5151,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
     `Z`,
   ].join(" ");
 
-  // Path 2: darkenLess shadow folds (stroke=false)
+  // Path 2: darkenLess shadow folds (stroke=false).
   const shadow = [
     `M${x3},${y7}`,
     `L${x3},${y1}`,
@@ -5285,7 +5163,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
     `Z`,
   ].join(" ");
 
-  // Path 3: outline (fill=none)
+  // Path 3: outline (fill=none).
   const outline = [
     `M0,0`,
     `Q${cx1},${cy1} ${x3},${y1}`,
@@ -5318,7 +5196,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
 multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
   // OOXML ellipseRibbon2: inverted ribbon with parabolic curved top edge
   // 3 paths: body (fill=norm), darkenLess shadow folds, outline (fill=none)
-  // All y-values computed as b - value (measured from bottom)
+  // All y-values computed as b - value (measured from bottom).
   const adj1 = adjustments?.get("adj1") ?? 25000;
   const adj2 = adjustments?.get("adj2") ?? 50000;
   const adj3 = adjustments?.get("adj3") ?? 12500;
@@ -5342,7 +5220,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
   const dy1 = (h * a3) / 100000;
   const f1 = w > 0 ? (4 * dy1) / w : 0;
 
-  // u1 = parabola at x3
+  // u1 = parabola at x3.
   const u1 = f1 * (x3 - (x3 * x3) / w);
   const y1 = b - u1;
 
@@ -5351,7 +5229,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
   const cy1 = b - cu1;
   const cx2 = w - cx1;
 
-  // q1 redefined: total fold height
+  // q1 redefined: total fold height.
   const q1 = (h * a1) / 100000;
   const dy3 = q1 - dy1;
 
@@ -5392,7 +5270,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
   const hc = w / 2;
   const wd8 = w / 8;
 
-  // Path 1: body fill (stroke=false)
+  // Path 1: body fill (stroke=false).
   const body = [
     `M0,${b}`,
     `Q${cx1},${cy1} ${x3},${y1}`,
@@ -5411,7 +5289,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
     `Z`,
   ].join(" ");
 
-  // Path 2: darkenLess shadow folds (stroke=false)
+  // Path 2: darkenLess shadow folds (stroke=false).
   const shadow = [
     `M${x3},${y7}`,
     `L${x3},${y1}`,
@@ -5423,7 +5301,7 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
     `Z`,
   ].join(" ");
 
-  // Path 3: outline (fill=none)
+  // Path 3: outline (fill=none).
   const outline = [
     `M0,${b}`,
     `L${wd8},${y2}`,
@@ -5455,24 +5333,24 @@ multiPathPresets.set("ellipseRibbon2", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("smileyFace", (w, h, adjustments) => {
-  // OOXML smileyFace: 4 paths; face(norm), eyes(darkenLess), smile(none), outline(none+stroke)
+  // OOXML smileyFace: 4 paths; face(norm), eyes(darkenLess), smile(none), outline(none+stroke).
   const wd2 = w / 2;
   const hd2 = h / 2;
   const hc = w / 2;
   const vc = h / 2;
 
-  // Adjustment: smile amplitude (default 4653, range -4653..4653)
+  // Adjustment: smile amplitude (default 4653, range -4653..4653).
   const rawAdj = adjustments?.get("adj") ?? 4653;
   const a = Math.max(-4653, Math.min(rawAdj, 4653));
 
-  // Eye positions (OOXML exact)
+  // Eye positions (OOXML exact).
   const x2 = (w * 6215) / 21600;
   const x3 = (w * 13135) / 21600;
   const y1 = (h * 7570) / 21600;
   const wR = (w * 1125) / 21600;
   const hR = (h * 1125) / 21600;
 
-  // Smile curve positions (OOXML exact)
+  // Smile curve positions (OOXML exact).
   const x1 = (w * 4969) / 21699;
   const x4 = (w * 16640) / 21600;
   const y3 = (h * 16515) / 21600;
@@ -5482,17 +5360,17 @@ multiPathPresets.set("smileyFace", (w, h, adjustments) => {
   const dy3 = (h * a) / 50000;
   const y5 = y4 + dy3;
 
-  // Path 1: face ellipse (fill=norm, stroke=false); two half-arcs for full circle
+  // Path 1: face ellipse (fill=norm, stroke=false); two half-arcs for full circle.
   const face = `M${w},${vc} A${wd2},${hd2} 0 1,1 0,${vc} A${wd2},${hd2} 0 1,1 ${w},${vc} Z`;
 
-  // Path 2: eyes (fill=darkenLess); two small ellipses at OOXML positions (two half-arcs each)
+  // Path 2: eyes (fill=darkenLess); two small ellipses at OOXML positions (two half-arcs each).
   const leftEye = `M${(x2 + wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x2 - wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x2 + wR).toFixed(2)},${y1.toFixed(2)} Z`;
   const rightEye = `M${(x3 + wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x3 - wR).toFixed(2)},${y1.toFixed(2)} A${wR.toFixed(2)},${hR.toFixed(2)} 0 1,1 ${(x3 + wR).toFixed(2)},${y1.toFixed(2)} Z`;
 
-  // Path 3: smile (fill=none); quadratic Bezier (OOXML quadBezTo)
+  // Path 3: smile (fill=none); quadratic Bezier (OOXML quadBezTo).
   const smile = `M${x1.toFixed(2)},${y2.toFixed(2)} Q${hc.toFixed(2)},${y5.toFixed(2)} ${x4.toFixed(2)},${y2.toFixed(2)}`;
 
-  // Path 4: face outline (fill=none, stroke=true); same as path 1
+  // Path 4: face outline (fill=none, stroke=true); same as path 1.
   const outline = `M${w},${vc} A${wd2},${hd2} 0 1,1 0,${vc} A${wd2},${hd2} 0 1,1 ${w},${vc} Z`;
 
   return [
@@ -5517,7 +5395,7 @@ multiPathPresets.set("foldedCorner", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("can", (w, h, adjustments) => {
-  // OOXML: 3 paths; body (norm), top face (lighten), outline (stroke-only)
+  // OOXML: 3 paths; body (norm), top face (lighten), outline (stroke-only).
   const ss = Math.min(w, h);
   const maxAdj = (50000 * h) / ss;
   const a = Math.min(Math.max(adjustments?.get("adj") ?? 25000, 0), maxAdj);
@@ -5542,15 +5420,15 @@ multiPathPresets.set("can", (w, h, adjustments) => {
     const sweep = swDeg > 0 ? 1 : 0;
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
-  // Path 1: Body (stroke:false, fill:norm)
+  // Path 1: Body (stroke:false, fill:norm).
   const a1 = arcSeg(0, y1, wd2, y1, 180, -180);
   const a2 = arcSeg(w, y3, wd2, y1, 0, 180);
   const body = `M0,${y1} ${a1.svg} L${w},${y3} ${a2.svg} Z`;
-  // Path 2: Top face (stroke:false, fill:lighten)
+  // Path 2: Top face (stroke:false, fill:lighten).
   const a3 = arcSeg(0, y1, wd2, y1, 180, 180);
   const a4 = arcSeg(a3.endX, a3.endY, wd2, y1, 0, 180);
   const topFace = `M0,${y1} ${a3.svg} ${a4.svg} Z`;
-  // Path 3: Outline (fill:none, stroke:true)
+  // Path 3: Outline (fill:none, stroke:true).
   const a5 = arcSeg(w, y1, wd2, y1, 0, 180);
   const a6 = arcSeg(a5.endX, a5.endY, wd2, y1, 180, 180);
   const a7 = arcSeg(w, y3, wd2, y1, 0, 180);
@@ -5591,7 +5469,7 @@ multiPathPresets.set("bordercallout1", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("accentcallout1", (w, h, adjustments) => {
-  // OOXML: filled rect + accent bar at x1 + 1-segment callout line
+  // OOXML: filled rect + accent bar at x1 + 1-segment callout line.
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
   const y2 = (h * (adjustments?.get("adj3") ?? 112500)) / 100000;
@@ -5604,7 +5482,7 @@ multiPathPresets.set("accentcallout1", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("accentcallout2", (w, h, adjustments) => {
-  // OOXML: filled rect + accent bar at x1 + 2-segment callout line
+  // OOXML: filled rect + accent bar at x1 + 2-segment callout line.
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
   const y2 = (h * (adjustments?.get("adj3") ?? 18750)) / 100000;
@@ -5619,7 +5497,7 @@ multiPathPresets.set("accentcallout2", (w, h, adjustments) => {
 });
 
 multiPathPresets.set("accentcallout3", (w, h, adjustments) => {
-  // OOXML: filled rect + accent bar at x1 + 3-segment callout line
+  // OOXML: filled rect + accent bar at x1 + 3-segment callout line.
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
   const y2 = (h * (adjustments?.get("adj3") ?? 18750)) / 100000;
@@ -5635,7 +5513,7 @@ multiPathPresets.set("accentcallout3", (w, h, adjustments) => {
   ];
 });
 
-// --- callout1/2/3: filled rect (no stroke) + callout line segments ---
+// --- callout1/2/3: filled rect (no stroke) + callout line segments ---.
 multiPathPresets.set("callout1", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5675,7 +5553,7 @@ multiPathPresets.set("callout3", (w, h, adjustments) => {
   ];
 });
 
-// --- borderCallout2/3: filled+stroked rect + callout line segments ---
+// --- borderCallout2/3: filled+stroked rect + callout line segments ---.
 multiPathPresets.set("bordercallout2", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5704,7 +5582,7 @@ multiPathPresets.set("bordercallout3", (w, h, adjustments) => {
   ];
 });
 
-// --- accentBorderCallout1/2/3: filled+stroked rect + accent bar + callout line ---
+// --- accentBorderCallout1/2/3: filled+stroked rect + accent bar + callout line ---.
 multiPathPresets.set("accentbordercallout1", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5766,7 +5644,7 @@ multiPathPresets.set("chartplus", (w, h) => {
 });
 
 multiPathPresets.set("chartstar", (w, h) => {
-  // OOXML: 3 guide paths; 2 diagonals + 1 vertical (no horizontal center line)
+  // OOXML: 3 guide paths; 2 diagonals + 1 vertical (no horizontal center line).
   const cx = w / 2;
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: false },
@@ -5779,9 +5657,8 @@ multiPathPresets.set("chartstar", (w, h) => {
 });
 
 /**
- * Helper: compute OOXML arcTo endpoint and SVG arc command from current position.
- * OOXML arcTo: center = curPos - radius*dir(stAng), endpoint = center + radius*dir(stAng+swAng)
- * Returns { svgArc, endX, endY }
+ * OOXML arcTo from the current point: center = cur - r*dir(stAng),
+ * end = center + r*dir(stAng + swAng). Angles in degrees.
  */
 function ooArcTo(
   curX: number,
@@ -5834,7 +5711,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
 
   let cx: number, cy: number, arc;
 
-  // Path 1: body fill (stroke=false)
+  // Path 1: body fill (stroke=false).
   const p1: string[] = [];
   cx = 0;
   cy = 0;
@@ -5890,9 +5767,9 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   p1.push(`L${wd8},${y3}`);
   p1.push("Z");
 
-  // Path 2: darkenLess folds (stroke=false)
+  // Path 2: darkenLess folds (stroke=false).
   const p2: string[] = [];
-  // Left fold
+  // Left fold.
   cx = x5;
   cy = hR;
   p2.push(`M${cx},${cy}`);
@@ -5909,7 +5786,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   cy = arc.y;
   p2.push(`L${x5},${y2}`);
   p2.push("Z");
-  // Right fold
+  // Right fold.
   cx = x6;
   cy = hR;
   p2.push(`M${cx},${cy}`);
@@ -5927,7 +5804,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   p2.push(`L${x6},${y2}`);
   p2.push("Z");
 
-  // Path 3: outline (fill=none, includes fold lines)
+  // Path 3: outline (fill=none, includes fold lines).
   const p3: string[] = [];
   cx = 0;
   cy = 0;
@@ -5982,7 +5859,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   p3.push(`L${0},${y4}`);
   p3.push(`L${wd8},${y3}`);
   p3.push("Z");
-  // Fold lines
+  // Fold lines.
   p3.push(`M${x5},${hR} L${x5},${y2}`);
   p3.push(`M${x6},${y2} L${x6},${hR}`);
   p3.push(`M${x2},${y4} L${x2},${y6}`);
@@ -5995,7 +5872,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   ];
 });
 
-// --- ribbon2 (OOXML spec: 3 paths, inverted ribbon with tails at bottom) ---
+// --- ribbon2 (OOXML spec: 3 paths, inverted ribbon with tails at bottom) ---.
 multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   const adj1Raw = adjustments?.get("adj1") ?? 16667;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
@@ -6027,7 +5904,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
 
   let cx: number, cy: number, arc;
 
-  // Path 1: body fill (stroke=false)
+  // Path 1: body fill (stroke=false).
   const p1: string[] = [];
   p1.push(`M${0},${h}`);
   p1.push(`L${x4},${h}`);
@@ -6081,9 +5958,9 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   p1.push(`L${wd8},${y3}`);
   p1.push("Z");
 
-  // Path 2: darkenLess folds (stroke=false)
+  // Path 2: darkenLess folds (stroke=false).
   const p2: string[] = [];
-  // Left fold
+  // Left fold.
   cx = x5;
   cy = y6;
   p2.push(`M${cx},${cy}`);
@@ -6100,7 +5977,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   cy = arc.y;
   p2.push(`L${x5},${y2}`);
   p2.push("Z");
-  // Right fold
+  // Right fold.
   cx = x6;
   cy = y6;
   p2.push(`M${cx},${cy}`);
@@ -6118,7 +5995,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   p2.push(`L${x6},${y2}`);
   p2.push("Z");
 
-  // Path 3: outline (fill=none)
+  // Path 3: outline (fill=none).
   const p3: string[] = [];
   p3.push(`M${0},${h}`);
   p3.push(`L${wd8},${y3}`);
@@ -6171,7 +6048,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   cx = arc.x;
   cy = arc.y;
   p3.push("Z");
-  // Fold lines
+  // Fold lines.
   p3.push(`M${x5},${y2} L${x5},${y6}`);
   p3.push(`M${x6},${y6} L${x6},${y2}`);
   p3.push(`M${x2},${y7} L${x2},${y4}`);
@@ -6184,7 +6061,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   ];
 });
 
-// --- horizontalScroll (OOXML spec: 3 paths with arcTo) ---
+// --- horizontalScroll (OOXML spec: 3 paths with arcTo) ---.
 multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   const adjVal = adjustments?.get("adj") ?? 12500;
   const a = Math.min(Math.max(adjVal, 0), 25000);
@@ -6201,77 +6078,73 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   const x3 = w - ch;
   const x4 = w - ch2;
 
-  // Path 1: main fill (stroke=false)
+  // Path 1: main fill (stroke=false).
   const p1: string[] = [];
   let cx: number, cy: number;
-  // moveTo (r, ch2) = (w, ch2)
+  // moveTo (r, ch2) = (w, ch2).
   cx = w;
   cy = ch2;
   p1.push(`M${cx},${cy}`);
-  // arcTo wR=ch2 hR=ch2 stAng=0 swAng=cd4(90°)
+  // arcTo wR=ch2 hR=ch2 stAng=0 swAng=cd4(90°).
   let arc = ooArcTo(cx, cy, ch2, ch2, 0, 90);
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (x4, ch2); but after the arc we should be at (x4, 0)… wait
-  // Actually: arcTo from (w, ch2) with stAng=0 swAng=90° → center=(w-ch2, ch2), end=(w-ch2, 0)=x4,0
-  // Then lnTo (x4, ch2)... hmm, this goes from top-right curl area
-  // Let me re-read: lnTo pt x="x4" y="ch2"... that doesn't match. Wait, the lnTo goes DOWN.
-  // After arc: we're at (x4, 0). lnTo (x4, ch2):
+  // The arc ends at (x4, 0); lnTo (x4, ch2).
   p1.push(`L${x4},${ch2}`);
-  // arcTo wR=ch4 hR=ch4 stAng=0 swAng=cd2(180°)
+  // arcTo wR=ch4 hR=ch4 stAng=0 swAng=cd2(180°).
   arc = ooArcTo(x4, ch2, ch4, ch4, 0, 180);
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (x3, ch)
+  // lnTo (x3, ch).
   p1.push(`L${x3},${ch}`);
-  // lnTo (ch2, ch)
+  // lnTo (ch2, ch).
   p1.push(`L${ch2},${ch}`);
-  // arcTo wR=ch2 hR=ch2 stAng=3cd4(270°) swAng=-5400000(-90°)
+  // arcTo wR=ch2 hR=ch2 stAng=3cd4(270°) swAng=-5400000(-90°).
   cx = ch2;
   cy = ch;
   arc = ooArcTo(cx, cy, ch2, ch2, 270, -90);
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (0, y7)
+  // lnTo (0, y7).
   p1.push(`L${0},${y7}`);
-  // arcTo wR=ch2 hR=ch2 stAng=cd2(180°) swAng=-10800000(-180°)
+  // arcTo wR=ch2 hR=ch2 stAng=cd2(180°) swAng=-10800000(-180°).
   cx = 0;
   cy = y7;
   arc = ooArcTo(cx, cy, ch2, ch2, 180, -180);
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (ch, y6)
+  // lnTo (ch, y6).
   p1.push(`L${ch},${y6}`);
-  // lnTo (x4, y6)
+  // lnTo (x4, y6).
   p1.push(`L${x4},${y6}`);
-  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-5400000(-90°)
+  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-5400000(-90°).
   cx = x4;
   cy = y6;
   arc = ooArcTo(cx, cy, ch2, ch2, 90, -90);
   p1.push(arc.svg);
   p1.push("Z");
 
-  // Sub-path 2 in Path 1: left bottom curl circle
+  // Sub-path 2 in Path 1: left bottom curl circle.
   cx = ch2;
   cy = y4;
   p1.push(`M${cx},${cy}`);
-  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-5400000(-90°)
+  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-5400000(-90°).
   arc = ooArcTo(cx, cy, ch2, ch2, 90, -90);
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // arcTo wR=ch4 hR=ch4 stAng=0 swAng=-10800000(-180°)
+  // arcTo wR=ch4 hR=ch4 stAng=0 swAng=-10800000(-180°).
   arc = ooArcTo(cx, cy, ch4, ch4, 0, -180);
   p1.push(arc.svg);
   p1.push("Z");
 
-  // Path 2: darkenLess fill (stroke=false); shadow areas
+  // Path 2: darkenLess fill (stroke=false); shadow areas.
   const p2: string[] = [];
-  // Sub-path 1: same as path1 sub-path2 (left bottom curl)
+  // Sub-path 1: same as path1 sub-path2 (left bottom curl).
   cx = ch2;
   cy = y4;
   p2.push(`M${cx},${cy}`);
@@ -6282,23 +6155,23 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   arc = ooArcTo(cx, cy, ch4, ch4, 0, -180);
   p2.push(arc.svg);
   p2.push("Z");
-  // Sub-path 2: right top curl
+  // Sub-path 2: right top curl.
   cx = x4;
   cy = ch;
   p2.push(`M${cx},${cy}`);
-  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-16200000(-270°)
+  // arcTo wR=ch2 hR=ch2 stAng=cd4(90°) swAng=-16200000(-270°).
   arc = ooArcTo(cx, cy, ch2, ch2, 90, -270);
   p2.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // arcTo wR=ch4 hR=ch4 stAng=cd2(180°) swAng=-10800000(-180°)
+  // arcTo wR=ch4 hR=ch4 stAng=cd2(180°) swAng=-10800000(-180°).
   arc = ooArcTo(cx, cy, ch4, ch4, 180, -180);
   p2.push(arc.svg);
   p2.push("Z");
 
-  // Path 3: stroke-only detail lines (fill=none)
+  // Path 3: stroke-only detail lines (fill=none).
   const p3: string[] = [];
-  // Sub-path 1: left side detail
+  // Sub-path 1: left side detail.
   cx = 0;
   cy = y3;
   p3.push(`M${cx},${cy}`);
@@ -6329,7 +6202,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   p3.push(arc.svg);
   p3.push("Z");
 
-  // Sub-path 2: top-right connector
+  // Sub-path 2: top-right connector.
   p3.push(`M${x3},${ch}`);
   p3.push(`L${x4},${ch}`);
   cx = x4;
@@ -6337,7 +6210,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   arc = ooArcTo(cx, cy, ch2, ch2, 90, -90);
   p3.push(arc.svg);
 
-  // Sub-path 3: right curl inner detail
+  // Sub-path 3: right curl inner detail.
   p3.push(`M${x4},${ch}`);
   p3.push(`L${x4},${ch2}`);
   cx = x4;
@@ -6345,7 +6218,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   arc = ooArcTo(cx, cy, ch4, ch4, 0, 180);
   p3.push(arc.svg);
 
-  // Sub-path 4: left curl inner detail
+  // Sub-path 4: left curl inner detail.
   p3.push(`M${ch2},${y4}`);
   p3.push(`L${ch2},${y3}`);
   cx = ch2;
@@ -6357,7 +6230,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   arc = ooArcTo(cx, cy, ch2, ch2, 0, 180);
   p3.push(arc.svg);
 
-  // Sub-path 5: vertical divider
+  // Sub-path 5: vertical divider.
   p3.push(`M${ch},${y3}`);
   p3.push(`L${ch},${y6}`);
 
@@ -6368,7 +6241,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   ];
 });
 
-// --- verticalScroll (OOXML spec: 3 paths with arcTo) ---
+// --- verticalScroll (OOXML spec: 3 paths with arcTo) ---.
 multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   const adjVal = adjustments?.get("adj") ?? 12500;
   const a = Math.min(Math.max(adjVal, 0), 25000);
@@ -6385,7 +6258,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   const y3 = h - ch;
   const y4 = h - ch2;
 
-  // Path 1: main fill (stroke=false)
+  // Path 1: main fill (stroke=false).
   const p1: string[] = [];
   let cx: number, cy: number;
   cx = ch2;
@@ -6425,7 +6298,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   p1.push(arc.svg);
   p1.push("Z");
 
-  // Sub-path 2: top-right curl circle
+  // Sub-path 2: top-right curl circle.
   cx = x4;
   cy = ch2;
   p1.push(`M${cx},${cy}`);
@@ -6437,7 +6310,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   p1.push(arc.svg);
   p1.push("Z");
 
-  // Path 2: darkenLess fill (stroke=false)
+  // Path 2: darkenLess fill (stroke=false).
   const p2: string[] = [];
   cx = x4;
   cy = ch2;
@@ -6461,7 +6334,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   p2.push(arc.svg);
   p2.push("Z");
 
-  // Path 3: stroke-only detail lines (fill=none)
+  // Path 3: stroke-only detail lines (fill=none).
   const p3: string[] = [];
   cx = ch;
   cy = y3;
@@ -6495,7 +6368,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   p3.push(arc.svg);
   p3.push("Z");
 
-  // top curl
+  // top curl.
   p3.push(`M${x3},${0}`);
   cx = x3;
   cy = 0;
@@ -6509,11 +6382,11 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   cy = arc.y;
   p3.push(`L${x4},${ch2}`);
 
-  // horizontal divider
+  // horizontal divider.
   p3.push(`M${x6},${ch}`);
   p3.push(`L${x3},${ch}`);
 
-  // bottom-left curl detail
+  // bottom-left curl detail.
   p3.push(`M${ch2},${y3}`);
   cx = ch2;
   cy = y3;
@@ -6523,7 +6396,7 @@ multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   cy = arc.y;
   p3.push(`L${ch},${y4}`);
 
-  // bottom curl
+  // bottom curl.
   p3.push(`M${ch2},${h}`);
   cx = ch2;
   cy = h;
@@ -6555,6 +6428,10 @@ export function getMultiPathPreset(
   return gen ? gen(w, h, adjustments) : null;
 }
 
+/**
+ * SVG path data for a preset geometry (`a:prstGeom@prst`) drawn in a `w` × `h`
+ * box, e.g. for a shape picker's previews. Unknown names draw a rectangle.
+ */
 export function getPresetShapePath(
   shapeType: string,
   w: number,
@@ -6563,13 +6440,12 @@ export function getPresetShapePath(
 ): string {
   // <a:prstGeom prst="textNoShape"> means text-only shape without geometry.
   if (shapeType === "textNoShape" || shapeType.toLowerCase() === "textnoshape") return "";
-  // OOXML preset names are often camelCase; normalize to lowercase for lookup
+  // OOXML preset names are often camelCase; normalize to lowercase for lookup.
   const key = shapeType.toLowerCase();
   const generator = presetShapes.get(key) ?? presetShapes.get(shapeType);
   if (generator) {
     return generator(w, h, adjustments);
   }
-  // Fallback: simple rectangle
   console.warn(`Unknown preset shape: "${shapeType}", falling back to rectangle`);
   return `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 }

@@ -1,17 +1,3 @@
-/**
- * Retained OPC package for round-trip editing.
- *
- * Wraps the source .pptx zip archive (entries stay compressed in memory) plus
- * the live parsed XML documents for parts the model exposes. On save,
- * untouched parts are copied through byte-for-byte; parts marked dirty are
- * re-serialized from their (possibly mutated) XML documents. This preserves
- * everything the parser does not understand (animations, comments, custom
- * XML, vendor extensions) across an open → edit → save cycle.
- *
- * The package holds references into the source zip, so the input buffer must
- * not be detached (e.g. transferred to a worker) while saving is still needed.
- */
-
 import JSZip from "jszip";
 
 import { SafeXmlNode } from "./xml";
@@ -66,6 +52,13 @@ export interface PptxSaveOptions {
   compression?: "STORE" | "DEFLATE";
 }
 
+/**
+ * Retained source package for round-trip saves. Untouched parts are copied
+ * through byte-for-byte, so everything the parser doesn't understand
+ * (animations, comments, vendor extensions) survives an edit. It references the
+ * source zip, so don't detach the input buffer (e.g. transfer it to a worker)
+ * while saving is still needed.
+ */
 export class PptxPackage {
   /** Source archive; entries stay compressed until read. */
   private readonly zip: JSZip;

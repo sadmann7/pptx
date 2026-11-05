@@ -95,7 +95,7 @@ describe.skipIf(!process.env.PROFILE)("cpu profile", () => {
   it("profiles buildPresentation (large deck)", async () => {
     const buffer = await generateDeck(DECK_SPECS.large);
     const files = await readPptx(buffer);
-    // Warm up JIT
+    // Warm up JIT.
     buildPresentation(files);
 
     const rows = await captureProfile(() => {

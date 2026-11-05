@@ -1,9 +1,4 @@
-﻿/**
- * Resolves and applies slide, layout, and master background fills,
- * including solid colors, gradients, patterns, and image backgrounds.
- */
-
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
+﻿import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
 import { isExternalTargetMode, RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import { hexToRgb } from "../utils/color";
@@ -256,8 +251,7 @@ function tryRenderSvgGradientBackgroundData(
  * The first found background is used.
  */
 export function renderBackground(ctx: RenderContext, container: HTMLElement): void {
-  // Find the first available background in the inheritance chain,
-  // and track which rels map to use for resolving image references
+  // Image references resolve against the rels of whichever level supplied the background.
   let bgNode: SafeXmlNode | undefined;
   let bgRels: Map<string, RelEntry> = ctx.slide.rels;
 
@@ -277,21 +271,19 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
     return;
   }
 
-  // Parse p:bg > p:bgPr
   const bgPr = bgNode.child("bgPr");
   if (bgPr.exists()) {
     renderBgPr(bgPr, ctx, container, bgRels);
     return;
   }
 
-  // Parse p:bg > p:bgRef (theme reference)
+  // p:bgRef is a theme reference.
   const bgRef = bgNode.child("bgRef");
   if (bgRef.exists()) {
     renderBgRef(bgRef, ctx, container);
     return;
   }
 
-  // Fallback
   container.style.backgroundColor = "#FFFFFF";
 }
 
@@ -305,7 +297,6 @@ function renderBgPr(
   container: HTMLElement,
   rels?: Map<string, RelEntry>,
 ): void {
-  // solidFill
   const solidFill = bgPr.child("solidFill");
   if (solidFill.exists()) {
     const { color, alpha } = resolveColor(solidFill, ctx);
@@ -319,7 +310,6 @@ function renderBgPr(
     return;
   }
 
-  // gradFill
   const gradFill = bgPr.child("gradFill");
   if (gradFill.exists()) {
     if (tryRenderSvgGradientBackground(bgPr, ctx, container)) {
@@ -332,7 +322,6 @@ function renderBgPr(
     return;
   }
 
-  // pattFill
   const pattFill = bgPr.child("pattFill");
   if (pattFill.exists()) {
     const css = resolveFill(bgPr, ctx);
@@ -342,7 +331,6 @@ function renderBgPr(
     return;
   }
 
-  // blipFill (image background)
   const blipFill = bgPr.child("blipFill");
   if (blipFill.exists()) {
     renderBlipBackground(blipFill, ctx, container, rels);
@@ -350,7 +338,7 @@ function renderBgPr(
   }
 
   // noFill: still render as white; the slide is a self-contained element
-  // and transparent backgrounds break when embedded in dark containers
+  // and transparent backgrounds break when embedded in dark containers.
   const noFill = bgPr.child("noFill");
   if (noFill.exists()) {
     container.style.backgroundColor = "#FFFFFF";
@@ -377,7 +365,7 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
     return;
   }
 
-  // bgRef may contain a color child (schemeClr, srgbClr, etc.)
+  // bgRef may contain a color child (schemeClr, srgbClr, etc.).
   const { color, alpha } = resolveColor(bgRef, ctx);
   if (color && color !== "#000000") {
     const hex = color.startsWith("#") ? color : `#${color}`;
@@ -392,9 +380,6 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
   }
 }
 
-/**
- * Renders a blip (image) fill as a CSS background.
- */
 function renderBlipBackground(
   blipFill: SafeXmlNode,
   ctx: RenderContext,
@@ -408,7 +393,7 @@ function renderBlipBackground(
 
   if (!relId) return;
 
-  // Resolve image from rels + media (use provided rels or fall back to slide rels)
+  // The image resolves against the provided rels, else the slide's.
   const relsMap = rels ?? ctx.slide.rels;
   const rel = relsMap.get(relId);
   if (!rel) return;
@@ -459,7 +444,6 @@ function applyBlipBackground(blipFill: SafeXmlNode, container: HTMLElement, url:
 
   container.style.backgroundImage = `url("${url}")`;
 
-  // Check for stretch or tile mode
   const stretch = blipFill.child("stretch");
   if (stretch.exists()) {
     // OOXML stretch fills the destination rectangle. When fillRect is omitted,

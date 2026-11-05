@@ -1,8 +1,3 @@
-/**
- * Media helpers: MIME-type detection, relative-path resolution,
- * and blob URL lifetime management.
- */
-
 export interface ResolvedMedia {
   mediaPath: string;
   data: Uint8Array;
@@ -16,10 +11,6 @@ export interface MediaResolver {
   readonly totalCount?: number;
 }
 
-/**
- * Determine MIME type from file extension.
- * Covers images, video, and audio formats used in PPTX files.
- */
 export function getMimeType(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase() || "";
   const mimeMap: Record<string, string> = {
@@ -82,23 +73,16 @@ function mediaRelativePath(target: string): string {
   return mediaParts.join("/");
 }
 
-/**
- * Resolves a relative media path (from rels) to its canonical path in PptxFiles.media.
- * Rels targets are relative like "../media/image1.png".
- * Media paths in PptxFiles are like "ppt/media/image1.png".
- */
+/** Maps a rels target like "../media/image1.png" to "ppt/media/image1.png". */
 export function resolveMediaPath(target: string): string {
   const decodedPath = mediaRelativePath(target).split("/").map(decodeUriPathSegment).join("/");
   return `ppt/media/${decodedPath}`;
 }
 
 /**
- * Returns canonical media-path candidates for a relationship target.
- *
- * OOXML relationship targets are URI references, so `%20` normally means a
- * literal space in the part name. Some producers/tests, however, keep the
- * percent-encoded bytes in the ZIP entry name. Prefer the decoded OPC form but
- * keep the raw basename as a compatibility fallback.
+ * Rels targets are URI references, so `%20` normally means a space in the part
+ * name, but some producers keep the encoded bytes in the zip entry name. Try the
+ * decoded path first, then the raw one.
  */
 export function resolveMediaPathCandidates(target: string): string[] {
   const rawRelativePath = mediaRelativePath(target);
@@ -128,14 +112,7 @@ export async function findMediaByTargetAsync(
   return resolver?.resolve(target);
 }
 
-/**
- * Gets or creates a blob URL for a media file, using a cache to avoid duplicates.
- *
- * @param mediaPath - Canonical path (e.g. "ppt/media/image1.png")
- * @param data - Raw media data (Uint8Array or ArrayBuffer)
- * @param cache - Map to store/retrieve cached blob URLs
- * @returns The blob URL string
- */
+/** Returns the cached blob URL for a media path, creating it on first use. */
 export function getOrCreateBlobUrl(
   mediaPath: string,
   data: Uint8Array | ArrayBuffer,

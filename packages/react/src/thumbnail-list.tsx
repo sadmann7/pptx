@@ -1,10 +1,5 @@
 /**
- * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
- *
- * The keyboard-navigation model (tab-stop management, focus-intent mapping,
- * `focusFirst` helper, and click-vs-keyboard distinction) is directly inspired
- * by that package.
- *
+ * Roving focus adapted from Radix UI's `@radix-ui/react-roving-focus`.
  * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
 
@@ -37,7 +32,7 @@ const THUMBNAIL_ITEM_NUMBER_NAME = "Presentation.ThumbnailItemNumber";
  */
 const INTERSECTION_OBSERVER_ROOT_MARGIN = "200px 0px";
 
-interface CachedThumbnail {
+export interface CachedThumbnail {
   slideHandle: SlideHandle;
   revision: number;
 }
@@ -60,8 +55,45 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
   }
 }
 
+export function getItemsInPageOrder(items: Map<string, HTMLButtonElement>): HTMLButtonElement[] {
+  return Array.from(items.values()).sort((a, b) =>
+    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+  );
+}
+
 function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
+}
+
+/**
+ * Rendered miniatures kept for scrolling back to. Past this, the least
+ * recently shown ones that are off screen are released, so memory stays flat
+ * however long the deck is.
+ */
+export const THUMBNAIL_CACHE_LIMIT = 50;
+
+/** Marks a cached miniature as just shown: a Map iterates oldest first. */
+export function markThumbnailRecent(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  slideId: string,
+) {
+  const cached = slideHandleCache.get(slideId);
+  if (!cached) return;
+  slideHandleCache.delete(slideId);
+  slideHandleCache.set(slideId, cached);
+}
+
+/** Releases the least recently shown off-screen miniatures past the limit. */
+export function releaseOldThumbnails(
+  slideHandleCache: Map<string, CachedThumbnail>,
+  keepId: string,
+) {
+  for (const [slideId, cached] of slideHandleCache) {
+    if (slideHandleCache.size <= THUMBNAIL_CACHE_LIMIT) return;
+    if (slideId === keepId || cached.slideHandle.element.parentElement) continue;
+    cached.slideHandle.dispose();
+    slideHandleCache.delete(slideId);
+  }
 }
 
 /**
@@ -82,8 +114,10 @@ function getIsThumbnailCached(
   if (cached) {
     if (cached.slideHandle !== slideHandle && cached.revision === revision) return false;
     cached.slideHandle.dispose();
+    slideHandleCache.delete(slideId);
   }
   slideHandleCache.set(slideId, { slideHandle, revision });
+  releaseOldThumbnails(slideHandleCache, slideId);
   return true;
 }
 
@@ -216,19 +250,6 @@ export interface ThumbnailListProps extends Omit<
     | (() => boolean | void | HTMLElement | null);
 }
 
-/**
- * Scrollable `listbox` container listing all slide thumbnails.
- * Renders nothing until the presentation is `"ready"`.
- *
- * All slide buttons are mounted immediately (cheap empty containers).
- * Thumbnail content is rendered lazily; each preview uses an
- * IntersectionObserver with a generous `rootMargin` so content fills in
- * before the element scrolls into view. For normal scrolling the transition
- * is invisible; rapid drag may briefly reveal a pending placeholder.
- *
- * Handles keyboard navigation (↑↓ / Home / End) with roving focus so only
- * the active item lives in the tab order at any time.
- */
 export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps>(
   function ThumbnailList(
     { render, children, loop = false, initialFocus = false, ...thumbnailListProps },
@@ -241,9 +262,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const isClickFocusRef = React.useRef(false);
     const autoFocusedPresentationRef = React.useRef<object | null>(null);
 
-    // A ref and listener set, not react state: state would flow through the
-    // context value and re-render every memoized item on each focus change,
-    // when only two items (the old and new tab stop) actually need to update.
+    // A ref and listener set, not state: see `subscribeTabStop`.
     const currentTabStopIdRef = React.useRef<string | null>(null);
     const tabStopListenersRef = useLazyRef(() => new Set<() => void>());
 
@@ -383,7 +402,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       if (!element) {
         const items = itemsRef.current;
         const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
-        element = activeItem ?? items.values().next().value;
+        element = activeItem ?? getItemsInPageOrder(items)[0];
       }
       element?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef, initialFocusRef]);
@@ -480,6 +499,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
             props: [
               {
                 role: "listbox",
+                "aria-label": "Slides",
                 "aria-orientation": "vertical",
                 tabIndex: hasTabStop ? -1 : 0,
                 onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
@@ -491,7 +511,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
                     isClickFocusRef.current = false;
                     return;
                   }
-                  focusFirst(Array.from(itemsRef.current.values()), true);
+                  focusFirst(getItemsInPageOrder(itemsRef.current), true);
                 },
                 children: resolvedChildren,
               },
@@ -511,19 +531,13 @@ export namespace ThumbnailList {
 }
 
 export interface ThumbnailItemState {
-  /**
-   * Stable id of the slide this item represents (`SlideData.id`).
-   */
+  /** Stable id of the slide this item represents (`SlideData.id`). */
   slideId: string;
 
-  /**
-   * `true` when this item's slide is the currently active slide.
-   */
+  /** `true` when this item's slide is the currently active slide. */
   isActive: boolean;
 
-  /**
-   * 0-based position of this slide in the presentation.
-   */
+  /** 0-based position of this slide in the presentation. */
   displayIndex: number;
 }
 
@@ -582,9 +596,6 @@ export interface ThumbnailItemProps extends Omit<
   decorative?: boolean;
 }
 
-/**
- * Clickable `option` button for a single slide in a `ThumbnailList`.
- */
 export const ThumbnailItem = React.memo(
   React.forwardRef<HTMLButtonElement, ThumbnailItemProps>(function ThumbnailItem(
     { slideId, children, render, onSelect, decorative = false, ...thumbnailItemProps },
@@ -643,6 +654,7 @@ export const ThumbnailItem = React.memo(
       ? { "aria-hidden": true, inert: true, tabIndex: -1 }
       : {
           role: "option",
+          "aria-label": `Slide ${displayIndex + 1}`,
           "aria-selected": isActive,
           "aria-posinset": displayIndex + 1,
           "aria-setsize": setSize,
@@ -662,7 +674,7 @@ export const ThumbnailItem = React.memo(
               return;
             event.preventDefault();
 
-            let candidates = Array.from(rovingContext.itemsRef.current.values());
+            let candidates = getItemsInPageOrder(rovingContext.itemsRef.current);
             if (focusIntent === "last") {
               candidates = candidates.reverse();
             } else if (focusIntent === "prev" || focusIntent === "next") {
@@ -715,14 +727,10 @@ export namespace ThumbnailItem {
 }
 
 export interface ThumbnailItemPreviewState {
-  /**
-   * Stable id of the slide being rendered.
-   */
+  /** Stable id of the slide being rendered. */
   slideId: string;
 
-  /**
-   * CSS scale factor (container width / presentation width). `0` before measured.
-   */
+  /** CSS scale factor (container width / presentation width). `0` before measured. */
   scale: number;
 }
 
@@ -731,19 +739,6 @@ export interface ThumbnailItemPreviewProps extends PrimitiveProps<
   ThumbnailItemPreviewState
 > {}
 
-/**
- * Renders the slide miniature for the enclosing `ThumbnailItem`.
- *
- * Uses an IntersectionObserver with a 200 px vertical rootMargin so
- * `renderSlide()` is called slightly before the element scrolls into view.
- * For normal scrolling the thumbnail is always ready before it's visible.
- * Rapid scrollbar drag may briefly show a pending placeholder; the same
- * behaviour as the reference vanilla implementation.
- *
- * Rendered DOM is kept in the list's handle cache: scrolling back re-attaches
- * the existing element instantly. The cache is cleared when the presentation
- * changes or the list unmounts.
- */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
@@ -854,8 +849,8 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           const element = itemPreviewRef.current;
           if (!element) return;
 
-          // Cancel any pending render queued by a previous cycle before either
-          // re-attaching or detaching.
+          // A render queued by a previous cycle must not outlive re-attaching or
+          // detaching.
           cancelRender?.();
           cancelRender = null;
 
@@ -868,6 +863,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
             const isAvailable = parent === null || parent === element;
 
             if (isCurrent && isAvailable) {
+              markThumbnailRecent(slideHandleCache, slide.id);
               attach(element, cached.slideHandle, true);
             } else {
               // Anything still attached here is stale, and it has to go before
@@ -924,15 +920,14 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       presentationWidthRef,
     ]);
 
-    // Re-render the miniature in place when an edit bumps the revision,
-    // without tearing down the IntersectionObserver (the detach→re-attach
-    // gap was the cause of the thumbnail flash on every edit). Only triggers
-    // when the slide is currently visible/attached; off-screen slides are
-    // re-rendered on demand by the IntersectionObserver callback using revisionRef.
+    // Re-render an attached miniature in place when an edit bumps the
+    // revision, without tearing down the IntersectionObserver: the
+    // detach→re-attach gap flashes the thumbnail. Off-screen slides re-render
+    // when the observer next reports them.
     React.useEffect(() => {
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
-      if (!slideHandleRef.current) return; // not visible; IO handles it
+      if (!slideHandleRef.current) return;
       // Effects are re-created whenever React restores this subtree, so an
       // unchanged revision means the attached miniature is already current.
       if (attachedRevisionRef.current === revision) return;
@@ -942,7 +937,7 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       oldHandle.dispose();
       slideHandleRef.current = null;
       // Only the mount that published the entry may retire it; a private copy
-      // would otherwise evict a node still attached to another preview.
+      // would otherwise remove a node still attached to another preview.
       if (ownsCachedHandleRef.current) slideHandleCache.delete(slide.id);
       ownsCachedHandleRef.current = false;
 
@@ -999,9 +994,6 @@ export interface ThumbnailItemNumberProps extends PrimitiveProps<
   { isActive: boolean; displayIndex: number; slideId: string }
 > {}
 
-/**
- * Renders the 1-based slide number for the enclosing `ThumbnailItem`.
- */
 export const ThumbnailItemNumber = React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
   function ThumbnailItemNumber({ children, render, ...thumbnailItemNumberProps }, forwardedRef) {
     const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);

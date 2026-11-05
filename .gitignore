@@ -49,8 +49,9 @@ lerna-debug.log*
 .alchemy
 
 # Testing
-coverage
 .nyc_output
+coverage
+recordings/
 
 # Playwright
 test-results/

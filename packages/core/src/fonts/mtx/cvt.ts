@@ -1,13 +1,7 @@
-/**
- * Control value table translation (MTX specification, section 5.2).
- *
- * CTF stores each control value as a delta from the previous one, then packs
- * that delta into one to three bytes, because neighbouring control values are
- * usually numerically close.
- */
-
 import { Reader, Writer } from "./binary";
 
+// MTX spec §5.2: each control value is a delta from the previous one, packed
+// into one to three bytes because neighbouring values are usually close.
 export function decodeCvt(encoded: Uint8Array): Uint8Array {
   const reader = new Reader(encoded);
   // A count of entries, not a byte length: the table is twice this long.

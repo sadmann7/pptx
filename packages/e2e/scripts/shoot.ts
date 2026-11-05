@@ -1,16 +1,13 @@
 import { chromium } from "@playwright/test";
 /**
- * Screenshots a harness slide and dumps the geometry of whatever you want to
- * measure. Companion to probe.ts for investigating a rendering bug by hand.
- *
+ * Screenshots a harness slide and prints the geometry of matched elements.
  * Start the harness first (`pnpm harness`), then:
+ *
  *   pnpm shoot --file table-borders.pptx --slide 0 --scale 0.86
  *   pnpm shoot --file decks/customer.pptx --slide 6 --select table --select "table td"
  *   pnpm shoot --file table-borders.pptx --mode transform --dpr 1.5
  *
- * --select prints each match's client rect plus the styles that decide how a
- * hairline lands on the device pixel grid, which is what a probe run is keyed
- * to. Local decks go in decks/ (gitignored); fixtures are addressed by name.
+ * Local decks go in decks/ (gitignored); fixtures are addressed by name.
  */
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";

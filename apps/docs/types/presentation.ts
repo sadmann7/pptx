@@ -32,6 +32,16 @@ export type SlideProps = IndieProps<PresentationPrimitive.Slide.Props, DivProps>
 
 export type SelectionProps = IndieProps<PresentationPrimitive.Selection.Props, DivProps>;
 
+export type SelectionBoxProps = IndieProps<PresentationPrimitive.SelectionBox.Props, DivProps>;
+
+export type ResizeHandleProps = IndieProps<PresentationPrimitive.ResizeHandle.Props, DivProps>;
+
+export type RotateHandleProps = IndieProps<PresentationPrimitive.RotateHandle.Props, DivProps>;
+
+export type SnapGuideProps = IndieProps<PresentationPrimitive.SnapGuide.Props, DivProps>;
+
+export type MarqueeProps = IndieProps<PresentationPrimitive.Marquee.Props, DivProps>;
+
 export type ThumbnailListProps = IndieProps<PresentationPrimitive.ThumbnailList.Props, DivProps>;
 
 export type ThumbnailItemProps = IndieProps<PresentationPrimitive.ThumbnailItem.Props, ButtonProps>;

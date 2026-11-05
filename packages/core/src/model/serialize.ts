@@ -1,8 +1,3 @@
-/**
- * Serializes PresentationData into a plain JSON-serializable structure.
- * Strips all SafeXmlNode references and re-parses group children.
- */
-
 import type { RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import type { LayoutData } from "./layout";
@@ -20,10 +15,6 @@ import {
   resolveNodePlaceholderInheritance,
 } from "./presentation";
 import { SlideNode } from "./slide";
-
-// ---------------------------------------------------------------------------
-// Serialized Types (JSON-safe)
-// ---------------------------------------------------------------------------
 
 interface SerializedParagraph {
   level: number;
@@ -78,10 +69,6 @@ export interface SerializedPresentation {
   slides: SerializedSlide[];
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function serializeTextBody(tb: TextBody | undefined): SerializedTextBody | undefined {
   if (!tb) return undefined;
   const paragraphs: SerializedParagraph[] = tb.paragraphs.map((p) => ({
@@ -107,9 +94,6 @@ function serializeRow(row: TableRow): SerializedRow {
   };
 }
 
-/**
- * Parses a raw XML child node from a group into a typed node.
- */
 function parseGroupChild(
   childXml: SafeXmlNode,
   rels: Map<string, RelEntry>,
@@ -187,7 +171,7 @@ function serializeNode(
             children.push(serializeNode(parsed, rels, partPath, diagramDrawings, layout, master));
           }
         } catch {
-          // skip unparseable group children
+          // skip unparseable group children.
         }
       }
       base.children = children;
@@ -198,10 +182,7 @@ function serializeNode(
   return base;
 }
 
-// ---------------------------------------------------------------------------
-// Main Export
-// ---------------------------------------------------------------------------
-
+/** Converts a presentation into JSON-safe data with no raw XML references. */
 export function serializePresentation(pres: PresentationData): SerializedPresentation {
   return {
     width: pres.width,

@@ -1,7 +1,3 @@
-/**
- * Parses OOXML custom geometry (a:custGeom) into SVG path strings.
- */
-
 import { SafeXmlNode } from "../ooxml/xml";
 import type { GuideDefinition } from "./guide";
 import { evaluateGuides } from "./guide";
@@ -57,11 +53,9 @@ function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
  * coordinate space (`sourceExtent`), while numeric path points live in the
  * local space declared by the path's `w`/`h` attributes.
  *
- * @param custGeom - SafeXmlNode wrapping the `a:custGeom` element
  * @param width - Target width in pixels
  * @param height - Target height in pixels
  * @param sourceExtent - Shape extent in EMU (from `a:xfrm > a:ext`)
- * @returns SVG path d-attribute string
  */
 export function renderCustomGeometry(
   custGeom: SafeXmlNode,
@@ -119,7 +113,7 @@ export function renderCustomGeometry(
     const scaleX = pathW > 0 ? width / pathW : 1;
     const scaleY = pathH > 0 ? height / pathH : 1;
 
-    // Track current position for arcTo calculations
+    // arcTo is relative to the current position.
     let curX = 0;
     let curY = 0;
 
@@ -184,12 +178,12 @@ export function renderCustomGeometry(
           const stAngRaw = angle(cmd.attr("stAng"));
           const swAngRaw = angle(cmd.attr("swAng"));
 
-          // OOXML angles are in 60000ths of a degree
+          // OOXML angles are in 60000ths of a degree.
           const stAng = stAngRaw / 60000;
           const swAng = swAngRaw / 60000;
 
           if (wR === 0 || hR === 0 || swAng === 0) {
-            // Degenerate arc, skip
+            // Degenerate arc, skip.
             break;
           }
 
@@ -201,7 +195,7 @@ export function renderCustomGeometry(
           const endVisRad = ((stAng + swAng) * Math.PI) / 180;
           const endAngRad = Math.atan2(wRRaw * Math.sin(endVisRad), hRRaw * Math.cos(endVisRad));
 
-          // Compute center and endpoint in unscaled path space, then scale
+          // Center and end point are computed in unscaled path space, then scaled.
           const curXU = curX / scaleX;
           const curYU = curY / scaleY;
           const cx = curXU - wRRaw * Math.cos(stAngRad);
@@ -209,7 +203,7 @@ export function renderCustomGeometry(
           const endX = (cx + wRRaw * Math.cos(endAngRad)) * scaleX;
           const endY = (cy + hRRaw * Math.sin(endAngRad)) * scaleY;
 
-          // SVG arc flags
+          // SVG arc flags.
           const largeArc = Math.abs(swAng) > 180 ? 1 : 0;
           const sweep = swAng > 0 ? 1 : 0;
 
@@ -225,7 +219,7 @@ export function renderCustomGeometry(
         }
 
         default:
-          // Unknown command, skip
+          // Unknown command, skip.
           break;
       }
     }

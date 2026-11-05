@@ -14,7 +14,7 @@ import {
 import { useLatestRef, useLazyRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
-import { getPasteboardOverhang } from "./selection";
+import { getPasteboardOverhang } from "./selection/geometry";
 import type { PresentationStatus } from "./store";
 
 const SLIDE_NAME = "Presentation.Slide";
@@ -59,16 +59,6 @@ export interface SlideProps extends PrimitiveProps<"div", SlideState> {
   onNodeError?: (nodeId: string, error: unknown) => void;
 }
 
-/**
- * Renders the active slide inside a centered wrapper `<div>`.
- *
- * The wrapper always mounts so that sibling layout is stable. Slide content
- * is absent until the presentation is `"ready"`. Use `<Presentation.Loading>`
- * and `<Presentation.Error>` alongside this component to cover other states.
- *
- * The wrapper carries a `data-status` attribute matching the store status,
- * enabling css-driven state styles without extra js.
- */
 export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
   { children, render, onNodeError, ...slideProps },
   forwardedRef,
@@ -170,8 +160,7 @@ function SlideImpl({
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
-    // Try to patch positions in-place instead of a full rebuild.
-    // Safe when: same slide as the one currently rendered, node content
+    // Patching positions in place instead of a full rebuild is safe when: same slide as the one currently rendered, node content
     // unchanged (contentRevision), and node sizes/rotations unchanged
     // (a resize needs SVG/text re-layout). The slide id check matters:
     // different slides can have structurally identical node snapshots

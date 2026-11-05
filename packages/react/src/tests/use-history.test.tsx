@@ -60,8 +60,8 @@ describe("useHistory", () => {
     expect(history().isDirty).toBe(true);
 
     // Undoing back to the loaded state is not a change worth saving.
-    act(() => {
-      history().undo();
+    await act(async () => {
+      await history().undo();
     });
     expect(history().canUndo).toBe(false);
     expect(history().canRedo).toBe(true);

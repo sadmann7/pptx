@@ -35,8 +35,8 @@ handle.dispose();
 import { PptxViewer } from "@diceui/pptx-core";
 
 const viewer = new PptxViewer(container);
-await viewer.load(arrayBuffer);
-viewer.goTo(2);
+await viewer.open(arrayBuffer);
+await viewer.goToSlide(2);
 ```
 
 ## Edit and save
@@ -61,7 +61,14 @@ const result = await applyEdit(presentation, {
 const bytes = await writePptx(presentation);
 ```
 
-Supported operations: `setTextRun`, `setTextBody`, `setNodeTransform`, `setSolidFill`, `deleteNode`, `moveSlide`, `duplicateSlide`, `deleteSlide`, and `batch` (multiple operations as one undoable step).
+Supported operations:
+
+- Text: `setTextRun`, `setTextBody`, `setTextStyle`, and `setParagraphStyle`
+- Shapes: `setNodeTransform`, `setSolidFill`, `setOutline`, `deleteNode`, `duplicateNode`, `reorderNode`, `addTextBox`, `addShape`, `addImage`, and `pasteNodes` (with `copyNodes()`)
+- Slides: `addSlide`, `moveSlide`, `duplicateSlide`, `deleteSlide`, and `setSlideBackground`
+- `batch`: multiple operations as one undoable step
+
+Edits that create slides or shapes report their ids in `result.createdSlideId` and `result.createdNodeIds`. For pickers, `getPresentationFonts()` lists the deck's fonts and `getPresetShapePath()` draws a preset shape as SVG path data.
 
 ## Embedded fonts
 

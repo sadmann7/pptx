@@ -17,9 +17,7 @@ import type {
 import { createStore } from "./store";
 
 export interface RootState {
-  /**
-   * Current file being presented, or `null` if none is loaded.
-   */
+  /** Current file being presented, or `null` if none is loaded. */
   file: PreviewInput | null | undefined;
 }
 

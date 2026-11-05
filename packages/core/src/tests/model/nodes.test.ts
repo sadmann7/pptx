@@ -72,7 +72,7 @@ describe("group nodes", () => {
     );
     expect(group).toBeDefined();
     expect(group!.childOffset).toEqual({ x: 0, y: 0 });
-    // chExt 914400x457200 EMU = 96x48 px
+    // chExt 914400x457200 EMU = 96x48 px.
     expect(group!.childExtent).toEqual({ w: 96, h: 48 });
     expect(group!.children).toHaveLength(1);
     expect(group!.children[0].localName).toBe("sp");

@@ -120,13 +120,6 @@ export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   onZoomChange?: (event: ZoomChangeEvent) => void;
 }
 
-/**
- * Scrollable container that centers the slide and optionally auto-fits it
- * to the available space.
- *
- * Native `<div>` props are composed (not overwritten) with internals.
- * Place `<Presentation.Slide>` inside to render the current slide.
- */
 export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
   {
     autoFit = false,
@@ -223,7 +216,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ignore ctrl/cmd/shift+wheel (zoom/horizontal scroll).
+      // Ctrl/Cmd/Shift+wheel is zoom or horizontal scroll, not paging.
       if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
@@ -249,7 +242,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       else store.prev();
 
       if (scroller) {
-        // Start the new slide from the edge you entered it from (top when
+        // The new slide starts from the edge it was entered from (top when
         // going forward, bottom when going back), like PowerPoint. Deferred
         // one frame so the new slide's content height is in place.
         requestAnimationFrame(() => {
@@ -258,7 +251,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       }
     }
 
-    // Non-passive: we call preventDefault to stop scroll chaining to the page.
+    // Non-passive so preventDefault can stop scroll chaining to the page.
     viewportElement.addEventListener("wheel", onWheel, { passive: false });
     return () => viewportElement.removeEventListener("wheel", onWheel);
   }, [scrollNavigation, store]);

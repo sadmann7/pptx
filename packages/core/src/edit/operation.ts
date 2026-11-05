@@ -1,24 +1,18 @@
-﻿/**
- * Edit operations for presentations opened with `keepSourcePackage: true`.
- *
- * Every operation follows the same contract:
- *   1. mutate the live part XML (the same documents `writePptx()` saves),
- *   2. update the typed model so renderers and consumers stay in sync,
- *   3. mark the touched parts dirty on the retained package.
- *
- * `applyEdit()` returns an `undo()` closure that restores both the XML and
- * the model. Undos capture element references and part snapshots, so they
- * must be applied in reverse order (a standard LIFO undo stack).
- */
-
-import type { NodePosition, NodeSize } from "../model/nodes/base";
+﻿import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
+import { parseRenderableChild } from "../model/nodes/parser";
+import type { PictureNodeData } from "../model/nodes/picture";
 import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
+import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
-import { materializeSlide, PresentationData } from "../model/presentation";
+import {
+  materializeSlide,
+  PresentationData,
+  resolveSlideNodePlaceholders,
+} from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
 import type { PptxPackage } from "../ooxml/package";
-import { parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
+import { isExternalTargetMode, parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
 import { degToAngle, emuToPx, pxToEmu } from "../ooxml/unit";
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import {
@@ -32,10 +26,6 @@ import {
   serializePartText,
   setOrRemoveAttr,
 } from "./xml-mutation";
-
-// ---------------------------------------------------------------------------
-// Operation types
-// ---------------------------------------------------------------------------
 
 /** Replace the text of one run inside a shape's text body. */
 export interface SetTextRunOperation {
@@ -118,6 +108,173 @@ export interface SetTextBodyRun {
   sourceRun?: [number, number];
 }
 
+/** A caret position inside a text body: a paragraph and a character offset in it. */
+export interface TextPosition {
+  paragraphIndex: number;
+  /** Character offset into the paragraph's text (the joined text of its runs). */
+  offset: number;
+}
+
+/** A span of text inside one shape's text body. `end` is exclusive. */
+export interface TextRange {
+  start: TextPosition;
+  end: TextPosition;
+}
+
+/**
+ * Character formatting. Omitted fields are left as they are; `null` removes
+ * the run's own value so it inherits from the paragraph, layout, or master.
+ */
+export interface TextStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  /** Hex color, with or without leading `#` (e.g. "FF0000"). */
+  color?: string | null;
+  /** Latin typeface (e.g. "Arial"). */
+  fontFamily?: string | null;
+  /** Font size in points. */
+  fontSize?: number | null;
+}
+
+/**
+ * Apply character formatting to a shape's text. Without `range` the whole
+ * text body is formatted, including the end-of-paragraph marks so new text
+ * typed into an empty paragraph picks the formatting up.
+ */
+export interface SetTextStyleOperation {
+  type: "setTextStyle";
+  slideId: string;
+  nodeId: string;
+  style: TextStyle;
+  range?: TextRange;
+}
+
+export type ParagraphAlign = "left" | "center" | "right" | "justify";
+
+/** Paragraph formatting. Omitted fields are left as they are. */
+export interface ParagraphStyle {
+  align?: ParagraphAlign;
+}
+
+/**
+ * Apply paragraph formatting to a shape's text. Without `range` every
+ * paragraph is formatted; with it, every paragraph the range touches.
+ */
+export interface SetParagraphStyleOperation {
+  type: "setParagraphStyle";
+  slideId: string;
+  nodeId: string;
+  style: ParagraphStyle;
+  range?: TextRange;
+}
+
+/**
+ * Add a slide built from a layout, with the layout's content placeholders
+ * (empty), the way PowerPoint's New Slide does.
+ */
+export interface AddSlideOperation {
+  type: "addSlide";
+  /**
+   * Layout part path (a key of `presentation.layouts`, e.g.
+   * "ppt/slideLayouts/slideLayout2.xml"). Defaults to the layout of
+   * `afterSlideId`, or of the last slide.
+   */
+  layoutId?: string;
+  /** Insert after this slide. Defaults to the end of the deck. */
+  afterSlideId?: string;
+}
+
+/** Set a slide's own background, or clear it to inherit the layout's. */
+export interface SetSlideBackgroundOperation {
+  type: "setSlideBackground";
+  slideId: string;
+  /** Hex color, with or without leading `#`. `null` removes the slide's own background. */
+  color: string | null;
+}
+
+/**
+ * Copy a top-level node onto the same slide, just above the original in the
+ * stacking order.
+ */
+export interface DuplicateNodeOperation {
+  type: "duplicateNode";
+  slideId: string;
+  nodeId: string;
+  /**
+   * How far the copy sits from the original, in px.
+   *
+   * @default { x: 10, y: 10 }
+   */
+  offset?: NodePosition;
+}
+
+export type NodeOrder = "front" | "back" | "forward" | "backward";
+
+/** Move a top-level node in the slide's stacking order. */
+export interface ReorderNodeOperation {
+  type: "reorderNode";
+  slideId: string;
+  nodeId: string;
+  /** To the top or bottom of the stack, or one step up or down. */
+  order: NodeOrder;
+}
+
+/** Insert a text box on top of a slide. */
+export interface AddTextBoxOperation {
+  type: "addTextBox";
+  slideId: string;
+  /** Size in px. Defaults to a third of the slide's width, one line tall. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+  /** Initial text. Defaults to empty. */
+  text?: string;
+}
+
+/**
+ * Insert a preset shape, styled from the theme like PowerPoint's: accent fill,
+ * a darker outline, and light centered text.
+ */
+export interface AddShapeOperation {
+  type: "addShape";
+  slideId: string;
+  /** Preset geometry (`a:prstGeom@prst`), e.g. "rect", "ellipse", "rightArrow". */
+  geometry: string;
+  /** Size in px. Defaults to a quarter of the slide's width, square. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+}
+
+/** Set a shape's or picture's outline. Omitted fields are left as they are. */
+export interface SetOutlineOperation {
+  type: "setOutline";
+  slideId: string;
+  nodeId: string;
+  /** Hex color, with or without leading `#`. `null` removes the outline. */
+  color?: string | null;
+  /** Width in points. */
+  width?: number;
+}
+
+/** Insert a picture on top of a slide. */
+export interface AddImageOperation {
+  type: "addImage";
+  slideId: string;
+  /** The image file's bytes. */
+  data: Uint8Array;
+  /** `"image/png"`, `"image/jpeg"`, or `"image/gif"`. */
+  contentType: string;
+  /** Size in px. Defaults to the image's own size, scaled down to fit the slide. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+  /** Shape name, also used as the picture's alt text. */
+  name?: string;
+}
+
 /**
  * Applies several operations as one atomic edit with a single undo (e.g.
  * moving a multi-selection). Sub-operations are applied in order and undone
@@ -137,6 +294,17 @@ export type EditOperation =
   | DuplicateSlideOperation
   | DeleteSlideOperation
   | SetTextBodyOperation
+  | SetTextStyleOperation
+  | SetParagraphStyleOperation
+  | AddSlideOperation
+  | SetSlideBackgroundOperation
+  | DuplicateNodeOperation
+  | ReorderNodeOperation
+  | AddImageOperation
+  | PasteNodesOperation
+  | AddTextBoxOperation
+  | AddShapeOperation
+  | SetOutlineOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -144,14 +312,21 @@ export interface EditResult {
   affectedSlideIds: string[];
   /** Restores XML, model, and dirty state. Apply undos in reverse order. */
   undo: () => void;
-  /** Id of the slide created by `duplicateSlide`. */
+  /** Id of the slide created by `duplicateSlide` or `addSlide`. */
   createdSlideId?: string;
+  /**
+   * Ids of the nodes created by `duplicateNode`, `addTextBox`, `addShape`,
+   * `addImage`, or `pasteNodes`.
+   */
+  createdNodeIds?: string[];
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
-
+/**
+ * Applies an operation to a presentation opened with `keepSourcePackage: true`:
+ * mutates the live part XML that `writePptx()` saves, updates the model, and
+ * marks the touched parts dirty. Undos capture element references and part
+ * snapshots, so apply them in reverse order.
+ */
 export async function applyEdit(
   presentation: PresentationData,
   op: EditOperation,
@@ -173,6 +348,28 @@ export async function applyEdit(
       return applyDuplicateSlide(presentation, op);
     case "deleteSlide":
       return applyDeleteSlide(presentation, op);
+    case "setTextStyle":
+      return applySetTextStyle(presentation, op);
+    case "setParagraphStyle":
+      return applySetParagraphStyle(presentation, op);
+    case "addSlide":
+      return applyAddSlide(presentation, op);
+    case "setSlideBackground":
+      return applySetSlideBackground(presentation, op);
+    case "duplicateNode":
+      return applyDuplicateNode(presentation, op);
+    case "reorderNode":
+      return applyReorderNode(presentation, op);
+    case "addImage":
+      return applyAddImage(presentation, op);
+    case "pasteNodes":
+      return applyPasteNodes(presentation, op);
+    case "addTextBox":
+      return applyAddTextBox(presentation, op);
+    case "addShape":
+      return applyAddShape(presentation, op);
+    case "setOutline":
+      return applySetOutline(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -199,12 +396,15 @@ async function applyBatch(presentation: PresentationData, op: BatchOperation): P
     undo: () => {
       for (let i = results.length - 1; i >= 0; i--) results[i].undo();
     },
+    createdSlideId: results.reduce<string | undefined>(
+      (id, result) => result.createdSlideId ?? id,
+      undefined,
+    ),
+    createdNodeIds: results.some((result) => result.createdNodeIds)
+      ? results.flatMap((result) => result.createdNodeIds ?? [])
+      : undefined,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Shared lookup helpers
-// ---------------------------------------------------------------------------
 
 const PRESENTATION_PATH = "ppt/presentation.xml";
 const PRESENTATION_RELS_PATH = "ppt/_rels/presentation.xml.rels";
@@ -237,6 +437,18 @@ function findNode(pres: PresentationData, slide: SlideData, nodeId: string): Sli
   return node;
 }
 
+/**
+ * The node's element in the slide's shape tree. A node's source can sit
+ * deeper, such as the fallback picture inside an OLE object's frame.
+ */
+function topLevelElement(node: SlideNode): Element {
+  let element = requireElement(node.source, "node element");
+  while (element.parentElement && element.parentElement.localName !== "spTree") {
+    element = element.parentElement;
+  }
+  return element;
+}
+
 function requireElement(node: SafeXmlNode, what: string): Element {
   const element = node.element;
   if (!element) throw new Error(`applyEdit: ${what} is missing.`);
@@ -254,10 +466,6 @@ function reindexSlides(pres: PresentationData): void {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// setTextRun
-// ---------------------------------------------------------------------------
 
 /** Localnames that produce entries in TextParagraph.runs, in document order. */
 const RUN_LOCAL_NAMES = new Set(["r", "br", "tab", "fld"]);
@@ -314,9 +522,14 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   };
 }
 
-// ---------------------------------------------------------------------------
-// setTextBody
-// ---------------------------------------------------------------------------
+/**
+ * The `a:p` children of a text body. A direct-children scan rather than
+ * `getElementsByTagNameNS`, whose namespace matching is unreliable in some
+ * DOM implementations (happy-dom misses the paragraphs entirely).
+ */
+function childParagraphs(txBodyElement: Element): Element[] {
+  return Array.from(txBodyElement.children).filter((child) => child.localName === "p");
+}
 
 function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): EditResult {
   const sourcePackage = requirePkg(pres);
@@ -329,20 +542,15 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
   const shape = node as ShapeNodeData;
   const textBody = shape.textBody!;
 
-  // Snapshot the current state for undo.
   const prevParagraphs = textBody.paragraphs;
 
-  // XML: <p:txBody> element containing the live <a:p> elements.
   const txBodyNode = node.source.child("txBody");
   const txBodyElement = requireElement(txBodyNode, "txBody");
   const doc = txBodyElement.ownerDocument;
 
-  // Snapshot original <a:p> elements (for undo) and keep them by index for
-  // cloning pPr/rPr from source references.
-  const origParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
+  const origParagraphElements = childParagraphs(txBodyElement);
   const origParagraphs = prevParagraphs;
 
-  // Collect source run XML elements indexed by [pIdx][rIdx].
   const origRunElements: Element[][] = [];
   for (const paragraphElement of origParagraphElements) {
     const runElements: Element[] = [];
@@ -354,18 +562,15 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     origRunElements.push(runElements);
   }
 
-  // Remove existing <a:p> elements from txBody.
   for (const paragraphElement of origParagraphElements) {
     removeChild(paragraphElement);
   }
 
-  // Build new <a:p> elements and model paragraphs.
   const newParagraphs: TextParagraph[] = [];
 
   for (const opPara of op.paragraphs) {
     const paragraphElement = doc.createElementNS(A_NS, "a:p");
 
-    // Clone a:pPr from source paragraph.
     let level = 0;
     let pPrNode: SafeXmlNode | undefined;
     let endParaRPrNode: SafeXmlNode | undefined;
@@ -383,7 +588,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
     const runs: TextRun[] = [];
 
-    // Resolve default rPr to clone when sourceRun is not specified.
     function resolveDefaultRPr(srcParaIdx: number): Element | null {
       if (srcParaIdx < 0 || srcParaIdx >= origParagraphs.length) return null;
       const srcRuns = origRunElements[srcParaIdx];
@@ -413,7 +617,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     }
 
     for (const opRun of opPara.runs) {
-      // Resolve the source rPr element to clone styling from.
       let rPrElement: Element | null = null;
       if (opRun.sourceRun) {
         const [srcPI, srcRI] = opRun.sourceRun;
@@ -427,7 +630,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
           endParaRPrAsRPr(opPara.sourceParagraphIndex);
       }
 
-      // a:br for newlines, a:r for text.
       if (opRun.text === "\n") {
         const brElement = doc.createElementNS(A_NS, "a:br");
         if (rPrElement) brElement.appendChild(rPrElement.cloneNode(true));
@@ -454,7 +656,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
       }
     }
 
-    // Append a:endParaRPr if the source paragraph had one.
     if (endParaRPrNode?.element) {
       paragraphElement.appendChild(endParaRPrNode.element);
     }
@@ -469,32 +670,24 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     });
   }
 
-  // Update the typed model.
   textBody.paragraphs = newParagraphs;
   sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      // Remove new <a:p> elements.
-      const currentParagraphElements = Array.from(txBodyElement.getElementsByTagNameNS(A_NS, "p"));
+      const currentParagraphElements = childParagraphs(txBodyElement);
       for (const paragraphElement of currentParagraphElements) {
         removeChild(paragraphElement);
       }
-      // Restore original <a:p> elements.
       for (const paragraphElement of origParagraphElements) {
         insertChild(txBodyElement, paragraphElement, null);
       }
-      // Restore model.
       textBody.paragraphs = prevParagraphs;
       sourcePackage.markDirty(slide.id);
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// setNodeTransform
-// ---------------------------------------------------------------------------
 
 interface XfrmHandle {
   xfrmElement: Element;
@@ -509,7 +702,15 @@ interface XfrmHandle {
  * them requires writing a new one into the slide part).
  */
 function getOrCreateXfrm(node: SlideNode): XfrmHandle {
-  const sourceElement = requireElement(node.source, "node element");
+  return getOrCreateXfrmOn(node.source, node.nodeType, node.id);
+}
+
+function getOrCreateXfrmOn(
+  source: SafeXmlNode,
+  nodeType: SlideNode["nodeType"],
+  label: string,
+): XfrmHandle {
+  const sourceElement = requireElement(source, "node element");
   const doc = sourceElement.ownerDocument;
 
   let container: Element;
@@ -517,15 +718,15 @@ function getOrCreateXfrm(node: SlideNode): XfrmHandle {
   let xfrmNs: string;
   let insertRef: Element | null;
 
-  if (node.nodeType === "table" || node.nodeType === "chart") {
+  if (nodeType === "table" || nodeType === "chart") {
     // Graphic frames carry p:xfrm directly, between nvGraphicFramePr and a:graphic.
     container = sourceElement;
     xfrmQualified = "p:xfrm";
     xfrmNs = P_NS;
-    insertRef = node.source.child("graphic").element;
+    insertRef = source.child("graphic").element;
   } else {
-    const prName = node.nodeType === "group" ? "grpSpPr" : "spPr";
-    container = requireElement(node.source.child(prName), `${prName} of node "${node.id}"`);
+    const prName = nodeType === "group" ? "grpSpPr" : "spPr";
+    container = requireElement(source.child(prName), `${prName} of node "${label}"`);
     xfrmQualified = "a:xfrm";
     xfrmNs = A_NS;
     // xfrm is the first element in the shape-properties sequence.
@@ -720,10 +921,6 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   };
 }
 
-// ---------------------------------------------------------------------------
-// setSolidFill
-// ---------------------------------------------------------------------------
-
 const FILL_LOCAL_NAMES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"];
 /** spPr children that come after the fill in the schema sequence. */
 const AFTER_FILL_LOCAL_NAMES = new Set([
@@ -745,11 +942,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   }
   const shape = node as ShapeNodeData;
 
-  const colorMatch = /^#?([0-9a-fA-F]{6})$/.exec(op.color);
-  if (!colorMatch) {
-    throw new Error(`applyEdit: invalid color "${op.color}"; expected 6-digit hex.`);
-  }
-  const color = colorMatch[1].toUpperCase();
+  const color = parseHexColor(op.color);
 
   const spPrElement = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
   const doc = spPrElement.ownerDocument;
@@ -799,16 +992,325 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   };
 }
 
-// ---------------------------------------------------------------------------
-// deleteNode
-// ---------------------------------------------------------------------------
+/** rPr fill children (EG_FillProperties). */
+const RPR_FILL_LOCAL_NAMES = new Set([
+  "noFill",
+  "solidFill",
+  "gradFill",
+  "blipFill",
+  "pattFill",
+  "grpFill",
+]);
+/** rPr children that come after `a:latin` in the schema sequence. */
+const RPR_AFTER_LATIN_LOCAL_NAMES = new Set([
+  "ea",
+  "cs",
+  "sym",
+  "hlinkClick",
+  "hlinkMouseOver",
+  "rtl",
+  "extLst",
+]);
+/** rPr children that come after the fill in the schema sequence. */
+const RPR_AFTER_FILL_LOCAL_NAMES = new Set([
+  "effectLst",
+  "effectDag",
+  "highlight",
+  "uLnTx",
+  "uLn",
+  "uFillTx",
+  "uFill",
+  "latin",
+  ...RPR_AFTER_LATIN_LOCAL_NAMES,
+]);
+
+const ALIGN_TO_OOXML: Record<ParagraphAlign, string> = {
+  left: "l",
+  center: "ctr",
+  right: "r",
+  justify: "just",
+};
+
+function parseHexColor(value: string): string {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(value);
+  if (!match) {
+    throw new Error(`applyEdit: invalid color "${value}"; expected 6-digit hex.`);
+  }
+  return match[1].toUpperCase();
+}
+
+function firstChildIn(parent: Element, localNames: ReadonlySet<string>): Element | null {
+  for (const child of parent.children) {
+    if (localNames.has(child.localName)) return child;
+  }
+  return null;
+}
+
+function childNamed(parent: Element, localName: string): Element | null {
+  for (const child of parent.children) {
+    if (child.localName === localName) return child;
+  }
+  return null;
+}
+
+function runText(run: Element): string {
+  return childNamed(run, "t")?.textContent ?? "";
+}
+
+/** Character length of a run-like element, matching `TextParagraph.runs` text. */
+function runLength(run: Element): number {
+  return run.localName === "br" || run.localName === "tab" ? 1 : runText(run).length;
+}
+
+/** Splits an `a:r` at `at` characters; the original keeps the left part. Returns the right part. */
+function splitRun(run: Element, at: number): Element {
+  const text = runText(run);
+  const right = run.cloneNode(true) as Element;
+  childNamed(run, "t")!.textContent = text.slice(0, at);
+  childNamed(right, "t")!.textContent = text.slice(at);
+  run.parentNode!.insertBefore(right, run.nextSibling);
+  return right;
+}
+
+function ensureRunProperties(run: Element): Element {
+  const existing = childNamed(run, "rPr");
+  if (existing) return existing;
+  const rPr = run.ownerDocument.createElementNS(A_NS, "a:rPr");
+  // rPr is the first child of a:r, a:br and a:fld.
+  run.insertBefore(rPr, run.firstElementChild);
+  return rPr;
+}
+
+function setBoolAttr(element: Element, name: string, value: boolean | undefined): void {
+  if (value !== undefined) element.setAttribute(name, value ? "1" : "0");
+}
+
+/** Writes `style` onto character properties (`a:rPr` or `a:endParaRPr`). */
+function applyCharacterStyle(rPr: Element, style: TextStyle): void {
+  const doc = rPr.ownerDocument;
+
+  setBoolAttr(rPr, "b", style.bold);
+  setBoolAttr(rPr, "i", style.italic);
+  if (style.underline !== undefined) rPr.setAttribute("u", style.underline ? "sng" : "none");
+  if (style.strikethrough !== undefined) {
+    rPr.setAttribute("strike", style.strikethrough ? "sngStrike" : "noStrike");
+  }
+  if (style.fontSize !== undefined) {
+    // OOXML allows 1–4000pt (`a:rPr@sz` 100–400000); PowerPoint rejects the rest.
+    if (style.fontSize !== null && !(style.fontSize >= 1 && style.fontSize <= 4000)) {
+      throw new Error(`applyEdit: invalid font size "${style.fontSize}".`);
+    }
+    setOrRemoveAttr(
+      rPr,
+      "sz",
+      style.fontSize === null ? undefined : String(Math.round(style.fontSize * 100)),
+    );
+  }
+
+  if (style.color !== undefined) {
+    for (const child of Array.from(rPr.children)) {
+      if (RPR_FILL_LOCAL_NAMES.has(child.localName)) child.remove();
+    }
+    if (style.color !== null) {
+      const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+      const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+      srgb.setAttribute("val", parseHexColor(style.color));
+      solidFill.appendChild(srgb);
+      rPr.insertBefore(solidFill, firstChildIn(rPr, RPR_AFTER_FILL_LOCAL_NAMES));
+    }
+  }
+
+  if (style.fontFamily !== undefined) {
+    let latin = childNamed(rPr, "latin");
+    if (style.fontFamily === null) {
+      latin?.remove();
+    } else {
+      if (!latin) {
+        latin = doc.createElementNS(A_NS, "a:latin");
+        rPr.insertBefore(latin, firstChildIn(rPr, RPR_AFTER_LATIN_LOCAL_NAMES));
+      }
+      latin.setAttribute("typeface", style.fontFamily);
+    }
+  }
+}
+
+/**
+ * Formats the characters `[from, to)` of a detached `a:p` clone, splitting runs
+ * at the range edges. `whole` formats every run and the paragraph mark.
+ */
+function styleParagraph(
+  paragraph: Element,
+  from: number,
+  to: number,
+  style: TextStyle,
+  whole: boolean,
+): void {
+  let position = 0;
+  let hasRuns = false;
+
+  for (const child of Array.from(paragraph.children)) {
+    if (!RUN_LOCAL_NAMES.has(child.localName)) continue;
+    hasRuns = true;
+    const runStart = position;
+    const runEnd = position + runLength(child);
+    position = runEnd;
+    if (child.localName === "tab") continue;
+
+    if (whole) {
+      applyCharacterStyle(ensureRunProperties(child), style);
+      continue;
+    }
+
+    const lo = Math.max(from, runStart);
+    const hi = Math.min(to, runEnd);
+    if (lo >= hi) continue;
+
+    // Fields and breaks can't be split: format them whole when touched.
+    if (child.localName !== "r") {
+      applyCharacterStyle(ensureRunProperties(child), style);
+      continue;
+    }
+
+    let target = child;
+    let targetStart = runStart;
+    if (lo > targetStart) {
+      target = splitRun(target, lo - targetStart);
+      targetStart = lo;
+    }
+    if (hi < runEnd) splitRun(target, hi - targetStart);
+    applyCharacterStyle(ensureRunProperties(target), style);
+  }
+
+  // The paragraph mark carries the formatting for text typed at the end of
+  // the paragraph, and for an empty paragraph's first keystroke.
+  let endParaRPr = childNamed(paragraph, "endParaRPr");
+  if (!endParaRPr && !hasRuns) {
+    endParaRPr = paragraph.ownerDocument.createElementNS(A_NS, "a:endParaRPr");
+    paragraph.appendChild(endParaRPr);
+  }
+  if (endParaRPr && (whole || to >= position)) applyCharacterStyle(endParaRPr, style);
+}
+
+/** Ordered `[paragraphIndex, from, to]` spans a range covers, or every paragraph. */
+function paragraphSpans(
+  paragraphCount: number,
+  range: TextRange | undefined,
+): [index: number, from: number, to: number][] {
+  if (!range) {
+    return Array.from({ length: paragraphCount }, (_, index) => [index, 0, Infinity]);
+  }
+  let { start, end } = range;
+  if (
+    start.paragraphIndex > end.paragraphIndex ||
+    (start.paragraphIndex === end.paragraphIndex && start.offset > end.offset)
+  ) {
+    [start, end] = [end, start];
+  }
+  if (start.paragraphIndex < 0 || end.paragraphIndex >= paragraphCount) {
+    throw new Error(
+      `applyEdit: text range paragraphs ${start.paragraphIndex}-${end.paragraphIndex} are out of bounds.`,
+    );
+  }
+  const spans: [number, number, number][] = [];
+  for (let index = start.paragraphIndex; index <= end.paragraphIndex; index++) {
+    spans.push([
+      index,
+      index === start.paragraphIndex ? start.offset : 0,
+      index === end.paragraphIndex ? end.offset : Infinity,
+    ]);
+  }
+  return spans;
+}
+
+/**
+ * Rewrites some of a shape's paragraphs. Each `a:p` is cloned, mutated
+ * detached, and swapped in, so undo is a swap back and the model paragraph is
+ * re-parsed from the clone.
+ */
+function rewriteParagraphs(
+  pres: PresentationData,
+  slideId: string,
+  nodeId: string,
+  rewrite: (paragraphCount: number) => [index: number, mutate: (paragraph: Element) => void][],
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  const node = findNode(pres, slide, nodeId);
+  if (node.nodeType !== "shape" || !node.textBody) {
+    throw new Error(`applyEdit: node "${nodeId}" has no editable text body.`);
+  }
+  const textBody = (node as ShapeNodeData).textBody!;
+  const txBodyElement = requireElement(node.source.child("txBody"), "txBody");
+  const paragraphElements = childParagraphs(txBodyElement);
+
+  const prevParagraphs = textBody.paragraphs;
+  const nextParagraphs = [...prevParagraphs];
+  const swaps: [original: Element, clone: Element][] = [];
+
+  for (const [index, mutate] of rewrite(paragraphElements.length)) {
+    const original = paragraphElements[index];
+    if (!original) continue;
+    const clone = original.cloneNode(true) as Element;
+    mutate(clone);
+    insertChild(txBodyElement, clone, original);
+    removeChild(original);
+    nextParagraphs[index] = parseParagraph(new SafeXmlNode(clone));
+    swaps.push([original, clone]);
+  }
+
+  textBody.paragraphs = nextParagraphs;
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      for (const [original, clone] of swaps.reverse()) {
+        insertChild(txBodyElement, original, clone);
+        removeChild(clone);
+      }
+      textBody.paragraphs = prevParagraphs;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function applySetTextStyle(pres: PresentationData, op: SetTextStyleOperation): EditResult {
+  // Fails on a bad value before any paragraph is touched.
+  if (op.style.color) parseHexColor(op.style.color);
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+    paragraphSpans(count, op.range).map(([index, from, to]) => [
+      index,
+      (paragraph) => styleParagraph(paragraph, from, to, op.style, !op.range),
+    ]),
+  );
+}
+
+function applySetParagraphStyle(
+  pres: PresentationData,
+  op: SetParagraphStyleOperation,
+): EditResult {
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+    paragraphSpans(count, op.range).map(([index]) => [
+      index,
+      (paragraph) => {
+        let pPr = childNamed(paragraph, "pPr");
+        if (!pPr) {
+          pPr = paragraph.ownerDocument.createElementNS(A_NS, "a:pPr");
+          // pPr is the first child of a:p.
+          paragraph.insertBefore(pPr, paragraph.firstElementChild);
+        }
+        if (op.style.align) pPr.setAttribute("algn", ALIGN_TO_OOXML[op.style.align]);
+      },
+    ]),
+  );
+}
 
 function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
   const node = findNode(pres, slide, op.nodeId);
 
-  const element = requireElement(node.source, "node element");
+  const element = topLevelElement(node);
   const parentElement = element.parentElement;
   if (!parentElement)
     throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
@@ -830,9 +1332,829 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
   };
 }
 
-// ---------------------------------------------------------------------------
-// Slide-level operations
-// ---------------------------------------------------------------------------
+const DEFAULT_DUPLICATE_OFFSET: NodePosition = { x: 10, y: 10 };
+
+function descendantsNamed(root: Element, localName: string): Element[] {
+  const found: Element[] = [];
+  const visit = (element: Element) => {
+    if (element.localName === localName) found.push(element);
+    for (const child of element.children) visit(child);
+  };
+  visit(root);
+  return found;
+}
+
+/** The slide's spTree element; new nodes go in it. */
+function requireSpTree(pres: PresentationData, slide: SlideData): Element {
+  const root = requirePkg(pres).getXmlRoot(slide.id);
+  const spTree = root?.child("cSld").child("spTree");
+  if (!spTree) throw new Error(`applyEdit: slide part "${slide.id}" is not loaded.`);
+  return requireElement(spTree, "spTree");
+}
+
+/** The next free shape id on a slide. Ids must be unique across the whole part. */
+function nextShapeId(spTree: Element): number {
+  let max = 0;
+  for (const cNvPr of descendantsNamed(spTree, "cNvPr")) {
+    const id = Number(cNvPr.getAttribute("id"));
+    if (Number.isFinite(id)) max = Math.max(max, id);
+  }
+  return max + 1;
+}
+
+/**
+ * Gives every shape in a copied element a fresh id from `nextId`, a group's
+ * children included, and points connectors inside it at the copies.
+ * Connections to shapes outside the copy are left alone.
+ */
+function renumberShapes(copy: Element, nextId: number): number {
+  const ids = new Map<string, string>();
+  for (const cNvPr of descendantsNamed(copy, "cNvPr")) {
+    const id = String(nextId++);
+    const previous = cNvPr.getAttribute("id");
+    if (previous) ids.set(previous, id);
+    cNvPr.setAttribute("id", id);
+  }
+  for (const connection of [
+    ...descendantsNamed(copy, "stCxn"),
+    ...descendantsNamed(copy, "endCxn"),
+  ]) {
+    const id = ids.get(connection.getAttribute("id") ?? "");
+    if (id) connection.setAttribute("id", id);
+  }
+  return nextId;
+}
+
+/** Parses a node element added to a slide, with its placeholder inheritance resolved. */
+function parseAddedNode(pres: PresentationData, slide: SlideData, element: Element): SlideNode {
+  const node = parseRenderableChild(new SafeXmlNode(element), {
+    rels: slide.rels,
+    partPath: slide.id,
+    diagramDrawings: pres.diagramDrawings,
+  });
+  if (!node) throw new Error(`applyEdit: <${element.localName}> is not a renderable node.`);
+  resolveSlideNodePlaceholders(pres, slide, [node]);
+  return node;
+}
+
+async function applyDuplicateNode(
+  pres: PresentationData,
+  op: DuplicateNodeOperation,
+): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  const element = topLevelElement(node);
+  const parentElement = element.parentElement;
+  if (!parentElement) {
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
+  }
+
+  const copy = element.cloneNode(true) as Element;
+  renumberShapes(copy, nextShapeId(requireSpTree(pres, slide)));
+  insertChild(parentElement, copy, element.nextElementSibling);
+
+  const copyNode = parseAddedNode(pres, slide, copy);
+  const index = slide.nodes.indexOf(node) + 1;
+  slide.nodes.splice(index, 0, copyNode);
+
+  // The copy gets its full transform: an inherited placeholder position has to
+  // become its own before it can be offset.
+  const offset = op.offset ?? DEFAULT_DUPLICATE_OFFSET;
+  const transform = applySetNodeTransform(pres, {
+    type: "setNodeTransform",
+    slideId: slide.id,
+    nodeId: copyNode.id,
+    position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
+    size: { ...node.size },
+  });
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [copyNode.id],
+    undo: () => {
+      transform.undo();
+      removeChild(copy);
+      slide.nodes.splice(slide.nodes.indexOf(copyNode), 1);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function applyReorderNode(pres: PresentationData, op: ReorderNodeOperation): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  const element = topLevelElement(node);
+  const parentElement = element.parentElement;
+  if (!parentElement) {
+    throw new Error(`applyEdit: node "${op.nodeId}" is not attached to the slide.`);
+  }
+
+  const fromIndex = slide.nodes.indexOf(node);
+  const last = slide.nodes.length - 1;
+  const toIndex = {
+    front: last,
+    back: 0,
+    forward: Math.min(fromIndex + 1, last),
+    backward: Math.max(fromIndex - 1, 0),
+  }[op.order];
+  if (toIndex === fromIndex) return { affectedSlideIds: [], undo: () => {} };
+
+  // Place the element next to the node it swaps with, so XML children the
+  // model doesn't render keep their places.
+  const neighbor = topLevelElement(slide.nodes[toIndex]);
+  const originalNext = element.nextElementSibling;
+  removeChild(element);
+  insertChild(parentElement, element, toIndex > fromIndex ? neighbor.nextElementSibling : neighbor);
+  slide.nodes.splice(fromIndex, 1);
+  slide.nodes.splice(toIndex, 0, node);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      removeChild(element);
+      insertChild(parentElement, element, originalNext);
+      slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      slide.nodes.splice(fromIndex, 0, node);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+const IMAGE_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image";
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpeg",
+  "image/gif": "gif",
+};
+
+/** Pixel size from a PNG, GIF, or JPEG header, or undefined when it can't be read. */
+export function readImageSize(data: Uint8Array): NodeSize | undefined {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  if (data.length >= 24 && view.getUint32(0) === 0x89504e47) {
+    return { w: view.getUint32(16), h: view.getUint32(20) };
+  }
+  if (data.length >= 10 && data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) {
+    return { w: view.getUint16(6, true), h: view.getUint16(8, true) };
+  }
+  if (data.length >= 4 && data[0] === 0xff && data[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < data.length) {
+      if (data[offset] !== 0xff) return undefined;
+      const marker = data[offset + 1];
+      const length = view.getUint16(offset + 2);
+      // SOF0-SOF15 carry the frame size; C4, C8, and CC are other segments.
+      if (
+        marker >= 0xc0 &&
+        marker <= 0xcf &&
+        marker !== 0xc4 &&
+        marker !== 0xc8 &&
+        marker !== 0xcc
+      ) {
+        return { w: view.getUint16(offset + 7), h: view.getUint16(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Media paths handed out this session. An undone image frees its path in the
+ * package, but a renderer may still cache a blob URL under it, so a new image
+ * must not take it over.
+ */
+const issuedMediaPaths = new WeakMap<PresentationData, Set<string>>();
+
+function nextMediaPath(pres: PresentationData, extension: string): string {
+  let issued = issuedMediaPaths.get(pres);
+  if (!issued) {
+    issued = new Set();
+    issuedMediaPaths.set(pres, issued);
+  }
+  const taken = new Set([...requirePkg(pres).paths(), ...pres.media.keys(), ...issued]);
+  let index = 1;
+  while (taken.has(`ppt/media/image${index}.${extension}`)) index++;
+  const path = `ppt/media/image${index}.${extension}`;
+  issued.add(path);
+  return path;
+}
+
+interface PartChange {
+  undo: () => void;
+}
+
+/** Adds a media part, declaring its extension's content type when the deck lacks it. */
+async function addMediaPart(
+  pres: PresentationData,
+  extension: string,
+  contentType: string,
+  data: Uint8Array,
+): Promise<PartChange & { path: string; target: string }> {
+  const sourcePackage = requirePkg(pres);
+  const path = nextMediaPath(pres, extension);
+  sourcePackage.setEntry(path, data);
+  pres.media.set(path, data);
+
+  const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
+  const ctRoot = parseXml(ctText);
+  const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
+  const hasDefault = ctRoot
+    .children("Default")
+    .some((entry) => entry.attr("Extension")?.toLowerCase() === extension);
+  if (!hasDefault) {
+    const defaultElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Default");
+    defaultElement.setAttribute("Extension", extension);
+    defaultElement.setAttribute("ContentType", contentType);
+    insertChild(ctRootElement, defaultElement, ctRootElement.firstElementChild);
+    sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
+  }
+
+  return {
+    path,
+    // Slides live in ppt/slides/, so media is one level up.
+    target: `../media/${path.slice("ppt/media/".length)}`,
+    undo: () => {
+      sourcePackage.deleteEntry(path);
+      pres.media.delete(path);
+      if (!hasDefault) sourcePackage.setEntry(CONTENT_TYPES_PATH, ctText);
+    },
+  };
+}
+
+/** Adds relationships to a slide's rels part, creating the part when missing. */
+async function addSlideRels(
+  pres: PresentationData,
+  slide: SlideData,
+  entries: RelEntry[],
+): Promise<PartChange & { ids: string[] }> {
+  const sourcePackage = requirePkg(pres);
+  const relsPath = relsPathFor(slide.id);
+  const existingText = await sourcePackage.readText(relsPath);
+  const relsText =
+    existingText ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="${RELS_NS}"/>`;
+  const relsRootElement = requireElement(parseXml(relsText), "slide rels root");
+  const taken = new Map([...slide.rels, ...parseRels(relsText)]);
+
+  const ids = entries.map((entry) => {
+    const id = nextRelId(taken);
+    taken.set(id, entry);
+    const relElement = relsRootElement.ownerDocument.createElementNS(RELS_NS, "Relationship");
+    relElement.setAttribute("Id", id);
+    relElement.setAttribute("Type", entry.type);
+    relElement.setAttribute("Target", entry.target);
+    if (entry.targetMode) relElement.setAttribute("TargetMode", entry.targetMode);
+    insertChild(relsRootElement, relElement, null);
+    slide.rels.set(id, entry);
+    return id;
+  });
+  sourcePackage.setEntry(relsPath, serializePartText(relsRootElement, relsText));
+
+  return {
+    ids,
+    undo: () => {
+      for (const id of ids) slide.rels.delete(id);
+      if (existingText === undefined) sourcePackage.deleteEntry(relsPath);
+      else sourcePackage.setEntry(relsPath, existingText);
+    },
+  };
+}
+
+/** A relationship copied nodes refer to, with the media part's bytes when it's internal. */
+export interface ClipboardRelationship {
+  type: string;
+  target: string;
+  targetMode?: string;
+  media?: { data: Uint8Array; contentType: string; extension: string };
+}
+
+/** Nodes copied off a slide, self-contained so they paste into any deck. */
+export interface NodeClipboard {
+  /** Each copied node's XML, in stacking order. */
+  nodes: string[];
+  /** Relationships the XML refers to, keyed by the ids it uses. */
+  relationships: Record<string, ClipboardRelationship>;
+  /** Nodes left out because they refer to parts other than images (charts, diagrams, video). */
+  omittedNodeIds: string[];
+}
+
+function relationshipIdsIn(element: Element): string[] {
+  const ids: string[] = [];
+  const visit = (current: Element) => {
+    for (const attr of Array.from(current.attributes)) {
+      if (attr.namespaceURI === R_NS && attr.value) ids.push(attr.value);
+    }
+    for (const child of current.children) visit(child);
+  };
+  visit(element);
+  return ids;
+}
+
+function contentTypeOf(ctRoot: SafeXmlNode, partPath: string): string | undefined {
+  const override = ctRoot.children("Override").find((o) => o.attr("PartName") === `/${partPath}`);
+  if (override) return override.attr("ContentType");
+  const extension = partPath.slice(partPath.lastIndexOf(".") + 1).toLowerCase();
+  return ctRoot
+    .children("Default")
+    .find((entry) => entry.attr("Extension")?.toLowerCase() === extension)
+    ?.attr("ContentType");
+}
+
+/**
+ * Copies top-level nodes for `pasteNodes`, in their stacking order. Nodes that
+ * inherit their position (placeholders) get it written out, and the image
+ * parts they use travel with them.
+ */
+export async function copyNodes(
+  pres: PresentationData,
+  slideId: string,
+  nodeIds: string[],
+): Promise<NodeClipboard> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  materializeSlide(pres, slide);
+  const serializer = new XMLSerializer();
+
+  // Everything is captured before the first await, since a cut deletes the
+  // nodes right after copying them.
+  const captured = slide.nodes
+    .filter((node) => nodeIds.includes(node.id))
+    .map((node) => {
+      const element = topLevelElement(node);
+      const copy = element.cloneNode(true) as Element;
+      const xfrm = getOrCreateXfrmOn(new SafeXmlNode(copy), node.nodeType, node.id);
+      if (xfrm.created) {
+        xfrm.offElement.setAttribute("x", String(pxToEmu(node.position.x)));
+        xfrm.offElement.setAttribute("y", String(pxToEmu(node.position.y)));
+        xfrm.extElement.setAttribute("cx", String(pxToEmu(node.size.w)));
+        xfrm.extElement.setAttribute("cy", String(pxToEmu(node.size.h)));
+      }
+      const rels = relationshipIdsIn(element).flatMap((id) => {
+        const rel = slide.rels.get(id);
+        return rel ? [[id, rel] as const] : [];
+      });
+      return { id: node.id, xml: serializer.serializeToString(copy), rels };
+    });
+
+  const ctRoot = parseXml((await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "");
+  const clipboard: NodeClipboard = { nodes: [], relationships: {}, omittedNodeIds: [] };
+
+  for (const node of captured) {
+    const relationships: Record<string, ClipboardRelationship> = {};
+    let supported = true;
+
+    for (const [id, rel] of node.rels) {
+      if (isExternalTargetMode(rel.targetMode)) {
+        relationships[id] = { type: rel.type, target: rel.target, targetMode: rel.targetMode };
+        continue;
+      }
+      if (rel.type !== IMAGE_REL_TYPE) {
+        supported = false;
+        break;
+      }
+      const partPath = resolveRelTarget("ppt/slides", rel.target);
+      const data = pres.media.get(partPath) ?? (await sourcePackage.readBytes(partPath));
+      const extension = partPath.slice(partPath.lastIndexOf(".") + 1).toLowerCase();
+      const contentType = contentTypeOf(ctRoot, partPath);
+      if (!data || !contentType) {
+        supported = false;
+        break;
+      }
+      relationships[id] = {
+        type: rel.type,
+        target: rel.target,
+        media: { data, contentType, extension },
+      };
+    }
+    if (!supported) {
+      clipboard.omittedNodeIds.push(node.id);
+      continue;
+    }
+
+    clipboard.nodes.push(node.xml);
+    Object.assign(clipboard.relationships, relationships);
+  }
+  return clipboard;
+}
+
+/** Paste nodes from `copyNodes`, from this deck or another, on top of a slide. */
+export interface PasteNodesOperation {
+  type: "pasteNodes";
+  slideId: string;
+  clipboard: NodeClipboard;
+  /**
+   * How far the pasted nodes sit from where they were copied, in px.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  offset?: NodePosition;
+}
+
+/** A media part in the deck holding exactly these bytes, if there is one. */
+async function findMediaPart(
+  pres: PresentationData,
+  data: Uint8Array,
+): Promise<string | undefined> {
+  const sourcePackage = requirePkg(pres);
+  for (const path of sourcePackage.paths()) {
+    if (!path.startsWith("ppt/media/")) continue;
+    const existing = pres.media.get(path) ?? (await sourcePackage.readBytes(path));
+    if (existing?.length === data.length && existing.every((byte, i) => byte === data[i])) {
+      return path;
+    }
+  }
+  return undefined;
+}
+
+async function applyPasteNodes(
+  pres: PresentationData,
+  op: PasteNodesOperation,
+): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const partChanges: PartChange[] = [];
+  const transformChanges: PartChange[] = [];
+
+  // Media the deck already has (always, when pasting within it) is reused.
+  const oldIds = Object.keys(op.clipboard.relationships);
+  const entries: RelEntry[] = [];
+  for (const id of oldIds) {
+    const rel = op.clipboard.relationships[id];
+    if (!rel.media) {
+      entries.push({ type: rel.type, target: rel.target, targetMode: rel.targetMode });
+      continue;
+    }
+    const existing = await findMediaPart(pres, rel.media.data);
+    if (existing) {
+      entries.push({ type: rel.type, target: `../media/${existing.slice("ppt/media/".length)}` });
+      continue;
+    }
+    const media = await addMediaPart(
+      pres,
+      rel.media.extension,
+      rel.media.contentType,
+      rel.media.data,
+    );
+    partChanges.push(media);
+    entries.push({ type: rel.type, target: media.target });
+  }
+  const rels = await addSlideRels(pres, slide, entries);
+  partChanges.push(rels);
+  const newIds = new Map(oldIds.map((id, index) => [id, rels.ids[index]]));
+
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst") ?? null;
+  let nextId = nextShapeId(spTree);
+  const pasted: { element: Element; node: SlideNode }[] = [];
+  for (const xml of op.clipboard.nodes) {
+    const element = spTree.ownerDocument.importNode(
+      requireElement(parseXml(xml), "node"),
+      true,
+    ) as Element;
+    const visit = (current: Element) => {
+      for (const attr of Array.from(current.attributes)) {
+        if (attr.namespaceURI === R_NS) attr.value = newIds.get(attr.value) ?? attr.value;
+      }
+      for (const child of current.children) visit(child);
+    };
+    visit(element);
+    nextId = renumberShapes(element, nextId);
+    insertChild(spTree, element, extLst);
+    const node = parseAddedNode(pres, slide, element);
+    slide.nodes.push(node);
+    pasted.push({ element, node });
+
+    if (op.offset && (op.offset.x !== 0 || op.offset.y !== 0)) {
+      transformChanges.push(
+        applySetNodeTransform(pres, {
+          type: "setNodeTransform",
+          slideId: slide.id,
+          nodeId: node.id,
+          position: { x: node.position.x + op.offset.x, y: node.position.y + op.offset.y },
+        }),
+      );
+    }
+  }
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: pasted.map(({ node }) => node.id),
+    undo: () => {
+      for (const change of transformChanges.reverse()) change.undo();
+      for (const { element, node } of pasted) {
+        removeChild(element);
+        slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      }
+      for (const change of partChanges.reverse()) change.undo();
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+/** One line of 18pt text, plus the default insets. */
+const TEXT_BOX_HEIGHT = 40;
+
+type ElementBuilder = (
+  qualifiedName: string,
+  attrs?: Record<string, string>,
+  ...children: Node[]
+) => Element;
+
+function elementBuilder(doc: Document): ElementBuilder {
+  return (qualifiedName, attrs = {}, ...children) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [attr, value] of Object.entries(attrs)) element.setAttribute(attr, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+}
+
+function xfrm(el: ElementBuilder, position: NodePosition, size: NodeSize): Element {
+  return el(
+    "a:xfrm",
+    {},
+    el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+    el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+  );
+}
+
+/** Appends a new top-level shape built by `build`, given its id, to a slide. */
+function insertNewShape(
+  pres: PresentationData,
+  slideId: string,
+  build: (el: ElementBuilder, id: number) => Element,
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+
+  const sp = build(elementBuilder(spTree.ownerDocument), nextShapeId(spTree));
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst");
+  insertChild(spTree, sp, extLst ?? null);
+  const node = parseAddedNode(pres, slide, sp);
+  slide.nodes.push(node);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [node.id],
+    undo: () => {
+      removeChild(sp);
+      slide.nodes.splice(slide.nodes.indexOf(node), 1);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function centered(pres: PresentationData, size: NodeSize): NodePosition {
+  return { x: (pres.width - size.w) / 2, y: (pres.height - size.h) / 2 };
+}
+
+function applyAddTextBox(pres: PresentationData, op: AddTextBoxOperation): EditResult {
+  const size = op.size ?? { w: pres.width / 3, h: TEXT_BOX_HEIGHT };
+  const position = op.position ?? centered(pres, size);
+  return insertNewShape(pres, op.slideId, (el, id) => {
+    const paragraph = op.text
+      ? el(
+          "a:p",
+          {},
+          el("a:r", {}, el("a:rPr", { lang: "en-US" }), el("a:t")),
+          el("a:endParaRPr", { lang: "en-US" }),
+        )
+      : el("a:p", {}, el("a:endParaRPr", { lang: "en-US" }));
+    const text = paragraph.getElementsByTagNameNS(A_NS, "t")[0];
+    if (text) text.textContent = op.text ?? "";
+    return el(
+      "p:sp",
+      {},
+      el(
+        "p:nvSpPr",
+        {},
+        el("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
+        el("p:cNvSpPr", { txBox: "1" }),
+        el("p:nvPr"),
+      ),
+      el(
+        "p:spPr",
+        {},
+        xfrm(el, position, size),
+        el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+        el("a:noFill"),
+      ),
+      el(
+        "p:txBody",
+        {},
+        el("a:bodyPr", { wrap: "square", rtlCol: "0" }, el("a:spAutoFit")),
+        el("a:lstStyle"),
+        paragraph,
+      ),
+    );
+  });
+}
+
+const PRESET_NAME = /^[a-zA-Z0-9]+$/;
+
+function applyAddShape(pres: PresentationData, op: AddShapeOperation): EditResult {
+  if (!PRESET_NAME.test(op.geometry)) {
+    throw new Error(`applyEdit: "${op.geometry}" is not a preset geometry name.`);
+  }
+  const side = pres.width / 4;
+  const size = op.size ?? { w: side, h: side };
+  const position = op.position ?? centered(pres, size);
+  const name = op.geometry.charAt(0).toUpperCase() + op.geometry.slice(1);
+  return insertNewShape(pres, op.slideId, (el, id) =>
+    el(
+      "p:sp",
+      {},
+      el(
+        "p:nvSpPr",
+        {},
+        el("p:cNvPr", { id: String(id), name: `${name} ${id - 1}` }),
+        el("p:cNvSpPr"),
+        el("p:nvPr"),
+      ),
+      el(
+        "p:spPr",
+        {},
+        xfrm(el, position, size),
+        el("a:prstGeom", { prst: op.geometry }, el("a:avLst")),
+      ),
+      el(
+        "p:style",
+        {},
+        el(
+          "a:lnRef",
+          { idx: "2" },
+          el("a:schemeClr", { val: "accent1" }, el("a:shade", { val: "50000" })),
+        ),
+        el("a:fillRef", { idx: "1" }, el("a:schemeClr", { val: "accent1" })),
+        el("a:effectRef", { idx: "0" }, el("a:schemeClr", { val: "accent1" })),
+        el("a:fontRef", { idx: "minor" }, el("a:schemeClr", { val: "lt1" })),
+      ),
+      el(
+        "p:txBody",
+        {},
+        el("a:bodyPr", { rtlCol: "0", anchor: "ctr" }),
+        el("a:lstStyle"),
+        el("a:p", {}, el("a:pPr", { algn: "ctr" }), el("a:endParaRPr", { lang: "en-US" })),
+      ),
+    ),
+  );
+}
+
+/** spPr children that come after `a:ln` in the schema sequence. */
+const AFTER_LINE_LOCAL_NAMES = new Set(["effectLst", "effectDag", "scene3d", "sp3d", "extLst"]);
+
+function applySetOutline(pres: PresentationData, op: SetOutlineOperation): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const node = findNode(pres, slide, op.nodeId);
+  if (node.nodeType !== "shape" && node.nodeType !== "picture") {
+    throw new Error(
+      `applyEdit: setOutline only supports shapes and pictures, got "${node.nodeType}".`,
+    );
+  }
+  if (op.width !== undefined && !(op.width >= 0)) {
+    throw new Error(`applyEdit: invalid outline width "${op.width}".`);
+  }
+  const color = op.color ? parseHexColor(op.color) : op.color;
+
+  const spPr = requireElement(node.source.child("spPr"), `spPr of node "${node.id}"`);
+  const original = childNamed(spPr, "ln");
+  const ref = original?.nextElementSibling ?? firstChildIn(spPr, AFTER_LINE_LOCAL_NAMES);
+  const line = original
+    ? (original.cloneNode(true) as Element)
+    : spPr.ownerDocument.createElementNS(A_NS, "a:ln");
+
+  if (op.width !== undefined) line.setAttribute("w", String(Math.round(op.width * 12700)));
+  if (color !== undefined) {
+    // The fill is the first child of a:ln.
+    for (const child of Array.from(line.children)) {
+      if (RPR_FILL_LOCAL_NAMES.has(child.localName)) child.remove();
+    }
+    const fill = spPr.ownerDocument.createElementNS(
+      A_NS,
+      color === null ? "a:noFill" : "a:solidFill",
+    );
+    if (color !== null) {
+      const srgb = spPr.ownerDocument.createElementNS(A_NS, "a:srgbClr");
+      srgb.setAttribute("val", color);
+      fill.appendChild(srgb);
+    }
+    line.insertBefore(fill, line.firstElementChild);
+  }
+
+  if (original) removeChild(original);
+  insertChild(spPr, line, ref);
+  const lined = node as ShapeNodeData | PictureNodeData;
+  const previousLine = lined.line;
+  lined.line = new SafeXmlNode(line);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      const restoreRef = line.nextElementSibling;
+      removeChild(line);
+      if (original) insertChild(spPr, original, restoreRef);
+      lined.line = previousLine;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+async function applyAddImage(pres: PresentationData, op: AddImageOperation): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const extension = IMAGE_EXTENSIONS[op.contentType];
+  if (!extension) {
+    throw new Error(`applyEdit: unsupported image type "${op.contentType}".`);
+  }
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const doc = spTree.ownerDocument;
+
+  let size = op.size;
+  if (!size) {
+    const natural = readImageSize(op.data) ?? { w: pres.width / 2, h: pres.height / 2 };
+    const scale = Math.min(1, (pres.width * 0.8) / natural.w, (pres.height * 0.8) / natural.h);
+    size = { w: natural.w * scale, h: natural.h * scale };
+  }
+  const position = op.position ?? {
+    x: (pres.width - size.w) / 2,
+    y: (pres.height - size.h) / 2,
+  };
+
+  const media = await addMediaPart(pres, extension, op.contentType, op.data);
+  const rels = await addSlideRels(pres, slide, [{ type: IMAGE_REL_TYPE, target: media.target }]);
+  const [rId] = rels.ids;
+
+  const id = nextShapeId(spTree);
+  const name = op.name ?? `Picture ${id - 1}`;
+  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [attr, value] of Object.entries(attrs)) element.setAttribute(attr, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+  const blip = el("a:blip");
+  blip.setAttributeNS(R_NS, "r:embed", rId);
+  const pic = el(
+    "p:pic",
+    {},
+    el(
+      "p:nvPicPr",
+      {},
+      el("p:cNvPr", { id: String(id), name, descr: name }),
+      el("p:cNvPicPr", {}, el("a:picLocks", { noChangeAspect: "1" })),
+      el("p:nvPr"),
+    ),
+    el("p:blipFill", {}, blip, el("a:stretch", {}, el("a:fillRect"))),
+    el(
+      "p:spPr",
+      {},
+      el(
+        "a:xfrm",
+        {},
+        el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+        el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+      ),
+      el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+    ),
+  );
+  // extLst, when present, has to stay the last child of spTree.
+  const extLst = Array.from(spTree.children).find((child) => child.localName === "extLst");
+  insertChild(spTree, pic, extLst ?? null);
+
+  const picNode = parseAddedNode(pres, slide, pic);
+  slide.nodes.push(picNode);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    createdNodeIds: [picNode.id],
+    undo: () => {
+      removeChild(pic);
+      slide.nodes.splice(slide.nodes.indexOf(picNode), 1);
+      rels.undo();
+      media.undo();
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
 
 interface SlideListContext {
   sourcePackage: PptxPackage;
@@ -881,8 +2203,6 @@ function relsPathFor(partPath: string): string {
   return `${dir}/_rels/${name}.rels`;
 }
 
-// --- moveSlide -------------------------------------------------------------
-
 async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): Promise<EditResult> {
   const ctx = await loadSlideListContext(pres);
   const slide = findSlide(pres, op.slideId);
@@ -917,8 +2237,6 @@ async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): P
     },
   };
 }
-
-// --- duplicateSlide ----------------------------------------------------------
 
 function nextSlidePartPath(sourcePackage: PptxPackage): string {
   let max = 0;
@@ -958,28 +2276,58 @@ async function applyDuplicateSlide(
   const sourceIndex = pres.slides.indexOf(source);
   const { element: sourceSldIdElement } = findSldIdEntry(ctx, op.slideId);
 
-  const newPath = nextSlidePartPath(sourcePackage);
-  const newRelsPath = relsPathFor(newPath);
-
   const slideText = await sourcePackage.readText(source.id);
   if (slideText === undefined) {
     throw new Error(`applyEdit: slide part "${source.id}" is missing from the package.`);
   }
   const slideRelsText = await sourcePackage.readText(relsPathFor(source.id));
+
+  return insertSlidePart(pres, ctx, {
+    slideText,
+    slideRelsText,
+    contentTypeFrom: source.id,
+    afterSldIdElement: sourceSldIdElement,
+    index: sourceIndex + 1,
+  });
+}
+
+interface InsertSlidePartOptions {
+  slideText: string;
+  slideRelsText: string | undefined;
+  /** Existing slide part whose content type override to copy. */
+  contentTypeFrom?: string;
+  /** Insert the `p:sldId` after this entry; `null` appends. */
+  afterSldIdElement: Element | null;
+  /** Position of the new slide in the deck. */
+  index: number;
+}
+
+/**
+ * Registers a new slide part on the package (part, rels, content type,
+ * presentation relationship, and `p:sldId`) and parses it into the model.
+ */
+async function insertSlidePart(
+  pres: PresentationData,
+  ctx: SlideListContext,
+  options: InsertSlidePartOptions,
+): Promise<EditResult> {
+  const { sourcePackage } = ctx;
+  const { slideText, slideRelsText, contentTypeFrom, afterSldIdElement, index } = options;
+
+  const newPath = nextSlidePartPath(sourcePackage);
+  const newRelsPath = relsPathFor(newPath);
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
-  // --- Package parts ---
   sourcePackage.setEntry(newPath, slideText);
   if (slideRelsText !== undefined) {
     sourcePackage.setEntry(newRelsPath, slideRelsText);
   }
 
-  // --- [Content_Types].xml: add an Override for the new part ---
   const ctRoot = parseXml(ctText);
   const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
-  const sourceOverride = ctRoot
-    .children("Override")
-    .find((o) => o.attr("PartName") === `/${source.id}`);
+  const sourceOverride = contentTypeFrom
+    ? ctRoot.children("Override").find((o) => o.attr("PartName") === `/${contentTypeFrom}`)
+    : undefined;
   const overrideElement = ctRootElement.ownerDocument.createElementNS(CT_NS, "Override");
   overrideElement.setAttribute("PartName", `/${newPath}`);
   overrideElement.setAttribute(
@@ -989,7 +2337,6 @@ async function applyDuplicateSlide(
   insertChild(ctRootElement, overrideElement, null);
   sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
 
-  // --- presentation.xml.rels: relationship for the new part ---
   const newRId = nextRelId(ctx.rels);
   const relsRoot = parseXml(ctx.relsText);
   const relsRootElement = requireElement(relsRoot, "presentation rels root");
@@ -1000,22 +2347,20 @@ async function applyDuplicateSlide(
   insertChild(relsRootElement, relElement, null);
   sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
-  // --- presentation.xml: sldId entry directly after the source slide ---
   const sldIdElement = ctx.lstElement.ownerDocument.createElementNS(P_NS, "p:sldId");
   sldIdElement.setAttribute("id", String(nextSldIdNumber(ctx)));
   sldIdElement.setAttributeNS(R_NS, "r:id", newRId);
-  insertChild(ctx.lstElement, sldIdElement, sourceSldIdElement.nextElementSibling);
+  insertChild(ctx.lstElement, sldIdElement, afterSldIdElement?.nextElementSibling ?? null);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
-  // --- Model: parse the copy through the regular slide pipeline ---
   const newRoot = parseXml(slideText);
   sourcePackage.registerXmlRoot(newPath, newRoot);
   const newRels = parseRels(slideRelsText ?? "");
-  const newSlide = parseSlide(newRoot, sourceIndex + 1, newRels, newPath, pres.diagramDrawings);
+  const newSlide = parseSlide(newRoot, index, newRels, newPath, pres.diagramDrawings);
   if (newSlide.layoutIndex) {
     newSlide.layoutIndex = resolveRelTarget("ppt/slides", newSlide.layoutIndex);
   }
-  pres.slides.splice(sourceIndex + 1, 0, newSlide);
+  pres.slides.splice(index, 0, newSlide);
   reindexSlides(pres);
   materializeSlide(pres, newSlide);
 
@@ -1035,7 +2380,158 @@ async function applyDuplicateSlide(
   };
 }
 
-// --- deleteSlide -------------------------------------------------------------
+const SLIDE_LAYOUT_REL_TYPE =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout";
+/** Layout placeholders PowerPoint leaves off a new slide (header/footer furniture). */
+const SKIPPED_PLACEHOLDER_TYPES = new Set(["dt", "ftr", "sldNum", "hdr"]);
+
+const EMPTY_SLIDE_XML =
+  `<p:sld xmlns:a="${A_NS}" xmlns:r="${R_NS}" xmlns:p="${P_NS}">` +
+  "<p:cSld><p:spTree>" +
+  '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
+  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
+  "</p:spTree></p:cSld>" +
+  "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>" +
+  "</p:sld>";
+
+/**
+ * Builds slide XML holding an empty copy of each content placeholder on the
+ * layout. The copies carry only the `p:ph` reference, so position, size and
+ * text styles keep inheriting from the layout.
+ */
+function buildSlideFromLayout(layoutSpTree: SafeXmlNode): string {
+  const root = parseXml(EMPTY_SLIDE_XML);
+  const rootElement = requireElement(root, "slide root");
+  const doc = rootElement.ownerDocument;
+  const spTree = requireElement(root.child("cSld").child("spTree"), "spTree");
+
+  const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
+    const element = doc.createElementNS(
+      qualifiedName.startsWith("a:") ? A_NS : P_NS,
+      qualifiedName,
+    );
+    for (const [name, value] of Object.entries(attrs)) element.setAttribute(name, value);
+    for (const child of children) element.appendChild(child);
+    return element;
+  };
+
+  let nextId = 2;
+  for (const sp of layoutSpTree.children("sp")) {
+    const nvSpPr = sp.child("nvSpPr");
+    const ph = nvSpPr.child("nvPr").child("ph");
+    const phElement = ph.element;
+    if (!phElement || SKIPPED_PLACEHOLDER_TYPES.has(ph.attr("type") ?? "")) continue;
+
+    const phCopy = doc.importNode(phElement, true) as Element;
+    phCopy.removeAttribute("hasCustomPrompt");
+    const id = nextId++;
+    const name = nvSpPr.child("cNvPr").attr("name") ?? `Placeholder ${id - 1}`;
+
+    spTree.appendChild(
+      el(
+        "p:sp",
+        {},
+        el(
+          "p:nvSpPr",
+          {},
+          el("p:cNvPr", { id: String(id), name }),
+          el("p:cNvSpPr", {}, el("a:spLocks", { noGrp: "1" })),
+          el("p:nvPr", {}, phCopy),
+        ),
+        el("p:spPr"),
+        el(
+          "p:txBody",
+          {},
+          el("a:bodyPr"),
+          el("a:lstStyle"),
+          el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
+        ),
+      ),
+    );
+  }
+
+  return serializePartText(rootElement, "");
+}
+
+async function applyAddSlide(pres: PresentationData, op: AddSlideOperation): Promise<EditResult> {
+  const ctx = await loadSlideListContext(pres);
+  const anchor = op.afterSlideId
+    ? findSlide(pres, op.afterSlideId)
+    : pres.slides[pres.slides.length - 1];
+
+  const layoutId = op.layoutId ?? anchor?.layoutIndex ?? pres.layouts.keys().next().value;
+  const layout = layoutId ? pres.layouts.get(layoutId) : undefined;
+  if (!layoutId || !layout) {
+    throw new Error(`applyEdit: unknown slide layout "${layoutId ?? ""}".`);
+  }
+
+  // Slides live in ppt/slides/, so the layout target is relative to it.
+  const layoutTarget = `../${layoutId.replace(/^ppt\//, "")}`;
+  const slideRelsText =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+    `<Relationships xmlns="${RELS_NS}">` +
+    `<Relationship Id="rId1" Type="${SLIDE_LAYOUT_REL_TYPE}" Target="${layoutTarget}"/>` +
+    "</Relationships>";
+
+  return insertSlidePart(pres, ctx, {
+    slideText: buildSlideFromLayout(layout.spTree),
+    slideRelsText,
+    contentTypeFrom: anchor?.id,
+    afterSldIdElement: anchor
+      ? findSldIdEntry(ctx, anchor.id).element
+      : (sldIdElements(ctx).at(-1) ?? null),
+    index: anchor ? pres.slides.indexOf(anchor) + 1 : pres.slides.length,
+  });
+}
+
+function applySetSlideBackground(
+  pres: PresentationData,
+  op: SetSlideBackgroundOperation,
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  materializeSlide(pres, slide);
+  const color = op.color === null ? null : parseHexColor(op.color);
+
+  const cSld = sourcePackage.getXmlRoot(slide.id)?.child("cSld");
+  const cSldElement = cSld ? requireElement(cSld, "cSld") : null;
+  if (!cSldElement) throw new Error(`applyEdit: slide part "${slide.id}" is not loaded.`);
+
+  const prevBackground = slide.background;
+  const oldBg = childNamed(cSldElement, "bg");
+  const ref = oldBg?.nextElementSibling ?? cSldElement.firstElementChild;
+
+  let newBg: Element | null = null;
+  if (color !== null) {
+    const doc = cSldElement.ownerDocument;
+    newBg = doc.createElementNS(P_NS, "p:bg");
+    const bgPr = doc.createElementNS(P_NS, "p:bgPr");
+    const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+    const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+    srgb.setAttribute("val", color);
+    solidFill.appendChild(srgb);
+    bgPr.appendChild(solidFill);
+    bgPr.appendChild(doc.createElementNS(A_NS, "a:effectLst"));
+    newBg.appendChild(bgPr);
+  }
+
+  if (oldBg) removeChild(oldBg);
+  // p:bg is the first child of p:cSld.
+  if (newBg) insertChild(cSldElement, newBg, ref);
+  slide.background = newBg ? new SafeXmlNode(newBg) : undefined;
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      const restoreRef = newBg?.nextElementSibling ?? cSldElement.firstElementChild;
+      if (newBg) removeChild(newBg);
+      if (oldBg) insertChild(cSldElement, oldBg, restoreRef);
+      slide.background = prevBackground;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
 
 async function applyDeleteSlide(
   pres: PresentationData,
@@ -1052,18 +2548,15 @@ async function applyDeleteSlide(
   const { element: sldIdElement, rId } = findSldIdEntry(ctx, op.slideId);
   const slideRelsPath = relsPathFor(slide.id);
 
-  // Snapshots for undo.
   const slideBytes = await sourcePackage.readBytes(slide.id);
   const slideRelsBytes = await sourcePackage.readBytes(slideRelsPath);
   const slideXmlRoot = sourcePackage.getXmlRoot(slide.id);
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
-  // --- presentation.xml ---
   const sldIdRef = sldIdElement.nextElementSibling;
   removeChild(sldIdElement);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
-  // --- presentation.xml.rels ---
   const relsRoot = parseXml(ctx.relsText);
   const relsRootElement = requireElement(relsRoot, "presentation rels root");
   const relNode = relsRoot.children("Relationship").find((r) => r.attr("Id") === rId);
@@ -1072,7 +2565,6 @@ async function applyDeleteSlide(
   }
   sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
-  // --- [Content_Types].xml ---
   const ctRoot = parseXml(ctText);
   const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
   const overrideNode = ctRoot
@@ -1083,11 +2575,10 @@ async function applyDeleteSlide(
     sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
   }
 
-  // --- Parts (media stays; shared and harmless when orphaned) ---
+  // Media parts stay: they may be shared, and orphans are harmless.
   sourcePackage.deleteEntry(slide.id);
   sourcePackage.deleteEntry(slideRelsPath);
 
-  // --- Model ---
   pres.slides.splice(slideIndex, 1);
   reindexSlides(pres);
 

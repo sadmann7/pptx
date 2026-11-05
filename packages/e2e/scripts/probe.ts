@@ -1,9 +1,5 @@
 /**
- * Reads a screenshot back at the pixel level, or magnifies a crop of it.
- *
- * Prints the channel values along a row or column so a washed-out hairline
- * (partial coverage spread over two device pixels) can be told apart from a
- * genuinely wrong border colour:
+ * Prints a screenshot's pixel values along a row or column, or magnifies a crop:
  *
  *   pnpm probe out/table-borders.pptx-0.png --col 416 --y 180:200
  *   pnpm probe out/table-borders.pptx-0.png --row 300 --x 90:1060

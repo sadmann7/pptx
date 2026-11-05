@@ -115,18 +115,11 @@ export interface PptxViewerEventMap {
 }
 
 /**
- * Scales a rendered slide element to its display size.
- *
- * Uses `zoom` rather than `transform: scale()`: a transform rasterises the
- * slide at its intrinsic size, so at a fractional scale every hairline lands
- * between device pixels and is spread across two of them at partial coverage,
- * which leaves table rules and thin shape outlines washed out and tinted by
- * whatever they sit on. `zoom` scales at layout time, so those lines snap to
- * whole device pixels and stay crisp, the way PowerPoint draws them.
- *
- * Client rects are reported in the same post-zoom coordinates a transform
- * produced, so overlays that map slide coordinates by multiplying by the scale
- * keep working unchanged.
+ * Scales a rendered slide element to its display size with `zoom` rather than
+ * `transform: scale()`. A transform rasterises at the intrinsic size, so at a
+ * fractional scale hairlines (table rules, thin outlines) straddle two device
+ * pixels and wash out; `zoom` scales at layout time, so they stay crisp, as in
+ * PowerPoint. Client rects come back in the same post-zoom coordinates.
  */
 export function applySlideScale(element: HTMLElement, scale: number): void {
   element.style.setProperty("zoom", String(scale));
@@ -173,7 +166,6 @@ export class PptxViewer extends EventTarget {
     this._fitMode = options?.fitMode ?? "contain";
     this.zoomFactor = zoomPercent / 100;
 
-    // Register shorthand callbacks as event listeners
     if (options?.onSlideChange) {
       const cb = options.onSlideChange;
       this.addEventListener("slidechange", ((e: CustomEvent) =>
@@ -209,10 +201,6 @@ export class PptxViewer extends EventTarget {
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Event dispatch helpers
-  // -----------------------------------------------------------------------
-
   private emitRenderStart(): void {
     this._isRendering = true;
     this.dispatchEvent(new Event("renderstart"));
@@ -243,10 +231,6 @@ export class PptxViewer extends EventTarget {
     this.dispatchEvent(new CustomEvent("nodeerror", { detail: { nodeId, error } }));
   }
 
-  // -----------------------------------------------------------------------
-  // Public: load / render modes
-  // -----------------------------------------------------------------------
-
   /**
    * Loads a parsed presentation model. Does NOT render. Call `renderList()` or
    * `renderSlide()` afterwards.
@@ -261,9 +245,7 @@ export class PptxViewer extends EventTarget {
     this.setupAdaptiveResize();
   }
 
-  /**
-   * Renders all slides in a scrollable list.
-   */
+  /** Renders all slides in a scrollable list. */
   async renderList(options?: ListRenderOptions): Promise<void> {
     this.activeRenderMode = "list";
     this.listOptions = {
@@ -276,9 +258,7 @@ export class PptxViewer extends EventTarget {
     await this.queueRender();
   }
 
-  /**
-   * Renders a single slide (no built-in nav UI).
-   */
+  /** Renders a single slide, without navigation UI. */
   async renderSlide(index?: number): Promise<void> {
     this.activeRenderMode = "slide";
     if (index !== undefined && this.presentation) {
@@ -286,10 +266,6 @@ export class PptxViewer extends EventTarget {
     }
     await this.queueRender();
   }
-
-  // -----------------------------------------------------------------------
-  // Instance open
-  // -----------------------------------------------------------------------
 
   async open(
     input: PptxSource,
@@ -310,7 +286,6 @@ export class PptxViewer extends EventTarget {
 
     checkAborted();
 
-    // Clean up previous state
     this.destroy();
 
     const buffer = await normalizePptxSource(input);
@@ -342,10 +317,6 @@ export class PptxViewer extends EventTarget {
     checkAborted();
   }
 
-  // -----------------------------------------------------------------------
-  // Static factory
-  // -----------------------------------------------------------------------
-
   static async open(
     input: PptxSource,
     container: HTMLElement,
@@ -367,10 +338,6 @@ export class PptxViewer extends EventTarget {
     });
     return viewer;
   }
-
-  // -----------------------------------------------------------------------
-  // Navigation
-  // -----------------------------------------------------------------------
 
   async goToSlide(index: number, scrollOptions?: ScrollIntoViewOptions): Promise<void> {
     if (!this.presentation) return;
@@ -417,10 +384,6 @@ export class PptxViewer extends EventTarget {
     await this.queueRender();
   }
 
-  // -----------------------------------------------------------------------
-  // Getters
-  // -----------------------------------------------------------------------
-
   get presentationData(): PresentationData | null {
     return this.presentation;
   }
@@ -453,10 +416,6 @@ export class PptxViewer extends EventTarget {
     return this._fitMode;
   }
 
-  // -----------------------------------------------------------------------
-  // Typed event helpers
-  // -----------------------------------------------------------------------
-
   on<K extends keyof PptxViewerEventMap>(
     type: K,
     listener: (event: PptxViewerEventMap[K]) => void,
@@ -480,10 +439,6 @@ export class PptxViewer extends EventTarget {
   getMountedSlides(): number[] {
     return [...this.mountedSlides].sort((a, b) => a - b);
   }
-
-  // -----------------------------------------------------------------------
-  // External slide rendering
-  // -----------------------------------------------------------------------
 
   /**
    * Renders a single slide into an external container element.
@@ -650,13 +605,7 @@ export class PptxViewer extends EventTarget {
    * Hook called after rendering a single slide. Override in subclasses to
    * append additional UI (e.g. navigation buttons).
    */
-  protected afterSingleSlideRender(): void {
-    // No-op in base class
-  }
-
-  // -----------------------------------------------------------------------
-  // Cleanup
-  // -----------------------------------------------------------------------
+  protected afterSingleSlideRender(): void {}
 
   destroy(): void {
     this.renderGeneration++;
@@ -691,10 +640,6 @@ export class PptxViewer extends EventTarget {
   [Symbol.dispose](): void {
     this.destroy();
   }
-
-  // -----------------------------------------------------------------------
-  // Internal: rendering pipeline
-  // -----------------------------------------------------------------------
 
   private normalizeZoomPercent(percent: number): number {
     if (!Number.isFinite(percent)) return 100;
@@ -878,10 +823,6 @@ export class PptxViewer extends EventTarget {
 
           if (this.isRenderStale(renderGeneration)) return;
 
-          // Post-render width correction: appending slides may cause a scrollbar
-          // to appear on the page, narrowing the container. If the measured width
-          // changed, patch wrapper sizes and scale transforms in-place so content
-          // is not clipped by the (now narrower) container.
           if (this.activeRenderMode !== "slide") {
             this.correctListMetricsIfNeeded();
           }
@@ -1254,11 +1195,9 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * After list-mode rendering, a scrollbar may appear on the page body
-   * (or a scroll ancestor), narrowing the container. If the container's
-   * clientWidth now differs from the width used to compute the initial
-   * scale, patch every wrapper's dimensions and each slide element's
-   * transform in-place; no DOM rebuild required.
+   * Appending slides can bring up a page scrollbar that narrows the container.
+   * When its width changed since the scale was computed, resize every wrapper
+   * and rescale each slide in place, without rebuilding the DOM.
    */
   private correctListMetricsIfNeeded(): void {
     if (!this.presentation) return;
@@ -1268,21 +1207,18 @@ export class PptxViewer extends EventTarget {
     const currentWidth = this.container.clientWidth || 0;
     if (!currentWidth || currentWidth === this.lastMeasuredContainerWidth) return;
 
-    // Width changed: recompute metrics
     this.lastMeasuredContainerWidth = currentWidth;
     const fitScale = currentWidth / this.presentation.width;
     const newScale = fitScale * this.zoomFactor;
     const newDisplayW = this.presentation.width * newScale;
     const newDisplayH = this.presentation.height * newScale;
 
-    // Patch every slide wrapper in the list
     const items = this.container.querySelectorAll<HTMLElement>("[data-slide-index]");
     for (const item of items) {
       const wrapper = item.firstElementChild as HTMLElement | null;
       if (!wrapper) continue;
       wrapper.style.width = `${newDisplayW}px`;
       wrapper.style.height = `${newDisplayH}px`;
-      // The slide element is the first child of the wrapper
       const slideEl = wrapper.firstElementChild as HTMLElement | null;
       if (slideEl) {
         applySlideScale(slideEl, newScale);
@@ -1298,10 +1234,6 @@ export class PptxViewer extends EventTarget {
     }
   }
 }
-
-// -----------------------------------------------------------------------
-// Standalone helper (shared with Renderer.ts)
-// -----------------------------------------------------------------------
 
 export async function normalizePptxSource(input: PptxSource): Promise<ArrayBuffer> {
   if (input instanceof ArrayBuffer) return input;

@@ -122,7 +122,7 @@ Requires the deck to have been loaded with `{ readOnly: false }`.
 
 ```ts
 await store.edit(op: EditOperation): Promise<EditResult>
-store.undo(): boolean
+await store.undo(): Promise<boolean>
 await store.redo(): Promise<boolean>
 store.canUndo(): boolean
 store.canRedo(): boolean
@@ -145,7 +145,7 @@ store.on("zoomChange", ({ zoom, previousZoom, reason }) => {});
 
 ## Edit operations
 
-All operations accept `slideId` and `nodeId` (both strings).
+Operations name their target by `slideId`, and shape operations by `nodeId` as well (both strings). Positions and sizes are in slide pixels at 96 DPI.
 
 ### `setTextRun`
 
@@ -164,7 +164,7 @@ await store.edit({
 
 ### `setTextBody`
 
-Replace all paragraphs and runs in a shape.
+Replace all paragraphs and runs in a shape. `sourceParagraphIndex` names the existing paragraph whose formatting each new one copies (`-1` for none).
 
 ```ts
 await store.edit({
@@ -173,9 +173,11 @@ await store.edit({
   nodeId,
   paragraphs: [
     {
+      sourceParagraphIndex: 0,
       runs: [{ text: "Line one" }],
     },
     {
+      sourceParagraphIndex: 1,
       runs: [{ text: "Line two" }],
     },
   ],
@@ -184,18 +186,16 @@ await store.edit({
 
 ### `setNodeTransform`
 
-Move or resize a shape. All values are in slide pixels.
+Move, resize, rotate, or flip a shape. Every field is optional.
 
 ```ts
 await store.edit({
   type: "setNodeTransform",
   slideId,
   nodeId,
-  x: 100,
-  y: 50,
-  width: 400,
-  height: 200,
-  rotation: 0, // degrees, optional
+  position: { x: 100, y: 50 },
+  size: { w: 400, h: 200 },
+  rotation: 0, // degrees
 });
 ```
 
@@ -208,7 +208,7 @@ await store.edit({
   type: "setSolidFill",
   slideId,
   nodeId,
-  color: "#3b82f6", // hex
+  color: "#3b82f6", // hex, with or without "#"
 });
 ```
 
@@ -244,6 +244,26 @@ Remove a slide.
 await store.edit({ type: "deleteSlide", slideId });
 ```
 
+### More operations
+
+These have examples under [Programmatic edits](/docs/editing#programmatic-edits).
+
+| Operation            | Does                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `setTextStyle`       | Bold, italic, underline, strikethrough, color, font, and size, for a `range` or all text |
+| `setParagraphStyle`  | Paragraph alignment, for the paragraphs a `range` touches or all of them                 |
+| `setOutline`         | A shape's or picture's outline color and width                                           |
+| `addSlide`           | A new slide from a layout                                                                |
+| `setSlideBackground` | A slide's own background color, or `null` to inherit the layout's                        |
+| `addTextBox`         | A text box, centered and empty by default                                                |
+| `addShape`           | A preset shape, styled from the theme                                                    |
+| `addImage`           | A PNG, JPEG, or GIF picture                                                              |
+| `duplicateNode`      | A copy of a shape, offset 10 px                                                          |
+| `reorderNode`        | Moves a shape to the front or back, or one step forward or backward                      |
+| `pasteNodes`         | Shapes copied with `copyNodes`, from this deck or another                                |
+
+Edits that create a slide return its id in `createdSlideId`; edits that create shapes return theirs in `createdNodeIds`.
+
 ### `batch`
 
 Group multiple operations into a single undoable step.
@@ -251,7 +271,7 @@ Group multiple operations into a single undoable step.
 ```ts
 await store.edit({
   type: "batch",
-  ops: [
+  operations: [
     { type: "deleteNode", slideId, nodeId: "2" },
     { type: "deleteNode", slideId, nodeId: "3" },
   ],
@@ -265,6 +285,7 @@ import {
   useHistory, // { canUndo, canRedo, isDirty, undo, redo }
   usePresentation, // { presentation, status, progress, error }
   usePresentationStore, // the ambient store, for imperative calls
+  useSelection, // the editing overlay's selection and formatting commands
   useSlide, // { slide, slideId, index }
   useZoom, // { zoom, isAutoFit, setZoom, zoomIn, zoomOut, setAutoFit, fitTo }
 } from "@diceui/pptx";
@@ -282,7 +303,7 @@ function HistoryButtons() {
 
   return (
     <>
-      <button disabled={!canUndo} onClick={undo}>
+      <button disabled={!canUndo} onClick={() => void undo()}>
         Undo
       </button>
       <button disabled={!canRedo} onClick={() => void redo()}>

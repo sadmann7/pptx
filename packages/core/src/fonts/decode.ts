@@ -1,14 +1,4 @@
-/**
- * Pure decode pipeline for embedded PPTX fonts (.fntdata).
- *
- * .fntdata files are EOT (Embedded OpenType) containers whose payload may be
- * MTX-compressed (MicroType Express) and/or XOR-obfuscated. This module
- * dispatches on the container's own flags and returns a raw
- * TrueType/OpenType binary.
- *
- * Kept free of DOM dependencies so it runs identically on the main thread
- * and inside a Web Worker.
- */
+// Keep DOM-free: this module also runs inside the font worker.
 
 import { deobfuscateFont } from "./deobfuscate";
 import { eotToTtf, MtxError, type MtxErrorCode, parseEotMetadata } from "./mtx";

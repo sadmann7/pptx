@@ -6,20 +6,19 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Presentation } from "../index";
-import type { GripDirection, Rect, SelectionChangeEvent } from "../selection";
+import type { HandleDirection, Rect } from "../selection/geometry";
 import {
-  MIN_SIZE,
-  cleanText,
   constrainMove,
   getNodeRect,
-  gripScale,
+  handleScale,
+  MIN_SIZE,
   mergeSelection,
-  readBackTextBody,
   resizeRect,
-  scaleRectFromGrip,
-  textBodyChanged,
+  scaleRectFromHandle,
   toggleSelection,
-} from "../selection";
+} from "../selection/geometry";
+import type { SelectionChangeEvent } from "../selection/selection";
+import { cleanText, readBackTextBody, textBodyChanged } from "../selection/text-range";
 import { createStore } from "../store";
 import { editableStore } from "./test-utils";
 
@@ -163,62 +162,62 @@ describe("resizeRect", () => {
 
   describe("zero deltas", () => {
     it("returns same rect when dx=0 dy=0 for any handle", () => {
-      const grips: GripDirection[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
-      for (const h of grips) {
+      const handles: HandleDirection[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+      for (const h of handles) {
         expect(resizeRect(origin, h, 0, 0)).toEqual(origin);
       }
     });
   });
 });
 
-describe("gripScale", () => {
+describe("handleScale", () => {
   const origin: Rect = { x: 100, y: 100, w: 200, h: 100 };
 
   it("reports the factor a corner drag scaled each axis by", () => {
-    expect(gripScale(origin, "se", 100, 50)).toEqual({ x: 1.5, y: 1.5 });
+    expect(handleScale(origin, "se", 100, 50)).toEqual({ x: 1.5, y: 1.5 });
   });
 
   it("leaves the untouched axis at 1 for a side handle", () => {
-    expect(gripScale(origin, "e", 200, 0)).toEqual({ x: 2, y: 1 });
-    expect(gripScale(origin, "s", 0, 100)).toEqual({ x: 1, y: 2 });
+    expect(handleScale(origin, "e", 200, 0)).toEqual({ x: 2, y: 1 });
+    expect(handleScale(origin, "s", 0, 100)).toEqual({ x: 1, y: 2 });
   });
 
   it("reports factors below 1 when shrinking from a west handle", () => {
-    expect(gripScale(origin, "w", 100, 0)).toEqual({ x: 0.5, y: 1 });
+    expect(handleScale(origin, "w", 100, 0)).toEqual({ x: 0.5, y: 1 });
   });
 
   it("reports equal factors on a corner with the aspect locked", () => {
     const square: Rect = { x: 0, y: 0, w: 100, h: 100 };
-    const scale = gripScale(square, "se", 100, 10, true);
+    const scale = handleScale(square, "se", 100, 10, true);
     expect(scale.x).toBeCloseTo(scale.y);
   });
 
   it("reports 1 for an axis with no extent to scale", () => {
-    expect(gripScale({ x: 0, y: 0, w: 0, h: 0 }, "se", 50, 50)).toEqual({ x: 1, y: 1 });
+    expect(handleScale({ x: 0, y: 0, w: 0, h: 0 }, "se", 50, 50)).toEqual({ x: 1, y: 1 });
   });
 });
 
-describe("scaleRectFromGrip", () => {
+describe("scaleRectFromHandle", () => {
   const rect: Rect = { x: 100, y: 200, w: 200, h: 100 };
 
   it("reproduces resizeRect for the shape whose handle was dragged", () => {
-    for (const grip of ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const) {
-      const expected = resizeRect(rect, grip, 60, 40);
-      const scaled = scaleRectFromGrip(rect, grip, gripScale(rect, grip, 60, 40));
-      expect(scaled, grip).toEqual(expected);
+    for (const handle of ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const) {
+      const expected = resizeRect(rect, handle, 60, 40);
+      const scaled = scaleRectFromHandle(rect, handle, handleScale(rect, handle, 60, 40));
+      expect(scaled, handle).toEqual(expected);
     }
   });
 
-  it("anchors the edges opposite the grip", () => {
+  it("anchors the edges opposite the handle", () => {
     // South-east grows right and down, leaving the top-left corner put.
-    expect(scaleRectFromGrip(rect, "se", { x: 2, y: 2 })).toEqual({
+    expect(scaleRectFromHandle(rect, "se", { x: 2, y: 2 })).toEqual({
       x: 100,
       y: 200,
       w: 400,
       h: 200,
     });
     // North-west grows left and up, leaving the bottom-right corner put.
-    expect(scaleRectFromGrip(rect, "nw", { x: 2, y: 2 })).toEqual({
+    expect(scaleRectFromHandle(rect, "nw", { x: 2, y: 2 })).toEqual({
       x: -100,
       y: 100,
       w: 400,
@@ -229,7 +228,7 @@ describe("scaleRectFromGrip", () => {
   it("scales a shape in place rather than repositioning it in the selection", () => {
     // A far-away shape keeps its anchored corner: gaps do not scale.
     const far: Rect = { x: 1000, y: 500, w: 100, h: 100 };
-    expect(scaleRectFromGrip(far, "se", { x: 2, y: 2 })).toEqual({
+    expect(scaleRectFromHandle(far, "se", { x: 2, y: 2 })).toEqual({
       x: 1000,
       y: 500,
       w: 200,
@@ -239,14 +238,14 @@ describe("scaleRectFromGrip", () => {
 
   it("clamps each shape to MIN_SIZE so nothing collapses", () => {
     const tiny: Rect = { x: 0, y: 0, w: 20, h: 20 };
-    const result = scaleRectFromGrip(tiny, "se", { x: 0.01, y: 0.01 });
+    const result = scaleRectFromHandle(tiny, "se", { x: 0.01, y: 0.01 });
     expect(result.w).toBe(MIN_SIZE);
     expect(result.h).toBe(MIN_SIZE);
   });
 
-  it("keeps a clamped shape anchored at the grip's opposite edge", () => {
+  it("keeps a clamped shape anchored at the handle's opposite edge", () => {
     const tiny: Rect = { x: 200, y: 200, w: 20, h: 20 };
-    const result = scaleRectFromGrip(tiny, "nw", { x: 0.01, y: 0.01 });
+    const result = scaleRectFromHandle(tiny, "nw", { x: 0.01, y: 0.01 });
     expect(result.x + result.w).toBe(220);
     expect(result.y + result.h).toBe(220);
   });
@@ -717,8 +716,8 @@ describe("multi-selection handles", () => {
     });
   }
 
-  function gripCount(container: HTMLElement): number {
-    return container.querySelectorAll("[data-resize-grip]").length;
+  function handleCount(container: HTMLElement): number {
+    return container.querySelectorAll("[data-resize-handle]").length;
   }
 
   it("keeps handles up while Shift+clicking a second shape", async () => {
@@ -726,7 +725,7 @@ describe("multi-selection handles", () => {
     expect(shapeElements.length).toBeGreaterThan(1);
 
     clickShape(overlay, shapeElements[0]);
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
 
     // Mid-press the selection is only being toggled, so the handles must not
     // blink off and back on when the press resolves.
@@ -740,19 +739,39 @@ describe("multi-selection handles", () => {
         shiftKey: true,
       });
     });
-    expect(gripCount(container)).toBeGreaterThan(0);
+    expect(handleCount(container)).toBeGreaterThan(0);
 
     act(() => {
       fireEvent.pointerUp(overlay, { pointerId: 1, shiftKey: true });
     });
-    expect(gripCount(container)).toBe(16);
+    expect(handleCount(container)).toBe(16);
+  });
+
+  it("reports a press on another shape as selected until it drags", async () => {
+    const modes: string[] = [];
+    const { overlay, shapeElements } = await renderSelection({
+      onModeChange: (mode: string) => modes.push(mode),
+    });
+
+    clickShape(overlay, shapeElements[0]);
+    clickShape(overlay, shapeElements[1]);
+    expect(modes).not.toContain("move");
+
+    hitTarget = shapeElements[1];
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+    });
+    act(() => {
+      fireEvent.pointerMove(overlay, { buttons: 1, clientX: 60, clientY: 60, pointerId: 1 });
+    });
+    expect(modes.at(-1)).toBe("move");
   });
 
   it("keeps handles up while Shift+clicking empty canvas", async () => {
     const { overlay, container, shapeElements } = await renderSelection();
 
     clickShape(overlay, shapeElements[0]);
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
 
     // A Shift press on empty canvas keeps the selection to add to, so until the
     // band actually starts the handles must stay put.
@@ -766,12 +785,12 @@ describe("multi-selection handles", () => {
         shiftKey: true,
       });
     });
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
 
     act(() => {
       fireEvent.pointerUp(overlay, { pointerId: 1, shiftKey: true });
     });
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
   });
 
   it("drops the handles once a band is actually under way", async () => {
@@ -798,14 +817,14 @@ describe("multi-selection handles", () => {
       });
     });
 
-    expect(gripCount(container)).toBe(0);
+    expect(handleCount(container)).toBe(0);
   });
 
   it("drops the handles once a drag is actually under way", async () => {
     const { overlay, container, shapeElements } = await renderSelection();
 
     clickShape(overlay, shapeElements[0]);
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
 
     hitTarget = shapeElements[0];
     act(() => {
@@ -814,12 +833,12 @@ describe("multi-selection handles", () => {
     act(() => {
       fireEvent.pointerMove(overlay, { buttons: 1, clientX: 200, clientY: 200, pointerId: 1 });
     });
-    expect(gripCount(container)).toBe(0);
+    expect(handleCount(container)).toBe(0);
 
     await act(async () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
     });
-    expect(gripCount(container)).toBe(8);
+    expect(handleCount(container)).toBe(8);
   });
 
   it("keeps handles on every selected shape", async () => {
@@ -833,7 +852,7 @@ describe("multi-selection handles", () => {
     const boxes = container.querySelectorAll("[data-selection-box]");
     expect(boxes.length).toBeGreaterThan(1);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-resize-grip]")).toHaveLength(8);
+      expect(box.querySelectorAll("[data-resize-handle]")).toHaveLength(8);
     }
   });
 
@@ -849,9 +868,9 @@ describe("multi-selection handles", () => {
 
     // Drag the first shape's south-east handle outward. Separate acts: each
     // handler needs the previous state update flushed to see it.
-    const grip = container.querySelector<HTMLElement>('[data-resize-grip="se"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
     act(() => {
-      fireEvent.pointerDown(grip, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
     });
     act(() => {
       fireEvent.pointerMove(overlay, { clientX: 40, clientY: 40, buttons: 1, pointerId: 1 });
@@ -867,6 +886,50 @@ describe("multi-selection handles", () => {
       expect(size.w).toBeGreaterThan(before[index].w);
       expect(size.h).toBeGreaterThan(before[index].h);
     }
+  });
+});
+
+describe("right-click", () => {
+  function rightClick(overlay: HTMLElement, target: HTMLElement | null): void {
+    hitTarget = target;
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 2, clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerUp(overlay, { button: 2, pointerId: 1 });
+    });
+  }
+
+  it("selects the shape under the pointer", async () => {
+    const onSelectionChange = vi.fn();
+    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+
+    rightClick(overlay, shapeElements[1]);
+    expect(overlay.getAttribute("data-mode")).toBe("selected");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ nodeIds: ["3"] }));
+  });
+
+  it("keeps a selection that already includes the shape", async () => {
+    const onSelectionChange = vi.fn();
+    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    rightClick(overlay, shapeElements[1]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ nodeIds: ["2", "3"] }),
+    );
+  });
+
+  it("clears the selection on empty canvas", async () => {
+    const { overlay } = await renderSelection();
+    act(() => {
+      overlay.focus();
+      fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
+    });
+
+    rightClick(overlay, null);
+    expect(overlay.getAttribute("data-mode")).toBe("idle");
   });
 });
 
@@ -1012,7 +1075,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(document, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("Ctrl+Shift+Z triggers redo callback", async () => {
@@ -1049,7 +1114,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(overlay, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("leaves a keystroke aimed outside the presentation to the host page", async () => {
@@ -1073,7 +1140,7 @@ describe("keyboard shortcuts", () => {
 
     const outside = container.querySelector<HTMLDivElement>("[data-testid='outside']")!;
     act(() => outside.focus());
-    act(() => {
+    await act(async () => {
       fireEvent.keyDown(outside, { key: "z", ctrlKey: true });
     });
 
@@ -1107,7 +1174,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(thumbnail, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("does not bind the shortcut unless asked to handle it", async () => {

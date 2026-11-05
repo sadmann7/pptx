@@ -13,7 +13,7 @@
 import { AdaptiveHuffman } from "../../fonts/mtx/lzcomp";
 import { tripletEncoding } from "../../fonts/mtx/triplet";
 
-// ── Bit output ──────────────────────────────────────────────────────
+// ── Bit output ──────────────────────────────────────────────────────.
 
 export class BitWriter {
   private readonly bits: number[] = [];
@@ -39,7 +39,7 @@ export class BitWriter {
   }
 }
 
-// ── LZCOMP ──────────────────────────────────────────────────────────
+// ── LZCOMP ──────────────────────────────────────────────────────────.
 
 /** A back-reference, expressed the way the decoder reconstructs it. */
 export interface CopyOp {
@@ -201,7 +201,7 @@ export function packRunLength(data: Uint8Array, escape: number): Uint8Array {
   return Uint8Array.from(out);
 }
 
-// ── MTX container ───────────────────────────────────────────────────
+// ── MTX container ───────────────────────────────────────────────────.
 
 export function buildMtx(
   streams: readonly [Uint8Array, Uint8Array, Uint8Array],
@@ -226,7 +226,7 @@ export function buildMtx(
   return out;
 }
 
-// ── EOT container ───────────────────────────────────────────────────
+// ── EOT container ───────────────────────────────────────────────────.
 
 export const TTEMBED_TTCOMPRESSED = 0x00000004;
 export const TTEMBED_XORENCRYPTDATA = 0x10000000;
@@ -249,7 +249,7 @@ export function buildEot(fontData: Uint8Array, flags: number): Uint8Array {
   return out;
 }
 
-// ── CTF value encodings ─────────────────────────────────────────────
+// ── CTF value encodings ─────────────────────────────────────────────.
 
 export function write255UShort(out: number[], value: number): void {
   if (value < 253) out.push(value);
@@ -321,7 +321,7 @@ export function encodeTriplet(dx: number, dy: number, onCurve: boolean): number[
   throw new Error(`No triplet encoding represents (${dx}, ${dy})`);
 }
 
-// ── CTF font model ──────────────────────────────────────────────────
+// ── CTF font model ──────────────────────────────────────────────────.
 
 export interface GlyphPoint {
   x: number;

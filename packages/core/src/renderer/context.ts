@@ -1,9 +1,4 @@
-﻿/**
- * Per-slide render context: holds the resolved theme/master/layout chain,
- * media caches, async task queue, and render options.
- */
-
-import type { ECharts } from "echarts";
+﻿import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "../media/pdf";
 import { LayoutData } from "../model/layout";
@@ -73,7 +68,7 @@ export function createRenderContext(
   chartInstances?: Set<ECharts>,
   pdfjs?: PdfjsConfig,
 ): RenderContext {
-  // Resolve the chain: slide -> layout -> master -> theme
+  // Inheritance runs slide -> layout -> master -> theme.
   const layoutPath = presentation.slideToLayout.get(slide.index) || "";
   const masterPath = presentation.layoutToMaster.get(layoutPath) || "";
   const themePath = presentation.masterToTheme.get(masterPath) || "";

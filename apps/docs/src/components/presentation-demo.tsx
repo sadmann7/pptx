@@ -33,7 +33,7 @@ export function PresentationDemo() {
       })
       .then((buffer) => store.load(buffer))
       .catch(() => {
-        // Fail silently to avoid blocking the main thread.
+        // `load()` errors land in `store.error`; a failed fetch leaves the demo empty.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- store is a stable ref, intentionally omitted from deps
   }, []);
@@ -44,7 +44,7 @@ export function PresentationDemo() {
     try {
       await store.load(file, { readOnly: false });
     } catch {
-      // Fail silently because `load()` already wrote the failure to `store.error`.
+      // `load()` already wrote the failure to `store.error`.
     }
   }
 

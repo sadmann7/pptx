@@ -7,7 +7,8 @@
  * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
  * slide-level edit operations depend on.
  */
-import type { EditOperation, ShapeNodeData } from "@diceui/pptx-core";
+import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
+import { buildPresentation, readPptx } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { EditEvent, HistoryChangeEvent, SlideChangeEvent } from "../store";
@@ -110,7 +111,7 @@ describe("store.edit", () => {
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(0);
 
     // A single undo restores the whole selection.
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(nodeIds.length);
   });
 });
@@ -137,13 +138,13 @@ describe("undo / redo", () => {
     expect(slideText(store, 0)).toBe("Second");
     expect(store.canUndo()).toBe(true);
 
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(slideText(store, 0)).toBe("First");
     expect(store.canRedo()).toBe(true);
 
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(slideText(store, 0)).toBe("Slide 1"); // fixture original
-    expect(store.undo()).toBe(false);
+    expect(await store.undo()).toBe(false);
 
     await expect(store.redo()).resolves.toBe(true);
     expect(slideText(store, 0)).toBe("First");
@@ -166,10 +167,31 @@ describe("undo / redo", () => {
       });
 
     await editOf("A");
-    store.undo();
+    await store.undo();
     await editOf("B");
     expect(store.canRedo()).toBe(false);
     expect(slideText(store, 0)).toBe("B");
+  });
+
+  it("undoes an edit that is still in flight", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    const editOf = (text: string) =>
+      store.edit({
+        type: "setTextRun",
+        slideId,
+        nodeId: "2",
+        paragraphIndex: 0,
+        runIndex: 0,
+        text,
+      });
+
+    await editOf("A");
+    const pending = editOf("B");
+    const undone = store.undo();
+    await pending;
+    expect(await undone).toBe(true);
+    expect(slideText(store, 0)).toBe("A");
   });
 
   it("bumps the slide revision on undo so views re-render", async () => {
@@ -184,7 +206,7 @@ describe("undo / redo", () => {
       text: "x",
     });
     const before = store.getSlideRevision(slideId);
-    store.undo();
+    await store.undo();
     expect(store.getSlideRevision(slideId)).toBe(before + 1);
   });
 
@@ -206,7 +228,7 @@ describe("undo / redo", () => {
     expect(store.getState().activeSlideId).toBe(slide1Id);
 
     // Undo should navigate back to slide 0 (where the edit was).
-    store.undo();
+    await store.undo();
     expect(store.getState().activeSlideId).toBe(slide0Id);
     expect(slideText(store, 0)).toBe("Slide 1");
 
@@ -256,11 +278,22 @@ describe("structural edits and navigation", () => {
     store.goTo(result.createdSlideId!);
     expect(store.getActiveSlideIndex()).toBe(1);
 
-    store.undo();
+    await store.undo();
     expect(store.getState().presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT);
-    // Active moved off the removed copy onto a valid neighbor.
-    expect(store.getState().activeSlideId).not.toBe(result.createdSlideId);
-    expect(store.getActiveSlideIndex()).toBeGreaterThanOrEqual(0);
+    // Back to the slide that was active before the copy, as in PowerPoint.
+    expect(store.getState().activeSlideId).toBe(sourceId);
+  });
+
+  it("undoing an added slide returns to the slide it was added after", async () => {
+    const store = await editableStore();
+    const [first, second] = store.getState().presentation!.slides.map((slide) => slide.id);
+
+    const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: first });
+    store.goTo(createdSlideId!);
+    await store.undo();
+
+    expect(store.getState().activeSlideId).toBe(first);
+    expect(store.getState().activeSlideId).not.toBe(second);
   });
 });
 
@@ -282,7 +315,7 @@ describe("edit and historyChange events", () => {
 
     const operation = textEdit(slideId, "Edited");
     await store.edit(operation);
-    store.undo();
+    await store.undo();
     await store.redo();
 
     expect(events.map((event) => event.source)).toEqual(["edit", "undo", "redo"]);
@@ -299,7 +332,7 @@ describe("edit and historyChange events", () => {
     await store.edit(textEdit(slideId, "Edited"));
     expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
 
-    store.undo();
+    await store.undo();
     expect(events.at(-1)).toEqual({ canUndo: false, canRedo: true, isDirty: false });
 
     await store.redo();
@@ -311,7 +344,7 @@ describe("edit and historyChange events", () => {
     const events: HistoryChangeEvent[] = [];
     store.on("historyChange", (event) => events.push(event));
 
-    expect(store.undo()).toBe(false);
+    expect(await store.undo()).toBe(false);
     expect(await store.redo()).toBe(false);
     expect(events).toHaveLength(0);
   });
@@ -349,7 +382,7 @@ describe("isDirty", () => {
     await store.edit(textEdit(slideId, "One"));
     expect(store.isDirty()).toBe(true);
 
-    store.undo();
+    await store.undo();
     expect(store.isDirty()).toBe(false);
 
     await store.redo();
@@ -366,7 +399,7 @@ describe("isDirty", () => {
 
     // Back to one edit deep, then branch: the deck now holds different content
     // at the same stack depth as the save, so it must not read as clean.
-    store.undo();
+    await store.undo();
     await store.edit(textEdit(slideId, "Three"));
     expect(store.isDirty()).toBe(true);
   });
@@ -427,7 +460,7 @@ describe("slideChange events from edits", () => {
     const events: SlideChangeEvent[] = [];
     store.on("slideChange", (event) => events.push(event));
 
-    store.undo();
+    await store.undo();
 
     expect(events).toHaveLength(1);
     expect(events[0].reason).toBe("edit");
@@ -458,7 +491,7 @@ describe("setTextBody via store", () => {
     expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Second line");
     expect(store.getSlideRevision(slideId)).toBe(1);
 
-    store.undo();
+    await store.undo();
     expect(slideText(store, 0)).toBe("Slide 1");
   });
 });
@@ -482,5 +515,34 @@ describe("history lifecycle", () => {
     expect(store.canRedo()).toBe(false);
     expect(store.getState().revision).toBe(0);
     expect(store.getSlideRevision(slideId)).toBe(0);
+  });
+});
+
+describe("overlapping edits", () => {
+  function png(width: number): Uint8Array {
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    new DataView(bytes.buffer).setUint32(16, width);
+    new DataView(bytes.buffer).setUint32(20, 10);
+    return bytes;
+  }
+
+  it("applies edits one at a time, so neither loses its relationship", async () => {
+    const store = await editableStore();
+    const slideId = store.getActiveSlide()!.id;
+
+    await Promise.all([
+      store.edit({ type: "addImage", slideId, data: png(10), contentType: "image/png" }),
+      store.edit({ type: "addImage", slideId, data: png(20), contentType: "image/png" }),
+    ]);
+
+    const saved = await store.save();
+    const reopened = buildPresentation(await readPptx(saved.slice().buffer));
+    const slide = reopened.slides.find((candidate) => candidate.id === slideId)!;
+    const pictures = slide.nodes.filter((node) => node.nodeType === "picture") as PictureNodeData[];
+    expect(pictures).toHaveLength(2);
+    for (const picture of pictures) {
+      expect(slide.rels.get(picture.blipEmbed!)?.target).toMatch(/^\.\.\/media\/image\d\.png$/);
+    }
   });
 });

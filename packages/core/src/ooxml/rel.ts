@@ -1,8 +1,3 @@
-/**
- * Parser for .rels (Relationship) XML files in OOXML packages.
- * These files map relationship IDs (rId1, rId2, ...) to targets.
- */
-
 import { parseXml } from "./xml";
 
 export interface RelEntry {
@@ -77,12 +72,11 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
 export function resolveRelTarget(basePath: string, target: string): string {
   const targetPath = stripUriSuffix(target);
 
-  // Absolute targets (start with /) are returned as-is (strip leading /)
+  // Absolute targets are package-root relative.
   if (targetPath.startsWith("/")) {
     return targetPath.slice(1).replace(/\\/g, "/").split("/").map(decodeUriPathSegment).join("/");
   }
 
-  // Split the base path into segments
   const baseParts = basePath.replace(/\\/g, "/").split("/").filter(Boolean);
   const targetParts = targetPath
     .replace(/\\/g, "/")
@@ -90,7 +84,6 @@ export function resolveRelTarget(basePath: string, target: string): string {
     .filter(Boolean)
     .map(decodeUriPathSegment);
 
-  // Walk through target parts, resolving '..' by popping base parts
   const resolved = [...baseParts];
   for (const part of targetParts) {
     if (part === "..") {
