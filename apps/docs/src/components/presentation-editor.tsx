@@ -77,8 +77,8 @@ import {
 } from "@pptx/ui/components/select";
 import {
   Toolbar,
-  ToolbarButton as ToolbarItem,
   ToolbarInput,
+  ToolbarButton,
   ToolbarSeparator,
 } from "@pptx/ui/components/toolbar";
 import {
@@ -282,7 +282,7 @@ function Shortcut({ keys, className }: { keys: readonly string[]; className?: st
   );
 }
 
-interface ToolbarButtonProps extends React.ComponentProps<typeof Button> {
+interface ToolbarIconButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
   /** Keys shown in the tooltip; `"mod"` is ⌘ on Apple platforms and Ctrl elsewhere. */
   shortcut?: string[];
@@ -291,7 +291,7 @@ interface ToolbarButtonProps extends React.ComponentProps<typeof Button> {
 }
 
 /** An icon button in the toolbar's arrow-key navigation, with a tooltip. */
-function ToolbarButton({
+function ToolbarIconButton({
   label,
   shortcut,
   pressed,
@@ -299,12 +299,12 @@ function ToolbarButton({
   onClick,
   children,
   ...props
-}: ToolbarButtonProps) {
+}: ToolbarIconButtonProps) {
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <ToolbarItem
+          <ToolbarButton
             aria-label={label}
             aria-pressed={pressed}
             disabled={disabled}
@@ -312,7 +312,7 @@ function ToolbarButton({
             render={<Button variant={pressed ? "secondary" : "ghost"} size="icon-sm" {...props} />}
           >
             {children}
-          </ToolbarItem>
+          </ToolbarButton>
         }
       />
       <TooltipContent>
@@ -346,7 +346,7 @@ function ToolbarMenuTrigger({
         render={
           <DropdownMenuTrigger
             render={
-              <ToolbarItem
+              <ToolbarButton
                 aria-label={label}
                 disabled={disabled}
                 render={
@@ -458,9 +458,13 @@ function FontSelect({
       <Tooltip>
         <TooltipTrigger
           render={
-            <ToolbarItem
+            <ToolbarButton
               render={
-                <SelectTrigger size="sm" aria-label="Font" className="h-7 w-32 text-xs">
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Font"
+                  className="h-7 w-32 border-transparent bg-transparent text-xs hover:bg-accent dark:bg-transparent dark:hover:bg-accent"
+                >
                   {/* Blank when the selection mixes fonts, as in Google Slides. */}
                   <SelectValue className="min-w-0">
                     <span className="truncate">{value ?? ""}</span>
@@ -566,15 +570,14 @@ function FontSizeControl({
   }
 
   return (
-    <div className="flex h-7 items-center rounded-lg border border-input">
-      <ToolbarButton
+    <div className="flex items-center">
+      <ToolbarIconButton
         label="Decrease font size"
         disabled={value !== null && value <= MIN_FONT_SIZE}
-        className="size-6.5 rounded-r-none"
         onClick={() => onChange(clamp((value ?? 18) - 1))}
       >
         <MinusIcon />
-      </ToolbarButton>
+      </ToolbarIconButton>
       <Tooltip>
         <TooltipTrigger
           render={
@@ -582,7 +585,7 @@ function FontSizeControl({
               aria-label="Font size"
               inputMode="numeric"
               value={draft ?? (value === null ? "" : String(value))}
-              className="h-full w-8 border-x border-input bg-transparent text-center text-xs tabular-nums outline-none focus-visible:bg-accent"
+              className="h-7 w-9 rounded-md bg-transparent text-center text-xs tabular-nums outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
               onChange={(event) => setDraft(event.target.value.replace(/[^\d.]/g, ""))}
               onFocus={(event) => event.target.select()}
               onBlur={commit}
@@ -599,14 +602,13 @@ function FontSizeControl({
         />
         <TooltipContent>Font size</TooltipContent>
       </Tooltip>
-      <ToolbarButton
+      <ToolbarIconButton
         label="Increase font size"
         disabled={value !== null && value >= MAX_FONT_SIZE}
-        className="size-6.5 rounded-l-none"
         onClick={() => onChange(clamp((value ?? 18) + 1))}
       >
         <PlusIcon />
-      </ToolbarButton>
+      </ToolbarIconButton>
     </div>
   );
 }
@@ -705,12 +707,12 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
           ref={rowRef}
           data-overflow-start={overflow.start ? "" : undefined}
           data-overflow-end={overflow.end ? "" : undefined}
-          className="-m-[3px] no-scrollbar flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto p-[3px] *:shrink-0 data-overflow-end:mask-r-from-[calc(100%-2rem)] data-overflow-start:mask-l-from-[calc(100%-2rem)]"
+          className="-m-0.75 no-scrollbar flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto p-0.75 *:shrink-0 data-overflow-end:mask-r-from-[calc(100%-2rem)] data-overflow-start:mask-l-from-[calc(100%-2rem)]"
         >
-          <ToolbarButton label="Open presentation" onClick={onOpen}>
+          <ToolbarIconButton label="Open presentation" onClick={onOpen}>
             <FolderOpenIcon />
-          </ToolbarButton>
-          <ToolbarButton
+          </ToolbarIconButton>
+          <ToolbarIconButton
             label={isDirty ? "Export (unsaved changes)" : "Export"}
             disabled={!isReady}
             className="relative"
@@ -722,54 +724,60 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 <span className="sr-only"> (unsaved changes)</span>
               </span>
             )}
-          </ToolbarButton>
+          </ToolbarIconButton>
           <ToolbarSeparator />
 
-          <ToolbarButton
+          <ToolbarIconButton
             label="Undo"
             shortcut={["mod", "Z"]}
             disabled={!canUndo}
             onClick={() => undo()}
           >
             <Undo2Icon />
-          </ToolbarButton>
-          <ToolbarButton
+          </ToolbarIconButton>
+          <ToolbarIconButton
             label="Redo"
             shortcut={["mod", "shift", "Z"]}
             disabled={!canRedo}
             onClick={() => run(redo)}
           >
             <Redo2Icon />
-          </ToolbarButton>
-          <ToolbarItem
+          </ToolbarIconButton>
+          <ToolbarButton
             disabled={!isReady}
-            render={<PresentationZoomSelect aria-label="Zoom" disabled={!isReady} />}
+            render={
+              <PresentationZoomSelect
+                aria-label="Zoom"
+                disabled={!isReady}
+                className="h-7 border-transparent bg-transparent hover:bg-accent dark:bg-transparent dark:hover:bg-accent"
+              />
+            }
           />
           <ToolbarSeparator />
 
-          <ToolbarButton label="New slide" disabled={!isReady} onClick={() => run(onAddSlide)}>
+          <ToolbarIconButton label="New slide" disabled={!isReady} onClick={() => run(onAddSlide)}>
             <PlusIcon />
-          </ToolbarButton>
-          <ToolbarButton
+          </ToolbarIconButton>
+          <ToolbarIconButton
             label="Text box"
             disabled={!isReady}
             pressed={drawTool?.type === "textBox"}
             onClick={() => startDrawing(drawTool?.type === "textBox" ? null : { type: "textBox" })}
           >
             <TypeIcon />
-          </ToolbarButton>
+          </ToolbarIconButton>
           <ShapeMenu
             disabled={!isReady}
             active={drawTool?.type === "shape"}
             onSelect={(geometry) => startDrawing({ type: "shape", geometry })}
           />
-          <ToolbarButton
+          <ToolbarIconButton
             label="Image"
             disabled={!isReady}
             onClick={() => imageInputRef.current?.click()}
           >
             <ImageIcon />
-          </ToolbarButton>
+          </ToolbarIconButton>
           <input
             ref={imageInputRef}
             type="file"
@@ -852,14 +860,14 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
               />
               <ToolbarSeparator />
               {TEXT_TOGGLES.map(({ key, label, icon: Icon }) => (
-                <ToolbarButton
+                <ToolbarIconButton
                   key={key}
                   label={label}
                   pressed={textStyle[key]}
                   onClick={() => onFormat({ [key]: !textStyle[key] })}
                 >
                   <Icon />
-                </ToolbarButton>
+                </ToolbarIconButton>
               ))}
               <ColorMenu
                 label="Text color"
