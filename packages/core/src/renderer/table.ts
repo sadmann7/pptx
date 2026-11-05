@@ -4,6 +4,7 @@ import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import { hexToRgb } from "../utils/color";
 import { RenderContext } from "./context";
+import { PPTX_ATTRS } from "./dom-attributes";
 import { resolveThemeFontStack } from "./font";
 import { resolveColor, resolveFill, resolveLineStyle, resolveThemeFillReference } from "./style";
 import { getPredefinedTableStyle, NO_STYLE_TABLE_GRID } from "./table-style";
@@ -598,7 +599,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     // between neighbouring cell backgrounds (see mergeRowFill).
     let rowFill: string | null | undefined;
     let filledCols = 0;
-    for (const cell of row.cells) {
+    for (const [cellIdx, cell] of row.cells.entries()) {
       if (cell.hMerge || cell.vMerge) {
         // Horizontal merge continuation cells are already accounted for by the
         // origin cell's gridSpan. Vertical continuations still occupy their
@@ -611,6 +612,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 
       const td = document.createElement("td");
       td.style.overflow = "hidden";
+      td.setAttribute(PPTX_ATTRS.cell, `${rowIdx},${cellIdx}`);
 
       if (cell.gridSpan > 1) {
         td.colSpan = cell.gridSpan;

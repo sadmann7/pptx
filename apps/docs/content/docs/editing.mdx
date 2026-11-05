@@ -25,6 +25,7 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Right-click** a shape to select it before opening a context menu; right-clicking empty canvas clears the selection
 - **Snap** to the slide's edges and center and to other shapes while moving or resizing, with guides showing what lined up (see [Snapping](#snapping))
 - **Edit text** inline: click a selected shape again, double-click it, or start typing
+- **Edit tables** cell by cell: click a cell to edit it, and <Kbd>Tab</Kbd> or <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup> moves to the next or previous one
 - **Keyboard**: <Kbd>Tab</Kbd> and <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup> move through the slide's shapes, and screen readers hear what's selected
 - **Multi-select** with <Kbd>Shift/Ctrl/Cmd</Kbd> + click, <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>A</Kbd></KbdGroup>, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with <Kbd>Delete</Kbd> or <Kbd>Backspace</Kbd>
@@ -224,6 +225,16 @@ await store.edit({ type: "addTextBox", slideId, text: "Hello" });
 // Add a preset shape ("rect", "ellipse", "rightArrow", …), styled from the theme like PowerPoint's
 await store.edit({ type: "addShape", slideId, geometry: "roundRect" });
 
+// Add a table, then fill in a cell
+const { createdNodeIds } = await store.edit({ type: "addTable", slideId, rows: 3, columns: 4 });
+await store.edit({
+  type: "setTextBody",
+  slideId,
+  nodeId: createdNodeIds![0],
+  cell: { row: 0, column: 0 },
+  paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "Name" }] }],
+});
+
 // Set a shape's or picture's outline (width in points); `color: null` removes it
 await store.edit({ type: "setOutline", slideId, nodeId, color: "#0f172a", width: 1.5 });
 
@@ -236,7 +247,7 @@ await targetStore.edit({ type: "pasteNodes", slideId: targetSlideId, clipboard }
 
 In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
 
-Edits that create nodes (`addTextBox`, `addShape`, `addImage`, `duplicateNode`, and `pasteNodes`) return their ids in `createdNodeIds`.
+Edits that create nodes (`addTextBox`, `addShape`, `addTable`, `addImage`, `duplicateNode`, and `pasteNodes`) return their ids in `createdNodeIds`.
 
 `presentation.layouts` maps each layout's part path to its data, including its `name`, for a "new slide from layout" picker.
 
@@ -269,7 +280,7 @@ function FormattingToolbar() {
 }
 ```
 
-`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `anchor` (see [Floating toolbar](#floating-toolbar)), `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `duplicate()`, `remove()`, and `reorder(order)` for the selected shapes, `editText(nodeId)` to start editing a shape's text, `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it, and `insertShape(geometry, options?)`, which adds a preset shape and selects it, so typing starts its text. To let people place them instead, like Google Slides, `startDrawing({ type: "textBox" })` or `startDrawing({ type: "shape", geometry })` arms a draw tool: the slide shows a crosshair, a click places the text box or shape at its default size, and a drag draws it to size (Shift keeps it square). `drawTool` reports the armed tool, and Escape or `startDrawing(null)` disarms it. A text box left empty is removed once editing moves elsewhere.
+`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `anchor` (see [Floating toolbar](#floating-toolbar)), `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `duplicate()`, `remove()`, and `reorder(order)` for the selected shapes, `editText(nodeId, cell?)` to start editing a shape's text or a table cell, `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it, `insertTable(rows, columns, options?)`, which adds a table and starts editing its first cell, and `insertShape(geometry, options?)`, which adds a preset shape and selects it, so typing starts its text. To let people place them instead, like Google Slides, `startDrawing({ type: "textBox" })` or `startDrawing({ type: "shape", geometry })` arms a draw tool: the slide shows a crosshair, a click places the text box or shape at its default size, and a drag draws it to size (Shift keeps it square). `drawTool` reports the armed tool, and Escape or `startDrawing(null)` disarms it. A text box left empty is removed once editing moves elsewhere.
 
 For a font picker, `getPresentationFonts(presentation)` lists the theme's heading and body fonts, the fonts embedded in the file, and the other fonts the deck's text uses. For a shape picker, `getPresetShapePath(geometry, width, height)` returns SVG path data to draw each preset's preview.
 

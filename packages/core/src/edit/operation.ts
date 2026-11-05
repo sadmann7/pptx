@@ -2,7 +2,7 @@
 import type { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
 import type { PictureNodeData } from "../model/nodes/picture";
-import type { ShapeNodeData, TextParagraph, TextRun } from "../model/nodes/shape";
+import type { ShapeNodeData, TextBody, TextParagraph, TextRun } from "../model/nodes/shape";
 import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
 import {
@@ -27,11 +27,19 @@ import {
   setOrRemoveAttr,
 } from "./xml-mutation";
 
+/** A cell of a table, by row and grid column (both zero-based). */
+export interface TableCellAddress {
+  row: number;
+  column: number;
+}
+
 /** Replace the text of one run inside a shape's text body. */
 export interface SetTextRunOperation {
   type: "setTextRun";
   slideId: string;
   nodeId: string;
+  /** The table cell holding the text, when the node is a table. */
+  cell?: TableCellAddress;
   paragraphIndex: number;
   runIndex: number;
   text: string;
@@ -87,11 +95,13 @@ export interface DeleteSlideOperation {
   slideId: string;
 }
 
-/** Replace the entire text body of a shape. */
+/** Replace the entire text body of a shape or table cell. */
 export interface SetTextBodyOperation {
   type: "setTextBody";
   slideId: string;
   nodeId: string;
+  /** The table cell holding the text, when the node is a table. */
+  cell?: TableCellAddress;
   paragraphs: SetTextBodyParagraph[];
 }
 
@@ -147,6 +157,8 @@ export interface SetTextStyleOperation {
   type: "setTextStyle";
   slideId: string;
   nodeId: string;
+  /** The table cell holding the text, when the node is a table. */
+  cell?: TableCellAddress;
   style: TextStyle;
   range?: TextRange;
 }
@@ -166,6 +178,8 @@ export interface SetParagraphStyleOperation {
   type: "setParagraphStyle";
   slideId: string;
   nodeId: string;
+  /** The table cell holding the text, when the node is a table. */
+  cell?: TableCellAddress;
   style: ParagraphStyle;
   range?: TextRange;
 }
@@ -259,6 +273,18 @@ export interface SetOutlineOperation {
   width?: number;
 }
 
+/** Insert a table on top of a slide, styled with the deck's default table style. */
+export interface AddTableOperation {
+  type: "addTable";
+  slideId: string;
+  rows: number;
+  columns: number;
+  /** Size in px. Defaults to two thirds of the slide's width, with 40px rows. */
+  size?: NodeSize;
+  /** Position in px. Defaults to centered on the slide. */
+  position?: NodePosition;
+}
+
 /** Insert a picture on top of a slide. */
 export interface AddImageOperation {
   type: "addImage";
@@ -305,6 +331,7 @@ export type EditOperation =
   | AddTextBoxOperation
   | AddShapeOperation
   | SetOutlineOperation
+  | AddTableOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -316,7 +343,7 @@ export interface EditResult {
   createdSlideId?: string;
   /**
    * Ids of the nodes created by `duplicateNode`, `addTextBox`, `addShape`,
-   * `addImage`, or `pasteNodes`.
+   * `addTable`, `addImage`, or `pasteNodes`.
    */
   createdNodeIds?: string[];
 }
@@ -370,6 +397,8 @@ export async function applyEdit(
       return applyAddShape(presentation, op);
     case "setOutline":
       return applySetOutline(presentation, op);
+    case "addTable":
+      return applyAddTable(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -467,20 +496,56 @@ function reindexSlides(pres: PresentationData): void {
   }
 }
 
+interface TextTarget {
+  textBody: TextBody;
+  txBody: SafeXmlNode;
+}
+
+function findTextTarget(
+  pres: PresentationData,
+  slide: SlideData,
+  nodeId: string,
+  cell: TableCellAddress | undefined,
+): TextTarget {
+  const node = findNode(pres, slide, nodeId);
+  if (node.nodeType === "table" && cell) {
+    const table = node as TableNodeData;
+    const modelCell = table.rows[cell.row]?.cells[cell.column];
+    const tc = node.source
+      .child("graphic")
+      .child("graphicData")
+      .child("tbl")
+      .children("tr")
+      [cell.row]?.children("tc")[cell.column];
+    const txBody = tc?.child("txBody");
+    if (
+      !modelCell ||
+      modelCell.hMerge ||
+      modelCell.vMerge ||
+      !modelCell.textBody ||
+      !txBody?.exists()
+    ) {
+      throw new Error(
+        `applyEdit: no editable cell at row ${cell.row}, column ${cell.column} in table "${nodeId}".`,
+      );
+    }
+    return { textBody: modelCell.textBody, txBody };
+  }
+  if (node.nodeType !== "shape" || !node.textBody || cell) {
+    throw new Error(`applyEdit: node "${nodeId}" has no editable text body.`);
+  }
+  return { textBody: (node as ShapeNodeData).textBody!, txBody: node.source.child("txBody") };
+}
+
 /** Localnames that produce entries in TextParagraph.runs, in document order. */
 const RUN_LOCAL_NAMES = new Set(["r", "br", "tab", "fld"]);
 
 function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
-  const node = findNode(pres, slide, op.nodeId);
+  const { textBody, txBody } = findTextTarget(pres, slide, op.nodeId, op.cell);
 
-  if (node.nodeType !== "shape" || !node.textBody) {
-    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body.`);
-  }
-  const shape = node as ShapeNodeData;
-
-  const paragraph = shape.textBody?.paragraphs[op.paragraphIndex];
+  const paragraph = textBody.paragraphs[op.paragraphIndex];
   const run = paragraph?.runs[op.runIndex];
   if (!paragraph || !run) {
     throw new Error(
@@ -490,7 +555,7 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
 
   // The model's runs array is built from an in-order scan of r/br/tab/fld
   // children, so runIndex maps onto the same scan of the XML.
-  const pNode = node.source.child("txBody").children("p")[op.paragraphIndex];
+  const pNode = txBody.children("p")[op.paragraphIndex];
   const runNodes = (pNode?.allChildren() ?? []).filter((c) => RUN_LOCAL_NAMES.has(c.localName));
   const runNode = runNodes[op.runIndex];
   if (!runNode) {
@@ -534,18 +599,11 @@ function childParagraphs(txBodyElement: Element): Element[] {
 function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
-  const node = findNode(pres, slide, op.nodeId);
-
-  if (node.nodeType !== "shape" || !node.textBody) {
-    throw new Error(`applyEdit: node "${op.nodeId}" has no editable text body.`);
-  }
-  const shape = node as ShapeNodeData;
-  const textBody = shape.textBody!;
+  const { textBody, txBody } = findTextTarget(pres, slide, op.nodeId, op.cell);
 
   const prevParagraphs = textBody.paragraphs;
 
-  const txBodyNode = node.source.child("txBody");
-  const txBodyElement = requireElement(txBodyNode, "txBody");
+  const txBodyElement = requireElement(txBody, "txBody");
   const doc = txBodyElement.ownerDocument;
 
   const origParagraphElements = childParagraphs(txBodyElement);
@@ -1223,7 +1281,7 @@ function paragraphSpans(
 }
 
 /**
- * Rewrites some of a shape's paragraphs. Each `a:p` is cloned, mutated
+ * Rewrites some of a text body's paragraphs. Each `a:p` is cloned, mutated
  * detached, and swapped in, so undo is a swap back and the model paragraph is
  * re-parsed from the clone.
  */
@@ -1231,16 +1289,13 @@ function rewriteParagraphs(
   pres: PresentationData,
   slideId: string,
   nodeId: string,
+  cell: TableCellAddress | undefined,
   rewrite: (paragraphCount: number) => [index: number, mutate: (paragraph: Element) => void][],
 ): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, slideId);
-  const node = findNode(pres, slide, nodeId);
-  if (node.nodeType !== "shape" || !node.textBody) {
-    throw new Error(`applyEdit: node "${nodeId}" has no editable text body.`);
-  }
-  const textBody = (node as ShapeNodeData).textBody!;
-  const txBodyElement = requireElement(node.source.child("txBody"), "txBody");
+  const { textBody, txBody } = findTextTarget(pres, slide, nodeId, cell);
+  const txBodyElement = requireElement(txBody, "txBody");
   const paragraphElements = childParagraphs(txBodyElement);
 
   const prevParagraphs = textBody.paragraphs;
@@ -1277,7 +1332,7 @@ function rewriteParagraphs(
 function applySetTextStyle(pres: PresentationData, op: SetTextStyleOperation): EditResult {
   // Fails on a bad value before any paragraph is touched.
   if (op.style.color) parseHexColor(op.style.color);
-  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, op.cell, (count) =>
     paragraphSpans(count, op.range).map(([index, from, to]) => [
       index,
       (paragraph) => styleParagraph(paragraph, from, to, op.style, !op.range),
@@ -1289,7 +1344,7 @@ function applySetParagraphStyle(
   pres: PresentationData,
   op: SetParagraphStyleOperation,
 ): EditResult {
-  return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
+  return rewriteParagraphs(pres, op.slideId, op.nodeId, op.cell, (count) =>
     paragraphSpans(count, op.range).map(([index]) => [
       index,
       (paragraph) => {
@@ -2010,6 +2065,80 @@ function applyAddShape(pres: PresentationData, op: AddShapeOperation): EditResul
       ),
     ),
   );
+}
+
+const TABLE_URI = "http://schemas.openxmlformats.org/drawingml/2006/table";
+const DEFAULT_TABLE_STYLE_ID = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}";
+const TABLE_ROW_HEIGHT = 40;
+const MAX_TABLE_TRACKS = 75;
+
+function applyAddTable(pres: PresentationData, op: AddTableOperation): EditResult {
+  for (const count of [op.rows, op.columns]) {
+    if (!Number.isInteger(count) || count < 1 || count > MAX_TABLE_TRACKS) {
+      throw new Error(`applyEdit: invalid table size ${op.rows}x${op.columns}.`);
+    }
+  }
+  const size = op.size ?? { w: (pres.width * 2) / 3, h: op.rows * TABLE_ROW_HEIGHT };
+  const position = op.position ?? centered(pres, size);
+  const styleId = pres.tableStyles?.attr("def") || DEFAULT_TABLE_STYLE_ID;
+  const columnWidth = String(pxToEmu(size.w / op.columns));
+  const rowHeight = String(pxToEmu(size.h / op.rows));
+
+  return insertNewShape(pres, op.slideId, (el, id) => {
+    const cell = () =>
+      el(
+        "a:tc",
+        {},
+        el(
+          "a:txBody",
+          {},
+          el("a:bodyPr"),
+          el("a:lstStyle"),
+          el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
+        ),
+        el("a:tcPr"),
+      );
+    const tableStyleId = el("a:tableStyleId");
+    tableStyleId.textContent = styleId;
+    return el(
+      "p:graphicFrame",
+      {},
+      el(
+        "p:nvGraphicFramePr",
+        {},
+        el("p:cNvPr", { id: String(id), name: `Table ${id - 1}` }),
+        el("p:cNvGraphicFramePr", {}, el("a:graphicFrameLocks", { noGrp: "1" })),
+        el("p:nvPr"),
+      ),
+      el(
+        "p:xfrm",
+        {},
+        el("a:off", { x: String(pxToEmu(position.x)), y: String(pxToEmu(position.y)) }),
+        el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+      ),
+      el(
+        "a:graphic",
+        {},
+        el(
+          "a:graphicData",
+          { uri: TABLE_URI },
+          el(
+            "a:tbl",
+            {},
+            el("a:tblPr", { firstRow: "1", bandRow: "1" }, tableStyleId),
+            el(
+              "a:tblGrid",
+              {},
+              ...Array.from({ length: op.columns }, () => el("a:gridCol", { w: columnWidth })),
+            ),
+            ...Array.from({ length: op.rows }, () =>
+              el("a:tr", { h: rowHeight }, ...Array.from({ length: op.columns }, cell)),
+            ),
+          ),
+        ),
+      ),
+    );
+  });
 }
 
 /** spPr children that come after `a:ln` in the schema sequence. */

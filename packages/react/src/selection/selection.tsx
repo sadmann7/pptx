@@ -8,6 +8,7 @@ import type {
   ParagraphStyle,
   ShapeNodeData,
   SlideNode,
+  TableCellAddress,
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
@@ -56,10 +57,14 @@ import {
   cleanText,
   expandToWord,
   getActiveTextStyle,
+  getCellAddress,
   getDomPoint,
+  getIsSameCell,
   getParagraphElements,
   getParagraphText,
+  getPlainText,
   getRangeRuns,
+  getTableCells,
   getTextRange,
   placeholderPromptOf,
   readBackTextBody,
@@ -220,12 +225,14 @@ export type InternalState =
   | {
       mode: "text";
       nodeId: string;
+      cell?: TableCellAddress;
       editingElement: HTMLElement;
     };
 
 /** Text range to put back after a formatting edit re-renders the text being edited. */
 interface TextRestore {
   nodeId: string;
+  cell?: TableCellAddress;
   range: TextRange;
   /**
    * Whether to move focus back into the text. Off while the toolbar is typing
@@ -371,6 +378,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // is re-entered.
   const pendingRestoreRef = React.useRef<TextRestore | null>(null);
 
+  const entryTextRef = React.useRef<{ element: HTMLElement; text: string } | null>(null);
+
   // Edit revision of the active slide. A bump means SlideImpl will replace
   // the slide DOM in its effect; the text-mode repair effect below uses this
   // to re-attach contentEditable to the fresh DOM.
@@ -513,7 +522,30 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   function nodeHasText(nodeId: string): boolean {
     const node = slide!.nodes.find((node) => node.id === nodeId);
+    if (node?.nodeType === "table") return getTableCells(node).length > 0;
     return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
+  }
+
+  function getTextHost(nodeId: string, cell?: TableCellAddress): HTMLElement | null {
+    const shapeElement = getShapeElement(nodeId);
+    if (!shapeElement || !cell) return shapeElement;
+    return shapeElement.querySelector<HTMLElement>(
+      `[${PPTX_ATTRS.cell}="${cell.row},${cell.column}"]`,
+    );
+  }
+
+  function resolveCell(nodeId: string, clientX?: number, clientY?: number): TableCellAddress {
+    const node = slide?.nodes.find((n) => n.id === nodeId);
+    const cells = node ? getTableCells(node) : [];
+    const shapeElement = getShapeElement(nodeId);
+    if (shapeElement && clientX !== undefined && clientY !== undefined) {
+      for (const element of document.elementsFromPoint(clientX, clientY)) {
+        if (!shapeElement.contains(element)) continue;
+        const cell = getCellAddress(element);
+        if (cell && cells.some((editable) => getIsSameCell(editable, cell))) return cell;
+      }
+    }
+    return cells[0]!;
   }
 
   function commitEdit<T>(
@@ -535,9 +567,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     clientY?: number,
     insertText?: string,
     restore?: TextRestore | null,
+    cell?: TableCellAddress,
   ): void {
     const shapeElement = getShapeElement(nodeId);
-    const textElement = shapeElement ? textContainerOf(shapeElement) : null;
+    if (!cell && slide?.nodes.find((n) => n.id === nodeId)?.nodeType === "table") {
+      cell = resolveCell(nodeId, clientX, clientY);
+    }
+    const textHost = getTextHost(nodeId, cell);
+    const textElement = textHost ? textContainerOf(textHost) : null;
     debugLog("enterTextMode", {
       nodeId,
       shapeElementementFound: Boolean(shapeElement),
@@ -591,6 +628,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       restoreTextRange(textElement, restore);
     } else if (clientX !== undefined && clientY !== undefined) {
       placeCaretAtPoint(clientX, clientY);
+      const anchor = window.getSelection()?.anchorNode;
+      if (!anchor || !textElement.contains(anchor)) placeCaretAtEnd(textElement);
     } else {
       placeCaretAtEnd(textElement);
     }
@@ -612,7 +651,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       isContentEditable: textElement.isContentEditable,
     });
 
-    setState({ mode: "text", nodeId, editingElement: textElement });
+    entryTextRef.current = {
+      element: textElement,
+      text: getPlainText(readBackTextBody(textElement)),
+    };
+    setState({ mode: "text", nodeId, cell, editingElement: textElement });
   }
 
   /**
@@ -621,12 +664,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * committed before the next paint, so a double rAF (not a timeout) is the
    * earliest reliable moment the replacement shape element exists.
    */
-  function resumeTextEditing(nodeId: string): void {
+  function resumeTextEditing(nodeId: string, cell?: TableCellAddress): void {
     debugLog("resumeTextEditing scheduled", { nodeId });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         debugLog("resumeTextEditing firing", { nodeId });
-        enterTextMode(nodeId);
+        enterTextMode(nodeId, undefined, undefined, undefined, undefined, cell);
       });
     });
   }
@@ -937,7 +980,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   function commitTextEdits(current: Extract<InternalState, { mode: "text" }>): void {
-    const { nodeId, editingElement } = current;
+    const { nodeId, cell, editingElement } = current;
 
     editingElement.contentEditable = "false";
     editingElement.style.cursor = "";
@@ -957,9 +1000,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       editingElementConnected: editingElement.isConnected,
       editingElementHtml: editingElement.innerHTML.slice(0, 200),
       readBack: JSON.stringify(readBack).slice(0, 300),
-      changed: textBodyChanged(node, readBack),
+      changed: textBodyChanged(node, readBack, cell),
     });
-    if (!textBodyChanged(node, readBack)) return;
+    if (!textBodyChanged(node, readBack, cell)) return;
 
     commitEdit(
       () =>
@@ -967,6 +1010,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           type: "setTextBody",
           slideId: slideId!,
           nodeId,
+          cell,
           paragraphs: readBack,
         }),
       undefined,
@@ -1020,6 +1064,65 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
+  function moveToCell(
+    current: Extract<InternalState, { mode: "text" }>,
+    cell: TableCellAddress,
+    clientX?: number,
+    clientY?: number,
+  ): void {
+    const node = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (!node || !getTableCells(node).some((editable) => getIsSameCell(editable, cell))) return;
+    const changed = textBodyChanged(node, readBackTextBody(current.editingElement), current.cell);
+    commitTextEdits(current);
+    enterTextMode(current.nodeId, clientX, clientY, undefined, undefined, cell);
+    const textHost = getTextHost(current.nodeId, cell);
+    const container = textHost ? textContainerOf(textHost) : null;
+    const domRange = container ? getEditingDomRange(container) : null;
+    const range = container && domRange ? getTextRange(container, domRange) : null;
+    pendingRestoreRef.current =
+      changed && range ? { nodeId: current.nodeId, cell, range, focus: true } : null;
+  }
+
+  // Keys typed between a commit and its re-render land in the detached text.
+  function saveDetachedTyping(current: Extract<InternalState, { mode: "text" }>): boolean {
+    const node = slide?.nodes.find((n) => n.id === current.nodeId);
+    const entry = entryTextRef.current;
+    if (!node || !slideId || entry?.element !== current.editingElement) return false;
+    const readBack = readBackTextBody(current.editingElement);
+    if (getPlainText(readBack) === entry.text) return false;
+    if (!textBodyChanged(node, readBack, current.cell)) return false;
+    const last = readBack.length - 1;
+    const end = {
+      paragraphIndex: last,
+      offset: readBack[last].runs.reduce((length, run) => length + run.text.length, 0),
+    };
+    pendingRestoreRef.current = {
+      nodeId: current.nodeId,
+      cell: current.cell,
+      range: { start: end, end },
+      focus: true,
+    };
+    commitEdit(() =>
+      store.edit({
+        type: "setTextBody",
+        slideId,
+        nodeId: current.nodeId,
+        cell: current.cell,
+        paragraphs: readBack,
+      }),
+    );
+    return true;
+  }
+
+  function stepCell(current: Extract<InternalState, { mode: "text" }>, step: 1 | -1): boolean {
+    const node = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (!node || !current.cell) return false;
+    const cells = getTableCells(node);
+    const next = cells[cells.findIndex((cell) => getIsSameCell(cell, current.cell)) + step];
+    if (next) moveToCell(current, next);
+    return true;
+  }
+
   function restoreTextRange(textElement: HTMLElement, restore: TextRestore): void {
     const start = getDomPoint(textElement, restore.range.start);
     const end = getDomPoint(textElement, restore.range.end);
@@ -1039,8 +1142,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     current: Extract<InternalState, { mode: "text" }>,
   ): HTMLElement | null {
     if (current.editingElement.isConnected) return current.editingElement;
-    const shapeElement = getShapeElement(current.nodeId);
-    return shapeElement ? textContainerOf(shapeElement) : null;
+    const textHost = getTextHost(current.nodeId, current.cell);
+    return textHost ? textContainerOf(textHost) : null;
   }
 
   /** The text range to format: the live selection in the text, else the saved one. */
@@ -1079,12 +1182,17 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const paragraphs: HTMLElement[] = [];
     for (const nodeId of selectedIdsRef.current) {
       const shapeElement = getShapeElement(nodeId);
-      const container = shapeElement ? textContainerOf(shapeElement) : null;
-      if (!container) continue;
-      const containerParagraphs = getParagraphElements(container);
-      const containerRuns = container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`);
-      paragraphs.push(...containerParagraphs);
-      runs.push(...(containerRuns.length > 0 ? containerRuns : containerParagraphs));
+      if (!shapeElement) continue;
+      const cellElements = shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.cell}]`);
+      const containers = (cellElements.length > 0 ? Array.from(cellElements) : [shapeElement])
+        .map(textContainerOf)
+        .filter((container): container is HTMLElement => container !== null);
+      for (const container of containers) {
+        const containerParagraphs = getParagraphElements(container);
+        const containerRuns = container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`);
+        paragraphs.push(...containerParagraphs);
+        runs.push(...(containerRuns.length > 0 ? containerRuns : containerParagraphs));
+      }
     }
     return getActiveTextStyle(runs, paragraphs);
   }
@@ -1127,11 +1235,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     else selectNodesRef.current([nodeId], true);
   }
 
-  function editText(nodeId: string): void {
+  function editText(nodeId: string, cell?: TableCellAddress): void {
     const current = stateRef.current;
     if (current.mode === "text") commitTextEdits(current);
     setState({ mode: "selected", nodeIds: [nodeId] });
-    resumeTextEditing(nodeId);
+    resumeTextEditing(nodeId, cell);
   }
 
   function selectNodes(nodeIds: string[], focus = false): void {
@@ -1169,11 +1277,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const container = getEditingContainer(current);
     const node = slide.nodes.find((n) => n.id === current.nodeId);
     if (!container || !node || !container.contains(target)) return false;
-    if (textBodyChanged(node, readBackTextBody(container))) return false;
+    if (textBodyChanged(node, readBackTextBody(container), current.cell)) return false;
     const domRange = getEditingDomRange(container);
     const caretRange = domRange ? getTextRange(container, domRange) : null;
     pendingRestoreRef.current = caretRange
-      ? { nodeId: current.nodeId, range: caretRange, focus: true }
+      ? { nodeId: current.nodeId, cell: current.cell, range: caretRange, focus: true }
       : null;
     return true;
   }
@@ -1183,28 +1291,43 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     style: TextStyle | ParagraphStyle,
   ): Promise<void> {
     if (!slide || !slideId) return;
-    const toOperation = (nodeId: string, range?: TextRange): EditOperation =>
+    const toOperation = (
+      nodeId: string,
+      cell?: TableCellAddress,
+      range?: TextRange,
+    ): EditOperation =>
       kind === "text"
-        ? { type: "setTextStyle", slideId, nodeId, style: style as TextStyle, range }
-        : { type: "setParagraphStyle", slideId, nodeId, style: style as ParagraphStyle, range };
+        ? { type: "setTextStyle", slideId, nodeId, cell, style: style as TextStyle, range }
+        : {
+            type: "setParagraphStyle",
+            slideId,
+            nodeId,
+            cell,
+            style: style as ParagraphStyle,
+            range,
+          };
 
     const current = stateRef.current;
     if (current.mode !== "text") {
       const operations = selectedNodesRef.current
         .filter((node) => nodeHasText(node.id))
-        .map((node) => toOperation(node.id));
+        .flatMap((node) =>
+          node.nodeType === "table"
+            ? getTableCells(node).map((cell) => toOperation(node.id, cell))
+            : [toOperation(node.id)],
+        );
       if (operations.length === 0) return;
       await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
       return;
     }
 
-    const { nodeId } = current;
+    const { nodeId, cell } = current;
     const container = getEditingContainer(current);
     const node = slide.nodes.find((n) => n.id === nodeId);
     if (!container || !node) return;
 
     const readBack = readBackTextBody(container);
-    const changed = textBodyChanged(node, readBack);
+    const changed = textBodyChanged(node, readBack, cell);
     const domRange = getEditingDomRange(container);
     const caretRange = domRange ? getTextRange(container, domRange) : null;
 
@@ -1231,12 +1354,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     const operations: EditOperation[] = [];
-    if (changed) operations.push({ type: "setTextBody", slideId, nodeId, paragraphs: readBack });
-    operations.push(toOperation(nodeId, range));
+    if (changed) {
+      operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
+    }
+    operations.push(toOperation(nodeId, cell, range));
 
     pendingRestoreRef.current = caretRange
       ? {
           nodeId,
+          cell,
           range: caretRange,
           focus:
             !getIsNativeUndoTarget(document.activeElement) ||
@@ -1255,6 +1381,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const commitTextEditsRef = useLatestRef(commitTextEdits);
   const doExitTextModeRef = useLatestRef(doExitTextMode);
   const removeIfEmptyTextBoxRef = useLatestRef(removeIfEmptyTextBox);
+  const moveToCellRef = useLatestRef(moveToCell);
+  const stepCellRef = useLatestRef(stepCell);
+  const saveDetachedTypingRef = useLatestRef(saveDetachedTyping);
   const publishSelectionRef = useLatestRef(publishSelection);
   const selectNodesRef = useLatestRef(selectNodes);
   const editTextRef = useLatestRef(editText);
@@ -1270,7 +1399,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     () =>
       selectionChannel.register({
         select: (nodeIds, focus) => selectNodesRef.current(nodeIds, focus),
-        editText: (nodeId) => editTextRef.current(nodeId),
+        editText: (nodeId, cell) => editTextRef.current(nodeId, cell),
         startDrawing: (tool) => startDrawingRef.current(tool),
         duplicate: () => duplicateSelectionRef.current(),
         remove: () => deleteSelectionRef.current(),
@@ -1357,7 +1486,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           ? nodeElement.getAttribute(PPTX_ATTRS.nodeId)
           : null;
 
-      if (hitNodeId && hitNodeId !== currentState.nodeId) {
+      const hitCell = hitNodeId === currentState.nodeId ? getCellAddress(target) : undefined;
+      if (hitCell && currentState.cell && !getIsSameCell(hitCell, currentState.cell)) {
+        moveToCellRef.current(currentState, hitCell, event.clientX, event.clientY);
+      } else if (hitNodeId && hitNodeId !== currentState.nodeId) {
         // Clicked a different shape: exit text and start interacting with it
         // in the same gesture (PowerPoint: you can immediately drag another
         // shape while editing). preventDefault stops the browser's default
@@ -1398,6 +1530,17 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         event.preventDefault();
         doExitTextModeRef.current(currentState);
         return;
+      }
+
+      if (
+        event.key === "Tab" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        currentState.editingElement.contains(event.target as Node) &&
+        stepCellRef.current(currentState, event.shiftKey ? -1 : 1)
+      ) {
+        event.preventDefault();
       }
     }
 
@@ -1454,7 +1597,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
     };
-  }, [isTextMode, stateRef, commitTextEditsRef, doExitTextModeRef, removeIfEmptyTextBoxRef]);
+  }, [
+    isTextMode,
+    stateRef,
+    commitTextEditsRef,
+    doExitTextModeRef,
+    removeIfEmptyTextBoxRef,
+    moveToCellRef,
+    stepCellRef,
+  ]);
 
   const copySelectionRef = useLatestRef(copySelection);
   const pasteClipboardRef = useLatestRef(pasteClipboard);
@@ -1546,19 +1697,28 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         editingElementConnected: currentState.editingElement.isConnected,
       });
       if (currentState.editingElement.isConnected) return;
+      if (saveDetachedTypingRef.current(currentState)) return;
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
+      const pending = pendingRestoreRef.current;
       const restore =
-        pendingRestoreRef.current?.nodeId === currentState.nodeId
-          ? pendingRestoreRef.current
+        pending?.nodeId === currentState.nodeId && getIsSameCell(pending.cell, currentState.cell)
+          ? pending
           : null;
       pendingRestoreRef.current = null;
-      enterTextModeRef.current(currentState.nodeId, undefined, undefined, undefined, restore);
+      enterTextModeRef.current(
+        currentState.nodeId,
+        undefined,
+        undefined,
+        undefined,
+        restore,
+        currentState.cell,
+      );
       // Re-read the toolbar state from the fresh text, which moves no caret
       // (and fires no selectionchange) when focus stayed in the toolbar.
       publishSelectionRef.current();
     });
     return () => cancelAnimationFrame(frameId);
-  }, [slideRevision, stateRef, enterTextModeRef, publishSelectionRef]);
+  }, [slideRevision, stateRef, enterTextModeRef, publishSelectionRef, saveDetachedTypingRef]);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
     if (drawTool && !isTextMode) {

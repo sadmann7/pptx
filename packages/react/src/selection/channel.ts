@@ -2,10 +2,12 @@ import * as React from "react";
 
 import type {
   AddShapeOperation,
+  AddTableOperation,
   AddTextBoxOperation,
   NodeOrder,
   ParagraphStyle,
   SlideNode,
+  TableCellAddress,
   TextStyle,
 } from "@diceui/pptx-core";
 
@@ -47,7 +49,7 @@ export interface SelectionSnapshot {
 export interface SelectionController {
   /** `focus` moves focus to the overlay, so typing starts the shapes' text. */
   select: (nodeIds: string[], focus?: boolean) => void;
-  editText: (nodeId: string) => void;
+  editText: (nodeId: string, cell?: TableCellAddress) => void;
   startDrawing: (tool: DrawTool | null) => void;
   duplicate: () => Promise<void>;
   remove: () => Promise<void>;
@@ -178,10 +180,11 @@ export interface UseSelectionResult {
   clear: () => void;
 
   /**
-   * Starts editing a shape's text, caret at the end. Waits for a slide
-   * re-render, so it works right after an edit that created the shape.
+   * Starts editing a shape's text, caret at the end. For a table, edits `cell`,
+   * or the first cell. Waits for a slide re-render, so it works right after an
+   * edit that created the shape.
    */
-  editText: (nodeId: string) => void;
+  editText: (nodeId: string, cell?: TableCellAddress) => void;
 
   /** The armed draw tool, or `null`. */
   drawTool: DrawTool | null;
@@ -219,6 +222,16 @@ export interface UseSelectionResult {
   insertShape: (
     geometry: string,
     options?: Omit<AddShapeOperation, "type" | "slideId" | "geometry">,
+  ) => Promise<string | undefined>;
+
+  /**
+   * Adds a table to the active slide, centered unless `position` is given, and
+   * starts editing its first cell. Resolves with the new node's id.
+   */
+  insertTable: (
+    rows: number,
+    columns: number,
+    options?: Omit<AddTableOperation, "type" | "slideId" | "rows" | "columns">,
   ) => Promise<string | undefined>;
 
   /**
@@ -315,7 +328,7 @@ export function useSelection(): UseSelectionResult {
     select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
     clear: React.useCallback(() => channel.getController()?.select([]), [channel]),
     editText: React.useCallback(
-      (nodeId: string) => channel.getController()?.editText(nodeId),
+      (nodeId: string, cell?: TableCellAddress) => channel.getController()?.editText(nodeId, cell),
       [channel],
     ),
     startDrawing: React.useCallback(
@@ -360,6 +373,28 @@ export function useSelection(): UseSelectionResult {
         });
         const nodeId = createdNodeIds?.[0];
         if (nodeId) controller.select([nodeId], true);
+        return nodeId;
+      },
+      [channel, store],
+    ),
+    insertTable: React.useCallback(
+      async (
+        rows: number,
+        columns: number,
+        options?: Omit<AddTableOperation, "type" | "slideId" | "rows" | "columns">,
+      ) => {
+        const controller = requireController(channel);
+        const activeSlideId = store.getState().activeSlideId;
+        if (!activeSlideId) return undefined;
+        const { createdNodeIds } = await store.edit({
+          type: "addTable",
+          slideId: activeSlideId,
+          rows,
+          columns,
+          ...options,
+        });
+        const nodeId = createdNodeIds?.[0];
+        if (nodeId) controller.editText(nodeId);
         return nodeId;
       },
       [channel, store],
