@@ -717,7 +717,7 @@ describe("multi-selection handles", () => {
   }
 
   function gripCount(container: HTMLElement): number {
-    return container.querySelectorAll("[data-resize-grip]").length;
+    return container.querySelectorAll("[data-resize-handle]").length;
   }
 
   it("keeps handles up while Shift+clicking a second shape", async () => {
@@ -852,7 +852,7 @@ describe("multi-selection handles", () => {
     const boxes = container.querySelectorAll("[data-selection-box]");
     expect(boxes.length).toBeGreaterThan(1);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-resize-grip]")).toHaveLength(8);
+      expect(box.querySelectorAll("[data-resize-handle]")).toHaveLength(8);
     }
   });
 
@@ -868,7 +868,7 @@ describe("multi-selection handles", () => {
 
     // Drag the first shape's south-east handle outward. Separate acts: each
     // handler needs the previous state update flushed to see it.
-    const grip = container.querySelector<HTMLElement>('[data-resize-grip="se"]')!;
+    const grip = container.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
     act(() => {
       fireEvent.pointerDown(grip, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
     });

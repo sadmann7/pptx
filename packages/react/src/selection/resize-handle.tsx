@@ -33,7 +33,7 @@ const SMALL_OFFSET = 12;
  * Handles that only change a flat axis (a line's height) are left out, so a
  * line shows its two ends, as in Google Slides.
  */
-function isGripShown(direction: GripDirection, width: number, height: number): boolean {
+function getIsGripShown(direction: GripDirection, width: number, height: number): boolean {
   const changesHeight = direction.includes("n") || direction.includes("s");
   const changesWidth = direction.includes("e") || direction.includes("w");
   if (height < 1 && width >= 1) return !changesHeight;
@@ -63,7 +63,7 @@ export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeH
  *
  * Unstyled when composed: give it a size, or it is a zero-size target.
  *
- * Place inside `Presentation.SelectionBox`. Carries `data-resize-grip`, set
+ * Place inside `Presentation.SelectionBox`. Carries `data-resize-handle`, set
  * to its direction.
  */
 export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
@@ -75,40 +75,40 @@ export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
     }
     if (!box.showHandles) return null;
 
-    return GRIP_DIRECTIONS.filter((direction) => isGripShown(direction, box.width, box.height)).map(
-      (direction) => {
-        const offset = getGripOffset(direction, box.width, box.height);
-        return (
-          <React.Fragment key={direction}>
-            {renderElement(
-              "div",
-              { render, className, style },
-              {
-                state: { direction },
-                ref: forwardedRef,
-                props: [
-                  {
-                    "aria-hidden": true,
-                    "data-resize-grip": direction,
-                    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
-                      onGripPointerDown(event, direction, box.node.id),
-                    style: {
-                      position: "absolute",
-                      ...GRIP_POSITIONS[direction],
-                      transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
-                      cursor: getGripCursor(direction, box.rotation),
-                      pointerEvents: "auto",
-                      touchAction: "none",
-                    },
+    return GRIP_DIRECTIONS.filter((direction) =>
+      getIsGripShown(direction, box.width, box.height),
+    ).map((direction) => {
+      const offset = getGripOffset(direction, box.width, box.height);
+      return (
+        <React.Fragment key={direction}>
+          {renderElement(
+            "div",
+            { render, className, style },
+            {
+              state: { direction },
+              ref: forwardedRef,
+              props: [
+                {
+                  "aria-hidden": true,
+                  "data-resize-handle": direction,
+                  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
+                    onGripPointerDown(event, direction, box.node.id),
+                  style: {
+                    position: "absolute",
+                    ...GRIP_POSITIONS[direction],
+                    transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                    cursor: getGripCursor(direction, box.rotation),
+                    pointerEvents: "auto",
+                    touchAction: "none",
                   },
-                  resizeHandleProps,
-                ],
-              },
-            )}
-          </React.Fragment>
-        );
-      },
-    );
+                },
+                resizeHandleProps,
+              ],
+            },
+          )}
+        </React.Fragment>
+      );
+    });
   },
 );
 

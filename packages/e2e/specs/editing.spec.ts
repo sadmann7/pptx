@@ -254,7 +254,7 @@ test.describe("rotating", () => {
     const before = await readGeometry();
 
     // The north handle now sits on the right side: drag it further right.
-    const handle = (await page.locator('[data-resize-grip="n"]').boundingBox())!;
+    const handle = (await page.locator('[data-resize-handle="n"]').boundingBox())!;
     const x = handle.x + handle.width / 2;
     const y = handle.y + handle.height / 2;
     await page.mouse.move(x, y);
@@ -379,7 +379,7 @@ test.describe("drawing", () => {
     await page.mouse.click(slide.x + 40, slide.y + 400);
     await expect(overlay).toHaveAttribute("data-mode", "text");
     // Resize handles stay while typing, as in Google Slides.
-    await expect(page.locator("[data-resize-grip]")).toHaveCount(8);
+    await expect(page.locator("[data-resize-handle]")).toHaveCount(8);
     const node = await lastNode(page);
     expect(node.count).toBe(before.count + 1);
     expect(node.position.x * (slide.width / 1280)).toBeCloseTo(40, -1);

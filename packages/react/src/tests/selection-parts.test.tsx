@@ -48,7 +48,7 @@ describe("default parts", () => {
     for (const box of boxes) {
       expect(box.style.outline).toContain("--presentation-selection");
       expect(box.getAttribute("data-mode")).toBe("selected");
-      const handles = box.querySelectorAll<HTMLElement>("[data-resize-grip]");
+      const handles = box.querySelectorAll<HTMLElement>("[data-resize-handle]");
       expect(handles).toHaveLength(8);
       expect(handles[0].style.width).toBe("9px");
     }
@@ -71,13 +71,13 @@ describe("handles on small and flat shapes", () => {
     selectAll();
 
     const [tiny, line] = container.querySelectorAll<HTMLElement>("[data-selection-box]");
-    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-resize-grip]");
+    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-resize-handle]");
     expect(tinyHandles).toHaveLength(8);
-    const nw = tiny.querySelector<HTMLElement>('[data-resize-grip="nw"]')!;
+    const nw = tiny.querySelector<HTMLElement>('[data-resize-handle="nw"]')!;
     expect(nw.style.transform).toBe("translate(calc(-50% + -12px), calc(-50% + -12px))");
 
-    const lineGrips = Array.from(line.querySelectorAll("[data-resize-grip]")).map((grip) =>
-      grip.getAttribute("data-resize-grip"),
+    const lineGrips = Array.from(line.querySelectorAll("[data-resize-handle]")).map((grip) =>
+      grip.getAttribute("data-resize-handle"),
     );
     expect(lineGrips.sort()).toEqual(["e", "w"]);
   });
@@ -96,7 +96,7 @@ describe("handles on small and flat shapes", () => {
     selectAll();
 
     const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
-    const nw = box.querySelector<HTMLElement>('[data-resize-grip="nw"]')!;
+    const nw = box.querySelector<HTMLElement>('[data-resize-handle="nw"]')!;
     expect(nw.style.transform).toBe("translate(calc(-50% + 0px), calc(-50% + 0px))");
   });
 });
@@ -117,7 +117,7 @@ describe("composed parts", () => {
     expect(boxes[0].style.position).toBe("absolute");
     expect(boxes[0].style.boxShadow).toBe("");
 
-    const handles = boxes[0].querySelectorAll<HTMLElement>("[data-resize-grip]");
+    const handles = boxes[0].querySelectorAll<HTMLElement>("[data-resize-handle]");
     expect(Array.from(handles, (handle) => handle.className)).toEqual([
       "handle handle-nw",
       "handle handle-n",
@@ -136,7 +136,7 @@ describe("composed parts", () => {
     selectAll();
 
     expect(container.querySelectorAll("[data-selection-box]")).toHaveLength(2);
-    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(0);
   });
 
   it("keeps resizing working from a wrapped handle", async () => {
@@ -153,7 +153,7 @@ describe("composed parts", () => {
     const before = store.getActiveSlide()!.nodes[0].size.w;
     selectAll();
 
-    const handle = container.querySelector<HTMLElement>('[data-resize-grip="se"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
     expect(handle.dataset.testid).toBe("app-handle");
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
@@ -282,7 +282,7 @@ describe("rotating", () => {
     const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
     expect(box.style.transform).toBe("rotate(90deg)");
     expect(box.hasAttribute("data-rotating")).toBe(true);
-    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(0);
 
     await act(async () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
@@ -346,7 +346,7 @@ describe("rotating", () => {
     await waitFor(() => {
       expect(container.querySelectorAll("[data-rotate-handle]")).toHaveLength(2);
     });
-    expect(container.querySelectorAll("[data-resize-grip]")).toHaveLength(16);
+    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(16);
   });
 });
 
@@ -371,10 +371,10 @@ describe("resizing a rotated shape", () => {
     });
     act(() => selection.current!.select(["2"]));
 
-    const handles = container.querySelectorAll<HTMLElement>("[data-resize-grip]");
+    const handles = container.querySelectorAll<HTMLElement>("[data-resize-handle]");
     expect(handles).toHaveLength(8);
     // The east handle points down the slide now, and its cursor says so.
-    const east = container.querySelector<HTMLElement>('[data-resize-grip="e"]')!;
+    const east = container.querySelector<HTMLElement>('[data-resize-handle="e"]')!;
     expect(east.style.cursor).toBe("ns-resize");
 
     const before = store.getActiveSlide()!.nodes[0];
@@ -657,7 +657,7 @@ describe("snap guides", () => {
 
     // Shape 2's right edge sits at 416px and shape 3's left edge at 500px:
     // dragging the east handle 81px lands 3px short, inside the threshold.
-    const handle = container.querySelector<HTMLElement>('[data-resize-grip="e"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-resize-handle="e"]')!;
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
     });
