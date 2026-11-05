@@ -55,7 +55,7 @@ describe("empty paragraph rendering", () => {
     expect(paragraphs).toHaveLength(5);
 
     for (const spacerDiv of paragraphs.slice(0, 4)) {
-      // Occupies a line…
+      // Occupies a line….
       expect(spacerDiv.querySelector("br")).not.toBeNull();
       // …at the endParaRPr-declared 20pt, not an inherited default.
       expect(spacerDiv.style.fontSize).toBe("20pt");
@@ -156,7 +156,7 @@ describe("leading whitespace preservation", () => {
     const spans = runSpansContaining(element, "MARKER first");
     // First run: no pre-wrap.
     expect(spans[0].style.whiteSpace).toBe("");
-    // After <br>, a leading space needs pre-wrap
+    // After <br>, a leading space needs pre-wrap.
     expect(spans[1].style.whiteSpace).toBe("pre-wrap");
     expect(spans[1].textContent).toBe("  second line");
   });

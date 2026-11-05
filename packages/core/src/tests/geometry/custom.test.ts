@@ -31,7 +31,7 @@ describe("renderCustomGeometry with numeric coordinates", () => {
         </a:path>
       </a:pathLst>`);
 
-    // 2x path width, 3x path height
+    // 2x path width, 3x path height.
     const d = renderCustomGeometry(geom, 400, 300);
     expect(pathCommands(d)).toEqual([["M", 0, 0], ["L", 400, 0], ["L", 200, 300], ["Z"]]);
   });
@@ -72,7 +72,7 @@ describe("renderCustomGeometry with gdLst guides", () => {
     </a:pathLst>`);
 
   it("resolves guide-referencing points to the correct geometry", () => {
-    // Native EMU scale (width == pathW) maps values 1:1
+    // Native EMU scale (width == pathW) maps values 1:1.
     const d = renderCustomGeometry(arrow, W_EMU, H_EMU, { w: W_EMU, h: H_EMU });
     expect(pathCommands(d)).toEqual([
       ["M", 0, 457200],

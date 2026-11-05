@@ -265,7 +265,7 @@ const OOXML_SYMBOL_MAP: Record<string, string> = {
   diamond: "diamond",
   triangle: "triangle",
   none: "none",
-  // Less common symbols: fallback to circle
+  // Less common symbols: fallback to circle.
   star: "circle",
   dash: "circle",
   dot: "circle",
@@ -710,7 +710,7 @@ function buildBarChartOption(
     : defaultVaryColors;
   const pointPalette = getVaryColorPointPalette(ctx, { darken: !isHorizontal });
 
-  // OOXML puts data labels on the chart type (barChart) or on the series (ser)
+  // OOXML puts data labels on the chart type (barChart) or on the series (ser).
   let sharedLabels = parseDataLabels(chartTypeNode, ctx);
   if (!sharedLabels) {
     const firstSer = chartTypeNode.children("ser")[0];
@@ -752,7 +752,7 @@ function buildBarChartOption(
       return cfg.fontSize !== undefined ? markExplicitFontSize(label) : label;
     };
 
-    // Per-series label config (override shared)
+    // Per-series label config (override shared).
     const label: echarts.BarSeriesOption["label"] = buildLabel(perSeriesLabels);
     const dLblsNode = getDataLabelsNode(serNodesByOrder[idx], chartTypeNode);
     const pointOverrides = parsePointDataLabelOverrides(dLblsNode, ctx);
@@ -860,7 +860,7 @@ function buildBarChartOption(
   };
   applyAxisInfo(categoryAxisDef, categoryAxis, "category");
 
-  // A series-derived axis/tooltip format applies only when all series share it
+  // A series-derived axis/tooltip format applies only when all series share it.
   const sharedSeriesFormat = getSharedSeriesFormatCode(seriesArr);
   const pctFormat =
     (isPercentStacked ? "0%" : undefined) ||
@@ -882,7 +882,7 @@ function buildBarChartOption(
   const hasTitle = !!titleOption;
   const gridTop = isHorizontal && hasTitle ? 60 : getGridTopPx(hasTitle, legendInfo);
   const legendTopPx = getLegendTopPx(hasTitle, legendInfo);
-  // When value axis is hidden, reduce left/right padding so bars use full width
+  // When value axis is hidden, reduce left/right padding so bars use full width.
   const leftAxis = isHorizontal ? categoryAxis : valueAxis;
   const bottomAxis = isHorizontal ? valueAxis : categoryAxis;
   const gridLeft = (isHorizontal ? 15 : valueAxis.deleted ? 4 : 18) + getAxisTitleSpacePx(leftAxis);
@@ -1338,7 +1338,7 @@ function buildRadarChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
 
-  // Categories come from the first series that has them
+  // Categories come from the first series that has them.
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
   const plotArea = chartNode.child("plotArea");
@@ -1430,12 +1430,12 @@ function buildRadarChartOption(
     (radarHasTopLegend ? "58%" : radarStyle === "filled" ? "76%" : "86%");
 
   const radarData = seriesArr.map((s, idx) => {
-    // Reorder values to match the reversed category order
+    // Reorder values to match the reversed category order.
     const cwValues = s.values.length > 1 ? [s.values[0], ...s.values.slice(1).reverse()] : s.values;
     const echartsSymbol = mapOoxmlSymbol(s.markerSymbol);
     const showSymbol =
       radarStyle === "marker" || (echartsSymbol !== undefined && echartsSymbol !== "none");
-    // PowerPoint radar charts fill the area with a semi-transparent version of the line color
+    // PowerPoint radar charts fill the area with a semi-transparent version of the line color.
     const isFilled = radarStyle === "filled";
     const color = s.colorHex ?? chartPalette?.[idx % chartPalette.length];
     const areaColor = typeof color === "string" ? buildFilledRadarAreaColor(color) : color;
@@ -1807,15 +1807,15 @@ function buildStockChartOption(
 
   // Stock charts have 3 (HLC) or 4 (OHLC) series:
   // OHLC order: open, high, low, close
-  // HLC order: high, low, close (open defaults to close → collapsed body)
+  // HLC order: high, low, close (open defaults to close → collapsed body).
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
-  // ECharts candlestick expects [open, close, low, high] per data point
+  // ECharts candlestick expects [open, close, low, high] per data point.
   const dataLen = categories.length || Math.max(...seriesArr.map((s) => s.values.length), 0);
   const candleData: number[][] = [];
 
   if (seriesArr.length >= 4) {
-    // OHLC: series 0=open, 1=high, 2=low, 3=close
+    // OHLC: series 0=open, 1=high, 2=low, 3=close.
     for (let i = 0; i < dataLen; i++) {
       candleData.push([
         seriesArr[0].values[i] ?? 0, // open
@@ -1825,7 +1825,7 @@ function buildStockChartOption(
       ]);
     }
   } else if (seriesArr.length >= 3) {
-    // HLC: series 0=high, 1=low, 2=close; open=close (collapsed body)
+    // HLC: series 0=high, 1=low, 2=close; open=close (collapsed body).
     for (let i = 0; i < dataLen; i++) {
       const close = seriesArr[2].values[i] ?? 0;
       candleData.push([
@@ -1836,7 +1836,7 @@ function buildStockChartOption(
       ]);
     }
   } else {
-    // Fallback: single series treated as close values with zero open
+    // Fallback: single series treated as close values with zero open.
     for (let i = 0; i < dataLen; i++) {
       const val = seriesArr[0]?.values[i] ?? 0;
       candleData.push([0, val, 0, val]);
@@ -1911,7 +1911,7 @@ function buildStockChartOption(
           type: "custom",
           name: seriesArr[2].name,
           coordinateSystem: "cartesian2d",
-          // data: [categoryIndex, high, low, close]
+          // data: [categoryIndex, high, low, close].
           data: Array.from({ length: dataLen }, (_, i) => [
             i,
             seriesArr[0].values[i] ?? 0,
@@ -1976,7 +1976,7 @@ function buildStockChartOption(
           name: seriesArr.length >= 3 ? seriesArr[2].name : seriesArr[0]?.name,
           data: candleData,
           itemStyle: {
-            // OOXML up/down colors from series spPr; fallback to standard financial convention
+            // OOXML up/down colors from series spPr; fallback to standard financial convention.
             color: pickSeriesStringColor(
               seriesArr[seriesArr.length >= 4 ? 3 : 2]?.colorHex,
               "#ec0000",
@@ -2404,7 +2404,7 @@ export function parseChartXml(
       }
     }
 
-    // Chart-space font sizes replace the hardcoded defaults
+    // Chart-space font sizes replace the hardcoded defaults.
     const defaultFs = extractChartDefaultFontSize(chartXml);
     if (defaultFs) {
       applyDefaultFontSizes(option, defaultFs);
@@ -2415,10 +2415,10 @@ export function parseChartXml(
     }
     applyDefaultTextColors(option);
 
-    // Adjust grid margins for legend placement (non-overlay)
+    // Adjust grid margins for legend placement (non-overlay).
     applyLegendGridMargins(option, chart, defaultFs);
 
-    // Apply PowerPoint-like nice axis range (adds headroom beyond data max)
+    // Apply PowerPoint-like nice axis range (adds headroom beyond data max).
     applyNiceAxisRange(option, chartSize);
 
     // The entrance animation is an ECharts default, not something the file asks
@@ -2434,7 +2434,7 @@ export function parseChartXml(
     if (plotAreaBg) {
       if (option.grid) {
         // Showing the grid for its background also enables its default #ccc 1px
-        // border, which PowerPoint only draws when the plot area declares a line
+        // border, which PowerPoint only draws when the plot area declares a line.
         const grid = option.grid as GridOptionExtended;
         grid.backgroundColor = plotAreaBg;
         grid.show = true;
@@ -2516,7 +2516,7 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     return wrapper;
   }
 
-  // Clipped so the legend/title stay inside
+  // Clipped so the legend/title stay inside.
   const chartDiv = document.createElement("div");
   chartDiv.style.width = "100%";
   chartDiv.style.flex = "1";

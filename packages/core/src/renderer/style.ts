@@ -19,7 +19,7 @@ function buildColorCacheKey(colorNode: SafeXmlNode): string {
     const tag = child.localName;
     const val = child.attr("val") ?? child.attr("amt");
     if (tag) parts.push(`${tag}:${val ?? ""}`);
-    // Include nested color children for wrapper nodes
+    // Wrapper nodes hold their color in a nested child.
     for (const grandchild of child.allChildren()) {
       const gtag = grandchild.localName;
       const gval = grandchild.attr("val") ?? grandchild.attr("amt");
@@ -61,7 +61,7 @@ function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
  * The theme's colorScheme holds the actual hex values keyed by the mapped name.
  */
 function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
-  // A layout colorMap override takes priority
+  // A layout colorMap override takes priority.
   let mappedName = schemeName;
   if (ctx.layout.colorMapOverride) {
     const override = ctx.layout.colorMapOverride.get(schemeName);
@@ -75,7 +75,7 @@ function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
   const hex = ctx.theme.colorScheme.get(mappedName);
   if (hex) return hex;
 
-  // Fallback: try the original name directly in theme
+  // Fallback: try the original name directly in theme.
   const fallback = ctx.theme.colorScheme.get(schemeName);
   return fallback || "000000";
 }
@@ -145,7 +145,7 @@ function resolveColorUncached(
       }
 
       case "scrgbClr": {
-        // r, g, b are percentages (0-100000)
+        // r, g, b are percentages (0-100000).
         const r = Math.round(((child.numAttr("r") ?? 0) / 100000) * 255);
         const g = Math.round(((child.numAttr("g") ?? 0) / 100000) * 255);
         const b = Math.round(((child.numAttr("b") ?? 0) / 100000) * 255);
@@ -154,12 +154,12 @@ function resolveColorUncached(
       }
 
       default:
-        // Not a recognized color child; continue looking
+        // Not a recognized color child; continue looking.
         break;
     }
   }
 
-  // If the node itself is a color type (no wrapper)
+  // If the node itself is a color type (no wrapper).
   const selfTag = colorNode.localName;
   if (selfTag === "srgbClr") {
     const hex = colorNode.attr("val") || "000000";
@@ -253,19 +253,19 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return "";
   }
 
-  // pattFill: pattern fill rendered as CSS repeating gradient
+  // pattFill: pattern fill rendered as CSS repeating gradient.
   const pattFill = spPr.child("pattFill");
   if (pattFill.exists()) {
     return resolvePatternFill(pattFill, ctx);
   }
 
-  // grpFill: inherit fill from parent group
+  // grpFill: inherit fill from parent group.
   const grpFill = spPr.child("grpFill");
   if (grpFill.exists()) {
     if (ctx.groupFillNode) {
       return resolveFill(ctx.groupFillNode, ctx);
     }
-    // No group fill context available; fall through to no fill
+    // No group fill context available; fall through to no fill.
     return "";
   }
 
@@ -274,7 +274,7 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return "transparent";
   }
 
-  // No fill found; inherit
+  // No fill found; inherit.
   return "";
 }
 
@@ -306,7 +306,7 @@ function resolvePatternFill(
     bg = colorToCss(color, alpha);
   }
 
-  // Pattern tile size in px
+  // Pattern tile size in px.
   const s = 8;
 
   // Multi-layer `background` shorthand: the pattern tile over the bg color.
@@ -315,12 +315,12 @@ function resolvePatternFill(
     `${g1} 0 0 / ${s}px ${s}px, ${g2} 0 0 / ${s}px ${s}px, ${bg}`;
 
   switch (preset) {
-    // Solid fills
+    // Solid fills.
     case "solid":
     case "solidDmnd":
       return fg;
 
-    // Percentage fills (dots on background)
+    // Percentage fills (dots on background).
     case "pct5":
     case "pct10":
     case "pct20":
@@ -337,7 +337,7 @@ function resolvePatternFill(
     case "pct90":
       return pat(`radial-gradient(${fg} 2.5px, transparent 2.5px)`);
 
-    // Horizontal lines
+    // Horizontal lines.
     case "horz":
     case "ltHorz":
     case "narHorz":
@@ -346,7 +346,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(0deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Vertical lines
+    // Vertical lines.
     case "vert":
     case "ltVert":
     case "narVert":
@@ -355,7 +355,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (down-right)
+    // Diagonal lines (down-right).
     case "dnDiag":
     case "ltDnDiag":
     case "narDnDiag":
@@ -365,7 +365,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (up-right)
+    // Diagonal lines (up-right).
     case "upDiag":
     case "ltUpDiag":
     case "narUpDiag":
@@ -375,7 +375,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Grid (horizontal + vertical)
+    // Grid (horizontal + vertical).
     case "smGrid":
     case "lgGrid":
     case "cross":
@@ -384,7 +384,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal cross
+    // Diagonal cross.
     case "smCheck":
     case "lgCheck":
     case "diagCross":
@@ -394,12 +394,12 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Dot patterns
+    // Dot patterns.
     case "dotGrid":
     case "dotDmnd":
       return pat(`radial-gradient(${fg} 1px, transparent 1px)`);
 
-    // Trellis / weave
+    // Trellis / weave.
     case "trellis":
     case "weave":
       return pat2(
@@ -407,7 +407,7 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 2px, transparent 2px, transparent ${s}px)`,
       );
 
-    // Dash variants
+    // Dash variants.
     case "dashDnDiag":
     case "dashUpDiag":
     case "dashHorz":
@@ -424,7 +424,7 @@ function resolvePatternFill(
       );
     }
 
-    // Sphere / shingle: radial gradient approximation
+    // Sphere / shingle: radial gradient approximation.
     case "sphere":
     case "shingle":
     case "plaid":
@@ -467,7 +467,7 @@ function resolveGradient(
   if (lin.exists()) {
     const angle = angleToDeg(lin.numAttr("ang") ?? 0);
     // OOXML angle 0 = top-to-bottom in the gradient coordinate system
-    // CSS angle 0 = bottom-to-top
+    // CSS angle 0 = bottom-to-top.
     const cssAngle = (angle + 90) % 360;
     return `linear-gradient(${cssAngle.toFixed(1)}deg, ${stopsStr})`;
   }
@@ -502,7 +502,7 @@ function resolveGradient(
     }
   }
 
-  // Default to linear top-to-bottom
+  // Default to linear top-to-bottom.
   return `linear-gradient(180deg, ${stopsStr})`;
 }
 
@@ -515,11 +515,11 @@ export function resolveLineStyle(
   ctx: RenderContext,
   lnRef?: SafeXmlNode,
 ): { width: number; color: string; dash: string; dashKind: string } {
-  // Width: a:ln@w is in EMU, convert to px
+  // Width: a:ln@w is in EMU, convert to px.
   const widthEmu = ln.numAttr("w") ?? 0;
   let width = emuToPx(widthEmu);
 
-  // Color from solidFill child
+  // Color from solidFill child.
   let color = "transparent";
   const solidFill = ln.child("solidFill");
   if (solidFill.exists()) {
@@ -537,7 +537,7 @@ export function resolveLineStyle(
     }
   } else if (lnRef && lnRef.exists() && (lnRef.numAttr("idx") ?? 0) > 0) {
     const idx = lnRef.numAttr("idx") ?? 0;
-    // Look up theme line style for width, color, and dash
+    // Look up theme line style for width, color, and dash.
     if (idx > 0 && ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
       const themeLn = ctx.theme.lineStyles[idx - 1];
       if (width === 0) {
@@ -547,7 +547,7 @@ export function resolveLineStyle(
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
     } else {
-      // Fallback: use lnRef color directly, approximate width from idx
+      // Fallback: use lnRef color directly, approximate width from idx.
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
       if (width === 0 && idx > 0) {
@@ -581,7 +581,7 @@ export function resolveLineStyle(
     dash = ooxmlDashToCss(val);
   }
 
-  // If no dash from explicit ln, check theme line style
+  // If no dash from explicit ln, check theme line style.
   if (dash === "solid" && lnRef && lnRef.exists()) {
     const idx = lnRef.numAttr("idx") ?? 0;
     if (idx > 0 && ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
@@ -772,7 +772,7 @@ export function resolveGradientFill(
 ): GradientFillData | null {
   let gradFill = spPr.child("gradFill");
 
-  // grpFill: inherit gradient from parent group's grpSpPr
+  // grpFill: inherit gradient from parent group's grpSpPr.
   if (!gradFill.exists() && spPr.child("grpFill").exists() && ctx.groupFillNode) {
     gradFill = ctx.groupFillNode.child("gradFill");
   }
@@ -880,7 +880,7 @@ export function resolveGradientStroke(
 
   const widthEmu = ln.numAttr("w") ?? 0;
   let width = emuToPx(widthEmu);
-  // OOXML default when w is omitted is typically 1 pt; avoid invisible gradient stroke
+  // OOXML default when w is omitted is typically 1 pt; avoid invisible gradient stroke.
   if (width <= 0) width = 1;
 
   return { stops, angle, width, colorInterpolation: "linearRGB" };

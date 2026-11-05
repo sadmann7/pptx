@@ -98,7 +98,7 @@ test.describe("thumbnail list scroll performance", () => {
           new Promise<number>((resolve) => requestAnimationFrame((now) => resolve(now)));
 
         list.scrollTop = 0;
-        // Let the initial viewport fill before measuring, so the sweep reports
+        // The initial viewport fills before measuring, so the sweep reports
         // what scrolling costs rather than what start-up costs.
         for (let i = 0; i < 60; i++) await nextFrame();
 

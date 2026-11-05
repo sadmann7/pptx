@@ -260,7 +260,7 @@ describe("deferred autofit measurement", () => {
       const textContainer = textContainerOf(slide);
 
       // Measuring the text is what the deferred pass exists to do, so counting
-      // reads proves it actually ran
+      // reads proves it actually ran.
       let widthReads = 0;
       Object.defineProperty(textContainer, "clientWidth", {
         get() {
@@ -323,7 +323,7 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
     expect(link.tabIndex).toBe(0);
     expect(link.title).toBe("Go to slide 1");
     expect(link.style.cursor).toBe("pointer");
-    // Hyperlink runs default to underlined…
+    // Hyperlink runs default to underlined….
     expect(link.style.textDecoration).toContain("underline");
     // …in the theme hlink color (fixture hlink = 0563C1).
     expect(normalizeColor(link.style.color)).toBe("5,99,193,1");

@@ -222,7 +222,7 @@ describe("multiple runs in one paragraph", () => {
     expect(spans[0].style.fontSize).toBe("28pt");
     expect(spans[0].style.fontWeight).toBe("bold");
     expect(normalizeColor(spans[0].style.color)).toBe("0,0,255,1");
-    // Explicit run rPr wins over the paragraph default…
+    // Explicit run rPr wins over the paragraph default….
     expect(spans[1].style.fontSize).toBe("14pt");
     expect(spans[1].style.fontWeight).toBe("");
     // …but properties it does not set still inherit.

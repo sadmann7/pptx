@@ -46,7 +46,7 @@ describe("SafeXmlNode", () => {
   it("navigates children by localName ignoring namespace prefixes", () => {
     expect(spTree.exists()).toBe(true);
     expect(spTree.child("sp").exists()).toBe(true);
-    // a:xfrm found under p:spPr even though prefixes differ
+    // a:xfrm found under p:spPr even though prefixes differ.
     expect(spTree.child("sp").child("spPr").child("xfrm").exists()).toBe(true);
   });
 

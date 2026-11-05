@@ -80,7 +80,7 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "chart":
       return renderChart(node as ChartNodeData, ctx);
     default: {
-      // Unknown node type: render as empty positioned div
+      // Unknown node type: render as empty positioned div.
       const el = document.createElement("div");
       el.style.position = "absolute";
       el.style.left = `${node.position.x}px`;
@@ -145,7 +145,7 @@ function parseTemplateShapes(
   };
 
   for (const child of spTree.allChildren()) {
-    // Skip ALL placeholder shapes: they're templates, not renderable content
+    // Skip ALL placeholder shapes: they're templates, not renderable content.
     if (isPlaceholderNode(child)) continue;
 
     try {
@@ -154,7 +154,7 @@ function parseTemplateShapes(
         nodes.push(node);
       }
     } catch {
-      // An unparseable template shape is left out rather than failing the slide
+      // An unparseable template shape is left out rather than failing the slide.
     }
   }
   return nodes;
@@ -299,7 +299,7 @@ export function renderThumbnail(
     try {
       renderBackground(ctx, container);
     } catch {
-      // Non-fatal
+      // Non-fatal.
     }
 
     if (slide.showMasterSp && ctx.layout.showMasterSp) {
@@ -319,7 +319,7 @@ export function renderThumbnail(
         try {
           container.appendChild(renderNode(node, masterCtx));
         } catch {
-          // Non-fatal
+          // Non-fatal.
         }
       }
     }
@@ -341,7 +341,7 @@ export function renderThumbnail(
         try {
           container.appendChild(renderNode(node, layoutCtx));
         } catch {
-          // Non-fatal
+          // Non-fatal.
         }
       }
     }
@@ -350,11 +350,11 @@ export function renderThumbnail(
       try {
         container.appendChild(renderNode(node, ctx));
       } catch {
-        // Non-fatal; skip failed nodes silently in thumbnail mode
+        // Non-fatal; skip failed nodes silently in thumbnail mode.
       }
     }
   } catch {
-    // Outer guard for any unexpected renderer failure
+    // Outer guard for any unexpected renderer failure.
   }
 
   const mediaUrlCache = ctx.mediaUrlCache;
@@ -436,7 +436,7 @@ export function renderSlide(
 
     // showMasterSp:
     //  - layout.showMasterSp === false  → skip master shapes
-    //  - slide.showMasterSp === false   → skip both master AND layout shapes
+    //  - slide.showMasterSp === false   → skip both master AND layout shapes.
     if (slide.showMasterSp && ctx.layout.showMasterSp) {
       const masterCtx: RenderContext = {
         ...ctx,
@@ -455,7 +455,7 @@ export function renderSlide(
           const el = renderNode(node, masterCtx);
           container.appendChild(el);
         } catch {
-          // Master shape errors are non-fatal
+          // Master shape errors are non-fatal.
         }
       }
     }
@@ -478,7 +478,7 @@ export function renderSlide(
           const el = renderNode(node, layoutCtx);
           container.appendChild(el);
         } catch {
-          // Layout shape errors are non-fatal
+          // Layout shape errors are non-fatal.
         }
       }
     }
@@ -509,11 +509,11 @@ export function renderSlide(
     if (disposed) return;
     disposed = true;
 
-    // Detach observers before tearing down what they watch
+    // Detach observers before tearing down what they watch.
     for (const cleanup of cleanups) cleanup();
     cleanups.length = 0;
 
-    // Dispose chart instances whose DOM is inside this slide container
+    // Dispose chart instances whose DOM is inside this slide container.
     if (chartInstances) {
       for (const chart of chartInstances) {
         if (!chart.isDisposed() && container.contains(chart.getDom())) {
@@ -523,7 +523,7 @@ export function renderSlide(
       }
     }
 
-    // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache)
+    // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache).
     if (!isSharedCache) {
       for (const url of mediaUrlCache.values()) {
         URL.revokeObjectURL(url);

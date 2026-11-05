@@ -80,10 +80,10 @@ describe("parseSeries", () => {
 </c:ser></c:lineChart>`).child("lineChart");
     const [s] = parseSeries(lineChart, ctx);
     expect(s.markerSymbol).toBe("diamond");
-    // 7pt × 96/72 = 9.333px
+    // 7pt × 96/72 = 9.333px.
     expect(s.markerSize).toBeCloseTo(9.333, 3);
     expect(s.smooth).toBe(true);
-    // 28575 EMU / 12700 = 2.25px
+    // 28575 EMU / 12700 = 2.25px.
     expect(s.lineWidth).toBe(2.25);
     expect(s.colorHex).toBe("#00FF00");
   });
@@ -97,7 +97,7 @@ describe("parseSeries", () => {
     const [s] = parseSeries(scatterChart, ctx);
     expect(s.values).toEqual([10, 20, 40]);
     expect(s.xValues).toEqual([1, 2, 4]);
-    // numeric xVal doubles as categories when no c:cat exists
+    // numeric xVal doubles as categories when no c:cat exists.
     expect(s.categories).toEqual(["1", "2", "4"]);
   });
 

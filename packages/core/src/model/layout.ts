@@ -78,7 +78,7 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
   const offY = off.numAttr("y") ?? 0;
   const cx = ext.numAttr("cx") ?? 0;
   const cy = ext.numAttr("cy") ?? 0;
-  // OOXML: when chOff/chExt omitted, child box equals group box (chOff=0,0 and chExt=ext)
+  // OOXML: when chOff/chExt omitted, child box equals group box (chOff=0,0 and chExt=ext).
   const chOffX = chOff.exists() ? (chOff.numAttr("x") ?? 0) : 0;
   const chOffY = chOff.exists() ? (chOff.numAttr("y") ?? 0) : 0;
   const chExtCx = chExt.exists() ? (chExt.numAttr("cx") ?? cx) : cx;

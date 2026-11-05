@@ -41,7 +41,7 @@ test.describe("charts nested under ppt/slides/charts/ with literal data", () => 
   // Regressions covered:
   // - chart parts at non-standard depths were not categorized ("Chart not found")
   // - c:strLit/c:numLit literal data produced empty series (all-white charts)
-  // - noFill axis/plot-area lines fell back to ECharts' default gray lines
+  // - noFill axis/plot-area lines fell back to ECharts' default gray lines.
   test("renders the doughnut chart", async ({ page }) => {
     await openSlide(page, "nested-charts.pptx", 0);
 

@@ -218,17 +218,17 @@ function renderImageUrl(
   // the wrapper and offset, and the wrapper's overflow:hidden clips it.
   if (node.crop) {
     const { top, right, bottom, left } = node.crop;
-    // Visible fraction of original image in each dimension
+    // Visible fraction of original image in each dimension.
     const visibleW = 1 - left - right;
     const visibleH = 1 - top - bottom;
-    // Guard against degenerate crops (<=0 visible)
+    // Guard against degenerate crops (<=0 visible).
     if (visibleW > 0.001 && visibleH > 0.001) {
-      // Scale image so the visible portion fills the wrapper exactly
+      // Scaled so the visible portion fills the wrapper exactly.
       const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%
       const scaleY = 1 / visibleH;
       // Pixels, because CSS margin-top/margin-left percentages are both relative
       // to the containing block's WIDTH (not height), which causes incorrect offsets
-      // for non-square wrappers with significant crops
+      // for non-square wrappers with significant crops.
       const wrapperW = node.size.w * ((fillRectBox?.width ?? 100) / 100);
       const wrapperH = node.size.h * ((fillRectBox?.height ?? 100) / 100);
       img.style.width = `${(scaleX * wrapperW).toFixed(4)}px`;
@@ -248,19 +248,19 @@ function renderImageUrl(
     appendCssFilter(img, "grayscale(1)");
   }
 
-  // Duotone: recolor image (dark→color1, light→color2)
+  // Duotone: recolor image (dark→color1, light→color2).
   const duotone = blip.child("duotone");
   if (duotone.exists()) {
     applyDuotoneFilter(duotone, ctx, img, wrapper);
   }
 
-  // Luminance: brightness/contrast adjustment
+  // Luminance: brightness/contrast adjustment.
   const lum = blip.child("lum");
   if (lum.exists()) {
     applyLumEffect(lum, img);
   }
 
-  // BiLevel: threshold to black/white
+  // BiLevel: threshold to black/white.
   const biLevel = blip.child("biLevel");
   if (biLevel.exists()) {
     applyBiLevelEffect(biLevel, img);
@@ -701,7 +701,7 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
     }
     wrapper.appendChild(video);
   } else if (posterUrl) {
-    // No video data available: show poster with play overlay
+    // No video data available: show poster with play overlay.
     const img = document.createElement("img");
     img.src = posterUrl;
     img.style.width = "100%";
@@ -872,7 +872,7 @@ function renderEmfPdf(
       }
     })
     .catch(() => {
-      // PDF rendering failed: leave wrapper empty (transparent)
+      // PDF rendering failed: leave wrapper empty (transparent).
     });
   ctx.asyncTasks?.push(task);
 }
@@ -933,7 +933,7 @@ function applyDuotoneFilter(
   img: HTMLImageElement,
   _wrapper: HTMLElement,
 ): void {
-  // First color is dark, second is light
+  // First color is dark, second is light.
   const colorChildren = duotone.allChildren();
   if (colorChildren.length < 2) return;
 
@@ -946,7 +946,7 @@ function applyDuotoneFilter(
   const rgb1 = hexToRgb(hex1);
   const rgb2 = hexToRgb(hex2);
 
-  // After the image loads, redraw it through a canvas with duotone applied
+  // After the image loads, redraw it through a canvas with duotone applied.
   const apply = () => {
     const w = img.naturalWidth;
     const h = img.naturalHeight;
@@ -964,7 +964,7 @@ function applyDuotoneFilter(
 
     for (let i = 0; i < data.length; i += 4) {
       const gray = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
-      // Linearly interpolate between color1 (dark) and color2 (light)
+      // Linearly interpolate between color1 (dark) and color2 (light).
       data[i] = Math.round(rgb1.r + (rgb2.r - rgb1.r) * gray);
       data[i + 1] = Math.round(rgb1.g + (rgb2.g - rgb1.g) * gray);
       data[i + 2] = Math.round(rgb1.b + (rgb2.b - rgb1.b) * gray);

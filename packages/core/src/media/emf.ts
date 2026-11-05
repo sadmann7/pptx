@@ -8,12 +8,12 @@ const EMR_EOF = 14;
 const EMR_COMMENT = 70;
 const EMR_STRETCHDIBITS = 81;
 
-// GDI comment identifiers (MS-EMF spec)
+// GDI comment identifiers (MS-EMF spec).
 const GDIC_COMMENT_ID = 0x43494447; // "GDIC"
 const GDIC_BEGINGROUP = 0x00000002;
 const GDIC_MULTIFORMATS = 0x40000004;
 
-// EMF header signature at offset 40
+// EMF header signature at offset 40.
 const EMF_SIGNATURE = 0x464d4520; // " EMF"
 
 const PDF_HEADER = [0x25, 0x50, 0x44, 0x46]; // "%PDF"
@@ -62,7 +62,7 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
     offset += recordSize;
   }
 
-  // Only HEADER + EOF → empty
+  // Only HEADER + EOF → empty.
   if (recordCount <= 2) {
     return { type: "empty" };
   }
@@ -96,7 +96,7 @@ function parseGdiComment(
     }
   }
 
-  // Also search non-GDIC comments for raw PDF data
+  // Also search non-GDIC comments for raw PDF data.
   if (recordSize > 100) {
     const recordData = data.subarray(offset + 8, offset + recordSize);
     const pdf = extractPdfFromBuffer(recordData);
@@ -116,7 +116,7 @@ function parseMultiformats(
   // +12: commentIdentifier(4), +16: publicCommentIdentifier(4)
   // +20: outputRect(16 = RECTL)
   // +36: countFormats(4)
-  // +40: format descriptors array, each: { signature(4), version(4), cbData(4), offData(4) }
+  // +40: format descriptors array, each: { signature(4), version(4), cbData(4), offData(4) }.
   if (offset + 40 > data.length) return null;
 
   const countFormats = view.getUint32(offset + 36, true);
@@ -129,7 +129,7 @@ function parseMultiformats(
     const cbData = view.getUint32(descOff + 8, true);
     const offData = view.getUint32(descOff + 12, true);
 
-    // offData is relative to the start of the record
+    // offData is relative to the start of the record.
     const dataStart = offset + offData;
     if (dataStart + cbData > data.length || cbData === 0) continue;
 
@@ -155,7 +155,7 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   }
 
   if (pdfEnd === -1) {
-    // No %%EOF found: take everything from %PDF to end of buffer
+    // No %%EOF found: take everything from %PDF to end of buffer.
     pdfEnd = buf.length;
   }
 
@@ -177,7 +177,7 @@ function parseStretchDibits(
   //  48: offBmiSrc(4), 52: cbBmiSrc(4)
   //  56: offBitsSrc(4), 60: cbBitsSrc(4)
   //  64: iUsageSrc(4), 68: dwRop(4)
-  //  72: cxDest(4), 76: cyDest(4)
+  //  72: cxDest(4), 76: cyDest(4).
   if (offset + 80 > data.length) return null;
 
   const offBmiSrc = view.getUint32(offset + 48, true);
@@ -190,7 +190,7 @@ function parseStretchDibits(
   const bmiStart = offset + offBmiSrc;
   if (bmiStart + 40 > data.length) return null;
 
-  // Parse BITMAPINFOHEADER
+  // Parse BITMAPINFOHEADER.
   const biWidth = view.getInt32(bmiStart + 4, true);
   const biHeight = view.getInt32(bmiStart + 8, true);
   const biBitCount = view.getUint16(bmiStart + 14, true);
@@ -229,7 +229,7 @@ function parseStretchDibits(
       const srcIdx = srcOffset + x * bytesPerPixel;
       if (srcIdx + bytesPerPixel > bitsData.length) break;
 
-      // DIB stores BGR(A)
+      // DIB stores BGR(A).
       imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2]; // R
       imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1]; // G
       imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0]; // B

@@ -150,7 +150,7 @@ function renderPlaceholderPrompt(
   const promptBody = parseTextBody(templateNode.child("txBody"));
   if (!promptBody) return;
 
-  // Layouts often carry empty per-level paragraphs that would render as blank lines
+  // Layouts often carry empty per-level paragraphs that would render as blank lines.
   const paragraphs = promptBody.paragraphs.filter((p) =>
     p.runs.some((r) => r.text != null && r.text.trim().length > 0),
   );
@@ -896,7 +896,7 @@ function angleToSvgGradientCoords(angleDeg: number): {
   x2: string;
   y2: string;
 } {
-  // OOXML: 0° = left-to-right, 90° = top-to-bottom (clockwise)
+  // OOXML: 0° = left-to-right, 90° = top-to-bottom (clockwise).
   const rad = (angleDeg * Math.PI) / 180;
   const x2 = Math.round(50 + 50 * Math.cos(rad));
   const y2 = Math.round(50 + 50 * Math.sin(rad));
@@ -1097,7 +1097,7 @@ function createArrowMarker(
   const id = `arrow-marker-${++markerIdCounter}`;
   marker.setAttribute("id", id);
   // markerUnits="strokeWidth" would blow up quadratically, since the base size
-  // already factors in stroke width
+  // already factors in stroke width.
   marker.setAttribute("markerUnits", "userSpaceOnUse");
   marker.setAttribute("orient", "auto");
 
@@ -1114,10 +1114,10 @@ function createArrowMarker(
 
       const polygon = document.createElementNS(svgNs, "polygon");
       if (isHead) {
-        // headEnd at marker-start: arrow points backward (-x / left)
+        // headEnd at marker-start: arrow points backward (-x / left).
         polygon.setAttribute("points", "0,5 10,0 10,10");
       } else {
-        // tailEnd at marker-end: arrow points forward (+x / right)
+        // tailEnd at marker-end: arrow points forward (+x / right).
         polygon.setAttribute("points", "10,5 0,0 0,10");
       }
       polygon.setAttribute("fill", strokeColor);
@@ -1133,10 +1133,10 @@ function createArrowMarker(
 
       const path = document.createElementNS(svgNs, "path");
       if (isHead) {
-        // headEnd at marker-start: arrow points backward (-x / left)
+        // headEnd at marker-start: arrow points backward (-x / left).
         path.setAttribute("d", "M0,5 L10,0 L7,5 L10,10 Z");
       } else {
-        // tailEnd at marker-end: arrow points forward (+x / right)
+        // tailEnd at marker-end: arrow points forward (+x / right).
         path.setAttribute("d", "M10,5 L0,0 L3,5 L0,10 Z");
       }
       path.setAttribute("fill", strokeColor);
@@ -1258,7 +1258,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   wrapper.style.left = `${node.position.x}px`;
   wrapper.style.top = `${node.position.y}px`;
   wrapper.style.width = `${node.size.w}px`;
-  // Line-like: preset line/connector, or cxnSp (connection shape), or flat extent (one dimension 0)
+  // Line-like: preset line/connector, or cxnSp (connection shape), or flat extent (one dimension 0).
   const presetKey = node.presetGeometry?.toLowerCase() ?? "";
   const outlineOnlyPresets = new Set(["arc"]);
   const presetIsLine =
@@ -1299,7 +1299,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   const pathW = w;
   const pathH = h;
 
-  // Style references (needed for path fallback and line resolution)
+  // Style references (needed for path fallback and line resolution).
   const styleNode = node.source.child("style");
   const lnRef = styleNode.exists() ? styleNode.child("lnRef") : undefined;
   const fillRef = styleNode.exists() ? styleNode.child("fillRef") : undefined;
@@ -1325,7 +1325,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     };
     pathD = renderCustomGeometry(node.customGeometry, pathW, pathH, sourceExtentEmu);
   }
-  // Connectors (cxnSp) or flat-extent shapes with line style but no geometry: draw as line
+  // Connectors (cxnSp) or flat-extent shapes with line style but no geometry: draw as line.
   if (
     !pathD &&
     isLineLike &&
@@ -1347,7 +1347,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
 
   const spPr = node.source.child("spPr");
   let fillCss = "";
-  // Resolve structured gradient fill data (for SVG gradient elements)
+  // Structured gradient data, for SVG gradient elements.
   let gradientFillData = node.fill ? resolveGradientFill(spPr, ctx) : null;
   if (node.fill && node.fill.exists()) {
     if (node.fill.localName === "solidFill") {
@@ -1364,7 +1364,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     }
     if (!fillCss) fillCss = resolveFill(spPr, ctx);
   }
-  // Diagram/SmartArt: read fill directly from source when still missing (spPr > solidFill > color)
+  // Diagram/SmartArt: read fill directly from source when still missing (spPr > solidFill > color).
   if (!fillCss) {
     const solidFill = spPr.child("solidFill");
     if (solidFill.exists()) {
@@ -1380,7 +1380,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       if (colorChild?.exists()) fillCss = resolveColorToCss(colorChild, ctx);
     }
   }
-  // fillRef fallback: when no explicit fill but fillRef idx > 0, use fillRef color
+  // fillRef fallback: when no explicit fill but fillRef idx > 0, use fillRef color.
   if (!fillCss && fillRef && fillRef.exists() && (fillRef.numAttr("idx") ?? 0) > 0) {
     const resolvedThemeFill = resolveThemeFillReference(fillRef, ctx);
     fillCss = resolvedThemeFill.fillCss;
@@ -1401,7 +1401,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   let strokeLinejoin = "";
   let gradientStroke: ReturnType<typeof resolveGradientStroke> = null;
 
-  // Resolve effective line: explicit <a:ln> on shape, or use theme line from lnRef.
+  // An explicit <a:ln> wins over the theme line from lnRef.
   // When line is explicitly <a:noFill/>, do not use lnRef; diagram arrows (e.g. circularArrow) must have no stroke.
   const lineIsNoFill = node.line && node.line.child("noFill").exists();
   const hasExplicitLine = node.line && !lineIsNoFill;
@@ -1426,13 +1426,13 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       strokeDashKind = lineStyle.dashKind;
     }
 
-    // Line cap: a:ln@cap → SVG stroke-linecap
+    // Line cap: a:ln@cap → SVG stroke-linecap.
     const capAttr = effectiveLine.attr("cap");
     if (capAttr === "rnd") strokeLinecap = "round";
     else if (capAttr === "sq") strokeLinecap = "square";
     else if (capAttr === "flat") strokeLinecap = "butt";
 
-    // Line join: from child elements
+    // Line join: from child elements.
     if (effectiveLine.child("round").exists()) strokeLinejoin = "round";
     else if (effectiveLine.child("bevel").exists()) strokeLinejoin = "bevel";
     else if (effectiveLine.child("miter").exists()) strokeLinejoin = "miter";
@@ -1519,7 +1519,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
 
       wrapper.appendChild(svg);
     } else {
-      // Create <defs> for gradients and markers
+      // Create <defs> for gradients and markers.
       const defs = document.createElementNS(svgNs, "defs");
 
       const path = document.createElementNS(svgNs, "path");
@@ -1548,7 +1548,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         if (patternFillId) {
           path.setAttribute("fill", `url(#${patternFillId})`);
         } else if (gradientFillData && gradientFillData.stops.length > 0) {
-          // Create SVG gradient definition for proper shape-clipped gradient fills
+          // Create SVG gradient definition for proper shape-clipped gradient fills.
           const fillGradId = `grad-fill-${++gradientIdCounter}`;
 
           if (gradientFillData.type === "radial" && gradientFillData.pathType === "rect") {
@@ -1560,7 +1560,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             const gcx = gradientFillData.cx ?? 0.5;
             const gcy = gradientFillData.cy ?? 0.5;
 
-            // Mirror stops for center-out: original stop at N% → two stops at
+            // Center-out gradients mirror each stop: N% becomes two stops at
             // (center - N%*distToEdge) and (center + N%*distToEdge) in gradient coords.
             const mirrorStops = (centerFrac: number, axis: "x" | "y") => {
               const focusedStops = getFocusedGradientStops(gradientFillData, { axis });
@@ -1576,7 +1576,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               return mirrored;
             };
 
-            // Horizontal linear gradient (left → right, center at gcx)
+            // Horizontal linear gradient (left → right, center at gcx).
             const hGradId = `${fillGradId}-h`;
             const hGrad = document.createElementNS(svgNs, "linearGradient");
             hGrad.setAttribute("id", hGradId);
@@ -1596,7 +1596,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             }
             defs.appendChild(hGrad);
 
-            // Vertical linear gradient (top → bottom, center at gcy)
+            // Vertical linear gradient (top → bottom, center at gcy).
             const vGradId = `${fillGradId}-v`;
             const vGrad = document.createElementNS(svgNs, "linearGradient");
             vGrad.setAttribute("id", vGradId);
@@ -1649,7 +1649,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             vPath.setAttribute("style", "mix-blend-mode: lighten");
             blendGroup.appendChild(vPath);
 
-            // The blend group paints the fill and is inserted before this path later
+            // The blend group paints the fill and is inserted before this path later.
             path.setAttribute("fill", "none");
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (path as any).__rectBlendGroup = blendGroup;
@@ -1665,7 +1665,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             const gcy = gradientFillData.cy ?? 0.5;
             radialGrad.setAttribute("cx", String(gcx * svgW));
             radialGrad.setAttribute("cy", String(gcy * svgH));
-            // path="circle"/"shape": gradient reaches farthest corner
+            // path="circle"/"shape": gradient reaches farthest corner.
             const maxDx = Math.max(gcx, 1 - gcx);
             const maxDy = Math.max(gcy, 1 - gcy);
             radialGrad.setAttribute("r", String(Math.hypot(maxDx * svgW, maxDy * svgH)));
@@ -1680,7 +1680,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             }
             defs.appendChild(radialGrad);
           } else {
-            // Linear gradient
+            // Linear gradient.
             const linearGrad = document.createElementNS(svgNs, "linearGradient");
             linearGrad.setAttribute("id", fillGradId);
             linearGrad.setAttribute(
@@ -1718,11 +1718,11 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       } else {
         path.setAttribute("fill", "none");
       }
-      // SmartArt circularArrow: force no stroke; fill already resolved via fillRef/solidFill above
+      // SmartArt circularArrow: force no stroke; fill already resolved via fillRef/solidFill above.
       if (isCircularArrow) {
         // fillCss was already resolved (including fillRef fallback). Only override if still empty.
         if (!fillCss || fillCss === "none" || fillCss === "transparent") {
-          // Last resort: spPr > solidFill > color child
+          // Last resort: spPr > solidFill > color child.
           const colorTags = ["srgbClr", "schemeClr", "scrgbClr", "sysClr", "hslClr", "prstClr"];
           let fallbackFill = "";
           const solid = spPr.child("solidFill");
@@ -1747,7 +1747,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         path.setAttribute("stroke", "none");
       }
 
-      // Resolved before the stroke so connectors can get a minimum width
+      // Resolved before the stroke so connectors can get a minimum width.
       let effectiveHeadEnd = node.headEnd;
       let effectiveTailEnd = node.tailEnd;
       if ((!effectiveHeadEnd || !effectiveTailEnd) && effectiveLine?.exists()) {
@@ -1811,7 +1811,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
 
         if (isLineLike || svgW <= 1 || svgH <= 1) {
           // Straight connectors may have a zero-size bbox on one axis, so the
-          // long axis avoids degenerate gradient coordinates in user space
+          // long axis avoids degenerate gradient coordinates in user space.
           const rad = (gradientStroke.angle * Math.PI) / 180;
           const cos = Math.cos(rad);
           const sin = Math.sin(rad);
@@ -1876,7 +1876,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       }
 
       // Line end markers (arrowheads)
-      // Use gradient start colour for head (marker-start) and end colour for tail (marker-end)
+      // Use gradient start colour for head (marker-start) and end colour for tail (marker-end).
       if (effectiveStrokeWidth > 0 && (effectiveHeadEnd || effectiveTailEnd)) {
         if (effectiveHeadEnd) {
           const marker = createArrowMarker(
@@ -1935,7 +1935,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             );
           })
           .catch(() => {
-            // The fallback fill/stroke stays when lazy media cannot be decoded
+            // The fallback fill/stroke stays when lazy media cannot be decoded.
           });
         ctx.asyncTasks?.push(task);
         if (!ctx.asyncTasks) void task;
@@ -2054,7 +2054,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
                   : "rgba(255,255,255,0.3)"),
             );
           } else {
-            // 'norm': same fill as main path
+            // 'norm': same fill as main path.
             extraPath.setAttribute("fill", mainPathFill || "none");
           }
           if (sp.stroke && effectiveStrokeWidth > 0 && strokeColor !== "transparent") {
@@ -2153,7 +2153,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         svg.insertBefore(defs, svg.firstChild);
       }
 
-      // circularArrow: ensure no stroke and remove markers
+      // circularArrow: ensure no stroke and remove markers.
       if (isCircularArrow) {
         path.setAttribute("stroke", "none");
         path.removeAttribute("stroke-width");
@@ -2176,7 +2176,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               const r = parseInt(m[1], 16);
               const g = parseInt(m[2], 16);
               const b = parseInt(m[3], 16);
-              // Shade at 50%: darken each channel by half
+              // Shade at 50%: darken each channel by half.
               iconFill = rgbToHex(Math.round(r * 0.5), Math.round(g * 0.5), Math.round(b * 0.5));
             }
           }
@@ -2189,7 +2189,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       wrapper.appendChild(svg);
     }
   } else if (fillCss && fillCss !== "transparent") {
-    // No geometry but has fill: apply as background color
+    // No geometry but has fill: apply as background color.
     if (fillCss.includes("gradient")) {
       wrapper.style.background = fillCss;
     } else {
@@ -2275,7 +2275,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       }
       // spAutoFit asks PowerPoint to grow the shape, but the absolutely positioned
       // shape cannot resize here, so bounded scaling keeps text from bleeding
-      // into neighboring nodes
+      // into neighboring nodes.
       if (hasSpAutoFit && !hasNormAutofit) {
         if (!spAutoFitAllowsVerticalOverflow) {
           textContainer.style.overflowY = "hidden";
@@ -2304,7 +2304,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         !!hasSpAutoFit && !hasNormAutofit && isSingleLineTextBody(node.textBody);
       const hasCenteredParagraphs = hasExplicitCenteredParagraph(node.textBody);
 
-      // Layout/master bodyPr fills in missing attributes
+      // Layout/master bodyPr fills in missing attributes.
       {
         if (bodyPr) {
           // Text wrap: only wrap="none" should force single-line.
@@ -2314,7 +2314,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           }
         }
 
-        // Vertical alignment (anchor): prefer shape's own, then layout placeholder
+        // Vertical alignment (anchor): prefer shape's own, then layout placeholder.
         const ownAnchor = bodyPr ? bodyPr.attr("anchor") : undefined;
         const fallbackAnchor = fallbackBp ? fallbackBp.attr("anchor") : undefined;
         const anchor = ownAnchor || fallbackAnchor;
@@ -2332,7 +2332,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           textContainer.style.justifyContent = "flex-start";
         }
 
-        // Internal margins (insets): prefer shape's own, then layout, then OOXML defaults
+        // Internal margins (insets): prefer shape's own, then layout, then OOXML defaults.
         const lIns =
           (bodyPr ? bodyPr.numAttr("lIns") : undefined) ??
           (fallbackBp ? fallbackBp.numAttr("lIns") : undefined);
@@ -2346,7 +2346,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           (bodyPr ? bodyPr.numAttr("bIns") : undefined) ??
           (fallbackBp ? fallbackBp.numAttr("bIns") : undefined);
 
-        // Default insets are 91440 EMU (0.1 inch) for L/R, 45720 EMU (0.05 inch) for T/B
+        // Default insets are 91440 EMU (0.1 inch) for L/R, 45720 EMU (0.05 inch) for T/B.
         const leftPad = lIns !== undefined ? emuToPx(lIns) : emuToPx(91440);
         const topPad = tIns !== undefined ? emuToPx(tIns) : emuToPx(45720);
         const rightPad = rIns !== undefined ? emuToPx(rIns) : emuToPx(91440);
@@ -2366,7 +2366,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         textContainer.style.paddingRight = `${rightPad}px`;
         textContainer.style.paddingBottom = `${effectiveBottomPad}px`;
 
-        // Vertical text support (bodyPr@vert)
+        // Vertical text support (bodyPr@vert).
         if (vert === "eaVert") {
           applyVerticalTextFlow(textContainer, textAnchor);
           isVerticalText = true;
@@ -2405,8 +2405,8 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         textContainer.style.transform = `${existing} scaleX(-1)`.trim();
       }
 
-      // Resolve fontRef color from shape style element (used by SmartArt diagram shapes
-      // where text color is specified via dsp:style > a:fontRef > a:schemeClr).
+      // SmartArt diagram shapes set text color through the style's fontRef
+      // (dsp:style > a:fontRef > a:schemeClr).
       let fontRefColor: string | undefined;
       const shapeStyle = node.source.child("style");
       if (shapeStyle.exists()) {
@@ -2759,12 +2759,12 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           spreadBasisH = lineThickness;
         }
 
-        // Spread = how far the shadow extends beyond the shape on each side
+        // Spread = how far the shadow extends beyond the shape on each side.
         const spreadX = (spreadBasisW * (scaleX - 1)) / 2;
         const spreadY = (spreadBasisH * (scaleY - 1)) / 2;
         const spread = Math.max(0, (spreadX + spreadY) / 2);
 
-        // Alignment shifts the shadow anchor point; compute extra offset
+        // Alignment shifts the shadow anchor point; compute extra offset.
         let alignOffX = 0;
         let alignOffY = 0;
         if (algn) {

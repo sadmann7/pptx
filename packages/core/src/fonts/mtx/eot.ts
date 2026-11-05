@@ -122,7 +122,7 @@ export function parseEotMetadata(data: Uint8Array): EotMetadata {
       rootString = parseTail(data, reader.pos, fontDataOffset, candidate);
       parsedVersion = candidate;
     } catch {
-      // Fall through to the next known layout.
+      // Not this layout; the next one is tried.
     }
   }
   if (!parsedVersion)

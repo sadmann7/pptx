@@ -67,12 +67,12 @@ function findTable(frameNode: SafeXmlNode): SafeXmlNode {
 }
 
 function extractTableStyleId(tblPr: SafeXmlNode): string | undefined {
-  // Try <a:tableStyleId>{UUID}</a:tableStyleId> (most common in OOXML)
+  // Try <a:tableStyleId>{UUID}</a:tableStyleId> (most common in OOXML).
   const tableStyleIdNode = tblPr.child("tableStyleId");
   if (tableStyleIdNode.exists()) {
     return tableStyleIdNode.text() || tableStyleIdNode.attr("val") || undefined;
   }
-  // Try <a:tblStyle val="{UUID}"/>
+  // Try <a:tblStyle val="{UUID}"/>.
   const tblStyleNode = tblPr.child("tblStyle");
   if (tblStyleNode.exists()) {
     return tblStyleNode.attr("val") ?? (tblStyleNode.text() || undefined);

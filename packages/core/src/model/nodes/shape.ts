@@ -151,7 +151,7 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
     const fmla = gd.attr("fmla") ?? "";
     if (!name) continue;
 
-    // fmla is typically "val NNNNN": extract the numeric part
+    // fmla is typically "val NNNNN": extract the numeric part.
     const match = fmla.match(/val\s+(-?\d+)/);
     if (match) {
       adjustments.set(name, Number(match[1]));

@@ -87,7 +87,7 @@ function findXfrm(node: SafeXmlNode): SafeXmlNode {
   const directXfrm = node.child("xfrm");
   if (directXfrm.exists()) return directXfrm;
 
-  // An empty node makes every read return its default
+  // An empty node makes every read return its default.
   return node.child("__nonexistent__");
 }
 

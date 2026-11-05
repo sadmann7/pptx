@@ -171,7 +171,7 @@ function serializeNode(
             children.push(serializeNode(parsed, rels, partPath, diagramDrawings, layout, master));
           }
         } catch {
-          // skip unparseable group children
+          // skip unparseable group children.
         }
       }
       base.children = children;

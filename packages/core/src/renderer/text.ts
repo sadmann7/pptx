@@ -54,7 +54,7 @@ function findPlaceholderNode(
   info: PlaceholderInfo,
 ): SafeXmlNode | undefined {
   for (const ph of placeholders) {
-    // Navigate to the ph element to read its attributes
+    // Navigate to the ph element to read its attributes.
     let phEl: SafeXmlNode | undefined;
     const nvSpPr = ph.child("nvSpPr");
     if (nvSpPr.exists()) {
@@ -72,7 +72,7 @@ function findPlaceholderNode(
     const phIdx = phEl.numAttr("idx");
 
     // Match by idx first (most specific), then by exact type, then by
-    // equivalent type (title≡ctrTitle, body≡subTitle≡obj)
+    // equivalent type (title≡ctrTitle, body≡subTitle≡obj).
     if (info.idx !== undefined && phIdx === info.idx) return ph;
     if (info.type && phType === info.type) return ph;
     if (info.type && normalizePlaceholderType(phType) === normalizePlaceholderType(info.type)) {
@@ -146,7 +146,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
       if (val !== undefined) {
-        // OOXML 100000 → CSS unitless 1.0; OOXML 120000 → CSS 1.2
+        // OOXML 100000 → CSS unitless 1.0; OOXML 120000 → CSS 1.2.
         target.lineHeight = `${(val / 100000).toFixed(3)}`;
       }
     }
@@ -244,7 +244,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     target.bulletColorFollowsText = false;
   }
 
-  // Default run properties (used as fallback for runs without rPr)
+  // Default run properties (used as fallback for runs without rPr).
   const defRPr = pPr.child("defRPr");
   if (defRPr.exists()) {
     target.defRPr = defRPr;
@@ -343,7 +343,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     target.underlineColor = undefined;
   }
 
-  // Color from solidFill or gradFill child
+  // Color from solidFill or gradFill child.
   const solidFill = rPr.child("solidFill");
   if (solidFill.exists()) {
     delete target.textGradientCss;
@@ -408,19 +408,19 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     }
   }
 
-  // Character spacing (compact/tracking): rPr@spc in hundredths of a point
+  // Character spacing (compact/tracking): rPr@spc in hundredths of a point.
   const spc = rPr.numAttr("spc");
   if (spc !== undefined) target.letterSpacingPt = spc / 100;
 
-  // Kerning: rPr@kern = minimum font size (hundredths of pt) to apply kerning; 0 = always
+  // Kerning: rPr@kern = minimum font size (hundredths of pt) to apply kerning; 0 = always.
   const kern = rPr.numAttr("kern");
   if (kern !== undefined) target.kern = kern / 100;
 
-  // Text capitalization: cap="all" (ALL CAPS) or cap="small" (SMALL CAPS)
+  // Text capitalization: cap="all" (ALL CAPS) or cap="small" (SMALL CAPS).
   const cap = rPr.attr("cap");
   if (cap !== undefined) target.cap = cap;
 
-  // Baseline shift: positive = superscript, negative = subscript (in 1000ths of percent)
+  // Baseline shift: positive = superscript, negative = subscript (in 1000ths of percent).
   const baseline = rPr.numAttr("baseline");
   if (baseline !== undefined) target.baseline = baseline;
 
@@ -437,7 +437,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     if (textGlowShadow) appendTextShadow(target, textGlowShadow);
   }
 
-  // Text noFill: a:noFill on rPr makes text interior transparent
+  // Text noFill: a:noFill on rPr makes text interior transparent.
   if (rPr.child("noFill").exists()) {
     delete target.color;
     delete target.textGradientCss;
@@ -445,7 +445,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     target.textNoFill = true;
   }
 
-  // Text outline: a:ln on rPr defines text stroke/outline
+  // Text outline: a:ln on rPr defines text stroke/outline.
   const ln = rPr.child("ln");
   if (ln.exists() && !ln.child("noFill").exists()) {
     const lnW = ln.numAttr("w");
@@ -455,7 +455,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
       const { color: c, alpha: a } = resolveColor(lnSolid, ctx);
       target.textOutlineColor = colorToCssLocal(c, a);
     }
-    // Gradient fill on outline: build CSS gradient for mask effect
+    // Gradient fill on outline: build CSS gradient for mask effect.
     const lnGrad = ln.child("gradFill");
     if (lnGrad.exists()) {
       target.textOutlineGradientCss = resolveGradientForText(lnGrad, ctx);
@@ -774,13 +774,13 @@ export function renderTextBody(
 
     const merged: MergedParagraphStyle = {};
 
-    // Level 1: presentation defaultTextStyle
+    // Level 1: presentation defaultTextStyle.
     mergeParagraphProps(merged, findStyleAtLevel(ctx.presentation.defaultTextStyle, level));
 
-    // Level 2: master defaultTextStyle
+    // Level 2: master defaultTextStyle.
     mergeParagraphProps(merged, findStyleAtLevel(ctx.master.defaultTextStyle, level));
 
-    // Level 3: master text styles by category
+    // Level 3: master text styles by category.
     const masterTextStyle =
       category === "title"
         ? ctx.master.textStyles.titleStyle
@@ -789,7 +789,7 @@ export function renderTextBody(
           : ctx.master.textStyles.otherStyle;
     mergeParagraphProps(merged, findStyleAtLevel(masterTextStyle, level));
 
-    // Level 4: master placeholder lstStyle
+    // Level 4: master placeholder lstStyle.
     if (placeholder) {
       const masterPh = findPlaceholderNode(ctx.master.placeholders, placeholder);
       if (masterPh) {
@@ -798,7 +798,7 @@ export function renderTextBody(
       }
     }
 
-    // Level 5: layout placeholder lstStyle
+    // Level 5: layout placeholder lstStyle.
     if (placeholder) {
       const layoutPh = findPlaceholderNode(
         ctx.layout.placeholders.map((e) => e.node),
@@ -810,10 +810,10 @@ export function renderTextBody(
       }
     }
 
-    // Level 6: shape lstStyle
+    // Level 6: shape lstStyle.
     mergeParagraphProps(merged, findStyleAtLevel(textBody.listStyle, level));
 
-    // Level 7: paragraph pPr
+    // Level 7: paragraph pPr.
     if (paragraph.properties) {
       mergeParagraphProps(merged, paragraph.properties);
     }
@@ -858,7 +858,7 @@ export function renderTextBody(
       }
       paraDiv.style.lineHeight = effectiveLineHeight!;
     }
-    // Percentage-based spacing is relative to defRPr or the first run's size
+    // Percentage-based spacing is relative to defRPr or the first run's size.
     let effectiveFontSize = 12; // default 12pt
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
     if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
@@ -1021,7 +1021,7 @@ export function renderTextBody(
       if (bulletColor === undefined) {
         bulletColor = firstVisibleRunTextColor();
       }
-      // Fallback: check shape's lstStyle defRPr for color (same as run fallback)
+      // Fallback: check shape's lstStyle defRPr for color (same as run fallback).
       if (bulletColor === undefined && textBody.listStyle) {
         const lstStyleLevel = findStyleAtLevel(textBody.listStyle, level);
         if (lstStyleLevel.exists()) {
@@ -1048,7 +1048,7 @@ export function renderTextBody(
       paraDiv.appendChild(document.createElement("br"));
     }
 
-    // Default OOXML tab spacing is 914400 EMU = 96px
+    // Default OOXML tab spacing is 914400 EMU = 96px.
     if (paragraph.runs.some((r) => r.text?.includes("\t"))) {
       const defaultTabPx = merged.defaultTabSize ?? 96; // 914400 EMU at 96 dpi
       paraDiv.style.tabSize = `${defaultTabPx}px`;
@@ -1088,7 +1088,7 @@ export function renderTextBody(
 
       mergeParagraphDefaultRunProps(runStyle, merged, ctx);
 
-      // Level 8: run rPr
+      // Level 8: run rPr.
       if (run.properties) {
         mergeRunProps(runStyle, run.properties, ctx);
       }
@@ -1155,7 +1155,7 @@ export function renderTextBody(
         element.style.whiteSpace = "pre-wrap";
       } else if (run.text && / {2}/.test(run.text)) {
         // " &nbsp;" pairs stop browsers from collapsing spaces, while single
-        // spaces between words stay stretchable for justify
+        // spaces between words stay stretchable for justify.
         const escaped = run.text
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
@@ -1169,15 +1169,15 @@ export function renderTextBody(
         atLineStart = false;
       }
 
-      // Default to 12pt if no font size specified at any inheritance level
+      // Default to 12pt if no font size specified at any inheritance level.
       const fontSize = runStyle.fontSize || 12;
       element.style.fontSize = `${fontSize * fontScale}pt`;
-      // Bold: explicit run rPr > cellTextBold (table style tcTxStyle) > inherited styles
+      // Bold: explicit run rPr > cellTextBold (table style tcTxStyle) > inherited styles.
       const hasExplicitRunBold = run.properties?.attr("b") !== undefined;
       if (hasExplicitRunBold ? runStyle.bold : (options?.cellTextBold ?? runStyle.bold)) {
         element.style.fontWeight = "bold";
       }
-      // Italic: explicit run rPr > cellTextItalic (table style tcTxStyle) > inherited styles
+      // Italic: explicit run rPr > cellTextItalic (table style tcTxStyle) > inherited styles.
       const hasExplicitRunItalic = run.properties?.attr("i") !== undefined;
       if (hasExplicitRunItalic ? runStyle.italic : (options?.cellTextItalic ?? runStyle.italic)) {
         element.style.fontStyle = "italic";
@@ -1229,7 +1229,7 @@ export function renderTextBody(
       if (effectiveColor) {
         element.style.color = effectiveColor;
       } else {
-        // No explicit color from run/paragraph/style: use black so text does not inherit page CSS (e.g. body { color: #e0e0e0 })
+        // No explicit color from run/paragraph/style: use black so text does not inherit page CSS (e.g. body { color: #e0e0e0 }).
         element.style.color = "#000000";
       }
       if (runStyle.underlineFollowsText && effectiveColor) {
@@ -1242,7 +1242,7 @@ export function renderTextBody(
         element.style.textShadow = runStyle.textShadow;
       }
 
-      // Gradient text fill: use background-clip to paint text with gradient
+      // Gradient text fill: use background-clip to paint text with gradient.
       if (runStyle.textGradientCss) {
         applyClippedTextBackground(element, runStyle.textGradientCss);
       }
@@ -1250,11 +1250,11 @@ export function renderTextBody(
         applyClippedTextBackground(element, runStyle.textPatternCss);
       }
 
-      // Text outline (a:ln on rPr) and noFill handling
+      // Text outline (a:ln on rPr) and noFill handling.
       if (runStyle.textNoFill || runStyle.textOutlineWidth) {
         const strokeW = runStyle.textOutlineWidth ?? 0.75;
         if (runStyle.textNoFill && runStyle.textOutlineGradientCss) {
-          // Ghost text: no fill + gradient outline → show outline fading via mask
+          // Ghost text: no fill + gradient outline → show outline fading via mask.
           const outlineColor = "#ffffff"; // base stroke color (gradient applied via mask)
           element.style.color = "transparent";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1263,13 +1263,13 @@ export function renderTextBody(
           (element.style as any).webkitTextStrokeColor = outlineColor;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
-          // mask-image fades the whole text element, outline included
+          // mask-image fades the whole text element, outline included.
           const maskGrad = runStyle.textOutlineGradientCss;
           element.style.maskImage = maskGrad;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitMaskImage = maskGrad;
         } else if (runStyle.textNoFill && runStyle.textOutlineColor) {
-          // Ghost text with solid outline
+          // Ghost text with solid outline.
           element.style.color = "transparent";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
@@ -1278,11 +1278,11 @@ export function renderTextBody(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
         } else if (runStyle.textNoFill) {
-          // noFill with no outline: invisible text (but keep space)
+          // noFill with no outline: invisible text (but keep space).
           element.style.color = "transparent";
         } else if (runStyle.textOutlineColor) {
           // Outline with normal fill
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any.
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeColor = runStyle.textOutlineColor;
@@ -1291,7 +1291,7 @@ export function renderTextBody(
         }
       }
 
-      // Font family: explicit run rPr > cellTextFontFamily (table style) > inherited > theme fallback
+      // Font family: explicit run rPr > cellTextFontFamily (table style) > inherited > theme fallback.
       const hasExplicitRunFont =
         run.properties?.child("latin").exists() ||
         run.properties?.child("ea").exists() ||
@@ -1311,11 +1311,11 @@ export function renderTextBody(
         }
       }
 
-      // Character spacing (a:spc): compact/tracking in points
+      // Character spacing (a:spc): compact/tracking in points.
       if (runStyle.letterSpacingPt !== undefined) {
         element.style.letterSpacing = `${runStyle.letterSpacingPt}pt`;
       }
-      // Kerning (a:kern): val = min font size (pt) to kern; 0 = always kern
+      // Kerning (a:kern): val = min font size (pt) to kern; 0 = always kern.
       if (runStyle.kern !== undefined) {
         const effectivePt = (runStyle.fontSize || 12) * fontScale;
         element.style.fontKerning = effectivePt >= runStyle.kern ? "normal" : "none";
@@ -1327,9 +1327,9 @@ export function renderTextBody(
         element.style.fontVariant = "small-caps";
       }
 
-      // Baseline shift (superscript/subscript)
+      // Baseline shift (superscript/subscript).
       if (runStyle.baseline !== undefined && runStyle.baseline !== 0) {
-        // OOXML baseline is in 1000ths of percent; positive = superscript, negative = subscript
+        // OOXML baseline is in 1000ths of percent; positive = superscript, negative = subscript.
         const shiftPct = runStyle.baseline / 1000;
         element.style.verticalAlign = `${shiftPct}%`;
         if (Math.abs(shiftPct) >= 20) {

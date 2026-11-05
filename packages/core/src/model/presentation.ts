@@ -98,7 +98,7 @@ function relsPathFor(filePath: string): string {
  * in the presentation XML string.
  */
 function detectWps(presentationXml: string): boolean {
-  // WPS adds its own namespace or processing instructions
+  // WPS adds its own namespace or processing instructions.
   return (
     presentationXml.includes("wps") ||
     presentationXml.includes("kso") ||
@@ -148,7 +148,7 @@ export function buildPresentation(
 
   const defaultTextStyle = presRoot.child("defaultTextStyle");
 
-  // --- Parse themes ---
+  // --- Parse themes ---.
   const themes = new Map<string, ThemeData>();
   for (const [themePath, themeXml] of files.themes) {
     const themeRoot = parseXml(themeXml);
@@ -156,7 +156,7 @@ export function buildPresentation(
     themes.set(themePath, parseTheme(themeRoot));
   }
 
-  // --- Parse slide masters and build master→theme mapping ---
+  // --- Parse slide masters and build master→theme mapping ---.
   const masters = new Map<string, MasterData>();
   const masterToTheme = new Map<string, string>();
 
@@ -179,7 +179,7 @@ export function buildPresentation(
     masters.set(masterPath, masterData);
   }
 
-  // --- Parse slide layouts and build layout→master mapping ---
+  // --- Parse slide layouts and build layout→master mapping ---.
   const layouts = new Map<string, LayoutData>();
   const layoutToMaster = new Map<string, string>();
 
@@ -202,7 +202,7 @@ export function buildPresentation(
     layouts.set(layoutPath, layoutData);
   }
 
-  // --- Parse charts ---
+  // --- Parse charts ---.
   const charts = new Map<string, SafeXmlNode>();
   const chartThemes = new Map<string, ThemeData>();
   const chartStyles = new Map<string, SafeXmlNode>();
@@ -272,17 +272,17 @@ export function buildPresentation(
     }
   }
 
-  // Fallback: if sldIdLst parsing didn't yield results, use presRels directly
+  // Fallback: if sldIdLst parsing didn't yield results, use presRels directly.
   if (orderedSlideTargets.length === 0) {
     const slideRels = findRelsByType(presRels, "slide");
-    // rId number stands in for slide order
+    // rId number stands in for slide order.
     slideRels.sort((a, b) => {
       const numA = parseInt(a[0].replace(/\D/g, ""), 10) || 0;
       const numB = parseInt(b[0].replace(/\D/g, ""), 10) || 0;
       return numA - numB;
     });
     for (const [, entry] of slideRels) {
-      // Only include direct slide relationships, not slideLayout or slideMaster
+      // Only include direct slide relationships, not slideLayout or slideMaster.
       if (
         entry.type.includes("/slide") &&
         !entry.type.includes("slideLayout") &&
@@ -294,7 +294,7 @@ export function buildPresentation(
     }
   }
 
-  // --- Parse slides ---
+  // --- Parse slides ---.
   const slides: SlideData[] = [];
   const slideToLayout = new Map<number, string>();
 
@@ -316,7 +316,6 @@ export function buildPresentation(
       slideData = parseSlide(slideRoot, i, slideRels, slidePath, files.diagramDrawings);
     }
 
-    // Resolve layout path from the slide's layout relationship target
     if (slideData.layoutIndex) {
       const layoutPath = resolveRelTarget(basePath(slidePath), slideData.layoutIndex);
       slideData.layoutIndex = layoutPath;
@@ -431,7 +430,7 @@ function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
 }
 
 function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSize } | undefined {
-  // spPr > xfrm on most shapes, a direct xfrm on graphic frames
+  // spPr > xfrm on most shapes, a direct xfrm on graphic frames.
   const spPrXfrm = phNode.child("spPr").child("xfrm");
   const xfrm = spPrXfrm.exists() ? spPrXfrm : phNode.child("xfrm");
   if (xfrm.exists()) {
@@ -676,7 +675,7 @@ export function resolveNodePlaceholderInheritance(
         }
       }
 
-      // Inherit bodyPr from layout placeholder for text rendering (anchor, insets, etc.)
+      // A placeholder's bodyPr (anchor, insets) comes from its layout placeholder.
       if ("textBody" in node && node.textBody) {
         const layoutBodyPr = getPhBodyPr(layoutMatch.node);
         if (layoutBodyPr) {
@@ -715,7 +714,7 @@ export function resolveNodePlaceholderInheritance(
       }
     }
 
-    // Inherit bodyPr from master placeholder as fallback
+    // Then from the master placeholder.
     if ("textBody" in node && node.textBody && !node.textBody.layoutBodyProperties) {
       const masterBodyPr = getPhBodyPr(masterMatch.node);
       if (masterBodyPr) {

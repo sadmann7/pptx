@@ -52,7 +52,7 @@ export function createGuideContext(w: number, h: number): Map<string, number> {
     ["ssd8", ss / 8],
     ["ssd16", ss / 16],
     ["ssd32", ss / 32],
-    // Angle constants in 60000ths of a degree: cdN = 360°/N
+    // Angle constants in 60000ths of a degree: cdN = 360°/N.
     ["cd2", 10800000],
     ["cd4", 5400000],
     ["cd8", 2700000],
@@ -107,7 +107,7 @@ export function evaluateGuideFormula(fmla: string, guides: Map<string, number>):
     case "mod":
       return Math.sqrt(x * x + y * y + z * z);
     case "pin":
-      // pin x y z: clamp y into [x, z]
+      // pin x y z: clamp y into [x, z].
       return y < x ? x : y > z ? z : y;
     case "at2":
       return radToGuideAngle(Math.atan2(y, x));

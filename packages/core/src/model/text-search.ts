@@ -314,7 +314,7 @@ const addTemplateText = (
         true,
       );
     } catch {
-      // Best-effort, matching the renderer's error isolation for template shapes
+      // Best-effort, matching the renderer's error isolation for template shapes.
     }
   });
 };

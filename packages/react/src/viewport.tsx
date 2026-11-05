@@ -223,7 +223,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ignore ctrl/cmd/shift+wheel (zoom/horizontal scroll).
+      // Ctrl/Cmd/Shift+wheel is zoom or horizontal scroll, not paging.
       if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
@@ -258,7 +258,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       }
     }
 
-    // Non-passive so preventDefault can stop scroll chaining to the page
+    // Non-passive so preventDefault can stop scroll chaining to the page.
     viewportElement.addEventListener("wheel", onWheel, { passive: false });
     return () => viewportElement.removeEventListener("wheel", onWheel);
   }, [scrollNavigation, store]);

@@ -366,7 +366,7 @@ export function applyColorModifiers(
 }
 
 const PRESET_COLORS: Record<string, string> = {
-  // Basic colors
+  // Basic colors.
   black: "#000000",
   white: "#FFFFFF",
   red: "#FF0000",
@@ -376,7 +376,7 @@ const PRESET_COLORS: Record<string, string> = {
   cyan: "#00FFFF",
   magenta: "#FF00FF",
 
-  // Extended standard colors
+  // Extended standard colors.
   orange: "#FFA500",
   purple: "#800080",
   brown: "#A52A2A",
@@ -392,7 +392,7 @@ const PRESET_COLORS: Record<string, string> = {
   aqua: "#00FFFF",
   fuchsia: "#FF00FF",
 
-  // OOXML-specific preset colors
+  // OOXML-specific preset colors.
   aliceBlue: "#F0F8FF",
   antiqueWhite: "#FAEBD7",
   aquamarine: "#7FFFD4",

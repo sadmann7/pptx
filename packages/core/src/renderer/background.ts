@@ -251,7 +251,7 @@ function tryRenderSvgGradientBackgroundData(
  * The first found background is used.
  */
 export function renderBackground(ctx: RenderContext, container: HTMLElement): void {
-  // Image references resolve against the rels of whichever level supplied the background
+  // Image references resolve against the rels of whichever level supplied the background.
   let bgNode: SafeXmlNode | undefined;
   let bgRels: Map<string, RelEntry> = ctx.slide.rels;
 
@@ -277,7 +277,7 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
     return;
   }
 
-  // p:bgRef is a theme reference
+  // p:bgRef is a theme reference.
   const bgRef = bgNode.child("bgRef");
   if (bgRef.exists()) {
     renderBgRef(bgRef, ctx, container);
@@ -338,7 +338,7 @@ function renderBgPr(
   }
 
   // noFill: still render as white; the slide is a self-contained element
-  // and transparent backgrounds break when embedded in dark containers
+  // and transparent backgrounds break when embedded in dark containers.
   const noFill = bgPr.child("noFill");
   if (noFill.exists()) {
     container.style.backgroundColor = "#FFFFFF";
@@ -365,7 +365,7 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
     return;
   }
 
-  // bgRef may contain a color child (schemeClr, srgbClr, etc.)
+  // bgRef may contain a color child (schemeClr, srgbClr, etc.).
   const { color, alpha } = resolveColor(bgRef, ctx);
   if (color && color !== "#000000") {
     const hex = color.startsWith("#") ? color : `#${color}`;
@@ -393,7 +393,7 @@ function renderBlipBackground(
 
   if (!relId) return;
 
-  // Resolve image from rels + media (use provided rels or fall back to slide rels)
+  // The image resolves against the provided rels, else the slide's.
   const relsMap = rels ?? ctx.slide.rels;
   const rel = relsMap.get(relId);
   if (!rel) return;

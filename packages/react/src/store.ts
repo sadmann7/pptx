@@ -748,14 +748,14 @@ export function createStore(): Store {
       const startSlide = presentation.slides[startIndex];
 
       // Priority font detection needs the raw XML, which materialization
-      // clears in lazy mode
+      // clears in lazy mode.
       const startSlideXml = startSlide?.sourceXml;
 
       // The active slide's nodes must be reliable the moment the store
       // reports "ready", even in lazy mode.
       if (startSlide) materializeSlide(presentation, startSlide);
 
-      // Decode embedded fonts while still "loading" and wait for all of them,
+      // Embedded fonts decode while still "loading", and all of them are awaited,
       // so no font can swap in after slides are visible (no FOUT). The font
       // pipeline is a lazily imported chunk; decks without embedded fonts
       // (or embedFonts: false) never fetch it.
@@ -764,7 +764,7 @@ export function createStore(): Store {
           await import("@diceui/pptx-core/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
-        // Expand the progress budget by the now-known decode workload.
+        // The decode workload is only known now, so it widens the progress budget.
         // Dedupe: the fonts map can alias one part under two paths.
         let fontBytes = 0;
         for (const part of new Set(presentation.fonts.values())) {

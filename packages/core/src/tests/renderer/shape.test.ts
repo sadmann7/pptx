@@ -87,7 +87,7 @@ describe("shape strokes", () => {
     );
     const path = mainPath(element);
     expect(path.getAttribute("stroke")?.toLowerCase()).toBe("#1f1f1f");
-    // 25400 EMU = 2pt = 2.6667px
+    // 25400 EMU = 2pt = 2.6667px.
     expect(Number(path.getAttribute("stroke-width"))).toBeCloseTo(2.6667, 3);
   });
 
@@ -127,7 +127,7 @@ describe("shape placement", () => {
     const presentation = buildPresentation(files);
     const element = renderSlide(presentation, presentation.slides[0]).element;
     const wrapper = element.querySelector("svg")?.closest("div");
-    // 2700000 / 60000 = 45 degrees
+    // 2700000 / 60000 = 45 degrees.
     expect(wrapper!.style.transform).toContain("rotate(45deg)");
   });
 });

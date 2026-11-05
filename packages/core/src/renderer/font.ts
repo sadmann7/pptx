@@ -130,7 +130,7 @@ const CJK_FONT_FAMILY_ALIAS_KEYS = new Set([
 ]);
 
 const FONT_FAMILY_ALIASES: Record<string, string[]> = {
-  // Microsoft Office default fonts (not installed on most web browsers)
+  // Microsoft Office default fonts (not installed on most web browsers).
   calibri: ["Calibri", "Aptos", "Carlito", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "calibri light": [
     "Calibri Light",
@@ -144,7 +144,7 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   ],
   aptos: ["Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "aptos display": ["Aptos Display", "Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
-  // Common Windows fonts not universally available on web
+  // Common Windows fonts not universally available on web.
   "franklin gothic medium": [
     "Franklin Gothic Medium",
     "Franklin Gothic",
@@ -166,7 +166,7 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   candara: ["Candara", "Corbel", "Arial", "sans-serif"],
   consolas: ["Consolas", "Cascadia Code", "Fira Code", "monospace"],
   "courier new": ["Courier New", "Courier", "monospace"],
-  // CJK
+  // CJK.
   "microsoft yahei": ["Microsoft YaHei", "微软雅黑"],
   "microsoft yahei ui": ["Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑"],
   微软雅黑: ["微软雅黑", "Microsoft YaHei"],
@@ -192,7 +192,7 @@ function cssFontFamilyToken(fontFamily: string): string {
   return `"${fontFamily.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-// Fonts that are serif by nature: fall back to serif generic, not sans-serif
+// Fonts that are serif by nature: fall back to serif generic, not sans-serif.
 const KNOWN_SERIF_FONTS = new Set([
   "times new roman",
   "times",

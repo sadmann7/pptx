@@ -149,14 +149,14 @@ function getWorker(workerKey: string): Worker | null {
       if (!entry) return;
       state.pending.delete(id);
       if (error) {
-        entry.resolve(null); // Treat worker-side errors as "no result"
+        entry.resolve(null); // A worker-side error counts as "no result"
       } else {
         entry.resolve(blob ?? null);
       }
     };
 
     state.worker.onerror = () => {
-      // Worker failed to initialize (e.g. module import blocked by CSP)
+      // Worker failed to initialize (e.g. module import blocked by CSP).
       state.failed = true;
       state.worker = null;
       for (const [, entry] of state.pending) {
@@ -232,9 +232,7 @@ export async function renderPdfToImage(
   try {
     const blob = await renderInWorker(pdfData, width, height, pdfjsUrl, pdfWorkerUrl);
     if (blob) return URL.createObjectURL(blob);
-  } catch {
-    // Fall through to null.
-  }
+  } catch {}
 
   return null;
 }

@@ -128,7 +128,7 @@ export function renderGroup(
   wrapper.style.height = `${node.size.h}px`;
 
   // Group flips remap child geometry below instead, so text stays upright
-  // rather than mirroring the entire DOM subtree
+  // rather than mirroring the entire DOM subtree.
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -143,7 +143,7 @@ export function renderGroup(
   const groupW = node.size.w;
   const groupH = node.size.h;
 
-  // Resolve group fill from grpSpPr for children that use a:grpFill
+  // Children with a:grpFill take the group's fill from grpSpPr.
   const grpSpPr = node.source.child("grpSpPr");
   const childCtx: RenderContext = { ...ctx };
   if (grpSpPr.exists()) {
@@ -156,7 +156,7 @@ export function renderGroup(
         break;
       }
     }
-    // If the group itself uses grpFill, propagate the parent's group fill
+    // If the group itself uses grpFill, propagate the parent's group fill.
     if (!childCtx.groupFillNode && grpSpPr.child("grpFill").exists() && ctx.groupFillNode) {
       childCtx.groupFillNode = ctx.groupFillNode;
     }
@@ -178,7 +178,7 @@ export function renderGroup(
     const firstPie = node.children.slice(0, 3).every((c) => prst(c) === "pie");
     const nextArrow = node.children.slice(3, 6).every((c) => prst(c) === "circularArrow");
     if (firstPie && nextArrow) {
-      // One circle size around the diagram extent's center keeps the circle centered and fitting
+      // One circle size around the diagram extent's center keeps the circle centered and fitting.
       const pieNodes = [0, 1, 2].map((i) => parseByIndex(i)).filter(Boolean);
       if (pieNodes.length === 3) {
         const pieW = Math.max(...pieNodes.map((n) => n!.size.w));
@@ -225,7 +225,7 @@ export function renderGroup(
       const childNode = parseByIndex(index);
       if (!childNode) continue;
 
-      // Remap child coordinates from child space to group space
+      // Remap child coordinates from child space to group space.
       if (chExt.w > 0 && chExt.h > 0) {
         const scaleX = groupW / chExt.w;
         const scaleY = groupH / chExt.h;
@@ -276,14 +276,14 @@ export function renderGroup(
         }
       }
 
-      // Overlap the 3 pie sectors at the same center so they form one circle
+      // Overlap the 3 pie sectors at the same center so they form one circle.
       if (pieCommon && index < 3 && childNode.nodeType === "shape") {
         const origW = childNode.size.w;
         const origH = childNode.size.h;
         const pieOffset = pieCenterOffsets?.get(index) ?? { x: 0, y: 0 };
         childNode.position = { x: pieCommon.x + pieOffset.x, y: pieCommon.y + pieOffset.y };
         childNode.size = { w: pieCommon.w, h: pieCommon.h };
-        // Scale text box so labels stay in the right sector (txXfrm was in original shape space)
+        // txXfrm is in the original shape space, so it scales with the shape to keep labels in their sector.
         const shapeNode = childNode as ShapeNodeData;
         if (origW > 0 && origH > 0 && shapeNode.textBoxBounds) {
           const tb = shapeNode.textBoxBounds;

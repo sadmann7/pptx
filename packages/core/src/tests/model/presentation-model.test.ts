@@ -75,7 +75,7 @@ describe("buildPresentation", () => {
     if (shape?.nodeType !== "shape") throw new Error("unreachable");
     expect(shape.presetGeometry).toBe("roundRect");
     expect(shape.adjustments.get("adj")).toBe(25000);
-    // 914400 EMU = 96px, 457200 EMU = 48px
+    // 914400 EMU = 96px, 457200 EMU = 48px.
     expect(shape.position).toEqual({ x: 96, y: 48 });
     expect(shape.size).toEqual({ w: 192, h: 96 });
   });

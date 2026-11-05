@@ -276,7 +276,7 @@ export interface UseSlideResult {
 export function useSlide(): UseSlideResult {
   const store = useStoreContext("useSlide");
 
-  // Primitives/stable refs only; new object literals on every call cause infinite loops
+  // Primitives/stable refs only; new object literals on every call cause infinite loops.
   const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
   // Stable object ref that only changes on new file load, not on slide navigation.
   const presentation = useStoreSelector(store, (s) => s.presentation, null);

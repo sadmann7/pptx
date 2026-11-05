@@ -153,7 +153,7 @@ describe("built-in table styles through the render pipeline", () => {
     const headerCells = [...rows[0].querySelectorAll("td")];
     expect(headerCells).toHaveLength(2);
     for (const td of headerCells) {
-      // firstRow: fill = accent1 (theme: 4472C4)
+      // firstRow: fill = accent1 (theme: 4472C4).
       expect(td.style.backgroundColor.toUpperCase()).toBe("#4472C4");
     }
 

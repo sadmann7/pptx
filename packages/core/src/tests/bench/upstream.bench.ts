@@ -30,13 +30,13 @@ import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 const mediumBuffer = await generateDeck(DECK_SPECS.medium);
 const largeBuffer = await generateDeck(DECK_SPECS.large);
 
-// Pre-parse files for stages that only benchmark a single step
+// Pre-parse files for stages that only benchmark a single step.
 const mediumFilesOurs = await readPptx(mediumBuffer);
 const largeFilesOurs = await readPptx(largeBuffer);
 const mediumFilesUpstream = await upstreamParseZip(mediumBuffer);
 const largeFilesUpstream = await upstreamParseZip(largeBuffer);
 
-// ─── readPptx ────────────────────────────────────────────────────────────────
+// ─── readPptx ────────────────────────────────────────────────────────────────.
 
 describe("readPptx: medium (20 slides)", () => {
   bench("ours", async () => {
@@ -65,7 +65,7 @@ describe("readPptx lazyMedia: large (100 slides)", () => {
   });
 });
 
-// ─── buildPresentation ───────────────────────────────────────────────────────
+// ─── buildPresentation ───────────────────────────────────────────────────────.
 
 describe("buildPresentation: medium", () => {
   bench("ours", () => {
@@ -85,7 +85,7 @@ describe("buildPresentation: large", () => {
   });
 });
 
-// ─── end-to-end load (buffer → first slide ready) ────────────────────────────
+// ─── end-to-end load (buffer → first slide ready) ────────────────────────────.
 
 describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {

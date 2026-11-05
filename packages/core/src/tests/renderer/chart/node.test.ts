@@ -37,7 +37,7 @@ describe("chart node via full pipeline", () => {
     expect(chart).toBeDefined();
     expect(chart!.id).toBe("5");
     expect(chart!.name).toBe("Chart 1");
-    // 914400 EMU = 96px, 6096000x4572000 EMU = 640x480 px
+    // 914400 EMU = 96px, 6096000x4572000 EMU = 640x480 px.
     expect(chart!.position).toEqual({ x: 96, y: 96 });
     expect(chart!.size).toEqual({ w: 640, h: 480 });
   });

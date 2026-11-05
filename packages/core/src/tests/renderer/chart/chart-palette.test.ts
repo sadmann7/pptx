@@ -45,7 +45,7 @@ describe("buildChartPalette", () => {
       "#111111",
       "#222222",
     ]);
-    // Without a matching path the theme accents win
+    // Without a matching path the theme accents win.
     expect(buildChartPalette(chartXml, ctxWithColors, "ppt/charts/other.xml")).toEqual(
       OFFICE_ACCENTS,
     );
@@ -70,7 +70,7 @@ describe("getVaryColorPointPalette", () => {
 
   it("darkens each accent by 12% by default", () => {
     const palette = getVaryColorPointPalette(ctx);
-    // #4472C4 → r 68×0.88=60, g 114×0.88=100, b 196×0.88=172
+    // #4472C4 → r 68×0.88=60, g 114×0.88=100, b 196×0.88=172.
     expect(palette[0]).toBe("#3c64ac");
     expect(palette).toHaveLength(6);
   });
@@ -133,7 +133,7 @@ describe("extractChartFrameStyle", () => {
         `<c:spPr><a:ln w="25400"><a:solidFill><a:srgbClr val="336699"/></a:solidFill></a:ln></c:spPr>`,
       ),
     );
-    // 25400 EMU = 2 pt ≈ 2.667px
+    // 25400 EMU = 2 pt ≈ 2.667px.
     expect(extractChartFrameStyle(chartXml, ctx)).toEqual({
       borderColor: "#336699",
       borderWidth: 25400 / 9525,

@@ -1275,7 +1275,7 @@ function rewriteParagraphs(
 }
 
 function applySetTextStyle(pres: PresentationData, op: SetTextStyleOperation): EditResult {
-  // Fails on a bad value before any paragraph is touched
+  // Fails on a bad value before any paragraph is touched.
   if (op.style.color) parseHexColor(op.style.color);
   return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
     paragraphSpans(count, op.range).map(([index, from, to]) => [
@@ -1680,7 +1680,7 @@ export async function copyNodes(
   const serializer = new XMLSerializer();
 
   // Everything is captured before the first await, since a cut deletes the
-  // nodes right after copying them
+  // nodes right after copying them.
   const captured = slide.nodes
     .filter((node) => nodeIds.includes(node.id))
     .map((node) => {

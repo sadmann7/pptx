@@ -22,7 +22,7 @@ interface Finding {
 const findings = new Map<string, Finding>();
 
 async function audit(page: Page, state: string): Promise<void> {
-  // Let popups finish opening: axe reads colors mid-fade as low contrast.
+  // Popups finish opening first: axe reads colors mid-fade as low contrast.
   await page.waitForTimeout(300);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

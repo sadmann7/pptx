@@ -64,7 +64,7 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    // Driven by scrollTop so it does not depend on overlay scrollbars
+    // Driven by scrollTop so it does not depend on overlay scrollbars.
     name: "thumbs-scrollbar-drag",
     thumbnails: true,
     run: (page) =>
@@ -95,7 +95,7 @@ const scenarios: Scenario[] = [
       ),
   },
   {
-    // Holding ArrowDown on the thumbnails: every step renders the next slide
+    // Holding ArrowDown on the thumbnails: every step renders the next slide.
     name: "slide-step",
     run: async (page) => {
       await page.locator(`${LIST} [role=option]`).first().focus();
@@ -106,7 +106,7 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    // Dragging a shape around the slide: overlay, snapping, live transform
+    // Dragging a shape around the slide: overlay, snapping, live transform.
     name: "shape-drag",
     run: async (page) => {
       const box = await page.locator(SHAPE).nth(1).boundingBox();
@@ -185,7 +185,7 @@ async function main() {
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
   }
 
-  // tsx keeps function names via an `__name` helper that page.evaluate does not serialize
+  // tsx keeps function names via an `__name` helper that page.evaluate does not serialize.
   await page.addInitScript("globalThis.__name = (fn) => fn");
   await page.goto(`${BASE_URL}${PAGE_PATH}`);
   await page.locator('input[type=file][accept=".pptx"]').setInputFiles(DECK);
@@ -197,7 +197,7 @@ async function main() {
     const stripped = await page.evaluate(stripStyleRules, process.env.STRIP_CSS);
     console.log(`Stripped ${stripped} style rules matching ${process.env.STRIP_CSS}`);
   }
-  // Let parsing, fonts, and the first thumbnails settle
+  // Parsing, fonts, and the first thumbnails settle first.
   await page.waitForTimeout(3000);
 
   const vsync = await page.evaluate(measureVsync);
@@ -207,11 +207,11 @@ async function main() {
   for (const scenario of scenarios) {
     if (only && scenario.name !== only) continue;
 
-    // Frame stats come from an untraced run, since tracing adds overhead to every frame
+    // Frame stats come from an untraced run, since tracing adds overhead to every frame.
     await reset(page);
     await page.evaluate(startFrameRecorder, scenario.thumbnails ? LIST : null);
     await scenario.run(page);
-    // Let thumbnails catch up inside the measurement
+    // Thumbnails catch up inside the measurement.
     await page.waitForTimeout(300);
     const recorded = await page.evaluate(stopFrameRecorder);
     const stats = summarize(recorded, vsync);
@@ -276,7 +276,7 @@ function stripStyleRules(pattern: string) {
     try {
       strip(sheet.cssRules, sheet);
     } catch {
-      // Cross-origin sheets are not readable
+      // Cross-origin sheets are not readable.
     }
   }
   return count;
@@ -336,7 +336,7 @@ function startFrameRecorder(list: string | null) {
   try {
     observer.observe({ type: "long-animation-frame", buffered: false });
   } catch {
-    // Long animation frames are Chromium only
+    // Long animation frames are Chromium only.
   }
   Object.assign(window, { __frameRecorder: recorder, __frameObserver: observer });
 }
@@ -353,7 +353,7 @@ function stopFrameRecorder() {
   };
   recorder.running = false;
   observer.disconnect();
-  // The first delta spans the gap before recording started
+  // The first delta spans the gap before recording started.
   return {
     deltas: recorder.deltas.slice(1),
     blankFrames: recorder.blankFrames,
@@ -385,7 +385,7 @@ function summarize(
     longAnimationFrames: loafs.length,
     loafScriptMs: loafs.reduce((sum, loaf) => sum + loaf.scriptMs, 0),
     blankFramesPct: deltas.length > 0 ? (blankFrames / (deltas.length + 1)) * 100 : 0,
-    // Filled in from the traced run
+    // Filled in from the traced run.
     mainThreadMs: 0,
   };
 }
@@ -403,7 +403,7 @@ async function recordTrace(page: Page, cdp: CDPSession, outFile: string, run: ()
     traceConfig: { includedCategories: TRACE_CATEGORIES },
     transferMode: "ReportEvents",
   });
-  // Starting the CPU profiler stalls the page, so keep that out of the scenario
+  // Starting the CPU profiler stalls the page, so keep that out of the scenario.
   await page.waitForTimeout(500);
   await run();
   const complete = new Promise<void>((resolve) =>
@@ -433,7 +433,7 @@ function getMainThreadBusyMs(events: TraceEvent[]) {
     if (!mainThreads.has(thread)) continue;
     busyByThread.set(thread, (busyByThread.get(thread) ?? 0) + event.dur / 1000);
   }
-  // Other renderers (extensions, about:blank) barely run, so the busiest one is the page
+  // Other renderers (extensions, about:blank) barely run, so the busiest one is the page.
   return Math.max(0, ...busyByThread.values());
 }
 
