@@ -120,25 +120,25 @@ export function snapMove(
 }
 
 /**
- * Snaps a resize: only the edges the grip moves snap. `grip` is a compass
+ * Snaps a resize: only the edges the handle moves snap. `handle` is a compass
  * direction ("e", "nw", ...). Corner drags with the aspect ratio locked are
  * left alone, since snapping one axis would break the ratio.
  */
 export function snapResize(
   rect: SnapRect,
-  grip: string,
+  handle: string,
   dx: number,
   dy: number,
   targets: SnapRect[],
   threshold: number,
   lockAspect = false,
 ): SnapResult {
-  if (lockAspect && grip.length === 2) return { dx, dy, guides: [] };
+  if (lockAspect && handle.length === 2) return { dx, dy, guides: [] };
 
-  const movesLeft = grip.includes("w");
-  const movesRight = grip.includes("e");
-  const movesTop = grip.includes("n");
-  const movesBottom = grip.includes("s");
+  const movesLeft = handle.includes("w");
+  const movesRight = handle.includes("e");
+  const movesTop = handle.includes("n");
+  const movesBottom = handle.includes("s");
 
   const xEdge = movesLeft ? rect.x + dx : movesRight ? rect.x + rect.w + dx : null;
   const yEdge = movesTop ? rect.y + dy : movesBottom ? rect.y + rect.h + dy : null;

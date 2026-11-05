@@ -28,11 +28,11 @@ import type { DrawTool } from "./channel";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { SelectionPartsContext } from "./context";
-import type { GripDirection, Rect } from "./geometry";
+import type { HandleDirection, Rect } from "./geometry";
 import {
   constrainMove,
   DRAG_THRESHOLD,
-  getGripCursor,
+  getHandleCursor,
   getNodeBounds,
   getNodeRect,
   getPasteboardOverhang,
@@ -202,8 +202,8 @@ export type InternalState =
       mode: "resize";
       nodeIds: string[];
       /** The node whose handle is being dragged; it sets the scale factors. */
-      gripNodeId: string;
-      grip: GripDirection;
+      handleNodeId: string;
+      handle: HandleDirection;
       startX: number;
       startY: number;
       dx: number;
@@ -216,8 +216,8 @@ export type InternalState =
       mode: "rotate";
       nodeIds: string[];
       /** The node whose handle is being dragged; its angle is what Shift steps. */
-      gripNodeId: string;
-      /** Center of the gripped node, in client pixels: the pivot. */
+      handleNodeId: string;
+      /** Center of the rotated node, in client pixels: the pivot. */
       centerX: number;
       centerY: number;
       /** Pointer angle around the center at pointer-down, in degrees. */
@@ -445,14 +445,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const isBanding =
     state.mode === "marquee" && isBandDrag(state.startX, state.startY, state.curX, state.curY);
 
-  const grippedNode =
-    state.mode === "resize" ? selectedNodes.find((node) => node.id === state.gripNodeId) : null;
+  const handleNode =
+    state.mode === "resize" ? selectedNodes.find((node) => node.id === state.handleNodeId) : null;
   const resizeRects =
-    state.mode === "resize" && grippedNode
+    state.mode === "resize" && handleNode
       ? getResizedRects(
           selectedNodes,
-          grippedNode,
-          state.grip,
+          handleNode,
+          state.handle,
           state.dx,
           state.dy,
           state.lockAspect,
@@ -1679,12 +1679,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
   }
 
-  function onGripPointerDown(
+  function onHandlePointerDown(
     event: React.PointerEvent<HTMLDivElement>,
-    grip: GripDirection,
+    handle: HandleDirection,
     nodeId: string,
   ): void {
-    debugLog("grip pointerdown", { grip, nodeId, mode: state.mode, button: event.button });
+    debugLog("handle pointerdown", { handle, nodeId, mode: state.mode, button: event.button });
     if (event.button !== 0 || !selectedIds.includes(nodeId)) return;
     event.stopPropagation();
     // See onPointerDown: stop selection extension / native drag initiation.
@@ -1697,8 +1697,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     setState({
       mode: "resize",
       nodeIds: selectedIds,
-      gripNodeId: nodeId,
-      grip,
+      handleNodeId: nodeId,
+      handle,
       startX: event.clientX,
       startY: event.clientY,
       dx: 0,
@@ -1738,7 +1738,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     setState({
       mode: "rotate",
       nodeIds: selectedIds,
-      gripNodeId: nodeId,
+      handleNodeId: nodeId,
       centerX,
       centerY,
       startAngle: getPointerAngle(centerX, centerY, event.clientX, event.clientY),
@@ -1824,15 +1824,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     if (state.mode === "rotate") {
-      const grippedNode = selectedNodes.find((node) => node.id === state.gripNodeId);
-      if (!grippedNode) return;
+      const handleNode = selectedNodes.find((node) => node.id === state.handleNodeId);
+      if (!handleNode) return;
       const turned =
         getPointerAngle(state.centerX, state.centerY, event.clientX, event.clientY) -
         state.startAngle;
-      // Shift steps the gripped shape's angle by 15°, as in PowerPoint.
-      let angle = grippedNode.rotation + turned;
+      // Shift steps the rotated shape's angle by 15°, as in PowerPoint.
+      let angle = handleNode.rotation + turned;
       if (event.shiftKey) angle = Math.round(angle / ROTATION_STEP) * ROTATION_STEP;
-      const delta = angle - grippedNode.rotation;
+      const delta = angle - handleNode.rotation;
       previewRotation(delta);
       setState({ ...state, delta });
       return;
@@ -1875,13 +1875,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     } else {
       // Track Shift live so holding/releasing it mid-drag toggles the lock.
       const lockAspect = event.shiftKey;
-      const grippedNode = selectedNodes.find((node) => node.id === state.gripNodeId);
+      const handleNode = selectedNodes.find((node) => node.id === state.handleNodeId);
       const next =
         // Snapping lines up slide-axis edges, which a rotated shape doesn't have.
-        isSnapping && grippedNode && grippedNode.rotation === 0
+        isSnapping && handleNode && handleNode.rotation === 0
           ? snapResize(
-              getNodeRect(grippedNode),
-              state.grip,
+              getNodeRect(handleNode),
+              state.handle,
               dx,
               dy,
               getSnapTargets(state.nodeIds),
@@ -2035,22 +2035,22 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         },
       );
     } else if (state.mode === "resize") {
-      const { nodeIds, gripNodeId, grip, dx, dy, lockAspect } = state;
+      const { nodeIds, handleNodeId, handle, dx, dy, lockAspect } = state;
       const resizingNodes = selectedNodes;
-      const grippedNode = resizingNodes.find((node) => node.id === gripNodeId) ?? null;
+      const handleNode = resizingNodes.find((node) => node.id === handleNodeId) ?? null;
       setState({ mode: "selected", nodeIds });
       debugLog("resize pointerup", {
         nodeIds,
-        gripNodeId,
-        grip,
+        handleNodeId,
+        handle,
         dx,
         dy,
         lockAspect,
         nodeCount: resizingNodes.length,
-        baseRect: grippedNode ? getNodeRect(grippedNode) : null,
+        baseRect: handleNode ? getNodeRect(handleNode) : null,
       });
-      if (grippedNode && (dx !== 0 || dy !== 0)) {
-        const rects = getResizedRects(resizingNodes, grippedNode, grip, dx, dy, lockAspect);
+      if (handleNode && (dx !== 0 || dy !== 0)) {
+        const rects = getResizedRects(resizingNodes, handleNode, handle, dx, dy, lockAspect);
         const transforms = [...rects].map(([nodeId, rect]) => ({ nodeId, rect }));
         commitEdit(
           () =>
@@ -2450,7 +2450,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                     frameRef,
                     slideWidth: presentation.width,
                     slideHeight: presentation.height,
-                    onGripPointerDown,
+                    onHandlePointerDown,
                     onBorderPointerDown,
                     onRotatePointerDown,
                   }}
@@ -2481,7 +2481,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                 : state.mode === "rotate"
                   ? ROTATE_CURSOR
                   : state.mode === "resize"
-                    ? getGripCursor(state.grip, grippedNode?.rotation ?? 0)
+                    ? getHandleCursor(state.handle, handleNode?.rotation ?? 0)
                     : undefined,
             outline: "none",
             touchAction: "none",

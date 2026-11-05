@@ -47,7 +47,7 @@ describe("snapMove", () => {
 });
 
 describe("snapResize", () => {
-  it("snaps only the edge the grip moves", () => {
+  it("snaps only the edge the handle moves", () => {
     // Dragging the east edge from 200 to 477 snaps it to the slide center.
     const result = snapResize(BOX, "e", 277, 0, [SLIDE], 6);
     expect(result.dx).toBe(280);

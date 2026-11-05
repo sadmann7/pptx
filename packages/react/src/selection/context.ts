@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { SlideNode } from "@diceui/pptx-core";
 
-import type { GripDirection, Rect } from "./geometry";
+import type { HandleDirection, Rect } from "./geometry";
 import type { InternalState } from "./selection";
 
 /**
@@ -26,9 +26,9 @@ export interface SelectionPartsContextValue {
   /** Slide size in slide pixels: snap guides run across all of it. */
   slideWidth: number;
   slideHeight: number;
-  onGripPointerDown: (
+  onHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement>,
-    grip: GripDirection,
+    handle: HandleDirection,
     nodeId: string,
   ) => void;
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;

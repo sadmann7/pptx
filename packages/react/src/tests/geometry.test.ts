@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Rect } from "../selection/geometry";
 import {
-  getGripCursor,
+  getHandleCursor,
   getNodeBounds,
   getResizedRects,
   resizeRect,
@@ -44,12 +44,15 @@ describe("resizeRotatedRect", () => {
     ["w", 1, 0.5, 30, -25, 10],
     ["se", 0, 0, 135, 20, -35],
     ["n", 0.5, 1, 210, 15, 15],
-  ] as const)("keeps the edge opposite the %s handle in place", (grip, u, v, rotation, dx, dy) => {
-    const before = toSlide(ORIGIN, rotation, u, v);
-    const after = toSlide(resizeRotatedRect(ORIGIN, rotation, grip, dx, dy), rotation, u, v);
-    expect(after.x).toBeCloseTo(before.x);
-    expect(after.y).toBeCloseTo(before.y);
-  });
+  ] as const)(
+    "keeps the edge opposite the %s handle in place",
+    (handle, u, v, rotation, dx, dy) => {
+      const before = toSlide(ORIGIN, rotation, u, v);
+      const after = toSlide(resizeRotatedRect(ORIGIN, rotation, handle, dx, dy), rotation, u, v);
+      expect(after.x).toBeCloseTo(before.x);
+      expect(after.y).toBeCloseTo(before.y);
+    },
+  );
 
   it("keeps the aspect ratio with a locked corner drag", () => {
     const next = resizeRotatedRect(ORIGIN, 45, "se", 50, 50, true);
@@ -57,14 +60,14 @@ describe("resizeRotatedRect", () => {
   });
 });
 
-describe("getGripCursor", () => {
+describe("getHandleCursor", () => {
   it("turns the resize cursor with the shape", () => {
-    expect(getGripCursor("n", 0)).toBe("ns-resize");
-    expect(getGripCursor("n", 45)).toBe("nesw-resize");
-    expect(getGripCursor("n", 90)).toBe("ew-resize");
-    expect(getGripCursor("e", 90)).toBe("ns-resize");
-    expect(getGripCursor("nw", 180)).toBe("nwse-resize");
-    expect(getGripCursor("n", -90)).toBe("ew-resize");
+    expect(getHandleCursor("n", 0)).toBe("ns-resize");
+    expect(getHandleCursor("n", 45)).toBe("nesw-resize");
+    expect(getHandleCursor("n", 90)).toBe("ew-resize");
+    expect(getHandleCursor("e", 90)).toBe("ns-resize");
+    expect(getHandleCursor("nw", 180)).toBe("nwse-resize");
+    expect(getHandleCursor("n", -90)).toBe("ew-resize");
   });
 });
 
@@ -89,12 +92,12 @@ describe("getResizedRects", () => {
   const node = (id: string, x: number, rotation: number) =>
     ({ id, position: { x, y: 100 }, size: { w: 200, h: 100 }, rotation }) as never;
 
-  it("scales every shape by the gripped one's factors, along each shape's own axes", () => {
-    const gripped = node("a", 100, 0);
+  it("scales every shape by the dragged one's factors, along each shape's own axes", () => {
+    const resized = node("a", 100, 0);
     const turned = node("b", 400, 90);
-    const rects = getResizedRects([gripped, turned], gripped, "e", 100, 0, false);
+    const rects = getResizedRects([resized, turned], resized, "e", 100, 0, false);
 
-    // The gripped shape grew 1.5× wide; the turned one grows 1.5× along its own width.
+    // The dragged shape grew 1.5× wide; the turned one grows 1.5× along its own width.
     expect(rects.get("a")).toEqual({ x: 100, y: 100, w: 300, h: 100 });
     const b = rects.get("b")!;
     expect(b.w).toBeCloseTo(300);

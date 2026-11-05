@@ -21,10 +21,10 @@ export const MIN_SIZE = 8;
 /** Screen-px movement before a pointer-down becomes a drag instead of a click. */
 export const DRAG_THRESHOLD = 3;
 
-export const GRIP_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-export type GripDirection = (typeof GRIP_DIRECTIONS)[number];
+export const HANDLE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+export type HandleDirection = (typeof HANDLE_DIRECTIONS)[number];
 
-export const GRIP_CURSORS: Record<GripDirection, string> = {
+export const HANDLE_CURSORS: Record<HandleDirection, string> = {
   nw: "nwse-resize",
   n: "ns-resize",
   ne: "nesw-resize",
@@ -35,7 +35,7 @@ export const GRIP_CURSORS: Record<GripDirection, string> = {
   w: "ew-resize",
 };
 
-const CORNER_GRIPS: ReadonlySet<GripDirection> = new Set(["nw", "ne", "se", "sw"]);
+const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
 
 export interface Rect {
   x: number;
@@ -60,41 +60,41 @@ export function isBandDrag(startX: number, startY: number, curX: number, curY: n
  */
 export function resizeRect(
   origin: Rect,
-  grip: GripDirection,
+  handle: HandleDirection,
   dx: number,
   dy: number,
   lockAspect = false,
 ): Rect {
   let { x, y, w, h } = origin;
 
-  if (grip.includes("e")) w = origin.w + dx;
-  if (grip.includes("s")) h = origin.h + dy;
-  if (grip.includes("w")) {
+  if (handle.includes("e")) w = origin.w + dx;
+  if (handle.includes("s")) h = origin.h + dy;
+  if (handle.includes("w")) {
     w = origin.w - dx;
     x = origin.x + dx;
   }
-  if (grip.includes("n")) {
+  if (handle.includes("n")) {
     h = origin.h - dy;
     y = origin.y + dy;
   }
 
-  if (lockAspect && CORNER_GRIPS.has(grip) && origin.w > 0 && origin.h > 0) {
+  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
     let scale =
       Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
     scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
     w = origin.w * scale;
     h = origin.h * scale;
-    if (grip.includes("w")) x = origin.x + origin.w - w;
-    if (grip.includes("n")) y = origin.y + origin.h - h;
+    if (handle.includes("w")) x = origin.x + origin.w - w;
+    if (handle.includes("n")) y = origin.y + origin.h - h;
     return { x, y, w, h };
   }
 
   if (w < MIN_SIZE) {
-    if (grip.includes("w")) x = origin.x + origin.w - MIN_SIZE;
+    if (handle.includes("w")) x = origin.x + origin.w - MIN_SIZE;
     w = MIN_SIZE;
   }
   if (h < MIN_SIZE) {
-    if (grip.includes("n")) y = origin.y + origin.h - MIN_SIZE;
+    if (handle.includes("n")) y = origin.y + origin.h - MIN_SIZE;
     h = MIN_SIZE;
   }
 
@@ -156,16 +156,16 @@ export function getNodeBounds(node: SlideNode): Rect {
 export function resizeRotatedRect(
   origin: Rect,
   rotation: number,
-  grip: GripDirection,
+  handle: HandleDirection,
   dx: number,
   dy: number,
   lockAspect = false,
 ): Rect {
-  if (rotation === 0) return resizeRect(origin, grip, dx, dy, lockAspect);
+  if (rotation === 0) return resizeRect(origin, handle, dx, dy, lockAspect);
   const radians = (rotation * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
-  const local = resizeRect(origin, grip, dx * cos + dy * sin, -dx * sin + dy * cos, lockAspect);
+  const local = resizeRect(origin, handle, dx * cos + dy * sin, -dx * sin + dy * cos, lockAspect);
   return placeRotated(origin, rotation, local);
 }
 
@@ -186,9 +186,9 @@ function placeRotated(origin: Rect, rotation: number, local: Rect): Rect {
 }
 
 /** The resize cursor for a handle on a shape turned by `rotation` degrees. */
-export function getGripCursor(grip: GripDirection, rotation: number): string {
+export function getHandleCursor(handle: HandleDirection, rotation: number): string {
   const steps = Math.round(normalizeAngle(rotation) / 45);
-  return GRIP_CURSORS[GRIP_DIRECTIONS[(GRIP_DIRECTIONS.indexOf(grip) + steps) % 8]];
+  return HANDLE_CURSORS[HANDLE_DIRECTIONS[(HANDLE_DIRECTIONS.indexOf(handle) + steps) % 8]];
 }
 
 /** Factors a resize drag scaled the dragged shape by, per axis. */
@@ -202,14 +202,14 @@ export interface ResizeScale {
  * handle leaves the other axis at 1, and a zero-extent axis cannot define a
  * factor, so it reports 1 rather than dividing by zero.
  */
-export function gripScale(
+export function handleScale(
   origin: Rect,
-  grip: GripDirection,
+  handle: HandleDirection,
   dx: number,
   dy: number,
   lockAspect = false,
 ): ResizeScale {
-  const next = resizeRect(origin, grip, dx, dy, lockAspect);
+  const next = resizeRect(origin, handle, dx, dy, lockAspect);
   return {
     x: origin.w === 0 ? 1 : next.w / origin.w,
     y: origin.h === 0 ? 1 : next.h / origin.h,
@@ -218,7 +218,7 @@ export function gripScale(
 
 /**
  * Scales a rect by the factors the dragged shape was scaled by, anchored at the
- * edges opposite the grip, matching `resizeRect`.
+ * edges opposite the handle, matching `resizeRect`.
  *
  * PowerPoint resizes every shape in a multi-selection when one shape's handle
  * is dragged, but it scales each in place: the gaps between them do not scale,
@@ -226,41 +226,41 @@ export function gripScale(
  * Size pane instead. Applied to the dragged shape itself this reproduces
  * `resizeRect` exactly, clamps included.
  */
-export function scaleRectFromGrip(rect: Rect, grip: GripDirection, scale: ResizeScale): Rect {
+export function scaleRectFromHandle(rect: Rect, handle: HandleDirection, scale: ResizeScale): Rect {
   const w = Math.max(MIN_SIZE, rect.w * scale.x);
   const h = Math.max(MIN_SIZE, rect.h * scale.y);
   return {
-    x: grip.includes("w") ? rect.x + rect.w - w : rect.x,
-    y: grip.includes("n") ? rect.y + rect.h - h : rect.y,
+    x: handle.includes("w") ? rect.x + rect.w - w : rect.x,
+    y: handle.includes("n") ? rect.y + rect.h - h : rect.y,
     w,
     h,
   };
 }
 
 /**
- * Where each selected shape lands mid-resize. The gripped shape resizes along
+ * Where each selected shape lands mid-resize. The dragged handle's shape resizes along
  * its own axes, and every other shape scales by the same factors along its
- * own axes, each anchored at its own edges opposite the grip.
+ * own axes, each anchored at its own edges opposite the handle.
  */
 export function getResizedRects(
   nodes: SlideNode[],
-  grippedNode: SlideNode,
-  grip: GripDirection,
+  handleNode: SlideNode,
+  handle: HandleDirection,
   dx: number,
   dy: number,
   lockAspect: boolean,
 ): Map<string, Rect> {
-  const origin = getNodeRect(grippedNode);
-  const resized = resizeRotatedRect(origin, grippedNode.rotation, grip, dx, dy, lockAspect);
+  const origin = getNodeRect(handleNode);
+  const resized = resizeRotatedRect(origin, handleNode.rotation, handle, dx, dy, lockAspect);
   const scale: ResizeScale = {
     x: origin.w === 0 ? 1 : resized.w / origin.w,
     y: origin.h === 0 ? 1 : resized.h / origin.h,
   };
   return new Map(
     nodes.map((node) => {
-      if (node === grippedNode) return [node.id, resized];
+      if (node === handleNode) return [node.id, resized];
       const rect = getNodeRect(node);
-      return [node.id, placeRotated(rect, node.rotation, scaleRectFromGrip(rect, grip, scale))];
+      return [node.id, placeRotated(rect, node.rotation, scaleRectFromHandle(rect, handle, scale))];
     }),
   );
 }

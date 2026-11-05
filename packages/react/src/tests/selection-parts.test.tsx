@@ -76,10 +76,10 @@ describe("handles on small and flat shapes", () => {
     const nw = tiny.querySelector<HTMLElement>('[data-resize-handle="nw"]')!;
     expect(nw.style.transform).toBe("translate(calc(-50% + -12px), calc(-50% + -12px))");
 
-    const lineGrips = Array.from(line.querySelectorAll("[data-resize-handle]")).map((grip) =>
-      grip.getAttribute("data-resize-handle"),
+    const lineHandles = Array.from(line.querySelectorAll("[data-resize-handle]")).map((handle) =>
+      handle.getAttribute("data-resize-handle"),
     );
-    expect(lineGrips.sort()).toEqual(["e", "w"]);
+    expect(lineHandles.sort()).toEqual(["e", "w"]);
   });
 
   it("keeps handles on the outline of a wide but short shape", async () => {
