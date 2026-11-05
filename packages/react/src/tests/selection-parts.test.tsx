@@ -426,7 +426,7 @@ describe("arrange shortcuts", () => {
       fireEvent.keyDown(overlay, { key: "d", metaKey: true });
     });
     await waitFor(() => expect(ids()).toEqual(["2", "4", "3", "5"]));
-    expect(selection.current!.nodeIds).toEqual(["4", "5"]);
+    await waitFor(() => expect(selection.current!.nodeIds).toEqual(["4", "5"]));
 
     await act(async () => {
       await store.undo();
@@ -507,7 +507,7 @@ describe("clipboard", () => {
     });
     await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(["2", "3", "4"]));
     expect(nodes()[2].position).toEqual({ x: original.x + 10, y: original.y + 10 });
-    expect(selection.current!.nodeIds).toEqual(["4"]);
+    await waitFor(() => expect(selection.current!.nodeIds).toEqual(["4"]));
 
     await act(async () => {
       overlay.dispatchEvent(clipboardEvent("paste", data));
@@ -565,7 +565,7 @@ describe("clipboard", () => {
     await waitFor(() => expect(nodes()).toHaveLength(3));
     expect(nodes()[2].nodeType).toBe("picture");
     expect(nodes()[2].size).toEqual({ w: 30, h: 20 });
-    expect(selection.current!.nodeIds).toEqual([nodes()[2].id]);
+    await waitFor(() => expect(selection.current!.nodeIds).toEqual([nodes()[2].id]));
   });
 
   it("leaves clipboard events in text fields alone", async () => {
