@@ -303,7 +303,7 @@ function HistoryButtons() {
 
   return (
     <>
-      <button disabled={!canUndo} onClick={undo}>
+      <button disabled={!canUndo} onClick={() => void undo()}>
         Undo
       </button>
       <button disabled={!canRedo} onClick={() => void redo()}>

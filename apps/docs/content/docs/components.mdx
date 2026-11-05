@@ -148,28 +148,28 @@ Must be placed inside `Presentation.Slide`.
 
 ### Interaction model
 
-| Action                                  | Behavior                                     |
-| --------------------------------------- | -------------------------------------------- |
-| Click shape                             | Select                                       |
-| Click selected shape, or double-click   | Enter text edit mode                         |
-| Type, Enter, or F2 while shape selected | Enter text edit mode                         |
-| Drag shape                              | Move (Shift = one axis; Alt = no snapping)   |
-| Click or drag frame (in text mode)      | Leave text mode; select or move              |
-| Drag resize handle                      | Resize                                       |
-| Shift + drag corner handle              | Resize preserving aspect ratio               |
-| Drag rotate handle                      | Rotate (Shift = 15° steps)                   |
-| Ctrl/Cmd + A                            | Select all                                   |
-| Shift / Ctrl / Cmd + click              | Toggle shape in/out of selection             |
-| Drag empty canvas                       | Marquee select                               |
-| Tab / Shift + Tab                       | Select the next or previous shape            |
-| Delete / Backspace                      | Delete selected                              |
-| Ctrl/Cmd + D                            | Duplicate                                    |
-| Ctrl/Cmd + C, X, V                      | Copy, cut, paste                             |
-| Ctrl/Cmd + ] or [                       | Forward or backward (Shift = front or back)  |
-| Arrow keys                              | Nudge (1 px; Shift = 10 px)                  |
-| Ctrl/Cmd + Z                            | Undo                                         |
-| Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z    | Redo                                         |
-| Escape                                  | Disarm draw tool → exit text mode → deselect |
+| Action                                                                                                                                                             | Behavior                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Click shape                                                                                                                                                        | Select                                                           |
+| Click selected shape, or double-click                                                                                                                              | Enter text edit mode                                             |
+| Type, <Kbd>Enter</Kbd>, or <Kbd>F2</Kbd> while shape selected                                                                                                      | Enter text edit mode                                             |
+| Drag shape                                                                                                                                                         | Move (<Kbd>Shift</Kbd> = one axis; <Kbd>Alt</Kbd> = no snapping) |
+| Click or drag frame (in text mode)                                                                                                                                 | Leave text mode; select or move                                  |
+| Drag resize handle                                                                                                                                                 | Resize                                                           |
+| <Kbd>Shift</Kbd> + drag corner handle                                                                                                                              | Resize preserving aspect ratio                                   |
+| Drag rotate handle                                                                                                                                                 | Rotate (<Kbd>Shift</Kbd> = 15° steps)                            |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>A</Kbd></KbdGroup>                                                                                                               | Select all                                                       |
+| <Kbd>Shift/Ctrl/Cmd</Kbd> + click                                                                                                                                  | Toggle shape in/out of selection                                 |
+| Drag empty canvas                                                                                                                                                  | Marquee select                                                   |
+| <Kbd>Tab</Kbd> / <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup>                                                                                               | Select the next or previous shape                                |
+| <Kbd>Delete</Kbd> / <Kbd>Backspace</Kbd>                                                                                                                           | Delete selected                                                  |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>D</Kbd></KbdGroup>                                                                                                               | Duplicate                                                        |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>C</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>X</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>V</Kbd></KbdGroup> | Copy, cut, paste                                                 |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>]</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>[</Kbd></KbdGroup>                                                        | Forward or backward (<Kbd>Shift</Kbd> = front or back)           |
+| Arrow keys                                                                                                                                                         | Nudge (1 px; <Kbd>Shift</Kbd> = 10 px)                           |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                                               | Undo                                                             |
+| <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Y</Kbd></KbdGroup> / <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Shift</Kbd><Kbd>Z</Kbd></KbdGroup>                                        | Redo                                                             |
+| <Kbd>Escape</Kbd>                                                                                                                                                  | Disarm draw tool → exit text mode → deselect                     |
 
 Undo and redo shortcuts are opt-in via `undoRedoShortcuts`. Everything else in the table is always bound.
 

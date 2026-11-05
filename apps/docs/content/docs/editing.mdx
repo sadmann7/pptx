@@ -20,19 +20,19 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 ## Features
 
 - **Move** shapes by dragging them
-- **Resize** shapes by dragging their handles (hold Shift on a corner handle to lock the aspect ratio)
-- **Rotate** shapes with the handle above the selection (hold Shift to step by 15°)
+- **Resize** shapes by dragging their handles (hold <Kbd>Shift</Kbd> on a corner handle to lock the aspect ratio)
+- **Rotate** shapes with the handle above the selection (hold <Kbd>Shift</Kbd> to step by 15°)
 - **Right-click** a shape to select it before opening a context menu; right-clicking empty canvas clears the selection
 - **Snap** to the slide's edges and center and to other shapes while moving or resizing, with guides showing what lined up (see [Snapping](#snapping))
 - **Edit text** inline: click a selected shape again, double-click it, or start typing
-- **Keyboard**: Tab and Shift+Tab move through the slide's shapes, and screen readers hear what's selected
-- **Multi-select** with Shift/Ctrl/Cmd+click, Ctrl/Cmd+A, or by dragging a marquee on the empty canvas
-- **Delete** selected shapes with Delete or Backspace
-- **Duplicate** the selection with Ctrl/Cmd+D
-- **Copy, cut, and paste** shapes with Ctrl/Cmd+C, X, and V, within a deck or between decks on the page; paste an image to insert it
-- **Arrange** with Ctrl/Cmd+] and Ctrl/Cmd+[ (one step forward or backward), or with Shift held (to the front or back)
-- **Nudge** with the arrow keys (1 px, or 10 px while holding Shift)
-- **Undo** and **redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y)
+- **Keyboard**: <Kbd>Tab</Kbd> and <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup> move through the slide's shapes, and screen readers hear what's selected
+- **Multi-select** with <Kbd>Shift/Ctrl/Cmd</Kbd> + click, <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>A</Kbd></KbdGroup>, or by dragging a marquee on the empty canvas
+- **Delete** selected shapes with <Kbd>Delete</Kbd> or <Kbd>Backspace</Kbd>
+- **Duplicate** the selection with <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>D</Kbd></KbdGroup>
+- **Copy, cut, and paste** shapes with <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>X</Kbd></KbdGroup>, and <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>V</Kbd></KbdGroup>, within a deck or between decks on the page; paste an image to insert it
+- **Arrange** with <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>]</Kbd></KbdGroup> and <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>[</Kbd></KbdGroup> (one step forward or backward), or with <Kbd>Shift</Kbd> held (to the front or back)
+- **Nudge** with the arrow keys (1 px, or 10 px while holding <Kbd>Shift</Kbd>)
+- **Undo** and **redo** with <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Shift</Kbd><Kbd>Z</Kbd></KbdGroup> (or <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Y</Kbd></KbdGroup>)
 
 Undo and redo shortcuts are disabled by default to avoid conflicts with the surrounding app. Enable them with `undoRedoShortcuts` on `Presentation.Selection`:
 
@@ -40,7 +40,7 @@ Undo and redo shortcuts are disabled by default to avoid conflicts with the surr
 <Presentation.Selection undoRedoShortcuts />
 ```
 
-When enabled, they are bound on the document rather than the overlay, so they keep working when undo switches slides or when focus moves to a thumbnail after a keyboard reorder. Only keystrokes aimed at the presentation act on the deck: the boundary is `Presentation.Root` when there is one, otherwise the overlay itself. Text fields are always left alone.
+They only act on keystrokes inside the presentation, and leave text fields to their own undo.
 
 For full control, leave `undoRedoShortcuts` disabled and call `store.undo()` and `store.redo()`.
 
@@ -269,7 +269,7 @@ function FormattingToolbar() {
 }
 ```
 
-`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `duplicate()`, `remove()`, and `reorder(order)` for the selected shapes, `editText(nodeId)` to start editing a shape's text, `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it, and `insertShape(geometry, options?)`, which adds a preset shape and selects it, so typing starts its text. To let people place them instead, like Google Slides, `startDrawing({ type: "textBox" })` or `startDrawing({ type: "shape", geometry })` arms a draw tool: the slide shows a crosshair, a click places the text box or shape at its default size, and a drag draws it to size (Shift keeps it square). `drawTool` reports the armed tool, and Escape or `startDrawing(null)` disarms it. A text box left empty is removed once editing moves elsewhere.
+`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `anchor` (see [Floating toolbar](#floating-toolbar)), `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `duplicate()`, `remove()`, and `reorder(order)` for the selected shapes, `editText(nodeId)` to start editing a shape's text, `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it, and `insertShape(geometry, options?)`, which adds a preset shape and selects it, so typing starts its text. To let people place them instead, like Google Slides, `startDrawing({ type: "textBox" })` or `startDrawing({ type: "shape", geometry })` arms a draw tool: the slide shows a crosshair, a click places the text box or shape at its default size, and a drag draws it to size (Shift keeps it square). `drawTool` reports the armed tool, and Escape or `startDrawing(null)` disarms it. A text box left empty is removed once editing moves elsewhere.
 
 For a font picker, `getPresentationFonts(presentation)` lists the theme's heading and body fonts, the fonts embedded in the file, and the other fonts the deck's text uses. For a shape picker, `getPresetShapePath(geometry, width, height)` returns SVG path data to draw each preset's preview.
 
@@ -406,7 +406,7 @@ function Toolbar() {
 
   return (
     <>
-      <button disabled={!canUndo} onClick={undo}>
+      <button disabled={!canUndo} onClick={() => void undo()}>
         Undo
       </button>
       <button disabled={!canRedo} onClick={() => void redo()}>

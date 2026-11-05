@@ -99,15 +99,16 @@ Editing overlay. Enables drag-to-move, resize (with Shift for aspect-ratio lock)
 
 | Action                        | Description                                     |
 | ----------------------------- | ----------------------------------------------- |
-| Click text box / placeholder  | Select + enter text mode                        |
-| Click regular shape           | Select                                          |
-| Double-click regular shape    | Enter text mode                                 |
+| Click shape                   | Select                                          |
+| Click selected shape          | Enter text mode                                 |
+| Double-click shape            | Enter text mode                                 |
 | Type while shape selected     | Enter text mode                                 |
 | Drag shape                    | Move                                            |
 | Shift + drag shape            | Move along one axis, the one the drag favors    |
-| Drag border of text box       | Move while keeping text mode                    |
+| Drag frame in text mode       | Leave text mode and move                        |
 | Drag resize handle            | Resize, applied to every selected shape         |
 | Shift + drag corner handle    | Resize preserving aspect ratio                  |
+| Drag rotate handle            | Rotate (Shift = 15° steps)                      |
 | Ctrl/Cmd+A                    | Select all                                      |
 | Shift/Ctrl/Cmd+click          | Toggle shape in selection                       |
 | Drag empty canvas             | Marquee select                                  |
@@ -165,6 +166,8 @@ All mutations go through `store.edit(operation)` and support undo/redo via `stor
 | `duplicateSlide`   | Duplicate a slide                                |
 | `deleteSlide`      | Delete a slide                                   |
 | `batch`            | Group multiple operations into one undoable step |
+
+Formatting, inserting, and arranging shapes have their own operations too; see [Store](https://pptx.diceui.com/docs/store#more-operations).
 
 ## Development
 
