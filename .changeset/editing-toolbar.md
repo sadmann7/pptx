@@ -12,4 +12,5 @@ Add editing toolbar support and more PowerPoint-style editing to `Presentation.S
 - The thumbnail list keeps at most 50 rendered miniatures, so memory stays flat on long decks.
 - Re-exports `copyNodes`, `getPresentationFonts`, and `getPresetShapePath` with the new operation types.
 - Undoing an added or duplicated slide returns to the slide that was active before it.
+- Arrow keys in the thumbnail list follow page order after a slide is added or moved.
 - Edits, undo, and redo run one at a time; `undo()` now returns a promise, like `redo()`. Line breaks survive text editing, and Ctrl/Cmd+Z in a text box undoes formatting applied to it.

@@ -55,6 +55,12 @@ function focusFirst(candidates: HTMLElement[], preventScroll = false) {
   }
 }
 
+export function getItemsInPageOrder(items: Map<string, HTMLButtonElement>): HTMLButtonElement[] {
+  return Array.from(items.values()).sort((a, b) =>
+    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+  );
+}
+
 function wrapArray<T>(array: T[], startIndex: number): T[] {
   return array.map((_, i) => array[(startIndex + i) % array.length] as T);
 }
@@ -396,7 +402,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       if (!element) {
         const items = itemsRef.current;
         const activeItem = activeSlideId ? items.get(activeSlideId) : undefined;
-        element = activeItem ?? items.values().next().value;
+        element = activeItem ?? getItemsInPageOrder(items)[0];
       }
       element?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef, initialFocusRef]);
@@ -505,7 +511,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
                     isClickFocusRef.current = false;
                     return;
                   }
-                  focusFirst(Array.from(itemsRef.current.values()), true);
+                  focusFirst(getItemsInPageOrder(itemsRef.current), true);
                 },
                 children: resolvedChildren,
               },
@@ -668,7 +674,7 @@ export const ThumbnailItem = React.memo(
               return;
             event.preventDefault();
 
-            let candidates = Array.from(rovingContext.itemsRef.current.values());
+            let candidates = getItemsInPageOrder(rovingContext.itemsRef.current);
             if (focusIntent === "last") {
               candidates = candidates.reverse();
             } else if (focusIntent === "prev" || focusIntent === "next") {
