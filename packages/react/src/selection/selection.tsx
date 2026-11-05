@@ -235,14 +235,22 @@ interface TableBorderDrag {
   axis: "column" | "row";
   index: number;
   start: number;
+  position: NodePosition;
   columns: number[];
   rows: number[];
-  next: { columns: number[]; rows: number[] } | null;
+  next: { columns: number[]; rows: number[]; position: NodePosition } | null;
 }
 
 const MIN_TABLE_TRACK = 12;
+const TABLE_BORDER_SIZE = 8;
+const TABLE_EDGE_SIZE = 5;
 
-function previewTableGrid(element: HTMLElement | null, columns: number[], rows: number[]): void {
+function previewTableGrid(
+  element: HTMLElement | null,
+  columns: number[],
+  rows: number[],
+  position: NodePosition,
+): void {
   if (!element) return;
   const width = columns.reduce((sum, size) => sum + size, 0);
   const height = rows.reduce((sum, size) => sum + size, 0);
@@ -252,6 +260,9 @@ function previewTableGrid(element: HTMLElement | null, columns: number[], rows: 
   element.querySelectorAll<HTMLElement>("tr").forEach((tr, index) => {
     tr.style.height = `${(rows[index] / height) * 100}%`;
   });
+  element.style.left = `${position.x}px`;
+  element.style.top = `${position.y}px`;
+  element.style.width = `${width}px`;
   element.style.height = `${height}px`;
 }
 
@@ -1508,6 +1519,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       axis,
       index,
       start: axis === "column" ? event.clientX : event.clientY,
+      position: { ...tableNode.position },
       columns: [...tableNode.columns],
       rows: tableNode.rows.map((row) => row.height),
       next: null,
@@ -1520,19 +1532,27 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const delta = ((drag.axis === "column" ? event.clientX : event.clientY) - drag.start) / zoom;
     const columns = [...drag.columns];
     const rows = [...drag.rows];
-    if (drag.axis === "column") {
-      const pair = columns[drag.index] + columns[drag.index + 1];
-      const left = Math.min(
-        Math.max(columns[drag.index] + delta, MIN_TABLE_TRACK),
+    const position = { ...drag.position };
+    const tracks = drag.axis === "column" ? columns : rows;
+    const { index } = drag;
+    if (index === 0) {
+      // The far edge stays put, so the table moves by what the first track lost.
+      const size = Math.max(tracks[0] - delta, MIN_TABLE_TRACK);
+      position[drag.axis === "column" ? "x" : "y"] += tracks[0] - size;
+      tracks[0] = size;
+    } else if (index === tracks.length) {
+      tracks[index - 1] = Math.max(tracks[index - 1] + delta, MIN_TABLE_TRACK);
+    } else {
+      const pair = tracks[index - 1] + tracks[index];
+      const before = Math.min(
+        Math.max(tracks[index - 1] + delta, MIN_TABLE_TRACK),
         pair - MIN_TABLE_TRACK,
       );
-      columns[drag.index] = left;
-      columns[drag.index + 1] = pair - left;
-    } else {
-      rows[drag.index] = Math.max(rows[drag.index] + delta, MIN_TABLE_TRACK);
+      tracks[index - 1] = before;
+      tracks[index] = pair - before;
     }
-    drag.next = { columns, rows };
-    previewTableGrid(getShapeElement(drag.nodeId), columns, rows);
+    drag.next = { columns, rows, position };
+    previewTableGrid(getShapeElement(drag.nodeId), columns, rows, position);
   }
 
   function onTableBorderPointerUp(): void {
@@ -1570,9 +1590,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         ? { columnWidths: drag.next.columns }
         : { rowHeights: drag.next.rows }),
     });
+    const { position } = drag.next;
+    if (position.x !== drag.position.x || position.y !== drag.position.y) {
+      operations.push({ type: "setNodeTransform", slideId, nodeId: drag.nodeId, position });
+    }
     commitEdit(
       () => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
-      () => previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows),
+      () => previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows, drag.position),
       () => onNodeTransform?.(drag.nodeId),
       (error) => onNodeTransform?.(drag.nodeId, error),
     );
@@ -1581,50 +1605,58 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function onTableBorderPointerCancel(): void {
     const drag = tableBorderDragRef.current;
     tableBorderDragRef.current = null;
-    if (drag) previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows);
+    if (drag) {
+      previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows, drag.position);
+    }
   }
 
   function renderTableBorders(table: TableNodeData): React.ReactNode {
     const borders: { axis: TableBorderDrag["axis"]; index: number; offset: number }[] = [];
     let x = 0;
-    table.columns.slice(0, -1).forEach((width, index) => {
-      x += width;
+    for (let index = 0; index <= table.columns.length; index++) {
       borders.push({ axis: "column", index, offset: x });
-    });
+      x += table.columns[index] ?? 0;
+    }
     let y = 0;
-    table.rows.slice(0, -1).forEach((row, index) => {
-      y += row.height;
+    for (let index = 0; index <= table.rows.length; index++) {
       borders.push({ axis: "row", index, offset: y });
+      y += table.rows[index]?.height ?? 0;
+    }
+    return borders.map(({ axis, index, offset }) => {
+      // Edge strips sit inside the table; the frame just outside moves it.
+      const count = axis === "column" ? table.columns.length : table.rows.length;
+      const start = index === 0 ? 0 : index === count ? -TABLE_EDGE_SIZE : -TABLE_BORDER_SIZE / 2;
+      const size = index === 0 || index === count ? TABLE_EDGE_SIZE : TABLE_BORDER_SIZE;
+      return (
+        <div
+          key={`${axis}-${index}`}
+          data-pptx-table-border={axis}
+          onPointerDown={(event) => onTableBorderPointerDown(event, axis, index)}
+          onPointerMove={onTableBorderPointerMove}
+          onPointerUp={onTableBorderPointerUp}
+          onPointerCancel={onTableBorderPointerCancel}
+          style={{
+            position: "absolute",
+            pointerEvents: "auto",
+            touchAction: "none",
+            cursor: axis === "column" ? "col-resize" : "row-resize",
+            ...(axis === "column"
+              ? {
+                  left: (table.position.x + offset) * zoom + start,
+                  top: table.position.y * zoom,
+                  width: size,
+                  height: table.size.h * zoom,
+                }
+              : {
+                  left: table.position.x * zoom,
+                  top: (table.position.y + offset) * zoom + start,
+                  width: table.size.w * zoom,
+                  height: size,
+                }),
+          }}
+        />
+      );
     });
-    return borders.map(({ axis, index, offset }) => (
-      <div
-        key={`${axis}-${index}`}
-        data-pptx-table-border={axis}
-        onPointerDown={(event) => onTableBorderPointerDown(event, axis, index)}
-        onPointerMove={onTableBorderPointerMove}
-        onPointerUp={onTableBorderPointerUp}
-        onPointerCancel={onTableBorderPointerCancel}
-        style={{
-          position: "absolute",
-          pointerEvents: "auto",
-          touchAction: "none",
-          cursor: axis === "column" ? "col-resize" : "row-resize",
-          ...(axis === "column"
-            ? {
-                left: (table.position.x + offset) * zoom - 4,
-                top: table.position.y * zoom,
-                width: 8,
-                height: table.size.h * zoom,
-              }
-            : {
-                left: table.position.x * zoom,
-                top: (table.position.y + offset) * zoom - 4,
-                width: table.size.w * zoom,
-                height: 8,
-              }),
-        }}
-      />
-    ));
   }
 
   const enterTextModeRef = useLatestRef(enterTextMode);
@@ -2176,19 +2208,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * Slides: a click leaves the shape selected, and a drag moves it.
    */
   function onBorderPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
-    if (event.button !== 0 || state.mode !== "text") return;
+    if (event.button !== 0 || (state.mode !== "text" && state.mode !== "selected")) return;
     event.preventDefault();
     event.stopPropagation();
 
-    const { nodeId } = state;
-    commitTextEdits(state);
+    const nodeIds = state.mode === "text" ? [state.nodeId] : state.nodeIds;
+    if (state.mode === "text") commitTextEdits(state);
 
     rootRef.current?.setPointerCapture(event.pointerId);
     rootRef.current?.focus({ preventScroll: true });
     setState({
       mode: "move",
-      nodeIds: [nodeId],
-      primaryId: nodeId,
+      nodeIds,
+      primaryId: nodeIds[0],
       startX: event.clientX,
       startY: event.clientY,
       dx: 0,
@@ -2846,6 +2878,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   pointerEvents: "none",
                 }}
               >
+                {/* Under the parts, so the resize handles on the edges win. */}
+                {tableNode && renderTableBorders(tableNode)}
                 <SelectionPartsContext.Provider
                   value={{
                     state,
@@ -2863,7 +2897,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                 >
                   {children ?? DEFAULT_PARTS}
                 </SelectionPartsContext.Provider>
-                {tableNode && renderTableBorders(tableNode)}
               </div>
               <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
                 {announcement}

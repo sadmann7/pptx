@@ -471,9 +471,9 @@ describe("tables", () => {
       editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
     const [left, right] = tableOf().columns;
 
-    const border = editor.container.querySelector<HTMLElement>(
+    const border = editor.container.querySelectorAll<HTMLElement>(
       '[data-pptx-table-border="column"]',
-    )!;
+    )[1];
     await act(async () => {
       fireEvent.pointerDown(border, { button: 0, clientX: 100, clientY: 0, pointerId: 1 });
       fireEvent.pointerMove(border, { clientX: 130, clientY: 0, pointerId: 1 });
@@ -483,6 +483,57 @@ describe("tables", () => {
     await waitFor(() => expect(tableOf().columns[0]).toBeGreaterThan(left));
     expect(tableOf().columns[0] + tableOf().columns[1]).toBeCloseTo(left + right, 0);
     expect(editor.overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
+  it("resizes the first column from the left edge, keeping the right edge in place", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    act(() => editor.selection.current!.select([nodeId]));
+    const tableOf = () =>
+      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+    const before = tableOf();
+    const right = before.position.x + before.size.w;
+    const [first, second] = before.columns;
+
+    const edge = editor.container.querySelector<HTMLElement>('[data-pptx-table-border="column"]')!;
+    await act(async () => {
+      fireEvent.pointerDown(edge, { button: 0, clientX: 100, clientY: 0, pointerId: 1 });
+      fireEvent.pointerMove(edge, { clientX: 130, clientY: 0, pointerId: 1 });
+      fireEvent.pointerUp(edge, { clientX: 130, clientY: 0, pointerId: 1 });
+    });
+
+    await waitFor(() => expect(tableOf().columns[0]).toBeLessThan(first));
+    expect(tableOf().columns[1]).toBeCloseTo(second, 0);
+    expect(tableOf().position.x + tableOf().size.w).toBeCloseTo(right, 0);
+  });
+
+  it("moves a table from just outside its edge, while selected or editing a cell", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    const tableOf = () =>
+      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+
+    for (const mode of ["text", "selected"]) {
+      if (mode === "selected") act(() => editor.selection.current!.select([nodeId]));
+      await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe(mode));
+      const { x } = tableOf().position;
+      const frame = editor.container.querySelector<HTMLElement>("[data-border-move]")!;
+      act(() => {
+        fireEvent.pointerDown(frame, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+      });
+      act(() => {
+        fireEvent.pointerMove(editor.overlay, {
+          buttons: 1,
+          clientX: 140,
+          clientY: 100,
+          pointerId: 1,
+        });
+      });
+      await act(async () => {
+        fireEvent.pointerUp(editor.overlay, { clientX: 140, clientY: 100, pointerId: 1 });
+      });
+      await waitFor(() => expect(tableOf().position.x).toBeGreaterThan(x));
+    }
   });
 
   it("formats every cell of a selected table", async () => {
