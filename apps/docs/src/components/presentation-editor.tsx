@@ -454,7 +454,7 @@ function FontSelect({
           render={
             <ToolbarItem
               render={
-                <SelectTrigger size="sm" aria-label="Font" className="h-7 w-36 text-xs">
+                <SelectTrigger size="sm" aria-label="Font" className="h-7 w-32 text-xs">
                   {/* Blank when the selection mixes fonts, as in Google Slides. */}
                   <SelectValue className="min-w-0">
                     <span className="truncate">{value ?? ""}</span>

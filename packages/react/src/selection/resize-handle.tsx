@@ -19,7 +19,11 @@ const GRIP_POSITIONS: Record<GripDirection, React.CSSProperties> = {
   w: { left: 0, top: "50%" },
 };
 
-/** Below this many screen px, handles on that axis sit outside the box, so its inside stays draggable. */
+/**
+ * Below this many screen px on both axes, handles sit outside the box so its
+ * inside stays draggable. A box short on only one axis can still be grabbed
+ * between its handles.
+ */
 const SMALL_SIZE = 24;
 
 /** How far outside a small box its handles sit, in screen px. */
@@ -38,22 +42,9 @@ function isGripShown(direction: GripDirection, width: number, height: number): b
 }
 
 function getGripOffset(direction: GripDirection, width: number, height: number) {
-  const x =
-    width < SMALL_SIZE
-      ? direction.includes("e")
-        ? SMALL_OFFSET
-        : direction.includes("w")
-          ? -SMALL_OFFSET
-          : 0
-      : 0;
-  const y =
-    height < SMALL_SIZE
-      ? direction.includes("s")
-        ? SMALL_OFFSET
-        : direction.includes("n")
-          ? -SMALL_OFFSET
-          : 0
-      : 0;
+  if (width >= SMALL_SIZE || height >= SMALL_SIZE) return { x: 0, y: 0 };
+  const x = direction.includes("e") ? SMALL_OFFSET : direction.includes("w") ? -SMALL_OFFSET : 0;
+  const y = direction.includes("s") ? SMALL_OFFSET : direction.includes("n") ? -SMALL_OFFSET : 0;
   return { x, y };
 }
 

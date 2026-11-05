@@ -81,6 +81,24 @@ describe("handles on small and flat shapes", () => {
     );
     expect(lineGrips.sort()).toEqual(["e", "w"]);
   });
+
+  it("keeps handles on the outline of a wide but short shape", async () => {
+    const { store, container, selectAll } = await renderOverlay();
+    const slideId = store.getState().activeSlideId!;
+    await act(async () => {
+      await store.edit({
+        type: "setNodeTransform",
+        slideId,
+        nodeId: "2",
+        size: { w: 400, h: 10 },
+      });
+    });
+    selectAll();
+
+    const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
+    const nw = box.querySelector<HTMLElement>('[data-resize-grip="nw"]')!;
+    expect(nw.style.transform).toBe("translate(calc(-50% + 0px), calc(-50% + 0px))");
+  });
 });
 
 describe("composed parts", () => {
