@@ -685,7 +685,6 @@ function buildBarChartOption(
   const gapWidth = chartTypeNode.child("gapWidth").numAttr("val") ?? 150;
   const overlap = chartTypeNode.child("overlap").numAttr("val");
 
-  // Use categories from the first series that has them
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
   const titleOption = buildChartTitleOption(chartNode, seriesArr, ctx, 12);
@@ -711,7 +710,7 @@ function buildBarChartOption(
     : defaultVaryColors;
   const pointPalette = getVaryColorPointPalette(ctx, { darken: !isHorizontal });
 
-  // Parse data labels: in OOXML they can be on chart type (barChart) or on series (ser); try both
+  // OOXML puts data labels on the chart type (barChart) or on the series (ser)
   let sharedLabels = parseDataLabels(chartTypeNode, ctx);
   if (!sharedLabels) {
     const firstSer = chartTypeNode.children("ser")[0];
@@ -861,7 +860,7 @@ function buildBarChartOption(
   };
   applyAxisInfo(categoryAxisDef, categoryAxis, "category");
 
-  // Use a series-derived axis/tooltip format only when all series share it.
+  // A series-derived axis/tooltip format applies only when all series share it
   const sharedSeriesFormat = getSharedSeriesFormatCode(seriesArr);
   const pctFormat =
     (isPercentStacked ? "0%" : undefined) ||
@@ -1342,11 +1341,9 @@ function buildRadarChartOption(
   // Categories come from the first series that has them
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
-  // Read valAx scaling for explicit min/max on radar
   const plotArea = chartNode.child("plotArea");
   const { valueAxis } = parseAxes(plotArea, ctx);
 
-  // Determine indicator max: prefer explicit valAx max, else compute from data + padding
   let indicatorMax: number;
   if (valueAxis.max !== undefined) {
     indicatorMax = valueAxis.max;
@@ -1436,7 +1433,6 @@ function buildRadarChartOption(
     // Reorder values to match the reversed category order
     const cwValues = s.values.length > 1 ? [s.values[0], ...s.values.slice(1).reverse()] : s.values;
     const echartsSymbol = mapOoxmlSymbol(s.markerSymbol);
-    // Show symbols if radarStyle is 'marker' or series has explicit marker
     const showSymbol =
       radarStyle === "marker" || (echartsSymbol !== undefined && echartsSymbol !== "none");
     // PowerPoint radar charts fill the area with a semi-transparent version of the line color
@@ -1528,7 +1524,6 @@ function buildScatterChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
 
-  // Parse scatter-specific marker defaults from scatterStyle
   const scatterStyle = chartTypeNode.child("scatterStyle").attr("val") ?? "lineMarker";
   const scatterStyleDrawsLine =
     scatterStyle === "lineMarker" ||
@@ -1539,7 +1534,6 @@ function buildScatterChartOption(
   const scatterStyleHidesMarkers = scatterStyle === "line" || scatterStyle === "smooth";
 
   const series = seriesArr.map((s, idx) => {
-    // Use xValues if available (parsed from c:xVal), otherwise fall back to index
     const data = s.values.map((v, i) => {
       const x = s.xValues && i < s.xValues.length ? s.xValues[i] : i;
       return [x, v];
@@ -2410,7 +2404,7 @@ export function parseChartXml(
       }
     }
 
-    // Apply chart-space default font sizes to text elements that use hardcoded defaults
+    // Chart-space font sizes replace the hardcoded defaults
     const defaultFs = extractChartDefaultFontSize(chartXml);
     if (defaultFs) {
       applyDefaultFontSizes(option, defaultFs);
@@ -2439,9 +2433,8 @@ export function parseChartXml(
     }
     if (plotAreaBg) {
       if (option.grid) {
-        // Apply plot area background via grid (for cartesian charts).
-        // Showing the grid also enables its default #ccc 1px border, which
-        // PowerPoint only draws when the plot area declares a line.
+        // Showing the grid for its background also enables its default #ccc 1px
+        // border, which PowerPoint only draws when the plot area declares a line
         const grid = option.grid as GridOptionExtended;
         grid.backgroundColor = plotAreaBg;
         grid.show = true;
@@ -2523,7 +2516,7 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     return wrapper;
   }
 
-  // Create chart container (clip content so legend/title stay inside)
+  // Clipped so the legend/title stay inside
   const chartDiv = document.createElement("div");
   chartDiv.style.width = "100%";
   chartDiv.style.flex = "1";
@@ -2558,7 +2551,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     wrapper.appendChild(customLegend);
   }
 
-  // Append data table below chart when c:dTable exists
   if (dataTable) {
     const seriesColors = dataTable.seriesArr.map((s) => s.colorHex).filter(Boolean) as string[];
     const tableEl = buildDataTableElement(

@@ -636,7 +636,7 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
 });
 
 describe("renderChart via renderSlide (happy-dom)", () => {
-  // NOTE: full ECharts initialization is intentionally NOT exercised here.
+  // Full ECharts initialization is intentionally NOT exercised here.
   // The chart renderer is hard-wired to the echarts CanvasRenderer, and
   // happy-dom's <canvas> has no 2D context (getContext returns null), which
   // makes zrender's async paint loop throw unhandled errors. renderChart

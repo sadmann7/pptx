@@ -154,8 +154,8 @@ async function decodeWithWorkerPool(
             );
             takeNext();
           };
-          // Trigger when the worker script itself fails to load or crashes.
-          // Stop using this worker; unfinished jobs fall back to the caller.
+          // Fires when the worker script fails to load or crashes; unfinished
+          // jobs fall back to the caller
           worker.onerror = () => {
             resolve();
           };

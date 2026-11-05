@@ -469,10 +469,6 @@ describe("deleteSlide", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// setTextBody
-// ---------------------------------------------------------------------------
-
 function multiRunShape(id: number): string {
   return `<p:sp>
 <p:nvSpPr><p:cNvPr id="${id}" name="Shape ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>

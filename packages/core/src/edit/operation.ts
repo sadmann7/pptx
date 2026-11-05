@@ -1275,7 +1275,7 @@ function rewriteParagraphs(
 }
 
 function applySetTextStyle(pres: PresentationData, op: SetTextStyleOperation): EditResult {
-  // Validate up front so a bad value fails before any paragraph is touched.
+  // Fails on a bad value before any paragraph is touched
   if (op.style.color) parseHexColor(op.style.color);
   return rewriteParagraphs(pres, op.slideId, op.nodeId, (count) =>
     paragraphSpans(count, op.range).map(([index, from, to]) => [
@@ -1418,7 +1418,7 @@ async function applyDuplicateNode(
   const index = slide.nodes.indexOf(node) + 1;
   slide.nodes.splice(index, 0, copyNode);
 
-  // Write the copy's full transform: an inherited placeholder position has to
+  // The copy gets its full transform: an inherited placeholder position has to
   // become its own before it can be offset.
   const offset = op.offset ?? DEFAULT_DUPLICATE_OFFSET;
   const transform = applySetNodeTransform(pres, {
@@ -1679,8 +1679,8 @@ export async function copyNodes(
   materializeSlide(pres, slide);
   const serializer = new XMLSerializer();
 
-  // Capture everything from the slide before the first await: a cut deletes
-  // the nodes right after copying them.
+  // Everything is captured before the first await, since a cut deletes the
+  // nodes right after copying them
   const captured = slide.nodes
     .filter((node) => nodeIds.includes(node.id))
     .map((node) => {

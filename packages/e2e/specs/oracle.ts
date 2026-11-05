@@ -228,14 +228,12 @@ export async function scoreAgainstPowerPoint(
   return { overall: ssim(actual, expected, undefined, width, height), worstTile, ink };
 }
 
-// ---------------------------------------------------------------------------
 // Score baselines: one JSON file per (deck, slide, browser, OS) so parallel
 // workers never write the same file, and diffs stay reviewable.
 //
 // Platform is part of the key because text rendering differs per OS (Linux
 // lacks Calibri and antialiases differently), shifting SSIM by ~0.01-0.03
 // even when the renderer is unchanged.
-// ---------------------------------------------------------------------------
 
 function baselinePath(deck: string, slide: number, project: string): string {
   return join(BASELINES_DIR, process.platform, `${deck}-${slide}-${project}.json`);

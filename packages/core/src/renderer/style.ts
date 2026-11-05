@@ -61,7 +61,7 @@ function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
  * The theme's colorScheme holds the actual hex values keyed by the mapped name.
  */
 function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
-  // Apply colorMap remapping (layout override takes priority)
+  // A layout colorMap override takes priority
   let mappedName = schemeName;
   if (ctx.layout.colorMapOverride) {
     const override = ctx.layout.colorMapOverride.get(schemeName);
@@ -102,7 +102,6 @@ function resolveColorUncached(
   ctx: RenderContext,
   placeholderColorNode?: SafeXmlNode,
 ): { color: string; alpha: number } {
-  // Iterate child elements to find the actual color type node
   for (const child of colorNode.allChildren()) {
     const tag = child.localName;
     const modifiers = collectModifiers(child);
@@ -468,7 +467,7 @@ function resolveGradient(
   if (lin.exists()) {
     const angle = angleToDeg(lin.numAttr("ang") ?? 0);
     // OOXML angle 0 = top-to-bottom in the gradient coordinate system
-    // CSS angle 0 = bottom-to-top, so we need to adjust
+    // CSS angle 0 = bottom-to-top
     const cssAngle = (angle + 90) % 360;
     return `linear-gradient(${cssAngle.toFixed(1)}deg, ${stopsStr})`;
   }
@@ -541,12 +540,10 @@ export function resolveLineStyle(
     // Look up theme line style for width, color, and dash
     if (idx > 0 && ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
       const themeLn = ctx.theme.lineStyles[idx - 1];
-      // Get width from theme line if not set on the explicit ln node
       if (width === 0) {
         const themeW = themeLn.numAttr("w") ?? 0;
         width = emuToPx(themeW);
       }
-      // Get color: prefer lnRef's own color child, fall back to theme line's solidFill
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
     } else {

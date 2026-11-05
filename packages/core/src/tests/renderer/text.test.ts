@@ -156,7 +156,7 @@ describe("leading whitespace preservation", () => {
     const spans = runSpansContaining(element, "MARKER first");
     // First run: no pre-wrap.
     expect(spans[0].style.whiteSpace).toBe("");
-    // Run after <br>: leading space → pre-wrap.
+    // After <br>, a leading space needs pre-wrap
     expect(spans[1].style.whiteSpace).toBe("pre-wrap");
     expect(spans[1].textContent).toBe("  second line");
   });

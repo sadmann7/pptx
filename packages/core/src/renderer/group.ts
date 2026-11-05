@@ -127,8 +127,8 @@ export function renderGroup(
   wrapper.style.width = `${node.size.w}px`;
   wrapper.style.height = `${node.size.h}px`;
 
-  // Apply group rotation. Group flips are applied by remapping child geometry below so text
-  // renderers can keep readable text upright instead of mirroring the entire DOM subtree.
+  // Group flips remap child geometry below instead, so text stays upright
+  // rather than mirroring the entire DOM subtree
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -178,7 +178,7 @@ export function renderGroup(
     const firstPie = node.children.slice(0, 3).every((c) => prst(c) === "pie");
     const nextArrow = node.children.slice(3, 6).every((c) => prst(c) === "circularArrow");
     if (firstPie && nextArrow) {
-      // Use diagram extent center and a single circle size so the circle is centered and fits.
+      // One circle size around the diagram extent's center keeps the circle centered and fitting
       const pieNodes = [0, 1, 2].map((i) => parseByIndex(i)).filter(Boolean);
       if (pieNodes.length === 3) {
         const pieW = Math.max(...pieNodes.map((n) => n!.size.w));

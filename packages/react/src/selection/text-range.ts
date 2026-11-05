@@ -126,7 +126,6 @@ export function getTextPosition(
       count += cleanText((leaf as Text).data.slice(0, offset)).length;
       break;
     }
-    // Stop at the first leaf that starts at or after the point.
     if (point.comparePoint(leaf, 0) >= 0) break;
     count += getLeafLength(leaf);
   }

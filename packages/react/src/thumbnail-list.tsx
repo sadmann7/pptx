@@ -867,8 +867,8 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
           const element = itemPreviewRef.current;
           if (!element) return;
 
-          // Cancel any pending render queued by a previous cycle before either
-          // re-attaching or detaching.
+          // A render queued by a previous cycle must not outlive re-attaching or
+          // detaching
           cancelRender?.();
           cancelRender = null;
 

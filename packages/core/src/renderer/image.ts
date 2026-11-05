@@ -213,11 +213,9 @@ function renderImageUrl(
     applyImageFillRect(img, fillRectBox);
   }
 
-  // Apply crop if present.
-  // OOXML srcRect defines what portion of the source image is cropped away.
-  // The REMAINING visible region must stretch to fill the entire shape bounding box.
-  // We achieve this by scaling the <img> larger than the wrapper and offsetting it,
-  // relying on the wrapper's overflow:hidden to clip.
+  // OOXML srcRect crops the source image, and the remaining region must
+  // stretch to fill the shape's bounding box. The <img> is scaled larger than
+  // the wrapper and offset, and the wrapper's overflow:hidden clips it.
   if (node.crop) {
     const { top, right, bottom, left } = node.crop;
     // Visible fraction of original image in each dimension
@@ -228,9 +226,9 @@ function renderImageUrl(
       // Scale image so the visible portion fills the wrapper exactly
       const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%
       const scaleY = 1 / visibleH;
-      // Use pixel values for offset: CSS margin-top/margin-left percentages are
-      // both relative to the containing block's WIDTH (not height), which causes
-      // incorrect offsets for non-square wrappers with significant crops.
+      // Pixels, because CSS margin-top/margin-left percentages are both relative
+      // to the containing block's WIDTH (not height), which causes incorrect offsets
+      // for non-square wrappers with significant crops
       const wrapperW = node.size.w * ((fillRectBox?.width ?? 100) / 100);
       const wrapperH = node.size.h * ((fillRectBox?.height ?? 100) / 100);
       img.style.width = `${(scaleX * wrapperW).toFixed(4)}px`;
@@ -839,7 +837,6 @@ function renderEmf(
       renderEmfBitmap(content.imageData, wrapper, ctx, mediaPath);
       break;
     case "empty":
-      // Render nothing: transparent placeholder
       break;
     case "unsupported":
       // Vector-only EMF cannot be faithfully rendered in the browser. A visible
@@ -936,7 +933,7 @@ function applyDuotoneFilter(
   img: HTMLImageElement,
   _wrapper: HTMLElement,
 ): void {
-  // Extract the two colors (first = dark, second = light)
+  // First color is dark, second is light
   const colorChildren = duotone.allChildren();
   if (colorChildren.length < 2) return;
 

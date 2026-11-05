@@ -15,7 +15,7 @@ import {
 function bulletOf(paragraph: HTMLElement): HTMLElement | undefined {
   const first = paragraph.firstElementChild as HTMLElement | null;
   if (!first || first.tagName.toLowerCase() !== "span") return undefined;
-  // Run spans carry the paragraph text; the bullet span carries the marker + trailing space.
+  // The bullet span carries the marker plus a trailing space; run spans carry the text
   return first.textContent?.endsWith(" ") && first.textContent !== "MARKER " ? first : undefined;
 }
 

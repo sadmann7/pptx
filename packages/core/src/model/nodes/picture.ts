@@ -38,7 +38,6 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const blipFill = picNode.child("blipFill");
   const blip = blipFill.child("blip");
 
-  // Try both namespaced and non-namespaced embed attribute
   const blipEmbed = blip.attr("embed") ?? blip.attr("r:embed");
   const blipLink = blip.attr("link") ?? blip.attr("r:link");
 

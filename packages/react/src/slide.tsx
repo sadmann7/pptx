@@ -170,8 +170,7 @@ function SlideImpl({
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
-    // Try to patch positions in-place instead of a full rebuild.
-    // Safe when: same slide as the one currently rendered, node content
+    // Patching positions in place instead of a full rebuild is safe when: same slide as the one currently rendered, node content
     // unchanged (contentRevision), and node sizes/rotations unchanged
     // (a resize needs SVG/text re-layout). The slide id check matters:
     // different slides can have structurally identical node snapshots

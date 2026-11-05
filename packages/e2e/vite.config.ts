@@ -16,7 +16,7 @@ function resolveDeck(url: string): string | undefined {
   try {
     requested = decodeURIComponent(url.split("?")[0]);
   } catch {
-    // Malformed percent-encoding; not a deck we can serve.
+    // Malformed percent-encoding can't name a servable deck
     return undefined;
   }
 

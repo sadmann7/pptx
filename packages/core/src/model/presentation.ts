@@ -262,7 +262,6 @@ export function buildPresentation(
   const orderedSlideTargets: string[] = [];
 
   for (const sldId of sldIdLst.children("sldId")) {
-    // Try multiple attribute name patterns
     const rId = sldId.attr("r:id") ?? sldId.attr("id");
     if (rId) {
       const relEntry = presRels.get(rId);
@@ -276,7 +275,7 @@ export function buildPresentation(
   // Fallback: if sldIdLst parsing didn't yield results, use presRels directly
   if (orderedSlideTargets.length === 0) {
     const slideRels = findRelsByType(presRels, "slide");
-    // Sort by rId number to maintain order
+    // rId number stands in for slide order
     slideRels.sort((a, b) => {
       const numA = parseInt(a[0].replace(/\D/g, ""), 10) || 0;
       const numB = parseInt(b[0].replace(/\D/g, ""), 10) || 0;
@@ -432,7 +431,7 @@ function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
 }
 
 function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSize } | undefined {
-  // Try spPr > xfrm first (most shapes), then direct xfrm (graphic frames).
+  // spPr > xfrm on most shapes, a direct xfrm on graphic frames
   const spPrXfrm = phNode.child("spPr").child("xfrm");
   const xfrm = spPrXfrm.exists() ? spPrXfrm : phNode.child("xfrm");
   if (xfrm.exists()) {

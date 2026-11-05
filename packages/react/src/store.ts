@@ -747,8 +747,8 @@ export function createStore(): Store {
       const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
       const startSlide = presentation.slides[startIndex];
 
-      // Capture raw XML for priority font detection before materialization
-      // clears it (lazy mode).
+      // Priority font detection needs the raw XML, which materialization
+      // clears in lazy mode
       const startSlideXml = startSlide?.sourceXml;
 
       // The active slide's nodes must be reliable the moment the store

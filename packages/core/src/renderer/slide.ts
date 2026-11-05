@@ -150,12 +150,11 @@ function parseTemplateShapes(
 
     try {
       const node = parseRenderableChild(child, parseContext);
-      // Skip empty/invisible nodes (0x0 size and no text)
       if (node && (node.size.w > 0 || node.size.h > 0)) {
         nodes.push(node);
       }
     } catch {
-      // Skip unparseable template shapes silently
+      // An unparseable template shape is left out rather than failing the slide
     }
   }
   return nodes;

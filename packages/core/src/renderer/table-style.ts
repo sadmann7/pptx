@@ -670,7 +670,7 @@ function darkStyle2(accent: string, styleId: string): string {
   const accentVal = accent || "dk1";
   const parts: string[] = [];
 
-  // Determine firstRow fill: accent-shift logic
+  // In the first row, odd accents shift to the next one
   let firstRowFillColor: string;
   if (accent === "") firstRowFillColor = "dk1";
   else if (accent === "accent1") firstRowFillColor = "accent2";

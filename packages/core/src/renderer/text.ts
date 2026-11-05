@@ -729,7 +729,6 @@ export function renderTextBody(
 ): void {
   const category = getPlaceholderCategory(placeholder);
 
-  // Parse normAutofit from bodyPr (font scaling + line spacing reduction)
   let fontScale = 1;
   let lnSpcReduction = 0;
   const normAutofit = getEffectiveBodyPrChild(textBody, "normAutofit");
@@ -840,7 +839,6 @@ export function renderTextBody(
     if (merged.textIndent !== undefined) {
       paraDiv.style.textIndent = `${merged.textIndent}px`;
     }
-    // Compute effective line-height (with optional lnSpcReduction from normAutofit)
     let effectiveLineHeight = merged.lineHeight ?? options?.defaultLineHeight;
     if (effectiveLineHeight) {
       if (lnSpcReduction > 0) {
@@ -860,8 +858,7 @@ export function renderTextBody(
       }
       paraDiv.style.lineHeight = effectiveLineHeight!;
     }
-    // Determine effective font size for percentage-based spacing
-    // Use defRPr or first run's font size, fallback to 12pt
+    // Percentage-based spacing is relative to defRPr or the first run's size
     let effectiveFontSize = 12; // default 12pt
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
     if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
@@ -1051,7 +1048,7 @@ export function renderTextBody(
       paraDiv.appendChild(document.createElement("br"));
     }
 
-    // Set tab-size when paragraph contains tab characters (default OOXML tab spacing = 914400 EMU = 96px)
+    // Default OOXML tab spacing is 914400 EMU = 96px
     if (paragraph.runs.some((r) => r.text?.includes("\t"))) {
       const defaultTabPx = merged.defaultTabSize ?? 96; // 914400 EMU at 96 dpi
       paraDiv.style.tabSize = `${defaultTabPx}px`;
@@ -1089,7 +1086,6 @@ export function renderTextBody(
 
       const runStyle: MergedRunStyle = {};
 
-      // Apply default run properties from merged paragraph defRPr
       mergeParagraphDefaultRunProps(runStyle, merged, ctx);
 
       // Level 8: run rPr
@@ -1158,8 +1154,8 @@ export function renderTextBody(
         element.textContent = run.text;
         element.style.whiteSpace = "pre-wrap";
       } else if (run.text && / {2}/.test(run.text)) {
-        // Replace pairs of spaces with " &nbsp;" so browsers cannot collapse them,
-        // while normal spaces between words remain stretchable for justify.
+        // " &nbsp;" pairs stop browsers from collapsing spaces, while single
+        // spaces between words stay stretchable for justify
         const escaped = run.text
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
@@ -1267,7 +1263,7 @@ export function renderTextBody(
           (element.style as any).webkitTextStrokeColor = outlineColor;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
-          // Use mask-image to apply the gradient fade to the entire text element
+          // mask-image fades the whole text element, outline included
           const maskGrad = runStyle.textOutlineGradientCss;
           element.style.maskImage = maskGrad;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

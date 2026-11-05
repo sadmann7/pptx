@@ -260,7 +260,7 @@ describe("deferred autofit measurement", () => {
       const textContainer = textContainerOf(slide);
 
       // Measuring the text is what the deferred pass exists to do, so counting
-      // reads is how we know it actually ran.
+      // reads proves it actually ran
       let widthReads = 0;
       Object.defineProperty(textContainer, "clientWidth", {
         get() {

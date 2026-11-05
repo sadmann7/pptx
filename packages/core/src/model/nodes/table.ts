@@ -77,7 +77,6 @@ function extractTableStyleId(tblPr: SafeXmlNode): string | undefined {
   if (tblStyleNode.exists()) {
     return tblStyleNode.attr("val") ?? (tblStyleNode.text() || undefined);
   }
-  // Try direct attribute
   return tblPr.attr("tblStyle") ?? undefined;
 }
 

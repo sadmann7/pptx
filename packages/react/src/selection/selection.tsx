@@ -388,7 +388,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // the range from here once the live selection has left.
   const savedRangeRef = React.useRef<Range | null>(null);
 
-  // Set by a formatting edit in text mode, consumed when the re-rendered text
+  // Written by a formatting edit in text mode, consumed when the re-rendered text
   // is re-entered.
   const pendingRestoreRef = React.useRef<TextRestore | null>(null);
 
@@ -580,10 +580,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     textElement.style.cursor = "text";
     textElement.style.outline = "none";
 
-    // Capture a styling template before the browser can mutate the DOM.
-    // When the DOM has no run spans left (e.g. re-entering a box that was
-    // cleared without a re-render), keep the template captured earlier for
-    // this shape instead of discarding it.
+    // Captured before the browser can mutate the DOM. When no run spans are
+    // left (e.g. re-entering a box cleared without a re-render), the template
+    // captured earlier for this shape is kept instead.
     const templateSource = textElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.run}]`);
     if (templateSource) {
       runTemplateRef.current = {
@@ -594,9 +593,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       runTemplateRef.current = null;
     }
 
-    // Hide the placeholder prompt overlay ("Click to add text") while
-    // editing; it paints above the real text container and would cover
-    // freshly typed text. The commit re-render restores or drops it.
+    // The placeholder prompt overlay ("Click to add text") paints above the
+    // real text container and would cover freshly typed text while editing.
+    // The commit re-render restores or drops it.
     const placeholderPrompt = shapeElement ? placeholderPromptOf(shapeElement) : null;
     if (placeholderPrompt) placeholderPrompt.style.display = "none";
 
@@ -672,7 +671,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       target = document.createTextNode("");
       last.appendChild(target);
     }
-    // Note: Chrome cannot keep the caret inside an empty text node; the
+    // Chrome cannot keep the caret inside an empty text node; the
     // first keystroke would escape into the parent div and lose the run's
     // styling. The beforeinput interceptor (onDocBeforeInput) handles that
     // case by inserting the typed text into the span itself.
@@ -871,8 +870,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return;
     }
 
-    // Insert through the browser's editing pipeline so the keystroke stays
-    // on its undo stack; fall back to placing it by hand.
+    // The browser's editing pipeline keeps the keystroke on its undo stack;
+    // placing it by hand is the fallback
     if (
       insertTextNatively(editingElement, nodeId, event.data) ||
       insertTextAtCaret(editingElement, nodeId, event.data)
@@ -1311,8 +1310,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return () => document.removeEventListener("selectionchange", onSelectionChange);
   }, [isTextMode, stateRef, publishSelectionRef]);
 
-  // When in text mode the overlay has pointerEvents: none, so we must listen
-  // on the document for clicks-outside and Escape.
+  // In text mode the overlay has pointerEvents: none, so clicks outside and
+  // Escape are only visible on the document
   React.useEffect(() => {
     if (!isTextMode) return;
 
@@ -1514,7 +1513,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [isTextMode, stateRef]);
 
   // A revision bump makes SlideImpl replace the slide DOM in its effect,
-  // detaching our contentEditable element: typed text would go into the
+  // detaching the editing contentEditable element: typed text would go into the
   // detached tree and never appear on screen. SlideImpl is a parent, so its
   // effect runs after this one; the rAF triggers after the whole effects flush,
   // when the fresh DOM is in place, and re-attaches editing to it.
@@ -1589,11 +1588,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           })()
         : null,
     });
-    // Prevent the browser's default mousedown behavior. Without this, a drag
-    // silently extends a text selection across the slide, and the NEXT press
-    // inside that selection starts a native drag-and-drop of the selection;
-    // the pointer stream is cancelled (not-allowed cursor, no pointerup) and
-    // the gesture goes dead.
+    // Without preventDefault, a drag silently extends a text selection across
+    // the slide, and the NEXT press inside that selection starts a native
+    // drag-and-drop of it; the pointer stream is cancelled (not-allowed
+    // cursor, no pointerup) and the gesture goes dead
     event.preventDefault();
     clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
@@ -1626,8 +1624,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     // Pressing a shape that is already part of the selection drags the whole
     // selection; anything else starts a fresh single-shape gesture. On
-    // pointer-up we check if the user actually dragged; if not (a click),
-    // text shapes enter text mode and non-text shapes get selected.
+    // pointer-up, a press that never dragged counts as a click: text shapes
+    // enter text mode and non-text shapes get selected.
     //
     // Shift leaves both Shift+click (toggle) and Shift+drag (move along one
     // axis) open, so the gesture starts as a move and pointer-up decides.
@@ -2254,8 +2252,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   async function reorderSelection(order: NodeOrder): Promise<void> {
     if (!slide || !slideId) return;
-    // Move the selected nodes one at a time from the end they travel toward,
-    // so they keep their order among themselves.
+    // Moving one at a time from the end they travel toward keeps the selected
+    // nodes' order among themselves
     const stacked = [...selectedNodesRef.current].sort(
       (a, b) => slide.nodes.indexOf(a) - slide.nodes.indexOf(b),
     );

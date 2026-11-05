@@ -249,7 +249,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       else store.prev();
 
       if (scroller) {
-        // Start the new slide from the edge you entered it from (top when
+        // The new slide starts from the edge it was entered from (top when
         // going forward, bottom when going back), like PowerPoint. Deferred
         // one frame so the new slide's content height is in place.
         requestAnimationFrame(() => {
@@ -258,7 +258,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       }
     }
 
-    // Non-passive: we call preventDefault to stop scroll chaining to the page.
+    // Non-passive so preventDefault can stop scroll chaining to the page
     viewportElement.addEventListener("wheel", onWheel, { passive: false });
     return () => viewportElement.removeEventListener("wheel", onWheel);
   }, [scrollNavigation, store]);

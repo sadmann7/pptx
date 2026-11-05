@@ -187,10 +187,9 @@ export function parseXml(xmlString: string): SafeXmlNode {
   }
   const doc = sharedParser.parseFromString(xmlString, "application/xml");
 
-  // Check for parser errors: DOMParser returns a parsererror document on
-  // failure. Browsers differ on placement (document root vs. child of the
-  // root), so check the root's tag and a direct tag-name scan; both are far
-  // cheaper than a querySelector CSS match on every parsed part.
+  // DOMParser returns a parsererror document on failure. Browsers differ on
+  // its placement (document root vs. child of the root), hence both the root's
+  // tag and a direct tag-name scan; both are far cheaper than a querySelector CSS match on every parsed part.
   const root = doc.documentElement;
   const errorNode =
     root?.localName === "parsererror" ? root : doc.getElementsByTagName("parsererror")[0];

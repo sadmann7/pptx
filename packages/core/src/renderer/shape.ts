@@ -150,8 +150,7 @@ function renderPlaceholderPrompt(
   const promptBody = parseTextBody(templateNode.child("txBody"));
   if (!promptBody) return;
 
-  // Keep only paragraphs with actual prompt text; layouts often carry extra
-  // empty per-level paragraphs that would render as blank lines.
+  // Layouts often carry empty per-level paragraphs that would render as blank lines
   const paragraphs = promptBody.paragraphs.filter((p) =>
     p.runs.some((r) => r.text != null && r.text.trim().length > 0),
   );
@@ -1097,9 +1096,8 @@ function createArrowMarker(
   const marker = document.createElementNS(svgNs, "marker") as SVGMarkerElement;
   const id = `arrow-marker-${++markerIdCounter}`;
   marker.setAttribute("id", id);
-  // Use userSpaceOnUse so markerWidth/Height are in SVG pixels directly.
-  // This avoids the quadratic blow-up from markerUnits="strokeWidth" combined
-  // with a base size that already factors in stroke width.
+  // markerUnits="strokeWidth" would blow up quadratically, since the base size
+  // already factors in stroke width
   marker.setAttribute("markerUnits", "userSpaceOnUse");
   marker.setAttribute("orient", "auto");
 
@@ -1618,7 +1616,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             }
             defs.appendChild(vGrad);
 
-            // Use clipPath to constrain the blend group to the shape
             const clipId = `${fillGradId}-clip`;
             const clipPath = document.createElementNS(svgNs, "clipPath");
             clipPath.setAttribute("id", clipId);
@@ -1652,8 +1649,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             vPath.setAttribute("style", "mix-blend-mode: lighten");
             blendGroup.appendChild(vPath);
 
-            // Mark path as no-fill; the blend group handles it.
-            // Tag the blend group so we can insert it before the main path later.
+            // The blend group paints the fill and is inserted before this path later
             path.setAttribute("fill", "none");
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (path as any).__rectBlendGroup = blendGroup;
@@ -1726,7 +1722,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       if (isCircularArrow) {
         // fillCss was already resolved (including fillRef fallback). Only override if still empty.
         if (!fillCss || fillCss === "none" || fillCss === "transparent") {
-          // Try spPr > solidFill > color child as last resort
+          // Last resort: spPr > solidFill > color child
           const colorTags = ["srgbClr", "schemeClr", "scrgbClr", "sysClr", "hslClr", "prstClr"];
           let fallbackFill = "";
           const solid = spPr.child("solidFill");
@@ -1751,7 +1747,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         path.setAttribute("stroke", "none");
       }
 
-      // Resolve arrow ends and effective stroke width before applying stroke (so we can enforce min width for connectors)
+      // Resolved before the stroke so connectors can get a minimum width
       let effectiveHeadEnd = node.headEnd;
       let effectiveTailEnd = node.tailEnd;
       if ((!effectiveHeadEnd || !effectiveTailEnd) && effectiveLine?.exists()) {
@@ -1814,9 +1810,8 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         linearGrad.setAttribute("gradientUnits", "userSpaceOnUse");
 
         if (isLineLike || svgW <= 1 || svgH <= 1) {
-          // Convert gradient angle to absolute coordinates in SVG user space.
-          // For straight connectors the path bbox may be zero on one axis, so use
-          // the long-axis strategy to avoid degenerate gradient coordinates.
+          // Straight connectors may have a zero-size bbox on one axis, so the
+          // long axis avoids degenerate gradient coordinates in user space
           const rad = (gradientStroke.angle * Math.PI) / 180;
           const cos = Math.cos(rad);
           const sin = Math.sin(rad);
@@ -1914,7 +1909,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // Insert rect blend group (two linear gradients + lighten) before the main path
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((path as any).__rectBlendGroup) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1941,7 +1935,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
             );
           })
           .catch(() => {
-            // Keep the shape's fallback fill/stroke when lazy media cannot be decoded.
+            // The fallback fill/stroke stays when lazy media cannot be decoded
           });
         ctx.asyncTasks?.push(task);
         if (!ctx.asyncTasks) void task;
@@ -2279,9 +2273,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           textContainer.style.lineHeight = `${lnFactor}`;
         }
       }
-      // spAutoFit requests in-shape text fitting. In browser rendering we cannot
-      // resize the absolutely positioned shape like PowerPoint editor behavior,
-      // so use bounded dynamic scaling to prevent bleed across neighboring nodes.
+      // spAutoFit asks PowerPoint to grow the shape, but the absolutely positioned
+      // shape cannot resize here, so bounded scaling keeps text from bleeding
+      // into neighboring nodes
       if (hasSpAutoFit && !hasNormAutofit) {
         if (!spAutoFitAllowsVerticalOverflow) {
           textContainer.style.overflowY = "hidden";
@@ -2310,8 +2304,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         !!hasSpAutoFit && !hasNormAutofit && isSingleLineTextBody(node.textBody);
       const hasCenteredParagraphs = hasExplicitCenteredParagraph(node.textBody);
 
-      // Apply bodyPr (text body properties)
-      // Use layout/master bodyPr as fallback for missing attributes
+      // Layout/master bodyPr fills in missing attributes
       {
         if (bodyPr) {
           // Text wrap: only wrap="none" should force single-line.

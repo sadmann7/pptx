@@ -113,13 +113,7 @@ function mirrorAbsolutePathVertically(path: string, height: number): string {
   return out.join(" ");
 }
 
-// ---------------------------------------------------------------------------
-// Preset shape registry
-// ---------------------------------------------------------------------------
-
 export const presetShapes: Map<string, PresetShapeGenerator> = new Map();
-
-// ===== Basic Shapes =====
 
 presetShapes.set("rect", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
@@ -146,7 +140,7 @@ presetShapes.set("plaque", (w, h, adjustments) => {
   const x1 = (Math.min(w, h) * a) / 100000;
   const x2 = w - x1;
   const y2 = h - x1;
-  // Start at (0, x1), arcTo with negative sweep creates concave corner
+  // arcTo with a negative sweep makes the corner concave
   const a1 = ooArcTo(0, x1, x1, x1, 90, -90); // top-left: ends at (x1, 0)
   const a2 = ooArcTo(x2, 0, x1, x1, 180, -90); // top-right: ends at (w, x1)
   const a3 = ooArcTo(w, y2, x1, x1, 270, -90); // bottom-right: ends at (x2, h)
@@ -420,8 +414,6 @@ presetShapes.set("diagStripe", (w, h, adjustments) => {
   return [`M0,${y2}`, `L${x2},0`, `L${w},0`, `L0,${h}`, "Z"].join(" ");
 });
 
-// ===== Star Shapes =====
-
 presetShapes.set("star4", (w, h, adjustments) => {
   // OOXML default adj=12500 → innerRatio = 12500/50000 = 0.25
   const a = adj(adjustments, "adj", 12500) * 2;
@@ -512,8 +504,8 @@ presetShapes.set("star7", (w, h, adjustments) => {
   return parts.join(" ");
 });
 presetShapes.set("star8", (w, h, adjustments) => {
-  // OOXML: iwd2 = wd2 * adj / 50000. adj default=37500 → innerRatio = 37500/50000 = 0.75
-  // adj() divides by 100000, so we multiply by 2 to get adj/50000.
+  // OOXML: iwd2 = wd2 * adj / 50000, default adj 37500 → inner ratio 0.75
+  // adj() divides by 100000, so doubling gives adj/50000
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 8, Math.min(Math.max(a, 0), 1));
 });
@@ -565,8 +557,6 @@ presetShapes.set("star32", (w, h, adjustments) => {
   const a = adj(adjustments, "adj", 37500) * 2;
   return starShape(w, h, 32, Math.min(Math.max(a, 0), 1));
 });
-
-// ===== Lines & Connectors =====
 
 // OOXML line: diagonal (0,0→w,h) when both extents are non-zero.
 // Keep explicit horizontal/vertical handling for zero-extent cases so 1px SVGs remain visible.
@@ -681,8 +671,6 @@ presetShapes.set("bentConnector5", (w, h, adjustments) => {
   const x2 = w * a3;
   return `M0,0 L${x1},0 L${x1},${y1} L${x2},${y1} L${x2},${h} L${w},${h}`;
 });
-
-// ===== Arrow Shapes =====
 
 presetShapes.set("rightArrow", (w, h, adjustments) => {
   const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio
@@ -1231,14 +1219,12 @@ presetShapes.set("stripedRightArrow", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// ===== Bent / Curved / Special Arrows =====
-
 presetShapes.set("bentArrow", (w, h, adjustments) => {
   // OOXML bentArrow: L-shaped arrow with rounded bend, arrowhead pointing right.
   // Uses 4 adjustments per ECMA-376 spec.
   const ss = Math.min(w, h);
 
-  // Constrained adjustments (raw values, not fractions; we do our own math)
+  // Raw adjustment values, not fractions, since the math below is OOXML's own
   const adj2Raw = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
   const maxAdj1 = adj2Raw * 2;
   const adj1Raw = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
@@ -1345,9 +1331,8 @@ presetShapes.set("bentUpArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("curvedRightArrow", (w, h, adjustments) => {
-  // Keep geometry aligned with OOXML preset math. Use local arc helper here
-  // because preset formulas mix positive/negative sweeps that do not map 1:1
-  // to the generic shapeArc() helper used in other shapes.
+  // A local arc helper, because the OOXML formulas mix positive/negative
+  // sweeps that do not map 1:1 to the generic shapeArc() helper
   const adj1Raw = adjustments?.get("adj1") ?? 25000;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
   const adj3Raw = adjustments?.get("adj3") ?? 25000;
@@ -1715,7 +1700,6 @@ function buildCircularArrowPath(
   const xH = hc + dxH;
   const yH = vc + dyH;
 
-  // Compute max arrowhead angle
   const rI = Math.min(rw2, rh2);
   const u1 = dxH * dxH;
   const u2 = dyH * dyH;
@@ -1934,7 +1918,7 @@ function buildCircularArrowPath(
     outerArcSwAng = swAng;
   }
 
-  // Compute end points for SVG arcs using OOXML arcTo semantics
+  // End points follow OOXML arcTo semantics
   // Outer arc: from outerArcStAng sweeping outerArcSwAng
   const outerEndAng = outerArcStAng + outerArcSwAng;
   const wtOE = ooxSin(rw1, outerEndAng);
@@ -2000,7 +1984,7 @@ presetShapes.set("leftCircularArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightCircularArrow", (w, h, _adjustments) => {
-  // Build from the actual oracle PDF vector path (shape id 0177),
+  // Traced from the oracle PDF vector path (shape id 0177),
   // normalized to a 400x280 reference box.
   const sx = w / 400;
   const sy = h / 280;
@@ -2255,8 +2239,6 @@ presetShapes.set("swooshArrow", (w, h, adjustments) => {
     "Z",
   ].join(" ");
 });
-
-// ===== Flowchart Shapes =====
 
 presetShapes.set("flowChartProcess", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
@@ -2602,7 +2584,6 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
     const sweep = swDeg > 0 ? 1 : 0;
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
-  // Start at bottom center: M(hc, b)
   let curX = hc;
   let curY = h;
   const a1 = arcTo(curX, curY, wd2, hd2, 90, 90); // cd4, cd4 → 90° to 180°
@@ -2642,8 +2623,6 @@ presetShapes.set("flowChartMultidocument", (w, h) => {
     `L${s(20000)},${t(1815)} Z`,
   ].join(" ");
 });
-
-// ===== Callout Shapes =====
 
 presetShapes.set("wedgeRectCallout", (w, h, adjustments) => {
   // OOXML spec: adaptive callout pointer on the edge closest to the tip
@@ -2808,8 +2787,6 @@ presetShapes.set("borderCallout1", (w, h, adjustments) => {
   return `M0,0 L${w},0 L${w},${h} L0,${h} Z M${x1},${y1} L${x2},${y2}`;
 });
 
-// ===== Block / 3D Shapes =====
-
 presetShapes.set("cube", (w, h, adjustments) => {
   const a = adj(adjustments, "adj", 25000);
   const depth = Math.min(w, h) * a;
@@ -2894,9 +2871,9 @@ presetShapes.set("cloud", (w, h) => {
   let curX = 3900 * sx;
   let curY = 14370 * sy;
   const parts = [`M${curX},${curY}`];
-  // Track position in unscaled 43200×43200 space for accurate arcTo computation.
-  // OOXML arcTo angles are visual (geometric ray) angles in the path coordinate space.
-  // Convert to parametric before computing center/endpoint positions.
+  // Position is tracked in unscaled 43200×43200 space for accurate arcTo math.
+  // OOXML arcTo angles are visual (geometric ray) angles in path space, so they
+  // become parametric before computing the center and end point.
   let ux = 3900,
     uy = 14370; // unscaled current position
   for (const [wR, hR, stAng60k, swAng60k] of arcs) {
@@ -2907,7 +2884,6 @@ presetShapes.set("cloud", (w, h) => {
     const stRad = Math.atan2(wR * Math.sin(stVisRad), hR * Math.cos(stVisRad));
     const endVisRad = ((stDeg + swDeg) * Math.PI) / 180;
     const endRad = Math.atan2(wR * Math.sin(endVisRad), hR * Math.cos(endVisRad));
-    // Compute center and endpoint in unscaled space
     const acx = ux - wR * Math.cos(stRad);
     const acy = uy - hR * Math.sin(stRad);
     const endUX = acx + wR * Math.cos(endRad);
@@ -2928,8 +2904,6 @@ presetShapes.set("cloud", (w, h) => {
   parts.push("Z");
   return parts.join(" ");
 });
-
-// ===== Frame, Donut, Misc =====
 
 presetShapes.set("frame", (w, h, adjustments) => {
   const a = adj(adjustments, "adj1", 12500);
@@ -2994,7 +2968,6 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const vc = h / 2;
   const iwd2 = rx - dr;
   const ihd2 = ry - dr;
-  // Compute diagonal angle and band intersection with inner ellipse
   const ang = Math.atan2(h, w); // at2(w, h) in OOXML: at2 x y = atan2(y, x)
   // Inner ellipse radius at diagonal angle
   const ct = ihd2 * Math.cos(ang);
@@ -3008,7 +2981,7 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const swAngRad = -(Math.PI - dang2);
   const stAng1 = ang - dang;
   const stAng2 = stAng1 - Math.PI;
-  // Compute points on inner ellipse for the two diagonal band arcs
+  // Points on the inner ellipse for the two diagonal band arcs
   const innerPt = (angle: number) => {
     const ct2 = ihd2 * Math.cos(angle);
     const st2 = iwd2 * Math.sin(angle);
@@ -3075,8 +3048,6 @@ presetShapes.set("blockArc", (w, h, adjustments) => {
   ].join(" ");
 });
 
-// ===== Gear Shapes =====
-
 presetShapes.set("gear6", (w, h, adjustments) => {
   const a1 = adjustments?.get("adj1") ?? 15000;
   const a2 = adjustments?.get("adj2") ?? 3526;
@@ -3133,7 +3104,7 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
     const edgeLen = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
 
     // Unit normal perpendicular to edge, pointing outward
-    // For clockwise winding (our standard), outward normal is (-edgeY, edgeX) / len
+    // For clockwise winding (the default here), outward normal is (-edgeY, edgeX) / len
     // Verify with radial dot product and flip if needed
     const radX = Math.cos(baseAngle);
     const radY = Math.sin(baseAngle);
@@ -3163,7 +3134,7 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
     const _cy = dyN + ny * th;
 
     if (i === 0) {
-      // Start at the valley before first tooth
+      // The path opens at the valley before the first tooth
       const prevEnd = (centerDegs[centerDegs.length - 1] * Math.PI) / 180 + ha;
       const prevIx = cx + rw * Math.cos(prevEnd);
       const prevIy = cy + rh * Math.sin(prevEnd);
@@ -3187,8 +3158,6 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
   parts.push("Z");
   return parts.join(" ");
 }
-
-// ===== Misc Shapes =====
 
 presetShapes.set("mathPlus", (w, h, adjustments) => {
   // OOXML: adj1=23520 (max 73490). dx1 = w*73490/200000, dx2 = ss*a/200000
@@ -3885,7 +3854,6 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
   );
 });
 
-// ===== Action Buttons =====
 // Action buttons are multi-path shapes: background rect + icon with darken fill + icon outline + rect outline.
 // OOXML spec uses ss*3/8 as the icon half-size (dx2), with the icon centred at (hc, vc).
 // Shapes with multiPathPresets entries below get proper 3D treatment. Remaining shapes
@@ -3896,9 +3864,7 @@ presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h}
 // Multi-path action button presets are registered after the multiPathPresets Map
 // declaration (see below in the multiPathPresets section).
 
-// ---------------------------------------------------------------------------
-// Action button icon paths (rendered as a second <path> with contrasting fill)
-// ---------------------------------------------------------------------------
+// Rendered as a second <path> with contrasting fill
 const actionButtonIcons = new Map<string, (w: number, h: number) => string>();
 
 actionButtonIcons.set("actionButtonForwardNext", (w, h) => {
@@ -4296,7 +4262,7 @@ presetShapes.set("funnel", (w, h) => {
   const rw3 = wd2 / 4;
   const rh3 = hd4 / 4;
 
-  // Start point on top ellipse at stAng1 (visual angle → ellipse point)
+  // The path opens on the top ellipse at stAng1 (visual angle → ellipse point)
   // OOXML uses: n = (wR*hR) / mod(cos(hR,ang), sin(wR,ang), 0), then x = hc + cos(n,ang), y = hd4 + sin(n,ang)
   // This is equivalent to the parametric ellipse point at the "visual" angle.
   const ct1 = hd4 * Math.cos(stAng1);
@@ -4341,7 +4307,6 @@ presetShapes.set("funnel", (w, h) => {
   const x3e = hc + dx3e;
   const y2e = vc3 + dy3e;
 
-  // Determine arc flags
   const swDeg1 = (swAng1 * 180) / Math.PI;
   const largeArc1 = Math.abs(swDeg1) > 180 ? 1 : 0;
   const sweep1 = swAng1 > 0 ? 1 : 0;
@@ -4371,10 +4336,6 @@ presetShapes.set("funnel", (w, h) => {
 
   return `${body} ${inset}`;
 });
-
-// ---------------------------------------------------------------------------
-// Preset shape overlays; additional paths for 3D-like shapes (lighter top face, etc.)
-// ---------------------------------------------------------------------------
 
 export interface PresetOverlay {
   /** SVG path d-attribute for the overlay */
@@ -4419,11 +4380,6 @@ export function getPresetOverlays(
   return gen ? gen(w, h, adjustments) : [];
 }
 
-// ---------------------------------------------------------------------------
-// Multi-path preset shapes; complex shapes with multiple SVG paths
-// Each path has its own fill modifier and stroke behavior, matching OOXML spec.
-// ---------------------------------------------------------------------------
-
 /** A single sub-path within a multi-path preset shape. */
 export interface PresetSubPath {
   /** SVG path d-attribute string */
@@ -4458,8 +4414,7 @@ type MultiPathPresetGenerator = (
 
 const multiPathPresets: Map<string, MultiPathPresetGenerator> = new Map();
 
-// ===== Action Button multi-path presets (OOXML spec-accurate) =====
-// Common helper: OOXML action button guide values
+// OOXML action button guide values
 function _abGuides(w: number, h: number) {
   const ss = Math.min(w, h);
   const hc = w / 2,
@@ -4809,8 +4764,7 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
     return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
   };
 
-  // Build question mark path following OOXML arcTo sequence exactly
-  // Start at (g33, g27)
+  // Follows the OOXML arcTo sequence exactly, starting at (g33, g27)
   let cx = g33,
     cy = g27;
 

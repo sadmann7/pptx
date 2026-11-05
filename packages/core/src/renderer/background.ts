@@ -251,8 +251,7 @@ function tryRenderSvgGradientBackgroundData(
  * The first found background is used.
  */
 export function renderBackground(ctx: RenderContext, container: HTMLElement): void {
-  // Find the first available background in the inheritance chain,
-  // and track which rels map to use for resolving image references
+  // Image references resolve against the rels of whichever level supplied the background
   let bgNode: SafeXmlNode | undefined;
   let bgRels: Map<string, RelEntry> = ctx.slide.rels;
 
@@ -272,14 +271,13 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
     return;
   }
 
-  // Parse p:bg > p:bgPr
   const bgPr = bgNode.child("bgPr");
   if (bgPr.exists()) {
     renderBgPr(bgPr, ctx, container, bgRels);
     return;
   }
 
-  // Parse p:bg > p:bgRef (theme reference)
+  // p:bgRef is a theme reference
   const bgRef = bgNode.child("bgRef");
   if (bgRef.exists()) {
     renderBgRef(bgRef, ctx, container);
@@ -446,7 +444,6 @@ function applyBlipBackground(blipFill: SafeXmlNode, container: HTMLElement, url:
 
   container.style.backgroundImage = `url("${url}")`;
 
-  // Check for stretch or tile mode
   const stretch = blipFill.child("stretch");
   if (stretch.exists()) {
     // OOXML stretch fills the destination rectangle. When fillRect is omitted,

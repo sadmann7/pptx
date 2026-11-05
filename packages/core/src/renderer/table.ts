@@ -88,8 +88,8 @@ function getStyleSections(
 ): SafeXmlNode[] {
   const sections: SafeXmlNode[] = [];
 
-  // Style parts enabled only when tblPr has attribute "1" (or true); per spec default is off.
-  // pptxjs uses attrs only (firstCol === "1"); we also accept child elements for compatibility.
+  // Style parts are off unless tblPr sets them to "1" (or true). pptxjs reads
+  // attributes only; child elements are accepted too for compatibility.
   const flag = (attrName: string, childName: string): boolean => {
     if (!tblPr) return false;
     const attr = tblPr.attr(attrName);
@@ -359,7 +359,6 @@ function collectStyleBorders(
       const { color, alpha } = resolveColor(lnRef, ctx);
       const hex = color.startsWith("#") ? color : `#${color}`;
 
-      // Get width from theme line style
       let width = 1; // default 1px
       if (ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
         const themeLn = ctx.theme.lineStyles[idx - 1];
@@ -568,7 +567,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     table.appendChild(colgroup);
   }
 
-  // Compute total row height so we can express each row as a proportion
   const totalRowHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
 
   // Shared edges are painted by the cell above/left of them: `bottomEdges`
@@ -589,8 +587,8 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     const row = node.rows[rowIdx];
     const tr = document.createElement("tr");
     if (row.height > 0 && totalRowHeight > 0) {
-      // Use percentage heights so rows stay proportional within the
-      // table's constrained height instead of expanding beyond it.
+      // Percentages keep rows proportional within the table's constrained
+      // height instead of expanding beyond it
       tr.style.height = `${(row.height / totalRowHeight) * 100}%`;
     }
 
@@ -601,7 +599,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     let rowFill: string | null | undefined;
     let filledCols = 0;
     for (const cell of row.cells) {
-      // Skip merged cells
       if (cell.hMerge || cell.vMerge) {
         // Horizontal merge continuation cells are already accounted for by the
         // origin cell's gridSpan. Vertical continuations still occupy their
@@ -622,12 +619,12 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
         td.rowSpan = cell.rowSpan;
       }
 
-      // Apply table style first (as base), then direct tcPr overrides
+      // Table style is the base; direct tcPr overrides it below
       const borders: CellBorders = {};
       let sections: SafeXmlNode[] = [];
       if (tblStyle) {
         sections = getStyleSections(tblStyle, rowIdx, colIdx, totalRows, totalCols, tblPr);
-        // Apply sections in order (later sections override earlier ones)
+        // Later sections override earlier ones
         for (const section of sections) {
           const tcStyle = section.child("tcStyle");
           if (tcStyle.exists()) {
@@ -637,7 +634,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // Apply direct cell properties (override table style)
       applyCellProperties(td, cell, ctx, borders);
 
       if (leftEdge !== undefined) delete borders.left;

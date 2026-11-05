@@ -113,7 +113,7 @@ export function renderCustomGeometry(
     const scaleX = pathW > 0 ? width / pathW : 1;
     const scaleY = pathH > 0 ? height / pathH : 1;
 
-    // Track current position for arcTo calculations
+    // arcTo is relative to the current position
     let curX = 0;
     let curY = 0;
 
@@ -195,7 +195,7 @@ export function renderCustomGeometry(
           const endVisRad = ((stAng + swAng) * Math.PI) / 180;
           const endAngRad = Math.atan2(wRRaw * Math.sin(endVisRad), hRRaw * Math.cos(endVisRad));
 
-          // Compute center and endpoint in unscaled path space, then scale
+          // Center and end point are computed in unscaled path space, then scaled
           const curXU = curX / scaleX;
           const curYU = curY / scaleY;
           const cx = curXU - wRRaw * Math.cos(stAngRad);
