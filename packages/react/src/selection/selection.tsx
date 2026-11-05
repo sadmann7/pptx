@@ -27,7 +27,7 @@ import { mergeRefs, renderElement } from "../render";
 import type { DrawTool } from "./channel";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
-import { SelectionPartsContext } from "./context";
+import { getReportedMode, SelectionPartsContext } from "./context";
 import type { HandleDirection, Rect } from "./geometry";
 import {
   constrainMove,
@@ -82,14 +82,6 @@ function debugLog(...args: unknown[]): void {
  */
 function isMultiSelectEvent(event: React.PointerEvent): boolean {
   return event.shiftKey || event.ctrlKey || event.metaKey;
-}
-
-/**
- * A press reads as a move only once it drags past the threshold, so a click
- * that selects another shape doesn't blink toolbars that hide while moving.
- */
-function getReportedMode(state: InternalState): SelectionState["mode"] {
-  return state.mode === "move" && !state.moved ? "selected" : state.mode;
 }
 
 function getIsNativeUndoTarget(target: EventTarget | null): boolean {
@@ -271,8 +263,9 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
    * When `true`, binds undo and redo to the deck: `Ctrl/Cmd+Z` and
    * `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`).
    *
-   * Shortcuts only apply within `Presentation.Root` and are ignored in text
-   * fields. Off by default to avoid conflicts with the surrounding app.
+   * Shortcuts only apply within `Presentation.Root`. Text fields keep their
+   * own undo, except a text box being edited with nothing typed since its
+   * last change. Off by default to avoid conflicts with the surrounding app.
    *
    * @default false
    *
@@ -2413,7 +2406,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           role: "application",
           "aria-label": "Slide editor",
           "data-pptx-selection": "",
-          "data-mode": state.mode,
+          "data-mode": mode,
           tabIndex: 0,
           onPointerDown,
           onPointerMove,

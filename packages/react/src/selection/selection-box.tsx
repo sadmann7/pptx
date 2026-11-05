@@ -4,7 +4,12 @@ import type { SlideNode } from "@diceui/pptx-core";
 
 import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
+import {
+  getReportedMode,
+  SELECTION_BOX_NAME,
+  SelectionBoxContext,
+  useSelectionParts,
+} from "./context";
 import { getNodeRect, normalizeAngle } from "./geometry";
 import type { SelectionState } from "./selection";
 
@@ -93,7 +98,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
         node.nodeType !== "chart";
       const boxState: SelectionBoxState = {
         node,
-        mode: state.mode,
+        mode: getReportedMode(state),
         dragging: isDragging,
         rotating: isRotating,
         rotation,
@@ -120,7 +125,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
               props: [
                 {
                   "data-selection-box": "",
-                  "data-mode": state.mode,
+                  "data-mode": boxState.mode,
                   "data-dragging": isDragging ? "" : undefined,
                   "data-rotating": isRotating ? "" : undefined,
                   children: (

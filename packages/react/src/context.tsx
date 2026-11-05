@@ -380,7 +380,7 @@ export interface UseHistoryResult {
  *
  * ```tsx
  * const { canUndo, undo } = useHistory();
- * <button disabled={!canUndo} onClick={undo}>Undo</button>
+ * <button disabled={!canUndo} onClick={() => void undo()}>Undo</button>
  * ```
  */
 export function useHistory(): UseHistoryResult {

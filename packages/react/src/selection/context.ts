@@ -3,7 +3,7 @@ import * as React from "react";
 import type { SlideNode } from "@diceui/pptx-core";
 
 import type { HandleDirection, Rect } from "./geometry";
-import type { InternalState } from "./selection";
+import type { InternalState, SelectionState } from "./selection";
 
 /**
  * What the overlay hands its parts. Internal: each part exposes only its own
@@ -59,3 +59,11 @@ export interface SelectionBoxContextValue {
 export const SelectionBoxContext = React.createContext<SelectionBoxContextValue | null>(null);
 
 export const SELECTION_BOX_NAME = "Presentation.SelectionBox";
+
+/**
+ * A press reads as a move only once it drags past the threshold, so a click
+ * that selects another shape doesn't blink toolbars that hide while moving.
+ */
+export function getReportedMode(state: InternalState): SelectionState["mode"] {
+  return state.mode === "move" && !state.moved ? "selected" : state.mode;
+}
