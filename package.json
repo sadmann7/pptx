@@ -22,7 +22,9 @@
     "shadcn": "pnpm --filter @pptx/ui shadcn",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo build --filter=!docs && changeset publish"
+    "release": "turbo build --filter=!docs && changeset publish",
+    "ui:sync": "pnpm -F @pptx/ui ui:sync",
+    "ui:check": "pnpm -F @pptx/ui ui:check"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

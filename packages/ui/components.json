@@ -22,6 +22,7 @@
     "hooks": "@pptx/ui/hooks"
   },
   "registries": {
-    "@remocn": "https://www.remocn.dev/r/{name}.json"
+    "@remocn": "https://www.remocn.dev/r/{name}.json",
+    "@diceui": "https://diceui.com/r/{style}/{name}.json"
   }
 }
