@@ -18,7 +18,7 @@ function table(id: number, rows: string[][]): string {
 <p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
 <p:xfrm><a:off x="914400" y="914400"/><a:ext cx="1828800" cy="740664"/></p:xfrm>
 <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl>
-<a:tblPr/><a:tblGrid><a:gridCol w="914400"/><a:gridCol w="914400"/></a:tblGrid>
+<a:tblPr/><a:tblGrid>${rows[0].map(() => '<a:gridCol w="914400"/>').join("")}</a:tblGrid>
 ${rows.map((row) => `<a:tr h="370332">${row.join("")}</a:tr>`).join("\n")}
 </a:tbl></a:graphicData></a:graphic>
 </p:graphicFrame>`;
@@ -170,5 +170,133 @@ describe("table cell text", () => {
         paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "X" }] }],
       }),
     ).rejects.toThrow("no editable text body");
+  });
+});
+
+const texts = (node: TableNodeData) =>
+  node.rows.map((row) =>
+    row.cells.map((_, column) => cellText(node, node.rows.indexOf(row), column).join("\n")),
+  );
+
+const tableOf = (pres: PresentationData) => pres.slides[0].nodes[0] as TableNodeData;
+
+describe("table rows and columns", () => {
+  it("inserts an empty row, saves, and undoes", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A"), cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "insertTableRow",
+      slideId,
+      nodeId: "2",
+      index: 1,
+    });
+
+    expect(texts(tableOf(pres))).toEqual([
+      ["A", "B"],
+      ["", ""],
+      ["C", "D"],
+    ]);
+    expect(tableOf(pres).size.h).toBeCloseTo((370332 * 3) / 9525, 0);
+    const paragraph = tableOf(pres).rows[1].cells[0].textBody!.paragraphs[0];
+    expect(paragraph.endParaRPr?.attr("lang")).toBe("en-US");
+
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(texts(reopened)).toEqual([
+      ["A", "B"],
+      ["", ""],
+      ["C", "D"],
+    ]);
+
+    result.undo();
+    expect(texts(tableOf(pres))).toEqual([
+      ["A", "B"],
+      ["C", "D"],
+    ]);
+  });
+
+  it("inserts and deletes columns", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A"), cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, { type: "insertTableColumn", slideId, nodeId: "2", index: 2 });
+    expect(texts(tableOf(pres))).toEqual([
+      ["A", "B", ""],
+      ["C", "D", ""],
+    ]);
+    expect(tableOf(pres).columns).toHaveLength(3);
+
+    await applyEdit(pres, { type: "deleteTableColumn", slideId, nodeId: "2", index: 0 });
+    expect(texts(tableOf(pres))).toEqual([
+      ["B", ""],
+      ["D", ""],
+    ]);
+    expect(tableOf(pres).columns).toHaveLength(2);
+
+    await applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 });
+    expect(texts(tableOf(pres))).toEqual([["D", ""]]);
+  });
+
+  it("grows and shrinks merges that span the change", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("Merged", ' rowSpan="2"'), cell("B")],
+        [cell("", ' vMerge="1"'), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, { type: "insertTableRow", slideId, nodeId: "2", index: 1 });
+    let node = tableOf(pres);
+    expect(node.rows[0].cells[0].rowSpan).toBe(3);
+    expect(node.rows[1].cells[0].vMerge).toBe(true);
+    expect(node.rows[1].cells[1].vMerge).toBe(false);
+
+    await applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 });
+    node = tableOf(pres);
+    expect(node.rows[0].cells[0].rowSpan).toBe(2);
+    expect(node.rows[0].cells[0].vMerge).toBe(false);
+    expect(cellText(node, 0, 0)).toEqual(["Merged"]);
+  });
+
+  it("grows a horizontal merge when a column goes inside it", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("Wide", ' gridSpan="2"'), cell("", ' hMerge="1"')],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+
+    await applyEdit(pres, { type: "insertTableColumn", slideId, nodeId: "2", index: 1 });
+    const node = tableOf(pres);
+    expect(node.rows[0].cells[0].gridSpan).toBe(3);
+    expect(node.rows[0].cells[1].hMerge).toBe(true);
+    expect(texts(node)[1]).toEqual(["C", "", "D"]);
+  });
+
+  it("rejects bad indexes and removing the last row or column", async () => {
+    const pres = await openEditable([table(2, [[cell("A")]])]);
+    const slideId = pres.slides[0].id;
+
+    await expect(
+      applyEdit(pres, { type: "insertTableRow", slideId, nodeId: "2", index: 5 }),
+    ).rejects.toThrow("out of bounds");
+    await expect(
+      applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 }),
+    ).rejects.toThrow("last row");
+    await expect(
+      applyEdit(pres, { type: "deleteTableColumn", slideId, nodeId: "2", index: 0 }),
+    ).rejects.toThrow("last column");
   });
 });

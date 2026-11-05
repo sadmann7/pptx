@@ -2,7 +2,13 @@
 
 import * as React from "react";
 
-import type { NodeOrder, ParagraphAlign, PresentationStore, TextStyle } from "@diceui/pptx";
+import type {
+  NodeOrder,
+  ParagraphAlign,
+  PresentationStore,
+  TableChange,
+  TextStyle,
+} from "@diceui/pptx";
 import {
   getPresentationFonts,
   getPresetShapePath,
@@ -96,10 +102,15 @@ import { useIsMac } from "@pptx/ui/hooks/use-is-mac";
 import { cn } from "@pptx/ui/lib/utils";
 import {
   BaselineIcon,
+  BetweenHorizontalEndIcon,
+  BetweenHorizontalStartIcon,
+  BetweenVerticalEndIcon,
+  BetweenVerticalStartIcon,
   BoldIcon,
   CopyPlusIcon,
   DownloadIcon,
   FolderOpenIcon,
+  Grid2x2PlusIcon,
   ImageIcon,
   ItalicIcon,
   LayersIcon,
@@ -163,6 +174,34 @@ const ARRANGE = [
   { order: "backward", label: "Send backward", shortcut: ["mod", "["] },
   { order: "back", label: "Send to back", shortcut: ["mod", "shift", "["] },
 ] as const satisfies readonly { order: NodeOrder; label: string; shortcut: readonly string[] }[];
+
+const TABLE_INSERTS = [
+  {
+    change: { type: "insertRow", side: "above" },
+    label: "Insert row above",
+    icon: BetweenHorizontalStartIcon,
+  },
+  {
+    change: { type: "insertRow", side: "below" },
+    label: "Insert row below",
+    icon: BetweenHorizontalEndIcon,
+  },
+  {
+    change: { type: "insertColumn", side: "left" },
+    label: "Insert column left",
+    icon: BetweenVerticalStartIcon,
+  },
+  {
+    change: { type: "insertColumn", side: "right" },
+    label: "Insert column right",
+    icon: BetweenVerticalEndIcon,
+  },
+] as const satisfies readonly { change: TableChange; label: string; icon: React.ElementType }[];
+
+const TABLE_DELETES = [
+  { change: { type: "deleteRow" }, label: "Delete row" },
+  { change: { type: "deleteColumn" }, label: "Delete column" },
+] as const satisfies readonly { change: TableChange; label: string }[];
 
 /** The font sizes OOXML allows, in points. */
 const MIN_FONT_SIZE = 1;
@@ -643,6 +682,8 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     drawTool,
     startDrawing,
     insertTable,
+    cell,
+    changeTable,
     duplicate,
     remove,
     reorder,
@@ -820,7 +861,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             </>
           )}
 
-          {nodes.length > 0 && mode !== "text" && (
+          {outlined.length > 0 && mode !== "text" && (
             <>
               <ToolbarSeparator />
               {shapes.length > 0 && (
@@ -896,6 +937,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 value={textStyle.align}
                 onSelect={(align) => run(() => setParagraphStyle({ align }))}
               />
+              {cell && <TableEditMenu onSelect={(change) => run(() => changeTable(change))} />}
             </>
           )}
 
@@ -1068,6 +1110,35 @@ function TableMenu({
         <div className="pt-1.5 text-center text-xs text-muted-foreground tabular-nums">
           {size.rows} × {size.columns}
         </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function TableEditMenu({ onSelect }: { onSelect: (change: TableChange) => void }) {
+  return (
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label="Rows and columns">
+        <Grid2x2PlusIcon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent
+        data-pptx-keep-selection=""
+        aria-label="Rows and columns"
+        className="w-48"
+      >
+        {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
+          <DropdownMenuItem key={label} onClick={() => onSelect(change)}>
+            <Icon />
+            {label}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        {TABLE_DELETES.map(({ change, label }) => (
+          <DropdownMenuItem key={label} variant="destructive" onClick={() => onSelect(change)}>
+            <Trash2Icon />
+            {label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -1487,13 +1558,18 @@ interface CanvasContextMenuProps {
 /** Right-clicking a shape acts on it, and on empty canvas acts on the slide. */
 function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const { slideId } = useSlide();
-  const { mode, nodes, editText, duplicate, remove, reorder, clear } = useSelection();
+  const { mode, nodes, cell, editText, changeTable, duplicate, remove, reorder, clear } =
+    useSelection();
   const actions = useSlideActions(store);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   // Fixed when the menu opens, so it can't swap menus while closing.
   const [isShapeMenu, setIsShapeMenu] = React.useState(false);
   const [isTextMenu, setIsTextMenu] = React.useState(false);
-  const textNode = nodes.length === 1 && nodes[0]?.nodeType === "shape" ? nodes[0] : null;
+  const [isTableMenu, setIsTableMenu] = React.useState(false);
+  const textNode =
+    nodes.length === 1 && (nodes[0]?.nodeType === "shape" || nodes[0]?.nodeType === "table")
+      ? nodes[0]
+      : null;
 
   function run(action: () => Promise<unknown>) {
     action().catch(onEditError);
@@ -1506,6 +1582,7 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
         onContextMenuCapture={(event) => {
           setIsShapeMenu(nodes.length > 0 || mode === "text");
           setIsTextMenu(mode === "text");
+          setIsTableMenu(cell !== null);
           // Text being edited gets its caret back; otherwise the overlay, for shortcuts.
           returnFocusRef.current =
             mode === "text" && document.activeElement instanceof HTMLElement
@@ -1521,7 +1598,7 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           // Pressing outside only closes the menu, keeping the selection and text editing.
           portalProps={{ render: <div data-pptx-keep-selection="" /> }}
           aria-label="Shape"
-          className="w-44"
+          className={isTableMenu ? "w-48" : "w-44"}
           finalFocus={() => returnFocusRef.current ?? false}
         >
           {textNode && !isTextMenu && (
@@ -1534,6 +1611,23 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
               <TypeIcon />
               Edit text
             </ContextMenuItem>
+          )}
+          {isTableMenu && (
+            <>
+              {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
+                <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
+                  <Icon />
+                  {label}
+                </ContextMenuItem>
+              ))}
+              {TABLE_DELETES.map(({ change, label }) => (
+                <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
+                  <Trash2Icon />
+                  {label}
+                </ContextMenuItem>
+              ))}
+              <ContextMenuSeparator />
+            </>
           )}
           <ContextMenuItem onClick={() => run(duplicate)}>
             <CopyPlusIcon />

@@ -33,6 +33,13 @@ export function getIsKeepSelectionTarget(target: EventTarget | null): boolean {
   return element?.closest(`[${KEEP_SELECTION_ATTRIBUTE}]`) != null;
 }
 
+/** A row or column change at the table cell being edited. */
+export type TableChange =
+  | { type: "insertRow"; side: "above" | "below" }
+  | { type: "insertColumn"; side: "left" | "right" }
+  | { type: "deleteRow" }
+  | { type: "deleteColumn" };
+
 /** What a click or drag on the slide places, once `startDrawing` arms it. */
 export type DrawTool = { type: "textBox" } | { type: "shape"; geometry: string };
 
@@ -41,6 +48,7 @@ export interface SelectionSnapshot {
   slideId: string | null;
   mode: SelectionState["mode"];
   nodeIds: string[];
+  cell: TableCellAddress | null;
   textStyle: ActiveTextStyle | null;
   drawTool: DrawTool | null;
 }
@@ -56,6 +64,7 @@ export interface SelectionController {
   reorder: (order: NodeOrder) => Promise<void>;
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
+  changeTable: (change: TableChange) => Promise<void>;
   prepareTextHistory: (target: EventTarget | null) => boolean;
   getSelectionRect: () => DOMRect | null;
   getOverlayElement: () => HTMLElement | null;
@@ -75,6 +84,7 @@ const IDLE_SNAPSHOT: SelectionSnapshot = {
   slideId: null,
   mode: "idle",
   nodeIds: [],
+  cell: null,
   textStyle: null,
   drawTool: null,
 };
@@ -91,6 +101,8 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
     a.mode === b.mode &&
     a.nodeIds.length === b.nodeIds.length &&
     a.nodeIds.every((id, index) => id === b.nodeIds[index]) &&
+    a.cell?.row === b.cell?.row &&
+    a.cell?.column === b.cell?.column &&
     getIsSameTextStyle(a.textStyle, b.textStyle) &&
     a.drawTool?.type === b.drawTool?.type &&
     (a.drawTool?.type !== "shape" ||
@@ -155,6 +167,9 @@ export interface UseSelectionResult {
 
   /** The selected nodes, matching `nodeIds`. */
   nodes: SlideNode[];
+
+  /** The table cell being edited, or `null` outside a table. */
+  cell: TableCellAddress | null;
 
   /**
    * Formatting of the text being edited (in text mode), or of every selected
@@ -233,6 +248,19 @@ export interface UseSelectionResult {
     columns: number,
     options?: Omit<AddTableOperation, "type" | "slideId" | "rows" | "columns">,
   ) => Promise<string | undefined>;
+
+  /**
+   * Inserts or deletes a row or column at the table cell being edited, keeping
+   * the caret in that cell. Deleting a table's last row or column deletes the
+   * table. Does nothing outside a table cell.
+   *
+   * ```tsx
+   * <button onClick={() => void changeTable({ type: "insertRow", side: "below" })}>
+   *   Insert row below
+   * </button>
+   * ```
+   */
+  changeTable: (change: TableChange) => Promise<void>;
 
   /**
    * Formats text. In text mode this applies to the selected text, or to the
@@ -323,6 +351,7 @@ export function useSelection(): UseSelectionResult {
     anchor,
     nodeIds,
     nodes,
+    cell: snapshot.slideId === slideId ? snapshot.cell : null,
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
     drawTool: snapshot.slideId === slideId ? snapshot.drawTool : null,
     select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
@@ -398,6 +427,10 @@ export function useSelection(): UseSelectionResult {
         return nodeId;
       },
       [channel, store],
+    ),
+    changeTable: React.useCallback(
+      async (change: TableChange) => requireController(channel).changeTable(change),
+      [channel],
     ),
     setTextStyle: React.useCallback(
       async (style: TextStyle) => requireController(channel).setTextStyle(style),

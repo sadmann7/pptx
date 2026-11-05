@@ -404,6 +404,65 @@ describe("tables", () => {
     await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
   });
 
+  it("reports the cell being edited and inserts rows around it", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    await waitFor(() => expect(editor.selection.current!.cell).toEqual({ row: 0, column: 0 }));
+
+    await act(() => editor.selection.current!.changeTable({ type: "insertRow", side: "above" }));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
+    expect(cellTexts(editor.store, nodeId)).toHaveLength(3);
+    await waitFor(() => expect(editor.selection.current!.cell).toEqual({ row: 1, column: 0 }));
+
+    await act(() => editor.selection.current!.changeTable({ type: "insertColumn", side: "right" }));
+    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0]).toHaveLength(3));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
+
+    await act(() => editor.selection.current!.changeTable({ type: "deleteRow" }));
+    await waitFor(() => expect(cellTexts(editor.store, nodeId)).toHaveLength(2));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
+  });
+
+  it("adds a row when Tab leaves the last cell", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    for (const cell of ["0,1", "1,0", "1,1"]) {
+      act(() => {
+        fireEvent.keyDown(
+          editor.container.querySelector<HTMLElement>(
+            "[contenteditable]:not([contenteditable=false])",
+          )!,
+          { key: "Tab" },
+        );
+      });
+      await waitFor(() => expect(editingCell(editor.container)).toBe(cell));
+    }
+
+    act(() => {
+      fireEvent.keyDown(
+        editor.container.querySelector<HTMLElement>(
+          "[contenteditable]:not([contenteditable=false])",
+        )!,
+        { key: "Tab" },
+      );
+    });
+    await waitFor(() => expect(cellTexts(editor.store, nodeId)).toHaveLength(3));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("2,0"));
+  });
+
+  it("deletes the table with its last row", async () => {
+    const editor = await renderEditor();
+    let nodeId: string | undefined;
+    await act(async () => {
+      nodeId = await editor.selection.current!.insertTable(1, 2);
+    });
+    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+
+    await act(() => editor.selection.current!.changeTable({ type: "deleteRow" }));
+    expect(editor.store.getActiveSlide()!.nodes.some((node) => node.id === nodeId)).toBe(false);
+    expect(editor.overlay.getAttribute("data-mode")).toBe("idle");
+  });
+
   it("formats every cell of a selected table", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
