@@ -415,14 +415,10 @@ export interface Store {
    */
   getSlideIndex: (slideId: string) => number;
 
-  /**
-   * Returns the 0-based index of the active slide, or `-1` when none is active.
-   */
+  /** Returns the 0-based index of the active slide, or `-1` when none is active. */
   getActiveSlideIndex: () => number;
 
-  /**
-   * Returns the active `SlideData`, or `null` when none is active.
-   */
+  /** Returns the active `SlideData`, or `null` when none is active. */
   getActiveSlide: () => PresentationData["slides"][number] | null;
 
   /** Returns `true` when there is a next slide to navigate to. */

@@ -25,7 +25,6 @@ export interface ProviderProps {
   /** The `PresentationStore` to make available to descendants. */
   store: Store;
 
-  /** The children to render inside the provider. */
   children?: React.ReactNode;
 }
 
@@ -156,9 +155,7 @@ export function useStoreSelector<T>(
   );
 }
 
-/**
- * Subscribes to a slide's edit revision (`store.getSlideRevision`).
- */
+/** Subscribes to `store.getSlideRevision`. */
 export function useSlideRevision(store: Store, slideId: string | null | undefined): number {
   return React.useSyncExternalStore(
     store.subscribe,
@@ -179,9 +176,7 @@ export function useSlideContentRevision(store: Store, slideId: string | null | u
   );
 }
 
-/**
- * Subscribes to a slide's 0-based index (`store.getSlideIndex`).
- */
+/** Subscribes to `store.getSlideIndex`. */
 export function useSlideIndex(store: Store, slideId: string): number {
   return React.useSyncExternalStore(
     store.subscribe,

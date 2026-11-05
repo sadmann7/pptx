@@ -333,12 +333,11 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
  * Place inside `<Presentation.Slide>`. Renders nothing unless the loaded
  * presentation was opened with `readOnly={false}`.
  *
- * Interaction model mirrors PowerPoint:
- * - Click inside a text shape → edit text (caret appears).
+ * Interaction model mirrors PowerPoint and Google Slides:
+ * - Click a shape → select it. Click it again, double-click, or type → edit its text.
  * - Drag any shape → move it (a multi-selection moves as a unit).
  * - Escape from text editing → select the shape (handles appear).
  * - Escape from selection → deselect.
- * - Click a non-text shape → select it.
  * - Shift/Ctrl/Cmd+click toggles shapes in and out of the selection.
  * - Shift+drag a shape → move it along one axis only.
  * - Ctrl/Cmd+drag a shape duplicates it in PowerPoint; unsupported here, so the
@@ -1617,8 +1616,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     // Ctrl/Cmd+click toggles the shape in and out of the selection, resolved
     // here rather than on pointer-up: PowerPoint reserves Ctrl+drag for
-    // duplicating a shape, which needs a core edit operation that can add a
-    // node (there is none yet), so this press must not become a move.
+    // duplicating a shape, which isn't supported, so this press must not
+    // become a move.
     if (event.ctrlKey || event.metaKey) {
       const nextIds = toggleSelection(selectedIds, nodeId);
       setState(nextIds.length > 0 ? { mode: "selected", nodeIds: nextIds } : { mode: "idle" });
@@ -1742,11 +1741,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  /**
-   * Dragging the border strips while editing text (PowerPoint: grab the
-   * frame to move the box without leaving your edits behind). Commits the
-   * text first, then starts a move drag.
-   */
   /**
    * Pressing the frame of a shape being edited ends the editing, like Google
    * Slides: a click leaves the shape selected, and a drag moves it.

@@ -1,10 +1,4 @@
-/**
- * Embedded font support (separate entry point).
- *
- * Kept out of the main package entry so the decode pipeline (EOT parsing,
- * MTX decompression, worker pool) is only loaded by consumers that actually
- * inject embedded fonts, e.g. via a dynamic `import("@diceui/pptx-core/fonts")`.
- */
+// A separate entry point so only consumers that inject embedded fonts load the decoder.
 
 export { decodeEmbeddedFont, decodeEmbeddedFontPart } from "./decode";
 export type { FontDecodeResult } from "./decode";

@@ -1,9 +1,4 @@
-﻿/**
- * Parses a slide XML into a structured SlideData
- * with typed node objects for each shape on the slide.
- */
-
-import { parseOoxmlBool } from "../ooxml/boolean";
+﻿import { parseOoxmlBool } from "../ooxml/boolean";
 import { RelEntry } from "../ooxml/rel";
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import { parseRenderableChild, type RenderableNode } from "./nodes/parser";
@@ -42,10 +37,6 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
   return parseOoxmlBool(value, true);
 }
 
-/**
- * Finds the layout relationship target from a slide's rels map.
- * The relationship type URI for slide layouts ends with "slideLayout".
- */
 function findLayoutRel(rels: Map<string, RelEntry>): string {
   for (const [, entry] of rels) {
     if (entry.type.includes("slideLayout")) {
@@ -55,14 +46,7 @@ function findLayoutRel(rels: Map<string, RelEntry>): string {
   return "";
 }
 
-/**
- * Parses a slide XML root (`p:sld`) into SlideData.
- *
- * @param root      Parsed XML root of the slide
- * @param index     Zero-based slide index
- * @param rels      Relationship entries for this slide
- * @param slidePath Full path to the slide file (e.g. "ppt/slides/slide1.xml")
- */
+/** Parses a slide XML root (`p:sld`) into SlideData. */
 export function parseSlide(
   root: SafeXmlNode,
   index: number,
@@ -72,11 +56,9 @@ export function parseSlide(
 ): SlideData {
   const cSld = root.child("cSld");
 
-  // --- Background ---
   const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
-  // --- Parse shape tree children ---
   const spTree = cSld.child("spTree");
   const nodes: SlideNode[] = [];
 
@@ -91,10 +73,8 @@ export function parseSlide(
     }
   }
 
-  // --- Layout relationship ---
   const layoutIndex = findLayoutRel(rels);
 
-  // --- showMasterSp: if false, layout/master shapes should not be rendered on this slide ---
   const showMasterSp = parseDefaultTrueBoolAttr(root.attr("showMasterSp"));
   const hidden = !parseDefaultTrueBoolAttr(root.attr("show"));
 

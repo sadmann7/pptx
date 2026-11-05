@@ -1,9 +1,4 @@
-﻿/**
- * Parses p:grpSp (group shape) elements into GroupNodeData,
- * recursively handling nested shapes.
- */
-
-import { emuToPx } from "../../ooxml/unit";
+﻿import { emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { BaseNodeData, parseBaseProps, NodePosition, NodeSize } from "./base";
 
@@ -24,7 +19,6 @@ const GROUP_CHILD_TAGS = new Set(["sp", "pic", "grpSp", "graphicFrame", "cxnSp"]
 export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
   const base = parseBaseProps(grpNode);
 
-  // --- Child coordinate space from grpSpPr > a:xfrm ---
   // OOXML: when chOff/chExt omitted, child box equals group box (chOff=0,0, chExt=ext).
   const grpSpPr = grpNode.child("grpSpPr");
   const xfrm = grpSpPr.child("xfrm");
@@ -45,7 +39,6 @@ export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
     };
   })();
 
-  // --- Collect direct child shape nodes ---
   const children: SafeXmlNode[] = [];
   for (const child of grpNode.allChildren()) {
     if (GROUP_CHILD_TAGS.has(child.localName)) {

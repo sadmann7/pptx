@@ -26,8 +26,8 @@ export interface RotateHandleProps extends StatefulPrimitiveProps<"div", RotateH
 /**
  * The rotation handle of a selected shape, above the middle of its top edge.
  * Drag it to rotate the selection around the shape's center; hold Shift to
- * step by 15°. Rotates with the outline, and is hidden while moving,
- * resizing, editing text, and on tables and charts.
+ * step by 15°. Rotates with the outline, and is hidden while moving or
+ * resizing, and on tables and charts.
  *
  * Its distance above the outline is `--presentation-rotate-handle-offset`
  * (20px by default). Unstyled when composed: give it a size.

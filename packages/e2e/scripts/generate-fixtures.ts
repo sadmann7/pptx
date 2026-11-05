@@ -1,30 +1,14 @@
 /**
- * Generates the fixture decks under fixtures/.
+ * Regenerates the committed fixture decks under fixtures/ (other files there
+ * are left untouched):
  *
- * Run with `pnpm fixtures`. The generated .pptx files are committed so test
- * runs are deterministic; regenerate only when intentionally changing them.
- * Only the decks listed below are written. The authoring-tool exports sitting
- * alongside them in fixtures/ are left untouched.
+ *   pnpm fixtures
  *
- * Decks:
- * - basic.pptx          3 slides with distinct colored shapes/text (smoke + navigation)
- * - bom-rels.pptx       every rels/[Content_Types] part prefixed with a UTF-8 BOM
- *                       (regression: Chromium DOMParser rejects BOM-prefixed XML)
- * - nested-charts.pptx  charts stored under ppt/slides/charts/ with strLit/numLit
- *                       literal data and noFill axis/plot-area lines
- *                       (regressions: chart categorization, literal data, ECharts
- *                       default axis lines and grid border)
- * - tables-groups.pptx  slide 1: table with unequal tblGrid column widths
- *                       (regression: columns sized from frame ext instead of
- *                       per-column w); slide 2: nested groups exercising child
- *                       coordinate remapping (chOff/chExt scaling)
- * - table-borders.pptx  slide 1: unstyled table over contrasting cell fills,
- *                       which PowerPoint paints with the built-in "No Style,
- *                       Table Grid" hairline grid; slide 2: per-cell tcPr
- *                       borders whose outer edges disagree
- *                       (regressions: missing grid on styleless tables, grid
- *                       lines washing out or notching where they meet at
- *                       fractional scale)
+ * - basic.pptx          3 slides of colored shapes/text (smoke + navigation)
+ * - bom-rels.pptx       rels and [Content_Types] parts prefixed with a UTF-8 BOM
+ * - nested-charts.pptx  charts under ppt/slides/charts/ with literal data
+ * - tables-groups.pptx  unequal tblGrid widths; nested groups with chOff/chExt
+ * - table-borders.pptx  styleless table grid; per-cell tcPr borders that disagree
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

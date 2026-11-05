@@ -1,8 +1,4 @@
-﻿/**
- * Parses graphicFrame elements containing a:tbl into TableNodeData.
- */
-
-import { parseOoxmlBool } from "../../ooxml/boolean";
+﻿import { parseOoxmlBool } from "../../ooxml/boolean";
 import { emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { BaseNodeData, parseBaseProps } from "./base";
@@ -32,20 +28,15 @@ export interface TableNodeData extends BaseNodeData {
   tableStyleId?: string;
 }
 
-/**
- * Parses a single table cell (`a:tc`).
- */
 function parseCell(tcNode: SafeXmlNode): TableCell {
   const gridSpan = tcNode.numAttr("gridSpan") ?? 1;
   const rowSpan = tcNode.numAttr("rowSpan") ?? 1;
   const hMerge = parseOoxmlBool(tcNode.attr("hMerge"));
   const vMerge = parseOoxmlBool(tcNode.attr("vMerge"));
 
-  // Cell text body
   const txBody = tcNode.child("txBody");
   const textBody = parseTextBody(txBody);
 
-  // Cell properties
   const tcPr = tcNode.child("tcPr");
 
   return {
@@ -58,9 +49,6 @@ function parseCell(tcNode: SafeXmlNode): TableCell {
   };
 }
 
-/**
- * Parses a table row (`a:tr`).
- */
 function parseRow(trNode: SafeXmlNode): TableRow {
   const height = emuToPx(trNode.numAttr("h") ?? 0);
   const cells: TableCell[] = [];
@@ -72,20 +60,12 @@ function parseRow(trNode: SafeXmlNode): TableRow {
   return { height, cells };
 }
 
-/**
- * Locate the `a:tbl` element inside a graphicFrame.
- * Path: `a:graphic > a:graphicData > a:tbl`
- */
 function findTable(frameNode: SafeXmlNode): SafeXmlNode {
   const graphic = frameNode.child("graphic");
   const graphicData = graphic.child("graphicData");
   return graphicData.child("tbl");
 }
 
-/**
- * Extracts the table style ID from tblPr.
- * It can be in `a:tblStyle@val` or as a direct `tblStyle` attribute.
- */
 function extractTableStyleId(tblPr: SafeXmlNode): string | undefined {
   // Try <a:tableStyleId>{UUID}</a:tableStyleId> (most common in OOXML)
   const tableStyleIdNode = tblPr.child("tableStyleId");
@@ -108,20 +88,17 @@ export function parseTableNode(frameNode: SafeXmlNode): TableNodeData {
   const base = parseBaseProps(frameNode);
   const tbl = findTable(frameNode);
 
-  // --- Column widths ---
   const tblGrid = tbl.child("tblGrid");
   const columns: number[] = [];
   for (const gridCol of tblGrid.children("gridCol")) {
     columns.push(emuToPx(gridCol.numAttr("w") ?? 0));
   }
 
-  // --- Rows ---
   const rows: TableRow[] = [];
   for (const trNode of tbl.children("tr")) {
     rows.push(parseRow(trNode));
   }
 
-  // --- Table properties ---
   const tblPr = tbl.child("tblPr");
   const tableStyleId = extractTableStyleId(tblPr);
 

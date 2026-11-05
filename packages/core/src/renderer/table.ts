@@ -1,15 +1,4 @@
-﻿/**
- * Converts TableNodeData into positioned HTML table elements.
- *
- * Table style behavior follows:
- * - OOXML ECMA-376 §21.1.3.15 tblPr: firstRow, firstCol, bandRow, bandCol, lastRow, lastCol
- *   are attributes; when not specified they default to off (no styling).
- * - references/pptxjs (gen-table.ts, get-table-row-style.ts, get-table-cell-params.ts):
- *   reads tblPr attrs only (e.g. firstCol === "1"), applies style parts when attr is "1",
- *   and uses tcTxStyle from each part for cell text color/font (a:tcTxStyle under firstRow, firstCol, etc.).
- */
-
-import { TableCell, TableNodeData } from "../model/nodes/table";
+﻿import { TableCell, TableNodeData } from "../model/nodes/table";
 import { parseOoxmlBool } from "../ooxml/boolean";
 import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
@@ -53,10 +42,6 @@ function clearCssFillBackground(el: HTMLElement): void {
   el.style.backgroundRepeat = "";
   el.style.backgroundSize = "";
 }
-
-// ---------------------------------------------------------------------------
-// Table Style Lookup
-// ---------------------------------------------------------------------------
 
 /**
  * Finds a table style node by its ID from presentation.tableStyles.
@@ -260,7 +245,6 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
   const fill = tcStyle.child("fill");
   if (!fill.exists()) return false;
 
-  // noFill
   const noFill = fill.child("noFill");
   if (noFill.exists()) {
     clearCssFillBackground(td);
@@ -268,7 +252,6 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
     return true;
   }
 
-  // solidFill
   const solidFill = fill.child("solidFill");
   if (solidFill.exists()) {
     clearCssFillBackground(td);
@@ -411,7 +394,6 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
     return;
   }
 
-  // solidFill
   const solidFill = tblBg.child("solidFill");
   if (solidFill.exists()) {
     clearCssFillBackground(table);
@@ -513,13 +495,6 @@ function tableFlipTransform(node: TableNodeData): string {
   return transforms.join(" ");
 }
 
-// ---------------------------------------------------------------------------
-// Table Rendering
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a table node into an absolutely-positioned HTML element.
- */
 export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
   // A table's true size is defined by its grid (sum of gridCol widths and
   // tr heights), not by the graphicFrame extent. PowerPoint ignores the
@@ -542,7 +517,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   // would cut off cell content mid-row.
   wrapper.style.overflow = "visible";
 
-  // Apply transforms
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -557,13 +531,11 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
     wrapper.style.transform = transforms.join(" ");
   }
 
-  // Resolve table style
   const tblStyle = findTableStyle(node.tableStyleId, ctx);
   const tblPr = node.properties;
   const totalRows = node.rows.length;
   const totalCols = node.columns.length;
 
-  // Create table element
   const table = document.createElement("table");
   // Separate borders (with zero spacing, so the geometry matches the collapsed
   // model) keep every cell's background covering its whole border box. Under
@@ -581,12 +553,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   table.style.height = "100%";
   table.style.tableLayout = "fixed";
 
-  // Apply table background from table style (tblBg)
   if (tblStyle) {
     applyTableBackground(table, tblStyle, ctx);
   }
 
-  // Column widths
   const totalWidth = node.columns.reduce((sum, w) => sum + w, 0);
   if (totalWidth > 0 && node.columns.length > 0) {
     const colgroup = document.createElement("colgroup");
@@ -601,8 +571,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   // Compute total row height so we can express each row as a proportion
   const totalRowHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
 
-  // Render rows.
-  //
   // Shared edges are painted by the cell above/left of them: `bottomEdges`
   // holds, per grid column, the bottom border of the cell that last covered it,
   // and `leftEdge` the right border of the previous cell in the row. A cell
@@ -647,7 +615,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       const td = document.createElement("td");
       td.style.overflow = "hidden";
 
-      // Spanning
       if (cell.gridSpan > 1) {
         td.colSpan = cell.gridSpan;
       }
@@ -700,7 +667,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       const textProps =
         sections.length > 0 ? getEffectiveTableStyleTextProps(sections, ctx) : undefined;
 
-      // Render text inside cell
       if (cell.textBody) {
         const textTarget = tableFlipTransform(node) ? document.createElement("div") : td;
         const counterFlip = tableFlipTransform(node);
@@ -751,10 +717,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-// ---------------------------------------------------------------------------
-// Cell Property Application
-// ---------------------------------------------------------------------------
-
 /**
  * Applies table cell properties (tcPr) to a <td> element, collecting the cell's
  * borders into `borders` (they are painted later, once per shared edge).
@@ -802,7 +764,6 @@ function applyCellProperties(
     collectBorder(borders, tcPr, "lnR", "right", ctx);
   }
 
-  // Margins / Padding
   const marL = tcPr?.numAttr("marL");
   const marR = tcPr?.numAttr("marR");
   const marT = tcPr?.numAttr("marT");
@@ -815,7 +776,6 @@ function applyCellProperties(
   td.style.paddingTop = `${emuToPx(marT ?? 45720)}px`;
   td.style.paddingBottom = `${emuToPx(marB ?? 45720)}px`;
 
-  // Vertical alignment
   const anchor = tcPr?.attr("anchor");
   const alignMap: Record<string, string> = {
     t: "top",
@@ -825,9 +785,6 @@ function applyCellProperties(
   td.style.verticalAlign = alignMap[anchor || "t"] || "top";
 }
 
-/**
- * Collect a single cell border from a tcPr line node.
- */
 function collectBorder(
   borders: CellBorders,
   tcPr: SafeXmlNode,

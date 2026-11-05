@@ -1,17 +1,4 @@
-﻿/**
- * Edit operations for presentations opened with `keepSourcePackage: true`.
- *
- * Every operation follows the same contract:
- *   1. mutate the live part XML (the same documents `writePptx()` saves),
- *   2. update the typed model so renderers and consumers stay in sync,
- *   3. mark the touched parts dirty on the retained package.
- *
- * `applyEdit()` returns an `undo()` closure that restores both the XML and
- * the model. Undos capture element references and part snapshots, so they
- * must be applied in reverse order (a standard LIFO undo stack).
- */
-
-import type { NodePosition, NodeSize } from "../model/nodes/base";
+﻿import type { NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
 import type { PictureNodeData } from "../model/nodes/picture";
@@ -39,10 +26,6 @@ import {
   serializePartText,
   setOrRemoveAttr,
 } from "./xml-mutation";
-
-// ---------------------------------------------------------------------------
-// Operation types
-// ---------------------------------------------------------------------------
 
 /** Replace the text of one run inside a shape's text body. */
 export interface SetTextRunOperation {
@@ -331,14 +314,19 @@ export interface EditResult {
   undo: () => void;
   /** Id of the slide created by `duplicateSlide` or `addSlide`. */
   createdSlideId?: string;
-  /** Ids of the nodes created by `duplicateNode` or `addImage`. */
+  /**
+   * Ids of the nodes created by `duplicateNode`, `addTextBox`, `addShape`,
+   * `addImage`, or `pasteNodes`.
+   */
   createdNodeIds?: string[];
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
-
+/**
+ * Applies an operation to a presentation opened with `keepSourcePackage: true`:
+ * mutates the live part XML that `writePptx()` saves, updates the model, and
+ * marks the touched parts dirty. Undos capture element references and part
+ * snapshots, so apply them in reverse order.
+ */
 export async function applyEdit(
   presentation: PresentationData,
   op: EditOperation,
@@ -418,10 +406,6 @@ async function applyBatch(presentation: PresentationData, op: BatchOperation): P
   };
 }
 
-// ---------------------------------------------------------------------------
-// Shared lookup helpers
-// ---------------------------------------------------------------------------
-
 const PRESENTATION_PATH = "ppt/presentation.xml";
 const PRESENTATION_RELS_PATH = "ppt/_rels/presentation.xml.rels";
 const CONTENT_TYPES_PATH = "[Content_Types].xml";
@@ -483,10 +467,6 @@ function reindexSlides(pres: PresentationData): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// setTextRun
-// ---------------------------------------------------------------------------
-
 /** Localnames that produce entries in TextParagraph.runs, in document order. */
 const RUN_LOCAL_NAMES = new Set(["r", "br", "tab", "fld"]);
 
@@ -542,10 +522,6 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   };
 }
 
-// ---------------------------------------------------------------------------
-// setTextBody
-// ---------------------------------------------------------------------------
-
 /**
  * The `a:p` children of a text body. A direct-children scan rather than
  * `getElementsByTagNameNS`, whose namespace matching is unreliable in some
@@ -566,20 +542,15 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
   const shape = node as ShapeNodeData;
   const textBody = shape.textBody!;
 
-  // Snapshot the current state for undo.
   const prevParagraphs = textBody.paragraphs;
 
-  // XML: <p:txBody> element containing the live <a:p> elements.
   const txBodyNode = node.source.child("txBody");
   const txBodyElement = requireElement(txBodyNode, "txBody");
   const doc = txBodyElement.ownerDocument;
 
-  // Snapshot original <a:p> elements (for undo) and keep them by index for
-  // cloning pPr/rPr from source references.
   const origParagraphElements = childParagraphs(txBodyElement);
   const origParagraphs = prevParagraphs;
 
-  // Collect source run XML elements indexed by [pIdx][rIdx].
   const origRunElements: Element[][] = [];
   for (const paragraphElement of origParagraphElements) {
     const runElements: Element[] = [];
@@ -591,18 +562,15 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     origRunElements.push(runElements);
   }
 
-  // Remove existing <a:p> elements from txBody.
   for (const paragraphElement of origParagraphElements) {
     removeChild(paragraphElement);
   }
 
-  // Build new <a:p> elements and model paragraphs.
   const newParagraphs: TextParagraph[] = [];
 
   for (const opPara of op.paragraphs) {
     const paragraphElement = doc.createElementNS(A_NS, "a:p");
 
-    // Clone a:pPr from source paragraph.
     let level = 0;
     let pPrNode: SafeXmlNode | undefined;
     let endParaRPrNode: SafeXmlNode | undefined;
@@ -620,7 +588,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
 
     const runs: TextRun[] = [];
 
-    // Resolve default rPr to clone when sourceRun is not specified.
     function resolveDefaultRPr(srcParaIdx: number): Element | null {
       if (srcParaIdx < 0 || srcParaIdx >= origParagraphs.length) return null;
       const srcRuns = origRunElements[srcParaIdx];
@@ -650,7 +617,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     }
 
     for (const opRun of opPara.runs) {
-      // Resolve the source rPr element to clone styling from.
       let rPrElement: Element | null = null;
       if (opRun.sourceRun) {
         const [srcPI, srcRI] = opRun.sourceRun;
@@ -664,7 +630,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
           endParaRPrAsRPr(opPara.sourceParagraphIndex);
       }
 
-      // a:br for newlines, a:r for text.
       if (opRun.text === "\n") {
         const brElement = doc.createElementNS(A_NS, "a:br");
         if (rPrElement) brElement.appendChild(rPrElement.cloneNode(true));
@@ -691,7 +656,6 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
       }
     }
 
-    // Append a:endParaRPr if the source paragraph had one.
     if (endParaRPrNode?.element) {
       paragraphElement.appendChild(endParaRPrNode.element);
     }
@@ -706,32 +670,24 @@ function applySetTextBody(pres: PresentationData, op: SetTextBodyOperation): Edi
     });
   }
 
-  // Update the typed model.
   textBody.paragraphs = newParagraphs;
   sourcePackage.markDirty(slide.id);
 
   return {
     affectedSlideIds: [slide.id],
     undo: () => {
-      // Remove new <a:p> elements.
       const currentParagraphElements = childParagraphs(txBodyElement);
       for (const paragraphElement of currentParagraphElements) {
         removeChild(paragraphElement);
       }
-      // Restore original <a:p> elements.
       for (const paragraphElement of origParagraphElements) {
         insertChild(txBodyElement, paragraphElement, null);
       }
-      // Restore model.
       textBody.paragraphs = prevParagraphs;
       sourcePackage.markDirty(slide.id);
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// setNodeTransform
-// ---------------------------------------------------------------------------
 
 interface XfrmHandle {
   xfrmElement: Element;
@@ -965,10 +921,6 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
   };
 }
 
-// ---------------------------------------------------------------------------
-// setSolidFill
-// ---------------------------------------------------------------------------
-
 const FILL_LOCAL_NAMES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"];
 /** spPr children that come after the fill in the schema sequence. */
 const AFTER_FILL_LOCAL_NAMES = new Set([
@@ -1039,10 +991,6 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// setTextStyle / setParagraphStyle
-// ---------------------------------------------------------------------------
 
 /** rPr fill children (EG_FillProperties). */
 const RPR_FILL_LOCAL_NAMES = new Set([
@@ -1357,10 +1305,6 @@ function applySetParagraphStyle(
   );
 }
 
-// ---------------------------------------------------------------------------
-// deleteNode
-// ---------------------------------------------------------------------------
-
 function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, op.slideId);
@@ -1387,10 +1331,6 @@ function applyDeleteNode(pres: PresentationData, op: DeleteNodeOperation): EditR
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// duplicateNode / reorderNode / addImage
-// ---------------------------------------------------------------------------
 
 const DEFAULT_DUPLICATE_OFFSET: NodePosition = { x: 10, y: 10 };
 
@@ -2144,7 +2084,6 @@ async function applyAddImage(pres: PresentationData, op: AddImageOperation): Pro
   const spTree = requireSpTree(pres, slide);
   const doc = spTree.ownerDocument;
 
-  // --- Size and position: natural size, scaled down to fit the slide ---
   let size = op.size;
   if (!size) {
     const natural = readImageSize(op.data) ?? { w: pres.width / 2, h: pres.height / 2 };
@@ -2160,7 +2099,6 @@ async function applyAddImage(pres: PresentationData, op: AddImageOperation): Pro
   const rels = await addSlideRels(pres, slide, [{ type: IMAGE_REL_TYPE, target: media.target }]);
   const [rId] = rels.ids;
 
-  // --- p:pic, on top of everything else ---
   const id = nextShapeId(spTree);
   const name = op.name ?? `Picture ${id - 1}`;
   const el = (qualifiedName: string, attrs: Record<string, string> = {}, ...children: Node[]) => {
@@ -2218,10 +2156,6 @@ async function applyAddImage(pres: PresentationData, op: AddImageOperation): Pro
   };
 }
 
-// ---------------------------------------------------------------------------
-// Slide-level operations
-// ---------------------------------------------------------------------------
-
 interface SlideListContext {
   sourcePackage: PptxPackage;
   lstNode: SafeXmlNode;
@@ -2269,8 +2203,6 @@ function relsPathFor(partPath: string): string {
   return `${dir}/_rels/${name}.rels`;
 }
 
-// --- moveSlide -------------------------------------------------------------
-
 async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): Promise<EditResult> {
   const ctx = await loadSlideListContext(pres);
   const slide = findSlide(pres, op.slideId);
@@ -2305,8 +2237,6 @@ async function applyMoveSlide(pres: PresentationData, op: MoveSlideOperation): P
     },
   };
 }
-
-// --- duplicateSlide ----------------------------------------------------------
 
 function nextSlidePartPath(sourcePackage: PptxPackage): string {
   let max = 0;
@@ -2388,13 +2318,11 @@ async function insertSlidePart(
   const newRelsPath = relsPathFor(newPath);
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
-  // --- Package parts ---
   sourcePackage.setEntry(newPath, slideText);
   if (slideRelsText !== undefined) {
     sourcePackage.setEntry(newRelsPath, slideRelsText);
   }
 
-  // --- [Content_Types].xml: add an Override for the new part ---
   const ctRoot = parseXml(ctText);
   const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
   const sourceOverride = contentTypeFrom
@@ -2409,7 +2337,6 @@ async function insertSlidePart(
   insertChild(ctRootElement, overrideElement, null);
   sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
 
-  // --- presentation.xml.rels: relationship for the new part ---
   const newRId = nextRelId(ctx.rels);
   const relsRoot = parseXml(ctx.relsText);
   const relsRootElement = requireElement(relsRoot, "presentation rels root");
@@ -2420,14 +2347,12 @@ async function insertSlidePart(
   insertChild(relsRootElement, relElement, null);
   sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
-  // --- presentation.xml: sldId entry directly after the anchor slide ---
   const sldIdElement = ctx.lstElement.ownerDocument.createElementNS(P_NS, "p:sldId");
   sldIdElement.setAttribute("id", String(nextSldIdNumber(ctx)));
   sldIdElement.setAttributeNS(R_NS, "r:id", newRId);
   insertChild(ctx.lstElement, sldIdElement, afterSldIdElement?.nextElementSibling ?? null);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
-  // --- Model: parse the new part through the regular slide pipeline ---
   const newRoot = parseXml(slideText);
   sourcePackage.registerXmlRoot(newPath, newRoot);
   const newRels = parseRels(slideRelsText ?? "");
@@ -2454,8 +2379,6 @@ async function insertSlidePart(
     },
   };
 }
-
-// --- addSlide ----------------------------------------------------------------
 
 const SLIDE_LAYOUT_REL_TYPE =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout";
@@ -2561,8 +2484,6 @@ async function applyAddSlide(pres: PresentationData, op: AddSlideOperation): Pro
   });
 }
 
-// --- setSlideBackground ------------------------------------------------------
-
 function applySetSlideBackground(
   pres: PresentationData,
   op: SetSlideBackgroundOperation,
@@ -2612,8 +2533,6 @@ function applySetSlideBackground(
   };
 }
 
-// --- deleteSlide -------------------------------------------------------------
-
 async function applyDeleteSlide(
   pres: PresentationData,
   op: DeleteSlideOperation,
@@ -2629,18 +2548,15 @@ async function applyDeleteSlide(
   const { element: sldIdElement, rId } = findSldIdEntry(ctx, op.slideId);
   const slideRelsPath = relsPathFor(slide.id);
 
-  // Snapshots for undo.
   const slideBytes = await sourcePackage.readBytes(slide.id);
   const slideRelsBytes = await sourcePackage.readBytes(slideRelsPath);
   const slideXmlRoot = sourcePackage.getXmlRoot(slide.id);
   const ctText = (await sourcePackage.readText(CONTENT_TYPES_PATH)) ?? "";
 
-  // --- presentation.xml ---
   const sldIdRef = sldIdElement.nextElementSibling;
   removeChild(sldIdElement);
   sourcePackage.markDirty(PRESENTATION_PATH);
 
-  // --- presentation.xml.rels ---
   const relsRoot = parseXml(ctx.relsText);
   const relsRootElement = requireElement(relsRoot, "presentation rels root");
   const relNode = relsRoot.children("Relationship").find((r) => r.attr("Id") === rId);
@@ -2649,7 +2565,6 @@ async function applyDeleteSlide(
   }
   sourcePackage.setEntry(PRESENTATION_RELS_PATH, serializePartText(relsRootElement, ctx.relsText));
 
-  // --- [Content_Types].xml ---
   const ctRoot = parseXml(ctText);
   const ctRootElement = requireElement(ctRoot, "[Content_Types].xml root");
   const overrideNode = ctRoot
@@ -2660,11 +2575,10 @@ async function applyDeleteSlide(
     sourcePackage.setEntry(CONTENT_TYPES_PATH, serializePartText(ctRootElement, ctText));
   }
 
-  // --- Parts (media stays; shared and harmless when orphaned) ---
+  // Media parts stay: they may be shared, and orphans are harmless.
   sourcePackage.deleteEntry(slide.id);
   sourcePackage.deleteEntry(slideRelsPath);
 
-  // --- Model ---
   pres.slides.splice(slideIndex, 1);
   reindexSlides(pres);
 

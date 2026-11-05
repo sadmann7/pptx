@@ -1,8 +1,4 @@
-﻿/**
- * Parses p:sp elements (auto-shapes, text boxes, connectors) into ShapeNodeData.
- */
-
-import { angleToDeg, emuToPx } from "../../ooxml/unit";
+﻿import { angleToDeg, emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { BaseNodeData, parseBaseProps } from "./base";
 
@@ -74,7 +70,6 @@ export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
 
   const runs: TextRun[] = [];
 
-  // Regular runs (a:r)
   for (const rNode of pNode.children("r")) {
     const rPr = rNode.child("rPr");
     const tNode = rNode.child("t");
@@ -84,17 +79,13 @@ export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
     });
   }
 
-  // Line breaks (a:br): treated as runs with newline text
-  // Field codes (a:fld): treated as runs with their display text
   for (const child of pNode.allChildren()) {
     if (child.localName === "br") {
-      // a:br nodes are interspersed with a:r nodes, but since we iterate
-      // children separately, we need a combined approach. We handle this
-      // by re-scanning all children in order below.
+      // Handled by the in-order re-scan below.
     }
   }
 
-  // Re-scan in document order to get correct interleaving of r, br, fld
+  // Re-scan in document order so r, br, tab, and fld interleave correctly.
   const orderedRuns: TextRun[] = [];
   for (const child of pNode.allChildren()) {
     const ln = child.localName;
@@ -158,9 +149,6 @@ export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
 /** Fill type local names in priority order. */
 const FILL_TYPES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"] as const;
 
-/**
- * Finds the first fill element in a shape properties node.
- */
 function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
   for (const fillType of FILL_TYPES) {
     const fill = spPr.child(fillType);
@@ -185,7 +173,6 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
     if (match) {
       adjustments.set(name, Number(match[1]));
     } else {
-      // Try direct numeric value
       const num = Number(fmla);
       if (!Number.isNaN(num)) {
         adjustments.set(name, num);
@@ -202,24 +189,19 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
   const base = parseBaseProps(spNode);
   const spPr = spNode.child("spPr");
 
-  // --- Preset geometry ---
   const prstGeom = spPr.child("prstGeom");
   const presetGeometry = prstGeom.attr("prst");
   const avLst = prstGeom.child("avLst");
   const adjustments = parseAdjustments(avLst);
 
-  // --- Custom geometry ---
   const custGeom = spPr.child("custGeom");
   const customGeometry = custGeom.exists() ? custGeom : undefined;
 
-  // --- Fill ---
   const fill = findFill(spPr);
 
-  // --- Line ---
   const ln = spPr.child("ln");
   const line = ln.exists() ? ln : undefined;
 
-  // --- Line end markers (arrowheads) ---
   let headEnd: LineEndInfo | undefined;
   let tailEnd: LineEndInfo | undefined;
   if (ln.exists()) {
@@ -239,15 +221,13 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
     }
   }
 
-  // --- Text body ---
   const txBody = spNode.child("txBody");
   const textBody = parseTextBody(txBody);
 
-  // --- Text box flag (PowerPoint: single click on a text box edits text;
-  // regular shapes need a double click) ---
+  // PowerPoint edits a text box on a single click; regular shapes need a double click.
   const isTextBox = spNode.child("nvSpPr").child("cNvSpPr").attr("txBox") === "1";
 
-  // --- Text transform (diagram shapes: dsp:txXfrm gives text box position/size in same space as xfrm)
+  // Diagram shapes: dsp:txXfrm places the text box in the same space as xfrm.
   let textBoxBounds: TextBoxBounds | undefined;
   const txXfrm = spNode.child("txXfrm");
   if (txXfrm.exists()) {
@@ -268,8 +248,8 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
       const txRotDeg = angleToDeg(txXfrm.numAttr("rot") ?? 0);
       const localX = txX - shapeX;
       const localY = txY - shapeY;
-      // For 180deg txXfrm, mirror text box placement inside shape-local coordinates.
-      // (Common in SmartArt where shape xfrm also rotates by 180deg but text should remain upright.)
+      // A 180deg txXfrm mirrors the box inside the shape so text stays upright
+      // (common in SmartArt, where the shape xfrm also rotates 180deg).
       const isHalfTurn = Math.abs(Math.round(txRotDeg)) % 360 === 180;
       const boxX = isHalfTurn ? shapeW - (localX + txW) : localX;
       const boxY = isHalfTurn ? shapeH - (localY + txH) : localY;

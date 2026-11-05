@@ -1,8 +1,4 @@
-﻿/**
- * Converts ShapeNodeData into positioned HTML/SVG elements.
- */
-
-import { renderCustomGeometry } from "../geometry/custom";
+﻿import { renderCustomGeometry } from "../geometry/custom";
 import {
   getActionButtonIconPath,
   getMultiPathPreset,
@@ -434,10 +430,6 @@ function renderWarpedTextBody(node: ShapeNodeData, ctx: RenderContext): SVGSVGEl
   return svg;
 }
 
-// ---------------------------------------------------------------------------
-// Shape blipFill (image fill): resolve to blob URL for reuse (e.g. SVG/PNG in process diagrams)
-// ---------------------------------------------------------------------------
-
 function resolveShapeBlipUrl(blipFill: SafeXmlNode, ctx: RenderContext): string | null {
   const blip = blipFill.child("blip");
   const embedId = blip.attr("embed") ?? blip.attr("r:embed");
@@ -544,10 +536,6 @@ function appendShapeBlipImage(
     svg.appendChild(image);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Line End Marker (Arrowhead) Helpers
-// ---------------------------------------------------------------------------
 
 let markerIdCounter = 0;
 let gradientIdCounter = 0;
@@ -902,10 +890,7 @@ function mixRgb(
   );
 }
 
-/**
- * Converts an OOXML gradient angle (in degrees, where 0 = right-to-left in OOXML coords)
- * to SVG linearGradient x1/y1/x2/y2 coordinates (as percentages).
- */
+/** OOXML gradient angle (degrees) to SVG linearGradient x1/y1/x2/y2 percentages. */
 function angleToSvgGradientCoords(angleDeg: number): {
   x1: string;
   y1: string;
@@ -913,9 +898,7 @@ function angleToSvgGradientCoords(angleDeg: number): {
   y2: string;
 } {
   // OOXML: 0° = left-to-right, 90° = top-to-bottom (clockwise)
-  // Convert to radians for trig
   const rad = (angleDeg * Math.PI) / 180;
-  // Calculate direction vector
   const x2 = Math.round(50 + 50 * Math.cos(rad));
   const y2 = Math.round(50 + 50 * Math.sin(rad));
   const x1 = Math.round(50 - 50 * Math.cos(rad));
@@ -928,9 +911,6 @@ function angleToSvgGradientCoords(angleDeg: number): {
   };
 }
 
-/**
- * Gets the marker size multiplier based on OOXML size string.
- */
 function getMarkerSize(size: string | undefined): number {
   switch (size) {
     case "sm":
@@ -1107,9 +1087,6 @@ function insetPathEnd(pathD: string, inset: number): string {
   return `M${x1},${y1} L${nextX},${nextY}`;
 }
 
-/**
- * Creates an SVG marker element for a line end (arrowhead).
- */
 function createArrowMarker(
   svgNs: string,
   info: LineEndInfo,
@@ -1277,13 +1254,6 @@ function resolvePresetGeometry(
   return { pathD, multiPaths };
 }
 
-// ---------------------------------------------------------------------------
-// Shape Rendering
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a shape node into an absolutely-positioned HTML element with SVG geometry.
- */
 export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.style.position = "absolute";
@@ -1309,7 +1279,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   wrapper.style.height = `${minH}px`;
   if (node.size.w === 0) wrapper.style.width = `${minW}px`;
   wrapper.style.overflow = "visible";
-  // Apply transforms (rotation + flip)
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -1337,7 +1306,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   const lnRef = styleNode.exists() ? styleNode.child("lnRef") : undefined;
   const fillRef = styleNode.exists() ? styleNode.child("fillRef") : undefined;
 
-  // ---- Generate SVG path ----
   let pathD = "";
   let multiPaths: PresetSubPath[] | null = null;
   if (node.presetGeometry) {
@@ -1379,7 +1347,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     pathD = flipAbsolutePath(pathD, pathW, pathH, node.flipH, node.flipV);
   }
 
-  // ---- Resolve fill and line styles ----
   const spPr = node.source.child("spPr");
   let fillCss = "";
   // Resolve structured gradient fill data (for SVG gradient elements)
@@ -1500,7 +1467,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     }
   }
 
-  // ---- Create SVG element ----
   let mainSvgNs: string | null = null;
   let mainDefs: SVGDefsElement | null = null;
   let mainPath: SVGPathElement | null = null;
@@ -1521,7 +1487,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     const blipFill = spPr.child("blipFill");
     const blipUrl = blipFill.exists() ? resolveShapeBlipUrl(blipFill, ctx) : null;
 
-    // When shape has image fill (blipFill), render image clipped to path so complex graphics (e.g. slide 23 process) show
+    // Image fill (blipFill): draw the image clipped to the shape path.
     if (blipUrl) {
       const defs = document.createElementNS(svgNs, "defs");
       appendShapeBlipImage(svgNs, svg, defs, blipFill, pathD, { w: svgW, h: svgH }, blipUrl);
@@ -1575,7 +1541,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         path.setAttribute("fill-rule", "evenodd");
       }
 
-      // Fill
       if (fillCss) {
         const pattFill = spPr.child("pattFill");
         const patternFillId = pattFill.exists()
@@ -1748,8 +1713,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         } else if (fillCss === "transparent") {
           path.setAttribute("fill", "none");
         } else if (fillCss.includes("gradient")) {
-          // Fallback for gradients without structured data (shouldn't normally happen)
-          // Apply to wrapper as before
+          // Gradient without structured data (shouldn't normally happen).
           wrapper.style.background = fillCss;
           path.setAttribute("fill", "transparent");
         } else {
@@ -1805,7 +1769,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         : strokeColor;
       let effectiveStrokeWidth = gradientStroke ? gradientStroke.width : strokeWidth;
       if (isLineLike && (effectiveHeadEnd || effectiveTailEnd) && effectiveStrokeWidth <= 0) {
-        effectiveStrokeWidth = 1; // so connector line and arrows both show (e.g. slide 24)
+        effectiveStrokeWidth = 1; // so connector line and arrows both show
       }
       const effectiveStrokeLinecap =
         isLineLike && (effectiveHeadEnd || effectiveTailEnd) ? "butt" : strokeLinecap;
@@ -1983,8 +1947,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         if (!ctx.asyncTasks) void task;
       }
 
-      // --- Multi-path preset rendering ---
-      // For complex shapes (scrolls, etc.) that have multiple sub-paths with different
+      // Multi-path presets: complex shapes (scrolls, etc.) that have multiple sub-paths with different
       // fill modifiers (darkenLess for shadow areas, none for stroke-only detail lines).
       if (multiPaths && multiPaths.length > 1) {
         const mainPathFill = path.getAttribute("fill") ?? "";
@@ -2204,8 +2167,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         path.removeAttribute("marker-end");
       }
 
-      // --- Action button icon overlay (legacy fallback) ---
-      // Only used for action buttons that don't have multiPathPresets entries.
+      // Action button icon overlay, only used for action buttons that don't have multiPathPresets entries.
       // Shapes with multiPathPresets already include the icon in their darken sub-paths.
       if (node.presetGeometry && !multiPaths) {
         const iconD = getActionButtonIconPath(node.presetGeometry, pathW, pathH);
@@ -2230,8 +2192,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // (Can top ellipse overlay removed; now handled by multiPathPresets 'can' lighten sub-path)
-
       wrapper.appendChild(svg);
     }
   } else if (fillCss && fillCss !== "transparent") {
@@ -2243,10 +2203,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     }
   }
 
-  // ---- Render text overlay (only when there is visible text; skip for decorative shapes with empty txBody) ----
-  // In editable decks (retained package) an empty text body still renders its
-  // container so inline text editing can target it: a cleared text box, or a
-  // plain shape you can click and type into like PowerPoint.
+  // Decorative shapes with an empty txBody get no text overlay, except in editable
+  // decks (retained package), where inline editing needs the container: a cleared
+  // text box, or a plain shape you can click and type into like PowerPoint.
   if (
     node.textBody &&
     node.textBody.paragraphs.length > 0 &&
@@ -2272,11 +2231,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       textContainer.style.display = "flex";
       textContainer.style.flexDirection = "column";
       textContainer.style.boxSizing = "border-box";
-      // Overflow handling based on bodyPr auto-fit mode:
-      // - spAutoFit: shape resizes to fit text → overflow visible
-      // - normAutofit: text shrinks to fit shape → apply fontScale, overflow hidden
-      // - noAutofit: text clips → overflow hidden
-      // - (default, no child): PowerPoint implicitly auto-shrinks simple single-line labels
       const spAutoFit = getEffectiveBodyPrChild(node.textBody, "spAutoFit");
       const hasSpAutoFit = spAutoFit?.exists();
       const normAutofit = getEffectiveBodyPrChild(node.textBody, "normAutofit");
@@ -2313,14 +2267,12 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       // overflow the shape boundary visibly.
       textContainer.style.overflowY = "visible";
 
-      // normAutofit: PowerPoint stores the computed fontScale (1000ths of percent).
-      // Apply it as a CSS transform to shrink text so it fits the shape.
       let needsDynamicAutofit = false;
       if (hasNormAutofit && normAutofit) {
         textContainer.style.overflowY = "hidden";
         const lnSpcReduction = normAutofit.numAttr("lnSpcReduction") ?? 0;
-        // renderTextBody applies normAutofit@fontScale to run and paragraph font sizes.
-        // The container transform is reserved for additional browser-measured shrink.
+        // renderTextBody already applies normAutofit@fontScale to font sizes; the
+        // container transform is reserved for additional browser-measured shrink.
         needsDynamicAutofit = true;
         if (lnSpcReduction > 0) {
           const lnFactor = 1 - lnSpcReduction / 100000;
@@ -2753,7 +2705,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     }
   }
 
-  // ---- Effects (explicit effectLst or theme effectRef fallback) ----
+  // Effects: explicit effectLst, or the theme's effectRef.
   let effectiveEffectLst = spPr.child("effectLst");
   if (!effectiveEffectLst.exists()) {
     const effectRef = node.source.child("style").child("effectRef");
@@ -2783,7 +2735,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
       const offsetX = distPx * Math.cos((dirDeg * Math.PI) / 180);
       const offsetY = distPx * Math.sin((dirDeg * Math.PI) / 180);
 
-      // Resolve shadow color
       let shadowColor = "rgba(0,0,0,0.4)";
       let shadowRgb = { r: 0, g: 0, b: 0 };
       const { color: shdColor, alpha: shdAlpha } = resolveColor(outerShdw, ctx);
@@ -2805,7 +2756,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         const shapeH = node.size?.h ?? 100;
 
         // For line-like shapes, sx/sy should scale line thickness, not full line length.
-        // Using shape width here can explode spread on long connectors (slide 68 regression).
+        // Using shape width here can explode spread on long connectors.
         let spreadBasisW = shapeW;
         let spreadBasisH = shapeH;
         if (isLineLike || shapeW <= 1 || shapeH <= 1) {
@@ -2844,11 +2795,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           effectiveAlpha = shdAlpha * (spread / blurPx);
         }
 
-        // Skip shadow entirely if effective alpha is negligible
         if (effectiveAlpha >= 0.01) {
           const bsX = offsetX + alignOffX;
           const bsY = offsetY + alignOffY;
-          // Recompute shadow color with attenuated alpha
           let attenuatedColor = shadowColor;
           if (shdColor) {
             const hex2 = shdColor.startsWith("#") ? shdColor : `#${shdColor}`;
@@ -2937,7 +2886,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     }
   }
 
-  // ---- Edit-mode prompt for empty placeholders ----
+  // Edit-mode prompt for empty placeholders.
   if (
     ctx.placeholderPrompts &&
     node.placeholder &&
@@ -2947,7 +2896,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
     renderPlaceholderPrompt(node, ctx, wrapper);
   }
 
-  // ---- Shape-level hyperlink / action button navigation ----
+  // Shape-level hyperlink / action button navigation.
   if (node.hlinkClick && ctx.onNavigate) {
     const { action, rId } = node.hlinkClick;
     const rel = rId ? ctx.slide.rels.get(rId) : undefined;
@@ -2960,7 +2909,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         ctx.onNavigate!({ slideIndex });
       });
     } else if (rId) {
-      // External URL link
       if (rel && isExternalTargetMode(rel.targetMode) && isAllowedExternalUrl(rel.target)) {
         wrapper.style.cursor = "pointer";
         wrapper.title = node.hlinkClick.tooltip || rel.target;

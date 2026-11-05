@@ -1,11 +1,3 @@
-/**
- * Low-level XML mutation helpers for edit operations.
- *
- * All structural mutations (inserting/removing child elements) go through
- * these helpers so the xml-parser child-index cache is invalidated for the
- * touched parent. Attribute and text mutations don't affect the index.
- */
-
 import { invalidateChildIndex } from "../ooxml/xml";
 
 export const A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";

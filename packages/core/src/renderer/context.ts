@@ -1,9 +1,4 @@
-﻿/**
- * Per-slide render context: holds the resolved theme/master/layout chain,
- * media caches, async task queue, and render options.
- */
-
-import type { ECharts } from "echarts";
+﻿import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "../media/pdf";
 import { LayoutData } from "../model/layout";

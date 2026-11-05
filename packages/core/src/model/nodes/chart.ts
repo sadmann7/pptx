@@ -1,7 +1,3 @@
-/**
- * Parses graphicFrame elements containing a c:chart into ChartNodeData.
- */
-
 import { RelEntry, resolveRelTarget } from "../../ooxml/rel";
 import { SafeXmlNode } from "../../ooxml/xml";
 import { BaseNodeData, parseBaseProps } from "./base";
@@ -11,13 +7,6 @@ export interface ChartNodeData extends BaseNodeData {
   chartPath: string; // e.g. "ppt/charts/chart1.xml"
 }
 
-/**
- * Parses a graphicFrame containing a chart reference into a ChartNodeData.
- *
- * @param graphicFrame  The graphicFrame XML node
- * @param slideRels     Relationship entries for the containing slide
- * @param slidePath     Full path of the slide (e.g. "ppt/slides/slide1.xml")
- */
 export function parseChartNode(
   graphicFrame: SafeXmlNode,
   slideRels: Map<string, RelEntry>,
@@ -25,11 +14,9 @@ export function parseChartNode(
 ): ChartNodeData | undefined {
   const base = parseBaseProps(graphicFrame);
 
-  // Find chart relationship
   const graphic = graphicFrame.child("graphic");
   const graphicData = graphic.child("graphicData");
 
-  // Find the chart reference - look for c:chart element with r:id
   let chartRId: string | undefined;
   for (const child of graphicData.allChildren()) {
     if (child.localName === "chart") {
@@ -43,7 +30,6 @@ export function parseChartNode(
   const rel = slideRels.get(chartRId);
   if (!rel) return undefined;
 
-  // Resolve chart path relative to slide
   const slideDir = slidePath.substring(0, slidePath.lastIndexOf("/"));
   const chartPath = resolveRelTarget(slideDir, rel.target);
 

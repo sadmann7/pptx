@@ -113,12 +113,8 @@ import { toast } from "sonner";
 
 import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 
-/**
- * Keep the source item visible during the drop animation.
- *
- * The default side effect sets its opacity to `0`, delaying the thumbnail
- * item's focus ring from reappearing until roughly 250 ms after pointer release.
- */
+// The default drop side effect hides the source item, so its focus ring
+// would only reappear ~250 ms after pointer release.
 const DROP_ANIMATION: DropAnimation = {
   ...defaultDropAnimation,
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),

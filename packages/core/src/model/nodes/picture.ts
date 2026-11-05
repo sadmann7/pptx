@@ -1,8 +1,4 @@
-﻿/**
- * Parses p:pic elements (images, video and audio placeholders) into PictureNodeData.
- */
-
-import { SafeXmlNode } from "../../ooxml/xml";
+﻿import { SafeXmlNode } from "../../ooxml/xml";
 import { BaseNodeData, parseBaseProps } from "./base";
 
 export interface CropRect {
@@ -39,7 +35,6 @@ const CROP_DIVISOR = 100000;
 export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const base = parseBaseProps(picNode);
 
-  // --- Blip fill ---
   const blipFill = picNode.child("blipFill");
   const blip = blipFill.child("blip");
 
@@ -47,7 +42,6 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const blipEmbed = blip.attr("embed") ?? blip.attr("r:embed");
   const blipLink = blip.attr("link") ?? blip.attr("r:link");
 
-  // --- Crop (srcRect) ---
   const srcRect = blipFill.child("srcRect");
   let crop: CropRect | undefined;
   if (srcRect.exists()) {
@@ -65,7 +59,6 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
     }
   }
 
-  // --- Shape properties (fill + line) ---
   const spPr = picNode.child("spPr");
   const solidFill = spPr.child("solidFill");
   const gradFill = spPr.child("gradFill");
@@ -78,7 +71,6 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const custGeom = spPr.child("custGeom");
   const customGeometry = custGeom.exists() ? custGeom : undefined;
 
-  // --- Video / Audio detection ---
   const nvPicPr = picNode.child("nvPicPr");
   const nvPr = nvPicPr.child("nvPr");
 

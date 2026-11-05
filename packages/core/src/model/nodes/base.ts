@@ -1,8 +1,4 @@
-﻿/**
- * Base node types and property parser shared by all slide node kinds.
- */
-
-import { parseOoxmlBool } from "../../ooxml/boolean";
+﻿import { parseOoxmlBool } from "../../ooxml/boolean";
 import { angleToDeg, emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 
@@ -50,10 +46,9 @@ export interface BaseNodeData {
 }
 
 /**
- * Try to find the non-visual properties container in the given node.
- * PPTX uses different wrapper names depending on the shape kind:
- *   p:nvSpPr (shapes/connectors), p:nvPicPr (pictures),
- *   p:nvGrpSpPr (groups), p:nvGraphicFramePr (tables/charts).
+ * The non-visual properties wrapper is named per shape kind: p:nvSpPr (shapes),
+ * p:nvPicPr (pictures), p:nvGrpSpPr (groups), p:nvGraphicFramePr (tables and
+ * charts), p:nvCxnSpPr (connectors).
  */
 function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode } {
   const wrappers = ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"];
@@ -77,21 +72,18 @@ function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode
  * groups use `p:grpSpPr > a:xfrm`, graphic frames use `p:xfrm`.
  */
 function findXfrm(node: SafeXmlNode): SafeXmlNode {
-  // Try spPr first (most shapes)
   const spPr = node.child("spPr");
   if (spPr.exists()) {
     const xfrm = spPr.child("xfrm");
     if (xfrm.exists()) return xfrm;
   }
 
-  // Try grpSpPr (groups)
   const grpSpPr = node.child("grpSpPr");
   if (grpSpPr.exists()) {
     const xfrm = grpSpPr.child("xfrm");
     if (xfrm.exists()) return xfrm;
   }
 
-  // Try direct xfrm (graphic frames)
   const directXfrm = node.child("xfrm");
   if (directXfrm.exists()) return directXfrm;
 
@@ -99,9 +91,6 @@ function findXfrm(node: SafeXmlNode): SafeXmlNode {
   return node.child("__nonexistent__");
 }
 
-/**
- * Parses placeholder info from nvPr > p:ph.
- */
 function parsePlaceholder(nvPr: SafeXmlNode): PlaceholderInfo | undefined {
   const ph = nvPr.child("ph");
   if (!ph.exists()) return undefined;
@@ -122,7 +111,6 @@ export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeTyp
   const id = cNvPr.attr("id") ?? "";
   const name = cNvPr.attr("name") ?? "";
 
-  // --- Transform ---
   const xfrm = findXfrm(spNode);
   const off = xfrm.child("off");
   const ext = xfrm.child("ext");
@@ -141,10 +129,8 @@ export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeTyp
   const flipH = parseOoxmlBool(xfrm.attr("flipH"));
   const flipV = parseOoxmlBool(xfrm.attr("flipV"));
 
-  // --- Placeholder ---
   const placeholder = parsePlaceholder(nvPr);
 
-  // --- Shape-level hyperlink action (cNvPr > a:hlinkClick) ---
   let hlinkClick: HyperlinkAction | undefined;
   const hlinkNode = cNvPr.child("hlinkClick");
   if (hlinkNode.exists()) {

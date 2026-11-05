@@ -1,9 +1,4 @@
-﻿/**
- * Resolves and applies slide, layout, and master background fills,
- * including solid colors, gradients, patterns, and image backgrounds.
- */
-
-import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
+﻿import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
 import { isExternalTargetMode, RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import { hexToRgb } from "../utils/color";
@@ -291,7 +286,6 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
     return;
   }
 
-  // Fallback
   container.style.backgroundColor = "#FFFFFF";
 }
 
@@ -305,7 +299,6 @@ function renderBgPr(
   container: HTMLElement,
   rels?: Map<string, RelEntry>,
 ): void {
-  // solidFill
   const solidFill = bgPr.child("solidFill");
   if (solidFill.exists()) {
     const { color, alpha } = resolveColor(solidFill, ctx);
@@ -319,7 +312,6 @@ function renderBgPr(
     return;
   }
 
-  // gradFill
   const gradFill = bgPr.child("gradFill");
   if (gradFill.exists()) {
     if (tryRenderSvgGradientBackground(bgPr, ctx, container)) {
@@ -332,7 +324,6 @@ function renderBgPr(
     return;
   }
 
-  // pattFill
   const pattFill = bgPr.child("pattFill");
   if (pattFill.exists()) {
     const css = resolveFill(bgPr, ctx);
@@ -342,7 +333,6 @@ function renderBgPr(
     return;
   }
 
-  // blipFill (image background)
   const blipFill = bgPr.child("blipFill");
   if (blipFill.exists()) {
     renderBlipBackground(blipFill, ctx, container, rels);
@@ -392,9 +382,6 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
   }
 }
 
-/**
- * Renders a blip (image) fill as a CSS background.
- */
 function renderBlipBackground(
   blipFill: SafeXmlNode,
   ctx: RenderContext,

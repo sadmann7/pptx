@@ -1,9 +1,4 @@
-﻿/**
- * Extracts color map override, background,
- * and placeholder shapes from a p:sldLayout XML.
- */
-
-import { parseOoxmlBool } from "../ooxml/boolean";
+﻿import { parseOoxmlBool } from "../ooxml/boolean";
 import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 
@@ -34,9 +29,6 @@ function parseDefaultTrueBoolAttr(value: string | undefined): boolean {
   return parseOoxmlBool(value, true);
 }
 
-/**
- * Checks whether a shape node contains a placeholder definition.
- */
 function isPlaceholder(node: SafeXmlNode): boolean {
   for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
     const nvWrapper = node.child(wrapper);
@@ -165,9 +157,6 @@ function extractPlaceholdersRecursive(
   return out;
 }
 
-/**
- * Parses all attributes of a node into a Map<string, string>.
- */
 function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   const result = new Map<string, string>();
   const el = node.element;
@@ -186,14 +175,11 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
 export function parseLayout(root: SafeXmlNode): LayoutData {
   const cSld = root.child("cSld");
 
-  // --- Background ---
   const bg = cSld.child("bg");
   const background = bg.exists() ? bg : undefined;
 
-  // --- Shape tree ---
   const spTree = cSld.child("spTree");
 
-  // --- Color map override ---
   let colorMapOverride: Map<string, string> | undefined;
   const clrMapOvr = root.child("clrMapOvr");
   if (clrMapOvr.exists()) {
@@ -203,10 +189,8 @@ export function parseLayout(root: SafeXmlNode): LayoutData {
     }
   }
 
-  // --- Placeholders (recursive so we find title/body inside grpSp; resolve position in slide space) ---
   const placeholders = extractPlaceholdersRecursive(spTree, null);
 
-  // --- showMasterSp: if false, master shapes should not be rendered for this layout ---
   const showMasterSp = parseDefaultTrueBoolAttr(root.attr("showMasterSp"));
 
   return {

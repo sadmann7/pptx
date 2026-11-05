@@ -1,13 +1,10 @@
 import { decodeEmbeddedFont } from "@diceui/pptx-core/fonts";
 import JSZip from "jszip";
 /**
- * Classifies the embedded font parts of every deck in fixtures/ and decks/, or
- * in directories given as arguments.
+ * Reports whether each deck's embedded fonts are MTX-compressed (the only
+ * expensive decode) and which producer wrote the deck:
  *
- * What matters for the decode cost is whether a part is MTX-compressed: an
- * uncompressed EOT payload is passed through, so it costs nothing, while MTX
- * means LZCOMP over three streams, which is the only expensive case. Which one a
- * deck carries follows from what wrote it, so the producer is reported too.
+ *   pnpm exec tsx scripts/scan-fonts.mts [dir ...]   (default fixtures/ and decks/)
  */
 import fs from "node:fs";
 import path from "node:path";

@@ -1,15 +1,4 @@
-// ============================================================================
-// OOXML Color Utilities
-// Full color manipulation for PowerPoint XML color processing
-// ============================================================================
-
-// ---------------------------------------------------------------------------
-// Basic Color Conversions
-// ---------------------------------------------------------------------------
-
-/**
- * Parses a hex color string (with or without '#') into RGB components.
- */
+/** Parses a hex color string (with or without '#') into RGB components. */
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const cleaned = hex.replace(/^#/, "");
   if (cleaned.length !== 6 && cleaned.length !== 3) {
@@ -27,17 +16,13 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   };
 }
 
-/**
- * Converts RGB components (0-255 each) to a 6-digit hex string with '#' prefix.
- */
+/** Converts RGB (0-255) to a `#rrggbb` string. */
 export function rgbToHex(r: number, g: number, b: number): string {
   const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
   return "#" + [clamp(r), clamp(g), clamp(b)].map((c) => c.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * Converts RGB (0-255) to HSL (h: 0-360, s: 0-1, l: 0-1).
- */
+/** Converts RGB (0-255) to HSL (h: 0-360, s: 0-1, l: 0-1). */
 export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
@@ -67,9 +52,7 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
   return { h, s, l };
 }
 
-/**
- * Converts HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255).
- */
+/** Converts HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255). */
 export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
   h = ((h % 360) + 360) % 360; // normalize hue
   s = Math.max(0, Math.min(1, s));
@@ -100,10 +83,8 @@ export function hslToRgb(h: number, s: number, l: number): { r: number; g: numbe
   };
 }
 
-// ---------------------------------------------------------------------------
-// sRGB ↔ Linear RGB conversion (IEC 61966-2-1)
-// PowerPoint applies tint/shade in linear (scene-referred) space.
-// ---------------------------------------------------------------------------
+// sRGB transfer functions (IEC 61966-2-1); PowerPoint applies tint and shade
+// in linear space.
 
 function srgbToLinear(c: number): number {
   const s = c / 255;
@@ -115,15 +96,7 @@ function linearToSrgb(c: number): number {
   return Math.max(0, Math.min(255, Math.round(s * 255)));
 }
 
-// ---------------------------------------------------------------------------
-// OOXML Color Modifiers
-// ---------------------------------------------------------------------------
-
-/**
- * Applies tint modifier (mix toward white in linear RGB space).
- * OOXML spec: tint val is 0-100000 where 100000 = original color, 0 = fully white.
- * PowerPoint performs the blend in linear RGB space for perceptual correctness.
- */
+/** Mixes toward white in linear RGB. `tint` is 0-100000; 100000 keeps the color. */
 export function applyTint(hex: string, tint: number): string {
   const { r, g, b } = hexToRgb(hex);
   const t = tint / 100000;
@@ -137,10 +110,7 @@ export function applyTint(hex: string, tint: number): string {
   );
 }
 
-/**
- * Applies shade modifier (mix toward black in linear RGB space).
- * shade: 0-100000 where 100000 = original color, 0 = fully black.
- */
+/** Mixes toward black in linear RGB. `shade` is 0-100000; 100000 keeps the color. */
 export function applyShade(hex: string, shade: number): string {
   const { r, g, b } = hexToRgb(hex);
   const s = shade / 100000;
@@ -151,11 +121,7 @@ export function applyShade(hex: string, shade: number): string {
   );
 }
 
-/**
- * Applies luminance modulation.
- * lumMod: percentage in OOXML units (e.g., 75000 = 75%).
- * Multiplies the L channel of HSL.
- */
+/** Multiplies HSL lightness; `lumMod` 75000 = 75%. */
 export function applyLumMod(hex: string, lumMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -164,11 +130,7 @@ export function applyLumMod(hex: string, lumMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/**
- * Applies luminance offset.
- * lumOff: percentage offset in OOXML units (e.g., 25000 = +25%).
- * Adds to the L channel of HSL.
- */
+/** Adds to HSL lightness; `lumOff` 25000 = +25%. */
 export function applyLumOff(hex: string, lumOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -177,11 +139,7 @@ export function applyLumOff(hex: string, lumOff: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/**
- * Applies saturation modulation.
- * satMod: percentage in OOXML units (e.g., 120000 = 120%).
- * Multiplies the S channel of HSL.
- */
+/** Multiplies HSL saturation; `satMod` 120000 = 120%. */
 export function applySatMod(hex: string, satMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -190,11 +148,7 @@ export function applySatMod(hex: string, satMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/**
- * Applies hue modulation.
- * hueMod: percentage in OOXML units (e.g., 60000 = shift hue by ratio).
- * In OOXML, hueMod multiplies the hue value. Hue wraps around at 360.
- */
+/** Multiplies the hue (`hueMod` 100000 = 100%), wrapping at 360. */
 export function applyHueMod(hex: string, hueMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -203,11 +157,7 @@ export function applyHueMod(hex: string, hueMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/**
- * Applies hue offset (additive).
- * hueOff: in 60000ths of a degree (OOXML ST_FixedAngle).
- * Adds to the hue channel of HSL, wrapping at 360.
- */
+/** Adds to the hue, wrapping at 360; `hueOff` is in 60000ths of a degree. */
 export function applyHueOff(hex: string, hueOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -217,11 +167,7 @@ export function applyHueOff(hex: string, hueOff: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/**
- * Applies saturation offset (additive).
- * satOff: in OOXML percentage units (100000 = 100%).
- * Adds to the S channel of HSL.
- */
+/** Adds to HSL saturation; `satOff` 100000 = +100%. */
 export function applySatOff(hex: string, satOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -305,28 +251,17 @@ function applyInvGamma(hex: string): string {
   return rgbToHex(linearToSrgb(r / 255), linearToSrgb(g / 255), linearToSrgb(b / 255));
 }
 
-/**
- * Converts OOXML alpha value (0-100000) to CSS opacity (0-1).
- * 100000 = fully opaque, 0 = fully transparent.
- */
+/** Converts OOXML alpha (0-100000) to CSS opacity (0-1). */
 export function applyAlpha(alpha: number): number {
   return Math.max(0, Math.min(1, alpha / 100000));
 }
-
-// ---------------------------------------------------------------------------
-// Composite Modifier Application
-// ---------------------------------------------------------------------------
 
 export interface ColorModifier {
   name: string;
   val: number;
 }
 
-/**
- * Applies all OOXML color modifiers from an array of {name, val} objects.
- * Modifiers are applied in the order they appear (matching XML document order).
- * Returns the final hex color and alpha value.
- */
+/** Applies color modifiers in XML document order and returns the color and alpha. */
 export function applyColorModifiers(
   hex: string,
   modifiers: ColorModifier[],
@@ -423,17 +358,12 @@ export function applyColorModifiers(
         alpha = Math.max(0, Math.min(1, alpha + mod.val / 100000));
         break;
       default:
-        // Unknown modifier - skip silently
         break;
     }
   }
 
   return { color, alpha };
 }
-
-// ---------------------------------------------------------------------------
-// OOXML Preset Color Table
-// ---------------------------------------------------------------------------
 
 const PRESET_COLORS: Record<string, string> = {
   // Basic colors
@@ -590,12 +520,8 @@ const PRESET_COLORS: Record<string, string> = {
   yellowGreen: "#9ACD32",
 };
 
-/**
- * Look up a preset OOXML color name and return its hex value.
- * Returns undefined if the name is not recognized.
- */
+/** Looks up an OOXML preset color name, case-insensitively. */
 export function presetColorToHex(name: string): string | undefined {
-  // Try exact match first, then case-insensitive
   if (PRESET_COLORS[name] !== undefined) {
     return PRESET_COLORS[name];
   }

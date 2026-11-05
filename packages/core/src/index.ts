@@ -67,7 +67,6 @@ export type { PresentationFonts } from "./model/presentation-fonts";
 export { serializePresentation } from "./model/serialize";
 export type { SerializedNode, SerializedPresentation, SerializedSlide } from "./model/serialize";
 
-// Model-level text search
 export { buildTextIndex, searchPresentation, searchText } from "./model/text-search";
 export type {
   SearchTextKind,
@@ -78,13 +77,11 @@ export type {
   TextSearchResult,
 } from "./model/text-search";
 
-// Headless single-slide rendering
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf";
 export { PPTX_ATTRS, PPTX_DATASET } from "./renderer/dom-attributes";
 export { renderSlide, renderThumbnail } from "./renderer/slide";
 export type { SlideHandle, SlideRendererOptions, ThumbnailRendererOptions } from "./renderer/slide";
 
-// Model types
 export type {
   BaseNodeData,
   HyperlinkAction,

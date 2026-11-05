@@ -1,8 +1,4 @@
-﻿/**
- * Font resolution helpers shared by text-like renderers.
- */
-
-import type { RenderContext } from "./context";
+﻿import type { RenderContext } from "./context";
 
 type ThemeFontSlot = "lt" | "ea" | "cs";
 type ThemeFontKey = "latin" | "ea" | "cs";

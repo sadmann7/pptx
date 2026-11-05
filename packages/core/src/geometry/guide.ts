@@ -1,14 +1,3 @@
-/**
- * Evaluator for DrawingML geometry guide formulas (ECMA-376 §20.1.9.11).
- *
- * Guides appear in `a:avLst` and `a:gdLst` of both preset and custom
- * geometries. Each guide is `<a:gd name="..." fmla="op arg1 arg2 arg3"/>`
- * where arguments are numbers or references to previously defined guides
- * (including the built-in variables like `w`, `h`, `ss`, `hc`).
- *
- * Angles are expressed in 60000ths of a degree throughout.
- */
-
 export interface GuideDefinition {
   name: string;
   fmla: string;
@@ -86,8 +75,8 @@ export function resolveGuideOperand(
 }
 
 /**
- * Evaluate a single guide formula string against already-known guides.
- * Unknown operators evaluate to 0.
+ * Evaluates one `fmla="op arg1 arg2 arg3"` guide (ECMA-376 §20.1.9.11) against
+ * already-known guides. Unknown operators evaluate to 0.
  */
 export function evaluateGuideFormula(fmla: string, guides: Map<string, number>): number {
   const parts = fmla.trim().split(/\s+/);

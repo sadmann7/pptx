@@ -1,32 +1,18 @@
 /**
- * Null-safe XML wrapper over browser DOMParser.
- *
- * Missing elements return an empty sentinel node rather than throwing,
- * so call-site code stays exception-free even on malformed OOXML.
- */
-
-/**
- * Lazily built per-element index of children by localName.
- *
- * Parsed OOXML documents are never mutated after parsing, so the index cannot
- * go stale. Renderers query the same elements repeatedly (e.g. a shape's
- * `spPr` is probed for a dozen different child names), which made repeated
+ * Lazily built per-element index of children by localName. Renderers probe the
+ * same elements repeatedly (a shape's `spPr` for a dozen child names), which made
  * linear scans a measurable share of parse/render profiles.
  *
- * Two-phase to avoid taxing the initial single-pass model build (where most
- * elements are queried exactly once): the first lookup on an element is a
- * plain scan; the index is built only when the same element is queried again.
+ * Two-phase so the single-pass model build, which queries most elements once,
+ * isn't taxed: the first lookup scans, and the index is built on the second.
+ * Edits that change children must call {@link invalidateChildIndex}.
  */
 const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
 const queriedOnce = new WeakSet<Element>();
 
 /**
  * Drops the cached child index for an element whose children were mutated.
- *
- * Edit operations that insert or remove child elements MUST call this on the
- * parent, otherwise later `child()`/`children()` lookups return stale results.
- * Attribute and text mutations don't affect the index and need no
- * invalidation.
+ * Attribute and text mutations don't affect the index.
  */
 export function invalidateChildIndex(el: Element): void {
   childIndexCache.delete(el);
@@ -190,10 +176,7 @@ export class SafeXmlNode {
 // parses hundreds of parts).
 let sharedParser: DOMParser | undefined;
 
-/**
- * Parses an XML string into a SafeXmlNode wrapping the document element.
- * Uses the browser's built-in DOMParser.
- */
+/** Parses an XML string into a SafeXmlNode wrapping the document element. */
 export function parseXml(xmlString: string): SafeXmlNode {
   sharedParser ??= new DOMParser();
   // Some generators (e.g. Open XML SDK) write a UTF-8 BOM into XML parts.

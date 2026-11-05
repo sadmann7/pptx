@@ -1,22 +1,6 @@
 /**
- * ODTTF / Embedded OpenType font deobfuscation.
- *
- * ECMA-376 Part 4 §17.8.1: embedded fonts are obfuscated by XOR-ing
- * the first 32 bytes with a key derived from a GUID stored in the
- * `fontKey` attribute. The algorithm:
- *
- * 1. Strip braces/hyphens from the GUID to get 32 hex chars (16 bytes).
- * 2. Reverse the byte order (big-endian).
- * 3. XOR bytes 0–15 of the font with the 16-byte key.
- * 4. XOR bytes 16–31 of the font with the same 16-byte key.
- *
- * The rest of the file is unmodified.
- */
-
-/**
- * Deobfuscate an ODTTF/fntdata font using the GUID-based XOR algorithm.
- * Returns a new Uint8Array with the first 32 bytes restored; the input
- * is not mutated.
+ * Undoes ECMA-376 Part 4 §17.8.1 obfuscation: the first 32 bytes are XORed with
+ * the `fontKey` GUID's 16 bytes in reverse order. Returns a copy.
  */
 export function deobfuscateFont(data: Uint8Array, fontKey: string): Uint8Array {
   const hex = fontKey.replace(/[{}\-\s]/g, "");

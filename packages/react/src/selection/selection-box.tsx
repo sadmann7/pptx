@@ -40,10 +40,6 @@ const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Overlay parts
-// ---------------------------------------------------------------------------
-
 /** The current state of one selection outline. */
 export interface SelectionBoxState {
   /** The selected shape the outline belongs to. */

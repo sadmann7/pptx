@@ -1,7 +1,3 @@
-/**
- * Extracts color scheme and font definitions from a:theme XML.
- */
-
 import { SafeXmlNode } from "../ooxml/xml";
 
 export interface ThemeFontInfo {
@@ -54,10 +50,8 @@ function extractColor(node: SafeXmlNode): string | undefined {
 }
 
 /**
- * Parses font info from a majorFont or minorFont node.
- * Extracts typeface attributes from latin, ea, and cs child elements.
  * Office themes often leave <ea> empty and provide script-specific
- * <font script="Hans" .../> entries instead; preserve those for font resolution.
+ * <font script="Hans" .../> entries instead, so those are kept too.
  */
 function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
   const scripts: Record<string, string> = {};
@@ -87,7 +81,6 @@ export function parseTheme(root: SafeXmlNode): ThemeData {
   const themeElements = root.child("themeElements");
   const themeScope = themeElements.exists() ? themeElements : root;
 
-  // --- Color scheme ---
   const clrScheme = themeScope.child("clrScheme");
   const colorScheme = new Map<string, string>();
 
@@ -101,12 +94,10 @@ export function parseTheme(root: SafeXmlNode): ThemeData {
     }
   }
 
-  // --- Font scheme ---
   const fontScheme = themeScope.child("fontScheme");
   const majorFont = parseFontInfo(fontScheme.child("majorFont"));
   const minorFont = parseFontInfo(fontScheme.child("minorFont"));
 
-  // --- Format scheme ---
   const fmtScheme = themeScope.child("fmtScheme");
   const fillStyleLst = fmtScheme.child("fillStyleLst");
   const fillStyles: SafeXmlNode[] = fillStyleLst.allChildren();

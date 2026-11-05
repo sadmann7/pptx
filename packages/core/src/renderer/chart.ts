@@ -1,9 +1,4 @@
-﻿/**
- * Converts OOXML chart XML into ECharts option objects and mounts live
- * ECharts instances into the DOM.
- */
-
-import type * as echarts from "echarts";
+﻿import type * as echarts from "echarts";
 import {
   BarChart,
   CandlestickChart,
@@ -113,10 +108,6 @@ import { RenderContext } from "./context";
 
 export type { ChartFrameStyle } from "./chart/type";
 
-// ---------------------------------------------------------------------------
-// Local type helpers
-// ---------------------------------------------------------------------------
-
 /** Subset of ECharts label formatter callback params used in this renderer. */
 interface LabelFormatterParams {
   value: number | number[] | unknown;
@@ -155,16 +146,7 @@ interface GridOptionExtended extends echarts.GridComponentOption {
   borderWidth?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Chart Title
-// ---------------------------------------------------------------------------
-
-/**
- * Extracts chart title from chartSpace > chart > title.
- * Returns undefined when autoTitleDeleted is true (title was intentionally removed).
- */
 function extractChartTitle(chartNode: SafeXmlNode, seriesArr?: SeriesData[]): string | undefined {
-  // Respect autoTitleDeleted: if set, the title should not be shown
   const autoTitleDeleted = chartNode.child("autoTitleDeleted");
   if (parseOoxmlBoolElement(autoTitleDeleted)) {
     return undefined;
@@ -216,9 +198,6 @@ function buildChartTitleOption(
   };
 }
 
-/**
- * Extracts chart title manual layout (title > layout > manualLayout) to ECharts title position.
- */
 function extractTitleManualLayout(chartNode: SafeXmlNode): Partial<Record<"left" | "top", string>> {
   const manual = chartNode.child("title").child("layout").child("manualLayout");
   if (!manual.exists()) return {};
@@ -369,13 +348,6 @@ function hasManualGrid(
   );
 }
 
-// ---------------------------------------------------------------------------
-// ECharts Option Builders
-// ---------------------------------------------------------------------------
-
-/**
- * Converts OOXML data label position to ECharts bar label position.
- */
 function mapBarLabelPosition(pos: string | undefined, isStacked: boolean): string {
   switch (pos) {
     case "outEnd":
@@ -710,7 +682,6 @@ function buildBarChartOption(
   const grouping = chartGrouping(chartTypeNode);
   const isHorizontal = barDir === "bar";
 
-  // Layout parameters
   const gapWidth = chartTypeNode.child("gapWidth").numAttr("val") ?? 150;
   const overlap = chartTypeNode.child("overlap").numAttr("val");
 
@@ -753,7 +724,6 @@ function buildBarChartOption(
     .map((x) => x.ser);
 
   const series: echarts.BarSeriesOption[] = seriesArr.map((s, idx) => {
-    // Capture formatCode for use in label formatter closure
     const fc = s.formatCode;
     const perSeriesLabels =
       parseDataLabels(serNodesByOrder[idx] ?? chartTypeNode, ctx) ?? sharedLabels;
@@ -1403,7 +1373,6 @@ function buildRadarChartOption(
         ...(valueAxis.labelFontSize !== undefined ? { fontSize: valueAxis.labelFontSize } : {}),
       }
     : undefined;
-  // Read radar style to determine default marker/grid behavior
   const filledRadarLayering =
     radarStyle === "filled" ? { radarZ: 4, seriesZ: 2 } : { radarZ: undefined, seriesZ: undefined };
   const valueAxisId = chartTypeNode.children("axId")[1]?.attr("val");
@@ -1662,10 +1631,6 @@ function buildScatterChartOption(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Bubble Chart
-// ---------------------------------------------------------------------------
-
 function applyBubbleAxisHeadroom(
   axisDef: Record<string, unknown>,
   values: number[],
@@ -1814,10 +1779,6 @@ function buildBubbleChartOption(
     series,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Stock Chart (Candlestick)
-// ---------------------------------------------------------------------------
 
 function looksLikeDateCategory(label: string): boolean {
   return /^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(label.trim());
@@ -2056,13 +2017,6 @@ function buildStockChartOption(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Main Chart XML Parser
-// ---------------------------------------------------------------------------
-
-/**
- * Parses plotArea/layout/manualLayout to ECharts grid override.
- */
 interface ManualLayoutBox {
   x?: number;
   y?: number;
@@ -2396,7 +2350,6 @@ export function parseChartXml(
 ): ParseChartResult {
   const chartCtx = createChartRenderContext(chartXml, ctx);
   const chartPalette = buildChartPalette(chartXml, chartCtx, chartPath);
-  // Navigate: chartSpace > chart > plotArea
   const chart = chartXml.child("chart");
   const plotArea = chart.child("plotArea");
 
@@ -2407,7 +2360,6 @@ export function parseChartXml(
     };
   }
 
-  // Extract background colors
   const { chartBg, plotAreaBg } = extractBackgroundColors(chartXml, chart, chartCtx);
   const chartFrameStyle = extractChartFrameStyle(chartXml, chartCtx);
 
@@ -2479,7 +2431,6 @@ export function parseChartXml(
     // for, and it makes any captured frame a moving target.
     option.animation = false;
 
-    // Apply background colors
     if (chartBg) {
       option.backgroundColor = chartBg;
     }
@@ -2518,7 +2469,6 @@ export function parseChartXml(
             .sort((a, b) => a.order - b.order)
         : entry.seriesArr;
 
-    // Build data table info when c:dTable exists
     const dTableMeta = parseDataTable(plotArea);
     const dataTable: DataTableInfo | undefined = dTableMeta
       ? {
@@ -2538,13 +2488,6 @@ export function parseChartXml(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Public Render Function
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a chart node into an HTML element with an ECharts instance.
- */
 export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.dataset.pptxChart = "";
@@ -2593,7 +2536,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
-  // Parse chart data and create ECharts option
   const chartTheme = ctx.presentation.chartThemes?.get(node.chartPath);
   const chartCtx = chartTheme ? { ...ctx, theme: chartTheme, colorCache: new Map() } : ctx;
   const { option, dataTable, chartFrameStyle } = parseChartXml(
@@ -2628,8 +2570,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
 
   const chartSet = ctx.chartInstances;
 
-  // Initialize ECharts after the element is attached to the DOM.
-  // Use requestAnimationFrame to ensure the container has dimensions.
   const chartReady = new Promise<void>((resolve) => {
     const finishInit = (): void => {
       initChart(chartDiv, option, chartSet, ctx.cleanups);
@@ -2670,7 +2610,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-/** Actually create ECharts instance, set option, and wire up resize. */
 function initChart(
   container: HTMLElement,
   option: echarts.EChartsOption,

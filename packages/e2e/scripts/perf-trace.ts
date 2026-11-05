@@ -1,12 +1,10 @@
 /**
- * Summarizes a trace written by `pnpm profile:editor`: where the main thread's
- * time went (scripting, style, layout, paint), the longest tasks, and the
- * functions with the most self time.
+ * Summarizes a `pnpm profile:editor` trace:
  *
  *   pnpm perf:trace recordings/perf/<label>/<scenario>.json
  *
- * Function names resolve through source maps when the docs build kept them
- * (`PROFILE=1 pnpm -F docs build`); otherwise they read as minified names.
+ * Function names resolve only if the docs build kept source maps
+ * (`PROFILE=1 pnpm -F docs build`).
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";

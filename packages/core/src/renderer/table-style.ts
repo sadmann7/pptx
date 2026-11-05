@@ -4,22 +4,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
- * Predefined (built-in) Office table styles.
- *
- * PowerPoint has 74 predefined table styles that exist natively but are NOT
- * embedded in the PPTX's ppt/tableStyles.xml. Any PPTX can reference them by
- * UUID. This module generates synthetic XML matching the <a:tblStyle> schema
- * so they flow through the existing rendering pipeline unchanged.
+ * PowerPoint's 74 built-in table styles, which decks reference by UUID without
+ * embedding them in ppt/tableStyles.xml, generated as synthetic <a:tblStyle> XML.
  *
  * Derived from LibreOffice's predefined-table-styles.cxx (MPL-2.0) and
  * cross-verified against the Microsoft OOXML predefined style map.
  */
 
 import { parseXml, SafeXmlNode } from "../ooxml/xml";
-
-// ---------------------------------------------------------------------------
-// UUID → (styleName, accent) map: 74 entries across 13 style groups
-// ---------------------------------------------------------------------------
 
 /** "No Style, No Grid": text styling only, no fills and no borders. */
 export const NO_STYLE_NO_GRID = "{2D5ABB26-0587-4C30-8999-92F81FD0307C}";
@@ -133,10 +125,6 @@ const styleIdMap = new Map<string, [string, string]>([
   ["{46F890A9-2807-4EBB-B81D-B2AA78EC7F39}", ["Dark-Style-2", "accent5"]],
 ]);
 
-// ---------------------------------------------------------------------------
-// XML helpers: reduce boilerplate in style generators
-// ---------------------------------------------------------------------------
-
 const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
 
 /** Solid fill with a scheme color and optional transform */
@@ -184,10 +172,6 @@ function stylePart(
   parts.push(`</a:${tag}>`);
   return parts.join("");
 }
-
-// ---------------------------------------------------------------------------
-// Style group XML generators
-// ---------------------------------------------------------------------------
 
 /** "No Style, No Grid": tcTxStyle only, nothing is painted. */
 function noStyleNoGrid(_accent: string, styleId: string): string {
@@ -300,11 +284,8 @@ function themedStyle2(accent: string, styleId: string): string {
   parts.push(
     stylePart("firstRow", { textColor: "lt1", bold: true, borders: { bottom: borderLn("lt1") } }),
   );
-  // lastRow: bold, top border=lt1
   parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn("lt1") } }));
-  // firstCol: bold, right border=lt1
   parts.push(stylePart("firstCol", { bold: true, borders: { right: borderLn("lt1") } }));
-  // lastCol: bold, left border=lt1
   parts.push(stylePart("lastCol", { bold: true, borders: { left: borderLn("lt1") } }));
 
   return wrapTblStyle(styleId, "Themed-Style-2", tblBg + parts.join(""));
@@ -339,12 +320,9 @@ function lightStyle1(accent: string, styleId: string): string {
     }),
   );
 
-  // lastRow: bold, top border
   parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
 
-  // firstCol: bold text
   parts.push(stylePart("firstCol", { textColor: "tx1", bold: true }));
-  // lastCol: bold text
   parts.push(stylePart("lastCol", { textColor: "tx1", bold: true }));
 
   return wrapTblStyle(styleId, "Light-Style-1", parts.join(""));
@@ -389,15 +367,11 @@ function lightStyle2(accent: string, styleId: string): string {
     }),
   );
 
-  // firstRow: text=bg1, bold, fill=accent
   parts.push(stylePart("firstRow", { textColor: "bg1", bold: true, fill: fillSolid(accentVal) }));
 
-  // lastRow: bold, top border
   parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
 
-  // firstCol: bold
   parts.push(stylePart("firstCol", { bold: true }));
-  // lastCol: bold
   parts.push(stylePart("lastCol", { bold: true }));
 
   return wrapTblStyle(styleId, "Light-Style-2", parts.join(""));
@@ -436,12 +410,9 @@ function lightStyle3(accent: string, styleId: string): string {
     }),
   );
 
-  // lastRow: bold, top border
   parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
 
-  // firstCol: bold
   parts.push(stylePart("firstCol", { bold: true }));
-  // lastCol: bold
   parts.push(stylePart("lastCol", { bold: true }));
 
   return wrapTblStyle(styleId, "Light-Style-3", parts.join(""));
@@ -471,7 +442,6 @@ function mediumStyle1(accent: string, styleId: string): string {
   parts.push(stylePart("band1H", { fill: bandFill }));
   parts.push(stylePart("band1V", { fill: bandFill }));
 
-  // firstRow: text=lt1, bold, fill=accent
   parts.push(stylePart("firstRow", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
 
   // lastRow: bold, fill=lt1, top border
@@ -483,9 +453,7 @@ function mediumStyle1(accent: string, styleId: string): string {
     }),
   );
 
-  // firstCol: bold
   parts.push(stylePart("firstCol", { bold: true }));
-  // lastCol: bold
   parts.push(stylePart("lastCol", { bold: true }));
 
   return wrapTblStyle(styleId, "Medium-Style-1", parts.join(""));
@@ -536,10 +504,8 @@ function mediumStyle2(accent: string, styleId: string): string {
     }),
   );
 
-  // firstCol: text=lt1, bold, fill=accent
   parts.push(stylePart("firstCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
 
-  // lastCol: text=lt1, bold, fill=accent
   parts.push(stylePart("lastCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
 
   return wrapTblStyle(styleId, "Medium-Style-2", parts.join(""));
@@ -585,10 +551,8 @@ function mediumStyle3(accent: string, styleId: string): string {
     }),
   );
 
-  // firstCol: text=lt1, bold, fill=accent
   parts.push(stylePart("firstCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
 
-  // lastCol: text=lt1, bold, fill=accent
   parts.push(stylePart("lastCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
 
   return wrapTblStyle(styleId, "Medium-Style-3", parts.join(""));
@@ -637,9 +601,7 @@ function mediumStyle4(accent: string, styleId: string): string {
     }),
   );
 
-  // firstCol: bold
   parts.push(stylePart("firstCol", { bold: true }));
-  // lastCol: bold
   parts.push(stylePart("lastCol", { bold: true }));
 
   return wrapTblStyle(styleId, "Medium-Style-4", parts.join(""));
@@ -747,25 +709,15 @@ function darkStyle2(accent: string, styleId: string): string {
     }),
   );
 
-  // firstCol: bold
   parts.push(stylePart("firstCol", { bold: true }));
-  // lastCol: bold
   parts.push(stylePart("lastCol", { bold: true }));
 
   return wrapTblStyle(styleId, "Dark-Style-2", parts.join(""));
 }
 
-// ---------------------------------------------------------------------------
-// XML wrapper
-// ---------------------------------------------------------------------------
-
 function wrapTblStyle(styleId: string, styleName: string, innerXml: string): string {
   return `<a:tblStyle ${NS} styleId="${styleId}" styleName="${styleName}">${innerXml}</a:tblStyle>`;
 }
-
-// ---------------------------------------------------------------------------
-// Style generator dispatch
-// ---------------------------------------------------------------------------
 
 const styleGenerators: Record<string, (accent: string, styleId: string) => string> = {
   "No-Style-No-Grid": noStyleNoGrid,
@@ -783,16 +735,11 @@ const styleGenerators: Record<string, (accent: string, styleId: string) => strin
   "Dark-Style-2": darkStyle2,
 };
 
-// ---------------------------------------------------------------------------
-// Module-level cache & public API
-// ---------------------------------------------------------------------------
-
 const cache = new Map<string, SafeXmlNode>();
 
 /**
- * Gets a predefined table style by its UUID.
- * Returns the parsed SafeXmlNode (a:tblStyle element) or undefined if not a known predefined style.
- * Results are cached: same UUID always returns the same instance.
+ * Returns the predefined `a:tblStyle` for a UUID, or undefined if it isn't one.
+ * Cached: the same UUID always returns the same instance.
  */
 export function getPredefinedTableStyle(styleId: string): SafeXmlNode | undefined {
   const cached = cache.get(styleId);

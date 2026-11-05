@@ -1,20 +1,16 @@
 /**
- * Records editor performance on the docs playground (/pg) against a running
- * server, the way tablecn's profile:scroll does for its data grid.
+ * Records editor performance on the docs playground (/pg). Run against a
+ * production build on a real display (headed):
  *
- * Run against a production build on a real display (headed, not headless):
  *   pnpm -F docs build && pnpm -F docs start -p 3003
  *   pnpm bench-deck            # once: recordings/perf/decks/bench-300.pptx
  *   pnpm profile:editor <label> [scenario]
  *
- * Writes a Chrome trace per scenario to recordings/perf/<label>/ (open in the
- * DevTools Performance panel) and prints frame stats. Use a different label per
- * change to compare before and after, and only compare runs made back to back.
+ * Writes a Chrome trace per scenario to recordings/perf/<label>/ and prints
+ * frame stats. Compare only runs made back to back.
  *
- * BASE_URL picks the server (default http://localhost:3003), DECK the deck.
- * Set EXTRA_CSS to inject a stylesheet, or STRIP_CSS to a regex to delete the
- * style rules whose selector matches it, to A/B CSS without a rebuild. Set
- * CPU_THROTTLE (for example 4) to emulate a slower CPU.
+ * Env: BASE_URL (default http://localhost:3003), DECK, EXTRA_CSS (stylesheet to
+ * inject), STRIP_CSS (regex of selectors to delete), CPU_THROTTLE (e.g. 4).
  */
 import { type CDPSession, chromium, type Page } from "@playwright/test";
 import { existsSync } from "node:fs";

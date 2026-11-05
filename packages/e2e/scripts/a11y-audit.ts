@@ -1,12 +1,7 @@
 /**
- * Accessibility audit of the docs editor, run against a docs dev server:
+ * Runs axe (WCAG 2.1 AA) over the docs editor's states in light and dark:
  *
  *   pnpm a11y [origin]   (default http://localhost:3000)
- *
- * Walks the playground and the editing page through their states (loaded,
- * shape selected, text editing, menus open) in light and dark themes, runs
- * axe at each against WCAG 2.1 AA, and prints the violations, deduplicated.
- * Only the editor and its popups are audited, not the docs site around it.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Page } from "@playwright/test";

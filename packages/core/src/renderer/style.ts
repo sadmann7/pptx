@@ -1,11 +1,4 @@
-﻿/**
- * Resolves OOXML color, fill, and effect nodes to CSS values.
- *
- * Covers theme color lookups, luminance/tint/shade modifiers, solid fills,
- * gradient fills, and transparency.
- */
-
-import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/unit";
+﻿import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import {
   applyColorModifiers,
@@ -16,10 +9,6 @@ import {
 } from "../utils/color";
 import type { ColorModifier } from "../utils/color";
 import { RenderContext } from "./context";
-
-// ---------------------------------------------------------------------------
-// Color Resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Builds a cache key for a color node based on its tag, value, and modifiers.
@@ -83,7 +72,6 @@ function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
     if (mapped) mappedName = mapped;
   }
 
-  // Look up in theme color scheme
   const hex = ctx.theme.colorScheme.get(mappedName);
   if (hex) return hex;
 
@@ -100,7 +88,6 @@ export function resolveColor(
   colorNode: SafeXmlNode,
   ctx: RenderContext,
 ): { color: string; alpha: number } {
-  // Check cache
   const cacheKey = buildColorCacheKey(colorNode);
   const cached = ctx.colorCache.get(cacheKey);
   if (cached) return cached;
@@ -218,18 +205,11 @@ function resolveColorUncached(
   return { color: "#000000", alpha: 1 };
 }
 
-/**
- * Resolves a color node and returns a CSS color string.
- * Convenience wrapper combining resolveColor + colorToCss.
- */
 export function resolveColorToCss(node: SafeXmlNode, ctx: RenderContext): string {
   const { color, alpha } = resolveColor(node, ctx);
   return colorToCss(color, alpha);
 }
 
-/**
- * Converts a resolved color + alpha into a CSS rgba() string.
- */
 function colorToCss(color: string, alpha: number): string {
   const hex = color.startsWith("#") ? color : `#${color}`;
   const { r, g, b } = hexToRgb(hex);
@@ -248,33 +228,27 @@ function resolveColorWithPlaceholder(
   return resolveColorUncached(colorNode, ctx, placeholderColorNode);
 }
 
-// ---------------------------------------------------------------------------
-// Fill Resolution
-// ---------------------------------------------------------------------------
-
 /**
  * Resolves a fill from shape properties (spPr) into a CSS background value.
  *
  * Returns:
  *   - CSS color/gradient string for solidFill/gradFill
  *   - 'transparent' for noFill
- *   - '' for blipFill (handled by ImageRenderer) or no fill found (inherit)
+ *   - '' for blipFill (painted by the image renderer) or no fill found (inherit)
  */
 export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
-  // solidFill
   const solidFill = spPr.child("solidFill");
   if (solidFill.exists()) {
     const { color, alpha } = resolveColor(solidFill, ctx);
     return colorToCss(color, alpha);
   }
 
-  // gradFill
   const gradFill = spPr.child("gradFill");
   if (gradFill.exists()) {
     return resolveGradient(gradFill, ctx);
   }
 
-  // blipFill: handled externally by ImageRenderer
+  // blipFill is painted by the image renderer.
   const blipFill = spPr.child("blipFill");
   if (blipFill.exists()) {
     return "";
@@ -296,7 +270,6 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return "";
   }
 
-  // noFill
   const noFill = spPr.child("noFill");
   if (noFill.exists()) {
     return "transparent";
@@ -305,10 +278,6 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
   // No fill found; inherit
   return "";
 }
-
-// ---------------------------------------------------------------------------
-// Pattern Fill Resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Resolves `<a:pattFill>` into a CSS background value using repeating gradients.
@@ -323,7 +292,6 @@ function resolvePatternFill(
 ): string {
   const preset = pattFill.attr("prst") ?? "solid";
 
-  // Foreground and background colors
   let fg = "#000000";
   let bg = "#ffffff";
 
@@ -342,9 +310,7 @@ function resolvePatternFill(
   // Pattern tile size in px
   const s = 8;
 
-  // Helper: returns CSS `background` shorthand with repeating pattern layer(s) over bg color.
-  // Format: "<gradient-layer> 0 0/<size>, <bg-color-layer>"
-  // This is a valid multi-layer CSS background shorthand.
+  // Multi-layer `background` shorthand: the pattern tile over the bg color.
   const pat = (gradient: string): string => `${gradient} 0 0 / ${s}px ${s}px, ${bg}`;
   const pat2 = (g1: string, g2: string): string =>
     `${g1} 0 0 / ${s}px ${s}px, ${g2} 0 0 / ${s}px ${s}px, ${bg}`;
@@ -480,7 +446,6 @@ function resolveGradient(
   ctx: RenderContext,
   placeholderColorNode?: SafeXmlNode,
 ): string {
-  // Parse gradient stops
   const gsLst = gradFill.child("gsLst");
   const stops: { position: number; color: string }[] = [];
 
@@ -495,12 +460,10 @@ function resolveGradient(
     return "";
   }
 
-  // Sort stops by position
   stops.sort((a, b) => a.position - b.position);
 
   const stopsStr = formatGradientStops(stops);
 
-  // Determine gradient type
   const lin = gradFill.child("lin");
   if (lin.exists()) {
     const angle = angleToDeg(lin.numAttr("ang") ?? 0);
@@ -518,7 +481,6 @@ function resolveGradient(
       // CSS radial-gradient: 0% = center, 100% = edge.
       // Conventions match; no reversal needed.
 
-      // Resolve fillToRect center point
       const fillToRect = parseFillToRect(path);
       const { cx, cy } = getFillToRectCenter(fillToRect);
       const pathStopsStr = formatGradientStops(
@@ -531,10 +493,9 @@ function resolveGradient(
       );
 
       if (pathType === "rect") {
-        // Rectangular gradient (L∞ norm / Chebyshev distance): creates cross/X contour
-        // pattern. CSS can't do this natively; approximate by overlaying horizontal and
-        // vertical linear gradients with a radial gradient as fallback.
-        // The SVG path in ShapeRenderer uses the proper blend approach.
+        // Rectangular gradients have cross/X contours (Chebyshev distance) that CSS
+        // can't express; approximate with a radial gradient. The SVG path in shape.ts
+        // renders the real blend.
         return `radial-gradient(closest-side at ${(cx * 100).toFixed(1)}% ${(cy * 100).toFixed(1)}%, ${pathStopsStr})`;
       }
 
@@ -546,17 +507,9 @@ function resolveGradient(
   return `linear-gradient(180deg, ${stopsStr})`;
 }
 
-// ---------------------------------------------------------------------------
-// Line Style Resolution
-// ---------------------------------------------------------------------------
-
 /**
- * Resolves a line (outline) node into CSS-compatible properties.
- *
- * @param ln       The `<a:ln>` node from spPr
- * @param ctx      Render context
- * @param lnRef    Optional `<a:lnRef>` from `<p:style>` providing fallback color
- *                 when `<a:ln>` has no explicit solidFill (common for connectors)
+ * Resolves an `<a:ln>` outline into CSS-compatible properties. `lnRef` (from
+ * `<p:style>`) supplies the color when `<a:ln>` has no solidFill, common for connectors.
  */
 export function resolveLineStyle(
   ln: SafeXmlNode,
@@ -622,7 +575,6 @@ export function resolveLineStyle(
     width = 1;
   }
 
-  // Dash pattern
   let dash = "solid";
   let dashKind = "solid";
   const prstDash = ln.child("prstDash");
@@ -648,9 +600,6 @@ export function resolveLineStyle(
   return { width, color, dash, dashKind };
 }
 
-/**
- * Maps OOXML preset dash values to CSS border-style.
- */
 function ooxmlDashToCss(val: string): string {
   switch (val) {
     case "solid":
@@ -672,10 +621,6 @@ function ooxmlDashToCss(val: string): string {
       return "solid";
   }
 }
-
-// ---------------------------------------------------------------------------
-// Gradient Fill Resolution (structured data for SVG use)
-// ---------------------------------------------------------------------------
 
 export interface GradientFillData {
   type: "linear" | "radial";
@@ -897,10 +842,6 @@ function resolveThemeFillReferenceFromList(
 
   return { fillCss: resolveColorToCss(fillRef, ctx), gradientFillData: null };
 }
-
-// ---------------------------------------------------------------------------
-// Gradient Stroke Resolution
-// ---------------------------------------------------------------------------
 
 export interface GradientStrokeData {
   stops: Array<{ position: number; color: string }>;

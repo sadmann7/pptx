@@ -1,8 +1,4 @@
-﻿/**
- * Renders grouped shapes with coordinate space remapping.
- */
-
-import { BaseNodeData } from "../model/nodes/base";
+﻿import { BaseNodeData } from "../model/nodes/base";
 import { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
 import type { ShapeNodeData } from "../model/nodes/shape";
@@ -114,20 +110,10 @@ function applyGroupEffects(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Group Rendering
-// ---------------------------------------------------------------------------
-
 /**
- * Renders a group node into an absolutely-positioned HTML element.
- *
- * Groups define a child coordinate space (childOffset + childExtent) that must
- * be remapped to the group's actual position and size. Each child's position
- * and size are transformed accordingly before rendering.
- *
- * @param node       The parsed group node data
- * @param ctx        The render context
- * @param renderNode A callback to render individual child nodes (avoids circular deps)
+ * Groups define a child coordinate space (childOffset + childExtent) that is
+ * remapped to the group's actual position and size before each child renders.
+ * `renderNode` is passed in to avoid a circular import.
  */
 export function renderGroup(
   node: GroupNodeData,
@@ -163,8 +149,6 @@ export function renderGroup(
   if (grpSpPr.exists()) {
     applyGroupEffects(wrapper, node, ctx, grpSpPr);
 
-    // Check if the group itself has a fill (solidFill, gradFill, etc.)
-    // that children can inherit via grpFill
     const FILL_TAGS = ["solidFill", "gradFill", "blipFill", "pattFill"];
     for (const tag of FILL_TAGS) {
       if (grpSpPr.child(tag).exists()) {
@@ -315,7 +299,6 @@ export function renderGroup(
       const el = renderNode(childNode, childCtx);
       wrapper.appendChild(el);
     } catch {
-      // Per-child error handling: create error placeholder
       const errDiv = document.createElement("div");
       errDiv.style.position = "absolute";
       errDiv.style.border = "1px dashed #ff6b6b";
@@ -333,10 +316,6 @@ export function renderGroup(
 
   return wrapper;
 }
-
-// ---------------------------------------------------------------------------
-// Child Node Parsing
-// ---------------------------------------------------------------------------
 
 /**
  * Parses a raw XML child node from a group's spTree into a typed node object.

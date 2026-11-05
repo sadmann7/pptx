@@ -1,25 +1,3 @@
-/**
- * Loads embedded PPTX fonts and registers them with the document.
- *
- * Only MTX-compressed parts (LZCOMP + adaptive Huffman, a few ms each) are
- * worth moving. A deck carrying one sends its parts to a Web Worker pool, which
- * decodes unique parts in parallel and leaves the main thread to register the
- * resulting TrueType binaries via the FontFace API, which is cheap. A deck
- * whose parts are all uncompressed decodes in microseconds, so a pool would
- * cost more to start than it could save, and it is decoded here instead.
- *
- * A deck can embed a part per family x weight x style while the first-rendered
- * slide uses only a few. Callers can pass `priorityTypefaces` so `ready`
- * resolves as soon as those are registered; the remaining fonts keep decoding
- * in the background and swap in when registered (renderers re-run text autofit
- * on `document.fonts` arrival).
- *
- * Main-thread decoding gives the event loop a turn whenever it has held it long
- * enough to risk a frame, rather than after every part: a turn of the loop
- * costs about as much as decoding an uncompressed part, so yielding per part
- * would be most of what decoding such a deck spends.
- */
-
 import type {
   EmbeddedFontEntry,
   EmbeddedFontVariant,
@@ -32,7 +10,8 @@ import { createFontWorker } from "./worker-host";
 
 const MAX_WORKER_COUNT = 6;
 
-// Max time main-thread decoding holds the event loop before yielding (~1 frame at 60Hz).
+// Max time main-thread decoding holds the event loop before yielding (~1 frame at
+// 60Hz). Yielding per part would cost about as much as decoding an uncompressed one.
 const SLICE_MS = 5;
 
 const VARIANTS: {

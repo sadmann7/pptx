@@ -1,21 +1,4 @@
-﻿/**
- * PDF-to-image renderer for embedded EMF PDFs.
- *
- * pdfjs-dist v5 has process-level shared state (PagesMapper.#pagesNumber,
- * GlobalWorkerOptions.workerSrc, PDFWorker.#isWorkerDisabled) that a library
- * must never touch on the main thread; doing so clobbers the host app's pdfjs
- * configuration.
- *
- * Solution: render EMF PDFs exclusively inside a dedicated Web Worker. The
- * worker loads its OWN pdfjs instance via dynamic import, so all static state
- * is fully isolated from the main thread.
- *
- * If Worker + OffscreenCanvas are unavailable (extremely rare in 2025+
- * browsers), rendering is skipped and the caller gets null. No main-thread
- * fallback, no global state pollution.
- */
-
-export interface PdfjsOptions {
+﻿export interface PdfjsOptions {
   /**
    * URL for the pdfjs ESM module, for example
    * `new URL('pdfjs-dist/build/pdf.min.mjs', import.meta.url).toString()`.
@@ -29,10 +12,6 @@ export interface PdfjsOptions {
 }
 
 export type PdfjsConfig = PdfjsOptions | false;
-
-// ---------------------------------------------------------------------------
-// Resolved pdfjs URL, computed once from optional module resolution
-// ---------------------------------------------------------------------------
 
 const PDFJS_MODULE_SPECIFIER = "pdfjs-dist/build/pdf.min.mjs";
 const PDFJS_WORKER_SPECIFIER = "pdfjs-dist/build/pdf.worker.min.mjs";
@@ -82,19 +61,13 @@ function resolvePdfWorkerUrl(config?: PdfjsConfig): string | null {
   return explicitUrl(config, "workerUrl") ?? getPdfWorkerUrl();
 }
 
-// ---------------------------------------------------------------------------
-// Worker-based renderer (fully isolated from main thread pdfjs)
-// ---------------------------------------------------------------------------
-
 /**
- * Inline source for the PDF render worker.
- * Receives: { id, pdfData, width, height, pdfjsUrl, pdfWorkerUrl }
- * Posts back: { id, blob } or { id, error }
+ * pdfjs keeps process-level state (GlobalWorkerOptions.workerSrc, PagesMapper)
+ * that would clobber the host app's own pdfjs setup, so PDFs render only in
+ * this worker, with its own pdfjs instance. There is no main-thread fallback.
  *
- * The worker loads its OWN pdfjs instance via dynamic import, so its static
- * PagesMapper state is completely independent of the main thread.
- * pdfjs's own workerSrc is configured inside this isolated worker, so host
- * applications can keep their main-thread pdfjs settings untouched.
+ * Receives `{ id, pdfData, width, height, pdfjsUrl, pdfWorkerUrl }` and posts
+ * back `{ id, blob }` or `{ id, error }`.
  */
 const WORKER_SRC = /* js */ `
 let pdfjsLib = null;
@@ -221,11 +194,10 @@ function renderInWorker(
       reject: () => resolve(null),
     });
 
-    // Transfer the buffer to avoid copying
-    const copy = pdfData.slice(); // copy so caller retains original
+    // Transfer a copy so the caller's buffer stays attached.
+    const copy = pdfData.slice();
     worker.postMessage({ id, pdfData: copy, width, height, pdfjsUrl, pdfWorkerUrl }, [copy.buffer]);
 
-    // Timeout: if worker doesn't respond in 15s, give up
     setTimeout(() => {
       if (state.pending.has(id)) {
         state.pending.delete(id);
@@ -235,18 +207,9 @@ function renderInWorker(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Renders page 1 of a PDF to a blob URL image.
- *
- * Uses a dedicated Web Worker with its own pdfjs instance, fully isolated
- * from the main thread. Never touches GlobalWorkerOptions or any other
- * pdfjs global state on the main thread.
- *
- * @returns blob URL string, or null if rendering fails or Worker is unavailable
+ * Renders page 1 of a PDF to a blob URL in a worker, or returns null when
+ * rendering fails or Worker/OffscreenCanvas are unavailable.
  */
 export async function renderPdfToImage(
   pdfData: Uint8Array,
@@ -270,7 +233,7 @@ export async function renderPdfToImage(
     const blob = await renderInWorker(pdfData, width, height, pdfjsUrl, pdfWorkerUrl);
     if (blob) return URL.createObjectURL(blob);
   } catch {
-    // Worker failed: no fallback, return null
+    // Fall through to null.
   }
 
   return null;

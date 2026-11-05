@@ -1,18 +1,8 @@
-﻿/**
- * Preset shape SVG path generators for OOXML preset geometry types.
- *
- * Each generator takes width, height, and optional adjustment values,
- * returning an SVG path d-attribute string.
- *
- * Adjustment values follow OOXML convention: values are in 100000ths
- * (so 50000 = 50%).
- */
-
-import { shapeArc } from "./arc";
+﻿import { shapeArc } from "./arc";
 
 type PresetShapeGenerator = (w: number, h: number, adjustments?: Map<string, number>) => string;
 
-/** Helper: get adjustment value or default, converting from 100000ths to fraction. */
+/** Adjustment value as a fraction (OOXML stores 100000ths, so 50000 = 0.5). */
 function adj(
   adjustments: Map<string, number> | undefined,
   name: string,
@@ -22,8 +12,7 @@ function adj(
   return raw / 100000;
 }
 
-/** Helper: generate a regular polygon path (inscribed in bounding box). */
-/** Raw adj helper: get adjustment value without dividing by 100000. */
+/** Adjustment value in raw 100000ths. */
 function adjRaw(
   adjustments: Map<string, number> | undefined,
   name: string,
@@ -32,7 +21,6 @@ function adjRaw(
   return adjustments?.get(name) ?? defaultVal;
 }
 
-/** Helper: generate a star polygon. */
 function starShape(w: number, h: number, points: number, innerRatio: number = 0.4): string {
   const cx = w / 2;
   const cy = h / 2;
@@ -1520,12 +1508,6 @@ function buildCurvedVerticalArrowMultiPath(
   return mirrored.reverse();
 }
 
-/**
- * Converts OOXML arcTo to SVG arc endpoint and command string.
- * OOXML arcTo: wR, hR (radii), stAng, swAng (degrees).
- * Current point is at stAng on the arc ellipse.
- * Returns { path, endX, endY }.
- */
 presetShapes.set("curvedUpArrow", (w, h, adjustments) => {
   const arc = (
     cx: number,
@@ -3684,9 +3666,8 @@ presetShapes.set("moon", (w, h, adjustments) => {
 });
 
 presetShapes.set("lightningBolt", (w, h) => {
-  // Calibrated against OOXML preset rendering (PowerPoint PDF export):
-  // the old simplified 7-point bolt was too wide and lacked the inner notches.
-  // This normalized 11-point contour follows the default lightningBolt geometry.
+  // An 11-point contour calibrated against PowerPoint's PDF export of the
+  // default lightningBolt, inner notches included.
   return [
     `M${w * 0.3895},${0}`,
     `L${0},${h * 0.1821}`,
@@ -3912,9 +3893,6 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
 
 presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
 
-// Fallback rectangle for action buttons without multiPathPresets entry yet
-// actionButtonSound fallback removed; uses multiPathPresets entry below
-
 // Multi-path action button presets are registered after the multiPathPresets Map
 // declaration (see below in the multiPathPresets section).
 
@@ -3922,8 +3900,6 @@ presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h}
 // Action button icon paths (rendered as a second <path> with contrasting fill)
 // ---------------------------------------------------------------------------
 const actionButtonIcons = new Map<string, (w: number, h: number) => string>();
-
-// actionButtonHome icon removed; uses multiPathPresets entry below
 
 actionButtonIcons.set("actionButtonForwardNext", (w, h) => {
   // Right-pointing triangle (▶)
@@ -3999,8 +3975,6 @@ actionButtonIcons.set("actionButtonEnd", (w, h) => {
   ].join(" ");
 });
 
-// actionButtonHelp icon removed; uses multiPathPresets entry below
-
 actionButtonIcons.set("actionButtonInformation", (w, h) => {
   // Info icon (i)
   const cx = w / 2,
@@ -4030,10 +4004,6 @@ actionButtonIcons.set("actionButtonDocument", (w, h) => {
   ].join(" ");
 });
 
-// actionButtonSound icon removed; uses multiPathPresets entry below
-
-// actionButtonMovie icon is now rendered via multiPathPresets (see below).
-
 /**
  * Gets the SVG path for the icon overlay of an action button.
  * Returns undefined if the shape is not an action button or is actionButtonBlank.
@@ -4048,10 +4018,7 @@ export function getActionButtonIconPath(
   return generator?.(w, h);
 }
 
-// ===== Aliases and common alternative names =====
-
-// Some shapes are known by multiple names in different OOXML versions
-// flowChartOfflineStorage: registered as multiPathPreset (see below)
+// flowChartOfflineStorage is implemented as multiPathPreset (see multiPathPresets below)
 
 // ribbon is implemented as multiPathPreset (see multiPathPresets below)
 
@@ -4405,12 +4372,6 @@ presetShapes.set("funnel", (w, h) => {
   return `${body} ${inset}`;
 });
 
-// ===== Fallback =====
-
-/**
- * Gets the SVG path for a preset shape, falling back to a simple rectangle
- * if the shape type is not implemented.
- */
 // ---------------------------------------------------------------------------
 // Preset shape overlays; additional paths for 3D-like shapes (lighter top face, etc.)
 // ---------------------------------------------------------------------------
@@ -4631,45 +4592,8 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
     `Z`,
   ].join(" ");
 
-  // Outline path (path 2 in OOXML spec; traces shape with different arc winding)
-  // Starts from right outer edge, traces clockwise: outer right → outer bottom → outer left → inner left → inner bottom → inner right → arrow
-  // Arc A: from (g22, g20), wR=g17 hR=g17 stAng=0° swAng=90°
-  //   center = (g22-g17, g20) = (g22-g17, g20), endpoint = (g22-g17, g20+g17)
-  //   g22-g17 = g11+g14-g17 = g11 + g13*7/8 - g13*3/8 = g11 + g13/2 = g25 + g13/8 = hc? No.
-  //   Actually: g22 = g11+g14, g14 = g13*7/8, g17 = g13*3/8
-  //   g22 - g17 = g11 + g13*7/8 - g13*3/8 = g11 + g13*4/8 = g11 + g13/2 = hc (since hc = g11 + dx2 = g11 + g13/2)
-  //   Hmm wait, dx2 = ss*3/8 and g13 = ss*3/4. So g13/2 = ss*3/8 = dx2. So hc = g11 + dx2 = g11 + g13/2. Yes!
-  //   endpoint = (hc, g20+g17) = (hc, g10)? g20+g17 = (g9+g16)+g17 = g9+g13*5/8+g13*3/8 = g9+g13 = g9+ss*3/4
-  //   g10 = vc+dx2. g9+g13 = (vc-dx2) + 2*dx2 = vc+dx2 = g10. Yes! endpoint = (hc, g10) ✓ but wait...
-  //   Actually stAng=0° means start angle is 0°. center = (g22 - g17*cos(0), g20 - g17*sin(0)) = (g22-g17, g20).
-  //   endAng = 0+90 = 90°. endX = center.x + g17*cos(90°) = g22-g17. endY = center.y + g17*sin(90°) = g20+g17.
-  //   So endpoint = (g22-g17, g20+g17). Let's verify: g22-g17 = g11+g14-g17 = g11+g13*(7/8-3/8) = g11+g13/2 = g25+g13/8
-  //   Hmm, g25 = g11+g17 = g11+g13*3/8. g11+g13/2 = g11+g13*4/8. That's not g25, it's g25 + g13/8.
-  //   Actually let me just compute: g11+g13/2. g13/2 is not one of the named guides.
-  //   OK, the spec says after this arc: lnTo (g25, g10). So endpoint.x must be something, then line to g25.
-  //   endpoint.x = g22-g17 = g11+g14-g17 = g11+g13*7/8-g13*3/8 = g11+g13*4/8 = g11+g13/2.
-  //   Then lnTo (g25, g10) where g25 = g11+g13*3/8.
-  //   endpointY = g20+g17 = g10. So endpoint = (g11+g13/2, g10).
-  //   Line from there to (g25, g10) is horizontal. Makes sense.
-  // Arc B: from (g25, g10), wR=g17 hR=g17 stAng=90° swAng=90°
-  //   center = (g25, g10-g17), endAng=180°
-  //   endX = g25+g17*cos(180°) = g25-g17 = g11+g17-g17 = g11
-  //   endY = (g10-g17)+g17*sin(180°) = g10-g17 = g20
-  //   endpoint = (g11, g20). Then lnTo (g11, g21).
-  // Arc C: from (g26, g20), wR=g27 hR=g27 stAng=180° swAng=-90°
-  //   center = (g26+g27, g20) = (g26+g27, g20). g26+g27 = g11+g18+g13/8 = g11+g13/4+g13/8 = g11+g13*3/8 = g25
-  //   endAng = 180-90 = 90°. endX = g25+g27*cos(90°) = g25. endY = g20+g27*sin(90°) = g20+g27 = g19.
-  //   endpoint = (g25, g19). Hmm, but spec says lnTo(hc, g19) after this arc.
-  //   Wait: lnTo before spec says `<lnTo><pt x="hc" y="g19"/></lnTo>`. So endpoint is (g25, g19), then line to (hc, g19).
-  //   Hmm actually spec says: `<lnTo><pt x="hc" y="g19" /></lnTo>`.
-  //   Wait no: `L(hc, g19)` in the spec.
-  // Arc D: from (hc, g19), wR=g27 hR=g27 stAng=90° swAng=-90°
-  //   center = (hc, g19-g27), endAng = 0°.
-  //   endX = hc+g27*cos(0°) = hc+g27. g19-g27 = g20. endY = g20+g27*sin(0°) = g20.
-  //   endpoint = (hc+g27, g20). Hmm, but g24 = g11+g16 = g11+g13*5/8.
-  //   hc+g27 = g11+g13/2+g13/8 = g11+g13*5/8 = g24. So endpoint = (g24, g20).
-  //   Then lnTo (g24, g21). Then lnTo (hc, g21). Then lnTo (g23, g9). Close.
-
+  // Outline path (path 2 in the OOXML spec): the same contour with reversed arc
+  // winding. Arc A ends at (g11 + g13/2, g10), which has no named guide.
   const outline = [
     `M${g12},${g21}`,
     `L${g22},${g21}`,
@@ -5779,9 +5703,8 @@ multiPathPresets.set("chartstar", (w, h) => {
 });
 
 /**
- * Helper: compute OOXML arcTo endpoint and SVG arc command from current position.
- * OOXML arcTo: center = curPos - radius*dir(stAng), endpoint = center + radius*dir(stAng+swAng)
- * Returns { svgArc, endX, endY }
+ * OOXML arcTo from the current point: center = cur - r*dir(stAng),
+ * end = center + r*dir(stAng + swAng). Angles in degrees.
  */
 function ooArcTo(
   curX: number,
@@ -6213,11 +6136,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   p1.push(arc.svg);
   cx = arc.x;
   cy = arc.y;
-  // lnTo (x4, ch2); but after the arc we should be at (x4, 0)… wait
-  // Actually: arcTo from (w, ch2) with stAng=0 swAng=90° → center=(w-ch2, ch2), end=(w-ch2, 0)=x4,0
-  // Then lnTo (x4, ch2)... hmm, this goes from top-right curl area
-  // Let me re-read: lnTo pt x="x4" y="ch2"... that doesn't match. Wait, the lnTo goes DOWN.
-  // After arc: we're at (x4, 0). lnTo (x4, ch2):
+  // The arc ends at (x4, 0); lnTo (x4, ch2)
   p1.push(`L${x4},${ch2}`);
   // arcTo wR=ch4 hR=ch4 stAng=0 swAng=cd2(180°)
   arc = ooArcTo(x4, ch2, ch4, ch4, 0, 180);
@@ -6573,7 +6492,6 @@ export function getPresetShapePath(
   if (generator) {
     return generator(w, h, adjustments);
   }
-  // Fallback: simple rectangle
   console.warn(`Unknown preset shape: "${shapeType}", falling back to rectangle`);
   return `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 }

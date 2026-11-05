@@ -1,14 +1,11 @@
 /**
- * Writes the worst-case decks the playground's dev-only data toggle loads
- * (`/pg?data=worst`), into apps/docs/public/assets/worst-case/.
+ * Writes the decks `/pg?data=worst` loads into apps/docs/public/assets/worst-case/:
  *
- * Run with `pnpm exec tsx scripts/worst-case-decks.ts`. Every value is one a
- * real deck could hold: real font family names, real-shaped text, and sizes
- * and geometry inside what OOXML allows.
+ *   pnpm exec tsx scripts/worst-case-decks.ts
  *
- * - worst.pptx  A4 portrait; long and many font names, fractional and huge
- *               font sizes, mixed formatting, unbreakable URLs, RTL, diacritics,
- *               emoji, and tiny, flat, rotated, and off-slide shapes
+ * Keep every value one a real deck could hold.
+ *
+ * - worst.pptx  A4 portrait, long font names, extreme sizes, RTL, emoji, odd shapes
  * - one.pptx    a single slide
  * - many.pptx   300 slides
  */

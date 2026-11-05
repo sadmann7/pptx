@@ -1,22 +1,9 @@
-﻿/**
- * EMF (Enhanced Metafile) binary parser that extracts embedded content.
- *
- * PPTX files frequently embed EMF images as OLE object previews.
- * Most contain embedded PDF data inside GDI comment records, or DIB bitmaps
- * via STRETCHDIBITS records. This parser extracts those embedded resources
- * without implementing full EMF record interpretation.
- *
- * EMF record format: each record is { type: u32, size: u32, ...data }
- * Records are walked sequentially until EOF record (type 14).
- */
-
-export type EmfContent =
+﻿export type EmfContent =
   | { type: "pdf"; data: Uint8Array }
   | { type: "bitmap"; imageData: ImageData }
   | { type: "empty" }
   | { type: "unsupported" };
 
-// EMF record types
 const EMR_EOF = 14;
 const EMR_COMMENT = 70;
 const EMR_STRETCHDIBITS = 81;
@@ -29,23 +16,22 @@ const GDIC_MULTIFORMATS = 0x40000004;
 // EMF header signature at offset 40
 const EMF_SIGNATURE = 0x464d4520; // " EMF"
 
-// PDF markers
 const PDF_HEADER = [0x25, 0x50, 0x44, 0x46]; // "%PDF"
 const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46]; // "%%EOF"
 
-// DIB compression
 const BI_RGB = 0;
 const MAX_EMF_BITMAP_PIXELS = 16_777_216;
 
 /**
- * Parses an EMF file and extracts its embedded content.
+ * Extracts the content embedded in an EMF, without interpreting its drawing
+ * records. PPTX OLE previews are usually EMFs wrapping a PDF in a GDI comment
+ * or a bitmap in a STRETCHDIBITS record.
  */
 export function parseEmfContent(data: Uint8Array): EmfContent {
   if (data.length < 44) return { type: "unsupported" };
 
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
-  // Validate EMF signature at offset 40
   if (view.getUint32(40, true) !== EMF_SIGNATURE) {
     return { type: "unsupported" };
   }
@@ -57,20 +43,17 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
     const recordType = view.getUint32(offset, true);
     const recordSize = view.getUint32(offset + 4, true);
 
-    // Sanity check record size
     if (recordSize < 8 || offset + recordSize > data.length) break;
 
     recordCount++;
 
     if (recordType === EMR_EOF) break;
 
-    // Check GDI Comment records for embedded PDF
     if (recordType === EMR_COMMENT && recordSize > 16) {
       const result = parseGdiComment(data, view, offset, recordSize);
       if (result) return result;
     }
 
-    // Check STRETCHDIBITS for embedded bitmaps
     if (recordType === EMR_STRETCHDIBITS && recordSize > 80) {
       const result = parseStretchDibits(data, view, offset, recordSize);
       if (result) return result;
@@ -87,9 +70,6 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
   return { type: "unsupported" };
 }
 
-/**
- * Parses a GDI Comment record looking for embedded PDF data.
- */
 function parseGdiComment(
   data: Uint8Array,
   view: DataView,
@@ -105,14 +85,12 @@ function parseGdiComment(
     const publicType = view.getUint32(offset + 16, true);
 
     if (publicType === GDIC_BEGINGROUP) {
-      // Search for %PDF signature in the record data
       const recordData = data.subarray(offset + 8, offset + recordSize);
       const pdf = extractPdfFromBuffer(recordData);
       if (pdf) return { type: "pdf", data: pdf };
     }
 
     if (publicType === GDIC_MULTIFORMATS && offset + 24 <= data.length) {
-      // MULTIFORMATS: parse format descriptors and extract first usable one
       const result = parseMultiformats(data, view, offset, recordSize);
       if (result) return result;
     }
@@ -128,9 +106,6 @@ function parseGdiComment(
   return null;
 }
 
-/**
- * Parses MULTIFORMATS GDI comment: contains format descriptors pointing to embedded data.
- */
 function parseMultiformats(
   data: Uint8Array,
   view: DataView,
@@ -166,14 +141,11 @@ function parseMultiformats(
   return null;
 }
 
-/**
- * Search for %PDF...%%EOF in a buffer and extract the PDF bytes.
- */
 function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   const pdfStart = findSequence(buf, PDF_HEADER);
   if (pdfStart === -1) return null;
 
-  // Search for %%EOF from the end (PDF may have multiple %%EOF; take the last one)
+  // Incrementally updated PDFs have several %%EOF markers; take the last.
   let pdfEnd = -1;
   for (let i = buf.length - PDF_EOF.length; i >= pdfStart; i--) {
     if (matchesAt(buf, i, PDF_EOF)) {
@@ -190,9 +162,6 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   return buf.slice(pdfStart, pdfEnd);
 }
 
-/**
- * Parses a STRETCHDIBITS record and extracts the bitmap as ImageData.
- */
 function parseStretchDibits(
   data: Uint8Array,
   view: DataView,
@@ -227,7 +196,6 @@ function parseStretchDibits(
   const biBitCount = view.getUint16(bmiStart + 14, true);
   const biCompression = view.getUint32(bmiStart + 16, true);
 
-  // Only support uncompressed RGB bitmaps
   if (biCompression !== BI_RGB) return null;
   if (biBitCount !== 24 && biBitCount !== 32) return null;
 
@@ -247,7 +215,7 @@ function parseStretchDibits(
 
   const bitsData = data.subarray(bitsStart, bitsStart + requiredBits);
 
-  // Negative height means top-down row order; positive means bottom-up
+  // Negative height means top-down rows; positive means bottom-up.
   const topDown = biHeight < 0;
 
   const imageData = new ImageData(width, height);
@@ -272,9 +240,6 @@ function parseStretchDibits(
   return { type: "bitmap", imageData };
 }
 
-/**
- * Finds the first occurrence of a byte sequence in a buffer.
- */
 function findSequence(buf: Uint8Array, seq: number[]): number {
   const end = buf.length - seq.length;
   for (let i = 0; i <= end; i++) {
@@ -283,9 +248,6 @@ function findSequence(buf: Uint8Array, seq: number[]): number {
   return -1;
 }
 
-/**
- * Checks if buffer matches a byte sequence at a given offset.
- */
 function matchesAt(buf: Uint8Array, offset: number, seq: number[]): boolean {
   for (let j = 0; j < seq.length; j++) {
     if (buf[offset + j] !== seq[j]) return false;

@@ -1,11 +1,4 @@
-﻿/**
- * Renders PictureNodeData (images, video, audio) as positioned HTML elements.
- *
- * Handles EMF extraction, async blob URL resolution, crop/fit transforms,
- * and SVG shape clip paths.
- */
-
-import { renderCustomGeometry } from "../geometry/custom";
+﻿import { renderCustomGeometry } from "../geometry/custom";
 import { getPresetShapePath } from "../geometry/preset";
 import { parseEmfContent } from "../media/emf";
 import { renderPdfToImage } from "../media/pdf";
@@ -25,17 +18,11 @@ import { RenderContext } from "./context";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveFill, resolveLineStyle } from "./style";
 
-/**
- * Checks if a file extension is an unsupported legacy format (WMF only now; EMF is handled).
- */
 function isUnsupportedFormat(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() || "";
   return ext === "wmf";
 }
 
-/**
- * Checks if a file path is an EMF image.
- */
 function isEmfFormat(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() || "";
   return ext === "emf";
@@ -56,21 +43,6 @@ function resolveImageRelUrl(rel: RelEntry, ctx: RenderContext): string | undefin
   return getOrCreateBlobUrl(mediaPath, data, ctx.mediaUrlCache);
 }
 
-// ---------------------------------------------------------------------------
-// Image Rendering
-// ---------------------------------------------------------------------------
-
-/**
- * Renders a picture node into an absolutely-positioned HTML element.
- *
- * Handles:
- * - Standard images (png, jpg, gif, svg, bmp)
- * - Unsupported formats (emf, wmf) with placeholder
- * - Video elements with controls
- * - Audio elements with controls
- * - Crop via CSS clip-path
- * - Rotation and flip transforms
- */
 export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.style.position = "absolute";
@@ -81,7 +53,6 @@ export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElem
   wrapper.style.overflow = "hidden";
   const geometryClipPath = getPictureGeometryClipPath(node);
 
-  // Apply transforms
   const transforms: string[] = [];
   if (node.rotation !== 0) {
     transforms.push(`rotate(${node.rotation}deg)`);
@@ -98,19 +69,16 @@ export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElem
 
   applyPictureShapeProperties(wrapper, node, ctx);
 
-  // ---- Handle video ----
   if (node.isVideo) {
     renderVideo(node, ctx, wrapper);
     return wrapper;
   }
 
-  // ---- Handle audio ----
   if (node.isAudio) {
     renderAudio(node, ctx, wrapper);
     return wrapper;
   }
 
-  // ---- Resolve image data ----
   const embedId = node.blipEmbed;
   let url: string | undefined;
 
@@ -222,7 +190,6 @@ function renderImageUrl(
     return;
   }
 
-  // Create image element
   const img = document.createElement("img");
   img.src = url;
   img.style.width = "100%";
@@ -273,7 +240,6 @@ function renderImageUrl(
     }
   }
 
-  // --- Blip effects ---
   if (blipOpacity < 1) {
     wrapper.style.opacity = `${Number(blipOpacity.toFixed(4))}`;
   }
@@ -712,14 +678,9 @@ function resolveBlipOpacity(blip: SafeXmlNode): number {
   return Math.max(0, Math.min(1, alpha));
 }
 
-/**
- * Renders a video element inside the wrapper.
- */
 function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
-  // Try to get video URL from mediaRId
   const videoUrl = resolveMediaUrl(node.mediaRId, ctx);
 
-  // Also try to show poster image from blipEmbed
   let posterUrl: string | undefined;
   if (node.blipEmbed) {
     const rel = ctx.slide.rels.get(node.blipEmbed);
@@ -766,14 +727,10 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
   }
 }
 
-/**
- * Renders an audio element inside the wrapper.
- */
 function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
   const audioUrl = resolveMediaUrl(node.mediaRId, ctx);
 
   if (audioUrl) {
-    // Show poster image if available
     if (node.blipEmbed) {
       const rel = ctx.slide.rels.get(node.blipEmbed);
       if (rel) {
@@ -803,21 +760,16 @@ function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
   }
 }
 
-/**
- * Resolves a media URL from a relationship ID.
- */
 function resolveMediaUrl(rId: string | undefined, ctx: RenderContext): string | undefined {
   if (!rId) return undefined;
 
   const rel = ctx.slide.rels.get(rId);
   if (!rel) return undefined;
 
-  // Check if target is an external URL
   if (isExternalTargetMode(rel.targetMode)) {
     return isAllowedExternalMediaUrl(rel.target) ? rel.target : undefined;
   }
 
-  // Resolve from embedded media
   const resolved = findMediaByTarget(rel.target, ctx.presentation.media);
   if (!resolved) return undefined;
   const { mediaPath, data } = resolved;
@@ -825,9 +777,6 @@ function resolveMediaUrl(rId: string | undefined, ctx: RenderContext): string | 
   return getOrCreateBlobUrl(mediaPath, data, ctx.mediaUrlCache);
 }
 
-/**
- * Renders a placeholder div for missing or error content.
- */
 function renderPlaceholder(wrapper: HTMLElement, message: string): void {
   const placeholder = document.createElement("div");
   placeholder.style.width = "100%";
@@ -843,9 +792,6 @@ function renderPlaceholder(wrapper: HTMLElement, message: string): void {
   wrapper.appendChild(placeholder);
 }
 
-/**
- * Renders a placeholder for unsupported image formats (WMF).
- */
 function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void {
   const ext = path.split(".").pop()?.toUpperCase() || "Unknown";
   const placeholder = document.createElement("div");
@@ -872,10 +818,6 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
   placeholder.appendChild(label);
   wrapper.appendChild(placeholder);
 }
-
-// ---------------------------------------------------------------------------
-// EMF Rendering
-// ---------------------------------------------------------------------------
 
 /**
  * Renders EMF content by extracting embedded PDF or bitmap data.
@@ -938,9 +880,6 @@ function renderEmfPdf(
   ctx.asyncTasks?.push(task);
 }
 
-/**
- * Renders an embedded DIB bitmap from EMF.
- */
 function renderEmfBitmap(
   imageData: ImageData,
   wrapper: HTMLElement,
@@ -974,9 +913,6 @@ function renderEmfBitmap(
   ctx.asyncTasks?.push(task);
 }
 
-/**
- * Creates an <img> element that fills its container.
- */
 function createFillImage(url: string): HTMLImageElement {
   const img = document.createElement("img");
   img.src = url;
@@ -987,10 +923,6 @@ function createFillImage(url: string): HTMLImageElement {
   img.draggable = false;
   return img;
 }
-
-// ---------------------------------------------------------------------------
-// Duotone Effect
-// ---------------------------------------------------------------------------
 
 /**
  * Applies a duotone effect to an image via canvas pixel manipulation.
@@ -1034,13 +966,11 @@ function applyDuotoneFilter(
     const data = imageData.data;
 
     for (let i = 0; i < data.length; i += 4) {
-      // Convert to grayscale using luminance weights
       const gray = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
       // Linearly interpolate between color1 (dark) and color2 (light)
       data[i] = Math.round(rgb1.r + (rgb2.r - rgb1.r) * gray);
       data[i + 1] = Math.round(rgb1.g + (rgb2.g - rgb1.g) * gray);
       data[i + 2] = Math.round(rgb1.b + (rgb2.b - rgb1.b) * gray);
-      // Alpha channel (data[i+3]) is preserved
     }
 
     c.putImageData(imageData, 0, 0);
@@ -1053,10 +983,6 @@ function applyDuotoneFilter(
     img.addEventListener("load", apply, { once: true });
   }
 }
-
-// ---------------------------------------------------------------------------
-// Luminance Effect
-// ---------------------------------------------------------------------------
 
 /**
  * Applies a luminance (brightness/contrast) effect to an image.
@@ -1088,17 +1014,13 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
 
     for (let i = 0; i < data.length; i += 4) {
       for (let ch = 0; ch < 3; ch++) {
-        // Normalize to 0–1
         let v = data[i + ch] / 255;
-        // Apply contrast (expand/compress around 0.5)
         if (contrast !== 0) {
           v = 0.5 + (v - 0.5) * (1 + contrast);
         }
-        // Apply additive brightness offset
         v += bright;
         data[i + ch] = Math.round(Math.max(0, Math.min(255, v * 255)));
       }
-      // Alpha preserved
     }
 
     c.putImageData(imageData, 0, 0);
@@ -1111,10 +1033,6 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
     img.addEventListener("load", apply, { once: true });
   }
 }
-
-// ---------------------------------------------------------------------------
-// BiLevel Effect
-// ---------------------------------------------------------------------------
 
 /**
  * Applies a bi-level (threshold) effect to an image.
@@ -1147,7 +1065,6 @@ function applyBiLevelEffect(biLevel: SafeXmlNode, img: HTMLImageElement): void {
       data[i] = val;
       data[i + 1] = val;
       data[i + 2] = val;
-      // Alpha preserved
     }
 
     c.putImageData(imageData, 0, 0);

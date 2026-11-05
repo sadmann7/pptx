@@ -1,18 +1,9 @@
-﻿/**
- * Writes a presentation (opened with `keepSourcePackage: true`) back to a .pptx
- * OOXML package. Untouched parts round-trip byte-for-byte; parts marked
- * dirty on the retained sourcePackage are re-serialized from their live XML.
- */
-
-import type { PresentationData } from "../model/presentation";
+﻿import type { PresentationData } from "../model/presentation";
 import type { PptxSaveOptions } from "./package";
 
 /**
- * Serializes a presentation back to a .pptx archive.
- *
- * Requires the presentation to have been parsed with `keepSourcePackage: true`
- * (see `PptxReadOptions.keepSourcePackage`), which retains the source package for
- * round-trip fidelity.
+ * Serializes a presentation back to a .pptx archive. Untouched parts round-trip
+ * byte-for-byte. Requires parsing with `keepSourcePackage: true`.
  */
 export async function writePptx(
   presentation: PresentationData,

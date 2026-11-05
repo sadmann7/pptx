@@ -1,19 +1,10 @@
-/**
- * The CTF glyph push stream and its TrueType PUSH counterpart.
- *
- * CTF hoists every value a glyph's hinting program pushes into one shared
- * stream, so reconstructing the glyph means reading those values back and
- * re-emitting them as a PUSHB/PUSHW burst ahead of the bytecode.
- *
- * Both halves work against caller-owned buffers: values land in a reusable
- * `Int16Array` and the burst goes straight into the glyf writer, so a hinted
- * glyph costs no allocations of its own.
- */
-
 import type { Reader, Writer } from "./binary";
 import { fail } from "./error";
 import { read255Short } from "./varint";
 
+// CTF hoists every value a glyph's hinting program pushes into one shared
+// stream; rebuilding the glyph re-emits them as a PUSHB/PUSHW burst. Both halves
+// use caller-owned buffers so a hinted glyph allocates nothing.
 export function readPushValuesInto(reader: Reader, count: number, out: Int16Array): void {
   if (out.length < count) throw new RangeError("Push-value output buffer is too small");
   let length = 0;

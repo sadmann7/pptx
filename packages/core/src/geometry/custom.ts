@@ -1,7 +1,3 @@
-/**
- * Parses OOXML custom geometry (a:custGeom) into SVG path strings.
- */
-
 import { SafeXmlNode } from "../ooxml/xml";
 import type { GuideDefinition } from "./guide";
 import { evaluateGuides } from "./guide";
@@ -57,11 +53,9 @@ function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
  * coordinate space (`sourceExtent`), while numeric path points live in the
  * local space declared by the path's `w`/`h` attributes.
  *
- * @param custGeom - SafeXmlNode wrapping the `a:custGeom` element
  * @param width - Target width in pixels
  * @param height - Target height in pixels
  * @param sourceExtent - Shape extent in EMU (from `a:xfrm > a:ext`)
- * @returns SVG path d-attribute string
  */
 export function renderCustomGeometry(
   custGeom: SafeXmlNode,

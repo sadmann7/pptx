@@ -1,13 +1,10 @@
 /**
- * Grows a real deck to N slides for `pnpm profile:editor`, by repeating its slides.
+ * Grows a real deck to N slides for `pnpm profile:editor`:
  *
  *   pnpm bench-deck [slides] [source]
  *
- * Defaults to 300 slides of fixtures/adventure-club-pin-and-paper.pptx (real
- * content: pictures, charts, embedded fonts), written to the gitignored
- * recordings/perf/decks/. Copies share the source's media, layouts, and charts
- * and drop its notes, so the file stays small while every slide still renders
- * as much as the original.
+ * Defaults to 300 slides of fixtures/adventure-club-pin-and-paper.pptx, written
+ * to the gitignored recordings/perf/decks/. Copies drop their notes.
  */
 import JSZip from "jszip";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

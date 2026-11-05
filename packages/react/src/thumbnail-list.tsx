@@ -1,10 +1,5 @@
 /**
- * Roving focus implementation adapted from Radix UI's `@radix-ui/react-roving-focus`.
- *
- * The keyboard-navigation model (tab-stop management, focus-intent mapping,
- * `focusFirst` helper, and click-vs-keyboard distinction) is directly inspired
- * by that package.
- *
+ * Roving focus adapted from Radix UI's `@radix-ui/react-roving-focus`.
  * @see https://github.com/radix-ui/primitives/tree/main/packages/react/roving-focus
  */
 
@@ -274,9 +269,7 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const isClickFocusRef = React.useRef(false);
     const autoFocusedPresentationRef = React.useRef<object | null>(null);
 
-    // A ref and listener set, not react state: state would flow through the
-    // context value and re-render every memoized item on each focus change,
-    // when only two items (the old and new tab stop) actually need to update.
+    // A ref and listener set, not state: see `subscribeTabStop`.
     const currentTabStopIdRef = React.useRef<string | null>(null);
     const tabStopListenersRef = useLazyRef(() => new Set<() => void>());
 
@@ -545,19 +538,13 @@ export namespace ThumbnailList {
 }
 
 export interface ThumbnailItemState {
-  /**
-   * Stable id of the slide this item represents (`SlideData.id`).
-   */
+  /** Stable id of the slide this item represents (`SlideData.id`). */
   slideId: string;
 
-  /**
-   * `true` when this item's slide is the currently active slide.
-   */
+  /** `true` when this item's slide is the currently active slide. */
   isActive: boolean;
 
-  /**
-   * 0-based position of this slide in the presentation.
-   */
+  /** 0-based position of this slide in the presentation. */
   displayIndex: number;
 }
 
@@ -750,14 +737,10 @@ export namespace ThumbnailItem {
 }
 
 export interface ThumbnailItemPreviewState {
-  /**
-   * Stable id of the slide being rendered.
-   */
+  /** Stable id of the slide being rendered. */
   slideId: string;
 
-  /**
-   * CSS scale factor (container width / presentation width). `0` before measured.
-   */
+  /** CSS scale factor (container width / presentation width). `0` before measured. */
   scale: number;
 }
 
@@ -767,17 +750,12 @@ export interface ThumbnailItemPreviewProps extends PrimitiveProps<
 > {}
 
 /**
- * Renders the slide miniature for the enclosing `ThumbnailItem`.
+ * Renders the slide miniature for the enclosing `ThumbnailItem`, just before
+ * it scrolls into view. Rapid scrollbar drag may briefly show a pending
+ * placeholder.
  *
- * Uses an IntersectionObserver with a 200 px vertical rootMargin so
- * `renderSlide()` is called slightly before the element scrolls into view.
- * For normal scrolling the thumbnail is always ready before it's visible.
- * Rapid scrollbar drag may briefly show a pending placeholder; the same
- * behaviour as the reference vanilla implementation.
- *
- * Rendered DOM is kept in the list's handle cache: scrolling back re-attaches
- * the existing element instantly. The cache is cleared when the presentation
- * changes or the list unmounts.
+ * Rendered DOM is kept in the list's cache, so scrolling back re-attaches it
+ * instantly.
  */
 export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
   function ThumbnailItemPreview({ render, ...thumbnailItemPreviewProps }, forwardedRef) {
@@ -960,15 +938,14 @@ export const ThumbnailItemPreview = React.forwardRef<HTMLDivElement, ThumbnailIt
       presentationWidthRef,
     ]);
 
-    // Re-render the miniature in place when an edit bumps the revision,
-    // without tearing down the IntersectionObserver (the detach→re-attach
-    // gap was the cause of the thumbnail flash on every edit). Only triggers
-    // when the slide is currently visible/attached; off-screen slides are
-    // re-rendered on demand by the IntersectionObserver callback using revisionRef.
+    // Re-render an attached miniature in place when an edit bumps the
+    // revision, without tearing down the IntersectionObserver: the
+    // detach→re-attach gap flashes the thumbnail. Off-screen slides re-render
+    // when the observer next reports them.
     React.useEffect(() => {
       const element = itemPreviewRef.current;
       if (!element || !presentation || !slide) return;
-      if (!slideHandleRef.current) return; // not visible; IO handles it
+      if (!slideHandleRef.current) return;
       // Effects are re-created whenever React restores this subtree, so an
       // unchanged revision means the attached miniature is already current.
       if (attachedRevisionRef.current === revision) return;
