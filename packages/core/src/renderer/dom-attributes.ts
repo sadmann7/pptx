@@ -21,6 +21,8 @@ export const PPTX_ATTRS = {
   placeholderEmpty: "data-pptx-placeholder-empty",
   /** Text container shrunk by `normAutofit`; the value is the font scale (0–1). */
   fontScale: "data-pptx-font-scale",
+  /** Table cell; the value is its row and column, e.g. "0,2". */
+  cell: "data-pptx-cell",
 } as const;
 
 /**
@@ -33,4 +35,5 @@ export const PPTX_DATASET = {
   run: "pptxR",
   bullet: "pptxBullet",
   fontScale: "pptxFontScale",
+  cell: "pptxCell",
 } as const;

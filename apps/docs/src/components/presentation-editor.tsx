@@ -111,6 +111,7 @@ import {
   ShapesIcon,
   SquareDashedIcon,
   StrikethroughIcon,
+  TableIcon,
   TextAlignCenterIcon,
   TextAlignEndIcon,
   TextAlignJustifyIcon,
@@ -641,6 +642,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     setParagraphStyle,
     drawTool,
     startDrawing,
+    insertTable,
     duplicate,
     remove,
     reorder,
@@ -781,6 +783,10 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             disabled={!isReady}
             active={drawTool?.type === "shape"}
             onSelect={(geometry) => startDrawing({ type: "shape", geometry })}
+          />
+          <TableMenu
+            disabled={!isReady}
+            onSelect={(rows, columns) => run(() => insertTable(rows, columns))}
           />
           <ToolbarIconButton
             label="Image"
@@ -1010,6 +1016,57 @@ function ShapeMenu({
               </svg>
             </DropdownMenuItem>
           ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const TABLE_PICKER_ROWS = 6;
+const TABLE_PICKER_COLUMNS = 8;
+
+function TableMenu({
+  disabled,
+  onSelect,
+}: {
+  disabled: boolean;
+  onSelect: (rows: number, columns: number) => void;
+}) {
+  const [size, setSize] = React.useState({ rows: 1, columns: 1 });
+  return (
+    <DropdownMenu
+      modal={false}
+      onOpenChange={(open) => {
+        if (open) setSize({ rows: 1, columns: 1 });
+      }}
+    >
+      <ToolbarMenuTrigger label="Table" disabled={disabled}>
+        <TableIcon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Table" className="w-auto">
+        <div
+          className="grid gap-0.5"
+          style={{ gridTemplateColumns: `repeat(${TABLE_PICKER_COLUMNS}, minmax(0, 1fr))` }}
+        >
+          {Array.from({ length: TABLE_PICKER_ROWS * TABLE_PICKER_COLUMNS }, (_, index) => {
+            const rows = Math.floor(index / TABLE_PICKER_COLUMNS) + 1;
+            const columns = (index % TABLE_PICKER_COLUMNS) + 1;
+            const isInside = rows <= size.rows && columns <= size.columns;
+            return (
+              <DropdownMenuItem
+                key={index}
+                aria-label={`${rows} by ${columns} table`}
+                data-inside={isInside ? "" : undefined}
+                className="size-4 rounded-[3px] border p-0 data-highlighted:bg-transparent data-inside:border-primary data-inside:bg-primary/15"
+                onPointerEnter={() => setSize({ rows, columns })}
+                onFocus={() => setSize({ rows, columns })}
+                onClick={() => onSelect(rows, columns)}
+              />
+            );
+          })}
+        </div>
+        <div className="pt-1.5 text-center text-xs text-muted-foreground tabular-nums">
+          {size.rows} × {size.columns}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

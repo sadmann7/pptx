@@ -3,6 +3,9 @@ import type {
   SetTextBodyParagraph,
   ShapeNodeData,
   SlideNode,
+  TableCellAddress,
+  TableNodeData,
+  TextBody,
   TextPosition,
   TextRange,
 } from "@diceui/pptx-core";
@@ -385,10 +388,48 @@ function readRunsFromParagraphElement(
   return runs;
 }
 
-export function textBodyChanged(node: SlideNode, readBack: SetTextBodyParagraph[]): boolean {
-  if (node.nodeType !== "shape") return false;
-  const shape = node as ShapeNodeData;
-  const paragraphs = shape.textBody?.paragraphs;
+/** The table cells that hold editable text, in reading order. */
+export function getTableCells(node: SlideNode): TableCellAddress[] {
+  if (node.nodeType !== "table") return [];
+  const cells: TableCellAddress[] = [];
+  for (const [row, { cells: rowCells }] of (node as TableNodeData).rows.entries()) {
+    for (const [column, cell] of rowCells.entries()) {
+      if (!cell.hMerge && !cell.vMerge && cell.textBody) cells.push({ row, column });
+    }
+  }
+  return cells;
+}
+
+/** The text body of a shape, or of one cell when the node is a table. */
+export function getTextBody(node: SlideNode, cell?: TableCellAddress): TextBody | undefined {
+  if (node.nodeType === "table") {
+    return cell ? (node as TableNodeData).rows[cell.row]?.cells[cell.column]?.textBody : undefined;
+  }
+  return node.nodeType === "shape" ? (node as ShapeNodeData).textBody : undefined;
+}
+
+export function getCellAddress(element: Element): TableCellAddress | undefined {
+  const value = element.closest(`[${PPTX_ATTRS.cell}]`)?.getAttribute(PPTX_ATTRS.cell);
+  if (!value) return undefined;
+  const [row, column] = value.split(",").map(Number);
+  return { row, column };
+}
+
+export function getIsSameCell(a?: TableCellAddress, b?: TableCellAddress): boolean {
+  return a?.row === b?.row && a?.column === b?.column;
+}
+
+/** The text of a read-back body, paragraphs joined by newlines. */
+export function getPlainText(paragraphs: SetTextBodyParagraph[]): string {
+  return paragraphs.map((paragraph) => paragraph.runs.map((run) => run.text).join("")).join("\n");
+}
+
+export function textBodyChanged(
+  node: SlideNode,
+  readBack: SetTextBodyParagraph[],
+  cell?: TableCellAddress,
+): boolean {
+  const paragraphs = getTextBody(node, cell)?.paragraphs;
   if (!paragraphs) return false;
   if (paragraphs.length !== readBack.length) return true;
   for (let i = 0; i < paragraphs.length; i++) {

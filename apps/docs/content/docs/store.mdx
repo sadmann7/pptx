@@ -164,7 +164,7 @@ await store.edit({
 
 ### `setTextBody`
 
-Replace all paragraphs and runs in a shape. `sourceParagraphIndex` names the existing paragraph whose formatting each new one copies (`-1` for none).
+Replace all paragraphs and runs in a shape. `sourceParagraphIndex` names the existing paragraph whose formatting each new one copies (`-1` for none). For a table, pass `cell: { row, column }` to edit one cell; the other text operations take it too.
 
 ```ts
 await store.edit({
@@ -257,6 +257,7 @@ These have examples under [Programmatic edits](/docs/editing#programmatic-edits)
 | `setSlideBackground` | A slide's own background color, or `null` to inherit the layout's                        |
 | `addTextBox`         | A text box, centered and empty by default                                                |
 | `addShape`           | A preset shape, styled from the theme                                                    |
+| `addTable`           | A table of `rows` by `columns` empty cells, in the deck's default table style            |
 | `addImage`           | A PNG, JPEG, or GIF picture                                                              |
 | `duplicateNode`      | A copy of a shape, offset 10 px                                                          |
 | `reorderNode`        | Moves a shape to the front or back, or one step forward or backward                      |

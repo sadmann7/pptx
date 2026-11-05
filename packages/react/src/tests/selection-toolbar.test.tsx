@@ -6,7 +6,7 @@
 import * as React from "react";
 import { act } from "react";
 
-import type { ShapeNodeData } from "@diceui/pptx-core";
+import type { ShapeNodeData, TableNodeData } from "@diceui/pptx-core";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -24,6 +24,15 @@ function shapeRuns(store: Store, nodeId: string) {
     b: run.properties?.attr("b"),
     i: run.properties?.attr("i"),
   }));
+}
+
+function cellTexts(store: Store, nodeId: string) {
+  const table = store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+  return table.rows.map((row) =>
+    row.cells.map((cell) =>
+      cell.textBody!.paragraphs.map((p) => p.runs.map((run) => run.text).join("")).join("\n"),
+    ),
+  );
 }
 
 async function renderEditor() {
@@ -328,5 +337,85 @@ describe("useSelection", () => {
       /no `Presentation.Selection` is mounted/,
     );
     expect(() => selection.current!.select(["2"])).not.toThrow();
+  });
+});
+
+describe("tables", () => {
+  async function insertTable(editor: Awaited<ReturnType<typeof renderEditor>>) {
+    let nodeId: string | undefined;
+    await act(async () => {
+      nodeId = await editor.selection.current!.insertTable(2, 2);
+    });
+    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+    return nodeId!;
+  }
+
+  function editingCell(container: HTMLElement) {
+    const editable = container.querySelector<HTMLElement>(
+      "[contenteditable]:not([contenteditable=false])",
+    )!;
+    return editable.closest("[data-pptx-cell]")!.getAttribute("data-pptx-cell");
+  }
+
+  it("inserts a table and edits its first cell", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    expect(editor.selection.current!.nodeIds).toEqual([nodeId]);
+    expect(editingCell(editor.container)).toBe("0,0");
+  });
+
+  it("commits a cell's text and moves through cells with Tab and Shift+Tab", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+
+    const editable = editor.container.querySelector<HTMLElement>("[contenteditable]")!;
+    editable.querySelector("[data-pptx-p]")!.textContent = "Name";
+    act(() => {
+      fireEvent.keyDown(editable, { key: "Tab" });
+    });
+    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0][0]).toBe("Name"));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
+
+    act(() => {
+      fireEvent.keyDown(
+        editor.container.querySelector<HTMLElement>(
+          "[contenteditable]:not([contenteditable=false])",
+        )!,
+        { key: "Tab", shiftKey: true },
+      );
+    });
+    await waitFor(() => expect(editingCell(editor.container)).toBe("0,0"));
+    expect(editor.overlay.getAttribute("data-mode")).toBe("text");
+  });
+
+  it("keeps typing that lands before the next cell re-renders", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+
+    const first = editor.container.querySelector<HTMLElement>("[contenteditable]")!;
+    first.querySelector("[data-pptx-p]")!.textContent = "A";
+    act(() => {
+      fireEvent.keyDown(first, { key: "Tab" });
+      const next = editor.container.querySelector<HTMLElement>('[data-pptx-cell="0,1"]')!;
+      next.querySelector("[data-pptx-p]")!.textContent = "B";
+    });
+
+    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0].slice(0, 2)).toEqual(["A", "B"]));
+    await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
+  });
+
+  it("formats every cell of a selected table", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    act(() => editor.selection.current!.select([nodeId]));
+
+    await act(() => editor.selection.current!.setParagraphStyle({ align: "center" }));
+    const table = editor.store
+      .getActiveSlide()!
+      .nodes.find((node) => node.id === nodeId) as TableNodeData;
+    const aligns = table.rows.flatMap((row) =>
+      row.cells.map((cell) => cell.textBody!.paragraphs[0].properties?.attr("algn")),
+    );
+    expect(aligns).toEqual(["ctr", "ctr", "ctr", "ctr"]);
   });
 });
