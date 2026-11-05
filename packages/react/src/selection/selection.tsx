@@ -225,7 +225,6 @@ export type InternalState =
   | {
       mode: "text";
       nodeId: string;
-      /** The table cell being edited, when the node is a table. */
       cell?: TableCellAddress;
       editingElement: HTMLElement;
     };
@@ -379,8 +378,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   // is re-entered.
   const pendingRestoreRef = React.useRef<TextRestore | null>(null);
 
-  // The text the editing element held when text mode entered it, to tell
-  // typing apart from text an undo replaced.
   const entryTextRef = React.useRef<{ element: HTMLElement; text: string } | null>(null);
 
   // Edit revision of the active slide. A bump means SlideImpl will replace
@@ -529,7 +526,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return node?.nodeType === "shape" && Boolean((node as ShapeNodeData).textBody);
   }
 
-  /** The element holding a node's text: the shape, or one cell of a table. */
   function getTextHost(nodeId: string, cell?: TableCellAddress): HTMLElement | null {
     const shapeElement = getShapeElement(nodeId);
     if (!shapeElement || !cell) return shapeElement;
@@ -538,7 +534,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     );
   }
 
-  /** The cell of a table to edit: the one under the point, else the first. */
   function resolveCell(nodeId: string, clientX?: number, clientY?: number): TableCellAddress {
     const node = slide?.nodes.find((n) => n.id === nodeId);
     const cells = node ? getTableCells(node) : [];
@@ -633,7 +628,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       restoreTextRange(textElement, restore);
     } else if (clientX !== undefined && clientY !== undefined) {
       placeCaretAtPoint(clientX, clientY);
-      // A press on a cell's padding resolves outside its text.
       const anchor = window.getSelection()?.anchorNode;
       if (!anchor || !textElement.contains(anchor)) placeCaretAtEnd(textElement);
     } else {
@@ -1070,10 +1064,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     rootRef.current?.focus({ preventScroll: true });
   }
 
-  /**
-   * Moves text editing to another cell of the table being edited. The caret is
-   * kept for the re-render that committing the current cell causes.
-   */
   function moveToCell(
     current: Extract<InternalState, { mode: "text" }>,
     cell: TableCellAddress,
@@ -1093,11 +1083,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       changed && range ? { nodeId: current.nodeId, cell, range, focus: true } : null;
   }
 
-  /**
-   * Keys typed between a commit and the re-render that replaces the slide DOM
-   * land in the detached text. Commits that typing, caret at its end. Returns
-   * whether there was any.
-   */
+  // Keys typed between a commit and its re-render land in the detached text.
   function saveDetachedTyping(current: Extract<InternalState, { mode: "text" }>): boolean {
     const node = slide?.nodes.find((n) => n.id === current.nodeId);
     const entry = entryTextRef.current;
@@ -1128,7 +1114,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
-  /** Tab and Shift+Tab move through a table's cells. Returns whether it moved. */
   function stepCell(current: Extract<InternalState, { mode: "text" }>, step: 1 | -1): boolean {
     const node = slide?.nodes.find((n) => n.id === current.nodeId);
     if (!node || !current.cell) return false;
@@ -1324,7 +1309,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     const current = stateRef.current;
     if (current.mode !== "text") {
-      // A selected table formats every cell, like PowerPoint.
       const operations = selectedNodesRef.current
         .filter((node) => nodeHasText(node.id))
         .flatMap((node) =>
@@ -1713,7 +1697,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         editingElementConnected: currentState.editingElement.isConnected,
       });
       if (currentState.editingElement.isConnected) return;
-      // Re-entered on the re-render this commit causes.
       if (saveDetachedTypingRef.current(currentState)) return;
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
       const pending = pendingRestoreRef.current;

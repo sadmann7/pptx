@@ -501,7 +501,6 @@ interface TextTarget {
   txBody: SafeXmlNode;
 }
 
-/** The text body an operation edits: a shape's, or one table cell's. */
 function findTextTarget(
   pres: PresentationData,
   slide: SlideData,
@@ -2069,10 +2068,8 @@ function applyAddShape(pres: PresentationData, op: AddShapeOperation): EditResul
 }
 
 const TABLE_URI = "http://schemas.openxmlformats.org/drawingml/2006/table";
-/** "Medium Style 2 - Accent 1", PowerPoint's default for new tables. */
 const DEFAULT_TABLE_STYLE_ID = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}";
 const TABLE_ROW_HEIGHT = 40;
-/** PowerPoint's limit on rows and columns. */
 const MAX_TABLE_TRACKS = 75;
 
 function applyAddTable(pres: PresentationData, op: AddTableOperation): EditResult {

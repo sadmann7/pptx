@@ -388,7 +388,6 @@ function readRunsFromParagraphElement(
   return runs;
 }
 
-/** The table cells that hold editable text, in reading order. */
 export function getTableCells(node: SlideNode): TableCellAddress[] {
   if (node.nodeType !== "table") return [];
   const cells: TableCellAddress[] = [];
@@ -400,7 +399,6 @@ export function getTableCells(node: SlideNode): TableCellAddress[] {
   return cells;
 }
 
-/** The text body of a shape, or of one cell when the node is a table. */
 export function getTextBody(node: SlideNode, cell?: TableCellAddress): TextBody | undefined {
   if (node.nodeType === "table") {
     return cell ? (node as TableNodeData).rows[cell.row]?.cells[cell.column]?.textBody : undefined;
@@ -419,7 +417,6 @@ export function getIsSameCell(a?: TableCellAddress, b?: TableCellAddress): boole
   return a?.row === b?.row && a?.column === b?.column;
 }
 
-/** The text of a read-back body, paragraphs joined by newlines. */
 export function getPlainText(paragraphs: SetTextBodyParagraph[]): string {
   return paragraphs.map((paragraph) => paragraph.runs.map((run) => run.text).join("")).join("\n");
 }
