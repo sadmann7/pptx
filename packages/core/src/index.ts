@@ -41,6 +41,7 @@ export type {
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
   SetSolidFillOperation,
+  SetTableGridOperation,
   SetTextBodyOperation,
   SetTextBodyParagraph,
   SetTextBodyRun,

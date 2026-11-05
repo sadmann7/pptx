@@ -300,3 +300,46 @@ describe("table rows and columns", () => {
     ).rejects.toThrow("last column");
   });
 });
+
+describe("setTableGrid", () => {
+  it("sets column widths and row heights, saves, and undoes", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A"), cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+    const before = { columns: [...tableOf(pres).columns], size: { ...tableOf(pres).size } };
+
+    const result = await applyEdit(pres, {
+      type: "setTableGrid",
+      slideId,
+      nodeId: "2",
+      columnWidths: [60, 132],
+      rowHeights: [50, 39],
+    });
+
+    expect(tableOf(pres).columns.map(Math.round)).toEqual([60, 132]);
+    expect(tableOf(pres).rows.map((row) => Math.round(row.height))).toEqual([50, 39]);
+    expect(Math.round(tableOf(pres).size.h)).toBe(89);
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(reopened.columns.map(Math.round)).toEqual([60, 132]);
+
+    result.undo();
+    expect(tableOf(pres).columns).toEqual(before.columns);
+    expect(tableOf(pres).size).toEqual(before.size);
+  });
+
+  it("rejects sizes that don't match the grid", async () => {
+    const pres = await openEditable([table(2, [[cell("A"), cell("B")]])]);
+    await expect(
+      applyEdit(pres, {
+        type: "setTableGrid",
+        slideId: pres.slides[0].id,
+        nodeId: "2",
+        columnWidths: [100],
+      }),
+    ).rejects.toThrow("don't match");
+  });
+});

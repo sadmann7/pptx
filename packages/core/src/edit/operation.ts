@@ -285,6 +285,17 @@ export interface AddTableOperation {
   position?: NodePosition;
 }
 
+/** Set a table's column widths and row heights. */
+export interface SetTableGridOperation {
+  type: "setTableGrid";
+  slideId: string;
+  nodeId: string;
+  /** Width of every column in px, in order. */
+  columnWidths?: number[];
+  /** Height of every row in px, in order. Rows still grow to fit their text. */
+  rowHeights?: number[];
+}
+
 /** Insert an empty row into a table, formatted like its neighbor. */
 export interface InsertTableRowOperation {
   type: "insertTableRow";
@@ -366,6 +377,7 @@ export type EditOperation =
   | AddShapeOperation
   | SetOutlineOperation
   | AddTableOperation
+  | SetTableGridOperation
   | InsertTableRowOperation
   | DeleteTableRowOperation
   | InsertTableColumnOperation
@@ -437,6 +449,8 @@ export async function applyEdit(
       return applySetOutline(presentation, op);
     case "addTable":
       return applyAddTable(presentation, op);
+    case "setTableGrid":
+      return applySetTableGrid(presentation, op);
     case "insertTableRow":
       return applyInsertTableRow(presentation, op);
     case "deleteTableRow":
@@ -2304,6 +2318,24 @@ function checkIndex(index: number, max: number, what: string): void {
   if (!Number.isInteger(index) || index < 0 || index > max) {
     throw new Error(`applyEdit: ${what} index ${index} is out of bounds.`);
   }
+}
+
+function applySetTableGrid(pres: PresentationData, op: SetTableGridOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const tracks: [Element[], number[] | undefined, string][] = [
+      [gridColumns(tbl), op.columnWidths, "w"],
+      [tableRows(tbl), op.rowHeights, "h"],
+    ];
+    for (const [elements, sizes, attr] of tracks) {
+      if (!sizes) continue;
+      if (sizes.length !== elements.length || sizes.some((size) => !(size > 0))) {
+        throw new Error(`applyEdit: table grid sizes don't match the table.`);
+      }
+      elements.forEach((element, index) =>
+        element.setAttribute(attr, String(pxToEmu(sizes[index]))),
+      );
+    }
+  });
 }
 
 function applyInsertTableRow(pres: PresentationData, op: InsertTableRowOperation): EditResult {

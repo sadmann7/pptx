@@ -463,6 +463,28 @@ describe("tables", () => {
     expect(editor.overlay.getAttribute("data-mode")).toBe("idle");
   });
 
+  it("resizes a column by dragging its border, keeping the table's width", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    act(() => editor.selection.current!.select([nodeId]));
+    const tableOf = () =>
+      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+    const [left, right] = tableOf().columns;
+
+    const border = editor.container.querySelector<HTMLElement>(
+      '[data-pptx-table-border="column"]',
+    )!;
+    await act(async () => {
+      fireEvent.pointerDown(border, { button: 0, clientX: 100, clientY: 0, pointerId: 1 });
+      fireEvent.pointerMove(border, { clientX: 130, clientY: 0, pointerId: 1 });
+      fireEvent.pointerUp(border, { clientX: 130, clientY: 0, pointerId: 1 });
+    });
+
+    await waitFor(() => expect(tableOf().columns[0]).toBeGreaterThan(left));
+    expect(tableOf().columns[0] + tableOf().columns[1]).toBeCloseTo(left + right, 0);
+    expect(editor.overlay.getAttribute("data-mode")).toBe("selected");
+  });
+
   it("formats every cell of a selected table", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);

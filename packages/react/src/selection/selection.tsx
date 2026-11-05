@@ -230,6 +230,31 @@ export type InternalState =
       editingElement: HTMLElement;
     };
 
+interface TableBorderDrag {
+  nodeId: string;
+  axis: "column" | "row";
+  index: number;
+  start: number;
+  columns: number[];
+  rows: number[];
+  next: { columns: number[]; rows: number[] } | null;
+}
+
+const MIN_TABLE_TRACK = 12;
+
+function previewTableGrid(element: HTMLElement | null, columns: number[], rows: number[]): void {
+  if (!element) return;
+  const width = columns.reduce((sum, size) => sum + size, 0);
+  const height = rows.reduce((sum, size) => sum + size, 0);
+  element.querySelectorAll<HTMLElement>("col").forEach((col, index) => {
+    col.style.width = `${(columns[index] / width) * 100}%`;
+  });
+  element.querySelectorAll<HTMLElement>("tr").forEach((tr, index) => {
+    tr.style.height = `${(rows[index] / height) * 100}%`;
+  });
+  element.style.height = `${height}px`;
+}
+
 /** Text range to put back after a formatting edit re-renders the text being edited. */
 interface TextRestore {
   nodeId: string;
@@ -1456,6 +1481,150 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       pendingRestoreRef.current = null;
       throw error;
     }
+  }
+
+  const tableBorderDragRef = React.useRef<TableBorderDrag | null>(null);
+  const tableNode =
+    isSoloSelection &&
+    selectedNode?.nodeType === "table" &&
+    selectedNode.rotation === 0 &&
+    !selectedNode.flipH &&
+    !selectedNode.flipV &&
+    (state.mode === "selected" || state.mode === "text")
+      ? (selectedNode as TableNodeData)
+      : null;
+
+  function onTableBorderPointerDown(
+    event: React.PointerEvent<HTMLDivElement>,
+    axis: TableBorderDrag["axis"],
+    index: number,
+  ): void {
+    if (!tableNode || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    tableBorderDragRef.current = {
+      nodeId: tableNode.id,
+      axis,
+      index,
+      start: axis === "column" ? event.clientX : event.clientY,
+      columns: [...tableNode.columns],
+      rows: tableNode.rows.map((row) => row.height),
+      next: null,
+    };
+  }
+
+  function onTableBorderPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+    const drag = tableBorderDragRef.current;
+    if (!drag) return;
+    const delta = ((drag.axis === "column" ? event.clientX : event.clientY) - drag.start) / zoom;
+    const columns = [...drag.columns];
+    const rows = [...drag.rows];
+    if (drag.axis === "column") {
+      const pair = columns[drag.index] + columns[drag.index + 1];
+      const left = Math.min(
+        Math.max(columns[drag.index] + delta, MIN_TABLE_TRACK),
+        pair - MIN_TABLE_TRACK,
+      );
+      columns[drag.index] = left;
+      columns[drag.index + 1] = pair - left;
+    } else {
+      rows[drag.index] = Math.max(rows[drag.index] + delta, MIN_TABLE_TRACK);
+    }
+    drag.next = { columns, rows };
+    previewTableGrid(getShapeElement(drag.nodeId), columns, rows);
+  }
+
+  function onTableBorderPointerUp(): void {
+    const drag = tableBorderDragRef.current;
+    tableBorderDragRef.current = null;
+    if (!drag?.next || !slide || !slideId) return;
+    const operations: EditOperation[] = [];
+    const current = stateRef.current;
+    if (current.mode === "text") {
+      const container = getEditingContainer(current);
+      const node = slide.nodes.find((n) => n.id === current.nodeId);
+      if (container && node) {
+        const readBack = readBackTextBody(container);
+        if (textBodyChanged(node, readBack, current.cell)) {
+          operations.push({
+            type: "setTextBody",
+            slideId,
+            nodeId: current.nodeId,
+            cell: current.cell,
+            paragraphs: readBack,
+          });
+        }
+        const domRange = getEditingDomRange(container);
+        const range = domRange ? getTextRange(container, domRange) : null;
+        pendingRestoreRef.current = range
+          ? { nodeId: current.nodeId, cell: current.cell, range, focus: true }
+          : null;
+      }
+    }
+    operations.push({
+      type: "setTableGrid",
+      slideId,
+      nodeId: drag.nodeId,
+      ...(drag.axis === "column"
+        ? { columnWidths: drag.next.columns }
+        : { rowHeights: drag.next.rows }),
+    });
+    commitEdit(
+      () => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }),
+      () => previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows),
+      () => onNodeTransform?.(drag.nodeId),
+      (error) => onNodeTransform?.(drag.nodeId, error),
+    );
+  }
+
+  function onTableBorderPointerCancel(): void {
+    const drag = tableBorderDragRef.current;
+    tableBorderDragRef.current = null;
+    if (drag) previewTableGrid(getShapeElement(drag.nodeId), drag.columns, drag.rows);
+  }
+
+  function renderTableBorders(table: TableNodeData): React.ReactNode {
+    const borders: { axis: TableBorderDrag["axis"]; index: number; offset: number }[] = [];
+    let x = 0;
+    table.columns.slice(0, -1).forEach((width, index) => {
+      x += width;
+      borders.push({ axis: "column", index, offset: x });
+    });
+    let y = 0;
+    table.rows.slice(0, -1).forEach((row, index) => {
+      y += row.height;
+      borders.push({ axis: "row", index, offset: y });
+    });
+    return borders.map(({ axis, index, offset }) => (
+      <div
+        key={`${axis}-${index}`}
+        data-pptx-table-border={axis}
+        onPointerDown={(event) => onTableBorderPointerDown(event, axis, index)}
+        onPointerMove={onTableBorderPointerMove}
+        onPointerUp={onTableBorderPointerUp}
+        onPointerCancel={onTableBorderPointerCancel}
+        style={{
+          position: "absolute",
+          pointerEvents: "auto",
+          touchAction: "none",
+          cursor: axis === "column" ? "col-resize" : "row-resize",
+          ...(axis === "column"
+            ? {
+                left: (table.position.x + offset) * zoom - 4,
+                top: table.position.y * zoom,
+                width: 8,
+                height: table.size.h * zoom,
+              }
+            : {
+                left: table.position.x * zoom,
+                top: (table.position.y + offset) * zoom - 4,
+                width: table.size.w * zoom,
+                height: 8,
+              }),
+        }}
+      />
+    ));
   }
 
   const enterTextModeRef = useLatestRef(enterTextMode);
@@ -2694,6 +2863,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                 >
                   {children ?? DEFAULT_PARTS}
                 </SelectionPartsContext.Provider>
+                {tableNode && renderTableBorders(tableNode)}
               </div>
               <div role="status" aria-live="polite" style={VISUALLY_HIDDEN}>
                 {announcement}
