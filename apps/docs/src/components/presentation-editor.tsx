@@ -677,7 +677,9 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
       type: "addSlide",
       afterSlideId: slideId ?? undefined,
     });
-    if (createdSlideId) goTo(createdSlideId);
+    if (!createdSlideId) return;
+    goTo(createdSlideId);
+    focusThumbnail(createdSlideId);
   }
 
   async function onImageChange(event: React.ChangeEvent<HTMLInputElement>) {
