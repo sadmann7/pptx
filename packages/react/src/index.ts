@@ -43,7 +43,12 @@ export type {
 export type { ComponentRenderFn, RenderProp } from "./render";
 
 export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection/channel";
-export type { DrawTool, SelectionAnchor, UseSelectionResult } from "./selection/channel";
+export type {
+  DrawTool,
+  SelectionAnchor,
+  TableChange,
+  UseSelectionResult,
+} from "./selection/channel";
 export type { ActiveTextStyle } from "./selection/text-range";
 
 export type {
@@ -70,6 +75,10 @@ export type {
   AddTextBoxOperation,
   AddSlideOperation,
   AddTableOperation,
+  DeleteTableColumnOperation,
+  DeleteTableRowOperation,
+  InsertTableColumnOperation,
+  InsertTableRowOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,

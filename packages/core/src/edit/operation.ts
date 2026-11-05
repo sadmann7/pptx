@@ -285,6 +285,40 @@ export interface AddTableOperation {
   position?: NodePosition;
 }
 
+/** Insert an empty row into a table, formatted like its neighbor. */
+export interface InsertTableRowOperation {
+  type: "insertTableRow";
+  slideId: string;
+  nodeId: string;
+  /** Index the new row takes; the row count appends it. */
+  index: number;
+}
+
+/** Remove a row from a table. A table keeps at least one row. */
+export interface DeleteTableRowOperation {
+  type: "deleteTableRow";
+  slideId: string;
+  nodeId: string;
+  index: number;
+}
+
+/** Insert an empty column into a table, as wide as its neighbor. */
+export interface InsertTableColumnOperation {
+  type: "insertTableColumn";
+  slideId: string;
+  nodeId: string;
+  /** Index the new column takes; the column count appends it. */
+  index: number;
+}
+
+/** Remove a column from a table. A table keeps at least one column. */
+export interface DeleteTableColumnOperation {
+  type: "deleteTableColumn";
+  slideId: string;
+  nodeId: string;
+  index: number;
+}
+
 /** Insert a picture on top of a slide. */
 export interface AddImageOperation {
   type: "addImage";
@@ -332,6 +366,10 @@ export type EditOperation =
   | AddShapeOperation
   | SetOutlineOperation
   | AddTableOperation
+  | InsertTableRowOperation
+  | DeleteTableRowOperation
+  | InsertTableColumnOperation
+  | DeleteTableColumnOperation
   | BatchOperation;
 
 export interface EditResult {
@@ -399,6 +437,14 @@ export async function applyEdit(
       return applySetOutline(presentation, op);
     case "addTable":
       return applyAddTable(presentation, op);
+    case "insertTableRow":
+      return applyInsertTableRow(presentation, op);
+    case "deleteTableRow":
+      return applyDeleteTableRow(presentation, op);
+    case "insertTableColumn":
+      return applyInsertTableColumn(presentation, op);
+    case "deleteTableColumn":
+      return applyDeleteTableColumn(presentation, op);
     case "batch":
       return applyBatch(presentation, op);
   }
@@ -2138,6 +2184,255 @@ function applyAddTable(pres: PresentationData, op: AddTableOperation): EditResul
         ),
       ),
     );
+  });
+}
+
+function rewriteTable(
+  pres: PresentationData,
+  slideId: string,
+  nodeId: string,
+  mutate: (tbl: Element) => void,
+): EditResult {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, slideId);
+  const node = findNode(pres, slide, nodeId);
+  const original = requireElement(node.source, "table frame");
+  if (node.nodeType !== "table" || original.localName !== "graphicFrame") {
+    throw new Error(`applyEdit: node "${nodeId}" is not a table.`);
+  }
+  const parent = original.parentElement;
+  if (!parent) throw new Error(`applyEdit: node "${nodeId}" is not attached to the slide.`);
+
+  const clone = original.cloneNode(true) as Element;
+  const tbl = descendantsNamed(clone, "tbl")[0];
+  if (!tbl) throw new Error(`applyEdit: table "${nodeId}" has no a:tbl.`);
+  mutate(tbl);
+
+  const ext = childNamed(childNamed(clone, "xfrm") ?? clone, "ext");
+  if (ext) {
+    const sum = (elements: Element[], name: string) =>
+      elements.reduce((total, element) => total + Number(element.getAttribute(name) ?? 0), 0);
+    ext.setAttribute("cx", String(sum(gridColumns(tbl), "w")));
+    ext.setAttribute("cy", String(sum(tableRows(tbl), "h")));
+  }
+
+  insertChild(parent, clone, original);
+  removeChild(original);
+  const next = parseAddedNode(pres, slide, clone);
+  const index = slide.nodes.indexOf(node);
+  slide.nodes[index] = next;
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      insertChild(parent, original, clone);
+      removeChild(clone);
+      slide.nodes[index] = node;
+      sourcePackage.markDirty(slide.id);
+    },
+  };
+}
+
+function gridColumns(tbl: Element): Element[] {
+  const grid = childNamed(tbl, "tblGrid");
+  return grid ? Array.from(grid.children).filter((child) => child.localName === "gridCol") : [];
+}
+
+function tableRows(tbl: Element): Element[] {
+  return Array.from(tbl.children).filter((child) => child.localName === "tr");
+}
+
+function rowCells(tr: Element): Element[] {
+  return Array.from(tr.children).filter((child) => child.localName === "tc");
+}
+
+function spanOf(tc: Element, name: "gridSpan" | "rowSpan"): number {
+  return Number(tc.getAttribute(name) ?? 1);
+}
+
+function setSpan(tc: Element, name: "gridSpan" | "rowSpan", span: number): void {
+  setOrRemoveAttr(tc, name, span > 1 ? String(span) : undefined);
+}
+
+function clearCellText(tc: Element): void {
+  const doc = tc.ownerDocument;
+  let txBody = childNamed(tc, "txBody");
+  if (!txBody) {
+    txBody = doc.createElementNS(A_NS, "a:txBody");
+    txBody.append(doc.createElementNS(A_NS, "a:bodyPr"), doc.createElementNS(A_NS, "a:lstStyle"));
+    tc.insertBefore(txBody, tc.firstElementChild);
+  }
+  const paragraphs = childParagraphs(txBody);
+  const first = paragraphs[0];
+  const paragraph = doc.createElementNS(A_NS, "a:p");
+  const pPr = first ? childNamed(first, "pPr") : null;
+  if (pPr) paragraph.appendChild(pPr.cloneNode(true));
+  const firstRun = first ? firstChildIn(first, RUN_LOCAL_NAMES) : null;
+  const marks = first ? childNamed(first, "endParaRPr") : null;
+  const source = marks ?? (firstRun ? childNamed(firstRun, "rPr") : null);
+  const endParaRPr = doc.createElementNS(A_NS, "a:endParaRPr");
+  if (source) {
+    for (const attr of Array.from(source.attributes)) {
+      if (!attr.name.startsWith("xmlns")) endParaRPr.setAttribute(attr.name, attr.value);
+    }
+    for (const child of Array.from(source.childNodes))
+      endParaRPr.appendChild(child.cloneNode(true));
+  }
+  paragraph.appendChild(endParaRPr);
+  for (const old of paragraphs) old.remove();
+  txBody.appendChild(paragraph);
+}
+
+const MERGE_ATTRS = ["gridSpan", "rowSpan", "hMerge", "vMerge"] as const;
+
+function blankCellFrom(source: Element): Element {
+  const tc = source.cloneNode(true) as Element;
+  for (const name of MERGE_ATTRS) tc.removeAttribute(name);
+  clearCellText(tc);
+  return tc;
+}
+
+function joinMerge(tc: Element, continuation: Element): void {
+  for (const name of ["gridSpan", "hMerge", "vMerge"] as const) {
+    const value = continuation.getAttribute(name);
+    if (value !== null) tc.setAttribute(name, value);
+  }
+}
+
+function checkIndex(index: number, max: number, what: string): void {
+  if (!Number.isInteger(index) || index < 0 || index > max) {
+    throw new Error(`applyEdit: ${what} index ${index} is out of bounds.`);
+  }
+}
+
+function applyInsertTableRow(pres: PresentationData, op: InsertTableRowOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    checkIndex(op.index, rows.length, "row");
+    const source = rows[op.index - 1] ?? rows[0];
+    const below = rows[op.index];
+    const tr = source.cloneNode(true) as Element;
+    rowCells(tr).forEach((tc, column) => {
+      const blank = blankCellFrom(tc);
+      const displaced = below ? rowCells(below)[column] : undefined;
+      if (displaced?.getAttribute("vMerge") === "1") {
+        joinMerge(blank, displaced);
+        const origin = rows
+          .slice(0, op.index)
+          .reverse()
+          .map((row) => rowCells(row)[column])
+          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+        if (origin?.hasAttribute("rowSpan"))
+          setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") + 1);
+      } else {
+        for (const name of ["gridSpan", "hMerge"] as const) {
+          const value = tc.getAttribute(name);
+          if (value !== null) blank.setAttribute(name, value);
+        }
+      }
+      tr.replaceChild(blank, tc);
+    });
+    tbl.insertBefore(tr, below ?? null);
+  });
+}
+
+function applyDeleteTableRow(pres: PresentationData, op: DeleteTableRowOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    checkIndex(op.index, rows.length - 1, "row");
+    if (rows.length === 1) throw new Error("applyEdit: cannot delete a table's last row.");
+    const tr = rows[op.index];
+    rowCells(tr).forEach((tc, column) => {
+      const rowSpan = spanOf(tc, "rowSpan");
+      if (rowSpan > 1) {
+        const next = rows[op.index + 1] ? rowCells(rows[op.index + 1])[column] : undefined;
+        if (!next) return;
+        const text = childNamed(tc, "txBody");
+        const nextText = childNamed(next, "txBody");
+        if (text && nextText) next.replaceChild(text, nextText);
+        next.removeAttribute("vMerge");
+        setSpan(next, "rowSpan", rowSpan - 1);
+      } else if (tc.getAttribute("vMerge") === "1") {
+        const origin = rows
+          .slice(0, op.index)
+          .reverse()
+          .map((row) => rowCells(row)[column])
+          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+        if (origin?.hasAttribute("rowSpan"))
+          setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") - 1);
+      }
+    });
+    tr.remove();
+  });
+}
+
+function applyInsertTableColumn(
+  pres: PresentationData,
+  op: InsertTableColumnOperation,
+): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const columns = gridColumns(tbl);
+    checkIndex(op.index, columns.length, "column");
+    const sourceColumn = columns[op.index - 1] ?? columns[0];
+    sourceColumn.parentElement!.insertBefore(
+      sourceColumn.cloneNode(true),
+      columns[op.index] ?? null,
+    );
+    for (const tr of tableRows(tbl)) {
+      const cells = rowCells(tr);
+      const blank = blankCellFrom(cells[op.index - 1] ?? cells[0]);
+      const displaced = cells[op.index];
+      if (displaced?.getAttribute("hMerge") === "1") {
+        joinMerge(blank, displaced);
+        blank.removeAttribute("gridSpan");
+        const origin = cells
+          .slice(0, op.index)
+          .reverse()
+          .find((cell) => cell.getAttribute("hMerge") !== "1");
+        if (origin?.hasAttribute("gridSpan"))
+          setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") + 1);
+      }
+      tr.insertBefore(blank, displaced ?? firstChildIn(tr, new Set(["extLst"])));
+    }
+  });
+}
+
+function applyDeleteTableColumn(
+  pres: PresentationData,
+  op: DeleteTableColumnOperation,
+): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const columns = gridColumns(tbl);
+    checkIndex(op.index, columns.length - 1, "column");
+    if (columns.length === 1) throw new Error("applyEdit: cannot delete a table's last column.");
+    for (const tr of tableRows(tbl)) {
+      const cells = rowCells(tr);
+      const tc = cells[op.index];
+      if (!tc) continue;
+      const gridSpan = spanOf(tc, "gridSpan");
+      if (gridSpan > 1) {
+        const next = cells[op.index + 1];
+        if (next) {
+          const text = childNamed(tc, "txBody");
+          const nextText = childNamed(next, "txBody");
+          if (text && nextText) next.replaceChild(text, nextText);
+          next.removeAttribute("hMerge");
+          setSpan(next, "gridSpan", gridSpan - 1);
+          const rowSpan = tc.getAttribute("rowSpan");
+          if (rowSpan !== null) next.setAttribute("rowSpan", rowSpan);
+        }
+      } else if (tc.getAttribute("hMerge") === "1") {
+        const origin = cells
+          .slice(0, op.index)
+          .reverse()
+          .find((cell) => cell.getAttribute("hMerge") !== "1");
+        if (origin?.hasAttribute("gridSpan"))
+          setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") - 1);
+      }
+      tc.remove();
+    }
+    columns[op.index].remove();
   });
 }
 

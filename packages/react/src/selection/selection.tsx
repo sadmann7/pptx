@@ -9,6 +9,7 @@ import type {
   ShapeNodeData,
   SlideNode,
   TableCellAddress,
+  TableNodeData,
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
@@ -25,7 +26,7 @@ import {
 import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
-import type { DrawTool } from "./channel";
+import type { DrawTool, TableChange } from "./channel";
 import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { getReportedMode, SelectionPartsContext } from "./context";
@@ -427,6 +428,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const selectedIdsRef = useLatestRef(selectedIds);
   const selectedNodesRef = useLatestRef(selectedNodes);
   const selectionKey = selectedIds.join("\u0000");
+  const cellKey =
+    state.mode === "text" && state.cell ? `${state.cell.row},${state.cell.column}` : "";
   const previousModeRef = React.useRef(mode);
 
   React.useEffect(() => {
@@ -664,12 +667,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * committed before the next paint, so a double rAF (not a timeout) is the
    * earliest reliable moment the replacement shape element exists.
    */
-  function resumeTextEditing(nodeId: string, cell?: TableCellAddress): void {
+  function resumeTextEditing(
+    nodeId: string,
+    cell?: TableCellAddress,
+    restore?: TextRestore | null,
+  ): void {
     debugLog("resumeTextEditing scheduled", { nodeId });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         debugLog("resumeTextEditing firing", { nodeId });
-        enterTextMode(nodeId, undefined, undefined, undefined, undefined, cell);
+        enterTextMode(nodeId, undefined, undefined, undefined, restore, cell);
       });
     });
   }
@@ -1120,7 +1127,80 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const cells = getTableCells(node);
     const next = cells[cells.findIndex((cell) => getIsSameCell(cell, current.cell)) + step];
     if (next) moveToCell(current, next);
+    else if (step === 1) {
+      changeTable({ type: "insertRow", side: "below" }, true).catch((error) =>
+        console.warn("[pptx] edit failed:", error),
+      );
+    }
     return true;
+  }
+
+  async function changeTable(change: TableChange, enterNewRow = false): Promise<void> {
+    const current = stateRef.current;
+    if (current.mode !== "text" || !current.cell || !slide || !slideId) return;
+    const { nodeId, cell } = current;
+    const table = slide.nodes.find((n) => n.id === nodeId) as TableNodeData | undefined;
+    const origin = table?.rows[cell.row]?.cells[cell.column];
+    if (!table || !origin) return;
+
+    const isRow = change.type === "insertRow" || change.type === "deleteRow";
+    const isInsert = change.type === "insertRow" || change.type === "insertColumn";
+    const position = isRow ? cell.row : cell.column;
+    if (!isInsert && (isRow ? table.rows.length : table.columns.length) === 1) {
+      current.editingElement.contentEditable = "false";
+      setState({ mode: "idle" });
+      await store.edit({ type: "deleteNode", slideId, nodeId });
+      onNodeDelete?.(nodeId);
+      return;
+    }
+    const after = "side" in change && (change.side === "below" || change.side === "right");
+    const index = after ? position + (isRow ? origin.rowSpan : origin.gridSpan) : position;
+
+    const container = getEditingContainer(current);
+    const readBack = container ? readBackTextBody(container) : null;
+    const domRange = container ? getEditingDomRange(container) : null;
+    const caret = container && domRange ? getTextRange(container, domRange) : null;
+    const operations: EditOperation[] = [];
+    if (readBack && textBodyChanged(table, readBack, cell)) {
+      operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
+    }
+    operations.push({
+      type: isInsert
+        ? isRow
+          ? "insertTableRow"
+          : "insertTableColumn"
+        : isRow
+          ? "deleteTableRow"
+          : "deleteTableColumn",
+      slideId,
+      nodeId,
+      index,
+    });
+
+    current.editingElement.contentEditable = "false";
+    setState({ mode: "selected", nodeIds: [nodeId] });
+    await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+
+    let next: TableCellAddress;
+    if (enterNewRow) {
+      next = { row: index, column: 0 };
+    } else if (isInsert) {
+      const shift = index <= position ? 1 : 0;
+      next = isRow
+        ? { row: cell.row + shift, column: cell.column }
+        : { row: cell.row, column: cell.column + shift };
+    } else {
+      const updated = slide.nodes.find((n) => n.id === nodeId);
+      const cells = updated ? getTableCells(updated) : [];
+      const row = isRow ? Math.min(cell.row, (updated as TableNodeData).rows.length - 1) : cell.row;
+      const column = isRow
+        ? cell.column
+        : Math.min(cell.column, (updated as TableNodeData).columns.length - 1);
+      next = cells.filter((c) => c.row <= row && c.column <= column).at(-1) ?? cells[0];
+    }
+    const restore =
+      isInsert && !enterNewRow && caret ? { nodeId, cell: next, range: caret, focus: true } : null;
+    resumeTextEditing(nodeId, next, restore);
   }
 
   function restoreTextRange(textElement: HTMLElement, restore: TextRestore): void {
@@ -1205,6 +1285,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       mode: getReportedMode(stateRef.current),
       // Ids of nodes still on the slide: an undo can remove a selected copy.
       nodeIds: selectedNodesRef.current.map((node) => node.id),
+      cell: stateRef.current.mode === "text" ? (stateRef.current.cell ?? null) : null,
       textStyle: readTextStyle(),
       drawTool,
     });
@@ -1394,6 +1475,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const applyFormatRef = useLatestRef(applyFormat);
   const prepareTextHistoryRef = useLatestRef(prepareTextHistory);
   const getSelectionRectRef = useLatestRef(getSelectionRect);
+  const changeTableRef = useLatestRef(changeTable);
 
   React.useEffect(
     () =>
@@ -1406,6 +1488,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         reorder: (order) => reorderSelectionRef.current(order),
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
+        changeTable: (change) => changeTableRef.current(change),
         prepareTextHistory: (target) => prepareTextHistoryRef.current(target),
         getSelectionRect: () => getSelectionRectRef.current(),
         getOverlayElement: () => rootRef.current,
@@ -1421,6 +1504,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       applyFormatRef,
       prepareTextHistoryRef,
       getSelectionRectRef,
+      changeTableRef,
       rootRef,
     ],
   );
@@ -1433,7 +1517,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     publishSelectionRef.current();
     const frameId = requestAnimationFrame(() => publishSelectionRef.current());
     return () => cancelAnimationFrame(frameId);
-  }, [selectionKey, mode, slideRevision, drawTool, publishSelectionRef]);
+  }, [selectionKey, cellKey, mode, slideRevision, drawTool, publishSelectionRef]);
 
   // In text mode, follow the caret: remember the range for toolbar presses,
   // and republish so the toolbar's toggles track the text under the caret.
