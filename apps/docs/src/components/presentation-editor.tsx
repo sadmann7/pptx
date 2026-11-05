@@ -6,12 +6,15 @@ import type {
   NodeOrder,
   ParagraphAlign,
   PresentationStore,
+  TableCellAddress,
   TableChange,
   TextStyle,
+  UseSelectionResult,
 } from "@diceui/pptx";
 import {
   getPresentationFonts,
   getPresetShapePath,
+  getTableCellOrigin,
   useHistory,
   usePresentation,
   useSelection,
@@ -122,6 +125,8 @@ import {
   ShapesIcon,
   SquareDashedIcon,
   StrikethroughIcon,
+  TableCellsMergeIcon,
+  TableCellsSplitIcon,
   TableIcon,
   TextAlignCenterIcon,
   TextAlignEndIcon,
@@ -202,6 +207,17 @@ const TABLE_DELETES = [
   { change: { type: "deleteRow" }, label: "Delete row" },
   { change: { type: "deleteColumn" }, label: "Delete column" },
 ] as const satisfies readonly { change: TableChange; label: string }[];
+
+function getCanSplitCell(
+  nodes: UseSelectionResult["nodes"],
+  cell: TableCellAddress | null,
+): boolean {
+  const table = nodes[0];
+  if (!cell || table?.nodeType !== "table") return false;
+  const origin = getTableCellOrigin(table, cell);
+  const merged = table.rows[origin.row]?.cells[origin.column];
+  return merged != null && (merged.gridSpan > 1 || merged.rowSpan > 1);
+}
 
 /** The font sizes OOXML allows, in points. */
 const MIN_FONT_SIZE = 1;
@@ -683,6 +699,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     startDrawing,
     insertTable,
     cell,
+    cellRange,
     changeTable,
     duplicate,
     remove,
@@ -937,7 +954,13 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 value={textStyle.align}
                 onSelect={(align) => run(() => setParagraphStyle({ align }))}
               />
-              {cell && <TableEditMenu onSelect={(change) => run(() => changeTable(change))} />}
+              {cell && (
+                <TableEditMenu
+                  canMerge={cellRange !== null}
+                  canSplit={getCanSplitCell(nodes, cell)}
+                  onSelect={(change) => run(() => changeTable(change))}
+                />
+              )}
             </>
           )}
 
@@ -1115,23 +1138,36 @@ function TableMenu({
   );
 }
 
-function TableEditMenu({ onSelect }: { onSelect: (change: TableChange) => void }) {
+function TableEditMenu({
+  canMerge,
+  canSplit,
+  onSelect,
+}: {
+  canMerge: boolean;
+  canSplit: boolean;
+  onSelect: (change: TableChange) => void;
+}) {
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label="Rows and columns">
+      <ToolbarMenuTrigger label="Edit table">
         <Grid2x2PlusIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-pptx-keep-selection=""
-        aria-label="Rows and columns"
-        className="w-48"
-      >
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
           <DropdownMenuItem key={label} onClick={() => onSelect(change)}>
             <Icon />
             {label}
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={!canMerge} onClick={() => onSelect({ type: "mergeCells" })}>
+          <TableCellsMergeIcon />
+          Merge cells
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!canSplit} onClick={() => onSelect({ type: "splitCell" })}>
+          <TableCellsSplitIcon />
+          Unmerge cells
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         {TABLE_DELETES.map(({ change, label }) => (
           <DropdownMenuItem key={label} variant="destructive" onClick={() => onSelect(change)}>
@@ -1558,7 +1594,7 @@ interface CanvasContextMenuProps {
 /** Right-clicking a shape acts on it, and on empty canvas acts on the slide. */
 function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const { slideId } = useSlide();
-  const { mode, nodes, cell, editText, changeTable, duplicate, remove, reorder, clear } =
+  const { mode, nodes, cell, cellRange, editText, changeTable, duplicate, remove, reorder, clear } =
     useSelection();
   const actions = useSlideActions(store);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
@@ -1620,6 +1656,18 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
                   {label}
                 </ContextMenuItem>
               ))}
+              {cellRange && (
+                <ContextMenuItem onClick={() => run(() => changeTable({ type: "mergeCells" }))}>
+                  <TableCellsMergeIcon />
+                  Merge cells
+                </ContextMenuItem>
+              )}
+              {getCanSplitCell(nodes, cell) && (
+                <ContextMenuItem onClick={() => run(() => changeTable({ type: "splitCell" }))}>
+                  <TableCellsSplitIcon />
+                  Unmerge cells
+                </ContextMenuItem>
+              )}
               {TABLE_DELETES.map(({ change, label }) => (
                 <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
                   <Trash2Icon />

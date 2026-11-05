@@ -79,6 +79,8 @@ export type {
   DeleteTableRowOperation,
   InsertTableColumnOperation,
   InsertTableRowOperation,
+  MergeTableCellsOperation,
+  SplitTableCellOperation,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
@@ -108,9 +110,16 @@ export type {
   SetTextRunOperation,
   SetTextStyleOperation,
   TableCellAddress,
+  TableCellRange,
   TextPosition,
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
 
-export { copyNodes, getPresentationFonts, getPresetShapePath } from "@diceui/pptx-core";
+export {
+  copyNodes,
+  getPresentationFonts,
+  getPresetShapePath,
+  getTableCellOrigin,
+  getTableCellRange,
+} from "@diceui/pptx-core";

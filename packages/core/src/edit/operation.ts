@@ -296,6 +296,24 @@ export interface SetTableGridOperation {
   rowHeights?: number[];
 }
 
+/** Merge a rectangle of table cells into one, keeping all their text. */
+export interface MergeTableCellsOperation {
+  type: "mergeTableCells";
+  slideId: string;
+  nodeId: string;
+  /** Opposite corners of the cells to merge; the range grows to cover any merge it cuts. */
+  from: TableCellAddress;
+  to: TableCellAddress;
+}
+
+/** Split a merged table cell back into its cells. */
+export interface SplitTableCellOperation {
+  type: "splitTableCell";
+  slideId: string;
+  nodeId: string;
+  cell: TableCellAddress;
+}
+
 /** Insert an empty row into a table, formatted like its neighbor. */
 export interface InsertTableRowOperation {
   type: "insertTableRow";
@@ -378,6 +396,8 @@ export type EditOperation =
   | SetOutlineOperation
   | AddTableOperation
   | SetTableGridOperation
+  | MergeTableCellsOperation
+  | SplitTableCellOperation
   | InsertTableRowOperation
   | DeleteTableRowOperation
   | InsertTableColumnOperation
@@ -451,6 +471,10 @@ export async function applyEdit(
       return applyAddTable(presentation, op);
     case "setTableGrid":
       return applySetTableGrid(presentation, op);
+    case "mergeTableCells":
+      return applyMergeTableCells(presentation, op);
+    case "splitTableCell":
+      return applySplitTableCell(presentation, op);
     case "insertTableRow":
       return applyInsertTableRow(presentation, op);
     case "deleteTableRow":
@@ -2334,6 +2358,130 @@ function applySetTableGrid(pres: PresentationData, op: SetTableGridOperation): E
       elements.forEach((element, index) =>
         element.setAttribute(attr, String(pxToEmu(sizes[index]))),
       );
+    }
+  });
+}
+
+/** The cell whose text and spans cover `cell`: itself, unless a merge hides it. */
+export function getTableCellOrigin(table: TableNodeData, cell: TableCellAddress): TableCellAddress {
+  let { row, column } = cell;
+  while (column > 0 && table.rows[row]?.cells[column]?.hMerge) column--;
+  while (row > 0 && table.rows[row]?.cells[column]?.vMerge) row--;
+  return { row, column };
+}
+
+export interface TableCellRange {
+  start: TableCellAddress;
+  end: TableCellAddress;
+}
+
+/**
+ * The rectangle between two cells, as top-left and bottom-right corners,
+ * grown until it cuts through no merged cell.
+ */
+export function getTableCellRange(
+  table: TableNodeData,
+  from: TableCellAddress,
+  to: TableCellAddress,
+): TableCellRange {
+  let top = Math.min(from.row, to.row);
+  let bottom = Math.max(from.row, to.row);
+  let left = Math.min(from.column, to.column);
+  let right = Math.max(from.column, to.column);
+  let grown = true;
+  while (grown) {
+    grown = false;
+    for (let row = top; row <= bottom; row++) {
+      for (let column = left; column <= right; column++) {
+        const origin = getTableCellOrigin(table, { row, column });
+        const cell = table.rows[origin.row]?.cells[origin.column];
+        if (!cell) continue;
+        const next = {
+          top: Math.min(top, origin.row),
+          left: Math.min(left, origin.column),
+          bottom: Math.max(bottom, origin.row + cell.rowSpan - 1),
+          right: Math.max(right, origin.column + cell.gridSpan - 1),
+        };
+        if (next.top < top || next.left < left || next.bottom > bottom || next.right > right) {
+          ({ top, left, bottom, right } = next);
+          grown = true;
+        }
+      }
+    }
+  }
+  return { start: { row: top, column: left }, end: { row: bottom, column: right } };
+}
+
+function findTable(pres: PresentationData, slideId: string, nodeId: string): TableNodeData {
+  const node = findNode(pres, findSlide(pres, slideId), nodeId);
+  if (node.nodeType !== "table") throw new Error(`applyEdit: node "${nodeId}" is not a table.`);
+  return node as TableNodeData;
+}
+
+function applyMergeTableCells(pres: PresentationData, op: MergeTableCellsOperation): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  for (const cell of [op.from, op.to]) {
+    if (!table.rows[cell.row]?.cells[cell.column]) {
+      throw new Error(`applyEdit: no cell at row ${cell.row}, column ${cell.column}.`);
+    }
+  }
+  const { start, end } = getTableCellRange(table, op.from, op.to);
+  if (start.row === end.row && start.column === end.column) {
+    throw new Error("applyEdit: merging needs more than one cell.");
+  }
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    const origin = rowCells(rows[start.row])[start.column];
+    const originText = childNamed(origin, "txBody");
+    for (let row = start.row; row <= end.row; row++) {
+      const cells = rowCells(rows[row]);
+      for (let column = start.column; column <= end.column; column++) {
+        const tc = cells[column];
+        const isOrigin = row === start.row && column === start.column;
+        const isHidden = tc.getAttribute("hMerge") === "1" || tc.getAttribute("vMerge") === "1";
+        if (!isOrigin && !isHidden && originText) {
+          const text = childNamed(tc, "txBody");
+          const paragraphs = text ? childParagraphs(text) : [];
+          if (paragraphs.some((paragraph) => (paragraph.textContent ?? "").length > 0)) {
+            for (const paragraph of paragraphs) originText.appendChild(paragraph);
+          }
+        }
+        for (const name of MERGE_ATTRS) tc.removeAttribute(name);
+        if (!isOrigin) {
+          clearCellText(tc);
+          if (column > start.column) tc.setAttribute("hMerge", "1");
+          if (row > start.row) tc.setAttribute("vMerge", "1");
+        }
+      }
+    }
+    setSpan(origin, "gridSpan", end.column - start.column + 1);
+    setSpan(origin, "rowSpan", end.row - start.row + 1);
+    // An empty origin keeps one paragraph ahead of the text that joined it.
+    if (originText) {
+      const paragraphs = childParagraphs(originText);
+      if (paragraphs.length > 1 && (paragraphs[0].textContent ?? "").length === 0) {
+        paragraphs[0].remove();
+      }
+    }
+  });
+}
+
+function applySplitTableCell(pres: PresentationData, op: SplitTableCellOperation): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  const origin = getTableCellOrigin(table, op.cell);
+  const cell = table.rows[origin.row]?.cells[origin.column];
+  if (!cell || (cell.gridSpan === 1 && cell.rowSpan === 1)) {
+    throw new Error(`applyEdit: no merged cell at row ${op.cell.row}, column ${op.cell.column}.`);
+  }
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    for (let row = origin.row; row < origin.row + cell.rowSpan; row++) {
+      const cells = rowCells(rows[row]);
+      for (let column = origin.column; column < origin.column + cell.gridSpan; column++) {
+        const tc = cells[column];
+        for (const name of MERGE_ATTRS) tc.removeAttribute(name);
+        if (row !== origin.row || column !== origin.column) clearCellText(tc);
+      }
     }
   });
 }

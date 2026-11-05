@@ -536,6 +536,42 @@ describe("tables", () => {
     }
   });
 
+  it("selects a cell range with Shift+click, formats it, merges it, and splits it", async () => {
+    const editor = await renderEditor();
+    const nodeId = await insertTable(editor);
+    const tableOf = () =>
+      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+
+    const target = editor.container.querySelector<HTMLElement>('[data-pptx-cell="1,1"]')!;
+    act(() => {
+      fireEvent.pointerDown(target, { button: 0, shiftKey: true, pointerId: 1 });
+    });
+    await waitFor(() =>
+      expect(editor.selection.current!.cellRange).toEqual({
+        start: { row: 0, column: 0 },
+        end: { row: 1, column: 1 },
+      }),
+    );
+    expect(editor.container.querySelector("[data-pptx-cell-range]")).not.toBeNull();
+
+    await act(() => editor.selection.current!.setParagraphStyle({ align: "center" }));
+    expect(
+      tableOf().rows.flatMap((row) =>
+        row.cells.map((cell) => cell.textBody!.paragraphs[0].properties?.attr("algn")),
+      ),
+    ).toEqual(["ctr", "ctr", "ctr", "ctr"]);
+
+    await act(() => editor.selection.current!.changeTable({ type: "mergeCells" }));
+    await waitFor(() => expect(tableOf().rows[0].cells[0].gridSpan).toBe(2));
+    expect(tableOf().rows[0].cells[0].rowSpan).toBe(2);
+    await waitFor(() => expect(editingCell(editor.container)).toBe("0,0"));
+    expect(editor.selection.current!.cellRange).toBeNull();
+
+    await act(() => editor.selection.current!.changeTable({ type: "splitCell" }));
+    await waitFor(() => expect(tableOf().rows[0].cells[0].gridSpan).toBe(1));
+    expect(tableOf().rows[1].cells[1].vMerge).toBe(false);
+  });
+
   it("formats every cell of a selected table", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);

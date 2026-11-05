@@ -9,11 +9,18 @@ import type {
   ShapeNodeData,
   SlideNode,
   TableCellAddress,
+  TableCellRange,
   TableNodeData,
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
-import { copyNodes, PPTX_ATTRS, PPTX_DATASET } from "@diceui/pptx-core";
+import {
+  copyNodes,
+  getTableCellOrigin,
+  getTableCellRange,
+  PPTX_ATTRS,
+  PPTX_DATASET,
+} from "@diceui/pptx-core";
 
 import {
   RootContext,
@@ -227,6 +234,7 @@ export type InternalState =
       mode: "text";
       nodeId: string;
       cell?: TableCellAddress;
+      rangeEnd?: TableCellAddress;
       editingElement: HTMLElement;
     };
 
@@ -397,6 +405,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
   const [drawTool, setDrawTool] = React.useState<DrawTool | null>(null);
+  const [isHoveringShape, setIsHoveringShape] = React.useState(false);
 
   const stateRef = useLatestRef(state);
 
@@ -465,7 +474,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const selectedNodesRef = useLatestRef(selectedNodes);
   const selectionKey = selectedIds.join("\u0000");
   const cellKey =
-    state.mode === "text" && state.cell ? `${state.cell.row},${state.cell.column}` : "";
+    state.mode === "text" && state.cell
+      ? `${state.cell.row},${state.cell.column},${state.rangeEnd?.row},${state.rangeEnd?.column}`
+      : "";
   const previousModeRef = React.useRef(mode);
 
   React.useEffect(() => {
@@ -694,7 +705,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       element: textElement,
       text: getPlainText(readBackTextBody(textElement)),
     };
-    setState({ mode: "text", nodeId, cell, editingElement: textElement });
+    const previous = stateRef.current;
+    const rangeEnd =
+      previous.mode === "text" && previous.nodeId === nodeId && getIsSameCell(previous.cell, cell)
+        ? previous.rangeEnd
+        : undefined;
+    setState({ mode: "text", nodeId, cell, rangeEnd, editingElement: textElement });
   }
 
   /**
@@ -1171,6 +1187,46 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
+  function getCellRange(): TableCellRange | null {
+    const current = stateRef.current;
+    if (current.mode !== "text" || !current.cell || !current.rangeEnd) return null;
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (table?.nodeType !== "table") return null;
+    return getTableCellRange(table as TableNodeData, current.cell, current.rangeEnd);
+  }
+
+  function getRangeCells(
+    current: Extract<InternalState, { mode: "text" }>,
+  ): TableCellAddress[] | null {
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (!current.cell || !current.rangeEnd || table?.nodeType !== "table") return null;
+    const { start, end } = getTableCellRange(
+      table as TableNodeData,
+      current.cell,
+      current.rangeEnd,
+    );
+    return getTableCells(table).filter(
+      (cell) =>
+        cell.row >= start.row &&
+        cell.row <= end.row &&
+        cell.column >= start.column &&
+        cell.column <= end.column,
+    );
+  }
+
+  function getCellAtPoint(
+    nodeId: string,
+    clientX: number,
+    clientY: number,
+  ): TableCellAddress | undefined {
+    const shapeElement = getShapeElement(nodeId);
+    if (!shapeElement) return undefined;
+    for (const element of document.elementsFromPoint(clientX, clientY)) {
+      if (shapeElement.contains(element)) return getCellAddress(element);
+    }
+    return undefined;
+  }
+
   async function changeTable(change: TableChange, enterNewRow = false): Promise<void> {
     const current = stateRef.current;
     if (current.mode !== "text" || !current.cell || !slide || !slideId) return;
@@ -1178,6 +1234,40 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const table = slide.nodes.find((n) => n.id === nodeId) as TableNodeData | undefined;
     const origin = table?.rows[cell.row]?.cells[cell.column];
     if (!table || !origin) return;
+
+    const container = getEditingContainer(current);
+    const readBack = container ? readBackTextBody(container) : null;
+    const domRange = container ? getEditingDomRange(container) : null;
+    const caret = container && domRange ? getTextRange(container, domRange) : null;
+    const operations: EditOperation[] = [];
+    if (readBack && textBodyChanged(table, readBack, cell)) {
+      operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
+    }
+
+    if (change.type === "mergeCells" || change.type === "splitCell") {
+      const merged = getTableCellOrigin(table, cell);
+      const mergedCell = table.rows[merged.row].cells[merged.column];
+      let next = merged;
+      if (change.type === "mergeCells") {
+        if (!current.rangeEnd) return;
+        operations.push({
+          type: "mergeTableCells",
+          slideId,
+          nodeId,
+          from: cell,
+          to: current.rangeEnd,
+        });
+        next = getTableCellRange(table, cell, current.rangeEnd).start;
+      } else {
+        if (mergedCell.gridSpan === 1 && mergedCell.rowSpan === 1) return;
+        operations.push({ type: "splitTableCell", slideId, nodeId, cell });
+      }
+      current.editingElement.contentEditable = "false";
+      setState({ mode: "selected", nodeIds: [nodeId] });
+      await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+      resumeTextEditing(nodeId, next);
+      return;
+    }
 
     const isRow = change.type === "insertRow" || change.type === "deleteRow";
     const isInsert = change.type === "insertRow" || change.type === "insertColumn";
@@ -1192,14 +1282,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const after = "side" in change && (change.side === "below" || change.side === "right");
     const index = after ? position + (isRow ? origin.rowSpan : origin.gridSpan) : position;
 
-    const container = getEditingContainer(current);
-    const readBack = container ? readBackTextBody(container) : null;
-    const domRange = container ? getEditingDomRange(container) : null;
-    const caret = container && domRange ? getTextRange(container, domRange) : null;
-    const operations: EditOperation[] = [];
-    if (readBack && textBodyChanged(table, readBack, cell)) {
-      operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
-    }
     operations.push({
       type: isInsert
         ? isRow
@@ -1281,6 +1363,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function readTextStyle(): ActiveTextStyle | null {
     const current = stateRef.current;
     if (current.mode === "text") {
+      const rangeCells = getRangeCells(current);
+      if (rangeCells) {
+        const containers = rangeCells
+          .map((cell) => getTextHost(current.nodeId, cell))
+          .map((host) => (host ? textContainerOf(host) : null))
+          .filter((container): container is HTMLElement => container !== null);
+        return getActiveTextStyle(
+          containers.flatMap((container) =>
+            Array.from(container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`)),
+          ),
+          containers.flatMap(getParagraphElements),
+        );
+      }
       const container = getEditingContainer(current);
       if (!container) return null;
       const range = getEditingDomRange(container);
@@ -1322,6 +1417,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // Ids of nodes still on the slide: an undo can remove a selected copy.
       nodeIds: selectedNodesRef.current.map((node) => node.id),
       cell: stateRef.current.mode === "text" ? (stateRef.current.cell ?? null) : null,
+      cellRange: getCellRange(),
       textStyle: readTextStyle(),
       drawTool,
     });
@@ -1447,8 +1543,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const changed = textBodyChanged(node, readBack, cell);
     const domRange = getEditingDomRange(container);
     const caretRange = domRange ? getTextRange(container, domRange) : null;
+    const rangeCells = getRangeCells(current);
 
-    let range = caretRange ?? undefined;
+    let range = rangeCells ? undefined : (caretRange ?? undefined);
     if (
       range &&
       kind === "text" &&
@@ -1474,7 +1571,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (changed) {
       operations.push({ type: "setTextBody", slideId, nodeId, cell, paragraphs: readBack });
     }
-    operations.push(toOperation(nodeId, cell, range));
+    if (rangeCells) operations.push(...rangeCells.map((target) => toOperation(nodeId, target)));
+    else operations.push(toOperation(nodeId, cell, range));
 
     pendingRestoreRef.current = caretRange
       ? {
@@ -1610,6 +1708,31 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
+  function renderCellRange(table: TableNodeData): React.ReactNode {
+    const range =
+      state.mode === "text" && state.cell && state.rangeEnd
+        ? getTableCellRange(table, state.cell, state.rangeEnd)
+        : null;
+    if (!range) return null;
+    const sum = (sizes: number[], from: number, to: number) =>
+      sizes.slice(from, to).reduce((total, size) => total + size, 0);
+    const heights = table.rows.map((row) => row.height);
+    return (
+      <div
+        data-pptx-cell-range=""
+        style={{
+          position: "absolute",
+          pointerEvents: "none",
+          left: (table.position.x + sum(table.columns, 0, range.start.column)) * zoom,
+          top: (table.position.y + sum(heights, 0, range.start.row)) * zoom,
+          width: sum(table.columns, range.start.column, range.end.column + 1) * zoom,
+          height: sum(heights, range.start.row, range.end.row + 1) * zoom,
+          background: "color-mix(in srgb, var(--presentation-selection, #1a73e8) 18%, transparent)",
+        }}
+      />
+    );
+  }
+
   function renderTableBorders(table: TableNodeData): React.ReactNode {
     const borders: { axis: TableBorderDrag["axis"]; index: number; offset: number }[] = [];
     let x = 0;
@@ -1664,6 +1787,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const doExitTextModeRef = useLatestRef(doExitTextMode);
   const removeIfEmptyTextBoxRef = useLatestRef(removeIfEmptyTextBox);
   const moveToCellRef = useLatestRef(moveToCell);
+  const getCellAtPointRef = useLatestRef(getCellAtPoint);
+  const getCellRangeRef = useLatestRef(getCellRange);
+  const cellDragRef = React.useRef<{ nodeId: string; anchor: TableCellAddress } | null>(null);
   const stepCellRef = useLatestRef(stepCell);
   const saveDetachedTypingRef = useLatestRef(saveDetachedTyping);
   const publishSelectionRef = useLatestRef(publishSelection);
@@ -1752,7 +1878,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
-      if (currentState.editingElement.contains(event.target as Node)) return;
+      if (currentState.editingElement.contains(event.target as Node)) {
+        if (currentState.cell && event.button === 0 && !event.shiftKey) {
+          cellDragRef.current = { nodeId: currentState.nodeId, anchor: currentState.cell };
+          if (currentState.rangeEnd) setState({ ...currentState, rangeEnd: undefined });
+        }
+        return;
+      }
 
       // Clicks on the overlay's own children (border move strips) are
       // handled by their own handlers.
@@ -1772,8 +1904,33 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           : null;
 
       const hitCell = hitNodeId === currentState.nodeId ? getCellAddress(target) : undefined;
-      if (hitCell && currentState.cell && !getIsSameCell(hitCell, currentState.cell)) {
-        moveToCellRef.current(currentState, hitCell, event.clientX, event.clientY);
+      if (hitCell && currentState.cell) {
+        // A context menu opened inside the range acts on the range.
+        const range = getCellRangeRef.current();
+        if (
+          event.button === 2 &&
+          range &&
+          hitCell.row >= range.start.row &&
+          hitCell.row <= range.end.row &&
+          hitCell.column >= range.start.column &&
+          hitCell.column <= range.end.column
+        ) {
+          return;
+        }
+        if (event.shiftKey) {
+          event.preventDefault();
+          setState({
+            ...currentState,
+            rangeEnd: getIsSameCell(hitCell, currentState.cell) ? undefined : hitCell,
+          });
+          return;
+        }
+        cellDragRef.current = { nodeId: currentState.nodeId, anchor: hitCell };
+        if (!getIsSameCell(hitCell, currentState.cell)) {
+          moveToCellRef.current(currentState, hitCell, event.clientX, event.clientY);
+        } else if (currentState.rangeEnd) {
+          setState({ ...currentState, rangeEnd: undefined });
+        }
       } else if (hitNodeId && hitNodeId !== currentState.nodeId) {
         // Clicked a different shape: exit text and start interacting with it
         // in the same gesture (PowerPoint: you can immediately drag another
@@ -1829,6 +1986,23 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
     }
 
+    function onDocPointerMove(event: PointerEvent): void {
+      const drag = cellDragRef.current;
+      const currentState = stateRef.current;
+      if (!drag || event.buttons !== 1 || currentState.mode !== "text") return;
+      if (currentState.nodeId !== drag.nodeId) return;
+      const cell = getCellAtPointRef.current(drag.nodeId, event.clientX, event.clientY);
+      if (!cell) return;
+      const rangeEnd = getIsSameCell(cell, drag.anchor) ? undefined : cell;
+      if (rangeEnd) window.getSelection()?.removeAllRanges();
+      if (getIsSameCell(rangeEnd, currentState.rangeEnd)) return;
+      setState({ ...currentState, rangeEnd });
+    }
+
+    function onDocPointerUp(): void {
+      cellDragRef.current = null;
+    }
+
     function onDocBeforeInput(event: Event): void {
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
@@ -1873,11 +2047,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
 
     document.addEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("pointermove", onDocPointerMove, true);
+    document.addEventListener("pointerup", onDocPointerUp, true);
     document.addEventListener("keydown", onDocKeyDown, true);
     document.addEventListener("beforeinput", onDocBeforeInput, true);
     document.addEventListener("input", onDocInput, true);
     return () => {
       document.removeEventListener("pointerdown", onDocPointerDown, true);
+      document.removeEventListener("pointermove", onDocPointerMove, true);
+      document.removeEventListener("pointerup", onDocPointerUp, true);
       document.removeEventListener("keydown", onDocKeyDown, true);
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
@@ -1890,6 +2068,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     removeIfEmptyTextBoxRef,
     moveToCellRef,
     stepCellRef,
+    getCellAtPointRef,
+    getCellRangeRef,
   ]);
 
   const copySelectionRef = useLatestRef(copySelection);
@@ -2242,7 +2422,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // No button held: not a drag. Guard against stale-state moves that can
     // occur between setState({ mode: "selected" }) in onPointerUp and the
     // React re-render that creates a fresh closure.
-    if (event.buttons === 0) return;
+    if (event.buttons === 0) {
+      const isOverShape = !drawTool && hitTest(event.clientX, event.clientY) !== null;
+      if (isOverShape !== isHoveringShape) setIsHoveringShape(isOverShape);
+      return;
+    }
 
     if (state.mode === "marquee") {
       setState({ ...state, curX: event.clientX, curY: event.clientY });
@@ -2857,6 +3041,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           onPointerMove,
           onPointerUp,
           onPointerCancel,
+          onPointerLeave: () => setIsHoveringShape(false),
           onDoubleClick,
           onKeyDown,
           onDragStart,
@@ -2880,6 +3065,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
               >
                 {/* Under the parts, so the resize handles on the edges win. */}
                 {tableNode && renderTableBorders(tableNode)}
+                {tableNode && renderCellRange(tableNode)}
                 <SelectionPartsContext.Provider
                   value={{
                     state,
@@ -2922,7 +3108,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   ? ROTATE_CURSOR
                   : state.mode === "resize"
                     ? getHandleCursor(state.handle, handleNode?.rotation ?? 0)
-                    : undefined,
+                    : state.mode === "move" || (isHoveringShape && !isTextMode)
+                      ? "move"
+                      : undefined,
             outline: "none",
             touchAction: "none",
           },

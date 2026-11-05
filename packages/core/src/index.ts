@@ -10,7 +10,7 @@ export type {
   ThumbnailRenderOptions,
 } from "./viewer";
 
-export { applyEdit, copyNodes } from "./edit/operation";
+export { applyEdit, copyNodes, getTableCellOrigin, getTableCellRange } from "./edit/operation";
 export type {
   AddImageOperation,
   AddShapeOperation,
@@ -21,6 +21,9 @@ export type {
   DeleteTableRowOperation,
   InsertTableColumnOperation,
   InsertTableRowOperation,
+  MergeTableCellsOperation,
+  SplitTableCellOperation,
+  TableCellRange,
   BatchOperation,
   ClipboardRelationship,
   DeleteNodeOperation,
