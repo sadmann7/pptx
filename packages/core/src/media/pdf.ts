@@ -232,7 +232,9 @@ export async function renderPdfToImage(
   try {
     const blob = await renderInWorker(pdfData, width, height, pdfjsUrl, pdfWorkerUrl);
     if (blob) return URL.createObjectURL(blob);
-  } catch {}
+  } catch {
+    // A failed render leaves the picture blank, not the slide broken.
+  }
 
   return null;
 }
