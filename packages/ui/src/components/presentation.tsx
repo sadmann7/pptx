@@ -95,7 +95,7 @@ function PresentationSelectionBox({
     <PresentationPrimitive.SelectionBox
       data-slot="presentation-selection-box"
       className={withClassName(
-        "outline-2 -outline-offset-1 outline-(--presentation-selection)",
+        cn("outline-2 -outline-offset-1 outline-(--presentation-selection)"),
         className,
       )}
       {...props}
@@ -111,7 +111,9 @@ function PresentationResizeHandle({
     <PresentationPrimitive.ResizeHandle
       data-slot="presentation-resize-handle"
       className={withClassName(
-        "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-white shadow-xs",
+        cn(
+          "size-2.5 rounded-[3px] border-[1.5px] border-(--presentation-selection) bg-white shadow-xs",
+        ),
         className,
       )}
       {...props}
@@ -127,7 +129,9 @@ function PresentationRotateHandle({
     <PresentationPrimitive.RotateHandle
       data-slot="presentation-rotate-handle"
       className={withClassName(
-        "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-white shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
+        cn(
+          "size-3 rounded-full border-[1.5px] border-(--presentation-selection) bg-white shadow-xs after:absolute after:top-full after:left-1/2 after:h-[calc(var(--presentation-rotate-handle-offset,20px)-6px)] after:w-px after:-translate-x-1/2 after:bg-(--presentation-selection)",
+        ),
         className,
       )}
       {...props}
@@ -139,7 +143,7 @@ function PresentationSnapGuide({ className, ...props }: PresentationPrimitive.Sn
   return (
     <PresentationPrimitive.SnapGuide
       data-slot="presentation-snap-guide"
-      className={withClassName("bg-(--presentation-snap-guide,#f43f5e)", className)}
+      className={withClassName(cn("bg-(--presentation-snap-guide,#f43f5e)"), className)}
       {...props}
     />
   );
@@ -150,7 +154,9 @@ function PresentationMarquee({ className, ...props }: PresentationPrimitive.Marq
     <PresentationPrimitive.Marquee
       data-slot="presentation-marquee"
       className={withClassName(
-        "border border-(--presentation-selection) bg-[color-mix(in_oklch,var(--presentation-selection)_10%,transparent)]",
+        cn(
+          "border border-(--presentation-selection) bg-[color-mix(in_oklch,var(--presentation-selection)_10%,transparent)]",
+        ),
         className,
       )}
       {...props}
@@ -199,7 +205,7 @@ function PresentationThumbnailItemPreview({
   return (
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
-      className={cn("w-full overflow-hidden rounded-sm data-pending:bg-muted", className)}
+      className={cn("w-full overflow-hidden rounded-md data-pending:bg-muted", className)}
       {...props}
     />
   );
@@ -230,8 +236,7 @@ function PresentationThumbnailItem({
     <PresentationPrimitive.ThumbnailItem
       data-slot="presentation-thumbnail-item"
       className={cn(
-        "relative flex w-full cursor-pointer gap-1.5 rounded-md border p-1.5 outline-none hover:bg-accent",
-        "ring-2 ring-transparent transition-[color,ring] duration-100 focus:ring-ring data-active:bg-accent",
+        "relative flex w-full cursor-pointer gap-1.5 rounded-lg border p-1.5 ring-2 ring-transparent transition-[color,ring] duration-100 outline-none hover:bg-accent focus:ring-ring data-active:bg-accent",
         className,
       )}
       {...props}
@@ -311,6 +316,7 @@ function PresentationThumbnailList({
           type="button"
           aria-controls={id}
           aria-expanded={open}
+          aria-label="Toggle thumbnails"
           variant="outline"
           size="icon-sm"
           ref={triggerRef}
@@ -329,7 +335,7 @@ function PresentationThumbnailList({
         ref={listRef}
         render={<aside />}
         className={cn(
-          "flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5",
+          "flex w-40 shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5",
           isMobile && "absolute inset-y-0 left-0 z-20 transition-transform",
           isHidden && "-translate-x-full",
           className,

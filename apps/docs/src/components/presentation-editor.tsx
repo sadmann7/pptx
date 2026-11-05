@@ -70,6 +70,7 @@ import {
   PresentationThumbnailList,
   PresentationViewport,
 } from "@pptx/ui/components/presentation";
+import { PresentationZoomSelect } from "@pptx/ui/components/presentation-zoom-select";
 import {
   Select,
   SelectContent,
@@ -120,8 +121,6 @@ import {
   Undo2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
-
-import { PresentationZoomSelect } from "@/components/presentation-zoom-select";
 
 // The default drop side effect hides the source item, so its focus ring
 // would only reappear ~250 ms after pointer release.

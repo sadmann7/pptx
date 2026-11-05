@@ -15,7 +15,9 @@
   },
   "scripts": {
     "shadcn": "pnpm dlx shadcn@latest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ui:sync": "node scripts/sync-diceui.mts",
+    "ui:check": "node scripts/sync-diceui.mts --check"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
