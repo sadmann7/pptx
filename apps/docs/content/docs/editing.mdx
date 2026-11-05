@@ -275,6 +275,31 @@ For a font picker, `getPresentationFonts(presentation)` lists the theme's headin
 
 Formatting while text is being edited commits the pending typing in the same edit, so the two undo together. The caret or selection comes back afterwards, and focus returns to the text unless the toolbar is typing into a field of its own, such as a font size box.
 
+### Floating toolbar
+
+`anchor` is the selection's on-screen bounds, as a virtual element that Base UI, Radix, and Floating UI accept as an anchor. It is `null` when nothing is selected. Show the toolbar while `mode` is `"selected"` or `"text"`, so it hides while the selection is moved, resized, or rotated.
+
+```tsx
+import { Popover } from "@base-ui/react/popover";
+import { useSelection } from "@diceui/pptx";
+
+function FloatingToolbar() {
+  const { anchor, mode } = useSelection();
+
+  return (
+    <Popover.Root open={anchor !== null && (mode === "selected" || mode === "text")}>
+      <Popover.Portal>
+        <Popover.Positioner anchor={anchor} side="top" sideOffset={8}>
+          <Popover.Popup initialFocus={false} finalFocus={false} data-pptx-keep-selection="">
+            <FormattingToolbar />
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+```
+
 ## Batch operations
 
 Group multiple edits into a single undoable step with `"batch"`:

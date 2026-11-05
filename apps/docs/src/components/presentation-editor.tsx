@@ -55,6 +55,7 @@ import {
   EmptyTitle,
 } from "@pptx/ui/components/empty";
 import { Kbd, KbdGroup } from "@pptx/ui/components/kbd";
+import { Popover, PopoverContent } from "@pptx/ui/components/popover";
 import {
   Presentation,
   PresentationContent,
@@ -183,6 +184,8 @@ interface PresentationEditorProps {
   header?: React.ReactNode;
   /** Hides the toolbar, leaving direct manipulation and shortcuts. */
   toolbar?: boolean;
+  /** Shows formatting in a toolbar floating above the selection. */
+  floatingToolbar?: boolean;
 }
 
 /**
@@ -194,6 +197,7 @@ export function PresentationEditor({
   className,
   header,
   toolbar = true,
+  floatingToolbar = false,
 }: PresentationEditorProps) {
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -238,6 +242,7 @@ export function PresentationEditor({
                 </PresentationSlide>
               </PresentationViewport>
             </CanvasContextMenu>
+            {floatingToolbar && <FloatingToolbar store={store} />}
           </PresentationContent>
         </Presentation>
       </PresentationProvider>
@@ -1298,6 +1303,121 @@ function SlideMenuContent({
         </>
       )}
     </ContextMenuContent>
+  );
+}
+
+/**
+ * The common formatting for the selection, floating just above it, as in Canva
+ * and Keynote. Hidden while the selection is moved, resized, or rotated.
+ */
+function FloatingToolbar({ store }: { store: PresentationStore }) {
+  const { slideId } = useSlide();
+  const { mode, nodes, anchor, drawTool, textStyle, setTextStyle, setParagraphStyle } =
+    useSelection();
+  const isTextMode = mode === "text";
+  const shapes = isTextMode ? [] : nodes.filter((node) => node.nodeType === "shape");
+  const outlined = isTextMode
+    ? []
+    : nodes.filter((node) => node.nodeType === "shape" || node.nodeType === "picture");
+  const hasShapeTools = shapes.length > 0 || outlined.length > 0;
+  const isOpen =
+    anchor !== null &&
+    drawTool === null &&
+    (mode === "selected" || isTextMode) &&
+    (hasShapeTools || textStyle !== null);
+
+  function run(action: () => Promise<unknown>) {
+    action().catch(onEditError);
+  }
+
+  function editNodes(
+    targets: { id: string }[],
+    operation: (nodeId: string) => Parameters<PresentationStore["edit"]>[0],
+  ) {
+    if (!slideId || targets.length === 0) return;
+    const operations = targets.map((node) => operation(node.id));
+    run(() => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }));
+  }
+
+  return (
+    <Popover open={isOpen}>
+      <PopoverContent
+        anchor={anchor}
+        side="top"
+        align="start"
+        // Clears the rotate handle, which sits 20px above the selection.
+        sideOffset={24}
+        collisionPadding={8}
+        initialFocus={false}
+        finalFocus={false}
+        data-pptx-keep-selection=""
+        // Shown on every selection, so it appears without animating.
+        className="w-auto p-1 data-open:animate-none data-closed:animate-none"
+      >
+        <TooltipProvider delay={400}>
+          <Toolbar aria-label="Format selection" className="flex-nowrap">
+            {shapes.length > 0 && slideId && (
+              <ColorMenu
+                label="Fill"
+                icon={PaintBucketIcon}
+                onSelect={(color) =>
+                  editNodes(shapes, (nodeId) => ({ type: "setSolidFill", slideId, nodeId, color }))
+                }
+              />
+            )}
+            {outlined.length > 0 && slideId && (
+              <ColorMenu
+                label="Outline"
+                icon={SquareDashedIcon}
+                onSelect={(color) =>
+                  editNodes(outlined, (nodeId) => ({
+                    type: "setOutline",
+                    slideId,
+                    nodeId,
+                    color,
+                    width: 1.5,
+                  }))
+                }
+                noneLabel="No outline"
+                onNone={() =>
+                  editNodes(outlined, (nodeId) => ({
+                    type: "setOutline",
+                    slideId,
+                    nodeId,
+                    color: null,
+                  }))
+                }
+              />
+            )}
+            {textStyle && (
+              <>
+                {hasShapeTools && <ToolbarSeparator />}
+                {TEXT_TOGGLES.slice(0, 3).map(({ key, label, icon: Icon }) => (
+                  <ToolbarIconButton
+                    key={key}
+                    label={label}
+                    pressed={textStyle[key]}
+                    onClick={() => run(() => setTextStyle({ [key]: !textStyle[key] }))}
+                  >
+                    <Icon />
+                  </ToolbarIconButton>
+                ))}
+                <ColorMenu
+                  label="Text color"
+                  icon={BaselineIcon}
+                  value={textStyle.color}
+                  onSelect={(color) => run(() => setTextStyle({ color }))}
+                />
+                <AlignMenu
+                  value={textStyle.align}
+                  onSelect={(align) => run(() => setParagraphStyle({ align }))}
+                />
+              </>
+            )}
+          </Toolbar>
+        </TooltipProvider>
+      </PopoverContent>
+    </Popover>
   );
 }
 

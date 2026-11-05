@@ -21,7 +21,8 @@ interface PresentationPlaygroundProps {
 
 /**
  * The editor at full height. `?layout=editing` drops the debug bar, and
- * `?layout=compact` the toolbar as well.
+ * `?layout=compact` the toolbar as well. `?floatingToolbar=true` adds the
+ * toolbar floating above the selection.
  */
 export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
   const store = useCreatePresentationStore();
@@ -35,6 +36,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
         className={cn("h-[calc(100dvh-(--spacing(22)))]")}
         header={layout === "default" ? <PresentationDebugToolbar /> : undefined}
         toolbar={layout !== "compact"}
+        floatingToolbar={params.floatingToolbar === "true"}
       />
       {process.env.NODE_ENV === "development" && params.data && (
         <DataToggle store={store} initial={params.data} />
