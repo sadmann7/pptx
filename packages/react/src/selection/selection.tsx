@@ -406,7 +406,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
   const [drawTool, setDrawTool] = React.useState<DrawTool | null>(null);
-  const [isHoveringShape, setIsHoveringShape] = React.useState(false);
 
   const stateRef = useLatestRef(state);
 
@@ -673,7 +672,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (rootRef.current) rootRef.current.style.pointerEvents = "none";
 
     savedRangeRef.current = null;
-    if (restore?.focus !== false) textElement.focus({ preventScroll: true });
+    if (restore?.focus !== false) focusText(textElement);
 
     if (restore) {
       restoreTextRange(textElement, restore);
@@ -712,6 +711,24 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         ? previous.rangeEnd
         : undefined;
     setState({ mode: "text", nodeId, cell, rangeEnd, editingElement: textElement });
+  }
+
+  // A modal menu leaves the page inert while it animates closed, so the text
+  // may not take focus at first.
+  function focusText(textElement: HTMLElement): void {
+    textElement.focus({ preventScroll: true });
+    let frames = 0;
+    const retry = () => {
+      const current = stateRef.current;
+      if (document.activeElement === textElement || !textElement.isConnected) return;
+      if (current.mode !== "text" || current.editingElement !== textElement) return;
+      // Focus moved on to other UI on purpose stays there.
+      const active = document.activeElement;
+      if (active && active !== document.body && !active.closest('[role="menu"]')) return;
+      textElement.focus({ preventScroll: true });
+      if (++frames < 60) requestAnimationFrame(retry);
+    };
+    requestAnimationFrame(retry);
   }
 
   /**
@@ -1129,6 +1146,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     cell: TableCellAddress,
     clientX?: number,
     clientY?: number,
+    caret: "start" | "end" | "all" = "end",
   ): void {
     const node = slide?.nodes.find((n) => n.id === current.nodeId);
     if (!node || !getTableCells(node).some((editable) => getIsSameCell(editable, cell))) return;
@@ -1137,10 +1155,153 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     enterTextMode(current.nodeId, clientX, clientY, undefined, undefined, cell);
     const textHost = getTextHost(current.nodeId, cell);
     const container = textHost ? textContainerOf(textHost) : null;
+    if (container && clientX === undefined && caret !== "end") {
+      const range = document.createRange();
+      range.selectNodeContents(container);
+      if (caret === "start") range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
     const domRange = container ? getEditingDomRange(container) : null;
     const range = container && domRange ? getTextRange(container, domRange) : null;
     pendingRestoreRef.current =
       changed && range ? { nodeId: current.nodeId, cell, range, focus: true } : null;
+  }
+
+  function stepCellByArrow(
+    current: Extract<InternalState, { mode: "text" }>,
+    key: string,
+  ): boolean {
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    const container = getEditingContainer(current);
+    if (!current.cell || current.rangeEnd || table?.nodeType !== "table" || !container)
+      return false;
+    const domRange = getEditingDomRange(container);
+    if (!domRange?.collapsed) return false;
+    const caretPosition = getTextRange(container, domRange)?.start;
+    if (!caretPosition) return false;
+    const { paragraphIndex, offset } = caretPosition;
+    const paragraphs = getParagraphElements(container);
+    const lastIndex = paragraphs.length - 1;
+    const isFirst = paragraphIndex === 0;
+    const isLast = paragraphIndex === lastIndex;
+
+    // A caret on the first or last line, when the text wraps over several.
+    const caretRect = domRange.getClientRects?.()[0];
+    const lineRect = (atEnd: boolean) => {
+      const edge = document.createRange();
+      edge.selectNodeContents(container);
+      edge.collapse(!atEnd);
+      return edge.getClientRects?.()[0];
+    };
+    const isOnLine = (atEnd: boolean) => {
+      const edge = lineRect(atEnd);
+      if (!caretRect || !edge) return atEnd ? isLast : isFirst;
+      return Math.abs(caretRect.top - edge.top) < caretRect.height / 2;
+    };
+
+    const origin = getTableCellOrigin(table as TableNodeData, current.cell);
+    const { rowSpan, gridSpan } = (table as TableNodeData).rows[origin.row].cells[origin.column];
+    let target: TableCellAddress;
+    let caret: "start" | "end";
+    if (key === "ArrowLeft" && isFirst && offset === 0) {
+      target = { row: origin.row, column: origin.column - 1 };
+      caret = "end";
+    } else if (
+      key === "ArrowRight" &&
+      isLast &&
+      offset === getParagraphText(paragraphs[lastIndex]).length
+    ) {
+      target = { row: origin.row, column: origin.column + gridSpan };
+      caret = "start";
+    } else if (key === "ArrowUp" && isOnLine(false)) {
+      target = { row: origin.row - 1, column: origin.column };
+      caret = "end";
+    } else if (key === "ArrowDown" && isOnLine(true)) {
+      target = { row: origin.row + rowSpan, column: origin.column };
+      caret = "start";
+    } else {
+      return false;
+    }
+    const tableData = table as TableNodeData;
+    if (!tableData.rows[target.row]?.cells[target.column]) return false;
+    moveToCell(current, getTableCellOrigin(tableData, target), undefined, undefined, caret);
+    return true;
+  }
+
+  function getRangeText(current: Extract<InternalState, { mode: "text" }>): string | null {
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    const range = getCellRange();
+    if (!range || table?.nodeType !== "table") return null;
+    const rows: string[] = [];
+    for (let row = range.start.row; row <= range.end.row; row++) {
+      const values: string[] = [];
+      for (let column = range.start.column; column <= range.end.column; column++) {
+        const cell = (table as TableNodeData).rows[row].cells[column];
+        const isHidden = cell.hMerge || cell.vMerge;
+        values.push(
+          isHidden
+            ? ""
+            : getPlainText(
+                (cell.textBody?.paragraphs ?? []).map((paragraph, index) => ({
+                  sourceParagraphIndex: index,
+                  runs: paragraph.runs.map((run) => ({ text: run.text ?? "" })),
+                })),
+              ).replace(/\n/g, " "),
+        );
+      }
+      rows.push(values.join("\t"));
+    }
+    return rows.join("\n");
+  }
+
+  async function clearCellRange(current: Extract<InternalState, { mode: "text" }>): Promise<void> {
+    const cells = getRangeCells(current);
+    if (!cells || !slideId) return;
+    const operations: EditOperation[] = cells.map((cell) => ({
+      type: "setTextBody",
+      slideId,
+      nodeId: current.nodeId,
+      cell,
+      paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "" }] }],
+    }));
+    pendingRestoreRef.current = null;
+    await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+  }
+
+  async function pasteIntoCells(
+    current: Extract<InternalState, { mode: "text" }>,
+    rows: string[][],
+  ): Promise<void> {
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (!current.cell || !slideId || table?.nodeType !== "table") return;
+    const tableData = table as TableNodeData;
+    const start = getCellRange()?.start ?? getTableCellOrigin(tableData, current.cell);
+    const operations: EditOperation[] = [];
+    let end = start;
+    rows.forEach((values, rowOffset) => {
+      values.forEach((text, columnOffset) => {
+        const cell = { row: start.row + rowOffset, column: start.column + columnOffset };
+        const target = tableData.rows[cell.row]?.cells[cell.column];
+        if (!target || target.hMerge || target.vMerge) return;
+        operations.push({
+          type: "setTextBody",
+          slideId,
+          nodeId: current.nodeId,
+          cell,
+          paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text }] }],
+        });
+        end = { row: Math.max(end.row, cell.row), column: Math.max(end.column, cell.column) };
+      });
+    });
+    if (operations.length === 0) return;
+    pendingRestoreRef.current = null;
+    setState({
+      ...current,
+      rangeEnd: getIsSameCell(end, current.cell) ? undefined : end,
+    });
+    await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
   }
 
   // Keys typed between a commit and its re-render land in the detached text.
@@ -1179,7 +1340,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!node || !current.cell) return false;
     const cells = getTableCells(node);
     const next = cells[cells.findIndex((cell) => getIsSameCell(cell, current.cell)) + step];
-    if (next) moveToCell(current, next);
+    if (next) moveToCell(current, next, undefined, undefined, "all");
     else if (step === 1) {
       changeTable({ type: "insertRow", side: "below" }, true).catch((error) =>
         console.warn("[pptx] edit failed:", error),
@@ -1839,6 +2000,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const moveToCellRef = useLatestRef(moveToCell);
   const getCellAtPointRef = useLatestRef(getCellAtPoint);
   const getCellRangeRef = useLatestRef(getCellRange);
+  const stepCellByArrowRef = useLatestRef(stepCellByArrow);
+  const getRangeTextRef = useLatestRef(getRangeText);
+  const clearCellRangeRef = useLatestRef(clearCellRange);
+  const pasteIntoCellsRef = useLatestRef(pasteIntoCells);
   const cellDragRef = React.useRef<{ nodeId: string; anchor: TableCellAddress } | null>(null);
   const stepCellRef = useLatestRef(stepCell);
   const saveDetachedTypingRef = useLatestRef(saveDetachedTyping);
@@ -2036,7 +2201,53 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         stepCellRef.current(currentState, event.shiftKey ? -1 : 1)
       ) {
         event.preventDefault();
+        return;
       }
+
+      if (!currentState.editingElement.contains(event.target as Node)) return;
+      const isPlain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+      if ((event.key === "Delete" || event.key === "Backspace") && currentState.rangeEnd) {
+        event.preventDefault();
+        clearCellRangeRef
+          .current(currentState)
+          .catch((error) => console.warn("[pptx] edit failed:", error));
+      } else if (
+        isPlain &&
+        event.key.startsWith("Arrow") &&
+        stepCellByArrowRef.current(currentState, event.key)
+      ) {
+        event.preventDefault();
+      }
+    }
+
+    function onDocCopy(event: ClipboardEvent): void {
+      const currentState = stateRef.current;
+      if (currentState.mode !== "text" || !currentState.rangeEnd) return;
+      const text = getRangeTextRef.current(currentState);
+      if (text === null || !event.clipboardData) return;
+      event.preventDefault();
+      event.clipboardData.setData("text/plain", text);
+      if (event.type === "cut") {
+        clearCellRangeRef
+          .current(currentState)
+          .catch((error) => console.warn("[pptx] edit failed:", error));
+      }
+    }
+
+    // Tab-separated text, as a spreadsheet copies it, fills cells.
+    function onDocPaste(event: ClipboardEvent): void {
+      const currentState = stateRef.current;
+      if (currentState.mode !== "text" || !currentState.cell) return;
+      const text = event.clipboardData?.getData("text/plain");
+      if (!text?.includes("\t")) return;
+      event.preventDefault();
+      const rows = text
+        .replace(/\r?\n$/, "")
+        .split(/\r?\n/)
+        .map((row) => row.split("\t"));
+      pasteIntoCellsRef
+        .current(currentState, rows)
+        .catch((error) => console.warn("[pptx] edit failed:", error));
     }
 
     function onDocPointerMove(event: PointerEvent): void {
@@ -2103,6 +2314,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     document.addEventListener("pointermove", onDocPointerMove, true);
     document.addEventListener("pointerup", onDocPointerUp, true);
     document.addEventListener("keydown", onDocKeyDown, true);
+    document.addEventListener("copy", onDocCopy, true);
+    document.addEventListener("cut", onDocCopy, true);
+    document.addEventListener("paste", onDocPaste, true);
     document.addEventListener("beforeinput", onDocBeforeInput, true);
     document.addEventListener("input", onDocInput, true);
     return () => {
@@ -2110,6 +2324,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("pointermove", onDocPointerMove, true);
       document.removeEventListener("pointerup", onDocPointerUp, true);
       document.removeEventListener("keydown", onDocKeyDown, true);
+      document.removeEventListener("copy", onDocCopy, true);
+      document.removeEventListener("cut", onDocCopy, true);
+      document.removeEventListener("paste", onDocPaste, true);
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
     };
@@ -2123,6 +2340,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     stepCellRef,
     getCellAtPointRef,
     getCellRangeRef,
+    stepCellByArrowRef,
+    getRangeTextRef,
+    clearCellRangeRef,
+    pasteIntoCellsRef,
   ]);
 
   const copySelectionRef = useLatestRef(copySelection);
@@ -2285,6 +2506,23 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           })()
         : null,
     });
+    // A table takes presses into its cells, so a drag selects cells; its frame
+    // moves it, as in Google Slides.
+    if (
+      nodeId &&
+      slide?.nodes.find((node) => node.id === nodeId)?.nodeType === "table" &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      nodeHasText(nodeId)
+    ) {
+      const cell = resolveCell(nodeId, event.clientX, event.clientY);
+      event.preventDefault();
+      enterTextMode(nodeId, event.clientX, event.clientY, undefined, undefined, cell);
+      cellDragRef.current = { nodeId, anchor: cell };
+      return;
+    }
+
     // Without preventDefault, a drag silently extends a text selection across
     // the slide, and the NEXT press inside that selection starts a native
     // drag-and-drop of it; the pointer stream is cancelled (not-allowed
@@ -2475,11 +2713,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     // No button held: not a drag. Guard against stale-state moves that can
     // occur between setState({ mode: "selected" }) in onPointerUp and the
     // React re-render that creates a fresh closure.
-    if (event.buttons === 0) {
-      const isOverShape = !drawTool && hitTest(event.clientX, event.clientY) !== null;
-      if (isOverShape !== isHoveringShape) setIsHoveringShape(isOverShape);
-      return;
-    }
+    if (event.buttons === 0) return;
 
     if (state.mode === "marquee") {
       setState({ ...state, curX: event.clientX, curY: event.clientY });
@@ -3094,7 +3328,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           onPointerMove,
           onPointerUp,
           onPointerCancel,
-          onPointerLeave: () => setIsHoveringShape(false),
           onDoubleClick,
           onKeyDown,
           onDragStart,
@@ -3161,7 +3394,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   ? ROTATE_CURSOR
                   : state.mode === "resize"
                     ? getHandleCursor(state.handle, handleNode?.rotation ?? 0)
-                    : state.mode === "move" || (isHoveringShape && !isTextMode)
+                    : state.mode === "move" && state.moved
                       ? "move"
                       : undefined,
             outline: "none",

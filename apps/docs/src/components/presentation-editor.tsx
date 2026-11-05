@@ -1754,7 +1754,14 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           portalProps={{ render: <div data-pptx-keep-selection="" /> }}
           aria-label="Shape"
           className={isTableMenu ? "w-48" : "w-44"}
-          finalFocus={() => returnFocusRef.current ?? false}
+          // An edit can replace the text the menu opened on; the editor refocuses it then.
+          finalFocus={() =>
+            returnFocusRef.current?.isConnected &&
+            (returnFocusRef.current.isContentEditable ||
+              returnFocusRef.current.hasAttribute("data-pptx-selection"))
+              ? returnFocusRef.current
+              : false
+          }
         >
           {textNode && !isTextMenu && (
             <ContextMenuItem
