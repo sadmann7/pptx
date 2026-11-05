@@ -185,9 +185,54 @@ Control the accent color with a CSS variable:
 <Presentation.Selection className="[--presentation-selection:var(--ring)]" />
 ```
 
-The overlay is composed from `Presentation.SelectionBox`, `Presentation.ResizeHandle`, `Presentation.RotateHandle`, `Presentation.SnapGuide`, and `Presentation.Marquee`. See [Styling the overlay](/docs/editing#styling-the-overlay) for the parts and the other CSS variables, and [Formatting toolbar](/docs/editing#formatting-toolbar) for `useSelection`.
+See [Formatting toolbar](/docs/editing#formatting-toolbar) for `useSelection`.
 
 <AutoTypeTable path="types/presentation.ts" name="SelectionProps" />
+
+### Overlay parts
+
+Compose these to restyle the overlay. They are unstyled, so give handles a size. See [Styling the overlay](/docs/editing#styling-the-overlay) for more.
+
+```tsx
+<Presentation.Selection>
+  <Presentation.SelectionBox className="ring-1 ring-blue-500">
+    <Presentation.ResizeHandle className="size-2.5 rounded-full border border-blue-500 bg-white" />
+    <Presentation.RotateHandle className="size-3 rounded-full border border-blue-500 bg-white" />
+  </Presentation.SelectionBox>
+  <Presentation.SnapGuide className="bg-orange-500" />
+  <Presentation.Marquee className="border border-blue-500 bg-blue-500/10" />
+</Presentation.Selection>
+```
+
+#### SelectionBox
+
+The outline around each selected shape.
+
+<AutoTypeTable path="types/presentation.ts" name="SelectionBoxProps" />
+
+#### ResizeHandle
+
+The handles on each edge and corner. Goes inside `SelectionBox`.
+
+<AutoTypeTable path="types/presentation.ts" name="ResizeHandleProps" />
+
+#### RotateHandle
+
+The handle above the shape for rotating. Goes inside `SelectionBox`.
+
+<AutoTypeTable path="types/presentation.ts" name="RotateHandleProps" />
+
+#### SnapGuide
+
+The lines shown when a shape snaps into place.
+
+<AutoTypeTable path="types/presentation.ts" name="SnapGuideProps" />
+
+#### Marquee
+
+The box drawn while dragging to select or to draw a shape.
+
+<AutoTypeTable path="types/presentation.ts" name="MarqueeProps" />
 
 ## ThumbnailList
 
@@ -254,7 +299,7 @@ Renders its children only while the presentation is in the `"loading"` state.
 Renders its children only when the presentation fails to parse.
 
 ```tsx
-<Presentation.Error>{(err) => <span>{err.message}</span>}</Presentation.Error>
+<Presentation.Error>{(error) => <span>{error.message}</span>}</Presentation.Error>
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="ErrorProps" />
