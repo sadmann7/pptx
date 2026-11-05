@@ -100,6 +100,21 @@ async function renderEditor() {
   };
 }
 
+describe("anchor", () => {
+  it("is the selection's bounds, and null without a selection", async () => {
+    const { overlay, selection } = await renderEditor();
+    expect(selection.current!.anchor).toBeNull();
+
+    act(() => selection.current!.select(["2"]));
+    const anchor = selection.current!.anchor!;
+    expect(anchor.contextElement).toBe(overlay);
+    expect(anchor.getBoundingClientRect()).toBeInstanceOf(DOMRect);
+
+    act(() => selection.current!.clear());
+    expect(selection.current!.anchor).toBeNull();
+  });
+});
+
 describe("data-pptx-keep-selection", () => {
   it("keeps the selection when a marked toolbar is pressed", async () => {
     const { overlay, bold, press } = await renderEditor();

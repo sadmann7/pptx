@@ -747,6 +747,26 @@ describe("multi-selection handles", () => {
     expect(gripCount(container)).toBe(16);
   });
 
+  it("reports a press on another shape as selected until it drags", async () => {
+    const modes: string[] = [];
+    const { overlay, shapeElements } = await renderSelection({
+      onModeChange: (mode: string) => modes.push(mode),
+    });
+
+    clickShape(overlay, shapeElements[0]);
+    clickShape(overlay, shapeElements[1]);
+    expect(modes).not.toContain("move");
+
+    hitTarget = shapeElements[1];
+    act(() => {
+      fireEvent.pointerDown(overlay, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+    });
+    act(() => {
+      fireEvent.pointerMove(overlay, { buttons: 1, clientX: 60, clientY: 60, pointerId: 1 });
+    });
+    expect(modes.at(-1)).toBe("move");
+  });
+
   it("keeps handles up while Shift+clicking empty canvas", async () => {
     const { overlay, container, shapeElements } = await renderSelection();
 

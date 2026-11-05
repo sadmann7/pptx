@@ -84,6 +84,14 @@ function isMultiSelectEvent(event: React.PointerEvent): boolean {
   return event.shiftKey || event.ctrlKey || event.metaKey;
 }
 
+/**
+ * A press reads as a move only once it drags past the threshold, so a click
+ * that selects another shape doesn't blink toolbars that hide while moving.
+ */
+function getReportedMode(state: InternalState): SelectionState["mode"] {
+  return state.mode === "move" && !state.moved ? "selected" : state.mode;
+}
+
 function getIsNativeUndoTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -426,7 +434,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       : selectedNodes.length > 1
         ? `${selectedNodes.length} shapes selected`
         : "";
-  const publicState: SelectionState = { mode: state.mode, selectedNode, selectedNodes };
+  const mode = getReportedMode(state);
+  const publicState: SelectionState = { mode, selectedNode, selectedNodes };
 
   // Selection transitions happen across ~25 pointer/keyboard paths, several of
   // them triggered from document-level listeners, so notifying from each handler
@@ -438,7 +447,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const selectedIdsRef = useLatestRef(selectedIds);
   const selectedNodesRef = useLatestRef(selectedNodes);
   const selectionKey = selectedIds.join("\u0000");
-  const mode = state.mode;
   const previousModeRef = React.useRef(mode);
 
   React.useEffect(() => {
@@ -1115,7 +1123,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function publishSelection(): void {
     selectionChannel.publish({
       slideId,
-      mode: stateRef.current.mode,
+      mode: getReportedMode(stateRef.current),
       // Ids of nodes still on the slide: an undo can remove a selected copy.
       nodeIds: selectedNodesRef.current.map((node) => node.id),
       textStyle: readTextStyle(),
@@ -1172,6 +1180,18 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    * nothing left to undo: Ctrl/Cmd+Z goes to the deck instead, as in Google
    * Slides. Typing not yet committed stays with the browser's undo.
    */
+  function getSelectionRect(): DOMRect | null {
+    const rects = selectedNodesRef.current
+      .map((node) => getShapeElement(node.id)?.getBoundingClientRect())
+      .filter((rect): rect is DOMRect => rect !== undefined);
+    if (rects.length === 0) return null;
+    const left = Math.min(...rects.map((rect) => rect.left));
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const right = Math.max(...rects.map((rect) => rect.right));
+    const bottom = Math.max(...rects.map((rect) => rect.bottom));
+    return new DOMRect(left, top, right - left, bottom - top);
+  }
+
   function prepareTextHistory(target: EventTarget | null): boolean {
     const current = stateRef.current;
     if (current.mode !== "text" || !slide || !(target instanceof Node)) return false;
@@ -1273,6 +1293,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const reorderSelectionRef = useLatestRef(reorderSelection);
   const applyFormatRef = useLatestRef(applyFormat);
   const prepareTextHistoryRef = useLatestRef(prepareTextHistory);
+  const getSelectionRectRef = useLatestRef(getSelectionRect);
 
   React.useEffect(
     () =>
@@ -1286,6 +1307,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         setTextStyle: (style) => applyFormatRef.current("text", style),
         setParagraphStyle: (style) => applyFormatRef.current("paragraph", style),
         prepareTextHistory: (target) => prepareTextHistoryRef.current(target),
+        getSelectionRect: () => getSelectionRectRef.current(),
+        getOverlayElement: () => rootRef.current,
       }),
     [
       selectionChannel,
@@ -1296,8 +1319,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       deleteSelectionRef,
       reorderSelectionRef,
       applyFormatRef,
-
       prepareTextHistoryRef,
+      getSelectionRectRef,
+      rootRef,
     ],
   );
 

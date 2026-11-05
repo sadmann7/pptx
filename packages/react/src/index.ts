@@ -43,7 +43,7 @@ export type {
 export type { ComponentRenderFn, RenderProp } from "./render";
 
 export { KEEP_SELECTION_ATTRIBUTE, useSelection } from "./selection/channel";
-export type { DrawTool, UseSelectionResult } from "./selection/channel";
+export type { DrawTool, SelectionAnchor, UseSelectionResult } from "./selection/channel";
 export type { ActiveTextStyle } from "./selection/text-range";
 
 export type {

@@ -55,6 +55,18 @@ export interface SelectionController {
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
   prepareTextHistory: (target: EventTarget | null) => boolean;
+  getSelectionRect: () => DOMRect | null;
+  getOverlayElement: () => HTMLElement | null;
+}
+
+/**
+ * A virtual element in the shape Floating UI, Base UI, and Radix accept as an
+ * anchor: the selection's on-screen bounds.
+ */
+export interface SelectionAnchor {
+  getBoundingClientRect: () => DOMRect;
+  /** The overlay, so the anchor follows when an ancestor scrolls or resizes. */
+  contextElement?: Element;
 }
 
 const IDLE_SNAPSHOT: SelectionSnapshot = {
@@ -147,6 +159,17 @@ export interface UseSelectionResult {
    * shape's text (otherwise). `null` when the selection has no text.
    */
   textStyle: ActiveTextStyle | null;
+
+  /**
+   * The selection's on-screen bounds, for anchoring a floating toolbar or
+   * popover to it. `null` when nothing is selected. A new object whenever the
+   * selection, its mode, or the slide changes, so a positioner re-measures.
+   *
+   * ```tsx
+   * <Popover.Positioner anchor={anchor} side="top" sideOffset={8} />
+   * ```
+   */
+  anchor: SelectionAnchor | null;
 
   /** Selects the given nodes on the active slide. Ends text editing. */
   select: (nodeIds: string[]) => void;
@@ -266,8 +289,25 @@ export function useSelection(): UseSelectionResult {
     [slide, nodeIds, revision],
   );
 
+  const mode = snapshot.slideId === slideId ? snapshot.mode : "idle";
+  const anchor = React.useMemo<SelectionAnchor | null>(
+    () =>
+      nodeIds.length === 0
+        ? null
+        : {
+            getBoundingClientRect: () =>
+              channel.getController()?.getSelectionRect() ?? new DOMRect(),
+            get contextElement() {
+              return channel.getController()?.getOverlayElement() ?? undefined;
+            },
+          },
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- mode and revision change the bounds without changing the ids
+    [channel, nodeIds, mode, revision],
+  );
+
   return {
-    mode: snapshot.slideId === slideId ? snapshot.mode : "idle",
+    mode,
+    anchor,
     nodeIds,
     nodes,
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
