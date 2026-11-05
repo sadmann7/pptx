@@ -92,7 +92,7 @@ describe("consumer-driven reordering", () => {
     expect(renderedOrder()).toEqual([second, third, first]);
 
     await act(async () => {
-      store.undo();
+      await store.undo();
     });
     expect(renderedOrder()).toEqual([first, second, third]);
   });
@@ -146,7 +146,7 @@ describe("consumer-driven reordering", () => {
     expect(store.getState().activeSlideId).toBe(third);
 
     await act(async () => {
-      store.undo();
+      await store.undo();
     });
 
     // Undo navigated to the slide it touched, so the tab stop and the focus

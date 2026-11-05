@@ -382,8 +382,8 @@ export interface UseHistoryResult {
    */
   isDirty: boolean;
 
-  /** Revert the most recent edit. Returns `false` when the undo stack is empty. */
-  undo: () => boolean;
+  /** Revert the most recent edit. Resolves `false` when the undo stack is empty. */
+  undo: () => Promise<boolean>;
 
   /** Re-apply the most recently undone edit. Resolves `false` when the redo stack is empty. */
   redo: () => Promise<boolean>;

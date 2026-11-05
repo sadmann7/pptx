@@ -1055,7 +1055,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(document, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("Ctrl+Shift+Z triggers redo callback", async () => {
@@ -1092,7 +1094,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(overlay, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("leaves a keystroke aimed outside the presentation to the host page", async () => {
@@ -1116,7 +1120,7 @@ describe("keyboard shortcuts", () => {
 
     const outside = container.querySelector<HTMLDivElement>("[data-testid='outside']")!;
     act(() => outside.focus());
-    act(() => {
+    await act(async () => {
       fireEvent.keyDown(outside, { key: "z", ctrlKey: true });
     });
 
@@ -1150,7 +1154,9 @@ describe("keyboard shortcuts", () => {
       fireEvent.keyDown(thumbnail, { key: "z", ctrlKey: true });
     });
 
-    expect(onUndo).toHaveBeenCalledWith("empty");
+    await waitFor(() => {
+      expect(onUndo).toHaveBeenCalledWith("empty");
+    });
   });
 
   it("does not bind the shortcut unless asked to handle it", async () => {

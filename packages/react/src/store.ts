@@ -446,8 +446,11 @@ export interface Store {
    */
   edit: (op: EditOperation) => Promise<EditResult>;
 
-  /** Reverts the most recent edit. Returns `false` when the undo stack is empty. */
-  undo: () => boolean;
+  /**
+   * Reverts the most recent edit, after any edit still in flight. Resolves
+   * `false` when the undo stack is empty.
+   */
+  undo: () => Promise<boolean>;
 
   /** Re-applies the most recently undone edit. Resolves `false` when the redo stack is empty. */
   redo: () => Promise<boolean>;
@@ -1049,7 +1052,11 @@ export function createStore(): Store {
     return result;
   }
 
-  function undo(): boolean {
+  function undo(): Promise<boolean> {
+    return enqueue(async () => applyQueuedUndo());
+  }
+
+  function applyQueuedUndo(): boolean {
     const previousHistory = historySnapshot();
     const entry = undoStack.pop();
     if (!entry) return false;

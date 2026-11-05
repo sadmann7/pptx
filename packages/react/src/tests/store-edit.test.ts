@@ -111,7 +111,7 @@ describe("store.edit", () => {
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(0);
 
     // A single undo restores the whole selection.
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(nodeIds.length);
   });
 });
@@ -138,13 +138,13 @@ describe("undo / redo", () => {
     expect(slideText(store, 0)).toBe("Second");
     expect(store.canUndo()).toBe(true);
 
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(slideText(store, 0)).toBe("First");
     expect(store.canRedo()).toBe(true);
 
-    expect(store.undo()).toBe(true);
+    expect(await store.undo()).toBe(true);
     expect(slideText(store, 0)).toBe("Slide 1"); // fixture original
-    expect(store.undo()).toBe(false);
+    expect(await store.undo()).toBe(false);
 
     await expect(store.redo()).resolves.toBe(true);
     expect(slideText(store, 0)).toBe("First");
@@ -167,10 +167,31 @@ describe("undo / redo", () => {
       });
 
     await editOf("A");
-    store.undo();
+    await store.undo();
     await editOf("B");
     expect(store.canRedo()).toBe(false);
     expect(slideText(store, 0)).toBe("B");
+  });
+
+  it("undoes an edit that is still in flight", async () => {
+    const store = await editableStore();
+    const slideId = store.getState().presentation!.slides[0].id;
+    const editOf = (text: string) =>
+      store.edit({
+        type: "setTextRun",
+        slideId,
+        nodeId: "2",
+        paragraphIndex: 0,
+        runIndex: 0,
+        text,
+      });
+
+    await editOf("A");
+    const pending = editOf("B");
+    const undone = store.undo();
+    await pending;
+    expect(await undone).toBe(true);
+    expect(slideText(store, 0)).toBe("A");
   });
 
   it("bumps the slide revision on undo so views re-render", async () => {
@@ -185,7 +206,7 @@ describe("undo / redo", () => {
       text: "x",
     });
     const before = store.getSlideRevision(slideId);
-    store.undo();
+    await store.undo();
     expect(store.getSlideRevision(slideId)).toBe(before + 1);
   });
 
@@ -207,7 +228,7 @@ describe("undo / redo", () => {
     expect(store.getState().activeSlideId).toBe(slide1Id);
 
     // Undo should navigate back to slide 0 (where the edit was).
-    store.undo();
+    await store.undo();
     expect(store.getState().activeSlideId).toBe(slide0Id);
     expect(slideText(store, 0)).toBe("Slide 1");
 
@@ -257,7 +278,7 @@ describe("structural edits and navigation", () => {
     store.goTo(result.createdSlideId!);
     expect(store.getActiveSlideIndex()).toBe(1);
 
-    store.undo();
+    await store.undo();
     expect(store.getState().presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT);
     // Active moved off the removed copy onto a valid neighbor.
     expect(store.getState().activeSlideId).not.toBe(result.createdSlideId);
@@ -283,7 +304,7 @@ describe("edit and historyChange events", () => {
 
     const operation = textEdit(slideId, "Edited");
     await store.edit(operation);
-    store.undo();
+    await store.undo();
     await store.redo();
 
     expect(events.map((event) => event.source)).toEqual(["edit", "undo", "redo"]);
@@ -300,7 +321,7 @@ describe("edit and historyChange events", () => {
     await store.edit(textEdit(slideId, "Edited"));
     expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
 
-    store.undo();
+    await store.undo();
     expect(events.at(-1)).toEqual({ canUndo: false, canRedo: true, isDirty: false });
 
     await store.redo();
@@ -312,7 +333,7 @@ describe("edit and historyChange events", () => {
     const events: HistoryChangeEvent[] = [];
     store.on("historyChange", (event) => events.push(event));
 
-    expect(store.undo()).toBe(false);
+    expect(await store.undo()).toBe(false);
     expect(await store.redo()).toBe(false);
     expect(events).toHaveLength(0);
   });
@@ -350,7 +371,7 @@ describe("isDirty", () => {
     await store.edit(textEdit(slideId, "One"));
     expect(store.isDirty()).toBe(true);
 
-    store.undo();
+    await store.undo();
     expect(store.isDirty()).toBe(false);
 
     await store.redo();
@@ -367,7 +388,7 @@ describe("isDirty", () => {
 
     // Back to one edit deep, then branch: the deck now holds different content
     // at the same stack depth as the save, so it must not read as clean.
-    store.undo();
+    await store.undo();
     await store.edit(textEdit(slideId, "Three"));
     expect(store.isDirty()).toBe(true);
   });
@@ -428,7 +449,7 @@ describe("slideChange events from edits", () => {
     const events: SlideChangeEvent[] = [];
     store.on("slideChange", (event) => events.push(event));
 
-    store.undo();
+    await store.undo();
 
     expect(events).toHaveLength(1);
     expect(events[0].reason).toBe("edit");
@@ -459,7 +480,7 @@ describe("setTextBody via store", () => {
     expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Second line");
     expect(store.getSlideRevision(slideId)).toBe(1);
 
-    store.undo();
+    await store.undo();
     expect(slideText(store, 0)).toBe("Slide 1");
   });
 });

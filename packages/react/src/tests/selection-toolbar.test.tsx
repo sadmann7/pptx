@@ -209,8 +209,8 @@ describe("useSelection", () => {
     expect(shapeRuns(store, "3")).toEqual([{ text: "B", b: "1", i: undefined }]);
     await waitFor(() => expect(selection.current!.textStyle?.bold).toBe(true));
 
-    act(() => {
-      store.undo();
+    await act(async () => {
+      await store.undo();
     });
     expect(shapeRuns(store, "2")[0].b).toBeUndefined();
     expect(shapeRuns(store, "3")[0].b).toBeUndefined();
@@ -242,8 +242,8 @@ describe("useSelection", () => {
     ]);
     await waitFor(() => expect(overlay.getAttribute("data-mode")).toBe("text"));
 
-    act(() => {
-      store.undo();
+    await act(async () => {
+      await store.undo();
     });
     expect(shapeRuns(store, "2")).toEqual([{ text: "Slide 1", b: undefined, i: undefined }]);
   });
@@ -272,8 +272,8 @@ describe("useSelection", () => {
       { text: "12", b: "1", i: undefined },
     ]);
 
-    act(() => {
-      store.undo();
+    await act(async () => {
+      await store.undo();
     });
     expect(shapeRuns(store, "2")).toEqual([{ text: "Slide 1", b: undefined, i: undefined }]);
   });

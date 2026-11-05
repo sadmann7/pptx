@@ -122,7 +122,7 @@ Requires the deck to have been loaded with `{ readOnly: false }`.
 
 ```ts
 await store.edit(op: EditOperation): Promise<EditResult>
-store.undo(): boolean
+await store.undo(): Promise<boolean>
 await store.redo(): Promise<boolean>
 store.canUndo(): boolean
 store.canRedo(): boolean

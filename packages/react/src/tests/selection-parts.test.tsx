@@ -272,8 +272,8 @@ describe("rotating", () => {
     const rotations = store.getActiveSlide()!.nodes.map((node) => Math.round(node.rotation));
     expect(rotations).toEqual([90, 90]);
 
-    act(() => {
-      store.undo();
+    await act(async () => {
+      await store.undo();
     });
     expect(store.getActiveSlide()!.nodes.map((node) => node.rotation)).toEqual([0, 0]);
   });
@@ -410,8 +410,8 @@ describe("arrange shortcuts", () => {
     await waitFor(() => expect(ids()).toEqual(["2", "4", "3", "5"]));
     expect(selection.current!.nodeIds).toEqual(["4", "5"]);
 
-    act(() => {
-      store.undo();
+    await act(async () => {
+      await store.undo();
     });
     expect(ids()).toEqual(["2", "3"]);
   });

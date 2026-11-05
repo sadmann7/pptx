@@ -2511,8 +2511,10 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
 
       if (getIsUndoEvent(event)) {
         event.preventDefault();
-        const success = store.undo();
-        onUndoRef.current?.(success ? "success" : "empty");
+        store.undo().then(
+          (success) => onUndoRef.current?.(success ? "success" : "empty"),
+          (error) => onUndoRef.current?.("empty", error),
+        );
       } else if (getIsRedoEvent(event)) {
         event.preventDefault();
         store.redo().then(
