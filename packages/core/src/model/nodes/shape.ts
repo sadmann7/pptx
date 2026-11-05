@@ -68,24 +68,7 @@ export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   const pPr = pNode.child("pPr");
   const level = pPr.numAttr("lvl") ?? 0;
 
-  const runs: TextRun[] = [];
-
-  for (const rNode of pNode.children("r")) {
-    const rPr = rNode.child("rPr");
-    const tNode = rNode.child("t");
-    runs.push({
-      text: tNode.text(),
-      properties: rPr.exists() ? rPr : undefined,
-    });
-  }
-
-  for (const child of pNode.allChildren()) {
-    if (child.localName === "br") {
-      // Handled by the in-order re-scan below.
-    }
-  }
-
-  // Re-scan in document order so r, br, tab, and fld interleave correctly.
+  // In document order so r, br, tab, and fld interleave correctly.
   const orderedRuns: TextRun[] = [];
   for (const child of pNode.allChildren()) {
     const ln = child.localName;
@@ -119,7 +102,7 @@ export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   const endParaRPrNode = pNode.child("endParaRPr");
   return {
     properties: pPr.exists() ? pPr : undefined,
-    runs: orderedRuns.length > 0 ? orderedRuns : runs,
+    runs: orderedRuns,
     level,
     endParaRPr: endParaRPrNode.exists() ? endParaRPrNode : undefined,
   };
