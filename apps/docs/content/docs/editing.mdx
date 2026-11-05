@@ -317,8 +317,8 @@ The store maintains a linear undo/redo history:
 ```tsx
 store.canUndo(); // true if there is something to undo
 store.canRedo(); // true if there is something to redo
-store.undo(); // reverts the last edit; navigates to the affected slide
-store.redo(); // re-applies the last undone edit
+await store.undo(); // reverts the last edit; navigates to the affected slide
+await store.redo(); // re-applies the last undone edit
 ```
 
 Cross-slide edits navigate to the affected slide automatically on undo/redo.
@@ -360,7 +360,7 @@ Render the overlay inside `Presentation.ThumbnailList` so the copy can reach the
 
 The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt/Option+↑, for example) pass through untouched.
 
-The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. See `SortableThumbnailList` in [presentation-editor.tsx](https://github.com/sadmann7/pptx/blob/main/apps/docs/src/components/presentation-editor.tsx).
+The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. See `SortableThumbnailList` in `apps/docs/src/components/presentation-editor.tsx`.
 
 ## Unsaved changes
 
