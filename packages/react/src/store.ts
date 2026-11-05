@@ -41,6 +41,8 @@ export type AutoFitPadding = number | Partial<SidePadding>;
 interface HistoryEntry {
   op: EditOperation;
   result: EditResult;
+  /** The slide that was active before the edit, where undoing it returns. */
+  activeSlideId: string | null;
 }
 
 /** Accepted input formats for `store.load()` and the `file` prop. */
@@ -972,6 +974,7 @@ export function createStore(): Store {
     prevActiveIndex: number,
     navigateToFirstAffected = false,
     transformOnly = false,
+    fallbackSlideId: string | null = null,
   ): void {
     const { presentation } = state;
     if (!presentation) return;
@@ -990,7 +993,10 @@ export function createStore(): Store {
     const activeGone = activeSlideId !== null && !slideIndexById.has(activeSlideId);
     if (activeGone || activeSlideId === null) {
       const fallbackIndex = clamp(prevActiveIndex, 0, presentation.slides.length - 1);
-      activeSlideId = presentation.slides[fallbackIndex]?.id ?? null;
+      activeSlideId =
+        fallbackSlideId !== null && slideIndexById.has(fallbackSlideId)
+          ? fallbackSlideId
+          : (presentation.slides[fallbackIndex]?.id ?? null);
     }
     // Undo/redo: jump to the slide the action touched so the user sees the
     // change (PowerPoint behavior). Only when that slide still exists.
@@ -1037,6 +1043,7 @@ export function createStore(): Store {
 
     const previousHistory = historySnapshot();
     const prevActiveIndex = getActiveSlideIndex();
+    const activeSlideId = state.activeSlideId;
     const result = await applyEdit(presentation, op);
 
     // A new edit made while below the save point discards the path back to
@@ -1044,7 +1051,7 @@ export function createStore(): Store {
     // the next save.
     if (savedUndoDepth > undoStack.length) savedUndoDepth = -1;
 
-    undoStack.push({ op, result });
+    undoStack.push({ op, result, activeSlideId });
     redoStack = [];
     commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
     emitEvent("edit", { operation: op, result, source: "edit" });
@@ -1068,7 +1075,7 @@ export function createStore(): Store {
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
-    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op));
+    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op), entry.activeSlideId);
     emitEvent("edit", { operation: entry.op, result: entry.result, source: "undo" });
     emitHistoryChange(previousHistory);
     return true;
@@ -1087,7 +1094,7 @@ export function createStore(): Store {
 
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, entry.op);
-    undoStack.push({ op: entry.op, result });
+    undoStack.push({ op: entry.op, result, activeSlideId: entry.activeSlideId });
     commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
     emitEvent("edit", { operation: entry.op, result, source: "redo" });
     emitHistoryChange(previousHistory);

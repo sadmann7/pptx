@@ -280,9 +280,20 @@ describe("structural edits and navigation", () => {
 
     await store.undo();
     expect(store.getState().presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT);
-    // Active moved off the removed copy onto a valid neighbor.
-    expect(store.getState().activeSlideId).not.toBe(result.createdSlideId);
-    expect(store.getActiveSlideIndex()).toBeGreaterThanOrEqual(0);
+    // Back to the slide that was active before the copy, as in PowerPoint.
+    expect(store.getState().activeSlideId).toBe(sourceId);
+  });
+
+  it("undoing an added slide returns to the slide it was added after", async () => {
+    const store = await editableStore();
+    const [first, second] = store.getState().presentation!.slides.map((slide) => slide.id);
+
+    const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: first });
+    store.goTo(createdSlideId!);
+    await store.undo();
+
+    expect(store.getState().activeSlideId).toBe(first);
+    expect(store.getState().activeSlideId).not.toBe(second);
   });
 });
 
