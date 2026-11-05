@@ -31,6 +31,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@pptx/ui/components/context-menu";
 import {
@@ -228,11 +231,13 @@ export function PresentationEditor({
             <PresentationLoading />
             <PresentationError />
             <EditorEmpty fileInputId={fileInputId} />
-            <PresentationViewport autoFit autoFitPadding={12} scrollZoom>
-              <PresentationSlide>
-                <PresentationSelection undoRedoShortcuts />
-              </PresentationSlide>
-            </PresentationViewport>
+            <CanvasContextMenu store={store}>
+              <PresentationViewport autoFit autoFitPadding={12} scrollZoom>
+                <PresentationSlide>
+                  <PresentationSelection undoRedoShortcuts />
+                </PresentationSlide>
+              </PresentationViewport>
+            </CanvasContextMenu>
           </PresentationContent>
         </Presentation>
       </PresentationProvider>
@@ -1293,6 +1298,107 @@ function SlideMenuContent({
         </>
       )}
     </ContextMenuContent>
+  );
+}
+
+interface CanvasContextMenuProps {
+  store: PresentationStore;
+  children: React.ReactNode;
+}
+
+/** Right-clicking a shape acts on it, and on empty canvas acts on the slide. */
+function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
+  const { slideId } = useSlide();
+  const { mode, nodes, editText, duplicate, remove, reorder, clear } = useSelection();
+  const actions = useSlideActions(store);
+  const returnFocusRef = React.useRef<HTMLElement | null>(null);
+  // Fixed when the menu opens, so it can't swap menus while closing.
+  const [isShapeMenu, setIsShapeMenu] = React.useState(false);
+  const [isTextMenu, setIsTextMenu] = React.useState(false);
+  const textNode = nodes.length === 1 && nodes[0]?.nodeType === "shape" ? nodes[0] : null;
+
+  function run(action: () => Promise<unknown>) {
+    action().catch(onEditError);
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger
+        className="contents"
+        onContextMenuCapture={(event) => {
+          setIsShapeMenu(nodes.length > 0 || mode === "text");
+          setIsTextMenu(mode === "text");
+          // Text being edited gets its caret back; otherwise the overlay, for shortcuts.
+          returnFocusRef.current =
+            mode === "text" && document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : (event.target as Element).closest<HTMLElement>("[data-pptx-selection]");
+        }}
+      >
+        {children}
+      </ContextMenuTrigger>
+      {isShapeMenu ? (
+        <ContextMenuContent
+          data-pptx-keep-selection=""
+          // Pressing outside only closes the menu, keeping the selection and text editing.
+          portalProps={{ render: <div data-pptx-keep-selection="" /> }}
+          aria-label="Shape"
+          className="w-44"
+          finalFocus={() => returnFocusRef.current ?? false}
+        >
+          {textNode && !isTextMenu && (
+            <ContextMenuItem
+              onClick={() => {
+                returnFocusRef.current = null;
+                editText(textNode.id);
+              }}
+            >
+              <TypeIcon />
+              Edit text
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem onClick={() => run(duplicate)}>
+            <CopyPlusIcon />
+            Duplicate
+          </ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <LayersIcon />
+              Order
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent data-pptx-keep-selection="" className="w-44">
+              {ARRANGE.map(({ order, label }) => (
+                <ContextMenuItem key={order} onClick={() => run(() => reorder(order))}>
+                  {label}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            onClick={() =>
+              run(async () => {
+                await remove();
+                clear();
+              })
+            }
+          >
+            <Trash2Icon />
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      ) : (
+        <SlideMenuContent
+          slideId={slideId}
+          actions={actions}
+          finalFocus={() => returnFocusRef.current ?? false}
+          onAction={() => {
+            returnFocusRef.current = null;
+          }}
+        />
+      )}
+    </ContextMenu>
   );
 }
 

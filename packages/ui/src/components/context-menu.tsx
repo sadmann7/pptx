@@ -30,11 +30,15 @@ function ContextMenuContent({
   alignOffset = 4,
   side = "right",
   sideOffset = 0,
+  portalProps,
   ...props
 }: ContextMenuPrimitive.Popup.Props &
-  Pick<ContextMenuPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">) {
+  Pick<ContextMenuPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset"> & {
+    /** Props for the portal, which also holds the backdrop that catches presses outside. */
+    portalProps?: ContextMenuPrimitive.Portal.Props;
+  }) {
   return (
-    <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Portal {...portalProps}>
       <ContextMenuPrimitive.Positioner
         className="isolate z-50 outline-none"
         align={align}
