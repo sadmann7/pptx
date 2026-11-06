@@ -351,9 +351,9 @@ Untouched parts are saved byte-for-byte; only edited slides are re-serialized.
 ## Undo / redo stack
 
 ```tsx
-store.canUndo(); // true if there is something to undo
-store.canRedo(); // true if there is something to redo
-await store.undo(); // also navigates to the affected slide
+store.canUndo();
+store.canRedo();
+await store.undo();
 await store.redo();
 ```
 
