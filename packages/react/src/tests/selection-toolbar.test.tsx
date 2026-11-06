@@ -463,28 +463,6 @@ describe("tables", () => {
     expect(editor.overlay.getAttribute("data-mode")).toBe("idle");
   });
 
-  it("resizes a column by dragging its border, keeping the table's width", async () => {
-    const editor = await renderEditor();
-    const nodeId = await insertTable(editor);
-    act(() => editor.selection.current!.select([nodeId]));
-    const tableOf = () =>
-      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
-    const [left, right] = tableOf().columns;
-
-    const border = editor.container.querySelectorAll<HTMLElement>(
-      '[data-pptx-table-border="column"]',
-    )[1];
-    await act(async () => {
-      fireEvent.pointerDown(border, { button: 0, clientX: 100, clientY: 0, pointerId: 1 });
-      fireEvent.pointerMove(border, { clientX: 130, clientY: 0, pointerId: 1 });
-      fireEvent.pointerUp(border, { clientX: 130, clientY: 0, pointerId: 1 });
-    });
-
-    await waitFor(() => expect(tableOf().columns[0]).toBeGreaterThan(left));
-    expect(tableOf().columns[0] + tableOf().columns[1]).toBeCloseTo(left + right, 0);
-    expect(editor.overlay.getAttribute("data-mode")).toBe("selected");
-  });
-
   it("resizes the first column from the left edge, keeping the right edge in place", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
@@ -597,98 +575,6 @@ describe("tables", () => {
     act(() => editor.selection.current!.select([nodeId]));
     await act(() => editor.selection.current!.setTableCellStyle({ fill: "#0000ff" }));
     expect(fills()).toEqual(["0000FF", "0000FF", "0000FF", "0000FF"]);
-  });
-
-  it("enters a cell when a table is pressed, selected or not", async () => {
-    const editor = await renderEditor();
-    await insertTable(editor);
-    act(() => editor.selection.current!.clear());
-    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("idle"));
-
-    const cell = editor.container.querySelector<HTMLElement>('[data-pptx-cell="1,0"]')!;
-    // happy-dom has no hit testing.
-    document.elementsFromPoint = () => [cell];
-    act(() => {
-      fireEvent.pointerDown(editor.overlay, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
-    });
-    Reflect.deleteProperty(document, "elementsFromPoint");
-    await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
-  });
-
-  it("moves between cells with arrow keys at the edge of their text", async () => {
-    const editor = await renderEditor();
-    await insertTable(editor);
-    const editable = () =>
-      editor.container.querySelector<HTMLElement>(
-        "[contenteditable]:not([contenteditable=false])",
-      )!;
-
-    act(() => {
-      fireEvent.keyDown(editable(), { key: "ArrowRight" });
-    });
-    await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
-    act(() => {
-      fireEvent.keyDown(editable(), { key: "ArrowDown" });
-    });
-    await waitFor(() => expect(editingCell(editor.container)).toBe("1,1"));
-    act(() => {
-      fireEvent.keyDown(editable(), { key: "ArrowLeft" });
-    });
-    await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
-    act(() => {
-      fireEvent.keyDown(editable(), { key: "ArrowUp" });
-    });
-    await waitFor(() => expect(editingCell(editor.container)).toBe("0,0"));
-  });
-
-  it("pastes, copies, and clears tab-separated cells", async () => {
-    const editor = await renderEditor();
-    const nodeId = await insertTable(editor);
-    const editable = editor.container.querySelector<HTMLElement>("[contenteditable]")!;
-
-    const paste = new Event("paste", { bubbles: true, cancelable: true }) as ClipboardEvent;
-    Object.defineProperty(paste, "clipboardData", {
-      value: { getData: (type: string) => (type === "text/plain" ? "A\tB\nC\tD\n" : "") },
-    });
-    await act(async () => {
-      editable.dispatchEvent(paste);
-    });
-    await waitFor(() =>
-      expect(cellTexts(editor.store, nodeId)).toEqual([
-        ["A", "B"],
-        ["C", "D"],
-      ]),
-    );
-    await waitFor(() =>
-      expect(editor.selection.current!.cellRange).toEqual({
-        start: { row: 0, column: 0 },
-        end: { row: 1, column: 1 },
-      }),
-    );
-
-    const copied = new Map<string, string>();
-    const copy = new Event("copy", { bubbles: true, cancelable: true }) as ClipboardEvent;
-    Object.defineProperty(copy, "clipboardData", {
-      value: { setData: (type: string, text: string) => copied.set(type, text) },
-    });
-    const focused = editor.container.querySelector<HTMLElement>(
-      "[contenteditable]:not([contenteditable=false])",
-    )!;
-    act(() => {
-      focused.dispatchEvent(copy);
-    });
-    expect(copied.get("text/plain")).toBe("A\tB\nC\tD");
-    expect(copied.get("text/html")).toContain("<td>A</td><td>B</td>");
-
-    await act(async () => {
-      fireEvent.keyDown(focused, { key: "Delete" });
-    });
-    await waitFor(() =>
-      expect(cellTexts(editor.store, nodeId)).toEqual([
-        ["", ""],
-        ["", ""],
-      ]),
-    );
   });
 
   it("formats every cell of a selected table", async () => {

@@ -7,7 +7,7 @@ import { angleToDeg, emuToPx, pctToDecimal } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import { isAllowedExternalUrl } from "../utils/url";
 import { RenderContext } from "./context";
-import { PPTX_DATASET } from "./dom-attributes";
+import { PPTX_ATTRS, PPTX_DATASET } from "./dom-attributes";
 import { cssFontFamilyStack, resolveThemeFont } from "./font";
 import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveColorToCss, resolveFill } from "./style";
@@ -1045,7 +1045,9 @@ export function renderTextBody(
     // those as vertical spacing). Skip when the paragraph has explicit <a:br/>
     // runs, which produce their own line boxes below.
     if (!hasVisibleRuns && !hasLineBreaks) {
-      paraDiv.appendChild(document.createElement("br"));
+      const emptyLine = document.createElement("br");
+      emptyLine.setAttribute(PPTX_ATTRS.emptyLine, "");
+      paraDiv.appendChild(emptyLine);
     }
 
     // Default OOXML tab spacing is 914400 EMU = 96px.

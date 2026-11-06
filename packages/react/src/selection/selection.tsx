@@ -1261,6 +1261,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "" }] }],
     }));
     pendingRestoreRef.current = null;
+    settleTyping(current);
     await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
   }
 
@@ -1293,11 +1294,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     });
     if (operations.length === 0) return;
     pendingRestoreRef.current = null;
+    settleTyping(current);
     setState({
       ...current,
       rangeEnd: getIsSameCell(end, current.cell) ? undefined : end,
     });
     await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+  }
+
+  // An edit made from text mode already accounts for what was typed, so the
+  // re-render it causes must not save that text again as lost typing.
+  function settleTyping(current: Extract<InternalState, { mode: "text" }>): void {
+    entryTextRef.current = {
+      element: current.editingElement,
+      text: getPlainText(readBackTextBody(current.editingElement)),
+    };
   }
 
   // Keys typed between a commit and its re-render land in the detached text.
@@ -1420,6 +1431,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         if (mergedCell.gridSpan === 1 && mergedCell.rowSpan === 1) return;
         operations.push({ type: "splitTableCell", slideId, nodeId, cell });
       }
+      settleTyping(current);
       current.editingElement.contentEditable = "false";
       setState({ mode: "selected", nodeIds: [nodeId] });
       await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
@@ -1453,6 +1465,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       index,
     });
 
+    settleTyping(current);
     current.editingElement.contentEditable = "false";
     setState({ mode: "selected", nodeIds: [nodeId] });
     await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
@@ -1698,6 +1711,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             container.contains(document.activeElement),
         }
       : null;
+    settleTyping(current);
     try {
       await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
     } catch (error) {
@@ -1791,6 +1805,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
             container.contains(document.activeElement),
         }
       : null;
+    settleTyping(current);
     try {
       await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
     } catch (error) {
@@ -3413,7 +3428,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const { slideId } = useSlide();
   const rootRef = React.useContext(RootContext);
 
-  // Focus boundary for trees without a `Root`: the overlay is all there is.
+  // Without a `Root`, the boundary is the slide the overlay sits on, which
+  // holds the text being edited too.
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
 
   const onUndoRef = useLatestRef(onUndo);
@@ -3430,7 +3446,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     function onDocKeyDown(event: KeyboardEvent): void {
       const isUndo = getIsUndoEvent(event);
       if (!isUndo && !getIsRedoEvent(event)) return;
-      const boundary = rootRef?.current ?? overlayRef.current;
+      const boundary = rootRef?.current ?? overlayRef.current?.parentElement?.parentElement ?? null;
       if (!getIsPresentationTarget(event.target, boundary)) return;
       if (
         getIsNativeUndoTarget(event.target) &&

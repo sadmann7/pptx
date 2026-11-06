@@ -490,3 +490,212 @@ test.describe("clipboard", () => {
     await expect.poll(count).toBe(1);
   });
 });
+
+test.describe("tables", () => {
+  interface TableModel {
+    columns: number[];
+    position: { x: number; y: number };
+    size: { w: number; h: number };
+    rows: {
+      cells: {
+        gridSpan: number;
+        rowSpan: number;
+        textBody?: { paragraphs: { runs: { text: string }[] }[] };
+        properties?: { element?: Element };
+      }[];
+    }[];
+  }
+
+  function readTable(page: Page, nodeId: string) {
+    return page.evaluate((id) => {
+      const node = window
+        .__editStore!.getActiveSlide()!
+        .nodes.find((n) => n.id === id) as unknown as TableModel;
+      return {
+        columns: node.columns,
+        position: node.position,
+        size: node.size,
+        cells: node.rows.map((row) =>
+          row.cells.map((cell) => ({
+            text: (cell.textBody?.paragraphs ?? [])
+              .map((p) => p.runs.map((run) => run.text).join(""))
+              .join("\n"),
+            span: [cell.rowSpan, cell.gridSpan],
+            fill:
+              cell.properties?.element
+                ?.getElementsByTagNameNS("*", "srgbClr")[0]
+                ?.getAttribute("val") ?? null,
+          })),
+        ),
+      };
+    }, nodeId);
+  }
+
+  const editingCell = (page: Page) =>
+    page.evaluate(() => document.activeElement?.getAttribute("data-pptx-cell") ?? null);
+
+  const readState = async (page: Page) =>
+    JSON.parse((await page.getByTestId("state").textContent()) ?? "{}");
+
+  /** Inserts a 2×3 table, which starts editing its first cell. Returns its id. */
+  async function insertTable(page: Page) {
+    const { overlay } = await open(page);
+    await page.getByTestId("insert-table").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await expect.poll(() => editingCell(page)).toBe("0,0");
+    const nodeId = await page.evaluate(() => {
+      const nodes = window.__editStore!.getActiveSlide()!.nodes;
+      return nodes[nodes.length - 1].id;
+    });
+    const cellCenter = async (row: number, column: number) => {
+      const box = (await page
+        .locator(`[data-pptx-node-id="${nodeId}"] [data-pptx-cell="${row},${column}"]`)
+        .boundingBox())!;
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    };
+    return { overlay, nodeId, cellCenter };
+  }
+
+  test("types into cells, moves with Tab and arrow keys, and adds a row past the last cell", async ({
+    page,
+  }) => {
+    const { nodeId } = await insertTable(page);
+
+    await page.keyboard.type("A");
+    await page.keyboard.press("Tab");
+    await expect.poll(() => editingCell(page)).toBe("0,1");
+    await page.keyboard.type("B");
+    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].text).toBe("A");
+
+    for (const [key, cell] of [
+      ["ArrowRight", "0,2"],
+      ["ArrowDown", "1,2"],
+      ["ArrowLeft", "1,1"],
+      ["ArrowUp", "0,1"],
+    ] as const) {
+      // The caret has to sit at the text's edge before an arrow leaves the cell.
+      await page.keyboard.press(key === "ArrowLeft" || key === "ArrowUp" ? LINE_START : LINE_END);
+      await page.keyboard.press(key);
+      await expect.poll(() => editingCell(page)).toBe(cell);
+    }
+    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][1].text).toBe("B");
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => editingCell(page)).toBe("1,2");
+    await page.keyboard.press("Tab");
+    await expect.poll(async () => (await readTable(page, nodeId)).cells.length).toBe(3);
+    await expect.poll(() => editingCell(page)).toBe("2,0");
+  });
+
+  test("selects cells by dragging from an unselected table, then fills, merges, and undoes", async ({
+    page,
+  }) => {
+    const { overlay, nodeId, cellCenter } = await insertTable(page);
+    await page.getByTestId("outside").click();
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+
+    const from = await cellCenter(0, 0);
+    const to = await cellCenter(1, 1);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 1 } });
+
+    await page.getByTestId("cell-fill").click();
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row.map((c) => c.fill)))
+      .toEqual([
+        ["FF0000", "FF0000", null],
+        ["FF0000", "FF0000", null],
+      ]);
+
+    await page.getByTestId("merge-cells").click();
+    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
+    // Undo and redo land without leaving the cell first.
+    await expect.poll(() => editingCell(page)).toBe("0,0");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([1, 1]);
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
+  });
+
+  test("pastes a spreadsheet column, copies the range, and clears it", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Firefox drops clipboardData on scripted clipboard events",
+    );
+    const { nodeId } = await insertTable(page);
+
+    await page.evaluate(() => {
+      const data = new DataTransfer();
+      data.setData("text/plain", "North\nSouth");
+      data.setData("text/html", "<table><tr><td>North</td></tr><tr><td>South</td></tr></table>");
+      document.activeElement!.dispatchEvent(
+        new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+      );
+    });
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row[0].text))
+      .toEqual(["North", "South"]);
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 0 } });
+
+    const copied = await page.evaluate(() => {
+      const data = new DataTransfer();
+      document.activeElement!.dispatchEvent(
+        new ClipboardEvent("copy", { clipboardData: data, bubbles: true, cancelable: true }),
+      );
+      return { text: data.getData("text/plain"), html: data.getData("text/html") };
+    });
+    expect(copied.text).toBe("North\nSouth");
+    expect(copied.html).toContain("<td>North</td>");
+
+    // The paste re-renders the slide; the caret is back in the new cell a frame later.
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("North");
+    await page.keyboard.press("Delete");
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row[0].text))
+      .toEqual(["", ""]);
+  });
+
+  test("resizes a column by its border and moves the table by its frame", async ({ page }) => {
+    const { overlay, nodeId } = await insertTable(page);
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    const before = await readTable(page, nodeId);
+
+    const border = (await page.locator('[data-pptx-table-border="column"]').nth(1).boundingBox())!;
+    await page.mouse.move(border.x + border.width / 2, border.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(border.x + border.width / 2 + 40, border.y + 10, { steps: 5 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).columns[0])
+      .toBeGreaterThan(before.columns[0] + 20);
+    const resized = await readTable(page, nodeId);
+    expect(resized.columns[0] + resized.columns[1]).toBeCloseTo(
+      before.columns[0] + before.columns[1],
+      0,
+    );
+
+    const table = (await page.locator(`[data-pptx-node-id="${nodeId}"]`).boundingBox())!;
+    const grab = { x: table.x + table.width + 5, y: table.y + 10 };
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    await page.mouse.move(grab.x - 60, grab.y + 40, { steps: 5 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).position.y)
+      .toBeGreaterThan(resized.position.y + 20);
+    expect((await readTable(page, nodeId)).size.w).toBeCloseTo(resized.size.w, 0);
+  });
+});
