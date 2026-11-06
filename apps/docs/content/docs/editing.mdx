@@ -58,7 +58,7 @@ Moving and resizing snap to the slide and to other shapes. Hold <Kbd>Alt/Option<
 
 ## Styling the overlay
 
-`Presentation.Selection` renders every part with a default look. Pass the parts as children to restyle them or leave some out:
+`Presentation.Selection` renders every part with default styles. Pass parts as children to render and style those individually.
 
 ```tsx
 <Presentation.Selection>
@@ -71,7 +71,7 @@ Moving and resizing snap to the slide and to other shapes. Hold <Kbd>Alt/Option<
 </Presentation.Selection>
 ```
 
-The overlay positions each part and repeats it as needed. Composed parts are unstyled, so give handles a size.
+The overlay positions each part and repeats it as needed. Give handles a size, since they have none of their own.
 
 | Part                        | Rendered                                                        | State                                              | Attributes                                                          |
 | --------------------------- | --------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
