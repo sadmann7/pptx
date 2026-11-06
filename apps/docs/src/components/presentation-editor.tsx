@@ -235,7 +235,6 @@ function getCanSplitCell(
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 4000;
 
-/** Offered after the deck's own fonts. */
 const COMMON_FONTS = ["Arial", "Calibri", "Georgia", "Helvetica", "Times New Roman", "Verdana"];
 
 const PPTX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -247,18 +246,11 @@ function onEditError(error: unknown) {
 interface PresentationEditorProps {
   store: PresentationStore;
   className?: string;
-  /** Rendered above the toolbar, such as a debug bar. */
   header?: React.ReactNode;
-  /** Hides the toolbar, leaving direct manipulation and shortcuts. */
   toolbar?: boolean;
-  /** Shows formatting in a toolbar floating above the selection. */
   floatingToolbar?: boolean;
 }
 
-/**
- * A full slide editor: thumbnails to reorder, the slide with the selection
- * overlay, and a toolbar for everything the overlay doesn't do by hand.
- */
 export function PresentationEditor({
   store,
   className,
@@ -361,13 +353,10 @@ function Shortcut({ keys, className }: { keys: readonly string[]; className?: st
 
 interface ToolbarIconButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
-  /** Keys shown in the tooltip; `"mod"` is ⌘ on Apple platforms and Ctrl elsewhere. */
   shortcut?: string[];
-  /** Makes the button a toggle, announced as pressed or not. */
   pressed?: boolean;
 }
 
-/** An icon button in the toolbar's arrow-key navigation, with a tooltip. */
 function ToolbarIconButton({
   label,
   shortcut,
@@ -403,13 +392,11 @@ function ToolbarIconButton({
 interface ToolbarMenuTriggerProps {
   label: string;
   disabled?: boolean;
-  /** Shows the trigger pressed, e.g. while its tool is armed. */
   active?: boolean;
   className?: string;
   children: React.ReactNode;
 }
 
-/** A menu's trigger button in the toolbar, with a tooltip like the other buttons. */
 function ToolbarMenuTrigger({
   label,
   disabled,
@@ -451,7 +438,6 @@ interface ColorMenuProps {
   disabled?: boolean;
   value?: string | null;
   onSelect: (color: string) => void;
-  /** Offers a "none" choice, e.g. to remove an outline. */
   noneLabel?: string;
   onNone?: () => void;
 }
@@ -561,7 +547,6 @@ function FontSelect({
                   aria-label="Font"
                   className="h-7 w-32 border-transparent bg-transparent text-xs hover:bg-accent dark:bg-transparent dark:hover:bg-accent"
                 >
-                  {/* Blank when the selection mixes fonts, as in Google Slides. */}
                   <SelectValue className="min-w-0">
                     <span className="truncate">{value ?? ""}</span>
                   </SelectValue>
@@ -597,7 +582,6 @@ function FontSelect({
   );
 }
 
-/** A font in the font list, in its own face, truncated to the list's width. */
 function FontItem({ font }: { font: string }) {
   return (
     <SelectItem
@@ -612,7 +596,6 @@ function FontItem({ font }: { font: string }) {
   );
 }
 
-/** Which ends of a horizontal scroller have content scrolled out of view. */
 function useOverflowEdges(ref: React.RefObject<HTMLElement | null>) {
   const [edges, setEdges] = React.useState({ start: false, end: false });
 
@@ -644,10 +627,6 @@ function useOverflowEdges(ref: React.RefObject<HTMLElement | null>) {
   return edges;
 }
 
-/**
- * The font size as one control, as in Google Slides: step with the buttons or
- * type a size and press Enter. Blank when the selection mixes sizes.
- */
 function FontSizeControl({
   value,
   onChange,
@@ -799,7 +778,6 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   }
 
   return (
-    // A delay before the first tooltip, then instant ones while moving along the row.
     <TooltipProvider delay={400}>
       <Toolbar
         aria-label="Edit presentation"
@@ -1448,7 +1426,6 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       <SlideMenuContent
         slideId={menuSlideId}
         actions={actions}
-        // Focus returns to the thumbnail, unless an action moves it on.
         finalFocus={() => menuItemRef.current ?? false}
         onAction={() => {
           menuItemRef.current = null;
@@ -1469,7 +1446,6 @@ interface SlideActions {
 
 type SlideMove = "up" | "down" | "start" | "end";
 
-/** Focuses a slide's thumbnail once the edit that made or moved it renders. */
 function focusThumbnail(slideId: string) {
   requestAnimationFrame(() => {
     document
@@ -1521,7 +1497,6 @@ function useSlideActions(store: PresentationStore): SlideActions {
   };
 }
 
-/** PowerPoint's shortcuts for a focused thumbnail. */
 function onThumbnailKeyDown(
   event: React.KeyboardEvent<HTMLElement>,
   slideId: string,
@@ -1547,10 +1522,8 @@ function onThumbnailKeyDown(
 }
 
 interface SlideMenuContentProps {
-  /** The slide right-clicked, or `null` for the empty space below the thumbnails. */
   slideId: string | null;
   actions: SlideActions;
-  /** Runs when an item is chosen, before its edit. */
   onAction: () => void;
 }
 
@@ -1592,10 +1565,6 @@ function SlideMenuContent({
   );
 }
 
-/**
- * The common formatting for the selection, floating just above it, as in Canva
- * and Keynote. Hidden while the selection is moved, resized, or rotated.
- */
 function FloatingToolbar({ store }: { store: PresentationStore }) {
   const { slideId } = useSlide();
   const { mode, nodes, anchor, drawTool, textStyle, setTextStyle, setParagraphStyle } =
@@ -1712,7 +1681,6 @@ interface CanvasContextMenuProps {
   children: React.ReactNode;
 }
 
-/** Right-clicking a shape acts on it, and on empty canvas acts on the slide. */
 function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const { slideId } = useSlide();
   const { mode, nodes, cell, cellRange, editText, changeTable, duplicate, remove, reorder, clear } =
