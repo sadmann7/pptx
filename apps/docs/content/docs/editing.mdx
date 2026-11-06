@@ -25,7 +25,8 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Right-click** a shape to select it before opening a context menu; right-clicking empty canvas clears the selection
 - **Snap** to the slide's edges and center and to other shapes while moving or resizing, with guides showing what lined up (see [Snapping](#snapping))
 - **Edit text** inline: click a selected shape again, double-click it, or start typing
-- **Edit tables** cell by cell: click a cell to edit it, and <Kbd>Tab</Kbd> or <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup> moves to the next or previous one (past the last cell, it adds a row). Drag any of its borders, edges included, to resize a row or column
+- **Edit tables** by pressing a cell; <Kbd>Tab</Kbd> and the arrow keys move between cells, and dragging a border resizes a row or column
+- **Select cells** by dragging or <Kbd>Shift</Kbd> + click, then format, merge, copy, or paste them
 - **Keyboard**: <Kbd>Tab</Kbd> and <KbdGroup><Kbd>Shift</Kbd><Kbd>Tab</Kbd></KbdGroup> move through the slide's shapes, and screen readers hear what's selected
 - **Multi-select** with <Kbd>Shift/Ctrl/Cmd</Kbd> + click, <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>A</Kbd></KbdGroup>, or by dragging a marquee on the empty canvas
 - **Delete** selected shapes with <Kbd>Delete</Kbd> or <Kbd>Backspace</Kbd>
@@ -35,19 +36,15 @@ Editing requires two things: loading the presentation with `readOnly={false}`, a
 - **Nudge** with the arrow keys (1 px, or 10 px while holding <Kbd>Shift</Kbd>)
 - **Undo** and **redo** with <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Shift</Kbd><Kbd>Z</Kbd></KbdGroup> (or <KbdGroup><Kbd>Ctrl/Cmd</Kbd><Kbd>Y</Kbd></KbdGroup>)
 
-Undo and redo shortcuts are disabled by default to avoid conflicts with the surrounding app. Enable them with `undoRedoShortcuts` on `Presentation.Selection`:
+Undo and redo shortcuts are off by default to avoid conflicts with your app. Enable them with `undoRedoShortcuts`, or call `store.undo()` and `store.redo()` yourself:
 
 ```tsx
 <Presentation.Selection undoRedoShortcuts />
 ```
 
-They only act on keystrokes inside the presentation, and leave text fields to their own undo.
-
-For full control, leave `undoRedoShortcuts` disabled and call `store.undo()` and `store.redo()`.
-
 ## Snapping
 
-Moving and resizing snap to the slide's edges and center and to the edges and centers of the other shapes. A multi-selection snaps as one block, and a resize snaps only the edges it moves. Hold Alt (Option) while dragging to place a shape freely.
+Moving and resizing snap to the slide and to other shapes. Hold <Kbd>Alt/Option</Kbd> while dragging to place a shape freely.
 
 ```tsx
 // Snap from further away
@@ -57,11 +54,11 @@ Moving and resizing snap to the slide's edges and center and to the edges and ce
 <Presentation.Selection snapping={false} />
 ```
 
-`snapThreshold` is in screen pixels, so snapping feels the same at every zoom level. It defaults to `6`.
+`snapThreshold` is in screen pixels and defaults to `6`.
 
 ## Styling the overlay
 
-The overlay is built from parts. Without children, `Presentation.Selection` renders all of them with a default look. Compose them to restyle or leave some out:
+`Presentation.Selection` renders every part with default styles. Pass parts as children to render and style those individually.
 
 ```tsx
 <Presentation.Selection>
@@ -74,7 +71,7 @@ The overlay is built from parts. Without children, `Presentation.Selection` rend
 </Presentation.Selection>
 ```
 
-Each part is written once and rendered as many times as needed: one outline per selected shape, eight handles per outline, and one guide per line that snapped. The overlay positions them; how they look is up to you. Composed parts are unstyled, so give handles a size.
+The overlay positions each part and repeats it as needed. Give handles a size, since they have none of their own.
 
 | Part                        | Rendered                                                        | State                                              | Attributes                                                          |
 | --------------------------- | --------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
@@ -95,11 +92,11 @@ Like the other primitives, every part accepts `render`, and `className` and `sty
 />
 ```
 
-On a shape too small to grab between its handles, they sit just outside it, and a flat line shows only its two ends. Resize handles are hidden while dragging; they stay while editing text, as in Google Slides, and pressing one ends the editing. A rotated shape resizes along its own axes. In a multi-selection, every shape scales by the same factors as the one whose handle is dragged, each along its own axes. The rotate handle sits `--presentation-rotate-handle-offset` (`20px`) above the middle of the top edge and turns with the outline; it is hidden while moving or resizing, and on tables and charts. A snap guide is the line itself, centered on where things lined up and `--presentation-snap-guide-width` thick (`1px` by default), so a background color draws it.
+The rotate handle is hidden on tables and charts. A snap guide is drawn by its background color.
 
 ### Theming the default look
 
-The default parts read their colors from CSS variables. Set them on `Presentation.Selection` or on any ancestor:
+Set these CSS variables on `Presentation.Selection` or any ancestor:
 
 | Variable                              | Default     | Styles                                           |
 | ------------------------------------- | ----------- | ------------------------------------------------ |
@@ -116,7 +113,7 @@ The default parts read their colors from CSS variables. Set them on `Presentatio
 }
 ```
 
-Inline styles only override the properties they set, so CSS that targets a part's attributes can add anything else (shadows, opacity, transitions) without `!important`:
+Target a part's attributes to add anything else:
 
 ```css
 [data-snap-guide] {
@@ -126,7 +123,7 @@ Inline styles only override the properties they set, so CSS that targets a part'
 
 ## Edit callbacks
 
-Each edit callback receives `(status, error?)` for undo/redo (where `status` is `"success" | "empty"`) and `(nodeId, error?)` for node events. Check `error` to show a toast or log failures:
+Undo and redo callbacks receive `(status, error?)`, and node callbacks receive `(nodeId, error?)`:
 
 ```tsx
 <Presentation.Selection
@@ -151,7 +148,7 @@ Each edit callback receives `(status, error?)` for undo/redo (where `status` is 
 
 ## Programmatic edits
 
-Use `store.edit()` to apply changes from outside the UI (for example, from a toolbar button). Edit operations have full undo/redo support.
+Use `store.edit()` to apply undoable changes from outside the overlay. See [Store](/docs/store) for every operation.
 
 ```tsx
 import { copyNodes, useCreatePresentationStore } from "@diceui/pptx";
@@ -243,19 +240,17 @@ const clipboard = await copyNodes(sourceDeck, sourceSlideId, nodeIds);
 await targetStore.edit({ type: "pasteNodes", slideId: targetSlideId, clipboard });
 ```
 
-`copyNodes` takes the images the shapes use along with them, and paste reuses any that the deck already has. Shapes that refer to other parts, such as charts, diagrams, and video, are left out and listed in `clipboard.omittedNodeIds`.
+`copyNodes` skips shapes that refer to other parts, such as charts and video, and lists them in `clipboard.omittedNodeIds`.
 
-In `setTextStyle`, omitted fields are left alone and `null` removes the text's own value so it inherits from the layout again. Text ranges count characters in each paragraph's text, with a line break as one character, and `end` is exclusive.
+In `setTextStyle`, `null` clears a value so it inherits from the layout, and a range's `end` is exclusive. Edits that create nodes return their ids in `createdNodeIds`.
 
-Edits that create nodes (`addTextBox`, `addShape`, `addTable`, `addImage`, `duplicateNode`, and `pasteNodes`) return their ids in `createdNodeIds`.
-
-`presentation.layouts` maps each layout's part path to its data, including its `name`, for a "new slide from layout" picker.
+`presentation.layouts` lists each layout and its `name` for a "new slide from layout" picker.
 
 ## Formatting toolbar
 
-`useSelection` gives a toolbar the overlay's selection and formatting commands that work in both modes. While text is being edited they format the selected text, or the word at the caret. Otherwise they format all the text in the selected shapes.
+`useSelection` gives a toolbar the selection and formatting commands. While editing text they format the selection, or the word at the caret; otherwise they format the whole shape.
 
-Pressing a toolbar would normally count as a press outside the slide, which clears the selection and ends text editing. Mark the toolbar with `data-pptx-keep-selection` (exported as `KEEP_SELECTION_ATTRIBUTE`) to prevent that. Mark the content of its popovers and menus as well, since they usually render in a portal outside the toolbar. Undo shortcuts pressed inside marked UI apply to the deck.
+Mark the toolbar, and any popovers it portals, with `data-pptx-keep-selection` so pressing it keeps the selection.
 
 ```tsx
 import { useSelection } from "@diceui/pptx";
@@ -280,15 +275,22 @@ function FormattingToolbar() {
 }
 ```
 
-`textStyle` describes the text under the caret or selection: `bold`, `italic`, `underline`, and `strikethrough` are on only when all of it has them, and `color`, `fontFamily`, `fontSize`, and `align` are `null` when it is mixed. It is `null` when nothing with text is selected. The hook also returns `mode`, `anchor` (see [Floating toolbar](#floating-toolbar)), `nodeIds`, `nodes`, `select(nodeIds)`, `clear()`, `duplicate()`, `remove()`, and `reorder(order)` for the selected shapes, `editText(nodeId, cell?)` to start editing a shape's text or a table cell, `insertTextBox(options?)`, which adds a text box to the current slide and starts editing it, `insertTable(rows, columns, options?)`, which adds a table and starts editing its first cell, `cell` and `changeTable(change)` to read the table cell being edited and insert or delete rows and columns around it, and `insertShape(geometry, options?)`, which adds a preset shape and selects it, so typing starts its text. To let people place them instead, like Google Slides, `startDrawing({ type: "textBox" })` or `startDrawing({ type: "shape", geometry })` arms a draw tool: the slide shows a crosshair, a click places the text box or shape at its default size, and a drag draws it to size (Shift keeps it square). `drawTool` reports the armed tool, and Escape or `startDrawing(null)` disarms it. A text box left empty is removed once editing moves elsewhere.
+`textStyle` describes the selected text, with `null` for mixed values. It is `null` when nothing with text is selected.
 
-For a font picker, `getPresentationFonts(presentation)` lists the theme's heading and body fonts, the fonts embedded in the file, and the other fonts the deck's text uses. For a shape picker, `getPresetShapePath(geometry, width, height)` returns SVG path data to draw each preset's preview.
+The hook also returns:
 
-Formatting while text is being edited commits the pending typing in the same edit, so the two undo together. The caret or selection comes back afterwards, and focus returns to the text unless the toolbar is typing into a field of its own, such as a font size box.
+- `mode`, `anchor`, `nodeIds`, and `nodes` for the current selection
+- `select`, `clear`, `duplicate`, `remove`, and `reorder` to change it
+- `editText(nodeId, cell?)` to start editing a shape's text or a table cell
+- `insertTextBox`, `insertShape`, and `insertTable` to add content
+- `cell`, `cellRange`, `changeTable`, and `setTableCellStyle` for tables
+- `startDrawing` and `drawTool` to place a text box or shape by clicking or dragging
+
+`getPresentationFonts(presentation)` lists the deck's fonts for a font picker, and `getPresetShapePath(geometry, width, height)` returns SVG path data for a shape picker.
 
 ### Floating toolbar
 
-`anchor` is the selection's on-screen bounds, as a virtual element that Base UI, Radix, and Floating UI accept as an anchor. It is `null` when nothing is selected. Show the toolbar while `mode` is `"selected"` or `"text"`, so it hides while the selection is moved, resized, or rotated.
+`anchor` is a virtual element for the selection's bounds that Base UI, Radix, and Floating UI accept. Show the toolbar while `mode` is `"selected"` or `"text"` so it hides during drags.
 
 ```tsx
 import { Popover } from "@base-ui/react/popover";
@@ -344,26 +346,20 @@ async function onSave() {
 }
 ```
 
-The saved file round-trips all untouched parts byte-for-byte. Only slides that were edited are re-serialized.
+Untouched parts are saved byte-for-byte; only edited slides are re-serialized.
 
 ## Undo / redo stack
 
-The store maintains a linear undo/redo history:
-
 ```tsx
-store.canUndo(); // true if there is something to undo
-store.canRedo(); // true if there is something to redo
-await store.undo(); // reverts the last edit; navigates to the affected slide
-await store.redo(); // re-applies the last undone edit
+store.canUndo();
+store.canRedo();
+await store.undo();
+await store.redo();
 ```
-
-Cross-slide edits navigate to the affected slide automatically on undo/redo.
 
 ## Reordering slides
 
-Moving a slide is an edit like any other, so it is undoable and included in `isDirty`. The thumbnail strip deliberately ships no drag-and-drop: reordering is left to whatever sortable library you already use, and `Presentation.ThumbnailItem` is built to be wrapped by one. It forwards `ref`, merges arbitrary props and event handlers, and lets your `style` win over its internals so transforms animate normally.
-
-Commit the drop as a `moveSlide` edit:
+The thumbnail strip ships no drag-and-drop, so wrap `Presentation.ThumbnailItem` with your sortable library and commit the drop as a `moveSlide` edit:
 
 ```tsx
 async function onDragEnd({ active, over }: DragEndEvent) {
@@ -373,13 +369,13 @@ async function onDragEnd({ active, over }: DragEndEvent) {
 }
 ```
 
-A few things are worth knowing when wiring this up:
+With dnd-kit:
 
-- dnd-kit's `attributes` set `role="button"` and `tabIndex={0}`. Both would override what the list needs, replacing the `option` role and putting every thumbnail in the tab order instead of the single roving tab stop. Drop those two keys and spread the rest.
-- Give the pointer sensor a small activation distance (`{ distance: 4 }`), or a plain click starts a drag instead of selecting the slide.
-- `store.edit()` is async, so hold the dropped order in local state until it settles; otherwise the strip snaps back to the old order for a frame.
-- Clamp the drag with `restrictToFirstScrollableAncestor`. The strip scrolls vertically, and a transformed child still counts toward its scroll container's overflow, so an unclamped drag past the last thumbnail grows `scrollHeight`, which lets auto-scroll run, which grows the transform again — the list scrolls for as long as you hold the pointer at the edge.
-- Give a drag overlay's thumbnail the `decorative` prop. The overlay is a second copy of a slide that is still in the list, and without it the copy takes the original's place in the roving focus map, unregisters it on drop, and the deck is announced with a duplicate option.
+- Drop `role` and `tabIndex` from `attributes` so the list keeps its roving focus.
+- Give the pointer sensor an activation distance (`{ distance: 4 }`) so a click still selects.
+- Hold the dropped order in local state until `store.edit()` settles to avoid a flicker.
+- Clamp the drag with `restrictToFirstScrollableAncestor`, or dragging past the end scrolls forever.
+- Give a drag overlay's thumbnail the `decorative` prop so it stays out of focus and announcements.
 
 ```tsx
 <DragOverlay>
@@ -392,15 +388,13 @@ A few things are worth knowing when wiring this up:
 </DragOverlay>
 ```
 
-Render the overlay inside `Presentation.ThumbnailList` so the copy can reach the list context it needs to paint a real miniature. It is fixed-positioned, so the strip's overflow will not clip it.
+Render the overlay inside `Presentation.ThumbnailList`. The list owns ↑/↓/Home/End, so bind a keyboard drag sensor to modifier combinations instead.
 
-The list also owns ↑/↓/Home/End for roving focus, so a keyboard drag sensor bound to those keys will fight it. Modifier combinations (Alt/Option+↑, for example) pass through untouched.
-
-The demo at the top of this page wires all of that up with [dnd-kit](https://dndkit.com), though nothing in the approach is specific to it. See `SortableThumbnailList` in `apps/docs/src/components/presentation-editor.tsx`.
+The demo above wires this up with [dnd-kit](https://dndkit.com) in `SortableThumbnailList` (`apps/docs/src/components/presentation-editor.tsx`).
 
 ## Unsaved changes
 
-`store.isDirty()` reports whether the presentation has changed since it was last saved. If the user undoes those changes and returns to the saved state, it becomes false again avoiding unnecessary unsaved changes warnings.
+`store.isDirty()` reports whether the presentation changed since it was last saved, and turns false again if the changes are undone.
 
 ```tsx
 window.addEventListener("beforeunload", (event) => {
