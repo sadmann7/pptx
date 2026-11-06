@@ -156,8 +156,6 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                               ? TABLE_FRAME_GRAB_HITBOXES
                               : FRAME_GRAB_HITBOXES
                           }
-                          // Selected shapes show no move cursor; a drag still moves them.
-                          cursor={isTextMode ? "move" : undefined}
                           onPointerDown={onBorderPointerDown}
                         />
                       )}
@@ -186,7 +184,6 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
 
 interface FrameGrabHitboxesProps {
   hitboxes: React.CSSProperties[];
-  cursor?: React.CSSProperties["cursor"];
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
@@ -195,7 +192,7 @@ interface FrameGrabHitboxesProps {
  * Dragging them moves the shape (PowerPoint: grab the frame to move).
  * Each hitbox extends both inward and outward from the border line.
  */
-function FrameGrabHitboxes({ hitboxes, cursor, onPointerDown }: FrameGrabHitboxesProps) {
+function FrameGrabHitboxes({ hitboxes, onPointerDown }: FrameGrabHitboxesProps) {
   return (
     <>
       {hitboxes.map((style, index) => (
@@ -207,7 +204,6 @@ function FrameGrabHitboxes({ hitboxes, cursor, onPointerDown }: FrameGrabHitboxe
           style={{
             position: "absolute",
             ...style,
-            cursor,
             pointerEvents: "auto",
             touchAction: "none",
           }}

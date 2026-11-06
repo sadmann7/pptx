@@ -624,6 +624,68 @@ test.describe("tables", () => {
     await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
   });
 
+  test("selects the whole table with Cmd/Ctrl+A only once cells are selected", async ({ page }) => {
+    const { nodeId, cellCenter } = await insertTable(page);
+    await page.keyboard.type("Hi");
+
+    // In a cell, it selects the cell's text, however often it's pressed.
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window
+            .getSelection()
+            ?.toString()
+            .replace(/\u200B/g, ""),
+        ),
+      )
+      .toBe("Hi");
+    expect((await readState(page)).cellRange).toBeNull();
+
+    const from = await cellCenter(0, 1);
+    const to = await cellCenter(1, 1);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 2 } });
+
+    await page.getByTestId("cell-fill").click();
+    await expect
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells.flat().every((cell) => cell.fill === "FF0000"),
+      )
+      .toBe(true);
+    expect((await readTable(page, nodeId)).cells[0][0].text).toBe("Hi");
+  });
+
+  test("types over selected cells at the end of the first one", async ({ page }) => {
+    const { nodeId, cellCenter } = await insertTable(page);
+    await page.keyboard.type("Old");
+    await page.keyboard.press("Tab");
+    await page.keyboard.type("Keep");
+
+    const from = await cellCenter(0, 0);
+    const to = await cellCenter(1, 1);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await readState(page)).cellRange).not.toBeNull();
+
+    await page.keyboard.type("ab");
+    await expect.poll(async () => (await readState(page)).cellRange).toBeNull();
+    await expect.poll(() => editingCell(page)).toBe("0,0");
+    await page.keyboard.press("Escape");
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0].map((cell) => cell.text))
+      .toEqual(["Oldab", "Keep", ""]);
+  });
+
   test("pastes a spreadsheet column, copies the range, and clears it", async ({
     page,
     browserName,
@@ -667,10 +729,13 @@ test.describe("tables", () => {
       .toEqual(["", ""]);
   });
 
-  test("resizes a column by its border and moves the table by its frame", async ({ page }) => {
+  test("resizes a column of an unselected table by its border, and moves it by its frame", async ({
+    page,
+  }) => {
     const { overlay, nodeId } = await insertTable(page);
-    await page.keyboard.press("Escape");
-    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    // Borders resize a table that isn't selected yet.
+    await page.getByTestId("outside").click();
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
     const before = await readTable(page, nodeId);
 
     const border = (await page.locator('[data-pptx-table-border="column"]').nth(1).boundingBox())!;
@@ -681,6 +746,7 @@ test.describe("tables", () => {
     await expect
       .poll(async () => (await readTable(page, nodeId)).columns[0])
       .toBeGreaterThan(before.columns[0] + 20);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
     const resized = await readTable(page, nodeId);
     expect(resized.columns[0] + resized.columns[1]).toBeCloseTo(
       before.columns[0] + before.columns[1],

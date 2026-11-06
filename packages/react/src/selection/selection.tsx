@@ -237,6 +237,7 @@ export type InternalState =
       nodeId: string;
       cell?: TableCellAddress;
       rangeEnd?: TableCellAddress;
+      rangeStart?: TableCellAddress;
       editingElement: HTMLElement;
     };
 
@@ -427,6 +428,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   const entryTextRef = React.useRef<{ element: HTMLElement; text: string } | null>(null);
 
+  // Keys typed while a re-render has replaced the text being edited, and focus
+  // has nowhere to go; they're typed in once editing resumes.
+  const heldKeysRef = React.useRef("");
+
   // Edit revision of the active slide. A bump means SlideImpl will replace
   // the slide DOM in its effect; the text-mode repair effect below uses this
   // to re-attach contentEditable to the fresh DOM.
@@ -476,7 +481,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const selectionKey = selectedIds.join("\u0000");
   const cellKey =
     state.mode === "text" && state.cell
-      ? `${state.cell.row},${state.cell.column},${state.rangeEnd?.row},${state.rangeEnd?.column}`
+      ? `${state.cell.row},${state.cell.column},${state.rangeEnd?.row},${state.rangeEnd?.column},${state.rangeStart?.row},${state.rangeStart?.column}`
       : "";
   const previousModeRef = React.useRef(mode);
 
@@ -571,6 +576,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return null;
   }
 
+  // A press on a table goes into its cells, so a drag selects cells; its frame
+  // moves it, as in Google Slides.
+  function getIsCellPress(nodeId: string): boolean {
+    const node = slide?.nodes.find((n) => n.id === nodeId);
+    return node?.nodeType === "table" && nodeHasText(nodeId);
+  }
+
   function nodeHasText(nodeId: string): boolean {
     const node = slide!.nodes.find((node) => node.id === nodeId);
     if (node?.nodeType === "table") return getTableCells(node).length > 0;
@@ -583,6 +595,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return shapeElement.querySelector<HTMLElement>(
       `[${PPTX_ATTRS.cell}="${cell.row},${cell.column}"]`,
     );
+  }
+
+  function pressIntoCell(nodeId: string, clientX: number, clientY: number): void {
+    const cell = resolveCell(nodeId, clientX, clientY);
+    enterTextMode(nodeId, clientX, clientY, undefined, undefined, cell);
+    cellDragRef.current = { nodeId, anchor: cell };
   }
 
   function resolveCell(nodeId: string, clientX?: number, clientY?: number): TableCellAddress {
@@ -707,11 +725,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       text: getPlainText(readBackTextBody(textElement)),
     };
     const previous = stateRef.current;
-    const rangeEnd =
-      previous.mode === "text" && previous.nodeId === nodeId && getIsSameCell(previous.cell, cell)
-        ? previous.rangeEnd
-        : undefined;
-    setState({ mode: "text", nodeId, cell, rangeEnd, editingElement: textElement });
+    const isSameCell =
+      previous.mode === "text" && previous.nodeId === nodeId && getIsSameCell(previous.cell, cell);
+    setState({
+      mode: "text",
+      nodeId,
+      cell,
+      rangeEnd: isSameCell ? previous.rangeEnd : undefined,
+      rangeStart: isSameCell ? previous.rangeStart : undefined,
+      editingElement: textElement,
+    });
   }
 
   // A modal menu leaves the page inert while it animates closed, so the text
@@ -1297,9 +1320,39 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     settleTyping(current);
     setState({
       ...current,
-      rangeEnd: getIsSameCell(end, current.cell) ? undefined : end,
+      rangeEnd: getIsSameCell(end, start) ? undefined : end,
+      rangeStart: getIsSameCell(start, current.cell) ? undefined : start,
     });
     await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
+  }
+
+  function selectWholeTable(current: Extract<InternalState, { mode: "text" }>): boolean {
+    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+    if (!current.cell || !current.rangeEnd || table?.nodeType !== "table") return false;
+    const { rows, columns } = table as TableNodeData;
+    window.getSelection()?.removeAllRanges();
+    setState({
+      ...current,
+      rangeStart: { row: 0, column: 0 },
+      rangeEnd: { row: rows.length - 1, column: columns.length - 1 },
+    });
+    return true;
+  }
+
+  function typeOverCells(current: Extract<InternalState, { mode: "text" }>, text: string): void {
+    const range = getCellRange();
+    if (!range) return;
+    if (!getIsSameCell(range.start, current.cell)) {
+      moveToCell(current, range.start);
+    } else {
+      placeCaretAtEnd(current.editingElement);
+    }
+    setState((previous) =>
+      previous.mode === "text"
+        ? { ...previous, rangeEnd: undefined, rangeStart: undefined }
+        : previous,
+    );
+    document.execCommand("insertText", false, text);
   }
 
   // An edit made from text mode already accounts for what was typed, so the
@@ -1361,7 +1414,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (current.mode !== "text" || !current.cell || !current.rangeEnd) return null;
     const table = slide?.nodes.find((n) => n.id === current.nodeId);
     if (table?.nodeType !== "table") return null;
-    return getTableCellRange(table as TableNodeData, current.cell, current.rangeEnd);
+    return getTableCellRange(
+      table as TableNodeData,
+      current.rangeStart ?? current.cell,
+      current.rangeEnd,
+    );
   }
 
   function getRangeCells(
@@ -1371,7 +1428,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!current.cell || !current.rangeEnd || table?.nodeType !== "table") return null;
     const { start, end } = getTableCellRange(
       table as TableNodeData,
-      current.cell,
+      current.rangeStart ?? current.cell,
       current.rangeEnd,
     );
     return getTableCells(table).filter(
@@ -1423,10 +1480,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           type: "mergeTableCells",
           slideId,
           nodeId,
-          from: cell,
+          from: current.rangeStart ?? cell,
           to: current.rangeEnd,
         });
-        next = getTableCellRange(table, cell, current.rangeEnd).start;
+        next = getTableCellRange(table, current.rangeStart ?? cell, current.rangeEnd).start;
       } else {
         if (mergedCell.gridSpan === 1 && mergedCell.rowSpan === 1) return;
         operations.push({ type: "splitTableCell", slideId, nodeId, cell });
@@ -1696,7 +1753,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       slideId,
       nodeId,
       style,
-      from: cell,
+      from: current.rangeStart ?? cell,
       to: current.rangeEnd ?? cell,
     });
     const domRange = getEditingDomRange(container);
@@ -1824,24 +1881,37 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     (state.mode === "selected" || state.mode === "text")
       ? (selectedNode as TableNodeData)
       : null;
+  const resizableTables =
+    !drawTool && (state.mode === "idle" || state.mode === "selected" || state.mode === "text")
+      ? ((slide?.nodes.filter(
+          (node) => node.nodeType === "table" && node.rotation === 0 && !node.flipH && !node.flipV,
+        ) as TableNodeData[] | undefined) ?? [])
+      : [];
 
   function onTableBorderPointerDown(
     event: React.PointerEvent<HTMLDivElement>,
+    table: TableNodeData,
     axis: TableBorderDrag["axis"],
     index: number,
   ): void {
-    if (!tableNode || event.button !== 0) return;
+    if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    const current = stateRef.current;
+    const isEditing = current.mode === "text" && current.nodeId === table.id;
+    if (!isEditing && !(current.mode === "selected" && getIsSameIds(current.nodeIds, [table.id]))) {
+      if (current.mode === "text") commitTextEdits(current);
+      setState({ mode: "selected", nodeIds: [table.id] });
+    }
     tableBorderDragRef.current = {
-      nodeId: tableNode.id,
+      nodeId: table.id,
       axis,
       index,
       start: axis === "column" ? event.clientX : event.clientY,
-      position: { ...tableNode.position },
-      columns: [...tableNode.columns],
-      rows: tableNode.rows.map((row) => row.height),
+      position: { ...table.position },
+      columns: [...table.columns],
+      rows: table.rows.map((row) => row.height),
       next: null,
     };
   }
@@ -1933,7 +2003,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   function renderCellRange(table: TableNodeData): React.ReactNode {
     const range =
       state.mode === "text" && state.cell && state.rangeEnd
-        ? getTableCellRange(table, state.cell, state.rangeEnd)
+        ? getTableCellRange(table, state.rangeStart ?? state.cell, state.rangeEnd)
         : null;
     if (!range) return null;
     const sum = (sizes: number[], from: number, to: number) =>
@@ -1953,6 +2023,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         }}
       />
     );
+  }
+
+  function getIsSameIds(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((id, index) => id === b[index]);
   }
 
   function renderTableBorders(table: TableNodeData): React.ReactNode {
@@ -1976,7 +2050,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         <div
           key={`${axis}-${index}`}
           data-pptx-table-border={axis}
-          onPointerDown={(event) => onTableBorderPointerDown(event, axis, index)}
+          onPointerDown={(event) => onTableBorderPointerDown(event, table, axis, index)}
           onPointerMove={onTableBorderPointerMove}
           onPointerUp={onTableBorderPointerUp}
           onPointerCancel={onTableBorderPointerCancel}
@@ -2011,11 +2085,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const moveToCellRef = useLatestRef(moveToCell);
   const getCellAtPointRef = useLatestRef(getCellAtPoint);
   const getCellRangeRef = useLatestRef(getCellRange);
+  const selectWholeTableRef = useLatestRef(selectWholeTable);
+  const typeOverCellsRef = useLatestRef(typeOverCells);
   const stepCellByArrowRef = useLatestRef(stepCellByArrow);
   const getRangeGridRef = useLatestRef(getRangeGrid);
   const clearCellRangeRef = useLatestRef(clearCellRange);
   const pasteIntoCellsRef = useLatestRef(pasteIntoCells);
   const cellDragRef = React.useRef<{ nodeId: string; anchor: TableCellAddress } | null>(null);
+  const getIsCellPressRef = useLatestRef(getIsCellPress);
+  const pressIntoCellRef = useLatestRef(pressIntoCell);
   const stepCellRef = useLatestRef(stepCell);
   const saveDetachedTypingRef = useLatestRef(saveDetachedTyping);
   const publishSelectionRef = useLatestRef(publishSelection);
@@ -2110,7 +2188,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (currentState.editingElement.contains(event.target as Node)) {
         if (currentState.cell && event.button === 0 && !event.shiftKey) {
           cellDragRef.current = { nodeId: currentState.nodeId, anchor: currentState.cell };
-          if (currentState.rangeEnd) setState({ ...currentState, rangeEnd: undefined });
+          if (currentState.rangeEnd) {
+            setState({ ...currentState, rangeEnd: undefined, rangeStart: undefined });
+          }
         }
         return;
       }
@@ -2151,6 +2231,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           setState({
             ...currentState,
             rangeEnd: getIsSameCell(hitCell, currentState.cell) ? undefined : hitCell,
+            rangeStart: undefined,
           });
           return;
         }
@@ -2158,8 +2239,20 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         if (!getIsSameCell(hitCell, currentState.cell)) {
           moveToCellRef.current(currentState, hitCell, event.clientX, event.clientY);
         } else if (currentState.rangeEnd) {
-          setState({ ...currentState, rangeEnd: undefined });
+          setState({ ...currentState, rangeEnd: undefined, rangeStart: undefined });
         }
+      } else if (
+        hitNodeId &&
+        hitNodeId !== currentState.nodeId &&
+        event.button === 0 &&
+        !event.shiftKey &&
+        getIsCellPressRef.current(hitNodeId)
+      ) {
+        event.preventDefault();
+        if (!removeIfEmptyTextBoxRef.current(currentState)) {
+          commitTextEditsRef.current(currentState);
+        }
+        pressIntoCellRef.current(hitNodeId, event.clientX, event.clientY);
       } else if (hitNodeId && hitNodeId !== currentState.nodeId) {
         // Clicked a different shape: exit text and start interacting with it
         // in the same gesture (PowerPoint: you can immediately drag another
@@ -2196,6 +2289,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
+      if (
+        !currentState.editingElement.isConnected &&
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.isComposing
+      ) {
+        event.preventDefault();
+        heldKeysRef.current += event.key;
+        return;
+      }
+
       // Escape inside a toolbar closes its popover, not the text editing.
       if (event.key === "Escape" && !getIsKeepSelectionTarget(event.target)) {
         event.preventDefault();
@@ -2216,8 +2322,27 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
 
       if (!currentState.editingElement.contains(event.target as Node)) return;
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        event.key.toLowerCase() === "a" &&
+        selectWholeTableRef.current(currentState)
+      ) {
+        event.preventDefault();
+        return;
+      }
       const isPlain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-      if ((event.key === "Delete" || event.key === "Backspace") && currentState.rangeEnd) {
+      if (
+        currentState.rangeEnd &&
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.isComposing
+      ) {
+        event.preventDefault();
+        typeOverCellsRef.current(currentState, event.key);
+      } else if ((event.key === "Delete" || event.key === "Backspace") && currentState.rangeEnd) {
         event.preventDefault();
         clearCellRangeRef
           .current(currentState)
@@ -2271,8 +2396,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (!cell) return;
       const rangeEnd = getIsSameCell(cell, drag.anchor) ? undefined : cell;
       if (rangeEnd) window.getSelection()?.removeAllRanges();
-      if (getIsSameCell(rangeEnd, currentState.rangeEnd)) return;
-      setState({ ...currentState, rangeEnd });
+      if (getIsSameCell(rangeEnd, currentState.rangeEnd) && !currentState.rangeStart) return;
+      setState({ ...currentState, rangeEnd, rangeStart: undefined });
     }
 
     function onDocPointerUp(): void {
@@ -2356,6 +2481,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     getRangeGridRef,
     clearCellRangeRef,
     pasteIntoCellsRef,
+    getIsCellPressRef,
+    pressIntoCellRef,
+    selectWholeTableRef,
+    typeOverCellsRef,
   ]);
 
   const copySelectionRef = useLatestRef(copySelection);
@@ -2449,6 +2578,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       });
       if (currentState.editingElement.isConnected) return;
       if (saveDetachedTypingRef.current(currentState)) return;
+      const heldKeys = heldKeysRef.current;
+      heldKeysRef.current = "";
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
       const pending = pendingRestoreRef.current;
       const restore =
@@ -2464,6 +2595,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         restore,
         currentState.cell,
       );
+      if (heldKeys && (document.activeElement as HTMLElement | null)?.isContentEditable) {
+        document.execCommand("insertText", false, heldKeys);
+      }
       // Re-read the toolbar state from the fresh text, which moves no caret
       // (and fires no selectionchange) when focus stayed in the toolbar.
       publishSelectionRef.current();
@@ -2518,20 +2652,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           })()
         : null,
     });
-    // A table takes presses into its cells, so a drag selects cells; its frame
-    // moves it, as in Google Slides.
-    if (
-      nodeId &&
-      slide?.nodes.find((node) => node.id === nodeId)?.nodeType === "table" &&
-      !event.shiftKey &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      nodeHasText(nodeId)
-    ) {
-      const cell = resolveCell(nodeId, event.clientX, event.clientY);
+    if (nodeId && !event.shiftKey && !event.ctrlKey && !event.metaKey && getIsCellPress(nodeId)) {
       event.preventDefault();
-      enterTextMode(nodeId, event.clientX, event.clientY, undefined, undefined, cell);
-      cellDragRef.current = { nodeId, anchor: cell };
+      pressIntoCell(nodeId, event.clientX, event.clientY);
       return;
     }
 
@@ -3362,7 +3485,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                 }}
               >
                 {/* Under the parts, so the resize handles on the edges win. */}
-                {tableNode && renderTableBorders(tableNode)}
+                {resizableTables.map((table) => (
+                  <React.Fragment key={table.id}>{renderTableBorders(table)}</React.Fragment>
+                ))}
                 {tableNode && renderCellRange(tableNode)}
                 <SelectionPartsContext.Provider
                   value={{
@@ -3406,9 +3531,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   ? ROTATE_CURSOR
                   : state.mode === "resize"
                     ? getHandleCursor(state.handle, handleNode?.rotation ?? 0)
-                    : state.mode === "move" && state.moved
-                      ? "move"
-                      : undefined,
+                    : undefined,
             outline: "none",
             touchAction: "none",
           },
