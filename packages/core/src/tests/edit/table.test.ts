@@ -515,3 +515,38 @@ describe("table cell style", () => {
     expect(tableOf(pres).properties?.attr("bandRow")).toBe("1");
   });
 });
+
+describe("merging cells from other producers", () => {
+  it("keeps the text when the top-left cell has no text body", async () => {
+    const pres = await openEditable([
+      table(2, [
+        ["<a:tc><a:tcPr/></a:tc>", cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    await applyEdit(pres, {
+      type: "mergeTableCells",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      from: { row: 0, column: 0 },
+      to: { row: 1, column: 1 },
+    });
+    expect(cellText(tableOf(pres), 0, 0)).toEqual(["B", "C", "D"]);
+  });
+
+  it("reads merge flags written as true", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A", ' gridSpan="2"'), cell("", ' hMerge="true"')],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    await applyEdit(pres, {
+      type: "insertTableColumn",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      index: 1,
+    });
+    expect(tableOf(pres).rows[0].cells[0].gridSpan).toBe(3);
+  });
+});

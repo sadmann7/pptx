@@ -11,6 +11,7 @@ import {
   resolveSlideNodePlaceholders,
 } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
+import { parseOoxmlBool } from "../ooxml/boolean";
 import type { PptxPackage } from "../ooxml/package";
 import { isExternalTargetMode, parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
 import { degToAngle, emuToPx, pxToEmu } from "../ooxml/unit";
@@ -2369,6 +2370,10 @@ function clearCellText(tc: Element): void {
 
 const MERGE_ATTRS = ["gridSpan", "rowSpan", "hMerge", "vMerge"] as const;
 
+function getIsMergeFlag(tc: Element, name: "hMerge" | "vMerge"): boolean {
+  return parseOoxmlBool(tc.getAttribute(name) ?? undefined);
+}
+
 function blankCellFrom(source: Element): Element {
   const tc = source.cloneNode(true) as Element;
   for (const name of MERGE_ATTRS) tc.removeAttribute(name);
@@ -2602,14 +2607,15 @@ function applyMergeTableCells(pres: PresentationData, op: MergeTableCellsOperati
   return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
     const rows = tableRows(tbl);
     const origin = rowCells(rows[start.row])[start.column];
-    const originText = childNamed(origin, "txBody");
+    if (!childNamed(origin, "txBody")) clearCellText(origin);
+    const originText = childNamed(origin, "txBody")!;
     for (let row = start.row; row <= end.row; row++) {
       const cells = rowCells(rows[row]);
       for (let column = start.column; column <= end.column; column++) {
         const tc = cells[column];
         const isOrigin = row === start.row && column === start.column;
-        const isHidden = tc.getAttribute("hMerge") === "1" || tc.getAttribute("vMerge") === "1";
-        if (!isOrigin && !isHidden && originText) {
+        const isHidden = getIsMergeFlag(tc, "hMerge") || getIsMergeFlag(tc, "vMerge");
+        if (!isOrigin && !isHidden) {
           const text = childNamed(tc, "txBody");
           const paragraphs = text ? childParagraphs(text) : [];
           if (paragraphs.some((paragraph) => (paragraph.textContent ?? "").length > 0)) {
@@ -2627,11 +2633,9 @@ function applyMergeTableCells(pres: PresentationData, op: MergeTableCellsOperati
     setSpan(origin, "gridSpan", end.column - start.column + 1);
     setSpan(origin, "rowSpan", end.row - start.row + 1);
     // An empty origin keeps one paragraph ahead of the text that joined it.
-    if (originText) {
-      const paragraphs = childParagraphs(originText);
-      if (paragraphs.length > 1 && (paragraphs[0].textContent ?? "").length === 0) {
-        paragraphs[0].remove();
-      }
+    const paragraphs = childParagraphs(originText);
+    if (paragraphs.length > 1 && (paragraphs[0].textContent ?? "").length === 0) {
+      paragraphs[0].remove();
     }
   });
 }
@@ -2666,13 +2670,13 @@ function applyInsertTableRow(pres: PresentationData, op: InsertTableRowOperation
     rowCells(tr).forEach((tc, column) => {
       const blank = blankCellFrom(tc);
       const displaced = below ? rowCells(below)[column] : undefined;
-      if (displaced?.getAttribute("vMerge") === "1") {
+      if (displaced !== undefined && getIsMergeFlag(displaced, "vMerge")) {
         joinMerge(blank, displaced);
         const origin = rows
           .slice(0, op.index)
           .reverse()
           .map((row) => rowCells(row)[column])
-          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+          .find((cell) => cell && !getIsMergeFlag(cell, "vMerge"));
         if (origin?.hasAttribute("rowSpan"))
           setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") + 1);
       } else {
@@ -2703,12 +2707,12 @@ function applyDeleteTableRow(pres: PresentationData, op: DeleteTableRowOperation
         if (text && nextText) next.replaceChild(text, nextText);
         next.removeAttribute("vMerge");
         setSpan(next, "rowSpan", rowSpan - 1);
-      } else if (tc.getAttribute("vMerge") === "1") {
+      } else if (getIsMergeFlag(tc, "vMerge")) {
         const origin = rows
           .slice(0, op.index)
           .reverse()
           .map((row) => rowCells(row)[column])
-          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+          .find((cell) => cell && !getIsMergeFlag(cell, "vMerge"));
         if (origin?.hasAttribute("rowSpan"))
           setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") - 1);
       }
@@ -2733,13 +2737,13 @@ function applyInsertTableColumn(
       const cells = rowCells(tr);
       const blank = blankCellFrom(cells[op.index - 1] ?? cells[0]);
       const displaced = cells[op.index];
-      if (displaced?.getAttribute("hMerge") === "1") {
+      if (displaced !== undefined && getIsMergeFlag(displaced, "hMerge")) {
         joinMerge(blank, displaced);
         blank.removeAttribute("gridSpan");
         const origin = cells
           .slice(0, op.index)
           .reverse()
-          .find((cell) => cell.getAttribute("hMerge") !== "1");
+          .find((cell) => !getIsMergeFlag(cell, "hMerge"));
         if (origin?.hasAttribute("gridSpan"))
           setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") + 1);
       }
@@ -2772,11 +2776,11 @@ function applyDeleteTableColumn(
           const rowSpan = tc.getAttribute("rowSpan");
           if (rowSpan !== null) next.setAttribute("rowSpan", rowSpan);
         }
-      } else if (tc.getAttribute("hMerge") === "1") {
+      } else if (getIsMergeFlag(tc, "hMerge")) {
         const origin = cells
           .slice(0, op.index)
           .reverse()
-          .find((cell) => cell.getAttribute("hMerge") !== "1");
+          .find((cell) => !getIsMergeFlag(cell, "hMerge"));
         if (origin?.hasAttribute("gridSpan"))
           setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") - 1);
       }

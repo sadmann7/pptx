@@ -408,6 +408,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [state, setState] = React.useState<InternalState>({ mode: "idle" });
   const [drawTool, setDrawTool] = React.useState<DrawTool | null>(null);
+  // Table borders are measured from the rendered slide, which SlideImpl
+  // replaces after this renders; one more render a frame later catches up.
+  const [, setLayoutFrame] = React.useState(0);
 
   const stateRef = useLatestRef(state);
 
@@ -576,11 +579,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return null;
   }
 
-  // A press on a table goes into its cells, so a drag selects cells; its frame
-  // moves it, as in Google Slides.
   function getIsCellPress(nodeId: string): boolean {
     const node = slide?.nodes.find((n) => n.id === nodeId);
-    return node?.nodeType === "table" && nodeHasText(nodeId);
+    const isInGroup = selectedIds.length > 1 && selectedIds.includes(nodeId);
+    return node?.nodeType === "table" && !isInGroup && nodeHasText(nodeId);
   }
 
   function nodeHasText(nodeId: string): boolean {
@@ -746,7 +748,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const current = stateRef.current;
       if (document.activeElement === textElement || !textElement.isConnected) return;
       if (current.mode !== "text" || current.editingElement !== textElement) return;
-      // Focus moved on to other UI on purpose stays there.
       const active = document.activeElement;
       if (active && active !== document.body && !active.closest('[role="menu"]')) return;
       textElement.focus({ preventScroll: true });
@@ -1211,7 +1212,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const isFirst = paragraphIndex === 0;
     const isLast = paragraphIndex === lastIndex;
 
-    // A caret on the first or last line, when the text wraps over several.
     const caretRect = domRange.getClientRects?.()[0];
     const lineRect = (atEnd: boolean) => {
       const edge = document.createRange();
@@ -1316,6 +1316,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       });
     });
     if (operations.length === 0) return;
+    const readBack = readBackTextBody(current.editingElement);
+    const isOverwritten = operations.some(
+      (operation) => "cell" in operation && getIsSameCell(operation.cell, current.cell),
+    );
+    if (!isOverwritten && textBodyChanged(table, readBack, current.cell)) {
+      operations.unshift({
+        type: "setTextBody",
+        slideId,
+        nodeId: current.nodeId,
+        cell: current.cell,
+        paragraphs: readBack,
+      });
+    }
     pendingRestoreRef.current = null;
     settleTyping(current);
     setState({
@@ -1884,9 +1897,21 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const resizableTables =
     !drawTool && (state.mode === "idle" || state.mode === "selected" || state.mode === "text")
       ? ((slide?.nodes.filter(
-          (node) => node.nodeType === "table" && node.rotation === 0 && !node.flipH && !node.flipV,
+          (node) =>
+            node.nodeType === "table" &&
+            node.rotation === 0 &&
+            !node.flipH &&
+            !node.flipV &&
+            (state.mode !== "text" || node.id === state.nodeId),
         ) as TableNodeData[] | undefined) ?? [])
       : [];
+
+  // Rows grow to fit their text, so their rendered heights can exceed the model's.
+  function getRowHeights(table: TableNodeData): number[] {
+    const rows = getShapeElement(table.id)?.querySelector("table")?.rows;
+    if (!rows || rows.length !== table.rows.length) return table.rows.map((row) => row.height);
+    return Array.from(rows, (row) => row.getBoundingClientRect().height / zoom);
+  }
 
   function onTableBorderPointerDown(
     event: React.PointerEvent<HTMLDivElement>,
@@ -1895,6 +1920,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     index: number,
   ): void {
     if (event.button !== 0) return;
+    // A shape stacked over the table's border takes the press instead.
+    if (hitTest(event.clientX, event.clientY) !== table.id) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -1911,7 +1938,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       start: axis === "column" ? event.clientX : event.clientY,
       position: { ...table.position },
       columns: [...table.columns],
-      rows: table.rows.map((row) => row.height),
+      rows: getRowHeights(table),
       next: null,
     };
   }
@@ -1926,7 +1953,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const tracks = drag.axis === "column" ? columns : rows;
     const { index } = drag;
     if (index === 0) {
-      // The far edge stays put, so the table moves by what the first track lost.
       const size = Math.max(tracks[0] - delta, MIN_TABLE_TRACK);
       position[drag.axis === "column" ? "x" : "y"] += tracks[0] - size;
       tracks[0] = size;
@@ -2008,7 +2034,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!range) return null;
     const sum = (sizes: number[], from: number, to: number) =>
       sizes.slice(from, to).reduce((total, size) => total + size, 0);
-    const heights = table.rows.map((row) => row.height);
+    const heights = getRowHeights(table);
     return (
       <div
         data-pptx-cell-range=""
@@ -2036,13 +2062,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       borders.push({ axis: "column", index, offset: x });
       x += table.columns[index] ?? 0;
     }
+    const heights = getRowHeights(table);
+    const height = heights.reduce((total, size) => total + size, 0);
     let y = 0;
-    for (let index = 0; index <= table.rows.length; index++) {
+    for (let index = 0; index <= heights.length; index++) {
       borders.push({ axis: "row", index, offset: y });
-      y += table.rows[index]?.height ?? 0;
+      y += heights[index] ?? 0;
     }
     return borders.map(({ axis, index, offset }) => {
-      // Edge strips sit inside the table; the frame just outside moves it.
       const count = axis === "column" ? table.columns.length : table.rows.length;
       const start = index === 0 ? 0 : index === count ? -TABLE_EDGE_SIZE : -TABLE_BORDER_SIZE / 2;
       const size = index === 0 || index === count ? TABLE_EDGE_SIZE : TABLE_BORDER_SIZE;
@@ -2064,7 +2091,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
                   left: (table.position.x + offset) * zoom + start,
                   top: table.position.y * zoom,
                   width: size,
-                  height: table.size.h * zoom,
+                  height: height * zoom,
                 }
               : {
                   left: table.position.x * zoom,
@@ -2142,6 +2169,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       rootRef,
     ],
   );
+
+  React.useEffect(() => {
+    const frameId = requestAnimationFrame(() => setLayoutFrame((frame) => frame + 1));
+    return () => cancelAnimationFrame(frameId);
+  }, [slideRevision]);
 
   // Publish to `useSelection` when the selection, the mode, or the slide's
   // content changes. An edit replaces the slide DOM in SlideImpl's effect,
@@ -2372,7 +2404,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
     }
 
-    // Cells copied from a spreadsheet fill cells.
     function onDocPaste(event: ClipboardEvent): void {
       const currentState = stateRef.current;
       if (currentState.mode !== "text" || !currentState.cell || !event.clipboardData) return;
@@ -2466,6 +2497,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("paste", onDocPaste, true);
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
+      heldKeysRef.current = "";
     };
   }, [
     isTextMode,
@@ -3551,8 +3583,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   const { slideId } = useSlide();
   const rootRef = React.useContext(RootContext);
 
-  // Without a `Root`, the boundary is the slide the overlay sits on, which
-  // holds the text being edited too.
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
 
   const onUndoRef = useLatestRef(onUndo);
@@ -3569,7 +3599,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
     function onDocKeyDown(event: KeyboardEvent): void {
       const isUndo = getIsUndoEvent(event);
       if (!isUndo && !getIsRedoEvent(event)) return;
-      const boundary = rootRef?.current ?? overlayRef.current?.parentElement?.parentElement ?? null;
+      const boundary =
+        rootRef?.current ?? overlayRef.current?.closest<HTMLElement>("[data-pptx-slide]") ?? null;
       if (!getIsPresentationTarget(event.target, boundary)) return;
       if (
         getIsNativeUndoTarget(event.target) &&

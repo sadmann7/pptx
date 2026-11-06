@@ -154,7 +154,6 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: {} } }),
 };
 
-/** Tailwind's palette, as in shadcn/ui, in hex since slides store sRGB. */
 const COLORS = [
   { name: "Black", value: "#000000" },
   { name: "Neutral", value: "#737373" },
@@ -216,6 +215,10 @@ const TABLE_DELETES = [
   { change: { type: "deleteRow" }, label: "Delete row" },
   { change: { type: "deleteColumn" }, label: "Delete column" },
 ] as const satisfies readonly { change: TableChange; label: string }[];
+
+function getIsOn(value: string | undefined): boolean {
+  return value === "1" || value === "true";
+}
 
 function getCanSplitCell(
   nodes: UseSelectionResult["nodes"],
@@ -506,7 +509,6 @@ function ColorMenu({
   );
 }
 
-/** Whether a check mark on the color reads better in black than in white. */
 function getIsLight(hex: string): boolean {
   const value = Number.parseInt(hex.slice(1), 16);
   const r = (value >> 16) & 255;
@@ -1012,8 +1014,8 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 hasCell={cell !== null}
                 canMerge={cellRange !== null}
                 canSplit={getCanSplitCell(nodes, cell)}
-                headerRow={table.properties?.attr("firstRow") === "1"}
-                bandedRows={table.properties?.attr("bandRow") === "1"}
+                headerRow={getIsOn(table.properties?.attr("firstRow"))}
+                bandedRows={getIsOn(table.properties?.attr("bandRow"))}
                 onSelect={(change) => run(() => changeTable(change))}
                 onOptionsChange={(options) =>
                   run(() =>

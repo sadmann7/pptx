@@ -45,7 +45,6 @@ const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   },
 ];
 
-/** Frame grab hitboxes just outside a table, whose edges resize its outer rows and columns. */
 const TABLE_FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   {
     left: -FRAME_GRAB_SIZE,

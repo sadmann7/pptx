@@ -463,28 +463,6 @@ describe("tables", () => {
     expect(editor.overlay.getAttribute("data-mode")).toBe("idle");
   });
 
-  it("resizes the first column from the left edge, keeping the right edge in place", async () => {
-    const editor = await renderEditor();
-    const nodeId = await insertTable(editor);
-    act(() => editor.selection.current!.select([nodeId]));
-    const tableOf = () =>
-      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
-    const before = tableOf();
-    const right = before.position.x + before.size.w;
-    const [first, second] = before.columns;
-
-    const edge = editor.container.querySelector<HTMLElement>('[data-pptx-table-border="column"]')!;
-    await act(async () => {
-      fireEvent.pointerDown(edge, { button: 0, clientX: 100, clientY: 0, pointerId: 1 });
-      fireEvent.pointerMove(edge, { clientX: 130, clientY: 0, pointerId: 1 });
-      fireEvent.pointerUp(edge, { clientX: 130, clientY: 0, pointerId: 1 });
-    });
-
-    await waitFor(() => expect(tableOf().columns[0]).toBeLessThan(first));
-    expect(tableOf().columns[1]).toBeCloseTo(second, 0);
-    expect(tableOf().position.x + tableOf().size.w).toBeCloseTo(right, 0);
-  });
-
   it("moves a table from just outside its edge, while selected or editing a cell", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);

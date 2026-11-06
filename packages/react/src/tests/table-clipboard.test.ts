@@ -19,6 +19,16 @@ describe("readCellGrid", () => {
   it("leaves a single value and plain text to the cell", () => {
     expect(readCellGrid("one", "<table><tr><td>one</td></tr></table>")).toBeNull();
     expect(readCellGrid("line one\nline two", "")).toBeNull();
+    expect(readCellGrid("Name:\tJohn", "")).toBeNull();
+  });
+
+  it("reads only a table's own rows, and spreads merged columns", () => {
+    const html =
+      '<table><tr><td colspan="2">A</td><td><table><tr><td>x</td></tr></table></td></tr><tr><td>B</td><td>C</td><td>D</td></tr></table>';
+    expect(readCellGrid("", html)).toEqual([
+      ["A", "", "x"],
+      ["B", "C", "D"],
+    ]);
   });
 });
 

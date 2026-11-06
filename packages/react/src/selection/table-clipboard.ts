@@ -1,14 +1,9 @@
-/**
- * Reads the cells a spreadsheet put on the clipboard: its HTML table when there
- * is one, else tab-separated text. `null` when the clipboard holds no grid of
- * more than one cell, so the text pastes into the cell as usual.
- */
+/** The cells a spreadsheet put on the clipboard, or `null` when there's no grid to fill. */
 export function readCellGrid(text: string, html: string): string[][] | null {
   const grid = (html && readHtmlGrid(html)) || readTsvGrid(text);
   return grid && (grid.length > 1 || grid[0].length > 1) ? grid : null;
 }
 
-/** Cells as spreadsheets copy them: tab-separated text and an HTML table. */
 export function writeCellGrid(rows: string[][]): { text: string; html: string } {
   const text = rows
     .map((row) =>
@@ -29,18 +24,24 @@ export function writeCellGrid(rows: string[][]): { text: string; html: string } 
 function readHtmlGrid(html: string): string[][] | null {
   const table = new DOMParser().parseFromString(html, "text/html").querySelector("table");
   if (!table) return null;
-  const rows = Array.from(table.querySelectorAll("tr")).map((tr) =>
-    Array.from(tr.querySelectorAll("td, th")).map((cell) => {
-      for (const br of Array.from(cell.querySelectorAll("br"))) br.replaceWith("\n");
-      return (cell.textContent ?? "").replace(/\r/g, "").trim();
-    }),
+  const ownRows = table.querySelectorAll<HTMLTableRowElement>(
+    ":scope > tr, :scope > thead > tr, :scope > tbody > tr, :scope > tfoot > tr",
+  );
+  const rows = Array.from(ownRows).map((tr) =>
+    Array.from(tr.querySelectorAll<HTMLTableCellElement>(":scope > td, :scope > th")).flatMap(
+      (cell) => {
+        for (const br of Array.from(cell.querySelectorAll("br"))) br.replaceWith("\n");
+        const value = (cell.textContent ?? "").replace(/\r/g, "").trim();
+        return [value, ...Array.from({ length: cell.colSpan - 1 }, () => "")];
+      },
+    ),
   );
   return rows.length > 0 && rows[0].length > 0 ? rows : null;
 }
 
-/** Tab-separated text, with quoted values that can hold tabs, line breaks, and quotes. */
 function readTsvGrid(text: string): string[][] | null {
-  if (!text.includes("\t")) return null;
+  // A single line with a tab in it is text, not a grid.
+  if (!text.includes("\t") || !/\r?\n./.test(text)) return null;
   const rows: string[][] = [[]];
   let value = "";
   let quoted = false;
@@ -70,7 +71,6 @@ function readTsvGrid(text: string): string[][] | null {
     }
   }
   rows[rows.length - 1].push(value);
-  // A trailing line break leaves an empty last row.
   if (rows.length > 1 && rows[rows.length - 1].every((cell) => cell === "")) rows.pop();
   return rows;
 }

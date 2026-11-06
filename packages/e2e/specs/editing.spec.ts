@@ -753,6 +753,19 @@ test.describe("tables", () => {
       0,
     );
 
+    // The left edge resizes the first column and keeps the right edge in place.
+    const edge = (await page.locator('[data-pptx-table-border="column"]').first().boundingBox())!;
+    const right = resized.position.x + resized.size.w;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(edge.x + edge.width / 2 + 30, edge.y + 10, { steps: 5 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).columns[0])
+      .toBeLessThan(resized.columns[0] - 20);
+    const trimmed = await readTable(page, nodeId);
+    expect(trimmed.position.x + trimmed.size.w).toBeCloseTo(right, 0);
+
     const table = (await page.locator(`[data-pptx-node-id="${nodeId}"]`).boundingBox())!;
     const grab = { x: table.x + table.width + 5, y: table.y + 10 };
     await page.mouse.move(grab.x, grab.y);
@@ -761,7 +774,7 @@ test.describe("tables", () => {
     await page.mouse.up();
     await expect
       .poll(async () => (await readTable(page, nodeId)).position.y)
-      .toBeGreaterThan(resized.position.y + 20);
-    expect((await readTable(page, nodeId)).size.w).toBeCloseTo(resized.size.w, 0);
+      .toBeGreaterThan(trimmed.position.y + 20);
+    expect((await readTable(page, nodeId)).size.w).toBeCloseTo(trimmed.size.w, 0);
   });
 });
