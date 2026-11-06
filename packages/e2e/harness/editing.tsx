@@ -18,8 +18,20 @@ import { createRoot } from "react-dom/client";
 const file = new URLSearchParams(location.search).get("file") ?? "basic.pptx";
 
 function Toolbar() {
-  const { mode, nodeIds, textStyle, setTextStyle, setParagraphStyle, insertTextBox, startDrawing } =
-    useSelection();
+  const {
+    mode,
+    nodeIds,
+    cell,
+    cellRange,
+    textStyle,
+    setTextStyle,
+    setParagraphStyle,
+    insertTextBox,
+    insertTable,
+    changeTable,
+    setTableCellStyle,
+    startDrawing,
+  } = useSelection();
 
   return (
     <>
@@ -62,8 +74,25 @@ function Toolbar() {
         >
           Draw ellipse
         </button>
+        <button type="button" data-testid="insert-table" onClick={() => void insertTable(2, 3)}>
+          Table
+        </button>
+        <button
+          type="button"
+          data-testid="merge-cells"
+          onClick={() => void changeTable({ type: "mergeCells" })}
+        >
+          Merge
+        </button>
+        <button
+          type="button"
+          data-testid="cell-fill"
+          onClick={() => void setTableCellStyle({ fill: "#FF0000" })}
+        >
+          Fill
+        </button>
         <output data-testid="state">
-          {JSON.stringify({ mode, nodeIds, bold: textStyle?.bold ?? null })}
+          {JSON.stringify({ mode, nodeIds, cell, cellRange, bold: textStyle?.bold ?? null })}
         </output>
       </div>
       {createPortal(

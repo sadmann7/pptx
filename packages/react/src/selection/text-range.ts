@@ -60,7 +60,7 @@ export function getParagraphElements(container: HTMLElement): HTMLElement[] {
  * browser adds to keep an empty line open: it has content after it.
  */
 function isRenderedBreak(element: HTMLBRElement): boolean {
-  return element.nextSibling !== null;
+  return element.nextSibling !== null && !element.hasAttribute(PPTX_ATTRS.emptyLine);
 }
 
 /** Text-bearing leaves of a paragraph in order, skipping bullets. */

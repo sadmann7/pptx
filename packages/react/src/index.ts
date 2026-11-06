@@ -79,6 +79,13 @@ export type {
   DeleteTableRowOperation,
   InsertTableColumnOperation,
   InsertTableRowOperation,
+  MergeTableCellsOperation,
+  SplitTableCellOperation,
+  SetTableCellStyleOperation,
+  SetTableOptionsOperation,
+  TableCellStyle,
+  TableCellVerticalAlign,
+  TableOptions,
   BatchOperation,
   DeleteNodeOperation,
   DeleteSlideOperation,
@@ -101,15 +108,23 @@ export type {
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
   SetSolidFillOperation,
+  SetTableGridOperation,
   SetTextBodyOperation,
   SetTextBodyParagraph,
   SetTextBodyRun,
   SetTextRunOperation,
   SetTextStyleOperation,
   TableCellAddress,
+  TableCellRange,
   TextPosition,
   TextRange,
   TextStyle,
 } from "@diceui/pptx-core";
 
-export { copyNodes, getPresentationFonts, getPresetShapePath } from "@diceui/pptx-core";
+export {
+  copyNodes,
+  getPresentationFonts,
+  getPresetShapePath,
+  getTableCellOrigin,
+  getTableCellRange,
+} from "@diceui/pptx-core";

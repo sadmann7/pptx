@@ -45,6 +45,23 @@ const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   },
 ];
 
+const TABLE_FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
+  {
+    left: -FRAME_GRAB_SIZE,
+    right: -FRAME_GRAB_SIZE,
+    top: -FRAME_GRAB_SIZE,
+    height: FRAME_GRAB_SIZE,
+  },
+  {
+    left: -FRAME_GRAB_SIZE,
+    right: -FRAME_GRAB_SIZE,
+    bottom: -FRAME_GRAB_SIZE,
+    height: FRAME_GRAB_SIZE,
+  },
+  { left: -FRAME_GRAB_SIZE, top: 0, bottom: 0, width: FRAME_GRAB_SIZE },
+  { right: -FRAME_GRAB_SIZE, top: 0, bottom: 0, width: FRAME_GRAB_SIZE },
+];
+
 /** The current state of one selection outline. */
 export interface SelectionBoxState {
   /** The selected shape the outline belongs to. */
@@ -131,7 +148,16 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                   children: (
                     <>
                       {/* Under the handles, which sit on the frame too. */}
-                      {isTextMode && <FrameGrabHitboxes onPointerDown={onBorderPointerDown} />}
+                      {(isTextMode || (node.nodeType === "table" && state.mode === "selected")) && (
+                        <FrameGrabHitboxes
+                          hitboxes={
+                            node.nodeType === "table"
+                              ? TABLE_FRAME_GRAB_HITBOXES
+                              : FRAME_GRAB_HITBOXES
+                          }
+                          onPointerDown={onBorderPointerDown}
+                        />
+                      )}
                       {children}
                     </>
                   ),
@@ -156,6 +182,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
 );
 
 interface FrameGrabHitboxesProps {
+  hitboxes: React.CSSProperties[];
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
@@ -164,10 +191,10 @@ interface FrameGrabHitboxesProps {
  * Dragging them moves the shape (PowerPoint: grab the frame to move).
  * Each hitbox extends both inward and outward from the border line.
  */
-function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
+function FrameGrabHitboxes({ hitboxes, onPointerDown }: FrameGrabHitboxesProps) {
   return (
     <>
-      {FRAME_GRAB_HITBOXES.map((style, index) => (
+      {hitboxes.map((style, index) => (
         <div
           key={index}
           aria-hidden="true"
@@ -176,7 +203,6 @@ function FrameGrabHitboxes({ onPointerDown }: FrameGrabHitboxesProps) {
           style={{
             position: "absolute",
             ...style,
-            cursor: "move",
             pointerEvents: "auto",
             touchAction: "none",
           }}

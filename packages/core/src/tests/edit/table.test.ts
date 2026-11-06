@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 
-import { applyEdit } from "../../edit/operation";
+import { applyEdit, getTableCellRange } from "../../edit/operation";
 import type { TableNodeData } from "../../model/nodes/table";
 import { buildPresentation, PresentationData } from "../../model/presentation";
 import { writePptx } from "../../ooxml/writer";
@@ -298,5 +298,255 @@ describe("table rows and columns", () => {
     await expect(
       applyEdit(pres, { type: "deleteTableColumn", slideId, nodeId: "2", index: 0 }),
     ).rejects.toThrow("last column");
+  });
+});
+
+describe("setTableGrid", () => {
+  it("sets column widths and row heights, saves, and undoes", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A"), cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    const slideId = pres.slides[0].id;
+    const before = { columns: [...tableOf(pres).columns], size: { ...tableOf(pres).size } };
+
+    const result = await applyEdit(pres, {
+      type: "setTableGrid",
+      slideId,
+      nodeId: "2",
+      columnWidths: [60, 132],
+      rowHeights: [50, 39],
+    });
+
+    expect(tableOf(pres).columns.map(Math.round)).toEqual([60, 132]);
+    expect(tableOf(pres).rows.map((row) => Math.round(row.height))).toEqual([50, 39]);
+    expect(Math.round(tableOf(pres).size.h)).toBe(89);
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(reopened.columns.map(Math.round)).toEqual([60, 132]);
+
+    result.undo();
+    expect(tableOf(pres).columns).toEqual(before.columns);
+    expect(tableOf(pres).size).toEqual(before.size);
+  });
+
+  it("rejects sizes that don't match the grid", async () => {
+    const pres = await openEditable([table(2, [[cell("A"), cell("B")]])]);
+    await expect(
+      applyEdit(pres, {
+        type: "setTableGrid",
+        slideId: pres.slides[0].id,
+        nodeId: "2",
+        columnWidths: [100],
+      }),
+    ).rejects.toThrow("don't match");
+  });
+});
+
+describe("merging table cells", () => {
+  const grid = () =>
+    table(2, [
+      [cell("A"), cell("B"), cell("C")],
+      [cell("D"), cell(""), cell("F")],
+      [cell("G"), cell("H"), cell("I")],
+    ]);
+
+  it("merges a rectangle, keeping its text in the top-left cell, and splits it back", async () => {
+    const pres = await openEditable([grid()]);
+    const slideId = pres.slides[0].id;
+
+    const merge = await applyEdit(pres, {
+      type: "mergeTableCells",
+      slideId,
+      nodeId: "2",
+      from: { row: 1, column: 1 },
+      to: { row: 0, column: 0 },
+    });
+
+    let node = tableOf(pres);
+    expect(node.rows[0].cells[0].gridSpan).toBe(2);
+    expect(node.rows[0].cells[0].rowSpan).toBe(2);
+    expect(node.rows[0].cells[1].hMerge).toBe(true);
+    expect(node.rows[1].cells[0].vMerge).toBe(true);
+    expect(node.rows[1].cells[1].hMerge && node.rows[1].cells[1].vMerge).toBe(true);
+    expect(cellText(node, 0, 0)).toEqual(["A", "B", "D"]);
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(reopened.rows[0].cells[0].gridSpan).toBe(2);
+
+    const split = await applyEdit(pres, {
+      type: "splitTableCell",
+      slideId,
+      nodeId: "2",
+      cell: { row: 1, column: 1 },
+    });
+    node = tableOf(pres);
+    expect(
+      node.rows.flatMap((row) => row.cells.map((c) => [c.gridSpan, c.rowSpan, c.hMerge, c.vMerge])),
+    ).toEqual(Array.from({ length: 9 }, () => [1, 1, false, false]));
+    expect(cellText(node, 0, 0)).toEqual(["A", "B", "D"]);
+    expect(cellText(node, 0, 1)).toEqual([""]);
+
+    split.undo();
+    merge.undo();
+    expect(texts(tableOf(pres))).toEqual([
+      ["A", "B", "C"],
+      ["D", "", "F"],
+      ["G", "H", "I"],
+    ]);
+  });
+
+  it("grows a range to cover a merge it cuts through", async () => {
+    const pres = await openEditable([grid()]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "mergeTableCells",
+      slideId,
+      nodeId: "2",
+      from: { row: 0, column: 1 },
+      to: { row: 1, column: 1 },
+    });
+
+    expect(getTableCellRange(tableOf(pres), { row: 1, column: 0 }, { row: 1, column: 1 })).toEqual({
+      start: { row: 0, column: 0 },
+      end: { row: 1, column: 1 },
+    });
+  });
+
+  it("rejects merging one cell and splitting a plain cell", async () => {
+    const pres = await openEditable([grid()]);
+    const slideId = pres.slides[0].id;
+    await expect(
+      applyEdit(pres, {
+        type: "mergeTableCells",
+        slideId,
+        nodeId: "2",
+        from: { row: 0, column: 0 },
+        to: { row: 0, column: 0 },
+      }),
+    ).rejects.toThrow("more than one cell");
+    await expect(
+      applyEdit(pres, {
+        type: "splitTableCell",
+        slideId,
+        nodeId: "2",
+        cell: { row: 0, column: 0 },
+      }),
+    ).rejects.toThrow("no merged cell");
+  });
+});
+
+describe("table cell style", () => {
+  const twoByTwo = () =>
+    table(2, [
+      [cell("A"), cell("B")],
+      [cell("C"), cell("D")],
+    ]);
+
+  it("fills, aligns, and borders a range, saves, and undoes", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+
+    const result = await applyEdit(pres, {
+      type: "setTableCellStyle",
+      slideId,
+      nodeId: "2",
+      from: { row: 0, column: 0 },
+      to: { row: 0, column: 0 },
+      style: { fill: "#ff0000", verticalAlign: "middle", borders: { color: "00ff00", width: 2 } },
+    });
+
+    const tcPr = (row: number, column: number) => tableOf(pres).rows[row].cells[column].properties;
+    expect(tcPr(0, 0)?.child("solidFill").child("srgbClr").attr("val")).toBe("FF0000");
+    expect(tcPr(0, 0)?.attr("anchor")).toBe("ctr");
+    expect(tcPr(0, 0)?.child("lnR").attr("w")).toBe("25400");
+    expect(
+      tcPr(0, 0)
+        ?.children()
+        .map((child) => child.localName),
+    ).toEqual(["lnL", "lnR", "lnT", "lnB", "solidFill"]);
+    expect(tcPr(0, 1)?.child("lnL").child("solidFill").exists()).toBe(true);
+    expect(tcPr(1, 0)?.child("lnT").child("solidFill").exists()).toBe(true);
+    expect(tcPr(1, 1)?.child("lnL").exists()).toBe(false);
+
+    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    expect(reopened.rows[0].cells[0].properties?.attr("anchor")).toBe("ctr");
+
+    result.undo();
+    expect(tcPr(0, 0)?.child("solidFill").exists()).toBe(false);
+  });
+
+  it("formats the whole table without a range, and clears fills and borders", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "setTableCellStyle",
+      slideId,
+      nodeId: "2",
+      style: { fill: null, borders: null },
+    });
+    for (const row of tableOf(pres).rows) {
+      for (const tableCell of row.cells) {
+        expect(tableCell.properties?.child("noFill").exists()).toBe(true);
+        expect(tableCell.properties?.child("lnB").child("noFill").exists()).toBe(true);
+      }
+    }
+  });
+
+  it("sets which parts of the table style show", async () => {
+    const pres = await openEditable([twoByTwo()]);
+    const slideId = pres.slides[0].id;
+    await applyEdit(pres, {
+      type: "setTableOptions",
+      slideId,
+      nodeId: "2",
+      options: { headerRow: true, bandedRows: true },
+    });
+    expect(tableOf(pres).properties?.attr("firstRow")).toBe("1");
+    expect(tableOf(pres).properties?.attr("bandRow")).toBe("1");
+
+    await applyEdit(pres, {
+      type: "setTableOptions",
+      slideId,
+      nodeId: "2",
+      options: { headerRow: false },
+    });
+    expect(tableOf(pres).properties?.attr("firstRow")).toBeUndefined();
+    expect(tableOf(pres).properties?.attr("bandRow")).toBe("1");
+  });
+});
+
+describe("merging cells from other producers", () => {
+  it("keeps the text when the top-left cell has no text body", async () => {
+    const pres = await openEditable([
+      table(2, [
+        ["<a:tc><a:tcPr/></a:tc>", cell("B")],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    await applyEdit(pres, {
+      type: "mergeTableCells",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      from: { row: 0, column: 0 },
+      to: { row: 1, column: 1 },
+    });
+    expect(cellText(tableOf(pres), 0, 0)).toEqual(["B", "C", "D"]);
+  });
+
+  it("reads merge flags written as true", async () => {
+    const pres = await openEditable([
+      table(2, [
+        [cell("A", ' gridSpan="2"'), cell("", ' hMerge="true"')],
+        [cell("C"), cell("D")],
+      ]),
+    ]);
+    await applyEdit(pres, {
+      type: "insertTableColumn",
+      slideId: pres.slides[0].id,
+      nodeId: "2",
+      index: 1,
+    });
+    expect(tableOf(pres).rows[0].cells[0].gridSpan).toBe(3);
   });
 });

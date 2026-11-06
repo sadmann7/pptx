@@ -23,6 +23,8 @@ export const PPTX_ATTRS = {
   fontScale: "data-pptx-font-scale",
   /** Table cell; the value is its row and column, e.g. "0,2". */
   cell: "data-pptx-cell",
+  /** Line break that only holds an empty paragraph open, not a line break in the text. */
+  emptyLine: "data-pptx-empty-line",
 } as const;
 
 /**
@@ -36,4 +38,5 @@ export const PPTX_DATASET = {
   bullet: "pptxBullet",
   fontScale: "pptxFontScale",
   cell: "pptxCell",
+  emptyLine: "pptxEmptyLine",
 } as const;

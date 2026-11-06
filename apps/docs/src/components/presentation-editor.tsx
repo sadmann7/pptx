@@ -6,12 +6,17 @@ import type {
   NodeOrder,
   ParagraphAlign,
   PresentationStore,
+  TableCellAddress,
+  TableCellVerticalAlign,
   TableChange,
+  TableOptions,
   TextStyle,
+  UseSelectionResult,
 } from "@diceui/pptx";
 import {
   getPresentationFonts,
   getPresetShapePath,
+  getTableCellOrigin,
   useHistory,
   usePresentation,
   useSelection,
@@ -45,6 +50,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -101,12 +107,17 @@ import {
 import { useIsMac } from "@pptx/ui/hooks/use-is-mac";
 import { cn } from "@pptx/ui/lib/utils";
 import {
+  AlignVerticalJustifyCenterIcon,
+  AlignVerticalJustifyEndIcon,
+  AlignVerticalJustifyStartIcon,
+  BanIcon,
   BaselineIcon,
   BetweenHorizontalEndIcon,
   BetweenHorizontalStartIcon,
   BetweenVerticalEndIcon,
   BetweenVerticalStartIcon,
   BoldIcon,
+  CheckIcon,
   CopyPlusIcon,
   DownloadIcon,
   FolderOpenIcon,
@@ -116,12 +127,14 @@ import {
   LayersIcon,
   MinusIcon,
   PaintBucketIcon,
+  PencilLineIcon,
   PlusIcon,
   PresentationIcon,
   Redo2Icon,
   ShapesIcon,
-  SquareDashedIcon,
   StrikethroughIcon,
+  TableCellsMergeIcon,
+  TableCellsSplitIcon,
   TableIcon,
   TextAlignCenterIcon,
   TextAlignEndIcon,
@@ -143,15 +156,15 @@ const DROP_ANIMATION: DropAnimation = {
 
 const COLORS = [
   { name: "Black", value: "#000000" },
-  { name: "Gray", value: "#6B7280" },
+  { name: "Neutral", value: "#737373" },
   { name: "White", value: "#FFFFFF" },
-  { name: "Red", value: "#DC2626" },
-  { name: "Orange", value: "#EA580C" },
-  { name: "Yellow", value: "#CA8A04" },
-  { name: "Green", value: "#16A34A" },
-  { name: "Blue", value: "#2563EB" },
-  { name: "Purple", value: "#7C3AED" },
-  { name: "Pink", value: "#DB2777" },
+  { name: "Red", value: "#E7000B" },
+  { name: "Orange", value: "#FF6900" },
+  { name: "Amber", value: "#FE9A00" },
+  { name: "Green", value: "#00A63E" },
+  { name: "Blue", value: "#155DFC" },
+  { name: "Violet", value: "#7F22FE" },
+  { name: "Pink", value: "#E60076" },
 ];
 
 const ALIGNMENTS = [
@@ -203,11 +216,25 @@ const TABLE_DELETES = [
   { change: { type: "deleteColumn" }, label: "Delete column" },
 ] as const satisfies readonly { change: TableChange; label: string }[];
 
+function getIsOn(value: string | undefined): boolean {
+  return value === "1" || value === "true";
+}
+
+function getCanSplitCell(
+  nodes: UseSelectionResult["nodes"],
+  cell: TableCellAddress | null,
+): boolean {
+  const table = nodes[0];
+  if (!cell || table?.nodeType !== "table") return false;
+  const origin = getTableCellOrigin(table, cell);
+  const merged = table.rows[origin.row]?.cells[origin.column];
+  return merged != null && (merged.gridSpan > 1 || merged.rowSpan > 1);
+}
+
 /** The font sizes OOXML allows, in points. */
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 4000;
 
-/** Offered after the deck's own fonts. */
 const COMMON_FONTS = ["Arial", "Calibri", "Georgia", "Helvetica", "Times New Roman", "Verdana"];
 
 const PPTX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -219,18 +246,11 @@ function onEditError(error: unknown) {
 interface PresentationEditorProps {
   store: PresentationStore;
   className?: string;
-  /** Rendered above the toolbar, such as a debug bar. */
   header?: React.ReactNode;
-  /** Hides the toolbar, leaving direct manipulation and shortcuts. */
   toolbar?: boolean;
-  /** Shows formatting in a toolbar floating above the selection. */
   floatingToolbar?: boolean;
 }
 
-/**
- * A full slide editor: thumbnails to reorder, the slide with the selection
- * overlay, and a toolbar for everything the overlay doesn't do by hand.
- */
 export function PresentationEditor({
   store,
   className,
@@ -333,13 +353,10 @@ function Shortcut({ keys, className }: { keys: readonly string[]; className?: st
 
 interface ToolbarIconButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
-  /** Keys shown in the tooltip; `"mod"` is ⌘ on Apple platforms and Ctrl elsewhere. */
   shortcut?: string[];
-  /** Makes the button a toggle, announced as pressed or not. */
   pressed?: boolean;
 }
 
-/** An icon button in the toolbar's arrow-key navigation, with a tooltip. */
 function ToolbarIconButton({
   label,
   shortcut,
@@ -375,13 +392,11 @@ function ToolbarIconButton({
 interface ToolbarMenuTriggerProps {
   label: string;
   disabled?: boolean;
-  /** Shows the trigger pressed, e.g. while its tool is armed. */
   active?: boolean;
   className?: string;
   children: React.ReactNode;
 }
 
-/** A menu's trigger button in the toolbar, with a tooltip like the other buttons. */
 function ToolbarMenuTrigger({
   label,
   disabled,
@@ -423,7 +438,6 @@ interface ColorMenuProps {
   disabled?: boolean;
   value?: string | null;
   onSelect: (color: string) => void;
-  /** Offers a "none" choice, e.g. to remove an outline. */
   noneLabel?: string;
   onNone?: () => void;
 }
@@ -437,6 +451,7 @@ function ColorMenu({
   noneLabel,
   onNone,
 }: ColorMenuProps) {
+  const current = value?.toUpperCase() ?? null;
   return (
     <DropdownMenu modal={false}>
       <ToolbarMenuTrigger label={label} disabled={disabled} className="relative">
@@ -448,26 +463,44 @@ function ColorMenu({
         />
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label={label} className="w-auto">
-        <div className="grid grid-cols-5 gap-1 p-1">
+        {onNone && (
+          <>
+            <DropdownMenuItem onClick={onNone}>
+              <BanIcon />
+              {noneLabel}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <div className="grid grid-cols-5 gap-1.5 p-1">
           {COLORS.map((color) => (
             <DropdownMenuItem
               key={color.value}
               aria-label={color.name}
-              className="size-6 rounded-full border p-0 focus:ring-2 focus:ring-ring"
+              title={color.name}
+              className="size-6 justify-center rounded-full p-0 ring-1 ring-foreground/10 transition-transform duration-150 ease-out ring-inset hover:scale-[1.08] focus-visible:ring-2 focus-visible:ring-ring active:scale-95 motion-reduce:transition-none"
               style={{ backgroundColor: color.value }}
               onClick={() => onSelect(color.value)}
-            />
+            >
+              {current === color.value && (
+                <CheckIcon
+                  className={cn("size-3.5", getIsLight(color.value) ? "text-black" : "text-white")}
+                />
+              )}
+            </DropdownMenuItem>
           ))}
         </div>
-        {onNone && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onNone}>{noneLabel}</DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function getIsLight(hex: string): boolean {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
 function FontSelect({
@@ -514,7 +547,6 @@ function FontSelect({
                   aria-label="Font"
                   className="h-7 w-32 border-transparent bg-transparent text-xs hover:bg-accent dark:bg-transparent dark:hover:bg-accent"
                 >
-                  {/* Blank when the selection mixes fonts, as in Google Slides. */}
                   <SelectValue className="min-w-0">
                     <span className="truncate">{value ?? ""}</span>
                   </SelectValue>
@@ -550,7 +582,6 @@ function FontSelect({
   );
 }
 
-/** A font in the font list, in its own face, truncated to the list's width. */
 function FontItem({ font }: { font: string }) {
   return (
     <SelectItem
@@ -565,7 +596,6 @@ function FontItem({ font }: { font: string }) {
   );
 }
 
-/** Which ends of a horizontal scroller have content scrolled out of view. */
 function useOverflowEdges(ref: React.RefObject<HTMLElement | null>) {
   const [edges, setEdges] = React.useState({ start: false, end: false });
 
@@ -597,10 +627,6 @@ function useOverflowEdges(ref: React.RefObject<HTMLElement | null>) {
   return edges;
 }
 
-/**
- * The font size as one control, as in Google Slides: step with the buttons or
- * type a size and press Enter. Blank when the selection mixes sizes.
- */
 function FontSizeControl({
   value,
   onChange,
@@ -683,7 +709,9 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     startDrawing,
     insertTable,
     cell,
+    cellRange,
     changeTable,
+    setTableCellStyle,
     duplicate,
     remove,
     reorder,
@@ -695,6 +723,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   const isReady = status === "ready" && slideId != null;
   const hasText = textStyle != null;
   const shapes = nodes.filter((node) => node.nodeType === "shape");
+  const table = nodes.length === 1 && nodes[0].nodeType === "table" ? nodes[0] : null;
   const outlined = nodes.filter((node) => node.nodeType === "shape" || node.nodeType === "picture");
 
   function run(action: () => Promise<unknown>) {
@@ -749,7 +778,6 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   }
 
   return (
-    // A delay before the first tooltip, then instant ones while moving along the row.
     <TooltipProvider delay={400}>
       <Toolbar
         aria-label="Edit presentation"
@@ -881,7 +909,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
               {outlined.length > 0 && (
                 <ColorMenu
                   label="Outline"
-                  icon={SquareDashedIcon}
+                  icon={PencilLineIcon}
                   onSelect={(color) =>
                     editNodes(outlined, (nodeId) => ({
                       type: "setOutline",
@@ -937,7 +965,47 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 value={textStyle.align}
                 onSelect={(align) => run(() => setParagraphStyle({ align }))}
               />
-              {cell && <TableEditMenu onSelect={(change) => run(() => changeTable(change))} />}
+            </>
+          )}
+
+          {table && (
+            <>
+              <ToolbarSeparator />
+              <ColorMenu
+                label="Cell fill"
+                icon={PaintBucketIcon}
+                onSelect={(fill) => run(() => setTableCellStyle({ fill }))}
+                noneLabel="No fill"
+                onNone={() => run(() => setTableCellStyle({ fill: null }))}
+              />
+              <ColorMenu
+                label="Border color"
+                icon={PencilLineIcon}
+                onSelect={(color) => run(() => setTableCellStyle({ borders: { color } }))}
+                noneLabel="No borders"
+                onNone={() => run(() => setTableCellStyle({ borders: null }))}
+              />
+              <CellAlignMenu
+                onSelect={(verticalAlign) => run(() => setTableCellStyle({ verticalAlign }))}
+              />
+              <TableEditMenu
+                hasCell={cell !== null}
+                canMerge={cellRange !== null}
+                canSplit={getCanSplitCell(nodes, cell)}
+                headerRow={getIsOn(table.properties?.attr("firstRow"))}
+                bandedRows={getIsOn(table.properties?.attr("bandRow"))}
+                onSelect={(change) => run(() => changeTable(change))}
+                onOptionsChange={(options) =>
+                  run(() =>
+                    store.edit({
+                      type: "setTableOptions",
+                      slideId: slideId!,
+                      nodeId: table.id,
+                      options,
+                    }),
+                  )
+                }
+              />
             </>
           )}
 
@@ -1115,27 +1183,94 @@ function TableMenu({
   );
 }
 
-function TableEditMenu({ onSelect }: { onSelect: (change: TableChange) => void }) {
+function TableEditMenu({
+  hasCell,
+  canMerge,
+  canSplit,
+  headerRow,
+  bandedRows,
+  onSelect,
+  onOptionsChange,
+}: {
+  hasCell: boolean;
+  canMerge: boolean;
+  canSplit: boolean;
+  headerRow: boolean;
+  bandedRows: boolean;
+  onSelect: (change: TableChange) => void;
+  onOptionsChange: (options: TableOptions) => void;
+}) {
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label="Rows and columns">
+      <ToolbarMenuTrigger label="Edit table">
         <Grid2x2PlusIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-pptx-keep-selection=""
-        aria-label="Rows and columns"
-        className="w-48"
-      >
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
-          <DropdownMenuItem key={label} onClick={() => onSelect(change)}>
+          <DropdownMenuItem key={label} disabled={!hasCell} onClick={() => onSelect(change)}>
             <Icon />
             {label}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={!canMerge} onClick={() => onSelect({ type: "mergeCells" })}>
+          <TableCellsMergeIcon />
+          Merge cells
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!canSplit} onClick={() => onSelect({ type: "splitCell" })}>
+          <TableCellsSplitIcon />
+          Unmerge cells
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {TABLE_DELETES.map(({ change, label }) => (
-          <DropdownMenuItem key={label} variant="destructive" onClick={() => onSelect(change)}>
+          <DropdownMenuItem
+            key={label}
+            variant="destructive"
+            disabled={!hasCell}
+            onClick={() => onSelect(change)}
+          >
             <Trash2Icon />
+            {label}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={headerRow}
+          onCheckedChange={(checked) => onOptionsChange({ headerRow: checked })}
+        >
+          Header row
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={bandedRows}
+          onCheckedChange={(checked) => onOptionsChange({ bandedRows: checked })}
+        >
+          Banded rows
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const CELL_ALIGNMENTS = [
+  { align: "top", label: "Top", icon: AlignVerticalJustifyStartIcon },
+  { align: "middle", label: "Middle", icon: AlignVerticalJustifyCenterIcon },
+  { align: "bottom", label: "Bottom", icon: AlignVerticalJustifyEndIcon },
+] as const satisfies readonly {
+  align: TableCellVerticalAlign;
+  label: string;
+  icon: React.ElementType;
+}[];
+
+function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign) => void }) {
+  return (
+    <DropdownMenu modal={false}>
+      <ToolbarMenuTrigger label="Vertical align">
+        <AlignVerticalJustifyCenterIcon />
+      </ToolbarMenuTrigger>
+      <DropdownMenuContent data-pptx-keep-selection="" aria-label="Vertical align" className="w-36">
+        {CELL_ALIGNMENTS.map(({ align, label, icon: Icon }) => (
+          <DropdownMenuItem key={align} onClick={() => onSelect(align)}>
+            <Icon />
             {label}
           </DropdownMenuItem>
         ))}
@@ -1291,7 +1426,6 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       <SlideMenuContent
         slideId={menuSlideId}
         actions={actions}
-        // Focus returns to the thumbnail, unless an action moves it on.
         finalFocus={() => menuItemRef.current ?? false}
         onAction={() => {
           menuItemRef.current = null;
@@ -1312,7 +1446,6 @@ interface SlideActions {
 
 type SlideMove = "up" | "down" | "start" | "end";
 
-/** Focuses a slide's thumbnail once the edit that made or moved it renders. */
 function focusThumbnail(slideId: string) {
   requestAnimationFrame(() => {
     document
@@ -1364,7 +1497,6 @@ function useSlideActions(store: PresentationStore): SlideActions {
   };
 }
 
-/** PowerPoint's shortcuts for a focused thumbnail. */
 function onThumbnailKeyDown(
   event: React.KeyboardEvent<HTMLElement>,
   slideId: string,
@@ -1390,10 +1522,8 @@ function onThumbnailKeyDown(
 }
 
 interface SlideMenuContentProps {
-  /** The slide right-clicked, or `null` for the empty space below the thumbnails. */
   slideId: string | null;
   actions: SlideActions;
-  /** Runs when an item is chosen, before its edit. */
   onAction: () => void;
 }
 
@@ -1435,10 +1565,6 @@ function SlideMenuContent({
   );
 }
 
-/**
- * The common formatting for the selection, floating just above it, as in Canva
- * and Keynote. Hidden while the selection is moved, resized, or rotated.
- */
 function FloatingToolbar({ store }: { store: PresentationStore }) {
   const { slideId } = useSlide();
   const { mode, nodes, anchor, drawTool, textStyle, setTextStyle, setParagraphStyle } =
@@ -1497,7 +1623,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
             {outlined.length > 0 && slideId && (
               <ColorMenu
                 label="Outline"
-                icon={SquareDashedIcon}
+                icon={PencilLineIcon}
                 onSelect={(color) =>
                   editNodes(outlined, (nodeId) => ({
                     type: "setOutline",
@@ -1555,10 +1681,9 @@ interface CanvasContextMenuProps {
   children: React.ReactNode;
 }
 
-/** Right-clicking a shape acts on it, and on empty canvas acts on the slide. */
 function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const { slideId } = useSlide();
-  const { mode, nodes, cell, editText, changeTable, duplicate, remove, reorder, clear } =
+  const { mode, nodes, cell, cellRange, editText, changeTable, duplicate, remove, reorder, clear } =
     useSelection();
   const actions = useSlideActions(store);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
@@ -1599,7 +1724,14 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           portalProps={{ render: <div data-pptx-keep-selection="" /> }}
           aria-label="Shape"
           className={isTableMenu ? "w-48" : "w-44"}
-          finalFocus={() => returnFocusRef.current ?? false}
+          // An edit can replace the text the menu opened on; the editor refocuses it then.
+          finalFocus={() =>
+            returnFocusRef.current?.isConnected &&
+            (returnFocusRef.current.isContentEditable ||
+              returnFocusRef.current.hasAttribute("data-pptx-selection"))
+              ? returnFocusRef.current
+              : false
+          }
         >
           {textNode && !isTextMenu && (
             <ContextMenuItem
@@ -1620,6 +1752,18 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
                   {label}
                 </ContextMenuItem>
               ))}
+              {cellRange && (
+                <ContextMenuItem onClick={() => run(() => changeTable({ type: "mergeCells" }))}>
+                  <TableCellsMergeIcon />
+                  Merge cells
+                </ContextMenuItem>
+              )}
+              {getCanSplitCell(nodes, cell) && (
+                <ContextMenuItem onClick={() => run(() => changeTable({ type: "splitCell" }))}>
+                  <TableCellsSplitIcon />
+                  Unmerge cells
+                </ContextMenuItem>
+              )}
               {TABLE_DELETES.map(({ change, label }) => (
                 <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
                   <Trash2Icon />

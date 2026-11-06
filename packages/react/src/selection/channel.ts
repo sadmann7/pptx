@@ -8,6 +8,8 @@ import type {
   ParagraphStyle,
   SlideNode,
   TableCellAddress,
+  TableCellRange,
+  TableCellStyle,
   TextStyle,
 } from "@diceui/pptx-core";
 
@@ -38,7 +40,9 @@ export type TableChange =
   | { type: "insertRow"; side: "above" | "below" }
   | { type: "insertColumn"; side: "left" | "right" }
   | { type: "deleteRow" }
-  | { type: "deleteColumn" };
+  | { type: "deleteColumn" }
+  | { type: "mergeCells" }
+  | { type: "splitCell" };
 
 /** What a click or drag on the slide places, once `startDrawing` arms it. */
 export type DrawTool = { type: "textBox" } | { type: "shape"; geometry: string };
@@ -49,6 +53,7 @@ export interface SelectionSnapshot {
   mode: SelectionState["mode"];
   nodeIds: string[];
   cell: TableCellAddress | null;
+  cellRange: TableCellRange | null;
   textStyle: ActiveTextStyle | null;
   drawTool: DrawTool | null;
 }
@@ -65,6 +70,7 @@ export interface SelectionController {
   setTextStyle: (style: TextStyle) => Promise<void>;
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
   changeTable: (change: TableChange) => Promise<void>;
+  setTableCellStyle: (style: TableCellStyle) => Promise<void>;
   prepareTextHistory: (target: EventTarget | null) => boolean;
   getSelectionRect: () => DOMRect | null;
   getOverlayElement: () => HTMLElement | null;
@@ -85,6 +91,7 @@ const IDLE_SNAPSHOT: SelectionSnapshot = {
   mode: "idle",
   nodeIds: [],
   cell: null,
+  cellRange: null,
   textStyle: null,
   drawTool: null,
 };
@@ -103,6 +110,10 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
     a.nodeIds.every((id, index) => id === b.nodeIds[index]) &&
     a.cell?.row === b.cell?.row &&
     a.cell?.column === b.cell?.column &&
+    a.cellRange?.start.row === b.cellRange?.start.row &&
+    a.cellRange?.start.column === b.cellRange?.start.column &&
+    a.cellRange?.end.row === b.cellRange?.end.row &&
+    a.cellRange?.end.column === b.cellRange?.end.column &&
     getIsSameTextStyle(a.textStyle, b.textStyle) &&
     a.drawTool?.type === b.drawTool?.type &&
     (a.drawTool?.type !== "shape" ||
@@ -170,6 +181,12 @@ export interface UseSelectionResult {
 
   /** The table cell being edited, or `null` outside a table. */
   cell: TableCellAddress | null;
+
+  /**
+   * Cells selected by dragging across them or Shift+clicking, as their
+   * top-left and bottom-right corners. Formatting applies to all of them.
+   */
+  cellRange: TableCellRange | null;
 
   /**
    * Formatting of the text being edited (in text mode), or of every selected
@@ -251,8 +268,9 @@ export interface UseSelectionResult {
 
   /**
    * Inserts or deletes a row or column at the table cell being edited, keeping
-   * the caret in that cell. Deleting a table's last row or column deletes the
-   * table. Does nothing outside a table cell.
+   * the caret in that cell, merges the selected `cellRange`, or splits a merged
+   * cell. Deleting a table's last row or column deletes the table. Does nothing
+   * outside a table cell.
    *
    * ```tsx
    * <button onClick={() => void changeTable({ type: "insertRow", side: "below" })}>
@@ -261,6 +279,12 @@ export interface UseSelectionResult {
    * ```
    */
   changeTable: (change: TableChange) => Promise<void>;
+
+  /**
+   * Sets the fill, borders, or vertical alignment of the selected `cellRange`,
+   * the cell being edited, or every cell of the selected tables.
+   */
+  setTableCellStyle: (style: TableCellStyle) => Promise<void>;
 
   /**
    * Formats text. In text mode this applies to the selected text, or to the
@@ -352,6 +376,7 @@ export function useSelection(): UseSelectionResult {
     nodeIds,
     nodes,
     cell: snapshot.slideId === slideId ? snapshot.cell : null,
+    cellRange: snapshot.slideId === slideId ? snapshot.cellRange : null,
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
     drawTool: snapshot.slideId === slideId ? snapshot.drawTool : null,
     select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
@@ -430,6 +455,10 @@ export function useSelection(): UseSelectionResult {
     ),
     changeTable: React.useCallback(
       async (change: TableChange) => requireController(channel).changeTable(change),
+      [channel],
+    ),
+    setTableCellStyle: React.useCallback(
+      async (style: TableCellStyle) => requireController(channel).setTableCellStyle(style),
       [channel],
     ),
     setTextStyle: React.useCallback(

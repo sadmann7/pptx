@@ -11,6 +11,7 @@ import {
   resolveSlideNodePlaceholders,
 } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
+import { parseOoxmlBool } from "../ooxml/boolean";
 import type { PptxPackage } from "../ooxml/package";
 import { isExternalTargetMode, parseRels, RelEntry, resolveRelTarget } from "../ooxml/rel";
 import { degToAngle, emuToPx, pxToEmu } from "../ooxml/unit";
@@ -285,6 +286,74 @@ export interface AddTableOperation {
   position?: NodePosition;
 }
 
+/** Set a table's column widths and row heights. */
+export interface SetTableGridOperation {
+  type: "setTableGrid";
+  slideId: string;
+  nodeId: string;
+  /** Width of every column in px, in order. */
+  columnWidths?: number[];
+  /** Height of every row in px, in order. Rows still grow to fit their text. */
+  rowHeights?: number[];
+}
+
+export type TableCellVerticalAlign = "top" | "middle" | "bottom";
+
+/** Cell formatting. Omitted fields are left as they are. */
+export interface TableCellStyle {
+  /** Hex fill color, or `null` for no fill. */
+  fill?: string | null;
+  /** Every border of the cells: a hex color and width in points, or `null` for none. */
+  borders?: { color: string; width?: number } | null;
+  verticalAlign?: TableCellVerticalAlign;
+}
+
+/** Format table cells: a rectangle between two cells, or every cell. */
+export interface SetTableCellStyleOperation {
+  type: "setTableCellStyle";
+  slideId: string;
+  nodeId: string;
+  style: TableCellStyle;
+  /** Opposite corners of the cells to format. Defaults to the whole table. */
+  from?: TableCellAddress;
+  to?: TableCellAddress;
+}
+
+/** Which parts of its table style a table shows. Omitted fields are left as they are. */
+export interface TableOptions {
+  headerRow?: boolean;
+  totalRow?: boolean;
+  bandedRows?: boolean;
+  firstColumn?: boolean;
+  lastColumn?: boolean;
+  bandedColumns?: boolean;
+}
+
+export interface SetTableOptionsOperation {
+  type: "setTableOptions";
+  slideId: string;
+  nodeId: string;
+  options: TableOptions;
+}
+
+/** Merge a rectangle of table cells into one, keeping all their text. */
+export interface MergeTableCellsOperation {
+  type: "mergeTableCells";
+  slideId: string;
+  nodeId: string;
+  /** Opposite corners of the cells to merge; the range grows to cover any merge it cuts. */
+  from: TableCellAddress;
+  to: TableCellAddress;
+}
+
+/** Split a merged table cell back into its cells. */
+export interface SplitTableCellOperation {
+  type: "splitTableCell";
+  slideId: string;
+  nodeId: string;
+  cell: TableCellAddress;
+}
+
 /** Insert an empty row into a table, formatted like its neighbor. */
 export interface InsertTableRowOperation {
   type: "insertTableRow";
@@ -366,6 +435,11 @@ export type EditOperation =
   | AddShapeOperation
   | SetOutlineOperation
   | AddTableOperation
+  | SetTableGridOperation
+  | MergeTableCellsOperation
+  | SplitTableCellOperation
+  | SetTableCellStyleOperation
+  | SetTableOptionsOperation
   | InsertTableRowOperation
   | DeleteTableRowOperation
   | InsertTableColumnOperation
@@ -437,6 +511,16 @@ export async function applyEdit(
       return applySetOutline(presentation, op);
     case "addTable":
       return applyAddTable(presentation, op);
+    case "setTableGrid":
+      return applySetTableGrid(presentation, op);
+    case "setTableCellStyle":
+      return applySetTableCellStyle(presentation, op);
+    case "setTableOptions":
+      return applySetTableOptions(presentation, op);
+    case "mergeTableCells":
+      return applyMergeTableCells(presentation, op);
+    case "splitTableCell":
+      return applySplitTableCell(presentation, op);
     case "insertTableRow":
       return applyInsertTableRow(presentation, op);
     case "deleteTableRow":
@@ -2286,6 +2370,10 @@ function clearCellText(tc: Element): void {
 
 const MERGE_ATTRS = ["gridSpan", "rowSpan", "hMerge", "vMerge"] as const;
 
+function getIsMergeFlag(tc: Element, name: "hMerge" | "vMerge"): boolean {
+  return parseOoxmlBool(tc.getAttribute(name) ?? undefined);
+}
+
 function blankCellFrom(source: Element): Element {
   const tc = source.cloneNode(true) as Element;
   for (const name of MERGE_ATTRS) tc.removeAttribute(name);
@@ -2306,6 +2394,272 @@ function checkIndex(index: number, max: number, what: string): void {
   }
 }
 
+function applySetTableGrid(pres: PresentationData, op: SetTableGridOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const tracks: [Element[], number[] | undefined, string][] = [
+      [gridColumns(tbl), op.columnWidths, "w"],
+      [tableRows(tbl), op.rowHeights, "h"],
+    ];
+    for (const [elements, sizes, attr] of tracks) {
+      if (!sizes) continue;
+      if (sizes.length !== elements.length || sizes.some((size) => !(size > 0))) {
+        throw new Error(`applyEdit: table grid sizes don't match the table.`);
+      }
+      elements.forEach((element, index) =>
+        element.setAttribute(attr, String(pxToEmu(sizes[index]))),
+      );
+    }
+  });
+}
+
+/** The cell whose text and spans cover `cell`: itself, unless a merge hides it. */
+export function getTableCellOrigin(table: TableNodeData, cell: TableCellAddress): TableCellAddress {
+  let { row, column } = cell;
+  while (column > 0 && table.rows[row]?.cells[column]?.hMerge) column--;
+  while (row > 0 && table.rows[row]?.cells[column]?.vMerge) row--;
+  return { row, column };
+}
+
+export interface TableCellRange {
+  start: TableCellAddress;
+  end: TableCellAddress;
+}
+
+/**
+ * The rectangle between two cells, as top-left and bottom-right corners,
+ * grown until it cuts through no merged cell.
+ */
+export function getTableCellRange(
+  table: TableNodeData,
+  from: TableCellAddress,
+  to: TableCellAddress,
+): TableCellRange {
+  let top = Math.min(from.row, to.row);
+  let bottom = Math.max(from.row, to.row);
+  let left = Math.min(from.column, to.column);
+  let right = Math.max(from.column, to.column);
+  let grown = true;
+  while (grown) {
+    grown = false;
+    for (let row = top; row <= bottom; row++) {
+      for (let column = left; column <= right; column++) {
+        const origin = getTableCellOrigin(table, { row, column });
+        const cell = table.rows[origin.row]?.cells[origin.column];
+        if (!cell) continue;
+        const next = {
+          top: Math.min(top, origin.row),
+          left: Math.min(left, origin.column),
+          bottom: Math.max(bottom, origin.row + cell.rowSpan - 1),
+          right: Math.max(right, origin.column + cell.gridSpan - 1),
+        };
+        if (next.top < top || next.left < left || next.bottom > bottom || next.right > right) {
+          ({ top, left, bottom, right } = next);
+          grown = true;
+        }
+      }
+    }
+  }
+  return { start: { row: top, column: left }, end: { row: bottom, column: right } };
+}
+
+function findTable(pres: PresentationData, slideId: string, nodeId: string): TableNodeData {
+  const node = findNode(pres, findSlide(pres, slideId), nodeId);
+  if (node.nodeType !== "table") throw new Error(`applyEdit: node "${nodeId}" is not a table.`);
+  return node as TableNodeData;
+}
+
+const TCPR_LINES = ["lnL", "lnR", "lnT", "lnB"] as const;
+const TCPR_FILLS = new Set(["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"]);
+const TCPR_AFTER_FILL = new Set(["headers", "extLst"]);
+const VERTICAL_ALIGN_TO_OOXML: Record<TableCellVerticalAlign, string> = {
+  top: "t",
+  middle: "ctr",
+  bottom: "b",
+};
+const OPPOSITE_LINE = { lnL: "lnR", lnR: "lnL", lnT: "lnB", lnB: "lnT" } as const;
+
+function ensureCellProperties(tc: Element): Element {
+  const existing = childNamed(tc, "tcPr");
+  if (existing) return existing;
+  const tcPr = tc.ownerDocument.createElementNS(A_NS, "a:tcPr");
+  tc.insertBefore(tcPr, firstChildIn(tc, new Set(["extLst"])));
+  return tcPr;
+}
+
+function solidFillElement(doc: Document, color: string): Element {
+  const solidFill = doc.createElementNS(A_NS, "a:solidFill");
+  const srgb = doc.createElementNS(A_NS, "a:srgbClr");
+  srgb.setAttribute("val", parseHexColor(color));
+  solidFill.appendChild(srgb);
+  return solidFill;
+}
+
+function setCellLine(
+  tc: Element,
+  name: (typeof TCPR_LINES)[number],
+  borders: TableCellStyle["borders"],
+): void {
+  const tcPr = ensureCellProperties(tc);
+  const doc = tc.ownerDocument;
+  childNamed(tcPr, name)?.remove();
+  const line = doc.createElementNS(A_NS, `a:${name}`);
+  line.setAttribute("w", String(Math.round((borders?.width ?? 1) * 12700)));
+  line.appendChild(
+    borders ? solidFillElement(doc, borders.color) : doc.createElementNS(A_NS, "a:noFill"),
+  );
+  const later = TCPR_LINES.slice(TCPR_LINES.indexOf(name) + 1) as string[];
+  const before = Array.from(tcPr.children).find(
+    (child) => later.includes(child.localName) || !TCPR_LINES.includes(child.localName as never),
+  );
+  tcPr.insertBefore(line, before ?? null);
+}
+
+function applySetTableCellStyle(
+  pres: PresentationData,
+  op: SetTableCellStyleOperation,
+): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  const { fill, borders, verticalAlign } = op.style;
+  if (fill) parseHexColor(fill);
+  if (borders) {
+    parseHexColor(borders.color);
+    if (borders.width !== undefined && !(borders.width > 0)) {
+      throw new Error(`applyEdit: invalid border width "${borders.width}".`);
+    }
+  }
+  const lastRow = table.rows.length - 1;
+  const lastColumn = table.columns.length - 1;
+  const { start, end } =
+    op.from && op.to
+      ? getTableCellRange(table, op.from, op.to)
+      : { start: { row: 0, column: 0 }, end: { row: lastRow, column: lastColumn } };
+
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const cells = tableRows(tbl).map(rowCells);
+    const doc = tbl.ownerDocument;
+    for (let row = start.row; row <= end.row; row++) {
+      for (let column = start.column; column <= end.column; column++) {
+        const tc = cells[row]?.[column];
+        if (!tc) continue;
+        const tcPr = ensureCellProperties(tc);
+        if (fill !== undefined) {
+          for (const child of Array.from(tcPr.children)) {
+            if (TCPR_FILLS.has(child.localName)) child.remove();
+          }
+          tcPr.insertBefore(
+            fill === null ? doc.createElementNS(A_NS, "a:noFill") : solidFillElement(doc, fill),
+            firstChildIn(tcPr, TCPR_AFTER_FILL),
+          );
+        }
+        if (verticalAlign) tcPr.setAttribute("anchor", VERTICAL_ALIGN_TO_OOXML[verticalAlign]);
+        if (borders === undefined) continue;
+        for (const name of TCPR_LINES) setCellLine(tc, name, borders);
+        // A shared edge is drawn by one of its two cells, so the neighbor gets it too.
+        const neighbors = {
+          lnL: column === start.column ? cells[row]?.[column - 1] : undefined,
+          lnR: column === end.column ? cells[row]?.[column + 1] : undefined,
+          lnT: row === start.row ? cells[row - 1]?.[column] : undefined,
+          lnB: row === end.row ? cells[row + 1]?.[column] : undefined,
+        };
+        for (const name of TCPR_LINES) {
+          const neighbor = neighbors[name];
+          if (neighbor) setCellLine(neighbor, OPPOSITE_LINE[name], borders);
+        }
+      }
+    }
+  });
+}
+
+const TABLE_OPTION_ATTRS: Record<keyof TableOptions, string> = {
+  headerRow: "firstRow",
+  totalRow: "lastRow",
+  bandedRows: "bandRow",
+  firstColumn: "firstCol",
+  lastColumn: "lastCol",
+  bandedColumns: "bandCol",
+};
+
+function applySetTableOptions(pres: PresentationData, op: SetTableOptionsOperation): EditResult {
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    let tblPr = childNamed(tbl, "tblPr");
+    if (!tblPr) {
+      tblPr = tbl.ownerDocument.createElementNS(A_NS, "a:tblPr");
+      tbl.insertBefore(tblPr, tbl.firstElementChild);
+    }
+    for (const [key, attr] of Object.entries(TABLE_OPTION_ATTRS)) {
+      const value = op.options[key as keyof TableOptions];
+      if (value !== undefined) setOrRemoveAttr(tblPr, attr, value ? "1" : undefined);
+    }
+  });
+}
+
+function applyMergeTableCells(pres: PresentationData, op: MergeTableCellsOperation): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  for (const cell of [op.from, op.to]) {
+    if (!table.rows[cell.row]?.cells[cell.column]) {
+      throw new Error(`applyEdit: no cell at row ${cell.row}, column ${cell.column}.`);
+    }
+  }
+  const { start, end } = getTableCellRange(table, op.from, op.to);
+  if (start.row === end.row && start.column === end.column) {
+    throw new Error("applyEdit: merging needs more than one cell.");
+  }
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    const origin = rowCells(rows[start.row])[start.column];
+    if (!childNamed(origin, "txBody")) clearCellText(origin);
+    const originText = childNamed(origin, "txBody")!;
+    for (let row = start.row; row <= end.row; row++) {
+      const cells = rowCells(rows[row]);
+      for (let column = start.column; column <= end.column; column++) {
+        const tc = cells[column];
+        const isOrigin = row === start.row && column === start.column;
+        const isHidden = getIsMergeFlag(tc, "hMerge") || getIsMergeFlag(tc, "vMerge");
+        if (!isOrigin && !isHidden) {
+          const text = childNamed(tc, "txBody");
+          const paragraphs = text ? childParagraphs(text) : [];
+          if (paragraphs.some((paragraph) => (paragraph.textContent ?? "").length > 0)) {
+            for (const paragraph of paragraphs) originText.appendChild(paragraph);
+          }
+        }
+        for (const name of MERGE_ATTRS) tc.removeAttribute(name);
+        if (!isOrigin) {
+          clearCellText(tc);
+          if (column > start.column) tc.setAttribute("hMerge", "1");
+          if (row > start.row) tc.setAttribute("vMerge", "1");
+        }
+      }
+    }
+    setSpan(origin, "gridSpan", end.column - start.column + 1);
+    setSpan(origin, "rowSpan", end.row - start.row + 1);
+    // An empty origin keeps one paragraph ahead of the text that joined it.
+    const paragraphs = childParagraphs(originText);
+    if (paragraphs.length > 1 && (paragraphs[0].textContent ?? "").length === 0) {
+      paragraphs[0].remove();
+    }
+  });
+}
+
+function applySplitTableCell(pres: PresentationData, op: SplitTableCellOperation): EditResult {
+  const table = findTable(pres, op.slideId, op.nodeId);
+  const origin = getTableCellOrigin(table, op.cell);
+  const cell = table.rows[origin.row]?.cells[origin.column];
+  if (!cell || (cell.gridSpan === 1 && cell.rowSpan === 1)) {
+    throw new Error(`applyEdit: no merged cell at row ${op.cell.row}, column ${op.cell.column}.`);
+  }
+  return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
+    const rows = tableRows(tbl);
+    for (let row = origin.row; row < origin.row + cell.rowSpan; row++) {
+      const cells = rowCells(rows[row]);
+      for (let column = origin.column; column < origin.column + cell.gridSpan; column++) {
+        const tc = cells[column];
+        for (const name of MERGE_ATTRS) tc.removeAttribute(name);
+        if (row !== origin.row || column !== origin.column) clearCellText(tc);
+      }
+    }
+  });
+}
+
 function applyInsertTableRow(pres: PresentationData, op: InsertTableRowOperation): EditResult {
   return rewriteTable(pres, op.slideId, op.nodeId, (tbl) => {
     const rows = tableRows(tbl);
@@ -2316,13 +2670,13 @@ function applyInsertTableRow(pres: PresentationData, op: InsertTableRowOperation
     rowCells(tr).forEach((tc, column) => {
       const blank = blankCellFrom(tc);
       const displaced = below ? rowCells(below)[column] : undefined;
-      if (displaced?.getAttribute("vMerge") === "1") {
+      if (displaced !== undefined && getIsMergeFlag(displaced, "vMerge")) {
         joinMerge(blank, displaced);
         const origin = rows
           .slice(0, op.index)
           .reverse()
           .map((row) => rowCells(row)[column])
-          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+          .find((cell) => cell && !getIsMergeFlag(cell, "vMerge"));
         if (origin?.hasAttribute("rowSpan"))
           setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") + 1);
       } else {
@@ -2353,12 +2707,12 @@ function applyDeleteTableRow(pres: PresentationData, op: DeleteTableRowOperation
         if (text && nextText) next.replaceChild(text, nextText);
         next.removeAttribute("vMerge");
         setSpan(next, "rowSpan", rowSpan - 1);
-      } else if (tc.getAttribute("vMerge") === "1") {
+      } else if (getIsMergeFlag(tc, "vMerge")) {
         const origin = rows
           .slice(0, op.index)
           .reverse()
           .map((row) => rowCells(row)[column])
-          .find((cell) => cell && cell.getAttribute("vMerge") !== "1");
+          .find((cell) => cell && !getIsMergeFlag(cell, "vMerge"));
         if (origin?.hasAttribute("rowSpan"))
           setSpan(origin, "rowSpan", spanOf(origin, "rowSpan") - 1);
       }
@@ -2383,13 +2737,13 @@ function applyInsertTableColumn(
       const cells = rowCells(tr);
       const blank = blankCellFrom(cells[op.index - 1] ?? cells[0]);
       const displaced = cells[op.index];
-      if (displaced?.getAttribute("hMerge") === "1") {
+      if (displaced !== undefined && getIsMergeFlag(displaced, "hMerge")) {
         joinMerge(blank, displaced);
         blank.removeAttribute("gridSpan");
         const origin = cells
           .slice(0, op.index)
           .reverse()
-          .find((cell) => cell.getAttribute("hMerge") !== "1");
+          .find((cell) => !getIsMergeFlag(cell, "hMerge"));
         if (origin?.hasAttribute("gridSpan"))
           setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") + 1);
       }
@@ -2422,11 +2776,11 @@ function applyDeleteTableColumn(
           const rowSpan = tc.getAttribute("rowSpan");
           if (rowSpan !== null) next.setAttribute("rowSpan", rowSpan);
         }
-      } else if (tc.getAttribute("hMerge") === "1") {
+      } else if (getIsMergeFlag(tc, "hMerge")) {
         const origin = cells
           .slice(0, op.index)
           .reverse()
-          .find((cell) => cell.getAttribute("hMerge") !== "1");
+          .find((cell) => !getIsMergeFlag(cell, "hMerge"));
         if (origin?.hasAttribute("gridSpan"))
           setSpan(origin, "gridSpan", spanOf(origin, "gridSpan") - 1);
       }
