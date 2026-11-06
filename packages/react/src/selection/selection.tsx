@@ -61,6 +61,7 @@ import { SelectionBox } from "./selection-box";
 import type { SnapGuide as SnapGuideData } from "./snap";
 import { getUnionRect, SNAP_THRESHOLD, snapMove, snapResize } from "./snap";
 import { SnapGuide } from "./snap-guide";
+import { readCellGrid, writeCellGrid } from "./table-clipboard";
 import type { ActiveTextStyle } from "./text-range";
 import {
   cleanText,
@@ -1230,30 +1231,23 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     return true;
   }
 
-  function getRangeText(current: Extract<InternalState, { mode: "text" }>): string | null {
-    const table = slide?.nodes.find((n) => n.id === current.nodeId);
+  function getRangeGrid(): string[][] | null {
+    const current = stateRef.current;
+    const table =
+      current.mode === "text" ? slide?.nodes.find((n) => n.id === current.nodeId) : null;
     const range = getCellRange();
     if (!range || table?.nodeType !== "table") return null;
-    const rows: string[] = [];
+    const rows: string[][] = [];
     for (let row = range.start.row; row <= range.end.row; row++) {
       const values: string[] = [];
       for (let column = range.start.column; column <= range.end.column; column++) {
         const cell = (table as TableNodeData).rows[row].cells[column];
-        const isHidden = cell.hMerge || cell.vMerge;
-        values.push(
-          isHidden
-            ? ""
-            : getPlainText(
-                (cell.textBody?.paragraphs ?? []).map((paragraph, index) => ({
-                  sourceParagraphIndex: index,
-                  runs: paragraph.runs.map((run) => ({ text: run.text ?? "" })),
-                })),
-              ).replace(/\n/g, " "),
-        );
+        const paragraphs = cell.hMerge || cell.vMerge ? [] : (cell.textBody?.paragraphs ?? []);
+        values.push(paragraphs.map((p) => p.runs.map((run) => run.text ?? "").join("")).join("\n"));
       }
-      rows.push(values.join("\t"));
+      rows.push(values);
     }
-    return rows.join("\n");
+    return rows;
   }
 
   async function clearCellRange(current: Extract<InternalState, { mode: "text" }>): Promise<void> {
@@ -1290,7 +1284,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           slideId,
           nodeId: current.nodeId,
           cell,
-          paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text }] }],
+          paragraphs: text
+            .split("\n")
+            .map((line) => ({ sourceParagraphIndex: 0, runs: [{ text: line }] })),
         });
         end = { row: Math.max(end.row, cell.row), column: Math.max(end.column, cell.column) };
       });
@@ -2001,7 +1997,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const getCellAtPointRef = useLatestRef(getCellAtPoint);
   const getCellRangeRef = useLatestRef(getCellRange);
   const stepCellByArrowRef = useLatestRef(stepCellByArrow);
-  const getRangeTextRef = useLatestRef(getRangeText);
+  const getRangeGridRef = useLatestRef(getRangeGrid);
   const clearCellRangeRef = useLatestRef(clearCellRange);
   const pasteIntoCellsRef = useLatestRef(pasteIntoCells);
   const cellDragRef = React.useRef<{ nodeId: string; anchor: TableCellAddress } | null>(null);
@@ -2223,10 +2219,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     function onDocCopy(event: ClipboardEvent): void {
       const currentState = stateRef.current;
       if (currentState.mode !== "text" || !currentState.rangeEnd) return;
-      const text = getRangeTextRef.current(currentState);
-      if (text === null || !event.clipboardData) return;
+      const grid = getRangeGridRef.current();
+      if (!grid || !event.clipboardData) return;
       event.preventDefault();
+      const { text, html } = writeCellGrid(grid);
       event.clipboardData.setData("text/plain", text);
+      event.clipboardData.setData("text/html", html);
       if (event.type === "cut") {
         clearCellRangeRef
           .current(currentState)
@@ -2234,17 +2232,16 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
     }
 
-    // Tab-separated text, as a spreadsheet copies it, fills cells.
+    // Cells copied from a spreadsheet fill cells.
     function onDocPaste(event: ClipboardEvent): void {
       const currentState = stateRef.current;
-      if (currentState.mode !== "text" || !currentState.cell) return;
-      const text = event.clipboardData?.getData("text/plain");
-      if (!text?.includes("\t")) return;
+      if (currentState.mode !== "text" || !currentState.cell || !event.clipboardData) return;
+      const rows = readCellGrid(
+        event.clipboardData.getData("text/plain"),
+        event.clipboardData.getData("text/html"),
+      );
+      if (!rows) return;
       event.preventDefault();
-      const rows = text
-        .replace(/\r?\n$/, "")
-        .split(/\r?\n/)
-        .map((row) => row.split("\t"));
       pasteIntoCellsRef
         .current(currentState, rows)
         .catch((error) => console.warn("[pptx] edit failed:", error));
@@ -2341,7 +2338,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     getCellAtPointRef,
     getCellRangeRef,
     stepCellByArrowRef,
-    getRangeTextRef,
+    getRangeGridRef,
     clearCellRangeRef,
     pasteIntoCellsRef,
   ]);

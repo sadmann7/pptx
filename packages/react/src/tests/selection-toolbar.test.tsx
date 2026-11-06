@@ -648,7 +648,7 @@ describe("tables", () => {
 
     const paste = new Event("paste", { bubbles: true, cancelable: true }) as ClipboardEvent;
     Object.defineProperty(paste, "clipboardData", {
-      value: { getData: () => "A\tB\nC\tD\n" },
+      value: { getData: (type: string) => (type === "text/plain" ? "A\tB\nC\tD\n" : "") },
     });
     await act(async () => {
       editable.dispatchEvent(paste);
@@ -666,10 +666,10 @@ describe("tables", () => {
       }),
     );
 
-    let copied = "";
+    const copied = new Map<string, string>();
     const copy = new Event("copy", { bubbles: true, cancelable: true }) as ClipboardEvent;
     Object.defineProperty(copy, "clipboardData", {
-      value: { setData: (_type: string, text: string) => (copied = text) },
+      value: { setData: (type: string, text: string) => copied.set(type, text) },
     });
     const focused = editor.container.querySelector<HTMLElement>(
       "[contenteditable]:not([contenteditable=false])",
@@ -677,7 +677,8 @@ describe("tables", () => {
     act(() => {
       focused.dispatchEvent(copy);
     });
-    expect(copied).toBe("A\tB\nC\tD");
+    expect(copied.get("text/plain")).toBe("A\tB\nC\tD");
+    expect(copied.get("text/html")).toContain("<td>A</td><td>B</td>");
 
     await act(async () => {
       fireEvent.keyDown(focused, { key: "Delete" });
