@@ -17,15 +17,15 @@ The Playwright config starts the harness itself, so no dev server is needed.
 
 ## Layers
 
-| Spec             | Asserts on                                                           |
-| ---------------- | -------------------------------------------------------------------- |
-| `structural`     | the parsed model: nodes, transforms, text, with no pixels involved   |
-| `render`         | screenshot baselines per browser                                     |
-| `table-borders`  | border ownership and hairline rasterization at fractional scale      |
-| `navigation`     | switching slides in a loaded deck                                    |
-| `exported-decks` | every slide of an exported deck renders with content and no failures |
-| `oracle`         | SSIM and painted coverage against PNGs exported from real PowerPoint |
-| `editing`        | a toolbar outside the slide formats text without ending the editing  |
+| Spec             | Asserts on                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `structural`     | the parsed model: nodes, transforms, text, with no pixels involved                      |
+| `render`         | screenshot baselines per browser                                                        |
+| `table-borders`  | border ownership and hairline rasterization at fractional scale                         |
+| `navigation`     | switching slides in a loaded deck                                                       |
+| `exported-decks` | every slide of an exported deck renders with content and no failures                    |
+| `oracle`         | SSIM and painted coverage against PNGs exported from real PowerPoint                    |
+| `editing`        | a toolbar outside the slide formats text without ending the editing (not in webkit yet) |
 
 Structural specs are the cheapest place to pin a parser fix; reach for pixels
 only when the bug is in how something rasterizes.
