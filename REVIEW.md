@@ -17,7 +17,7 @@ pptx opens, renders, edits, and saves PowerPoint decks. Failure means a deck tha
 - **Tests.** A bug fix comes with a test that fails without it. No sleeps; tests wait on `data-mode`, the store, or the focused element.
 - **Published packages.** Changes to behavior or public types need a changeset.
 - **Fixes.** A bug fix names the cause and fixes it, not the symptom.
-- **Comments.** A comment that restates the code, narrates steps, or explains the fix, which belongs in the PR. JSDoc outside the public API: on a component, a part, or an internal helper. Lint only checks the form.
+- **Comments.** Comments that restate the code, narrate steps, or explain the fix, and JSDoc on components, parts, or internal helpers. Lint only checks the form.
 
 ## Skip
 
