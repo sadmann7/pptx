@@ -24,9 +24,9 @@ async function renderOverlay(children?: React.ReactNode) {
     </Presentation.Provider>,
   );
   await waitFor(() => {
-    expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
   });
-  const overlay = container.querySelector<HTMLDivElement>("[data-pptx-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
 
   function selectAll() {
     act(() => {
@@ -43,12 +43,12 @@ describe("default parts", () => {
     const { container, selectAll } = await renderOverlay();
     selectAll();
 
-    const boxes = container.querySelectorAll<HTMLElement>("[data-selection-box]");
+    const boxes = container.querySelectorAll<HTMLElement>("[data-presentation-selection-box]");
     expect(boxes).toHaveLength(2);
     for (const box of boxes) {
       expect(box.style.outline).toContain("--presentation-selection");
       expect(box.getAttribute("data-mode")).toBe("selected");
-      const handles = box.querySelectorAll<HTMLElement>("[data-resize-handle]");
+      const handles = box.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
       expect(handles).toHaveLength(8);
       expect(handles[0].style.width).toBe("9px");
     }
@@ -70,14 +70,16 @@ describe("handles on small and flat shapes", () => {
     });
     selectAll();
 
-    const [tiny, line] = container.querySelectorAll<HTMLElement>("[data-selection-box]");
-    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-resize-handle]");
+    const [tiny, line] = container.querySelectorAll<HTMLElement>(
+      "[data-presentation-selection-box]",
+    );
+    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
     expect(tinyHandles).toHaveLength(8);
-    const nw = tiny.querySelector<HTMLElement>('[data-resize-handle="nw"]')!;
+    const nw = tiny.querySelector<HTMLElement>('[data-presentation-resize-handle="nw"]')!;
     expect(nw.style.transform).toBe("translate(calc(-50% + -12px), calc(-50% + -12px))");
 
-    const lineHandles = Array.from(line.querySelectorAll("[data-resize-handle]")).map((handle) =>
-      handle.getAttribute("data-resize-handle"),
+    const lineHandles = Array.from(line.querySelectorAll("[data-presentation-resize-handle]")).map(
+      (handle) => handle.getAttribute("data-presentation-resize-handle"),
     );
     expect(lineHandles.sort()).toEqual(["e", "w"]);
   });
@@ -95,8 +97,8 @@ describe("handles on small and flat shapes", () => {
     });
     selectAll();
 
-    const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
-    const nw = box.querySelector<HTMLElement>('[data-resize-handle="nw"]')!;
+    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
+    const nw = box.querySelector<HTMLElement>('[data-presentation-resize-handle="nw"]')!;
     expect(nw.style.transform).toBe("translate(calc(-50% + 0px), calc(-50% + 0px))");
   });
 });
@@ -110,14 +112,14 @@ describe("composed parts", () => {
     );
     selectAll();
 
-    const boxes = container.querySelectorAll<HTMLElement>("[data-selection-box]");
+    const boxes = container.querySelectorAll<HTMLElement>("[data-presentation-selection-box]");
     expect(boxes).toHaveLength(2);
     expect(boxes[0].className).toBe("box box-selected");
     // Geometry stays inline; the look is the app's.
     expect(boxes[0].style.position).toBe("absolute");
     expect(boxes[0].style.boxShadow).toBe("");
 
-    const handles = boxes[0].querySelectorAll<HTMLElement>("[data-resize-handle]");
+    const handles = boxes[0].querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
     expect(Array.from(handles, (handle) => handle.className)).toEqual([
       "handle handle-nw",
       "handle handle-n",
@@ -135,8 +137,8 @@ describe("composed parts", () => {
     const { container, selectAll } = await renderOverlay(<Presentation.SelectionBox />);
     selectAll();
 
-    expect(container.querySelectorAll("[data-selection-box]")).toHaveLength(2);
-    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-presentation-selection-box]")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(0);
   });
 
   it("keeps resizing working from a wrapped handle", async () => {
@@ -153,7 +155,7 @@ describe("composed parts", () => {
     const before = store.getActiveSlide()!.nodes[0].size.w;
     selectAll();
 
-    const handle = container.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="se"]')!;
     expect(handle.dataset.testid).toBe("app-handle");
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
@@ -178,7 +180,7 @@ describe("composed parts", () => {
     );
     selectAll();
 
-    const boxes = container.querySelectorAll("section[data-selection-box]");
+    const boxes = container.querySelectorAll("section[data-presentation-selection-box]");
     expect(Array.from(boxes, (box) => box.getAttribute("data-node"))).toEqual(["2", "3"]);
   });
 
@@ -190,7 +192,7 @@ describe("composed parts", () => {
     );
     selectAll();
 
-    const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
+    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
     expect(box.style.outlineColor).toBe("blue");
     expect(box.style.position).toBe("absolute");
   });
@@ -242,7 +244,9 @@ describe("rotating", () => {
       rendered.overlay.focus();
       fireEvent.keyDown(rendered.overlay, { key: "a", ctrlKey: true });
     });
-    const handle = rendered.container.querySelector<HTMLElement>("[data-rotate-handle]")!;
+    const handle = rendered.container.querySelector<HTMLElement>(
+      "[data-presentation-rotate-handle]",
+    )!;
 
     /** Presses above the center, then drags to `degrees` clockwise from there. */
     function drag(degrees: number, init: { shiftKey?: boolean } = {}) {
@@ -266,10 +270,10 @@ describe("rotating", () => {
 
   it("shows a rotate handle on each selected outline", async () => {
     const { container } = await renderRotatable();
-    const boxes = container.querySelectorAll("[data-selection-box]");
+    const boxes = container.querySelectorAll("[data-presentation-selection-box]");
     expect(boxes).toHaveLength(2);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-rotate-handle]")).toHaveLength(1);
+      expect(box.querySelectorAll("[data-presentation-rotate-handle]")).toHaveLength(1);
     }
   });
 
@@ -279,10 +283,10 @@ describe("rotating", () => {
     expect(overlay.getAttribute("data-mode")).toBe("rotate");
 
     // The outline follows the drag; resize handles step aside.
-    const box = container.querySelector<HTMLElement>("[data-selection-box]")!;
+    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
     expect(box.style.transform).toBe("rotate(90deg)");
     expect(box.hasAttribute("data-rotating")).toBe(true);
-    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(0);
 
     await act(async () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
@@ -344,9 +348,9 @@ describe("rotating", () => {
     });
 
     await waitFor(() => {
-      expect(container.querySelectorAll("[data-rotate-handle]")).toHaveLength(2);
+      expect(container.querySelectorAll("[data-presentation-rotate-handle]")).toHaveLength(2);
     });
-    expect(container.querySelectorAll("[data-resize-handle]")).toHaveLength(16);
+    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(16);
   });
 });
 
@@ -371,10 +375,10 @@ describe("resizing a rotated shape", () => {
     });
     act(() => selection.current!.select(["2"]));
 
-    const handles = container.querySelectorAll<HTMLElement>("[data-resize-handle]");
+    const handles = container.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
     expect(handles).toHaveLength(8);
     // The east handle points down the slide now, and its cursor says so.
-    const east = container.querySelector<HTMLElement>('[data-resize-handle="e"]')!;
+    const east = container.querySelector<HTMLElement>('[data-presentation-resize-handle="e"]')!;
     expect(east.style.cursor).toBe("ns-resize");
 
     const before = store.getActiveSlide()!.nodes[0];
@@ -657,7 +661,7 @@ describe("snap guides", () => {
 
     // Shape 2's right edge sits at 416px and shape 3's left edge at 500px:
     // dragging the east handle 81px lands 3px short, inside the threshold.
-    const handle = container.querySelector<HTMLElement>('[data-resize-handle="e"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="e"]')!;
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
     });
@@ -668,7 +672,7 @@ describe("snap guides", () => {
     // The resize cursor follows the captured pointer onto the overlay.
     expect(overlay.style.cursor).toBe("ew-resize");
 
-    const guide = container.querySelector<HTMLElement>('[data-snap-guide="x"]')!;
+    const guide = container.querySelector<HTMLElement>('[data-presentation-snap-guide="x"]')!;
     expect(guide.style.left).toBe(`${500 * zoom}px`);
     expect(guide.style.top).toBe("0px");
     expect(guide.style.height).toBe(`${presentation!.height * zoom}px`);

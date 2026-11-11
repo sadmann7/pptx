@@ -80,7 +80,7 @@ export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
               props: [
                 {
                   "aria-hidden": true,
-                  "data-resize-handle": direction,
+                  "data-presentation-resize-handle": direction,
                   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
                     onHandlePointerDown(event, direction, box.node.id),
                   style: {

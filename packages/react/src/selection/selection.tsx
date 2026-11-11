@@ -35,7 +35,7 @@ import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
 import type { DrawTool, TableChange } from "./channel";
-import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
+import { getIsControlsTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { getReportedMode, SelectionPartsContext } from "./context";
 import type { HandleDirection, Rect } from "./geometry";
@@ -125,7 +125,7 @@ function getIsPresentationTarget(
   }
   // An editor toolbar is part of the deck's UI: undo after pressing Bold
   // undoes the bold.
-  if (getIsKeepSelectionTarget(target)) return true;
+  if (getIsControlsTarget(target)) return true;
   return boundary?.contains(target) ?? false;
 }
 
@@ -2010,7 +2010,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const heights = getRowHeights(table);
     return (
       <div
-        data-pptx-cell-range=""
+        data-presentation-cell-range=""
         style={{
           position: "absolute",
           pointerEvents: "none",
@@ -2049,7 +2049,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return (
         <div
           key={`${axis}-${index}`}
-          data-pptx-table-border={axis}
+          data-presentation-table-border={axis}
           onPointerDown={(event) => onTableBorderPointerDown(event, table, axis, index)}
           onPointerMove={onTableBorderPointerMove}
           onPointerUp={onTableBorderPointerUp}
@@ -2206,7 +2206,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
       // A toolbar formats the text being edited, so pressing it must not end
       // editing. The text range is remembered (see `savedRangeRef`).
-      if (getIsKeepSelectionTarget(event.target)) return;
+      if (getIsControlsTarget(event.target)) return;
 
       const wrapper = rootRef.current?.parentElement?.parentElement;
       if (!wrapper) return;
@@ -2306,7 +2306,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
 
       // Escape inside a toolbar closes its popover, not the text editing.
-      if (event.key === "Escape" && !getIsKeepSelectionTarget(event.target)) {
+      if (event.key === "Escape" && !getIsControlsTarget(event.target)) {
         event.preventDefault();
         doExitTextModeRef.current(currentState);
         return;
@@ -2511,7 +2511,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
-   * once focus, and with it Escape, leaves the overlay; `data-pptx-keep-selection` UI
+   * once focus, and with it Escape, leaves the overlay; `data-presentation-controls` UI
    * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
    * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
@@ -2528,7 +2528,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
       // Toolbars act on the selection, so pressing them must keep it.
-      if (getIsKeepSelectionTarget(event.target)) return;
+      if (getIsControlsTarget(event.target)) return;
       pending = true;
     }
 
@@ -2631,7 +2631,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       x: event.clientX,
       y: event.clientY,
       target: (event.target as HTMLElement)?.tagName,
-      targetHandle: (event.target as HTMLElement)?.dataset?.resizeHandle,
+      targetHandle: (event.target as HTMLElement)?.dataset?.presentationResizeHandle,
       selectedRect: selectedNode ? getNodeRect(selectedNode) : null,
       selectedDomRect: selectedShapeElement
         ? (() => {
@@ -3439,7 +3439,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         {
           role: "application",
           "aria-label": "Slide editor",
-          "data-pptx-selection": "",
+          "data-presentation-selection": "",
           "data-mode": mode,
           tabIndex: 0,
           onPointerDown,
@@ -3551,7 +3551,9 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       const isUndo = getIsUndoEvent(event);
       if (!isUndo && !getIsRedoEvent(event)) return;
       const boundary =
-        rootRef?.current ?? overlayRef.current?.closest<HTMLElement>("[data-pptx-slide]") ?? null;
+        rootRef?.current ??
+        overlayRef.current?.closest<HTMLElement>("[data-presentation-slide]") ??
+        null;
       if (!getIsPresentationTarget(event.target, boundary)) return;
       if (
         getIsNativeUndoTarget(event.target) &&

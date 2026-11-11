@@ -44,7 +44,7 @@ export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(functi
             props: [
               {
                 "aria-hidden": true,
-                "data-snap-guide": guide.axis,
+                "data-presentation-snap-guide": guide.axis,
                 style: {
                   position: "absolute",
                   left: isVertical ? guide.position * zoom : start * zoom,

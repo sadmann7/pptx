@@ -190,7 +190,7 @@ async function main() {
   await page.goto(`${BASE_URL}${PAGE_PATH}`);
   await page.locator('input[type=file][accept=".pptx"]').setInputFiles(DECK);
   await page
-    .locator(`${EDITOR} [data-pptx-selection]`)
+    .locator(`${EDITOR} [data-presentation-selection]`)
     .waitFor({ state: "attached", timeout: 120_000 });
   if (process.env.EXTRA_CSS) await page.addStyleTag({ content: process.env.EXTRA_CSS });
   if (process.env.STRIP_CSS) {

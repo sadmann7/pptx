@@ -34,7 +34,7 @@ function readRuns(page: Page) {
 async function open(page: Page) {
   await page.goto("/editing.html");
   await page.waitForFunction(() => window.__editingReady === true);
-  const overlay = page.locator("[data-pptx-selection]");
+  const overlay = page.locator("[data-presentation-selection]");
   await expect(overlay).toBeVisible();
 
   // The selection overlay covers the shapes and hit-tests what is under the
@@ -183,9 +183,9 @@ test.describe("snapping", () => {
     await open(page);
     const drag = await dragNearCenter(page, 3);
 
-    await expect(page.locator('[data-snap-guide="x"]')).toBeVisible();
+    await expect(page.locator('[data-presentation-snap-guide="x"]')).toBeVisible();
     await drag.release();
-    await expect(page.locator("[data-snap-guide]")).toHaveCount(0);
+    await expect(page.locator("[data-presentation-snap-guide]")).toHaveCount(0);
 
     await expect
       .poll(async () => {
@@ -200,7 +200,7 @@ test.describe("snapping", () => {
     const { x: before } = await readGeometry(page);
     const drag = await dragNearCenter(page, 3, ["Alt"]);
 
-    await expect(page.locator("[data-snap-guide]")).toHaveCount(0);
+    await expect(page.locator("[data-presentation-snap-guide]")).toHaveCount(0);
     await drag.release();
 
     await expect.poll(async () => (await readGeometry(page)).x).not.toBe(before);
@@ -256,7 +256,7 @@ test.describe("rotating", () => {
     await expect(overlay).toHaveAttribute("data-mode", "selected");
 
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
-    const knob = (await page.locator("[data-rotate-handle]").boundingBox())!;
+    const knob = (await page.locator("[data-presentation-rotate-handle]").boundingBox())!;
     const centerX = box.x + box.width / 2;
     const centerY = box.y + box.height / 2;
 
@@ -294,7 +294,7 @@ test.describe("rotating", () => {
     const before = await readGeometry();
 
     // The north handle now sits on the right side: drag it further right.
-    const handle = (await page.locator('[data-resize-handle="n"]').boundingBox())!;
+    const handle = (await page.locator('[data-presentation-resize-handle="n"]').boundingBox())!;
     const x = handle.x + handle.width / 2;
     const y = handle.y + handle.height / 2;
     await page.mouse.move(x, y);
@@ -412,14 +412,14 @@ test.describe("drawing", () => {
     await expect(overlay).toHaveCSS("cursor", "crosshair");
 
     const slide = (await page
-      .locator("[data-pptx-selection]")
+      .locator("[data-presentation-selection]")
       .locator("xpath=../..")
       .boundingBox())!;
     const before = await lastNode(page);
     await page.mouse.click(slide.x + 40, slide.y + 400);
     await expect(overlay).toHaveAttribute("data-mode", "text");
     // Resize handles stay while typing, as in Google Slides.
-    await expect(page.locator("[data-resize-handle]")).toHaveCount(8);
+    await expect(page.locator("[data-presentation-resize-handle]")).toHaveCount(8);
     const node = await lastNode(page);
     expect(node.count).toBe(before.count + 1);
     expect(node.position.x * (slide.width / 1280)).toBeCloseTo(40, -1);
@@ -434,14 +434,14 @@ test.describe("drawing", () => {
     const { overlay } = await open(page);
     await page.getByTestId("draw-ellipse").click();
     const slide = (await page
-      .locator("[data-pptx-selection]")
+      .locator("[data-presentation-selection]")
       .locator("xpath=../..")
       .boundingBox())!;
     const scale = slide.width / 1280;
     await page.mouse.move(slide.x + 600 * scale, slide.y + 300 * scale);
     await page.mouse.down();
     await page.mouse.move(slide.x + 800 * scale, slide.y + 400 * scale, { steps: 5 });
-    await expect(page.locator("[data-marquee][data-draw]")).toBeVisible();
+    await expect(page.locator("[data-presentation-marquee][data-draw]")).toBeVisible();
     await page.mouse.up();
 
     await expect(overlay).toHaveAttribute("data-mode", "selected");
@@ -456,7 +456,7 @@ test.describe("drawing", () => {
   }) => {
     const { overlay } = await open(page);
     const slide = (await page
-      .locator("[data-pptx-selection]")
+      .locator("[data-presentation-selection]")
       .locator("xpath=../..")
       .boundingBox())!;
     await page.getByTestId("draw-text-box").click();
@@ -473,7 +473,7 @@ test.describe("drawing", () => {
     await page.mouse.click(center.x, center.y);
     await expect(overlay).toHaveAttribute("data-mode", "text");
 
-    const frame = (await page.locator("[data-selection-box]").first().boundingBox())!;
+    const frame = (await page.locator("[data-presentation-selection-box]").first().boundingBox())!;
     await page.mouse.click(frame.x + frame.width / 2, frame.y + 1);
     await expect(overlay).toHaveAttribute("data-mode", "selected");
 
@@ -778,7 +778,10 @@ test.describe("tables", () => {
     await expect(overlay).toHaveAttribute("data-mode", "idle");
     const before = await readTable(page, nodeId);
 
-    const border = (await page.locator('[data-pptx-table-border="column"]').nth(1).boundingBox())!;
+    const border = (await page
+      .locator('[data-presentation-table-border="column"]')
+      .nth(1)
+      .boundingBox())!;
     await page.mouse.move(border.x + border.width / 2, border.y + 10);
     await page.mouse.down();
     await page.mouse.move(border.x + border.width / 2 + 40, border.y + 10, { steps: 5 });
@@ -794,7 +797,10 @@ test.describe("tables", () => {
     );
 
     // The left edge resizes the first column and keeps the right edge in place.
-    const edge = (await page.locator('[data-pptx-table-border="column"]').first().boundingBox())!;
+    const edge = (await page
+      .locator('[data-presentation-table-border="column"]')
+      .first()
+      .boundingBox())!;
     const right = resized.position.x + resized.size.w;
     await page.mouse.move(edge.x + edge.width / 2, edge.y + 10);
     await page.mouse.down();

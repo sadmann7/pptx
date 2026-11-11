@@ -73,13 +73,13 @@ Moving and resizing snap to the slide and to other shapes. Hold <Kbd>Alt/Option<
 
 The overlay positions each part and repeats it as needed. Give handles a size, since they have none of their own.
 
-| Part                        | Rendered                                                        | State                                              | Attributes                                                          |
-| --------------------------- | --------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
-| `Presentation.SelectionBox` | Once per selected shape                                         | `node`, `mode`, `dragging`, `rotating`, `rotation` | `data-selection-box`, `data-mode`, `data-dragging`, `data-rotating` |
-| `Presentation.ResizeHandle` | Eight per outline, inside `SelectionBox`                        | `direction`                                        | `data-resize-handle` (`nw`, `n`, `ne`, ...)                         |
-| `Presentation.RotateHandle` | One per outline, inside `SelectionBox`                          | `rotation`, `rotating`                             | `data-rotate-handle`, `data-rotating`                               |
-| `Presentation.SnapGuide`    | Once per snapped line while dragging                            | `axis`, `position`                                 | `data-snap-guide` (`x` or `y`)                                      |
-| `Presentation.Marquee`      | While dragging across empty canvas, or drawing with a draw tool |                                                    | `data-marquee`, `data-draw` while drawing                           |
+| Part                        | Rendered                                                        | State                                              | Attributes                                                                       |
+| --------------------------- | --------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Presentation.SelectionBox` | Once per selected shape                                         | `node`, `mode`, `dragging`, `rotating`, `rotation` | `data-presentation-selection-box`, `data-mode`, `data-dragging`, `data-rotating` |
+| `Presentation.ResizeHandle` | Eight per outline, inside `SelectionBox`                        | `direction`                                        | `data-presentation-resize-handle` (`nw`, `n`, `ne`, ...)                         |
+| `Presentation.RotateHandle` | One per outline, inside `SelectionBox`                          | `rotation`, `rotating`                             | `data-presentation-rotate-handle`, `data-rotating`                               |
+| `Presentation.SnapGuide`    | Once per snapped line while dragging                            | `axis`, `position`                                 | `data-presentation-snap-guide` (`x` or `y`)                                      |
+| `Presentation.Marquee`      | While dragging across empty canvas, or drawing with a draw tool |                                                    | `data-presentation-marquee`, `data-draw` while drawing                           |
 
 Like the other primitives, every part accepts `render`, and `className` and `style` can also be functions of the part's state:
 
@@ -116,7 +116,7 @@ Set these CSS variables on `Presentation.Selection` or any ancestor:
 Target a part's attributes to add anything else:
 
 ```css
-[data-snap-guide] {
+[data-presentation-snap-guide] {
   box-shadow: 0 0 4px var(--presentation-snap-guide);
 }
 ```
@@ -250,7 +250,7 @@ In `setTextStyle`, `null` clears a value so it inherits from the layout, and a r
 
 `useSelection` gives a toolbar the selection and formatting commands. While editing text they format the selection, or the word at the caret; otherwise they format the whole shape.
 
-Mark the toolbar, and any popovers it portals, with `data-pptx-keep-selection` so pressing it keeps the selection.
+Mark the toolbar, and any popovers it portals, with `data-presentation-controls` so pressing it keeps the selection.
 
 ```tsx
 import { useSelection } from "@diceui/pptx";
@@ -259,7 +259,7 @@ function FormattingToolbar() {
   const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
 
   return (
-    <div data-pptx-keep-selection="">
+    <div data-presentation-controls="">
       <button
         aria-pressed={textStyle?.bold ?? false}
         disabled={!textStyle}
@@ -303,7 +303,7 @@ function FloatingToolbar() {
     <Popover.Root open={anchor !== null && (mode === "selected" || mode === "text")}>
       <Popover.Portal>
         <Popover.Positioner anchor={anchor} side="top" sideOffset={8}>
-          <Popover.Popup initialFocus={false} finalFocus={false} data-pptx-keep-selection="">
+          <Popover.Popup initialFocus={false} finalFocus={false} data-presentation-controls="">
             <FormattingToolbar />
           </Popover.Popup>
         </Popover.Positioner>

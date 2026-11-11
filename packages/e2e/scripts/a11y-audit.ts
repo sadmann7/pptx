@@ -27,7 +27,7 @@ async function audit(page: Page, state: string): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .include("[data-slot=presentation-editor]")
-    .include("[data-pptx-keep-selection]")
+    .include("[data-presentation-controls]")
     // The slide is the deck's own content, with the author's colors.
     .exclude("[data-slot=presentation-slide] [data-pptx-node-id]")
     // Non-modal popups add focus guards: aria-hidden sentinels that pass Tab
@@ -62,7 +62,7 @@ async function slideCenter(page: Page) {
 }
 
 async function walk(page: Page, label: string): Promise<void> {
-  await page.waitForSelector("[data-pptx-selection]");
+  await page.waitForSelector("[data-presentation-selection]");
   await audit(page, `${label}: loaded`);
 
   const { x, y } = await slideCenter(page);

@@ -41,7 +41,7 @@ export const RotateHandle = React.forwardRef<HTMLDivElement, RotateHandleProps>(
         props: [
           {
             "aria-hidden": true,
-            "data-rotate-handle": "",
+            "data-presentation-rotate-handle": "",
             "data-rotating": isRotating ? "" : undefined,
             onPointerDown: (event: React.PointerEvent<HTMLDivElement>) =>
               onRotatePointerDown(event, box.node.id),
