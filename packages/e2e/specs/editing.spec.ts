@@ -209,6 +209,46 @@ test.describe("snapping", () => {
   });
 });
 
+test.describe("scrolling", () => {
+  async function openCutOff(page: Page) {
+    const opened = await open(page);
+    const shape = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
+    const overlay = (await opened.overlay.boundingBox())!;
+    const height = Math.ceil(shape.y + shape.height + 20);
+    expect(height).toBeLessThan(overlay.y + overlay.height);
+    await page.setViewportSize({ width: page.viewportSize()!.width, height });
+    return { ...opened, shape };
+  }
+
+  test("keeps the page still when dragging a shape", async ({ page }) => {
+    const { overlay, shape } = await openCutOff(page);
+    const x = shape.x + shape.width / 2;
+    const y = shape.y + shape.height / 2;
+
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 40, y, { steps: 5 });
+    await page.mouse.up();
+
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    await expect(overlay).toBeFocused();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test("keeps the page still when starting a drawing", async ({ page }) => {
+    const { overlay, shape } = await openCutOff(page);
+    await page.getByTestId("draw-ellipse").click();
+    await page.getByTestId("italic").focus();
+    await expect(overlay).toHaveCSS("cursor", "crosshair");
+
+    await page.mouse.move(shape.x + 10, shape.y + 10);
+    await page.mouse.down();
+    await expect(overlay).toBeFocused();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await page.mouse.up();
+  });
+});
+
 test.describe("rotating", () => {
   test("rotates a shape by dragging its rotate handle", async ({ page }) => {
     const { overlay, shape } = await open(page);
