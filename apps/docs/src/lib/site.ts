@@ -10,5 +10,6 @@ export const siteConfig = {
   links: {
     x: "https://x.com/sadmann17",
     github: "https://github.com/sadmann7/pptx",
+    diceui: "https://diceui.com",
   },
 };

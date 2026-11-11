@@ -3,12 +3,13 @@
 import * as React from "react";
 
 import { useCreatePresentationStore } from "@diceui/pptx";
+import { cn } from "@pptx/ui/lib/utils";
 
 import { PresentationEditor } from "@/components/presentation-editor";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 
 /** The playground's editor, on the sample deck. */
-export function PresentationEditingDemo() {
+export function PresentationEditingDemo({ className }: { className?: string }) {
   const store = useCreatePresentationStore();
 
   React.useEffect(() => {
@@ -26,5 +27,7 @@ export function PresentationEditingDemo() {
       });
   }, [store]);
 
-  return <PresentationEditor store={store} className="not-prose h-[36rem] rounded-lg" />;
+  return (
+    <PresentationEditor store={store} className={cn("not-prose h-[36rem] rounded-lg", className)} />
+  );
 }
