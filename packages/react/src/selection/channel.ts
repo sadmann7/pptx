@@ -27,7 +27,6 @@ export const CONTROLS_ATTRIBUTE = "data-presentation-controls";
 
 const controlsEvents = new WeakSet<Event>();
 
-/** Records an event that passed through `Presentation.Controls` in React's tree. */
 export function markControlsEvent(event: Event): void {
   controlsEvents.add(event);
 }
@@ -39,11 +38,6 @@ export function getIsControlsTarget(target: EventTarget | null): boolean {
   return element?.closest(`[${CONTROLS_ATTRIBUTE}]`) != null;
 }
 
-/**
- * Whether an event came from editor controls. Portalled popovers are only known
- * through React's dispatch, so a capture listener on the document must wait for
- * it before asking.
- */
 export function getIsControlsEvent(event: Event): boolean {
   return controlsEvents.has(event) || getIsControlsTarget(event.target);
 }

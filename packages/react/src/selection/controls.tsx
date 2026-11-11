@@ -10,11 +10,6 @@ function onControlsEvent(event: React.SyntheticEvent): void {
   markControlsEvent(event.nativeEvent);
 }
 
-/**
- * Editor UI outside the slide, such as a toolbar. Pressing it keeps the selection
- * and text editing, and so does pressing the popovers and menus it renders, even
- * when they portal out.
- */
 export const Controls = React.forwardRef<HTMLDivElement, ControlsProps>(function Controls(
   { render, ...controlsProps },
   forwardedRef,
