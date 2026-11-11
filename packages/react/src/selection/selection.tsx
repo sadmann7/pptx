@@ -2538,8 +2538,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
-   * once focus, and with it Escape, leaves the overlay; `data-presentation-controls` UI
-   * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
+   * once focus, and with it Escape, leaves the overlay; editor controls are
+   * exempt. It acts on release, since a touch scroll starts with a pointerdown and
    * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
   React.useEffect(() => {

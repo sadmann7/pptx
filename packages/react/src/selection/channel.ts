@@ -19,9 +19,8 @@ import type { SelectionState } from "./selection";
 import type { ActiveTextStyle } from "./text-range";
 
 /**
- * Marks UI outside the slide as part of the editor: a press inside it keeps the
- * selection and text editing alive instead of counting as a press outside. Put it
- * on toolbars and on their popover and menu content, which usually portal out.
+ * Marks editor UI that `Presentation.Controls` can't wrap, such as a context menu
+ * around the slide, so pressing it keeps the selection and text editing.
  */
 export const CONTROLS_ATTRIBUTE = "data-presentation-controls";
 
