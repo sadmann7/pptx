@@ -28,6 +28,7 @@ async function audit(page: Page, state: string): Promise<void> {
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .include("[data-slot=presentation-editor]")
     .include("[data-presentation-controls]")
+    .include("[data-slot$=-content]")
     // The slide is the deck's own content, with the author's colors.
     .exclude("[data-slot=presentation-slide] [data-pptx-node-id]")
     // Non-modal popups add focus guards: aria-hidden sentinels that pass Tab
