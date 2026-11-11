@@ -25,7 +25,8 @@
     "typescript/no-redundant-type-constituents": "off",
     "typescript/no-useless-default-assignment": "off",
     "typescript/require-array-sort-compare": "off",
-    "pptx/comment-style": "warn"
+    "pptx/comment-style": "error",
+    "pptx/no-low-value-comments": "error"
   },
   "overrides": [
     {
