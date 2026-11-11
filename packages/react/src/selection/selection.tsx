@@ -2602,7 +2602,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       event.preventDefault();
       clearDocumentSelection();
       rootRef.current?.setPointerCapture(event.pointerId);
-      rootRef.current?.focus();
+      rootRef.current?.focus({ preventScroll: true });
       setState({
         mode: "draw",
         tool: drawTool,
@@ -2653,7 +2653,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     event.preventDefault();
     clearDocumentSelection();
     rootRef.current?.setPointerCapture(event.pointerId);
-    rootRef.current?.focus();
+    rootRef.current?.focus({ preventScroll: true });
 
     if (!nodeId) {
       // Empty canvas: start a marquee (rubber-band) selection. A no-drag
