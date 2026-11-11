@@ -171,7 +171,7 @@ export default function IndexPage() {
 
 function Hero() {
   return (
-    <section className="flex flex-col items-center gap-10 px-5 pt-14 pb-16 md:gap-16 md:px-8 md:pt-28 md:pb-36">
+    <section className="flex flex-col items-center gap-10 px-5 pt-14 pb-14 md:gap-18 md:px-8 md:pt-28 md:pb-24">
       <div className="flex max-w-4xl flex-col items-center gap-5 text-center md:gap-6">
         <Link
           href="/docs/editing"
@@ -555,7 +555,7 @@ function Footer() {
 
 function Section({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <section className="px-5 py-16 md:px-8 md:py-32">
+    <section className="px-5 py-14 md:px-8 md:py-24">
       <div className={cn("mx-auto w-full max-w-300", className)}>{children}</div>
     </section>
   );
