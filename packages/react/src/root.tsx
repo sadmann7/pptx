@@ -184,6 +184,11 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
   useStoreEvent(store, "historyChange", onHistoryChange);
 
   React.useEffect(() => {
+    if (store !== internalStoreRef.current) return;
+    return () => store.reset();
+  }, [store]);
+
+  React.useEffect(() => {
     // `undefined` means the file API is not in use: Root leaves the store
     // alone so an owner (e.g. via `Presentation.Provider`) can drive it.
     if (file === undefined) return;
