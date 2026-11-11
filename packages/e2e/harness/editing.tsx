@@ -148,6 +148,11 @@ function App() {
       <Toolbar />
       <MarkedStrip />
       <div data-testid="outside" style={{ height: 40, background: "#eee" }} />
+      <div
+        data-testid="outside-stopped"
+        onPointerDown={(event) => event.stopPropagation()}
+        style={{ height: 40, background: "#ddd" }}
+      />
       <div style={{ position: "relative", padding: 16 }}>
         <Presentation.Slide>
           <Presentation.Selection undoRedoShortcuts />

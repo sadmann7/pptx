@@ -92,6 +92,18 @@ test.describe("editing toolbar", () => {
     await expect(overlay).toHaveAttribute("data-mode", "idle");
   });
 
+  test("ends text editing on a press outside that stops propagation", async ({ page }) => {
+    const { overlay, shape } = await open(page);
+
+    await shape.click();
+    await page.keyboard.press("Enter");
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    await page.getByTestId("outside-stopped").click();
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+    await expect(overlay).toBeFocused();
+  });
+
   test("keeps the selection and text editing through UI marked with the attribute", async ({
     page,
   }) => {
