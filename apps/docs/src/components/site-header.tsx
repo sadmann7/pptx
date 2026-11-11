@@ -14,12 +14,7 @@ import { GitHubIcon } from "@/components/icons";
 import { SiteLogo } from "@/lib/layout.shared";
 import { siteConfig } from "@/lib/site";
 
-const LINKS = [
-  { text: "Docs", href: "/docs" },
-  { text: "Components", href: "/docs/components" },
-  { text: "Editing", href: "/docs/editing" },
-  { text: "Store", href: "/docs/store" },
-];
+const LINKS = [{ text: "Docs", href: "/docs" }];
 
 export function SiteHeader({ className, ...props }: React.ComponentProps<"header">) {
   const { enabled, hotKey, setOpenSearch } = useSearchContext();

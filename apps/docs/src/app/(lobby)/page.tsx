@@ -1,118 +1,112 @@
+import * as React from "react";
+
 import { buttonVariants } from "@pptx/ui/components/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@pptx/ui/components/tabs";
 import { cn } from "@pptx/ui/lib/utils";
 import { highlight } from "fumadocs-core/highlight";
+import JSZip from "jszip";
 import {
-  Anchor,
+  ArrowDown,
   ArrowRight,
   CaseSensitive,
-  Check,
-  ChevronRight,
-  Component,
-  Database,
-  Download,
-  FileArchive,
-  FileCode,
-  GalleryVertical,
-  Keyboard,
-  Layers,
-  Monitor,
+  ChartColumn,
+  CornerRightDown,
   Move,
-  Package,
-  Pencil,
-  Scan,
   Shapes,
   Table,
   Type,
-  Undo2,
 } from "lucide-react";
 import Link from "next/link";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
-import { GitHubIcon } from "@/components/icons";
-import { PresentationEditingDemo } from "@/components/presentation-editing-demo";
+import { DemoDeckEditor, DemoDeckParts, DemoDeckProvider } from "@/components/landing-demo";
+import type { DeckPart } from "@/components/landing-demo";
+import { DEMO_DECK_PATH } from "@/lib/constants";
 import { siteConfig } from "@/lib/site";
-
-const PARTS = [
-  { path: "[Content_Types].xml", size: "1.8 KB", compact: false },
-  { path: "ppt/presentation.xml", size: "3.2 KB" },
-  { path: "ppt/slides/slide1.xml", size: "6.4 KB" },
-  { path: "ppt/slides/slide2.xml", size: "5.1 KB", rewritten: true },
-  { path: "ppt/slides/slide3.xml", size: "7.9 KB" },
-  { path: "ppt/slides/slide4.xml", size: "4.6 KB", rewritten: true },
-  { path: "ppt/slideLayouts/slideLayout1.xml", size: "2.7 KB", compact: false },
-  { path: "ppt/slideMasters/slideMaster1.xml", size: "12.3 KB" },
-  { path: "ppt/theme/theme1.xml", size: "8.1 KB" },
-  { path: "ppt/fonts/font1.fntdata", size: "184 KB", compact: false },
-  { path: "ppt/media/image1.png", size: "412 KB" },
-];
-
-const ROUND_TRIP_POINTS = [
-  "Embedded ODTTF and MTX fonts decoded and registered",
-  "Layout, master, and theme inheritance resolved",
-  "Typed edit operations with full undo and redo",
-];
 
 const FEATURES = [
   {
     icon: Shapes,
     title: "Faithful rendering",
-    description:
-      "Preset and custom geometries, gradients, pattern fills, shadows, tables, charts, and images.",
+    description: "Shapes, fills, shadows, and images, inherited through layouts and themes.",
+  },
+  {
+    icon: ChartColumn,
+    title: "Charts",
+    description: "Bar, line, area, pie, scatter, and more, drawn from the deck's data.",
   },
   {
     icon: Move,
     title: "Direct manipulation",
-    description:
-      "Move, resize with aspect lock, rotate, snap to guides, multi-select, and marquee.",
+    description: "Move, resize, rotate, and snap, with PowerPoint's shortcuts.",
   },
   {
     icon: Type,
     title: "Inline text editing",
-    description: "Edit text in place, then format runs and paragraphs through useSelection.",
+    description: "Edit text in place and format it with useSelection.",
   },
   {
     icon: Table,
     title: "Table editing",
-    description:
-      "Insert tables, add rows and columns, merge and split cells, and style fills and borders.",
-  },
-  {
-    icon: Keyboard,
-    title: "Keyboard shortcuts",
-    description: "Nudge, delete, duplicate, copy, paste, and arrange with PowerPoint's bindings.",
+    description: "Add rows and columns, merge cells, and style borders.",
   },
   {
     icon: CaseSensitive,
     title: "Embedded fonts",
-    description: "ODTTF and MTX fonts are decoded from the file so slides keep their typefaces.",
-  },
-  {
-    icon: GalleryVertical,
-    title: "Thumbnail strip",
-    description:
-      "Lazy miniatures on a shared render queue, so big decks never block the main thread.",
-  },
-  {
-    icon: Scan,
-    title: "Auto-fit zoom",
-    description: "The slide scales to fill its viewport and re-fits whenever the window resizes.",
-  },
-  {
-    icon: Undo2,
-    title: "Undo and redo",
-    description: "Every typed edit lands in history, with opt-in Ctrl/Cmd+Z and Ctrl/Cmd+Y.",
+    description: "Fonts packed in the file load, so slides keep their type.",
   },
 ];
+
+const COVERAGE_STATS = [
+  { value: "187", label: "preset geometries" },
+  { value: "74", label: "built-in table styles" },
+  { value: "9", label: "chart types" },
+  { value: "6", label: "image formats" },
+];
+
+const COVERAGE = [
+  {
+    area: "Shapes and geometry",
+    notes: "All 187 presets, custom geometry, groups, and connectors",
+    status: "supported",
+  },
+  {
+    area: "Fills, lines, and effects",
+    notes: "Solid, gradient, pattern, and picture fills, plus shadows",
+    status: "supported",
+  },
+  {
+    area: "Text",
+    notes: "Bullets, autofit, vertical text, and embedded fonts",
+    status: "supported",
+  },
+  { area: "Tables", notes: "Merges, borders, and 74 built-in styles", status: "supported" },
+  { area: "Charts", notes: "Nine types; 3-D charts render flat", status: "partial" },
+  {
+    area: "SmartArt, EMF, and OLE",
+    notes: "Drawn from the fallback stored in the file",
+    status: "partial",
+  },
+  { area: "Transitions and animations", notes: "Slides render as static frames", status: "none" },
+  { area: "Notes, comments, 3-D, and WMF", notes: "Kept on save, not rendered", status: "none" },
+] as const;
+
+const COVERAGE_STATUS = {
+  supported: { label: "Supported", className: "bg-green-500" },
+  partial: { label: "Partial", className: "bg-amber-500" },
+  none: { label: "Not yet", className: "bg-muted-foreground" },
+};
 
 const EDITOR_CODE = `import { Presentation } from "@diceui/pptx";
 
 export function Editor({ file }) {
   return (
-    <Presentation.Root file={file} readOnly={false}>
+    <Presentation.Root file={file}>
       <Presentation.ThumbnailList />
-      <Presentation.Viewport autoFit>
+      <Presentation.Viewport>
         <Presentation.Slide>
-          <Presentation.Selection undoRedoShortcuts />
+          <Presentation.Selection />
         </Presentation.Slide>
       </Presentation.Viewport>
     </Presentation.Root>
@@ -150,31 +144,28 @@ const PRIMITIVES = [
   { name: "Selection", description: "Box, handles, snap guides, marquee" },
 ];
 
-const REACT_LAYER = [
-  { icon: Database, name: "Store", description: "Loading, navigation, zoom, history" },
-  { icon: Component, name: "Primitives", description: "Root, Viewport, Slide, Selection" },
-  { icon: Anchor, name: "Hooks", description: "useSelection, useZoom, and more" },
+const ARCHITECTURE_PATHS = [
+  { label: "With React", app: "Next.js, Vite", hasReact: true },
+  { label: "Without React", app: "Vue, Svelte, plain JS", hasReact: false },
 ];
 
-const CORE_STEPS = [
-  { icon: Package, name: "Unzip" },
-  { icon: FileCode, name: "Parse OOXML" },
-  { icon: Layers, name: "Resolve inheritance" },
-  { icon: Monitor, name: "Render to DOM" },
-  { icon: Pencil, name: "Apply edits" },
-  { icon: Download, name: "Save" },
-];
+const REACT_PARTS = ["Root", "Viewport", "Slide", "Selection"];
+
+const CORE_STEPS = ["Parse", "Render", "Edit", "Save"];
 
 export default function IndexPage() {
   return (
-    <main className="flex flex-col">
-      <Hero />
-      <RoundTrip />
-      <Features />
-      <ComposableApi />
-      <Architecture />
-      <Footer />
-    </main>
+    <DemoDeckProvider>
+      <main className="flex flex-col">
+        <Hero />
+        <RoundTrip />
+        <Features />
+        <Coverage />
+        <ComposableApi />
+        <Architecture />
+        <Footer />
+      </main>
+    </DemoDeckProvider>
   );
 }
 
@@ -197,15 +188,17 @@ function Hero() {
           Open, edit, and save .pptx without leaving the browser
         </h1>
         <p className="max-w-[40rem] animate-fade-up text-lg text-balance text-muted-foreground opacity-0 [animation-delay:0.2s] [animation-fill-mode:forwards] md:text-[19px]/[29px]">
-          Composable React primitives for viewing and editing PowerPoint decks. Real rendering,
-          lossless saves, and no styles you have to fight.
+          Composable React primitives for viewing and editing PowerPoint decks.
         </p>
         <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 [animation-delay:0.3s] [animation-fill-mode:forwards] sm:flex sm:w-auto">
           <CtaButtons />
         </div>
       </div>
       <div className="flex w-full justify-center bg-[radial-gradient(ellipse_45%_40%_at_50%_55%,color-mix(in_srgb,var(--presentation-selection,#1a73e8)_8%,transparent),transparent)] md:py-0">
-        <PresentationEditingDemo className="h-[22rem] w-full max-w-300 rounded-xl shadow-2xl shadow-black/40 md:h-[40.75rem]" />
+        <DemoDeckEditor
+          defaultSelectedNodeName="mat-cover-title"
+          className="h-[22rem] w-full max-w-300 rounded-xl shadow-2xl shadow-black/40 md:h-[40.75rem]"
+        />
       </div>
     </section>
   );
@@ -219,23 +212,20 @@ function CtaButtons() {
         <ArrowRight />
       </Link>
       <Link
-        href={siteConfig.links.github}
-        target="_blank"
-        rel="noreferrer"
+        href="/docs/components"
         className={cn(
           buttonVariants({ variant: "outline", size: "lg" }),
           "h-11 bg-card px-5 text-[15px] dark:border-border dark:bg-card",
         )}
       >
-        <GitHubIcon />
-        GitHub
+        View components
       </Link>
     </>
   );
 }
 
-function RoundTrip() {
-  const rewritten = PARTS.filter((part) => part.rewritten).length;
+async function RoundTrip() {
+  const parts = await getDeckParts();
 
   return (
     <Section className="grid items-center gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-30">
@@ -246,108 +236,39 @@ function RoundTrip() {
           Save the same file.
         </SectionHeading>
         <p className="text-[17px]/[26px] text-muted-foreground">
-          Untouched parts round-trip byte-for-byte. Only the slides you edit are re-serialized, so
-          charts, notes, and macros you never rendered survive the save.
+          Only the parts you edit are rewritten. Everything else is saved byte-for-byte.
         </p>
-        <ul className="flex flex-col gap-3 pt-2 text-[15px]">
-          {ROUND_TRIP_POINTS.map((point) => (
-            <li key={point} className="flex items-center gap-3">
-              <Check className="size-3.5 shrink-0 text-muted-foreground" />
-              {point}
-            </li>
-          ))}
-        </ul>
+        <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+          <span className="size-1.75 rounded-full bg-green-500" />
+          Live: edit the slide above<span className="max-sm:hidden"> and this list updates</span>
+        </p>
       </div>
-      <div className="overflow-hidden rounded-xl border bg-card font-mono">
-        <div className="flex items-center justify-between gap-4 border-b px-3.5 py-3.5 sm:px-5">
-          <div className="flex min-w-0 items-center gap-2.5 text-[13px]">
-            <FileArchive className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">after-the-needle-drops.pptx</span>
-          </div>
-          <div className="hidden items-center gap-4 text-xs text-muted-foreground sm:flex">
-            <span className="flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-green-500" />
-              rewritten
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-muted-foreground" />
-              byte-identical
-            </span>
-          </div>
-        </div>
-        <ul className="py-2.5">
-          {PARTS.map((part) => (
-            <li
-              key={part.path}
-              className={cn(
-                "flex items-center gap-3 px-3.5 py-2 text-[13px] sm:px-5",
-                part.rewritten && "bg-green-500/5",
-                part.compact === false && "max-sm:hidden",
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  part.rewritten ? "bg-green-500" : "bg-muted-foreground",
-                )}
-              />
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate",
-                  part.rewritten ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {part.path}
-              </span>
-              <span
-                className={cn(
-                  "text-xs",
-                  part.rewritten ? "text-green-600 dark:text-green-400" : "text-muted-foreground",
-                )}
-              >
-                {part.rewritten ? (
-                  "rewritten"
-                ) : (
-                  <>
-                    <span className="sm:hidden">same</span>
-                    <span className="max-sm:hidden">unchanged</span>
-                  </>
-                )}
-              </span>
-              <span className="w-16 text-right text-xs text-muted-foreground max-sm:hidden">
-                {part.size}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center justify-between gap-4 border-t bg-background px-3.5 py-3.5 text-xs sm:px-5">
-          <span className="text-muted-foreground">
-            {rewritten} of {PARTS.length} parts <span className="sm:hidden">rewritten</span>
-            <span className="max-sm:hidden">re-serialized</span>
-          </span>
-          <span>
-            <span className="max-sm:hidden">await </span>store.save()
-          </span>
-        </div>
-      </div>
+      <DemoDeckParts fileName={path.basename(DEMO_DECK_PATH)} parts={parts} />
     </Section>
+  );
+}
+
+async function getDeckParts(): Promise<DeckPart[]> {
+  const deck = await readFile(path.join(process.cwd(), "public", DEMO_DECK_PATH));
+  const zip = await JSZip.loadAsync(deck);
+  const files = Object.values(zip.files).filter((file) => !file.dir);
+
+  return Promise.all(
+    files.map(async (file) => ({
+      path: file.name,
+      size: (await file.async("uint8array")).length,
+    })),
   );
 }
 
 function Features() {
   return (
     <Section className="flex flex-col gap-8 md:gap-16">
-      <div className="flex flex-col justify-between gap-3.5 md:flex-row md:items-end md:gap-6">
-        <SectionHeading eyebrow="Everything a deck needs">
-          Renders like PowerPoint.
-          <br />
-          Edits like PowerPoint.
-        </SectionHeading>
-        <p className="max-w-[24rem] text-[17px]/[26px] text-muted-foreground">
-          Keyboard shortcuts, snapping, and inline text editing behave the way people already
-          expect.
-        </p>
-      </div>
+      <SectionHeading eyebrow="Everything a deck needs">
+        Renders like PowerPoint.
+        <br />
+        Edits like PowerPoint.
+      </SectionHeading>
       <div className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
           <div
@@ -427,10 +348,9 @@ async function ComposableApi() {
         ))}
       </Tabs>
       <div className="flex flex-col gap-6 max-lg:order-first">
-        <SectionHeading eyebrow="Composable API">Primitives, not a product.</SectionHeading>
+        <SectionHeading eyebrow="Composable API">Compose your editor.</SectionHeading>
         <p className="text-[17px]/[26px] text-muted-foreground">
-          Assemble the parts like shadcn/ui. Each one is unstyled and accessible, so the editor
-          matches your app instead of the other way round.
+          Unstyled, accessible parts you arrange and style like shadcn/ui.
         </p>
         <dl className="flex flex-col pt-4 text-sm">
           {PRIMITIVES.map((primitive) => (
@@ -448,73 +368,162 @@ async function ComposableApi() {
   );
 }
 
+function Coverage() {
+  return (
+    <Section className="flex flex-col gap-8 md:gap-16">
+      <SectionHeading eyebrow="OOXML coverage">
+        Measured against
+        <br />
+        ECMA-376.
+      </SectionHeading>
+      <div className="flex flex-col gap-8 md:gap-16">
+        <dl className="grid grid-cols-2 border-y md:grid-cols-4">
+          {COVERAGE_STATS.map((stat, index) => (
+            <div
+              key={stat.label}
+              className={cn(
+                "flex flex-col-reverse gap-1.5 py-5 md:py-7",
+                index % 2 === 0 ? "pr-5 max-md:border-r" : "pl-5",
+                index < 2 && "max-md:border-b",
+                index > 0 && "md:border-l md:pl-7",
+                index < COVERAGE_STATS.length - 1 && "md:pr-7",
+              )}
+            >
+              <dt className="text-[13px] text-muted-foreground md:text-[15px] md:font-medium md:text-foreground">
+                {stat.label}
+              </dt>
+              <dd className="text-[34px]/none font-semibold tracking-[-1.2px] md:text-5xl/none md:tracking-[-1.8px]">
+                {stat.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="overflow-hidden rounded-xl border">
+          <div className="grid grid-cols-[15rem_minmax(0,1fr)_7.5rem] gap-6 border-b bg-card px-6 py-3 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase max-md:hidden">
+            <span>Area</span>
+            <span>What renders</span>
+            <span>Status</span>
+          </div>
+          <ul>
+            {COVERAGE.map((row) => {
+              const status = COVERAGE_STATUS[row.status];
+
+              return (
+                <li
+                  key={row.area}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 border-b px-4 py-3.5 last:border-b-0 md:grid-cols-[15rem_minmax(0,1fr)_7.5rem] md:items-center md:px-6 md:py-4"
+                >
+                  <span className="text-sm font-medium md:text-[15px]">{row.area}</span>
+                  <span className="text-[13px]/5 text-muted-foreground max-md:order-last max-md:col-span-2 md:text-sm">
+                    {row.notes}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 font-mono text-[11px] md:text-xs",
+                      row.status === "none" && "text-muted-foreground",
+                    )}
+                  >
+                    <span className={cn("size-1.5 rounded-full", status.className)} />
+                    {status.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 function Architecture() {
   return (
     <Section className="flex flex-col gap-8 md:items-center md:gap-16">
       <div className="flex flex-col gap-3.5 md:items-center md:gap-6 md:text-center">
-        <SectionHeading eyebrow="Architecture">Two layers. React is optional.</SectionHeading>
-        <p className="max-w-[35rem] text-[17px]/[26px] text-balance text-muted-foreground">
-          The core parses, renders, edits, and saves. The React layer adds a store and the
-          primitives on top.
+        <SectionHeading eyebrow="Architecture">React is optional.</SectionHeading>
+        <p className="max-w-[40rem] text-[17px]/[26px] text-balance text-muted-foreground">
+          The engine runs on its own. React adds the components.
         </p>
       </div>
-      <div className="flex w-full flex-col items-center">
-        <Layer
-          name="@diceui/pptx"
-          tag="React"
-          description="Store built on useSyncExternalStore"
-          muted
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {REACT_LAYER.map((item) => (
-              <div
-                key={item.name}
-                className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 rounded-lg border bg-muted px-4.5 py-4 md:gap-x-2"
-              >
-                <item.icon className="size-4 max-md:row-span-2" />
-                <span className="text-[15px] font-semibold">{item.name}</span>
-                <span className="font-mono text-xs text-muted-foreground md:col-span-2 md:text-[13px]">
-                  {item.description}
-                </span>
+      <div className="grid w-full gap-4 md:grid-cols-2">
+        {ARCHITECTURE_PATHS.map((item) => (
+          <div key={item.label} className="flex flex-col rounded-xl border bg-card p-4 md:p-6">
+            <p className="pb-4 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+              {item.label}
+            </p>
+            <Tier name="Your app" tag={item.app} className="h-11 font-sans font-medium md:h-14" />
+            <TierConnector />
+            {item.hasReact ? (
+              <Tier name="@diceui/pptx" tag="Components and hooks">
+                {REACT_PARTS.map((part) => (
+                  <Chip key={part}>{part}</Chip>
+                ))}
+              </Tier>
+            ) : (
+              <div className="flex h-10 items-center justify-center gap-2 rounded-[10px] bg-muted font-mono text-xs text-muted-foreground md:h-24">
+                <CornerRightDown className="size-3.5" />
+                no React layer
               </div>
-            ))}
+            )}
+            <TierConnector />
+            <Tier name="@diceui/pptx-core" tag="The engine">
+              {CORE_STEPS.map((step, index) => (
+                <React.Fragment key={step}>
+                  {index > 0 && <ArrowRight className="size-3 text-muted-foreground" />}
+                  <Chip>{step}</Chip>
+                </React.Fragment>
+              ))}
+            </Tier>
           </div>
-        </Layer>
-        <div className="flex flex-col items-center">
-          <span className="h-4 w-px bg-border" />
-          <span className="rounded-full border px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground">
-            wraps
-          </span>
-          <span className="h-4 w-px bg-border" />
-        </div>
-        <Layer
-          name="@diceui/pptx-core"
-          tag="Framework-agnostic"
-          description="Runs anywhere the DOM does"
-        >
-          <ol className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-6 lg:gap-8">
-            {CORE_STEPS.map((step, index) => (
-              <li
-                key={step.name}
-                className="relative flex flex-col gap-2.5 rounded-lg border p-3.5"
-              >
-                {index > 0 && (
-                  <ChevronRight className="absolute top-1/2 -left-5.75 hidden size-3.5 -translate-y-1/2 text-muted-foreground lg:block" />
-                )}
-                <span className="flex items-center justify-between text-muted-foreground">
-                  <step.icon className="size-4" />
-                  <span className="font-mono text-[11px]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                </span>
-                <span className="text-sm font-medium">{step.name}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="font-mono text-xs text-muted-foreground">slide → layout → master → theme</p>
-        </Layer>
+        ))}
       </div>
     </Section>
+  );
+}
+
+function Tier({
+  name,
+  tag,
+  className,
+  children,
+}: {
+  name: string;
+  tag: string;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col justify-center gap-2 rounded-[10px] bg-muted px-3.5 font-mono md:gap-2.5 md:px-5",
+        children ? "h-19 md:h-24" : undefined,
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[15px] font-medium">{name}</span>
+        <span className="text-right font-sans text-xs font-normal text-muted-foreground">
+          {tag}
+        </span>
+      </div>
+      {children && <div className="flex flex-wrap items-center gap-1.5">{children}</div>}
+    </div>
+  );
+}
+
+function TierConnector() {
+  return (
+    <div className="flex h-7 items-center justify-center text-muted-foreground">
+      <ArrowDown className="size-3.5" />
+    </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-md bg-primary px-2 py-1 font-mono text-xs font-medium text-primary-foreground">
+      {children}
+    </span>
   );
 }
 
@@ -546,7 +555,7 @@ function Footer() {
 
 function Section({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <section className="border-t px-5 py-16 md:px-8 md:py-32">
+    <section className="px-5 py-16 md:px-8 md:py-32">
       <div className={cn("mx-auto w-full max-w-300", className)}>{children}</div>
     </section>
   );
@@ -570,39 +579,5 @@ function IconTile({ icon: Icon }: { icon: React.ComponentType<{ className?: stri
     <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
       <Icon className="size-4" />
     </span>
-  );
-}
-
-function Layer({
-  name,
-  tag,
-  description,
-  muted,
-  children,
-}: {
-  name: string;
-  tag: string;
-  description: string;
-  muted?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex w-full flex-col gap-6 rounded-xl border p-4.5 md:p-8",
-        muted ? "bg-card" : "bg-background",
-      )}
-    >
-      <div className="flex justify-between gap-x-3 gap-y-1.5 max-md:flex-col md:items-center">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[15px] font-medium md:text-lg">{name}</span>
-          <span className="rounded-full border px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground">
-            {tag}
-          </span>
-        </div>
-        <span className="text-sm text-muted-foreground">{description}</span>
-      </div>
-      {children}
-    </div>
   );
 }

@@ -249,6 +249,7 @@ interface PresentationEditorProps {
   header?: React.ReactNode;
   toolbar?: boolean;
   floatingToolbar?: boolean;
+  children?: React.ReactNode;
 }
 
 export function PresentationEditor({
@@ -257,6 +258,7 @@ export function PresentationEditor({
   header,
   toolbar = true,
   floatingToolbar = false,
+  children,
 }: PresentationEditorProps) {
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -304,6 +306,7 @@ export function PresentationEditor({
             {floatingToolbar && <FloatingToolbar store={store} />}
           </PresentationContent>
         </Presentation>
+        {children}
       </PresentationProvider>
     </div>
   );
