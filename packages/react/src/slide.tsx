@@ -225,13 +225,16 @@ function SlideImpl({
   }, [presentation, slide, revision, contentRevision, mediaUrlCacheRef, onNodeErrorRef]);
 
   React.useEffect(() => {
+    const mediaUrlCache = mediaUrlCacheRef.current;
     return () => {
       if (slideHandleRef.current) {
         slideHandleRef.current.dispose();
         slideHandleRef.current = null;
       }
+      for (const url of mediaUrlCache.values()) URL.revokeObjectURL(url);
+      mediaUrlCache.clear();
     };
-  }, []);
+  }, [mediaUrlCacheRef]);
 
   const { width, height } = presentation;
   const isEditable = presentation.sourcePackage != null;

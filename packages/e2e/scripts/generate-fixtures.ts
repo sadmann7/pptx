@@ -9,6 +9,7 @@
  * - nested-charts.pptx  charts under ppt/slides/charts/ with literal data
  * - tables-groups.pptx  unequal tblGrid widths; nested groups with chOff/chExt
  * - table-borders.pptx  styleless table grid; per-cell tcPr borders that disagree
+ * - pictures.pptx       one embedded PNG picture (media blob URL lifecycle)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -66,6 +67,19 @@ function chartGraphicFrame(id: number, relId: string): string {
 <p:xfrm><a:off x="914400" y="914400"/><a:ext cx="9144000" cy="4572000"/></p:xfrm>
 <a:graphic><a:graphicData uri="${CHART_NS}"><c:chart xmlns:c="${CHART_NS}" r:id="${relId}"/></a:graphicData></a:graphic>
 </p:graphicFrame>`;
+}
+
+const PIXEL_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+function picture(id: number, relId: string): string {
+  return `<p:pic>
+<p:nvPicPr><p:cNvPr id="${id}" name="Picture ${id}"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>
+<p:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+<p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="1828800" cy="1828800"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+</p:pic>`;
 }
 
 /** Slide rels with an absolute chart target, mimicking Open XML SDK output. */
@@ -328,6 +342,17 @@ async function buildTableBorders(): Promise<ArrayBuffer> {
   });
 }
 
+async function buildPictures(): Promise<ArrayBuffer> {
+  return buildCustomPptx({
+    slides: [picture(2, "rId2")],
+    contentTypesXml: contentTypesXml(1),
+    extraFiles: {
+      "ppt/media/image1.png": PIXEL_PNG,
+      "ppt/slides/_rels/slide1.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${RELS_NS}"><Relationship Id="rId1" Type="${REL_TYPE_BASE}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="${REL_TYPE_BASE}/image" Target="../media/image1.png"/></Relationships>`,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   mkdirSync(FIXTURES_DIR, { recursive: true });
 
@@ -337,6 +362,7 @@ async function main(): Promise<void> {
     ["nested-charts.pptx", buildNestedCharts()],
     ["tables-groups.pptx", buildTablesGroups()],
     ["table-borders.pptx", buildTableBorders()],
+    ["pictures.pptx", buildPictures()],
   ];
 
   for (const [name, bufferPromise] of decks) {

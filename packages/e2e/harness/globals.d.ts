@@ -12,6 +12,9 @@ declare global {
   /** Which path the font harness decodes with; see harness/fonts.ts. */
   type BenchMode = "worker" | "main" | "sliced";
 
+  /** Where the lifecycle harness's viewer gets its store from. */
+  type ViewerStore = "root" | "hook";
+
   /** A font part the harness sabotaged, and what the loader should report. */
   interface BrokenFontPart {
     path: string;
@@ -47,6 +50,11 @@ declare global {
       slide: { render: number[]; mount: number[] };
       thumbnail: { render: number[]; mount: number[] };
     };
+    /** Mounts a viewer loading the given deck (lifecycle harness). */
+    __mountViewer?: (file: string, store?: ViewerStore) => Promise<void>;
+    __unmountViewer?: () => void;
+    /** True once the mounted viewer's `onLoad` fired (lifecycle harness). */
+    __viewerLoaded?: boolean;
     /** True once the embedded-font harness has a deck ready to decode. */
     __fontsReady?: boolean;
     /** Unique font parts the loaded deck will decode, and their total size. */

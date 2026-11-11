@@ -32,7 +32,7 @@ export namespace Provider {
 }
 
 /**
- * Creates a stable `PresentationStore` instance for use in controlled mode.
+ * Creates a stable `PresentationStore` for controlled mode, reset when the calling component unmounts.
  *
  * ```tsx
  * const store = useCreatePresentationStore();
@@ -47,7 +47,9 @@ export namespace Provider {
  * ```
  */
 export function useCreateStore(): Store {
-  return useLazyRef(createStore).current;
+  const store = useLazyRef(createStore).current;
+  React.useEffect(() => () => store.reset(), [store]);
+  return store;
 }
 
 /**
