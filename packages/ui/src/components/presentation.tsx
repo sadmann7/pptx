@@ -62,6 +62,10 @@ function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.
   );
 }
 
+function PresentationControls({ ...props }: PresentationPrimitive.Controls.Props) {
+  return <PresentationPrimitive.Controls data-slot="presentation-controls" {...props} />;
+}
+
 function PresentationSelection({
   className,
   children,
@@ -360,6 +364,7 @@ function withClassName<State>(
 export {
   Presentation,
   PresentationContent,
+  PresentationControls,
   PresentationError,
   PresentationLoading,
   PresentationMarquee,

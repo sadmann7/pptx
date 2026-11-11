@@ -71,6 +71,45 @@ test.describe("editing toolbar", () => {
     await expect(overlay).toHaveAttribute("data-mode", "idle");
   });
 
+  test("keeps text editing through a press and Escape in a popover the controls portal", async ({
+    page,
+  }) => {
+    const { overlay, shape } = await open(page);
+
+    await shape.click();
+    await page.keyboard.press("Enter");
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    await page.getByTestId("swatch").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    await page.getByTestId("popover-input").click();
+    await expect(page.getByTestId("popover-input")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    await page.getByTestId("outside").click();
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+  });
+
+  test("keeps the selection and text editing through UI marked with the attribute", async ({
+    page,
+  }) => {
+    const { overlay, shape } = await open(page);
+
+    await shape.click();
+    await page.keyboard.press("Enter");
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    await page.getByTestId("marked-bold").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    await page.getByTestId("outside").click();
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+    await shape.click();
+    await page.getByTestId("marked-bold").click();
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+  });
+
   test("formats the selected text and keeps editing it", async ({ page }) => {
     const { overlay, shape } = await open(page);
 

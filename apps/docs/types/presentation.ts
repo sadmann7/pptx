@@ -41,6 +41,7 @@ export type RotateHandleProps = IndieProps<PresentationPrimitive.RotateHandle.Pr
 export type SnapGuideProps = IndieProps<PresentationPrimitive.SnapGuide.Props, DivProps>;
 
 export type MarqueeProps = IndieProps<PresentationPrimitive.Marquee.Props, DivProps>;
+export type ControlsProps = IndieProps<PresentationPrimitive.Controls.Props, DivProps>;
 
 export type ThumbnailListProps = IndieProps<PresentationPrimitive.ThumbnailList.Props, DivProps>;
 

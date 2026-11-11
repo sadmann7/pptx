@@ -62,6 +62,7 @@ export function Editor({ file }: { file: File }) {
 | `Presentation.RotateHandle`  | Rotation handle of a selected shape                              |
 | `Presentation.SnapGuide`     | Guides shown while a move or resize snaps                        |
 | `Presentation.Marquee`       | Rubber band for marquee selection and draw tools                 |
+| `Presentation.Controls`      | Editor UI outside the slide that keeps the selection             |
 | `Presentation.ThumbnailList` | Scrollable list of slide thumbnails                              |
 | `Presentation.Loading`       | Slot for custom loading states                                   |
 | `Presentation.Error`         | Slot for custom error states                                     |
@@ -80,7 +81,7 @@ const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 const { textStyle, setTextStyle, insertShape, startDrawing } = useSelection();
 ```
 
-`useSelection` drives a formatting toolbar outside the slide. Mark the toolbar with `data-presentation-controls` so pressing it keeps the selection.
+`useSelection` drives a formatting toolbar outside the slide. Wrap the toolbar in `Presentation.Controls` so pressing it, or a popover it renders, keeps the selection.
 
 ### Uncontrolled
 

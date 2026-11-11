@@ -25,11 +25,27 @@ import type { ActiveTextStyle } from "./text-range";
  */
 export const CONTROLS_ATTRIBUTE = "data-presentation-controls";
 
+const controlsEvents = new WeakSet<Event>();
+
+/** Records an event that passed through `Presentation.Controls` in React's tree. */
+export function markControlsEvent(event: Event): void {
+  controlsEvents.add(event);
+}
+
 /** Whether an event target sits inside UI marked with `CONTROLS_ATTRIBUTE`. */
 export function getIsControlsTarget(target: EventTarget | null): boolean {
   const element =
     target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
   return element?.closest(`[${CONTROLS_ATTRIBUTE}]`) != null;
+}
+
+/**
+ * Whether an event came from editor controls. Portalled popovers are only known
+ * through React's dispatch, so a capture listener on the document must wait for
+ * it before asking.
+ */
+export function getIsControlsEvent(event: Event): boolean {
+  return controlsEvents.has(event) || getIsControlsTarget(event.target);
 }
 
 /** A row or column change at the table cell being edited. */
@@ -309,8 +325,8 @@ function requireController(channel: SelectionChannel): SelectionController {
  * The selection of the editing overlay, and formatting commands for it.
  *
  * Works anywhere under `Presentation.Root` or `Presentation.Provider`, so a
- * toolbar outside the slide can follow the selection. Mark that toolbar with
- * `data-presentation-controls` so pressing it doesn't clear the selection.
+ * toolbar outside the slide can follow the selection. Wrap that toolbar in
+ * `Presentation.Controls` so pressing it doesn't clear the selection.
  *
  * ```tsx
  * function BoldButton() {
