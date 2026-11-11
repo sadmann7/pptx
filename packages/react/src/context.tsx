@@ -10,14 +10,9 @@ import { createStore } from "./store";
 export const Context = React.createContext<Store | null>(null);
 
 /**
- * `Presentation.Root`'s DOM node, published for descendants that need the
- * presentation's focus boundary rather than their own element: `Selection`
- * listens for undo/redo on the document, and has to tell a keystroke aimed at
- * the deck (including its thumbnail strip) apart from one aimed at the rest of
- * the host page.
- *
- * A ref rather than state: only event handlers read it, so publishing the
- * element must not re-render the tree.
+ * `Presentation.Root`'s DOM node, the presentation's focus boundary. `Selection`
+ * uses it to tell keystrokes aimed at the deck, thumbnails included, from the
+ * rest of the page. A ref, not state, since only event handlers read it.
  */
 export const RootContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
 
@@ -70,13 +65,10 @@ export function useStoreContext(consumerName: string): Store {
 }
 
 /**
- * Returns the `PresentationStore` driving the surrounding tree, whether it was
- * passed to `Presentation.Provider` or created internally by
- * `Presentation.Root`. Throws if called outside either.
- *
- * This is how a descendant reaches the imperative API (`load`, `edit`, `undo`,
- * `redo`, `save`, `reset`) without the store being threaded down as a prop,
- * and it is the only way to reach `Root`'s internal store at all:
+ * Returns the `PresentationStore` driving the tree, from `Presentation.Provider`
+ * or `Presentation.Root`'s internal one, and throws outside either. It reaches
+ * `load`, `edit`, `undo`, `redo`, `save` and `reset` without prop drilling, and is
+ * stable and subscribes to nothing; read state with `usePresentation`, `useSlide` or `useZoom`.
  *
  * ```tsx
  * function SaveButton() {
@@ -89,22 +81,15 @@ export function useStoreContext(consumerName: string): Store {
  *   <SaveButton />
  * </Presentation.Root>
  * ```
- *
- * Returns a stable reference and subscribes to nothing, so a state change does
- * not re-render the caller. Read state with `usePresentation`, `useSlide`, or
- * `useZoom` instead of `store.getState()`.
  */
 export function useStore(): Store {
   return useStoreContext("usePresentationStore");
 }
 
 /**
- * Bridges an optional event-handler prop to a store event for the lifetime of
- * the component. Internal: components expose the callback as a prop rather than
- * making consumers manage a subscription.
- *
- * The callback is read through a ref, so passing an inline function does not
- * resubscribe on every render.
+ * Bridges an optional event-handler prop to a store event for the component's
+ * lifetime, so consumers pass a callback instead of managing a subscription. The
+ * callback is read through a ref, so an inline function doesn't resubscribe.
  */
 export function useStoreEvent<E extends keyof StoreEventMap>(
   store: Store,

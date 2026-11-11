@@ -115,11 +115,10 @@ export interface PptxViewerEventMap {
 }
 
 /**
- * Scales a rendered slide element to its display size with `zoom` rather than
- * `transform: scale()`. A transform rasterises at the intrinsic size, so at a
- * fractional scale hairlines (table rules, thin outlines) straddle two device
- * pixels and wash out; `zoom` scales at layout time, so they stay crisp, as in
- * PowerPoint. Client rects come back in the same post-zoom coordinates.
+ * Scales a rendered slide to its display size with `zoom`, not `transform: scale()`.
+ * A transform rasterizes at the intrinsic size, so hairlines straddle two device
+ * pixels and wash out at fractional scales; `zoom` scales at layout time and keeps
+ * them crisp, as in PowerPoint. Client rects use the same post-zoom coordinates.
  */
 export function applySlideScale(element: HTMLElement, scale: number): void {
   element.style.setProperty("zoom", String(scale));
@@ -441,13 +440,9 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Renders a single slide into an external container element.
-   * Useful for React/Vue integration, thumbnail generation, etc.
-   *
-   * **Ownership:** The caller owns the returned {@link SlideHandle} and is
-   * responsible for calling `handle.dispose()` when the slide is no longer
-   * needed. `destroy()` does NOT automatically dispose externally-rendered
-   * handles.
+   * Renders a single slide into an external container, for framework integration
+   * or thumbnails. The caller owns the returned {@link SlideHandle} and must call
+   * `handle.dispose()`, since `destroy()` doesn't dispose externally rendered handles.
    */
   renderSlideToContainer(
     index: number,

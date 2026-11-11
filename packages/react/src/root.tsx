@@ -23,15 +23,10 @@ export interface RootState {
 
 export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoad" | "onError"> {
   /**
-   * The file to parse and display. Accepts `File`, `Blob`, `ArrayBuffer`,
-   * or `Uint8Array`.
-   *
-   * - Set to `null` to explicitly reset the viewer.
-   * - Omit (`undefined`) to leave the store untouched, e.g. when the store
-   *   is owned elsewhere and loaded manually via `store.load(file)`.
-   *
-   * Works the same with an internal store or one inherited from
-   * `Presentation.Provider`: whoever sets `file` triggers the load.
+   * The file to parse and display, as a `File`, `Blob`, `ArrayBuffer` or `Uint8Array`.
+   * Whoever sets it triggers the load, with an internal or a `Presentation.Provider` store.
+   * - `null` resets the viewer.
+   * - `undefined` leaves the store alone, e.g. when it's loaded with `store.load(file)`.
    *
    * ```tsx
    * <Presentation.Root file={file} />

@@ -136,8 +136,8 @@ function resolveColorUncached(
       }
 
       case "hslClr": {
-        const hue = (child.numAttr("hue") ?? 0) / 60000; // 60000ths of degree -> degrees
-        const sat = (child.numAttr("sat") ?? 0) / 100000; // percentage
+        const hue = (child.numAttr("hue") ?? 0) / 60000; // 60000ths of degree -> degrees.
+        const sat = (child.numAttr("sat") ?? 0) / 100000; // percentage.
         const lum = (child.numAttr("lum") ?? 0) / 100000;
         const rgb = hslToRgb(hue, sat, lum);
         const hex = rgbToHex(rgb.r, rgb.g, rgb.b).replace("#", "");
@@ -551,7 +551,7 @@ export function resolveLineStyle(
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
       if (width === 0 && idx > 0) {
-        width = idx * 0.75; // approximate: idx 1 = ~0.75px, idx 2 = ~1.5px
+        width = idx * 0.75; // approximate: idx 1 = ~0.75px, idx 2 = ~1.5px.
       }
     }
   }

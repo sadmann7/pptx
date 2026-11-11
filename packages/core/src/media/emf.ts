@@ -9,15 +9,15 @@ const EMR_COMMENT = 70;
 const EMR_STRETCHDIBITS = 81;
 
 // GDI comment identifiers (MS-EMF spec).
-const GDIC_COMMENT_ID = 0x43494447; // "GDIC"
+const GDIC_COMMENT_ID = 0x43494447; // "GDIC".
 const GDIC_BEGINGROUP = 0x00000002;
 const GDIC_MULTIFORMATS = 0x40000004;
 
 // EMF header signature at offset 40.
-const EMF_SIGNATURE = 0x464d4520; // " EMF"
+const EMF_SIGNATURE = 0x464d4520; // " EMF".
 
-const PDF_HEADER = [0x25, 0x50, 0x44, 0x46]; // "%PDF"
-const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46]; // "%%EOF"
+const PDF_HEADER = [0x25, 0x50, 0x44, 0x46]; // "%PDF".
+const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46]; // "%%EOF".
 
 const BI_RGB = 0;
 const MAX_EMF_BITMAP_PIXELS = 16_777_216;
@@ -112,11 +112,9 @@ function parseMultiformats(
   offset: number,
   _recordSize: number,
 ): EmfContent | null {
-  // Layout from record start:
-  // +12: commentIdentifier(4), +16: publicCommentIdentifier(4)
-  // +20: outputRect(16 = RECTL)
-  // +36: countFormats(4)
-  // +40: format descriptors array, each: { signature(4), version(4), cbData(4), offData(4) }.
+  // Offsets from the record start: commentIdentifier +12, publicCommentIdentifier
+  // +16, outputRect +20 (a 16-byte RECTL), countFormats +36, then the format
+  // descriptors from +40, each { signature, version, cbData, offData } of 4 bytes.
   if (offset + 40 > data.length) return null;
 
   const countFormats = view.getUint32(offset + 36, true);
@@ -168,16 +166,10 @@ function parseStretchDibits(
   offset: number,
   _recordSize: number,
 ): EmfContent | null {
-  // STRETCHDIBITS record layout (offsets from record start):
-  //   0: type(4), 4: size(4)
-  //   8: rclBounds (16 bytes)
-  //  24: xDest(4), 28: yDest(4)
-  //  32: xSrc(4), 36: ySrc(4)
-  //  40: cxSrc(4), 44: cySrc(4)
-  //  48: offBmiSrc(4), 52: cbBmiSrc(4)
-  //  56: offBitsSrc(4), 60: cbBitsSrc(4)
-  //  64: iUsageSrc(4), 68: dwRop(4)
-  //  72: cxDest(4), 76: cyDest(4).
+  // STRETCHDIBITS offsets from the record start: type 0, size 4, rclBounds 8 (16
+  // bytes), then 4-byte xDest 24, yDest 28, xSrc 32, ySrc 36, cxSrc 40, cySrc 44,
+  // offBmiSrc 48, cbBmiSrc 52, offBitsSrc 56, cbBitsSrc 60, iUsageSrc 64, dwRop 68,
+  // cxDest 72 and cyDest 76.
   if (offset + 80 > data.length) return null;
 
   const offBmiSrc = view.getUint32(offset + 48, true);
@@ -230,9 +222,9 @@ function parseStretchDibits(
       if (srcIdx + bytesPerPixel > bitsData.length) break;
 
       // DIB stores BGR(A).
-      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2]; // R
-      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1]; // G
-      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0]; // B
+      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2]; // R.
+      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1]; // G.
+      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0]; // B.
       imageData.data[dstOffset + x * 4 + 3] = biBitCount === 32 ? bitsData[srcIdx + 3] : 255;
     }
   }

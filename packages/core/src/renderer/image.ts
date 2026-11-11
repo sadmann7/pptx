@@ -224,7 +224,7 @@ function renderImageUrl(
     // Guard against degenerate crops (<=0 visible).
     if (visibleW > 0.001 && visibleH > 0.001) {
       // Scaled so the visible portion fills the wrapper exactly.
-      const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%
+      const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%.
       const scaleY = 1 / visibleH;
       // Pixels, because CSS margin-top/margin-left percentages are both relative
       // to the containing block's WIDTH (not height), which causes incorrect offsets
@@ -718,7 +718,7 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
     overlay.style.backgroundColor = "rgba(0,0,0,0.3)";
     overlay.style.color = "#fff";
     overlay.style.fontSize = "24px";
-    overlay.textContent = "\u25B6"; // play symbol
+    overlay.textContent = "\u25B6"; // play symbol.
     wrapper.appendChild(overlay);
   } else {
     renderPlaceholder(wrapper, "Video");
@@ -807,7 +807,7 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
   const icon = document.createElement("div");
   icon.style.fontSize = "24px";
   icon.style.marginBottom = "4px";
-  icon.textContent = "\uD83D\uDDBC"; // framed picture emoji
+  icon.textContent = "\uD83D\uDDBC"; // framed picture emoji.
 
   const label = document.createElement("div");
   label.textContent = `Unsupported format: ${ext}`;
@@ -989,8 +989,8 @@ function applyDuotoneFilter(
  * e.g. bright="100000" makes the entire image white (preserving alpha).
  */
 function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
-  const bright = (lum.numAttr("bright") ?? 0) / 100000; // 0–1
-  const contrast = (lum.numAttr("contrast") ?? 0) / 100000; // -1 to 1
+  const bright = (lum.numAttr("bright") ?? 0) / 100000; // 0–1.
+  const contrast = (lum.numAttr("contrast") ?? 0) / 100000; // -1 to 1.
 
   if (bright === 0 && contrast === 0) return;
 
@@ -1039,7 +1039,7 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
  * Pixels above become white, pixels below become black. Alpha is preserved.
  */
 function applyBiLevelEffect(biLevel: SafeXmlNode, img: HTMLImageElement): void {
-  const thresh = (biLevel.numAttr("thresh") ?? 50000) / 100000; // 0–1
+  const thresh = (biLevel.numAttr("thresh") ?? 50000) / 100000; // 0–1.
 
   const apply = () => {
     const w = img.naturalWidth;

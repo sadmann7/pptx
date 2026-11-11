@@ -35,18 +35,10 @@ interface RenderTimings {
 }
 
 /**
- * Times one render of every slide and one mount of what it produced.
- *
- * Both halves are reported because the list pays both, but read the mount
- * number as a lower bound: it covers inserting the subtree and the layout that
- * forces, and nothing else. The host is off-screen, so the browser never paints
- * it, and paint is where the rest of showing a preview goes. Expect the mount
- * column to look small next to how much filling a preview actually costs
- * during a scroll.
- *
- * The renderers need no help to be measured fairly. `renderSlide` puts a
- * detached subtree into its own measurement host before reading text metrics,
- * so its forced layouts happen either way.
+ * Times one render of every slide and one mount of the result. Read the mount
+ * time as a lower bound: the host is off-screen, so it covers insertion and the
+ * forced layout but not paint. `renderSlide` measures text in its own host
+ * before reading metrics, so its forced layouts happen either way.
  */
 function timeRenders(
   presentation: PresentationData,

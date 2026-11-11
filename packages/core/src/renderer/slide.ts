@@ -187,12 +187,10 @@ function getTemplateShapes(
 }
 
 /**
- * Persistent, hidden, layout-contained host used to connect slide containers
- * to the document during render so text-autofit measurement works.
- *
- * Created lazily and reused by every `renderSlide()` call. Because the host is
- * `contain: strict`, appending/removing slide subtrees only invalidates layout
- * inside it, never the surrounding page, which keeps rendering during scroll cheap.
+ * Hidden host that connects slide containers to the document while they render,
+ * so text autofit can measure. Created lazily and shared by every `renderSlide()`;
+ * `contain: strict` keeps appends and removals from invalidating the page's
+ * layout, which keeps rendering during scroll cheap.
  */
 let measurementHost: HTMLElement | null = null;
 
@@ -254,23 +252,14 @@ export interface ThumbnailRendererOptions {
 }
 
 /**
- * Renders a slide optimised for thumbnail display.
+ * Renders a slide for thumbnail display with `renderSlide()`'s pipeline, minus
+ * the work that's invisible at thumbnail size and expensive on the main thread:
+ * - no text autofit measurement
+ * - charts render as a grey placeholder instead of ECharts
+ * - EMF images render as empty boxes instead of starting an async PDF decode
  *
- * Uses the same rendering pipeline as `renderSlide()`: real theme colours,
- * actual shapes, images, and text; skips operations that are
- * imperceptible at thumbnail scale and expensive on the main thread:
- *
- * - **No DOM measurement host**: text autofit measurement is skipped; text
- *   renders without scale correction. At 100–200 px thumbnail width the
- *   difference is invisible.
- * - **No ECharts**: chart nodes render as a lightweight grey placeholder
- *   instead of initialising a full canvas-based chart engine.
- * - **No EMF/PDF async tasks**: EMF-embedded images render as empty boxes
- *   rather than triggering async PDF decode.
- *
- * The returned `SlideHandle` has an immediately resolved `ready` promise
- * (no async work is started). Dispose is still required to revoke blob
- * URLs in standalone mode.
+ * `ready` resolves immediately, but dispose is still needed to revoke blob URLs
+ * in standalone mode.
  */
 export function renderThumbnail(
   presentation: PresentationData,

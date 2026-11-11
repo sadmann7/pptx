@@ -52,52 +52,37 @@ function getWheelDeltaPx(event: WheelEvent): number {
 
 export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   /**
-   * When `true`, automatically scales the slide to fill the viewport's
-   * dimensions whenever the container resizes.
-   *
-   * This is the starting mode, not a latch: `setZoom` (and `zoomIn`/
-   * `zoomOut`) turn fitting off so an explicit level survives the next
-   * resize, and `setAutoFit(true)` turns it back on. A zoom control offering
-   * both therefore needs no state of its own.
+   * When `true`, scales the slide to fill the viewport whenever it resizes. It's the
+   * starting mode, not a latch: `setZoom`, `zoomIn` and `zoomOut` turn fitting off so
+   * an explicit level survives resizes, and `setAutoFit(true)` turns it back on.
    *
    * @default false
    */
   autoFit?: boolean;
 
   /**
-   * When `true`, the mouse wheel navigates between slides like PowerPoint:
-   * scrolling past the end of the current slide's scroll range advances to
-   * the next slide, scrolling past the start goes back to the previous one.
-   * When the slide fits the viewport (nothing to scroll), any wheel tick
-   * navigates.
-   *
-   * Off by default: it captures wheel events, which is undesirable when the
-   * viewer is embedded in a scrollable page.
+   * When `true`, the wheel navigates slides like PowerPoint: scrolling past the
+   * current slide's scroll range moves to the next or previous slide, and any tick
+   * does when nothing scrolls. Off by default, since it captures wheel events from
+   * a page the viewer is embedded in.
    *
    * @default false
    */
   scrollNavigation?: boolean;
 
   /**
-   * When `true`, the browser's zoom gesture zooms the deck instead of the page:
-   * Ctrl/Cmd+wheel and trackpad pinch change the zoom level, keeping the point
-   * under the pointer in place. Like PowerPoint, and like every canvas editor.
-   *
-   * Off by default: taking that gesture also takes it away from readers who
-   * zoom the page to read, which is the wrong trade for a viewer embedded in a
-   * page. Turn it on when the presentation owns the window. Ctrl/Cmd and the
-   * plus/minus keys still zoom the page either way.
+   * When `true`, Ctrl/Cmd+wheel and trackpad pinch zoom the deck instead of the page,
+   * keeping the point under the pointer in place, like PowerPoint. Off by default,
+   * since it takes page zoom from readers of an embedded viewer; turn it on when the
+   * presentation owns the window. Ctrl/Cmd with plus or minus still zooms the page.
    *
    * @default false
    */
   scrollZoom?: boolean;
 
   /**
-   * Padding (in pixels) reserved around the slide when fitting.
-   * Only used when `autoFit` is `true`.
-   *
-   * A number applies the same padding on all sides. An object sets
-   * per-side values (missing sides default to `0`), like Radix/Base UI
+   * Padding in pixels around the slide when `autoFit` is `true`. A number pads every
+   * side; an object sets each side, defaulting to `0`, like Radix and Base UI
    * `collisionPadding`.
    *
    * @example
@@ -185,11 +170,9 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     };
   }, [autoFitPadding, store]);
 
-  // PowerPoint-style wheel navigation: scroll within the slide first; once
-  // the scroll container hits its boundary in the wheel direction (or there
-  // is nothing to scroll), a wheel tick changes slides. External system
-  // (native wheel events, non-passive for preventDefault), so an effect is
-  // the right tool.
+  // PowerPoint-style wheel navigation: the slide scrolls first, and once the scroll
+  // container hits its boundary in the wheel direction, or can't scroll, a tick
+  // changes slides. Native non-passive wheel events need an effect.
   React.useEffect(() => {
     if (!scrollNavigation || !viewportRef.current) return;
 

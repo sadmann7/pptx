@@ -29,7 +29,7 @@ describe("computePanelScale", () => {
     const result = computePanelScale({
       panelWidth: 500,
       elementWidth: 1000,
-      elementHeight: 0, // non-positive → fallback height
+      elementHeight: 0, // non-positive → fallback height.
       fallbackWidth: 2000,
       fallbackHeight: 800,
     });

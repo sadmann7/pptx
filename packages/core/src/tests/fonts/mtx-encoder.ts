@@ -2,7 +2,7 @@
  * Test-only MTX/EOT encoder.
  *
  * The decoder in `src/fonts/mtx` has no fixtures to work against: every
- * embedded font we ship is an uncompressed EOT, so LZCOMP and CTF are
+ * embedded font in the decks is an uncompressed EOT, so LZCOMP and CTF are
  * otherwise dead code. This module builds compressed fixtures from the
  * W3C MicroType Express specification so those layers can be round-tripped.
  *
@@ -242,9 +242,9 @@ export function buildEot(fontData: Uint8Array, flags: number): Uint8Array {
   view.setUint32(4, payload.length, true);
   view.setUint32(8, 0x00010000, true);
   view.setUint32(12, flags, true);
-  view.setUint32(28, 400, true); // Weight
-  view.setUint16(32, 0, true); // fsType
-  view.setUint16(34, 0x504c, true); // MagicNumber
+  view.setUint32(28, 400, true); // Weight.
+  view.setUint16(32, 0, true); // fsType.
+  view.setUint16(34, 0x504c, true); // MagicNumber.
   out.set(payload, headerSize);
   return out;
 }
@@ -463,10 +463,10 @@ function makeHead(indexToLocFormat: number, unitsPerEm: number): Uint8Array {
   const head = new Uint8Array(54);
   const view = new DataView(head.buffer);
   view.setUint32(0, 0x00010000, false);
-  view.setUint32(4, 0x00010000, false); // fontRevision
-  view.setUint32(8, 0xdeadbeef, false); // checksumAdjustment, must be zeroed
-  view.setUint32(12, 0x5f0f3cf5, false); // magicNumber
-  view.setUint16(16, 0x000b, false); // flags
+  view.setUint32(4, 0x00010000, false); // fontRevision.
+  view.setUint32(8, 0xdeadbeef, false); // checksumAdjustment, must be zeroed.
+  view.setUint32(12, 0x5f0f3cf5, false); // magicNumber.
+  view.setUint16(16, 0x000b, false); // flags.
   view.setUint16(18, unitsPerEm, false);
   view.setInt16(50, indexToLocFormat, false);
   return head;

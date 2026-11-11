@@ -9,12 +9,12 @@ function getIsRawFont(data: Uint8Array): boolean {
     b1 = data[1],
     b2 = data[2],
     b3 = data[3];
-  if (b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00) return true; // TrueType
-  if (b0 === 0x4f && b1 === 0x54 && b2 === 0x54 && b3 === 0x4f) return true; // OpenType CFF
-  if (b0 === 0x74 && b1 === 0x72 && b2 === 0x75 && b3 === 0x65) return true; // Apple TrueType
-  if (b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66) return true; // TrueType collection
-  if (b0 === 0x77 && b1 === 0x4f && b2 === 0x46 && b3 === 0x46) return true; // WOFF
-  if (b0 === 0x77 && b1 === 0x4f && b2 === 0x46 && b3 === 0x32) return true; // WOFF2
+  if (b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00) return true; // TrueType.
+  if (b0 === 0x4f && b1 === 0x54 && b2 === 0x54 && b3 === 0x4f) return true; // OpenType CFF.
+  if (b0 === 0x74 && b1 === 0x72 && b2 === 0x75 && b3 === 0x65) return true; // Apple TrueType.
+  if (b0 === 0x74 && b1 === 0x74 && b2 === 0x63 && b3 === 0x66) return true; // TrueType collection.
+  if (b0 === 0x77 && b1 === 0x4f && b2 === 0x46 && b3 === 0x46) return true; // WOFF.
+  if (b0 === 0x77 && b1 === 0x4f && b2 === 0x46 && b3 === 0x32) return true; // WOFF2.
   return false;
 }
 
@@ -59,16 +59,10 @@ export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Arr
 }
 
 /**
- * Whether decoding this part will run the MTX decompressor.
- *
- * That is the only expensive case: an uncompressed EOT payload is passed
- * through, so decoding it is a header read and costs microseconds, while MTX
- * means LZCOMP over three streams (a few ms per part). Callers use this to
- * decide whether the work is worth moving off the main thread at all.
- *
- * Reading the flag repeats the deobfuscation `decodeEmbeddedFont` will do
- * again, so an obfuscated part is copied here to XOR its first 32 bytes back.
- * A memcpy stays orders of magnitude below the decompression it decides on.
+ * Whether decoding this part runs the MTX decompressor, the only expensive case
+ * (a few ms per part, versus microseconds for uncompressed EOT), so callers can
+ * decide whether to move the work off the main thread. Obfuscated parts are
+ * copied to undo the XOR, which costs far less than the decompression.
  */
 export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
   if (part.length === 0) return false;

@@ -51,11 +51,9 @@ export class SafeXmlNode {
   }
 
   /**
-   * Shared immutable instance for all "missing element" results.
-   * SafeXmlNode has no mutable state, so every miss can safely alias one
-   * object; child-chain misses are extremely common (most optional OOXML
-   * elements are absent), and per-miss allocations dominated GC pressure
-   * in parse profiles.
+   * Shared instance for every missing-element result. SafeXmlNode is immutable,
+   * so misses can alias one object, and since most optional OOXML elements are
+   * absent, per-miss allocations dominated GC pressure in parse profiles.
    */
   static readonly EMPTY = new SafeXmlNode(null);
 

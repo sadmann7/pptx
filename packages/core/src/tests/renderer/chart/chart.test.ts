@@ -636,12 +636,10 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
 });
 
 describe("renderChart via renderSlide (happy-dom)", () => {
-  // Full ECharts initialization is intentionally NOT exercised here.
-  // The chart renderer is hard-wired to the echarts CanvasRenderer, and
-  // happy-dom's <canvas> has no 2D context (getContext returns null), which
-  // makes zrender's async paint loop throw unhandled errors. renderChart
-  // defers init until the container is connected and sized, so rendering a
-  // detached slide deterministically produces the DOM scaffolding only.
+  // ECharts never initializes here: happy-dom's canvas has no 2D context, which
+  // makes zrender's async paint loop throw. renderChart defers init until the
+  // container is connected and sized, so a detached slide yields only the DOM
+  // scaffolding.
   it("positions the chart wrapper and builds the custom legend overlay", async () => {
     const buffer = await buildPptxWithChart(BAR_CHART_XML);
     const presentation = buildPresentation(await readPptx(buffer));

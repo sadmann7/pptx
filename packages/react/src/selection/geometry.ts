@@ -217,13 +217,9 @@ export function handleScale(
 }
 
 /**
- * Scales a rect by the factors the dragged shape was scaled by, anchored at the
- * edges opposite the handle, matching `resizeRect`.
- *
- * PowerPoint resizes every shape in a multi-selection when one shape's handle
- * is dragged, but it scales each in place: the gaps between them do not scale,
- * which is why scaling a layout proportionally needs Scale Height/Width in the
- * Size pane instead. Applied to the dragged shape itself this reproduces
+ * Scales a rect by the dragged shape's scale factors, anchored at the edges
+ * opposite the handle. PowerPoint scales each shape in a multi-selection in place,
+ * so the gaps between them don't scale. On the dragged shape itself this matches
  * `resizeRect` exactly, clamps included.
  */
 export function scaleRectFromHandle(rect: Rect, handle: HandleDirection, scale: ResizeScale): Rect {
@@ -273,11 +269,9 @@ export interface PasteboardOverhang {
 }
 
 /**
- * How far the slide's nodes overhang each slide edge, in slide-space px.
- * Zero on every side when all shapes sit within the slide bounds. Used to
- * size the pasteboard area around the slide in edit mode: both the visible
- * margin (so off-slide shapes stay scrollable into view) and the selection
- * event surface (so they stay clickable).
+ * How far the slide's nodes overhang each slide edge, in slide-space px, or zero
+ * when everything fits. Sizes the edit-mode pasteboard, both the visible margin
+ * and the selection surface, so off-slide shapes stay scrollable and clickable.
  */
 export function getPasteboardOverhang(
   nodes: SlideNode[],

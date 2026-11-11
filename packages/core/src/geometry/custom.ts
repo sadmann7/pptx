@@ -46,16 +46,13 @@ function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
 
 /**
  * Renders a custom geometry element to an SVG path d-attribute string.
+ * `a:pt` coordinates and arcTo radii and angles may be numbers or `a:avLst`/`a:gdLst`
+ * guides (ECMA-376 ST_AdjCoordinate). Guides evaluate in the shape's EMU space
+ * (`sourceExtent`), while numeric points use the path's `w`/`h` space.
  *
- * Coordinates in `a:pt` (and arcTo radii/angles) may be literal numbers or
- * references to guides defined in `a:avLst`/`a:gdLst` (ECMA-376
- * ST_AdjCoordinate / ST_AdjAngle). Guides are evaluated in the shape's EMU
- * coordinate space (`sourceExtent`), while numeric path points live in the
- * local space declared by the path's `w`/`h` attributes.
- *
- * @param width - Target width in pixels
- * @param height - Target height in pixels
- * @param sourceExtent - Shape extent in EMU (from `a:xfrm > a:ext`)
+ * @param width - Target width in pixels.
+ * @param height - Target height in pixels.
+ * @param sourceExtent - Shape extent in EMU, from `a:xfrm > a:ext`.
  */
 export function renderCustomGeometry(
   custGeom: SafeXmlNode,

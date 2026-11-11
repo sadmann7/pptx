@@ -4,7 +4,7 @@ import { BaseNodeData, parseBaseProps } from "./base";
 
 export interface ChartNodeData extends BaseNodeData {
   nodeType: "chart";
-  chartPath: string; // e.g. "ppt/charts/chart1.xml"
+  chartPath: string; // e.g. "ppt/charts/chart1.xml".
 }
 
 export function parseChartNode(

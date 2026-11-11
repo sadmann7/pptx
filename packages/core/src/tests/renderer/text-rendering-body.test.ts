@@ -288,9 +288,8 @@ describe("deferred autofit measurement", () => {
 });
 
 describe("field runs (a:fld)", () => {
-  // TODO(spec?): ECMA-376 fields like slidenum should show the current slide
-  // number; the renderer emits the cached <a:t> literal instead of recomputing
-  // it from the slide index. Asserting actual behavior here.
+  // ECMA-376 slidenum fields should show the current slide number, but the
+  // renderer emits the cached `<a:t>` literal. This pins the current behavior.
   it("renders the cached literal text of a slidenum field", async () => {
     const element = await renderTextBox(
       `<a:p><a:r><a:t>Slide </a:t></a:r><a:fld id="{6D2CF6E5-4568-4E3F-9D3E-42AB6B0C5E11}" type="slidenum"><a:rPr b="1"/><a:t>7</a:t></a:fld></a:p>`,

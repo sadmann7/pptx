@@ -12,7 +12,6 @@ export const ROTATE_CURSOR = "var(--presentation-rotate-cursor, crosshair)";
 
 const ROTATE_HANDLE_NAME = "Presentation.RotateHandle";
 
-/** The current state of a rotate handle. */
 export interface RotateHandleState {
   /** The shape's angle in degrees, including a rotation in progress. */
   rotation: number;

@@ -28,9 +28,9 @@ export interface TextBody {
 }
 
 export interface LineEndInfo {
-  type: string; // 'triangle', 'arrow', 'stealth', 'diamond', 'oval', 'none'
-  w?: string; // 'sm', 'med', 'lg'
-  len?: string; // 'sm', 'med', 'lg'
+  type: string; // 'triangle', 'arrow', 'stealth', 'diamond', 'oval', 'none'.
+  w?: string; // 'sm', 'med', 'lg'.
+  len?: string; // 'sm', 'med', 'lg'.
 }
 
 /** Text box bounds in shape-local coordinates (used by diagram shapes with txXfrm). */

@@ -91,9 +91,9 @@ describe("renderCustomGeometry with gdLst guides", () => {
     // 2743200x1828800 EMU at 96dpi = 288x192 px.
     const d = renderCustomGeometry(arrow, 288, 192, { w: W_EMU, h: H_EMU });
     const cmds = pathCommands(d);
-    expect(cmds[0]).toEqual(["M", 0, 48]); // y1 = 25% of 192
-    expect(cmds[3]).toEqual(["L", 288, 96]); // w, vc
-    expect(cmds[7]).toEqual(["L", 43.2, 96]); // tailNotch = 15% of 288
+    expect(cmds[0]).toEqual(["M", 0, 48]); // y1 = 25% of 192.
+    expect(cmds[3]).toEqual(["L", 288, 96]); // w, vc.
+    expect(cmds[7]).toEqual(["L", 43.2, 96]); // tailNotch = 15% of 288.
   });
 
   it("converts guide values between shape space and a differing path space", () => {
@@ -134,8 +134,8 @@ describe("renderCustomGeometry with gdLst guides", () => {
     const cmds = pathCommands(d);
     const arc = cmds[1];
     expect(arc[0]).toBe("A");
-    expect(arc[1]).toBeCloseTo(100, 6); // rx = wd2
-    expect(arc[2]).toBeCloseTo(100, 6); // ry = hd2
+    expect(arc[1]).toBeCloseTo(100, 6); // rx = wd2.
+    expect(arc[2]).toBeCloseTo(100, 6); // ry = hd2.
     // 180° sweep from (0,100) around center (100,100) ends at (200,100).
     expect(arc[6]).toBeCloseTo(200, 6);
     expect(arc[7]).toBeCloseTo(100, 6);

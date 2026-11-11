@@ -12,8 +12,8 @@
  *      sweep, how many previews inside the viewport are still `[data-pending]`,
  *      plus how long the list takes to settle once scrolling stops.
  *
- * The second number is the one that matches the complaint ("a bunch of
- * skeleton slides as we scroll until the scroll settles").
+ * The second number is the one that matches the complaint: a bunch of
+ * skeleton slides while scrolling, until the scroll settles.
  */
 import { test } from "@playwright/test";
 import { copyFileSync, mkdirSync } from "node:fs";

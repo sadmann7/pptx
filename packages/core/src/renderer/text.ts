@@ -96,14 +96,16 @@ interface MergedParagraphStyle {
   textIndent?: number;
   defaultTabSize?: number;
   lineHeight?: string;
-  /** True when lineHeight comes from spcPts (absolute pt value). For CJK fonts, CSS line-height
-   *  with absolute values may not produce exact spacing because the font's content area can exceed
-   *  the line-height. When true, we use block-level line wrappers instead of <br> for line breaks. */
+  /**
+   * Whether lineHeight comes from spcPts, an absolute pt value. A CJK font's
+   * content area can exceed an absolute CSS line-height, so lines then break with
+   * block-level wrappers instead of `<br>`.
+   */
   lineHeightAbsolute?: boolean;
   spaceBefore?: number;
-  spaceBeforePct?: number; // percentage of font size (0-1 range)
+  spaceBeforePct?: number; // percentage of font size (0-1 range).
   spaceAfter?: number;
-  spaceAfterPct?: number; // percentage of font size (0-1 range)
+  spaceAfterPct?: number; // percentage of font size (0-1 range).
   bulletChar?: string;
   bulletFont?: string;
   bulletAutoNum?: string;
@@ -170,7 +172,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     const spcPct = spcBef.child("spcPct");
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
-      if (val !== undefined) target.spaceBeforePct = val / 100000; // store as ratio
+      if (val !== undefined) target.spaceBeforePct = val / 100000; // store as ratio.
     }
   }
 
@@ -184,7 +186,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     const spcPct = spcAft.child("spcPct");
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
-      if (val !== undefined) target.spaceAfterPct = val / 100000; // store as ratio
+      if (val !== undefined) target.spaceAfterPct = val / 100000; // store as ratio.
     }
   }
 
@@ -308,7 +310,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
   if (!rPr.exists()) return;
 
   const sz = rPr.numAttr("sz");
-  if (sz !== undefined) target.fontSize = sz / 100; // hundredths of point -> pt
+  if (sz !== undefined) target.fontSize = sz / 100; // hundredths of point -> pt.
 
   const b = rPr.attr("b");
   if (b !== undefined) target.bold = parseOoxmlBool(b);
@@ -449,7 +451,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
   const ln = rPr.child("ln");
   if (ln.exists() && !ln.child("noFill").exists()) {
     const lnW = ln.numAttr("w");
-    target.textOutlineWidth = lnW ? emuToPx(lnW) : 0.75; // default ~0.75px
+    target.textOutlineWidth = lnW ? emuToPx(lnW) : 0.75; // default ~0.75px.
     const lnSolid = ln.child("solidFill");
     if (lnSolid.exists()) {
       const { color: c, alpha: a } = resolveColor(lnSolid, ctx);
@@ -734,9 +736,9 @@ export function renderTextBody(
   const normAutofit = getEffectiveBodyPrChild(textBody, "normAutofit");
   if (normAutofit?.exists()) {
     const fs = normAutofit.numAttr("fontScale");
-    if (fs !== undefined) fontScale = fs / 100000; // 100000 = 100%
+    if (fs !== undefined) fontScale = fs / 100000; // 100000 = 100%.
     const lsr = normAutofit.numAttr("lnSpcReduction");
-    if (lsr !== undefined) lnSpcReduction = lsr / 100000; // e.g., 20000 = 20%
+    if (lsr !== undefined) lnSpcReduction = lsr / 100000; // e.g., 20000 = 20%.
   }
   if (fontScale !== 1) container.dataset[PPTX_DATASET.fontScale] = String(fontScale);
 
@@ -859,7 +861,7 @@ export function renderTextBody(
       paraDiv.style.lineHeight = effectiveLineHeight!;
     }
     // Percentage-based spacing is relative to defRPr or the first run's size.
-    let effectiveFontSize = 12; // default 12pt
+    let effectiveFontSize = 12; // default 12pt.
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
     if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
     const firstRunSize =
@@ -877,12 +879,10 @@ export function renderTextBody(
     // multi-paragraph labels do not inherit a 13px page font and overflow their boxes.
     paraDiv.style.fontSize = `${effectiveFontSize * fontScale}pt`;
 
-    // Stamp the paragraph's default text color so content not wrapped in a
-    // run span (text typed into an empty paragraph during inline editing)
-    // inherits the color PowerPoint would use instead of the page CSS color.
-    // Empty paragraphs take their pending-text formatting from endParaRPr,
-    // like PowerPoint. Runs always set an explicit color, so this never
-    // changes how existing runs render.
+    // The paragraph's default text color lets content outside a run span, like text
+    // typed into an empty paragraph, inherit PowerPoint's color instead of the page's.
+    // Empty paragraphs take it from endParaRPr, as in PowerPoint. Runs always set
+    // their own color, so existing runs render the same.
     const paraDefaultStyle: MergedRunStyle = { ...defaultRunStyle };
     if (!hasVisibleRuns && paragraph.endParaRPr) {
       mergeRunProps(paraDefaultStyle, paragraph.endParaRPr, ctx);
@@ -1052,7 +1052,7 @@ export function renderTextBody(
 
     // Default OOXML tab spacing is 914400 EMU = 96px.
     if (paragraph.runs.some((r) => r.text?.includes("\t"))) {
-      const defaultTabPx = merged.defaultTabSize ?? 96; // 914400 EMU at 96 dpi
+      const defaultTabPx = merged.defaultTabSize ?? 96; // 914400 EMU at 96 dpi.
       paraDiv.style.tabSize = `${defaultTabPx}px`;
     }
     // Absolute (spcPts) spacing with line breaks: wrap each line in a fixed-height
@@ -1257,7 +1257,7 @@ export function renderTextBody(
         const strokeW = runStyle.textOutlineWidth ?? 0.75;
         if (runStyle.textNoFill && runStyle.textOutlineGradientCss) {
           // Ghost text: no fill + gradient outline → show outline fading via mask.
-          const outlineColor = "#ffffff"; // base stroke color (gradient applied via mask)
+          const outlineColor = "#ffffff"; // base stroke color (gradient applied via mask).
           element.style.color = "transparent";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
@@ -1353,7 +1353,7 @@ export function renderTextBody(
         const epSz = paragraph.endParaRPr.numAttr("sz");
         if (epSz !== undefined) {
           const spacer = document.createElement("span");
-          spacer.textContent = "\u200B"; // zero-width space to maintain line height
+          spacer.textContent = "\u200B"; // zero-width space to maintain line height.
           spacer.style.fontSize = `${(epSz / 100) * fontScale}pt`;
           const target = currentLineDiv ?? paraDiv;
           target.appendChild(spacer);

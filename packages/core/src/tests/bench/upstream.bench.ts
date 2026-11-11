@@ -1,5 +1,5 @@
 /**
- * Head-to-head benchmark: our parser vs @aiden0z/pptx-renderer.
+ * Head-to-head benchmark: this parser vs @aiden0z/pptx-renderer.
  *
  * Run with: pnpm -F "@diceui/pptx-core" bench
  *
@@ -8,7 +8,7 @@
  *
  * jsdom is used instead of happy-dom because the upstream package calls
  * Element.lookupNamespaceURI() unconditionally: a method happy-dom doesn't
- * implement. Our package patches this with optional chaining; upstream doesn't.
+ * implement. This package guards it with optional chaining; upstream doesn't.
  *
  * @vitest-environment jsdom
  */

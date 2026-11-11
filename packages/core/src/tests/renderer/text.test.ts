@@ -115,7 +115,7 @@ function runSpansContaining(element: HTMLElement, marker: string): HTMLElement[]
   const para = divs.find((d) => d.textContent?.includes(marker));
   if (!para) throw new Error(`paragraph containing "${marker}" not found`);
   return [...para.querySelectorAll<HTMLElement>("span")].filter(
-    (s) => !s.querySelector("span"), // leaf spans only
+    (s) => !s.querySelector("span"), // leaf spans only.
   );
 }
 

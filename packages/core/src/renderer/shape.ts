@@ -917,7 +917,7 @@ function getMarkerSize(size: string | undefined): number {
     case "lg":
       return 1.5;
     default:
-      return 1.0; // 'med' or undefined
+      return 1.0; // 'med' or undefined.
   }
 }
 
@@ -1552,11 +1552,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           const fillGradId = `grad-fill-${++gradientIdCounter}`;
 
           if (gradientFillData.type === "radial" && gradientFillData.pathType === "rect") {
-            // OOXML path="rect" gradient: Chebyshev distance (L∞ norm) creates
-            // rectangular contour lines (the characteristic cross/X pattern).
-            // SVG/CSS radial-gradient only supports elliptical contours.
-            // Approximation: two linear gradients (H + V) blended with "lighten"
-            // (per-channel max). max(dx, dy) = L∞ norm = rectangular contours.
+            // OOXML path="rect" gradients use Chebyshev distance, giving rectangular contours,
+            // but SVG radial gradients are only elliptical. Two linear gradients (H and V)
+            // blended with "lighten" take the per-channel max, which gives the same contours.
             const gcx = gradientFillData.cx ?? 0.5;
             const gcy = gradientFillData.cy ?? 0.5;
 
@@ -1566,7 +1564,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               const focusedStops = getFocusedGradientStops(gradientFillData, { axis });
               const mirrored: Array<{ offset: number; color: string }> = [];
               for (const s of focusedStops) {
-                const t = s.position / 100; // 0..1 from center to edge
+                const t = s.position / 100; // 0..1 from center to edge.
                 const below = centerFrac - t * centerFrac;
                 const above = centerFrac + t * (1 - centerFrac);
                 mirrored.push({ offset: below, color: s.color });
@@ -1765,7 +1763,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         : strokeColor;
       let effectiveStrokeWidth = gradientStroke ? gradientStroke.width : strokeWidth;
       if (isLineLike && (effectiveHeadEnd || effectiveTailEnd) && effectiveStrokeWidth <= 0) {
-        effectiveStrokeWidth = 1; // so connector line and arrows both show
+        effectiveStrokeWidth = 1; // so connector line and arrows both show.
       }
       const effectiveStrokeLinecap =
         isLineLike && (effectiveHeadEnd || effectiveTailEnd) ? "butt" : strokeLinecap;
@@ -1795,11 +1793,8 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         gradientStroke &&
         gradientStroke.stops.length > 0
       ) {
-        // Create SVG linearGradient for the gradient stroke.
-        // Use userSpaceOnUse so the gradient is defined in SVG coordinate space rather
-        // than objectBoundingBox. This is critical for straight line paths (zero-width or
-        // zero-height bounding box) where objectBoundingBox produces degenerate coordinates
-        // and the gradient becomes invisible.
+        // userSpaceOnUse, not objectBoundingBox: a straight line has a zero-width or
+        // zero-height bounding box, which makes objectBoundingBox gradients invisible.
         const gradId = `grad-stroke-${++gradientIdCounter}`;
         const linearGrad = document.createElementNS(svgNs, "linearGradient");
         linearGrad.setAttribute("id", gradId);
@@ -2467,12 +2462,10 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         let waitForReattach = (): void => undefined;
 
         const applyDynamicAutofit = () => {
-          // Measuring relocates the wrapper, which is only safe while it has no
-          // parent to be taken out of. A deferred pass runs after the shape is
-          // in its slide, and that slide may be detached for minutes (a
-          // thumbnail scrolled out of view keeps its DOM): relocating would
-          // delete the shape from it for good, and measuring it where it stands
-          // reads back zero. Wait for it to come back instead.
+          // Measuring relocates the wrapper, which is only safe while it has no parent.
+          // A deferred pass may find its slide detached for minutes (an off-screen
+          // thumbnail keeps its DOM), where relocating would delete the shape for good
+          // and measuring in place reads zero, so it waits for the slide to come back.
           if (!wrapper.isConnected && wrapper.parentNode) {
             waitForReattach();
             return;
@@ -2715,12 +2708,12 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
   if (effectiveEffectLst.exists()) {
     const outerShdw = effectiveEffectLst.child("outerShdw");
     if (outerShdw.exists()) {
-      const dir = outerShdw.numAttr("dir") ?? 0; // direction in 60000ths of degree
-      const dist = outerShdw.numAttr("dist") ?? 0; // distance in EMU
-      const blurRad = outerShdw.numAttr("blurRad") ?? 0; // blur radius in EMU
-      const sx = outerShdw.numAttr("sx"); // horizontal scale (100000 = 100%)
-      const sy = outerShdw.numAttr("sy"); // vertical scale (100000 = 100%)
-      const algn = outerShdw.attr("algn"); // alignment anchor (t, b, tl, tr, etc.)
+      const dir = outerShdw.numAttr("dir") ?? 0; // direction in 60000ths of degree.
+      const dist = outerShdw.numAttr("dist") ?? 0; // distance in EMU.
+      const blurRad = outerShdw.numAttr("blurRad") ?? 0; // blur radius in EMU.
+      const sx = outerShdw.numAttr("sx"); // horizontal scale (100000 = 100%).
+      const sy = outerShdw.numAttr("sy"); // vertical scale (100000 = 100%).
+      const algn = outerShdw.attr("algn"); // alignment anchor (t, b, tl, tr, etc.).
 
       const dirDeg = dir / 60000;
       const distPx = emuToPx(dist);
@@ -2777,11 +2770,9 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
           if (a === "r" || a === "tr" || a === "br") alignOffX = (-spreadBasisW * (scaleX - 1)) / 2;
         }
 
-        // When a scaled-up shadow overhang is tiny relative to blurPx, PowerPoint's
-        // Gaussian blur distributes energy across the full blur area. The visible
-        // edge receives only a fraction of the original alpha. Scaled-down shadows
-        // still remain visible through their offset/blur, so do not attenuate them
-        // to zero just because they have no positive spread.
+        // PowerPoint's blur spreads a scaled-up shadow's tiny overhang across the whole
+        // blur area, leaving the edge a fraction of the alpha. Scaled-down shadows stay
+        // visible through their offset and blur, so having no spread doesn't fade them.
         const effectiveBlur = spread > 0 ? Math.min(blurPx, spread * 3) : blurPx;
         let effectiveAlpha = shdAlpha;
         if (spread > 0 && blurPx > 0 && spread < blurPx) {

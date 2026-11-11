@@ -13,14 +13,14 @@ import {
 
 describe("unit conversions", () => {
   it("converts EMU to pixels at 96 DPI", () => {
-    expect(emuToPx(914400)).toBe(96); // 1 inch
+    expect(emuToPx(914400)).toBe(96); // 1 inch.
     expect(emuToPx(0)).toBe(0);
     expect(emuToPx(457200)).toBe(48);
   });
 
   it("converts EMU to points", () => {
     expect(emuToPt(12700)).toBe(1);
-    expect(emuToPt(914400)).toBe(72); // 1 inch = 72pt
+    expect(emuToPt(914400)).toBe(72); // 1 inch = 72pt.
   });
 
   it("converts points to pixels", () => {

@@ -127,26 +127,26 @@ const styleIdMap = new Map<string, [string, string]>([
 
 const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
 
-/** Solid fill with a scheme color and optional transform */
+/** Solid fill with a scheme color and optional transform. */
 function fillSolid(scheme: string, transform?: string): string {
   const mod = transform ? `<a:${transform}/>` : "";
   return `<a:fill><a:solidFill><a:schemeClr val="${scheme}">${mod}</a:schemeClr></a:solidFill></a:fill>`;
 }
 
-/** A border <a:ln> element with scheme color */
+/** A border <a:ln> element with scheme color. */
 function borderLn(scheme: string, transform?: string): string {
   const mod = transform ? `<a:${transform}/>` : "";
   return `<a:ln w="12700"><a:solidFill><a:schemeClr val="${scheme}">${mod}</a:schemeClr></a:solidFill></a:ln>`;
 }
 
-/** Text color element within tcTxStyle */
+/** Text color element within tcTxStyle. */
 function tcTxStyle(scheme: string, bold?: boolean): string {
   const bAttr = bold ? ' b="on"' : "";
   const colorEl = scheme ? `<a:schemeClr val="${scheme}"/>` : "";
   return `<a:tcTxStyle${bAttr}>${colorEl}</a:tcTxStyle>`;
 }
 
-/** Style part with optional fill, borders, and text style */
+/** Style part with optional fill, borders, and text style. */
 function stylePart(
   tag: string,
   opts: {

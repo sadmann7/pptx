@@ -66,12 +66,9 @@ export interface LoadEmbeddedFontsOptions {
    */
   onProgress?: (done: number, total: number) => void;
   /**
-   * Called for each embedded font that could not be used. Loading continues
-   * either way and the affected text renders with a fallback typeface, so this
-   * exists to make an otherwise silent gap observable.
-   *
-   * `"missing"` reports trigger while `loadEmbeddedFonts` is still building its
-   * job list, before it returns.
+   * Called for each embedded font that can't be used, whose text then renders
+   * with a fallback typeface. `"missing"` reports fire while `loadEmbeddedFonts`
+   * is still building its job list, before it returns.
    */
   onError?: (error: EmbeddedFontError) => void;
 }
@@ -370,16 +367,10 @@ export function loadEmbeddedFonts(
 }
 
 /**
- * Pick out the embedded typefaces that the given slides actually reference,
- * for use as `priorityTypefaces`.
- *
- * `slideXml` holds the raw OOXML of the slides about to be shown, each
- * accompanied by its layout and master, since text inherits typefaces from
- * those. Theme major/minor fonts are always included, because text reaches
- * them indirectly via `+mj-lt`/`+mn-lt` references rather than by name.
- *
- * Prioritizing these keeps `ready` from waiting on every embedded family in
- * the deck. The rest still swap in once they are registered.
+ * Picks the embedded typefaces the given slides reference, for `priorityTypefaces`,
+ * so `ready` doesn't wait on every family. `slideXml` includes each slide's layout
+ * and master, which text inherits from. Theme fonts are always included, since
+ * text reaches them through `+mj-lt`/`+mn-lt` rather than by name.
  */
 export function findPriorityTypefaces(
   presentation: PresentationData,

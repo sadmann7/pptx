@@ -62,14 +62,12 @@ function resolvePdfWorkerUrl(config?: PdfjsConfig): string | null {
 }
 
 /**
- * pdfjs keeps process-level state (GlobalWorkerOptions.workerSrc, PagesMapper)
- * that would clobber the host app's own pdfjs setup, so PDFs render only in
- * this worker, with its own pdfjs instance. There is no main-thread fallback.
- *
- * Receives `{ id, pdfData, width, height, pdfjsUrl, pdfWorkerUrl }` and posts
- * back `{ id, blob }` or `{ id, error }`.
+ * PDFs render only in this worker, with its own pdfjs, because pdfjs keeps
+ * process-level state (GlobalWorkerOptions.workerSrc, PagesMapper) that would
+ * clobber the host app's setup. Receives `{ id, pdfData, width, height, pdfjsUrl,
+ * pdfWorkerUrl }` and posts back `{ id, blob }` or `{ id, error }`.
  */
-const WORKER_SRC = /* js */ `
+const WORKER_SRC = /* js. */ `
 let pdfjsLib = null;
 
 self.onmessage = async (e) => {
@@ -149,7 +147,7 @@ function getWorker(workerKey: string): Worker | null {
       if (!entry) return;
       state.pending.delete(id);
       if (error) {
-        entry.resolve(null); // A worker-side error counts as "no result"
+        entry.resolve(null); // A worker-side error counts as "no result".
       } else {
         entry.resolve(blob ?? null);
       }

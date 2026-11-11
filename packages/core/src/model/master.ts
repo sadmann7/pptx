@@ -194,6 +194,6 @@ export function parseMaster(root: SafeXmlNode): MasterData {
     placeholders,
     placeholderEntries,
     spTree,
-    rels: new Map(), // populated later by buildPresentation
+    rels: new Map(), // populated later by buildPresentation.
   };
 }

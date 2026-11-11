@@ -4,11 +4,9 @@ import type { DecoderLimits } from "./limits";
 const PRELOAD_SIZE = 2 * 32 * 96 + 4 * 256;
 
 /**
- * MSB-first bit reader with a byte-at-a-time prefetch buffer.
- *
- * `buffer` and `available` are public so the Huffman descent can hold them in
- * locals for a whole symbol instead of paying a call and a bounds check per
- * bit. Prefetching whole bytes is safe: it only fails once a bit is actually
+ * MSB-first bit reader with a byte-at-a-time prefetch buffer. `buffer` and
+ * `available` are public so the Huffman descent can keep them in locals for a
+ * whole symbol. Prefetching is safe, since it only fails once a bit is
  * requested past the end of the input.
  */
 export class BitReader {

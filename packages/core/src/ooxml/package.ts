@@ -48,16 +48,15 @@ function extractXmlDeclaration(bytes: Uint8Array): string | undefined {
 }
 
 export interface PptxSaveOptions {
-  /** Zip compression for the written archive. @default "DEFLATE" */
+  /** Zip compression for the written archive. @default "DEFLATE". */
   compression?: "STORE" | "DEFLATE";
 }
 
 /**
- * Retained source package for round-trip saves. Untouched parts are copied
- * through byte-for-byte, so everything the parser doesn't understand
- * (animations, comments, vendor extensions) survives an edit. It references the
- * source zip, so don't detach the input buffer (e.g. transfer it to a worker)
- * while saving is still needed.
+ * Source package kept for round-trip saves. Untouched parts are copied byte for
+ * byte, so what the parser doesn't understand (animations, comments, vendor
+ * extensions) survives an edit. Don't detach the input buffer, such as by
+ * transferring it to a worker, while saving is still needed.
  */
 export class PptxPackage {
   /** Source archive; entries stay compressed until read. */

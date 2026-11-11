@@ -101,11 +101,9 @@ export function parseTableNode(frameNode: SafeXmlNode): TableNodeData {
   const tblPr = tbl.child("tblPr");
   const tableStyleId = extractTableStyleId(tblPr);
 
-  // The grid is the table's real size: PowerPoint lays tables out from the
-  // column widths and row heights and ignores the graphicFrame extent, which
-  // some producers (notably Google Slides) leave at a dummy value. Resolving
-  // the size here keeps consumers such as selection overlays in agreement with
-  // what the renderer draws.
+  // PowerPoint sizes tables from column widths and row heights and ignores the
+  // graphicFrame extent, which some producers (notably Google Slides) leave at a
+  // dummy value. Resolving it here keeps selection overlays matching the render.
   const gridWidth = columns.reduce((sum, w) => sum + w, 0);
   const gridHeight = rows.reduce((sum, row) => sum + row.height, 0);
 

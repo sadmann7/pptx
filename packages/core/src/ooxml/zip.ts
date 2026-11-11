@@ -20,12 +20,12 @@ export interface PptxFiles {
   media: Map<string, Uint8Array>;
   mediaResolver?: MediaResolver;
   tableStyles?: string;
-  charts: Map<string, string>; // ppt/charts/chart*.xml
-  chartRels?: Map<string, string>; // ppt/charts/_rels/chart*.xml.rels
-  chartStyles: Map<string, string>; // ppt/charts/style*.xml
-  chartColors: Map<string, string>; // ppt/charts/colors*.xml
-  diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback)
-  fonts: Map<string, Uint8Array>; // ppt/fonts/* (embedded fonts)
+  charts: Map<string, string>; // ppt/charts/chart*.xml.
+  chartRels?: Map<string, string>; // ppt/charts/_rels/chart*.xml.rels.
+  chartStyles: Map<string, string>; // ppt/charts/style*.xml.
+  chartColors: Map<string, string>; // ppt/charts/colors*.xml.
+  diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback).
+  fonts: Map<string, Uint8Array>; // ppt/fonts/* (embedded fonts).
   /** Retained source PPTX package for round-trip save. Present when parsed with `keepSourcePackage: true`. */
   sourcePackage?: PptxPackage;
 }

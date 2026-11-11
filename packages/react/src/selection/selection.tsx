@@ -110,14 +110,10 @@ function getIsNativeUndoTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Whether a document-level keystroke belongs to the presentation.
- *
- * `boundary` is `Root`'s element when there is one, so a keystroke aimed at the
- * thumbnail strip still counts; it falls back to the overlay for trees that
- * skip `Root`. A target outside it belongs to the host page, which must keep
- * its own undo. An unfocused page (`body`) has no other claimant, so the deck
- * takes the keystroke: this is what makes the shortcut work before anything in
- * the presentation has been clicked.
+ * Whether a document-level keystroke belongs to the presentation. `boundary` is
+ * `Root`'s element, so the thumbnail strip counts, or the overlay without `Root`.
+ * Targets outside it keep the host page's own undo. An unfocused page (`body`)
+ * goes to the deck, so shortcuts work before anything has been clicked.
  */
 function getIsPresentationTarget(
   target: EventTarget | null,
@@ -315,12 +311,10 @@ export interface SelectionState {
 
 export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   /**
-   * When `true`, binds undo and redo to the deck: `Ctrl/Cmd+Z` and
-   * `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`).
-   *
-   * Shortcuts only apply within `Presentation.Root`. Text fields keep their
-   * own undo, except a text box being edited with nothing typed since its
-   * last change. Off by default to avoid conflicts with the surrounding app.
+   * When `true`, binds undo and redo to the deck: `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z`
+   * (or `Ctrl/Cmd+Y`), within `Presentation.Root`. Text fields keep their own undo,
+   * except a text box with nothing typed since its last change. Off by default to
+   * avoid conflicts with the surrounding app.
    *
    * @default false
    *
@@ -346,12 +340,9 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   onTextChange?: (nodeId: string, error?: unknown) => void;
 
   /**
-   * Event handler called whenever the set of selected nodes changes, so UI
-   * outside the overlay (a formatting toolbar, a properties panel) can
-   * follow along.
-   *
-   * Also called with an empty selection when the active slide changes, since
-   * navigating away drops the selection. Treat the handler as idempotent.
+   * Event handler called whenever the selected nodes change, so outside UI like a
+   * formatting toolbar can follow along. Also called with an empty selection when
+   * the active slide changes, so treat it as idempotent.
    *
    * ```tsx
    * onSelectionChange={({ nodes }) => setInspectedShape(nodes[0] ?? null)}
@@ -448,7 +439,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       ? state.nodeIds
       : state.mode === "text"
         ? [state.nodeId]
-        : // An additive band keeps its base selection outlined while dragging,
+        : // An additive band keeps its base selection outlined while dragging,.
           // so it stays visible what the band is adding to.
           state.mode === "marquee"
           ? state.baseIds
@@ -472,11 +463,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const mode = getReportedMode(state);
   const publicState: SelectionState = { mode, selectedNode, selectedNodes };
 
-  // Selection transitions happen across ~25 pointer/keyboard paths, several of
-  // them triggered from document-level listeners, so notifying from each handler
-  // would mean threading the callback through all of them. Diffing a single
-  // derived key keeps one notification site and guarantees it can't drift out
-  // of sync with the rendered selection.
+  // Selection changes come from ~25 pointer and keyboard paths, some in document
+  // listeners, so diffing one derived key keeps a single notification site that
+  // can't drift from the rendered selection.
   const onSelectionChangeRef = useLatestRef(onSelectionChange);
   const onModeChangeRef = useLatestRef(onModeChange);
   const selectedIdsRef = useLatestRef(selectedIds);
@@ -520,15 +509,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         )
       : null;
 
-  // Pasteboard hit area: shapes dragged past the slide edge render unclipped
-  // in edit mode, but a surface sized to the slide (`inset: 0`) would never
-  // receive pointerdowns over their off-slide portion. Extend the surface to
-  // cover every node's bounds so those shapes stay clickable and draggable.
-  //
-  // Memoized because this component re-renders on every pointermove during
-  // drags. Nodes are mutated in place, so the node array is not a usable
-  // dependency; `slideRevision` bumps on every committed geometry edit and is
-  // the correct cache key.
+  // Shapes dragged past the slide edge render unclipped in edit mode, so the hit
+  // surface extends to every node's bounds to keep them clickable. Memoized on
+  // `slideRevision`, since this re-renders on every drag pointermove and nodes
+  // are mutated in place.
   const pasteboard = React.useMemo(
     () =>
       slide && presentation
@@ -551,9 +535,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Drops any document text selection left behind by earlier gestures.
-   * A stale selection under the pointer turns the next press-and-drag into a
-   * native drag-and-drop, cancelling our pointer stream mid-resize/move.
+   * Drops any document text selection left by earlier gestures, since one under
+   * the pointer turns the next press-and-drag into a native drag-and-drop that
+   * cancels the pointer stream mid-resize or move.
    */
   function clearDocumentSelection(): void {
     const selection = document.getSelection();
@@ -777,11 +761,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Places the caret inside the last styled run span of `scope`. Typed text
-   * must land inside a run span (`PPTX_ATTRS.run`) to inherit the run's font and
-   * color: a bare text node at the container/paragraph level renders with
-   * unstyled defaults (e.g. black text on a dark slide → invisible typing).
-   * Returns false when the scope has no run spans.
+   * Places the caret inside the last styled run span of `scope`, so typed text
+   * inherits the run's font and color instead of unstyled defaults (black text on
+   * a dark slide). Returns false when the scope has no run spans.
    */
   function snapCaretIntoRun(scope: HTMLElement): boolean {
     const runs = scope.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`);
@@ -818,11 +800,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Empty paragraphs are rendered with a placeholder `<br>` to preserve their
-   * line height; once real text is inserted the `<br>` would push it onto a
-   * second line. Remove it, but only when the paragraph holds nothing except
-   * the just-inserted text; `<br>`s in paragraphs with other content are
-   * genuine line breaks.
+   * Removes an empty paragraph's placeholder `<br>` once text is inserted, since it
+   * would push the text onto a second line. Only when the paragraph holds nothing
+   * but the inserted text; other `<br>`s are real line breaks.
    */
   function removePlaceholderBreak(from: Node, insertedText: string): void {
     const element = from instanceof Element ? (from as HTMLElement) : from.parentElement;
@@ -840,14 +820,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Inserts the keystroke that started text editing the way typing does, so it
-   * lands on the browser's undo stack: Cmd/Ctrl+Z in text mode is native undo,
-   * and a character inserted by mutating the DOM would be invisible to it.
-   *
-   * When the caret isn't inside a run's text (an empty placeholder), a styled
-   * span holding a zero-width space goes in first, so the native insertion
-   * lands inside it and keeps the run's styling. Returns false without
-   * `execCommand`, and the caller falls back to `insertTextAtCaret`.
+   * Inserts the keystroke that started text editing the way typing does, so native
+   * undo (Cmd/Ctrl+Z in text mode) sees it. Outside a run's text, a styled span with
+   * a zero-width space goes in first so the insertion keeps the run's styling.
+   * Returns false without `execCommand`, so the caller uses `insertTextAtCaret`.
    */
   function insertTextNatively(editingElement: HTMLElement, nodeId: string, data: string): boolean {
     const selection = window.getSelection();
@@ -961,13 +937,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Intercept text insertion when the browser would drop it outside a styled
-   * run span. Chrome cannot keep the caret inside an empty text node (the
-   * keystroke escapes into the parent div), and destructive edits like
-   * select-all + delete remove the run spans entirely; in both cases typed
-   * text would render with unstyled defaults (e.g. near-white → invisible).
-   * Instead of the default insertion we place the text into the run span at
-   * the caret, or into a clone of the span captured on entering text mode.
+   * Intercepts text the browser would insert outside a styled run span, where it
+   * would render with unstyled defaults: Chrome can't keep the caret in an empty
+   * text node, and select-all + delete removes the spans. The text goes into the
+   * run span at the caret, or a clone of the one captured on entering text mode.
    */
   function interceptTextInsertion(
     event: InputEvent,
@@ -2286,11 +2259,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         }
         pressIntoCellRef.current(hitNodeId, event.clientX, event.clientY);
       } else if (hitNodeId && hitNodeId !== currentState.nodeId) {
-        // Clicked a different shape: exit text and start interacting with it
-        // in the same gesture (PowerPoint: you can immediately drag another
-        // shape while editing). preventDefault stops the browser's default
-        // mousedown focus change from blurring the overlay; without it,
-        // typing right after this click would go nowhere.
+        // Clicked a different shape: exit text mode and interact with it in the same
+        // gesture, as PowerPoint allows. preventDefault keeps the browser's mousedown
+        // focus change from blurring the overlay, which would swallow the next typing.
         event.preventDefault();
         if (!removeIfEmptyTextBoxRef.current(currentState)) {
           commitTextEditsRef.current(currentState);
@@ -2539,23 +2510,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }, [isTextMode, copySelectionRef, pasteClipboardRef]);
 
   /**
-   * A press outside the overlay deselects, the way clicking off the canvas
-   * does in PowerPoint. The overlay covers only the slide and its pasteboard,
-   * so without this the handles survive a press on the viewport margin, and
-   * survive it out of reach: focus leaves the overlay and `onKeyDown` is a
-   * React handler on it, so Escape stops arriving.
-   *
-   * Presses inside UI marked `data-pptx-keep-selection` (editor toolbars and
-   * their popovers) don't count as outside.
-   *
-   * Deselecting on release rather than on press is what keeps touch usable.
-   * A scroll begins as a pointerdown on whatever is under the finger, so
-   * acting there would drop the selection every time the deck was scrolled.
-   * The browser triggers pointercancel when it takes the gesture over for
-   * scrolling, which distinguishes a scroll from a tap without guessing at a
-   * movement threshold.
-   *
-   * Text mode has its own listener above, which commits edits first.
+   * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
+   * once focus, and with it Escape, leaves the overlay; `data-pptx-keep-selection` UI
+   * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
+   * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
   React.useEffect(() => {
     if (isTextMode) return;
@@ -2594,11 +2552,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     };
   }, [isTextMode, stateRef]);
 
-  // A revision bump makes SlideImpl replace the slide DOM in its effect,
-  // detaching the editing contentEditable element: typed text would go into the
-  // detached tree and never appear on screen. SlideImpl is a parent, so its
-  // effect runs after this one; the rAF triggers after the whole effects flush,
-  // when the fresh DOM is in place, and re-attaches editing to it.
+  // A revision bump makes SlideImpl replace the slide DOM, detaching the editing
+  // element so typed text would vanish. SlideImpl is a parent, so its effect runs
+  // after this one; the rAF re-attaches editing once the fresh DOM is in place.
   React.useEffect(() => {
     debugLog("revision effect", { slideRevision, mode: stateRef.current.mode });
     if (stateRef.current.mode !== "text") return;
@@ -2724,15 +2680,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return;
     }
 
-    // Pressing a shape that is already part of the selection drags the whole
-    // selection; anything else starts a fresh single-shape gesture. On
-    // pointer-up, a press that never dragged counts as a click: text shapes
-    // enter text mode and non-text shapes get selected.
-    //
-    // Shift leaves both Shift+click (toggle) and Shift+drag (move along one
-    // axis) open, so the gesture starts as a move and pointer-up decides.
-    // Resolving the toggle up front would consume the press and leave the drag
-    // unable to move anything.
+    // Pressing a selected shape drags the whole selection; anything else starts a
+    // single-shape gesture, and a press that never drags counts as a click on
+    // pointer-up. Shift starts as a move too, since Shift+click toggles but
+    // Shift+drag moves along one axis, and only pointer-up can tell them apart.
     const additive = event.shiftKey;
     setState({
       mode: "move",
@@ -3172,8 +3123,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   }
 
   /**
-   * Native drag-and-drop of slide content (images, stale text selections)
-   * cancels our pointer gestures; block it while the overlay is interactive.
+   * Blocks native drag-and-drop of slide content (images, stale text selections)
+   * while the overlay is interactive, since it cancels the pointer gestures.
    */
   function onDragStart(event: React.DragEvent<HTMLDivElement>): void {
     debugLog("dragstart blocked", { target: (event.target as HTMLElement)?.tagName });

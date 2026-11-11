@@ -54,7 +54,7 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
 
 /** Converts HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255). */
 export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  h = ((h % 360) + 360) % 360; // normalize hue
+  h = ((h % 360) + 360) % 360; // normalize hue.
   s = Math.max(0, Math.min(1, s));
   l = Math.max(0, Math.min(1, l));
 

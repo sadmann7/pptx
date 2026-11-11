@@ -54,13 +54,10 @@ function serveLocalDecks(): Plugin {
 }
 
 /**
- * Serves the built font entry at /core-dist/fonts.mjs.
- *
- * The font harness needs it to measure the path that actually ships: in the
- * published bundle the decode worker is inlined as a blob (tsdown has no worker
- * support), while from source Vite spawns it as a module the browser fetches,
- * which makes starting a worker look far more expensive than it is. Requires
- * `pnpm -F @diceui/pptx-core build`; without it the request 404s.
+ * Serves the built font entry at /core-dist/fonts.mjs, so the font harness can
+ * measure the shipped path: the bundle inlines the decode worker as a blob, while
+ * Vite spawns it from source as a fetched module, which is much slower to start.
+ * Requires `pnpm -F @diceui/pptx-core build`, or the request 404s.
  */
 function serveBuiltFontEntry(): Plugin {
   const file = resolve(import.meta.dirname, "..", "core", "dist", "fonts", "index.mjs");

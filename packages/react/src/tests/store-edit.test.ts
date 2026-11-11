@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Store-level editing tests: `edit()`, `undo()`/`redo()`, `save()`, and
- * per-slide revision tracking.
- *
- * Runs under jsdom (not the default happy-dom) because happy-dom's XML
- * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
- * slide-level edit operations depend on.
+ * Store-level editing tests for `edit()`, `undo()`, `redo()`, `save()` and
+ * per-slide revisions. Runs under jsdom because happy-dom's XML parser drops
+ * namespaced attributes like `r:id` on `p:sldId`, which slide-level edits need.
  */
 import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";
@@ -143,7 +140,7 @@ describe("undo / redo", () => {
     expect(store.canRedo()).toBe(true);
 
     expect(await store.undo()).toBe(true);
-    expect(slideText(store, 0)).toBe("Slide 1"); // fixture original
+    expect(slideText(store, 0)).toBe("Slide 1"); // fixture original.
     expect(await store.undo()).toBe(false);
 
     await expect(store.redo()).resolves.toBe(true);

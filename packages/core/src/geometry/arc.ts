@@ -22,7 +22,7 @@ export function shapeArc(
   if (sweepDeg === 0 && startAngle !== endAngle) sweepDeg = 360;
 
   const largeArc = sweepDeg > 180 ? 1 : 0;
-  const sweep = 1; // always clockwise
+  const sweep = 1; // always clockwise.
 
   let d = `M${x1},${y1} A${rx},${ry} 0 ${largeArc},${sweep} ${x2},${y2}`;
   if (isClose) {

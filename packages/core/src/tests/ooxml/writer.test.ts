@@ -135,7 +135,7 @@ describe("writePptx", () => {
     const sourcePackage = presentation.sourcePackage!;
 
     sourcePackage.setEntry("docProps/custom.xml", "<custom/>");
-    expect(sourcePackage.deleteEntry("ppt/tableStyles.xml")).toBe(false); // fixture has none
+    expect(sourcePackage.deleteEntry("ppt/tableStyles.xml")).toBe(false); // fixture has none.
     expect(sourcePackage.deleteEntry("ppt/theme/theme1.xml")).toBe(true);
 
     const entries = await zipEntries(await writePptx(presentation));

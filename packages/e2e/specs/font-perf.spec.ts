@@ -34,13 +34,10 @@ import { test } from "@playwright/test";
 const DECK = process.env.FONT_PERF_DECK ?? "the-good-room-soft-editorial.pptx";
 
 /**
- * The two payload kinds, because they decide the whole answer.
- *
- * Every fixture here embeds plain EOT, where decoding strips a header and costs
- * microseconds. PowerPoint writes MTX-compressed parts (LZCOMP over three
- * streams), the only case with real work in it, so the harness can substitute
- * those payloads. A deck named explicitly is measured as it is, since the point
- * of naming one is to see what it actually carries.
+ * Both payload kinds, since they decide the answer. Fixtures embed plain EOT,
+ * which decodes in microseconds, while PowerPoint writes MTX (LZCOMP over three
+ * streams), so the harness substitutes those. A deck named explicitly is
+ * measured as it is.
  */
 const PAYLOADS = process.env.FONT_PERF_DECK
   ? ([{ label: "as embedded", mtx: false }] as const)
