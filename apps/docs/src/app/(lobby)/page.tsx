@@ -216,15 +216,18 @@ function Hero() {
 function CtaButtons() {
   return (
     <>
-      <Link href="/docs" className={cn(buttonVariants({ size: "lg" }), "h-11 px-5 text-[15px]")}>
+      <Link
+        href="/docs"
+        className={cn(buttonVariants({ size: "lg" }), "h-10 rounded-md px-4 font-semibold")}
+      >
         Get started
-        <ArrowRight />
+        <ArrowRight className="size-3.75" />
       </Link>
       <Link
         href="/docs/components"
         className={cn(
           buttonVariants({ variant: "outline", size: "lg" }),
-          "h-11 bg-card px-5 text-[15px] dark:border-border dark:bg-card",
+          "h-10 rounded-md bg-card px-4 dark:border-border dark:bg-card",
         )}
       >
         View components
