@@ -93,7 +93,7 @@ export function SiteHeader({ className, ...props }: React.ComponentProps<"header
           nativeButton={false}
           render={
             <Link href={siteConfig.links.github} target="_blank" rel="noreferrer">
-              <GitHubIcon className="size-5" />
+              <GitHubIcon className="size-4.5" />
             </Link>
           }
         />
