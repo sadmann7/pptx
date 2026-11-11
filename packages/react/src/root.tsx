@@ -184,7 +184,6 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
   useStoreEvent(store, "historyChange", onHistoryChange);
 
   React.useEffect(() => {
-    // A store from `Presentation.Provider` outlives Root, so only Root's own store is reset.
     if (store !== internalStoreRef.current) return;
     return () => store.reset();
   }, [store]);
