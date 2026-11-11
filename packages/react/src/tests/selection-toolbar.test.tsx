@@ -1,5 +1,5 @@
 /**
- * An editor toolbar outside the slide: `data-pptx-keep-selection` keeps the
+ * An editor toolbar outside the slide: `data-presentation-keep-selection` keeps the
  * selection and text editing alive while it is pressed, and `useSelection`
  * reads and formats what is selected.
  */
@@ -42,7 +42,7 @@ async function renderEditor() {
   function Toolbar() {
     selection.current = useSelection();
     return (
-      <div data-pptx-keep-selection="" data-testid="toolbar">
+      <div data-presentation-keep-selection="" data-testid="toolbar">
         <button type="button" data-testid="bold">
           Bold
         </button>
@@ -62,9 +62,9 @@ async function renderEditor() {
   );
 
   await waitFor(() => {
-    expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
   });
-  const overlay = container.querySelector<HTMLDivElement>("[data-pptx-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
 
   function press(target: Element) {
     act(() => {
@@ -124,7 +124,7 @@ describe("anchor", () => {
   });
 });
 
-describe("data-pptx-keep-selection", () => {
+describe("data-presentation-keep-selection", () => {
   it("keeps the selection when a marked toolbar is pressed", async () => {
     const { overlay, bold, press } = await renderEditor();
     act(() => {
@@ -145,7 +145,7 @@ describe("data-pptx-keep-selection", () => {
     });
 
     const popover = document.createElement("div");
-    popover.setAttribute("data-pptx-keep-selection", "");
+    popover.setAttribute("data-presentation-keep-selection", "");
     const swatch = document.createElement("button");
     popover.appendChild(swatch);
     document.body.appendChild(popover);
@@ -473,7 +473,7 @@ describe("tables", () => {
       if (mode === "selected") act(() => editor.selection.current!.select([nodeId]));
       await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe(mode));
       const { x } = tableOf().position;
-      const frame = editor.container.querySelector<HTMLElement>("[data-border-move]")!;
+      const frame = editor.container.querySelector<HTMLElement>("[data-presentation-border-move]")!;
       act(() => {
         fireEvent.pointerDown(frame, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
       });
@@ -508,7 +508,7 @@ describe("tables", () => {
         end: { row: 1, column: 1 },
       }),
     );
-    expect(editor.container.querySelector("[data-pptx-cell-range]")).not.toBeNull();
+    expect(editor.container.querySelector("[data-presentation-cell-range]")).not.toBeNull();
 
     await act(() => editor.selection.current!.setParagraphStyle({ align: "center" }));
     expect(

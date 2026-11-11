@@ -2010,7 +2010,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const heights = getRowHeights(table);
     return (
       <div
-        data-pptx-cell-range=""
+        data-presentation-cell-range=""
         style={{
           position: "absolute",
           pointerEvents: "none",
@@ -2049,7 +2049,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       return (
         <div
           key={`${axis}-${index}`}
-          data-pptx-table-border={axis}
+          data-presentation-table-border={axis}
           onPointerDown={(event) => onTableBorderPointerDown(event, table, axis, index)}
           onPointerMove={onTableBorderPointerMove}
           onPointerUp={onTableBorderPointerUp}
@@ -2511,7 +2511,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
-   * once focus, and with it Escape, leaves the overlay; `data-pptx-keep-selection` UI
+   * once focus, and with it Escape, leaves the overlay; `data-presentation-keep-selection` UI
    * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
    * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
@@ -2631,7 +2631,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       x: event.clientX,
       y: event.clientY,
       target: (event.target as HTMLElement)?.tagName,
-      targetHandle: (event.target as HTMLElement)?.dataset?.resizeHandle,
+      targetHandle: (event.target as HTMLElement)?.dataset?.presentationResizeHandle,
       selectedRect: selectedNode ? getNodeRect(selectedNode) : null,
       selectedDomRect: selectedShapeElement
         ? (() => {
@@ -3439,7 +3439,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         {
           role: "application",
           "aria-label": "Slide editor",
-          "data-pptx-selection": "",
+          "data-presentation-selection": "",
           "data-mode": mode,
           tabIndex: 0,
           onPointerDown,
@@ -3551,7 +3551,9 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
       const isUndo = getIsUndoEvent(event);
       if (!isUndo && !getIsRedoEvent(event)) return;
       const boundary =
-        rootRef?.current ?? overlayRef.current?.closest<HTMLElement>("[data-pptx-slide]") ?? null;
+        rootRef?.current ??
+        overlayRef.current?.closest<HTMLElement>("[data-presentation-slide]") ??
+        null;
       if (!getIsPresentationTarget(event.target, boundary)) return;
       if (
         getIsNativeUndoTarget(event.target) &&

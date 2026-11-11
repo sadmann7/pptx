@@ -23,7 +23,7 @@ import type { ActiveTextStyle } from "./text-range";
  * selection and text editing alive instead of counting as a press outside. Put it
  * on toolbars and on their popover and menu content, which usually portal out.
  */
-export const KEEP_SELECTION_ATTRIBUTE = "data-pptx-keep-selection";
+export const KEEP_SELECTION_ATTRIBUTE = "data-presentation-keep-selection";
 
 /** Whether an event target sits inside UI marked with `KEEP_SELECTION_ATTRIBUTE`. */
 export function getIsKeepSelectionTarget(target: EventTarget | null): boolean {
@@ -310,7 +310,7 @@ function requireController(channel: SelectionChannel): SelectionController {
  *
  * Works anywhere under `Presentation.Root` or `Presentation.Provider`, so a
  * toolbar outside the slide can follow the selection. Mark that toolbar with
- * `data-pptx-keep-selection` so pressing it doesn't clear the selection.
+ * `data-presentation-keep-selection` so pressing it doesn't clear the selection.
  *
  * ```tsx
  * function BoldButton() {

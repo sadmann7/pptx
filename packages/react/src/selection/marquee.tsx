@@ -28,7 +28,7 @@ export const Marquee = React.forwardRef<HTMLDivElement, MarqueeProps>(function M
       ref: forwardedRef,
       props: [
         {
-          "data-marquee": "",
+          "data-presentation-marquee": "",
           "data-draw": state.mode === "draw" ? "" : undefined,
           style: {
             position: "absolute",

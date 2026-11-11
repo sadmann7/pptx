@@ -46,7 +46,7 @@ describe("PptxViewer.open (list mode)", () => {
     expect(viewer.slideHeight).toBeCloseTo(720, 6);
     expect(viewer.presentationData).not.toBeNull();
 
-    const items = container.querySelectorAll("[data-slide-index]");
+    const items = container.querySelectorAll("[data-pptx-slide-index]");
     expect(items).toHaveLength(3);
     expect(container.textContent).toContain("Alpha slide");
     expect(container.textContent).toContain("Gamma slide");
@@ -61,7 +61,7 @@ describe("PptxViewer.open (list mode)", () => {
     const viewer = track(await PptxViewer.open(await threeSlideDeck(), container, { width: 640 }));
     expect(viewer.fitMode).toBe("contain");
 
-    const wrapper = container.querySelector<HTMLElement>("[data-slide-index='0']")
+    const wrapper = container.querySelector<HTMLElement>("[data-pptx-slide-index='0']")
       ?.firstElementChild as HTMLElement;
     expect(wrapper.style.width).toBe("640px");
     expect(wrapper.style.height).toBe("360px");
@@ -76,7 +76,7 @@ describe("PptxViewer.open (list mode)", () => {
     await viewer.setZoom(200);
     expect(viewer.zoomPercent).toBe(200);
 
-    const wrapper = container.querySelector<HTMLElement>("[data-slide-index='0']")
+    const wrapper = container.querySelector<HTMLElement>("[data-pptx-slide-index='0']")
       ?.firstElementChild as HTMLElement;
     expect(wrapper.style.width).toBe("1280px");
     expect((wrapper.firstElementChild as HTMLElement).style.getPropertyValue("zoom")).toBe("1");

@@ -118,7 +118,7 @@ export function Toolbar() {
   const { textStyle, setTextStyle } = useSelection();
 
   return (
-    <div data-pptx-keep-selection="">
+    <div data-presentation-keep-selection="">
       <button
         aria-pressed={textStyle?.bold ?? false}
         disabled={!textStyle}

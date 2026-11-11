@@ -96,7 +96,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
       props: [
         {
           "aria-busy": status === "loading",
-          "data-pptx-slide": "",
+          "data-presentation-slide": "",
           "data-status": status,
           style: {
             display: "flex",

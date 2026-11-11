@@ -358,7 +358,7 @@ export class PptxViewer extends EventTarget {
       );
       this.ensureListSlideMountedFn?.(this.currentSlide);
       const targetChild = this.container.querySelector<HTMLElement>(
-        `[data-slide-index="${this.currentSlide}"]`,
+        `[data-pptx-slide-index="${this.currentSlide}"]`,
       );
       if (targetChild && typeof targetChild.scrollIntoView === "function") {
         targetChild.scrollIntoView(scrollOptions ?? { behavior: "smooth", block: "center" });
@@ -503,7 +503,7 @@ export class PptxViewer extends EventTarget {
     const displayHeight = this.presentation.height * scale;
 
     const wrapper = document.createElement("div");
-    wrapper.dataset.slideIndex = String(index);
+    wrapper.dataset.pptxSlideIndex = String(index);
     wrapper.dataset.pptxThumbnail = "true";
     wrapper.style.cssText = `
       width: ${displayWidth}px;
@@ -683,7 +683,9 @@ export class PptxViewer extends EventTarget {
 
   private findRenderedSlideElement(slideIndex: number): HTMLElement | null {
     if (this.activeRenderMode === "list") {
-      const item = this.container.querySelector<HTMLElement>(`[data-slide-index="${slideIndex}"]`);
+      const item = this.container.querySelector<HTMLElement>(
+        `[data-pptx-slide-index="${slideIndex}"]`,
+      );
       const wrapper = item?.firstElementChild;
       const slide = wrapper?.firstElementChild;
       return slide instanceof HTMLElement ? slide : null;
@@ -894,7 +896,7 @@ export class PptxViewer extends EventTarget {
     displayHeight: number,
   ): { item: HTMLDivElement; wrapper: HTMLDivElement } {
     const item = document.createElement("div");
-    item.dataset.slideIndex = String(index);
+    item.dataset.pptxSlideIndex = String(index);
     item.style.cssText = "width: fit-content; margin: 0 auto 20px;";
 
     const wrapper = document.createElement("div");
@@ -1069,7 +1071,7 @@ export class PptxViewer extends EventTarget {
       (entries) => {
         for (const entry of entries) {
           const item = (entry.target as HTMLElement).parentElement;
-          const index = Number(item?.dataset.slideIndex ?? "-1");
+          const index = Number(item?.dataset.pptxSlideIndex ?? "-1");
           if (Number.isNaN(index) || index < 0) continue;
           if (entry.isIntersecting) {
             mount(index);
@@ -1099,7 +1101,7 @@ export class PptxViewer extends EventTarget {
     const IO = window.IntersectionObserver;
     if (!IO) return;
 
-    const items = this.container.querySelectorAll<HTMLElement>("[data-slide-index]");
+    const items = this.container.querySelectorAll<HTMLElement>("[data-pptx-slide-index]");
     if (!items.length) return;
 
     const ratios = new Map<number, number>();
@@ -1108,7 +1110,7 @@ export class PptxViewer extends EventTarget {
     const observer = new IO(
       (entries) => {
         for (const entry of entries) {
-          const idx = Number((entry.target as HTMLElement).dataset.slideIndex ?? "-1");
+          const idx = Number((entry.target as HTMLElement).dataset.pptxSlideIndex ?? "-1");
           if (Number.isNaN(idx) || idx < 0) continue;
           ratios.set(idx, entry.intersectionRatio);
         }
@@ -1208,7 +1210,7 @@ export class PptxViewer extends EventTarget {
     const newDisplayW = this.presentation.width * newScale;
     const newDisplayH = this.presentation.height * newScale;
 
-    const items = this.container.querySelectorAll<HTMLElement>("[data-slide-index]");
+    const items = this.container.querySelectorAll<HTMLElement>("[data-pptx-slide-index]");
     for (const item of items) {
       const wrapper = item.firstElementChild as HTMLElement | null;
       if (!wrapper) continue;

@@ -141,7 +141,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
               ref: forwardedRef,
               props: [
                 {
-                  "data-selection-box": "",
+                  "data-presentation-selection-box": "",
                   "data-mode": boxState.mode,
                   "data-dragging": isDragging ? "" : undefined,
                   "data-rotating": isRotating ? "" : undefined,
@@ -198,7 +198,7 @@ function FrameGrabHitboxes({ hitboxes, onPointerDown }: FrameGrabHitboxesProps) 
         <div
           key={index}
           aria-hidden="true"
-          data-border-move=""
+          data-presentation-border-move=""
           onPointerDown={onPointerDown}
           style={{
             position: "absolute",

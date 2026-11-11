@@ -504,10 +504,10 @@ async function renderSelection(props: Record<string, unknown> = {}) {
   );
 
   await waitFor(() => {
-    expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
   });
 
-  const overlay = container.querySelector<HTMLDivElement>("[data-pptx-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
   const slideWrapper = overlay.parentElement!.parentElement!;
   const shapeElements = slideWrapper.querySelectorAll<HTMLElement>("[data-pptx-node-id]");
 
@@ -524,7 +524,7 @@ describe("Selection mount guards", () => {
         </Presentation.Slide>
       </Presentation.Provider>,
     );
-    expect(container.querySelector("[data-pptx-selection]")).toBeNull();
+    expect(container.querySelector("[data-presentation-selection]")).toBeNull();
   });
 
   it("shows overlay in idle mode when presentation is ready", async () => {
@@ -713,7 +713,7 @@ describe("multi-selection handles", () => {
   }
 
   function handleCount(container: HTMLElement): number {
-    return container.querySelectorAll("[data-resize-handle]").length;
+    return container.querySelectorAll("[data-presentation-resize-handle]").length;
   }
 
   it("keeps handles up while Shift+clicking a second shape", async () => {
@@ -845,10 +845,10 @@ describe("multi-selection handles", () => {
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
 
-    const boxes = container.querySelectorAll("[data-selection-box]");
+    const boxes = container.querySelectorAll("[data-presentation-selection-box]");
     expect(boxes.length).toBeGreaterThan(1);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-resize-handle]")).toHaveLength(8);
+      expect(box.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(8);
     }
   });
 
@@ -864,7 +864,7 @@ describe("multi-selection handles", () => {
 
     // Drag the first shape's south-east handle outward. Separate acts: each
     // handler needs the previous state update flushed to see it.
-    const handle = container.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
+    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="se"]')!;
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
     });
@@ -1064,7 +1064,7 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
     });
 
     act(() => {
@@ -1089,7 +1089,7 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
     });
 
     act(() => {
@@ -1131,7 +1131,7 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
     });
 
     const outside = container.querySelector<HTMLDivElement>("[data-testid='outside']")!;
@@ -1161,7 +1161,7 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-pptx-selection]")).not.toBeNull();
+      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
     });
 
     const thumbnail = container.querySelectorAll<HTMLElement>("[role='option']")[0];
