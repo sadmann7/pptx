@@ -402,7 +402,7 @@ test.describe("text boxes", () => {
     });
   }
 
-  test("inserts a text box ready to type in, with native undo", async ({ page, browserName }) => {
+  test("inserts a text box ready to type in, with native undo", async ({ page }) => {
     const { overlay } = await open(page);
     await page.getByTestId("text-box").click();
     await expect(overlay).toHaveAttribute("data-mode", "text");
@@ -412,11 +412,9 @@ test.describe("text boxes", () => {
 
     await page.keyboard.type("Hi");
     await expect.poll(() => lastNodeText(page)).toBe("Hi");
-    // Each keystroke undoes in turn, the first one included. WebKit groups typing into one undo step.
-    if (browserName !== "webkit") {
-      await page.keyboard.press("ControlOrMeta+z");
-      await expect.poll(() => lastNodeText(page)).toBe("H");
-    }
+    // Each keystroke undoes in turn, the first one included.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(() => lastNodeText(page)).toBe("H");
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(() => lastNodeText(page)).toBe("");
 
@@ -717,12 +715,7 @@ test.describe("tables", () => {
     await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
   });
 
-  test("selects the whole table with Cmd/Ctrl+A only once cells are selected", async ({
-    page,
-    browserName,
-  }) => {
-    // TODO: https://linear.app/gamepad/issue/DICE-306/type-over-a-selected-table-cell-range-in-safari
-    test.skip(browserName === "webkit", "WebKit drops focus from the cell during a range drag");
+  test("selects the whole table with Cmd/Ctrl+A only once cells are selected", async ({ page }) => {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Hi");
 
@@ -761,9 +754,7 @@ test.describe("tables", () => {
     expect((await readTable(page, nodeId)).cells[0][0].text).toBe("Hi");
   });
 
-  test("types over selected cells at the end of the first one", async ({ page, browserName }) => {
-    // TODO: https://linear.app/gamepad/issue/DICE-306/type-over-a-selected-table-cell-range-in-safari
-    test.skip(browserName === "webkit", "WebKit drops focus from the cell during a range drag");
+  test("types over selected cells at the end of the first one", async ({ page }) => {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");
     await page.keyboard.press("Tab");
