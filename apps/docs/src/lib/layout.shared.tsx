@@ -7,8 +7,8 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          <span className="flex size-5.5 items-center justify-center rounded-[5px] bg-foreground">
-            <span className="h-2 w-3 rounded-[1.5px] border-[1.5px] border-background" />
+          <span className="flex size-5.5 items-center justify-center rounded-[5px] bg-primary">
+            <span className="h-2 w-3 rounded-[1.5px] border-[1.5px] border-primary-foreground" />
           </span>
           <span className="font-semibold tracking-tight">{siteConfig.name}</span>
         </>
