@@ -17,6 +17,7 @@ import {
   getPresentationFonts,
   getPresetShapePath,
   getTableCellOrigin,
+  Presentation as PresentationPrimitive,
   useHistory,
   usePresentation,
   useSelection,
@@ -71,7 +72,6 @@ import { Popover, PopoverContent } from "@pptx/ui/components/popover";
 import {
   Presentation,
   PresentationContent,
-  PresentationControls,
   PresentationError,
   PresentationLoading,
   PresentationProvider,
@@ -782,7 +782,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
 
   return (
     <TooltipProvider delay={400}>
-      <PresentationControls
+      <PresentationPrimitive.Controls
         render={<Toolbar aria-label="Edit presentation" className="flex-nowrap border-b p-1.5" />}
       >
         {/* One scrolling row, so the contextual tools never wrap onto a new line. */}
@@ -1053,7 +1053,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             </>
           )}
         </div>
-      </PresentationControls>
+      </PresentationPrimitive.Controls>
     </TooltipProvider>
   );
 }
@@ -1592,7 +1592,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
   }
 
   return (
-    <PresentationControls className="contents">
+    <PresentationPrimitive.Controls className="contents">
       <Popover open={isOpen}>
         <PopoverContent
           anchor={anchor}
@@ -1675,7 +1675,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
           </TooltipProvider>
         </PopoverContent>
       </Popover>
-    </PresentationControls>
+    </PresentationPrimitive.Controls>
   );
 }
 
