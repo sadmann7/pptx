@@ -210,7 +210,6 @@ test.describe("snapping", () => {
 });
 
 test.describe("scrolling", () => {
-  /** Cuts the overlay's bottom off below shape 2, so focusing the overlay could scroll. */
   async function openCutOff(page: Page) {
     const opened = await open(page);
     const shape = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
