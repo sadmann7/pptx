@@ -112,13 +112,13 @@ export function Editor({ file }) {
   );
 }`;
 
-const TOOLBAR_CODE = `import { useSelection } from "@diceui/pptx";
+const TOOLBAR_CODE = `import { Presentation, useSelection } from "@diceui/pptx";
 
 export function Toolbar() {
   const { textStyle, setTextStyle } = useSelection();
 
   return (
-    <div data-presentation-controls="">
+    <Presentation.Controls>
       <button
         aria-pressed={textStyle?.bold ?? false}
         disabled={!textStyle}
@@ -126,7 +126,7 @@ export function Toolbar() {
       >
         Bold
       </button>
-    </div>
+    </Presentation.Controls>
   );
 }`;
 

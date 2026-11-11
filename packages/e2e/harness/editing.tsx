@@ -3,8 +3,9 @@
  * the way an app wires `useSelection`, so editing.spec.ts can press real
  * toolbar buttons and check the selection and text editing survive.
  *
- * The toolbar and a portalled "popover" carry `data-presentation-controls`; the
- * "outside" strip does not. The spec reads the model through `__editStore`.
+ * The toolbar sits in `Presentation.Controls` with an unmarked "popover" it portals;
+ * a separate strip carries only `data-presentation-controls`, and the "outside"
+ * strip is neither. The spec reads the model through `__editStore`.
  *
  * Query params:
  *   file  deck to load, served from fixtures/ (default basic.pptx)
@@ -34,69 +35,67 @@ function Toolbar() {
   } = useSelection();
 
   return (
-    <>
-      <div data-presentation-controls="" style={{ display: "flex", gap: 4, padding: 4 }}>
-        <button
-          type="button"
-          data-testid="italic"
-          onClick={() => void setTextStyle({ italic: true })}
-        >
-          Italic
-        </button>
-        <button
-          type="button"
-          data-testid="underline"
-          onClick={() => void setTextStyle({ underline: true })}
-        >
-          Underline
-        </button>
-        <button
-          type="button"
-          data-testid="align-left"
-          onClick={() => void setParagraphStyle({ align: "left" })}
-        >
-          Left
-        </button>
-        <button type="button" data-testid="text-box" onClick={() => void insertTextBox()}>
-          Text box
-        </button>
-        <button
-          type="button"
-          data-testid="draw-text-box"
-          onClick={() => startDrawing({ type: "textBox" })}
-        >
-          Draw text box
-        </button>
-        <button
-          type="button"
-          data-testid="draw-ellipse"
-          onClick={() => startDrawing({ type: "shape", geometry: "ellipse" })}
-        >
-          Draw ellipse
-        </button>
-        <button type="button" data-testid="insert-table" onClick={() => void insertTable(2, 3)}>
-          Table
-        </button>
-        <button
-          type="button"
-          data-testid="merge-cells"
-          onClick={() => void changeTable({ type: "mergeCells" })}
-        >
-          Merge
-        </button>
-        <button
-          type="button"
-          data-testid="cell-fill"
-          onClick={() => void setTableCellStyle({ fill: "#FF0000" })}
-        >
-          Fill
-        </button>
-        <output data-testid="state">
-          {JSON.stringify({ mode, nodeIds, cell, cellRange, bold: textStyle?.bold ?? null })}
-        </output>
-      </div>
+    <Presentation.Controls style={{ display: "flex", gap: 4, padding: 4 }}>
+      <button
+        type="button"
+        data-testid="italic"
+        onClick={() => void setTextStyle({ italic: true })}
+      >
+        Italic
+      </button>
+      <button
+        type="button"
+        data-testid="underline"
+        onClick={() => void setTextStyle({ underline: true })}
+      >
+        Underline
+      </button>
+      <button
+        type="button"
+        data-testid="align-left"
+        onClick={() => void setParagraphStyle({ align: "left" })}
+      >
+        Left
+      </button>
+      <button type="button" data-testid="text-box" onClick={() => void insertTextBox()}>
+        Text box
+      </button>
+      <button
+        type="button"
+        data-testid="draw-text-box"
+        onClick={() => startDrawing({ type: "textBox" })}
+      >
+        Draw text box
+      </button>
+      <button
+        type="button"
+        data-testid="draw-ellipse"
+        onClick={() => startDrawing({ type: "shape", geometry: "ellipse" })}
+      >
+        Draw ellipse
+      </button>
+      <button type="button" data-testid="insert-table" onClick={() => void insertTable(2, 3)}>
+        Table
+      </button>
+      <button
+        type="button"
+        data-testid="merge-cells"
+        onClick={() => void changeTable({ type: "mergeCells" })}
+      >
+        Merge
+      </button>
+      <button
+        type="button"
+        data-testid="cell-fill"
+        onClick={() => void setTableCellStyle({ fill: "#FF0000" })}
+      >
+        Fill
+      </button>
+      <output data-testid="state">
+        {JSON.stringify({ mode, nodeIds, cell, cellRange, bold: textStyle?.bold ?? null })}
+      </output>
       {createPortal(
-        <div data-presentation-controls="" style={{ position: "fixed", right: 8, bottom: 8 }}>
+        <div style={{ position: "fixed", right: 8, bottom: 8 }}>
           <button
             type="button"
             data-testid="swatch"
@@ -104,10 +103,27 @@ function Toolbar() {
           >
             Green
           </button>
+          <input data-testid="popover-input" aria-label="Popover field" />
         </div>,
         document.body,
       )}
-    </>
+    </Presentation.Controls>
+  );
+}
+
+function MarkedStrip() {
+  const { setTextStyle } = useSelection();
+
+  return (
+    <div data-presentation-controls="" style={{ padding: 4 }}>
+      <button
+        type="button"
+        data-testid="marked-bold"
+        onClick={() => void setTextStyle({ bold: true })}
+      >
+        Bold
+      </button>
+    </div>
   );
 }
 
@@ -130,7 +146,13 @@ function App() {
   return (
     <Presentation.Provider store={store}>
       <Toolbar />
+      <MarkedStrip />
       <div data-testid="outside" style={{ height: 40, background: "#eee" }} />
+      <div
+        data-testid="outside-stopped"
+        onPointerDown={(event) => event.stopPropagation()}
+        style={{ height: 40, background: "#ddd" }}
+      />
       <div style={{ position: "relative", padding: 16 }}>
         <Presentation.Slide>
           <Presentation.Selection undoRedoShortcuts />

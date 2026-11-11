@@ -3,6 +3,7 @@ export * as Presentation from "./primitives";
 export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
+export type { ControlsProps } from "./selection/controls";
 export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection/selection";
 export type { MarqueeProps } from "./selection/marquee";
 export type { ResizeHandleProps, ResizeHandleState } from "./selection/resize-handle";

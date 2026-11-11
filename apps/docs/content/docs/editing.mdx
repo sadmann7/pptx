@@ -250,16 +250,16 @@ In `setTextStyle`, `null` clears a value so it inherits from the layout, and a r
 
 `useSelection` gives a toolbar the selection and formatting commands. While editing text they format the selection, or the word at the caret; otherwise they format the whole shape.
 
-Mark the toolbar, and any popovers it portals, with `data-presentation-controls` so pressing it keeps the selection.
+Wrap the toolbar in `Presentation.Controls` so pressing it keeps the selection and text editing. Popovers and menus it renders count too, even when they portal out.
 
 ```tsx
-import { useSelection } from "@diceui/pptx";
+import { Presentation, useSelection } from "@diceui/pptx";
 
 function FormattingToolbar() {
   const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
 
   return (
-    <div data-presentation-controls="">
+    <Presentation.Controls>
       <button
         aria-pressed={textStyle?.bold ?? false}
         disabled={!textStyle}
@@ -270,10 +270,12 @@ function FormattingToolbar() {
       <button disabled={!textStyle} onClick={() => void setParagraphStyle({ align: "center" })}>
         Center
       </button>
-    </div>
+    </Presentation.Controls>
   );
 }
 ```
+
+For UI that `Presentation.Controls` can't wrap, such as a context menu around the slide, put `data-presentation-controls` on the element itself.
 
 `textStyle` describes the selected text, with `null` for mixed values. It is `null` when nothing with text is selected.
 
@@ -303,7 +305,7 @@ function FloatingToolbar() {
     <Popover.Root open={anchor !== null && (mode === "selected" || mode === "text")}>
       <Popover.Portal>
         <Popover.Positioner anchor={anchor} side="top" sideOffset={8}>
-          <Popover.Popup initialFocus={false} finalFocus={false} data-presentation-controls="">
+          <Popover.Popup initialFocus={false} finalFocus={false}>
             <FormattingToolbar />
           </Popover.Popup>
         </Popover.Positioner>

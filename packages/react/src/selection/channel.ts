@@ -19,17 +19,26 @@ import type { SelectionState } from "./selection";
 import type { ActiveTextStyle } from "./text-range";
 
 /**
- * Marks UI outside the slide as part of the editor: a press inside it keeps the
- * selection and text editing alive instead of counting as a press outside. Put it
- * on toolbars and on their popover and menu content, which usually portal out.
+ * Marks editor UI that `Presentation.Controls` can't wrap, such as a context menu
+ * around the slide, so pressing it keeps the selection and text editing.
  */
 export const CONTROLS_ATTRIBUTE = "data-presentation-controls";
+
+const controlsEvents = new WeakSet<Event>();
+
+export function markControlsEvent(event: Event): void {
+  controlsEvents.add(event);
+}
 
 /** Whether an event target sits inside UI marked with `CONTROLS_ATTRIBUTE`. */
 export function getIsControlsTarget(target: EventTarget | null): boolean {
   const element =
     target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
   return element?.closest(`[${CONTROLS_ATTRIBUTE}]`) != null;
+}
+
+export function getIsControlsEvent(event: Event): boolean {
+  return controlsEvents.has(event) || getIsControlsTarget(event.target);
 }
 
 /** A row or column change at the table cell being edited. */
@@ -309,8 +318,8 @@ function requireController(channel: SelectionChannel): SelectionController {
  * The selection of the editing overlay, and formatting commands for it.
  *
  * Works anywhere under `Presentation.Root` or `Presentation.Provider`, so a
- * toolbar outside the slide can follow the selection. Mark that toolbar with
- * `data-presentation-controls` so pressing it doesn't clear the selection.
+ * toolbar outside the slide can follow the selection. Wrap that toolbar in
+ * `Presentation.Controls` so pressing it doesn't clear the selection.
  *
  * ```tsx
  * function BoldButton() {

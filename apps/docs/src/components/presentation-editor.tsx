@@ -17,6 +17,7 @@ import {
   getPresentationFonts,
   getPresetShapePath,
   getTableCellOrigin,
+  Presentation as PresentationPrimitive,
   useHistory,
   usePresentation,
   useSelection,
@@ -469,7 +470,7 @@ function ColorMenu({
           style={{ backgroundColor: value ?? "transparent" }}
         />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent data-presentation-controls="" aria-label={label} className="w-auto">
+      <DropdownMenuContent aria-label={label} className="w-auto">
         {onNone && (
           <>
             <DropdownMenuItem onClick={onNone}>
@@ -564,12 +565,7 @@ function FontSelect({
         />
         <TooltipContent>{value ? `Font: ${value}` : "Font"}</TooltipContent>
       </Tooltip>
-      <SelectContent
-        data-presentation-controls=""
-        alignItemWithTrigger={false}
-        align="start"
-        className="w-56"
-      >
+      <SelectContent alignItemWithTrigger={false} align="start" className="w-56">
         {deckFonts.length > 0 && (
           <SelectGroup>
             <SelectLabel>In this presentation</SelectLabel>
@@ -786,10 +782,8 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
 
   return (
     <TooltipProvider delay={400}>
-      <Toolbar
-        aria-label="Edit presentation"
-        data-presentation-controls=""
-        className="flex-nowrap border-b p-1.5"
+      <PresentationPrimitive.Controls
+        render={<Toolbar aria-label="Edit presentation" className="flex-nowrap border-b p-1.5" />}
       >
         {/* One scrolling row, so the contextual tools never wrap onto a new line. */}
         <div
@@ -1024,11 +1018,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 <ToolbarMenuTrigger label="Arrange" chevron>
                   <LayersIcon />
                 </ToolbarMenuTrigger>
-                <DropdownMenuContent
-                  data-presentation-controls=""
-                  aria-label="Arrange"
-                  className="w-48"
-                >
+                <DropdownMenuContent aria-label="Arrange" className="w-48">
                   {ARRANGE.map(({ order, label, shortcut }) => (
                     <DropdownMenuItem key={order} onClick={() => run(() => reorder(order))}>
                       {label}
@@ -1063,7 +1053,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             </>
           )}
         </div>
-      </Toolbar>
+      </PresentationPrimitive.Controls>
     </TooltipProvider>
   );
 }
@@ -1104,7 +1094,6 @@ function ShapeMenu({
         <ShapesIcon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent
-        data-presentation-controls=""
         aria-label="Shape"
         // The armed slide takes focus, so Escape disarms it.
         finalFocus={false}
@@ -1161,7 +1150,7 @@ function TableMenu({
       <ToolbarMenuTrigger label="Table" disabled={disabled}>
         <TableIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent data-presentation-controls="" aria-label="Table" className="w-auto">
+      <DropdownMenuContent aria-label="Table" className="w-auto">
         <div
           className="grid gap-0.5"
           style={{ gridTemplateColumns: `repeat(${TABLE_PICKER_COLUMNS}, minmax(0, 1fr))` }}
@@ -1213,7 +1202,7 @@ function TableEditMenu({
       <ToolbarMenuTrigger label="Edit table" chevron>
         <Grid2x2PlusIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent data-presentation-controls="" aria-label="Edit table" className="w-48">
+      <DropdownMenuContent aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
           <DropdownMenuItem key={label} disabled={!hasCell} onClick={() => onSelect(change)}>
             <Icon />
@@ -1275,11 +1264,7 @@ function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign)
       <ToolbarMenuTrigger label="Vertical align" chevron>
         <AlignVerticalJustifyCenterIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-presentation-controls=""
-        aria-label="Vertical align"
-        className="w-36"
-      >
+      <DropdownMenuContent aria-label="Vertical align" className="w-36">
         {CELL_ALIGNMENTS.map(({ align, label, icon: Icon }) => (
           <DropdownMenuItem key={align} onClick={() => onSelect(align)}>
             <Icon />
@@ -1304,7 +1289,7 @@ function AlignMenu({
       <ToolbarMenuTrigger label="Align" chevron>
         <current.icon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent data-presentation-controls="" aria-label="Align" className="w-40">
+      <DropdownMenuContent aria-label="Align" className="w-40">
         <DropdownMenuRadioGroup
           value={value ?? ""}
           onValueChange={(align) => onSelect(align as ParagraphAlign)}
@@ -1607,84 +1592,90 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
   }
 
   return (
-    <Popover open={isOpen}>
-      <PopoverContent
-        anchor={anchor}
-        side="top"
-        align="start"
-        // Clears the rotate handle, which sits 20px above the selection.
-        sideOffset={24}
-        collisionPadding={8}
-        initialFocus={false}
-        finalFocus={false}
-        data-presentation-controls=""
-        // Shown on every selection, so it appears without animating.
-        className="w-auto p-1 data-open:animate-none data-closed:animate-none"
-      >
-        <TooltipProvider delay={400}>
-          <Toolbar aria-label="Format selection" className="flex-nowrap">
-            {shapes.length > 0 && slideId && (
-              <ColorMenu
-                label="Fill"
-                icon={PaintBucketIcon}
-                onSelect={(color) =>
-                  editNodes(shapes, (nodeId) => ({ type: "setSolidFill", slideId, nodeId, color }))
-                }
-              />
-            )}
-            {outlined.length > 0 && slideId && (
-              <ColorMenu
-                label="Outline"
-                icon={PencilLineIcon}
-                onSelect={(color) =>
-                  editNodes(outlined, (nodeId) => ({
-                    type: "setOutline",
-                    slideId,
-                    nodeId,
-                    color,
-                    width: 1.5,
-                  }))
-                }
-                noneLabel="No outline"
-                onNone={() =>
-                  editNodes(outlined, (nodeId) => ({
-                    type: "setOutline",
-                    slideId,
-                    nodeId,
-                    color: null,
-                  }))
-                }
-              />
-            )}
-            {textStyle && (
-              <>
-                {hasShapeTools && <ToolbarSeparator />}
-                {TEXT_TOGGLES.slice(0, 3).map(({ key, label, icon: Icon }) => (
-                  <ToolbarIconButton
-                    key={key}
-                    label={label}
-                    pressed={textStyle[key]}
-                    onClick={() => run(() => setTextStyle({ [key]: !textStyle[key] }))}
-                  >
-                    <Icon />
-                  </ToolbarIconButton>
-                ))}
+    <PresentationPrimitive.Controls className="contents">
+      <Popover open={isOpen}>
+        <PopoverContent
+          anchor={anchor}
+          side="top"
+          align="start"
+          // Clears the rotate handle, which sits 20px above the selection.
+          sideOffset={24}
+          collisionPadding={8}
+          initialFocus={false}
+          finalFocus={false}
+          // Shown on every selection, so it appears without animating.
+          className="w-auto p-1 data-open:animate-none data-closed:animate-none"
+        >
+          <TooltipProvider delay={400}>
+            <Toolbar aria-label="Format selection" className="flex-nowrap">
+              {shapes.length > 0 && slideId && (
                 <ColorMenu
-                  label="Text color"
-                  icon={BaselineIcon}
-                  value={textStyle.color}
-                  onSelect={(color) => run(() => setTextStyle({ color }))}
+                  label="Fill"
+                  icon={PaintBucketIcon}
+                  onSelect={(color) =>
+                    editNodes(shapes, (nodeId) => ({
+                      type: "setSolidFill",
+                      slideId,
+                      nodeId,
+                      color,
+                    }))
+                  }
                 />
-                <AlignMenu
-                  value={textStyle.align}
-                  onSelect={(align) => run(() => setParagraphStyle({ align }))}
+              )}
+              {outlined.length > 0 && slideId && (
+                <ColorMenu
+                  label="Outline"
+                  icon={PencilLineIcon}
+                  onSelect={(color) =>
+                    editNodes(outlined, (nodeId) => ({
+                      type: "setOutline",
+                      slideId,
+                      nodeId,
+                      color,
+                      width: 1.5,
+                    }))
+                  }
+                  noneLabel="No outline"
+                  onNone={() =>
+                    editNodes(outlined, (nodeId) => ({
+                      type: "setOutline",
+                      slideId,
+                      nodeId,
+                      color: null,
+                    }))
+                  }
                 />
-              </>
-            )}
-          </Toolbar>
-        </TooltipProvider>
-      </PopoverContent>
-    </Popover>
+              )}
+              {textStyle && (
+                <>
+                  {hasShapeTools && <ToolbarSeparator />}
+                  {TEXT_TOGGLES.slice(0, 3).map(({ key, label, icon: Icon }) => (
+                    <ToolbarIconButton
+                      key={key}
+                      label={label}
+                      pressed={textStyle[key]}
+                      onClick={() => run(() => setTextStyle({ [key]: !textStyle[key] }))}
+                    >
+                      <Icon />
+                    </ToolbarIconButton>
+                  ))}
+                  <ColorMenu
+                    label="Text color"
+                    icon={BaselineIcon}
+                    value={textStyle.color}
+                    onSelect={(color) => run(() => setTextStyle({ color }))}
+                  />
+                  <AlignMenu
+                    value={textStyle.align}
+                    onSelect={(align) => run(() => setParagraphStyle({ align }))}
+                  />
+                </>
+              )}
+            </Toolbar>
+          </TooltipProvider>
+        </PopoverContent>
+      </Popover>
+    </PresentationPrimitive.Controls>
   );
 }
 

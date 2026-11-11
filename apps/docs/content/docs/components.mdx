@@ -234,6 +234,18 @@ The box drawn while dragging to select or to draw a shape.
 
 <AutoTypeTable path="types/presentation.ts" name="MarqueeProps" />
 
+## Controls
+
+Editor UI outside the slide, such as a toolbar. Pressing it keeps the selection and text editing, and so does pressing the popovers and menus it renders, even when they portal out. See [Formatting toolbar](/docs/editing#formatting-toolbar).
+
+```tsx
+<Presentation.Controls>
+  <FormattingToolbar />
+</Presentation.Controls>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="ControlsProps" />
+
 ## ThumbnailList
 
 Scrollable list of slide thumbnails. Each `ThumbnailItem` is mounted immediately, while its preview is rendered lazily as it approaches the viewport and cached. The cache keeps at most 50 previews, releasing the least recently shown off-screen ones, so memory stays flat on long decks. Use ↑/↓, Home, and End to navigate with roving focus. Set loop to wrap arrow-key navigation.

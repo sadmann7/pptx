@@ -35,7 +35,7 @@ import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
 import type { DrawTool, TableChange } from "./channel";
-import { getIsControlsTarget, getSelectionChannel } from "./channel";
+import { getIsControlsEvent, getIsControlsTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { getReportedMode, SelectionPartsContext } from "./context";
 import type { HandleDirection, Rect } from "./geometry";
@@ -115,17 +115,15 @@ function getIsNativeUndoTarget(target: EventTarget | null): boolean {
  * Targets outside it keep the host page's own undo. An unfocused page (`body`)
  * goes to the deck, so shortcuts work before anything has been clicked.
  */
-function getIsPresentationTarget(
-  target: EventTarget | null,
-  boundary: HTMLElement | null,
-): boolean {
+function getIsPresentationEvent(event: Event, boundary: HTMLElement | null): boolean {
+  const target = event.target;
   if (!(target instanceof Node)) return true;
   if (target === document || target === document.body || target === document.documentElement) {
     return true;
   }
   // An editor toolbar is part of the deck's UI: undo after pressing Bold
   // undoes the bold.
-  if (getIsControlsTarget(target)) return true;
+  if (getIsControlsEvent(event)) return true;
   return boundary?.contains(target) ?? false;
 }
 
@@ -2186,7 +2184,27 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   React.useEffect(() => {
     if (!isTextMode) return;
 
+    // A press or Escape outside the slide waits for React's dispatch, which runs
+    // after these capture listeners, to learn whether `Presentation.Controls` owns it.
+    let pendingOutside: PointerEvent | KeyboardEvent | null = null;
+
+    function resolveOutside(event: Event | null, isDispatching: boolean): void {
+      const outside = pendingOutside;
+      if (!outside || (event && event !== outside)) return;
+      pendingOutside = null;
+      const currentState = stateRef.current;
+      if (currentState.mode !== "text" || getIsControlsEvent(outside)) return;
+      // preventDefault keeps the overlay focused so undo/redo shortcuts still work.
+      if (isDispatching) outside.preventDefault();
+      doExitTextModeRef.current(currentState, outside.type === "keydown" ? undefined : null);
+    }
+
+    function onWindowEvent(event: Event): void {
+      resolveOutside(event, true);
+    }
+
     function onDocPointerDown(event: PointerEvent): void {
+      pendingOutside = null;
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
@@ -2279,16 +2297,15 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           moved: false,
         });
       } else if (!hitNodeId) {
-        // Clicked empty area: exit text, deselect. preventDefault keeps the
-        // overlay focused so undo/redo shortcuts still work afterwards.
-        event.preventDefault();
-        doExitTextModeRef.current(currentState, null);
+        // Clicked empty area: exit text and deselect, unless it was controls.
+        pendingOutside = event;
       }
       // Else clicked inside the same shape but outside the text container
       // (e.g. shape padding area); stay in text mode.
     }
 
     function onDocKeyDown(event: KeyboardEvent): void {
+      pendingOutside = null;
       const currentState = stateRef.current;
       if (currentState.mode !== "text") return;
 
@@ -2307,8 +2324,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
       // Escape inside a toolbar closes its popover, not the text editing.
       if (event.key === "Escape" && !getIsControlsTarget(event.target)) {
-        event.preventDefault();
-        doExitTextModeRef.current(currentState);
+        pendingOutside = event;
+        const target = event.target as Node;
+        const wrapper = rootRef.current?.parentElement?.parentElement;
+        if (currentState.editingElement.contains(target) || wrapper?.contains(target)) {
+          resolveOutside(event, true);
+        }
         return;
       }
 
@@ -2404,6 +2425,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
     function onDocPointerUp(): void {
       cellDragRef.current = null;
+      // The press never reached the window, so its propagation was stopped.
+      if (pendingOutside?.type === "pointerdown") resolveOutside(null, false);
     }
 
     function onDocBeforeInput(event: Event): void {
@@ -2458,6 +2481,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     document.addEventListener("paste", onDocPaste, true);
     document.addEventListener("beforeinput", onDocBeforeInput, true);
     document.addEventListener("input", onDocInput, true);
+    window.addEventListener("pointerdown", onWindowEvent);
+    window.addEventListener("keydown", onWindowEvent);
     return () => {
       document.removeEventListener("pointerdown", onDocPointerDown, true);
       document.removeEventListener("pointermove", onDocPointerMove, true);
@@ -2468,6 +2493,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       document.removeEventListener("paste", onDocPaste, true);
       document.removeEventListener("beforeinput", onDocBeforeInput, true);
       document.removeEventListener("input", onDocInput, true);
+      window.removeEventListener("pointerdown", onWindowEvent);
+      window.removeEventListener("keydown", onWindowEvent);
       heldKeysRef.current = "";
     };
   }, [
@@ -2511,35 +2538,35 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
-   * once focus, and with it Escape, leaves the overlay; `data-presentation-controls` UI
-   * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
+   * once focus, and with it Escape, leaves the overlay; editor controls are
+   * exempt. It acts on release, since a touch scroll starts with a pointerdown and
    * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
   React.useEffect(() => {
     if (isTextMode) return;
 
-    let pending = false;
+    let pendingPress: PointerEvent | null = null;
 
     function onDocPointerDown(event: PointerEvent): void {
-      pending = false;
+      pendingPress = null;
       // Primary button only, as in `onPointerDown`; touch and pen report 0.
       if (event.button !== 0) return;
       if (stateRef.current.mode === "idle") return;
       // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
-      // Toolbars act on the selection, so pressing them must keep it.
-      if (getIsControlsTarget(event.target)) return;
-      pending = true;
+      pendingPress = event;
     }
 
     function onDocPointerUp(): void {
-      if (!pending) return;
-      pending = false;
+      const press = pendingPress;
+      pendingPress = null;
+      // Toolbars act on the selection, so pressing them must keep it.
+      if (!press || getIsControlsEvent(press)) return;
       setState({ mode: "idle" });
     }
 
     function onDocPointerCancel(): void {
-      pending = false;
+      pendingPress = null;
     }
 
     document.addEventListener("pointerdown", onDocPointerDown, true);
@@ -3210,7 +3237,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
    */
   function getIsDeckClipboardEvent(event: ClipboardEvent): boolean {
     if (getIsNativeUndoTarget(event.target)) return false;
-    return getIsPresentationTarget(event.target, rootContext?.current ?? rootRef.current);
+    return getIsPresentationEvent(event, rootContext?.current ?? rootRef.current);
   }
 
   function copySelection(event: ClipboardEvent, cut: boolean): void {
@@ -3554,7 +3581,7 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
         rootRef?.current ??
         overlayRef.current?.closest<HTMLElement>("[data-presentation-slide]") ??
         null;
-      if (!getIsPresentationTarget(event.target, boundary)) return;
+      if (!getIsPresentationEvent(event, boundary)) return;
       if (
         getIsNativeUndoTarget(event.target) &&
         !getSelectionChannel(store).getController()?.prepareTextHistory(event.target)
