@@ -60,7 +60,7 @@ jobs:
       - uses: ./.github/setup
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium firefox
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
         working-directory: packages/e2e
 
       - name: Test

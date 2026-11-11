@@ -7,7 +7,7 @@ one deck in isolation, with no viewer or docs app in the way.
 ## Running the tests
 
 ```bash
-pnpm test                # both browsers
+pnpm test                # chromium, firefox and webkit
 pnpm test:headed
 pnpm test:update         # re-record screenshot baselines
 pnpm report
