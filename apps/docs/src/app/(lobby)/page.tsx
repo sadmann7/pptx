@@ -10,7 +10,6 @@ import {
   ArrowRight,
   CaseSensitive,
   ChartColumn,
-  CornerRightDown,
   Move,
   Shapes,
   Table,
@@ -145,11 +144,21 @@ const PRIMITIVES = [
 ];
 
 const ARCHITECTURE_PATHS = [
-  { label: "With React", app: "Next.js, Vite", hasReact: true },
-  { label: "Without React", app: "Vue, Svelte, plain JS", hasReact: false },
+  {
+    label: "With React",
+    app: "Next.js, Vite",
+    layer: "@diceui/pptx",
+    tag: "Components and hooks",
+    parts: ["Root", "Viewport", "Slide", "Selection"],
+  },
+  {
+    label: "Without React",
+    app: "Vue, Svelte, plain JS",
+    layer: "Your bindings",
+    tag: "Call the core directly",
+    parts: ["PptxViewer", "renderSlide()", "applyEdit()", "writePptx()"],
+  },
 ];
-
-const REACT_PARTS = ["Root", "Viewport", "Slide", "Selection"];
 
 const CORE_STEPS = ["Parse", "Render", "Edit", "Save"];
 
@@ -447,24 +456,24 @@ function Architecture() {
       </div>
       <div className="grid w-full gap-4 md:grid-cols-2">
         {ARCHITECTURE_PATHS.map((item) => (
-          <div key={item.label} className="flex flex-col rounded-xl border bg-card p-4 md:p-6">
+          <div
+            key={item.label}
+            className="flex flex-col rounded-xl border bg-background p-4 md:p-6"
+          >
             <p className="pb-4 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
               {item.label}
             </p>
             <Tier name="Your app" tag={item.app} className="h-11 font-sans font-medium md:h-14" />
             <TierConnector />
-            {item.hasReact ? (
-              <Tier name="@diceui/pptx" tag="Components and hooks">
-                {REACT_PARTS.map((part) => (
-                  <Chip key={part}>{part}</Chip>
-                ))}
-              </Tier>
-            ) : (
-              <div className="flex h-10 items-center justify-center gap-2 rounded-[10px] bg-muted font-mono text-xs text-muted-foreground md:h-24">
-                <CornerRightDown className="size-3.5" />
-                no React layer
-              </div>
-            )}
+            <Tier
+              name={item.layer}
+              tag={item.tag}
+              className={item.layer.startsWith("@") ? undefined : "font-sans"}
+            >
+              {item.parts.map((part) => (
+                <Chip key={part}>{part}</Chip>
+              ))}
+            </Tier>
             <TierConnector />
             <Tier name="@diceui/pptx-core" tag="The engine">
               {CORE_STEPS.map((step, index) => (
@@ -495,8 +504,8 @@ function Tier({
   return (
     <div
       className={cn(
-        "flex flex-col justify-center gap-2 rounded-[10px] bg-muted px-3.5 font-mono md:gap-2.5 md:px-5",
-        children ? "h-19 md:h-24" : undefined,
+        "flex flex-col justify-center gap-2 rounded-lg border bg-muted/50 px-3.5 font-mono md:gap-2.5 md:px-5",
+        children ? "min-h-19 py-3 md:min-h-24" : undefined,
         className,
       )}
     >
@@ -521,9 +530,7 @@ function TierConnector() {
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-md bg-primary px-2 py-1 font-mono text-xs font-medium text-primary-foreground">
-      {children}
-    </span>
+    <span className="rounded-sm border px-2 py-1 font-mono text-xs font-medium">{children}</span>
   );
 }
 
