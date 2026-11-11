@@ -1,13 +1,9 @@
 // @vitest-environment jsdom
 /**
- * A drag overlay mounts a second copy of a thumbnail while the original is
- * still in the list. These tests lock the two things that makes possible: the
- * copy stays out of the list's semantics, and the two previews never fight
- * over one rendered slide element.
- *
- * Runs under jsdom (not the default happy-dom) for the same reason as
- * `thumbnail-reorder.test.tsx`: happy-dom's XML parser drops namespaced
- * attributes the renderer depends on.
+ * A drag overlay mounts a second copy of a thumbnail while the original is still
+ * in the list. These tests lock that the copy stays out of the list's semantics
+ * and that the two never fight over one slide element. Runs under jsdom, since
+ * happy-dom's XML parser drops namespaced attributes the renderer needs.
  */
 
 import { act, render, screen } from "@testing-library/react";
@@ -44,12 +40,9 @@ afterEach(() => {
 });
 
 /**
- * Lets the list's rAF-batched render queue drain.
- *
- * The queue drains within an 8ms-per-frame budget, so a single callback
- * normally clears in one tick. A loaded CI runner can blow that budget on
- * the very first callback, pushing the rest to a second frame; a handful of
- * extra ticks costs nothing locally and removes that flake.
+ * Lets the list's rAF-batched render queue drain. It usually clears in one tick
+ * within its 8ms frame budget, but a loaded CI runner can push the rest to a
+ * second frame, so a few extra ticks remove that flake.
  */
 async function flushPreviews(): Promise<void> {
   for (let tick = 0; tick < 5; tick++) {

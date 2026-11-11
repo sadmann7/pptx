@@ -85,10 +85,9 @@ describe("buAutoNum bullets", () => {
     expect(bullets).toEqual(["5. ", "6. ", "7. "]);
   });
 
-  // TODO(spec?): PowerPoint repeats startAt on every paragraph of a list that
-  // starts at N and still renders N, N+1, N+2… The renderer restarts the
-  // counter whenever startAt is present, so repeated startAt yields repeated
-  // numbers. Asserting actual behavior here.
+  // PowerPoint repeats startAt on every paragraph of a list starting at N and
+  // still renders N, N+1, N+2. The renderer restarts the counter on each startAt,
+  // so repeats give repeated numbers. This pins the current behavior.
   it("restarts the counter whenever startAt is present (actual behavior)", async () => {
     const p = (text: string) =>
       `<a:p><a:pPr><a:buAutoNum type="arabicPeriod" startAt="5"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p>`;

@@ -23,14 +23,10 @@ import { createStore } from "../store";
 import { editableStore } from "./test-utils";
 
 /**
- * happy-dom ships no `document.elementsFromPoint`, which `hitTest` needs, so
- * stub it: by default it reports empty canvas, the precondition for a band, and
- * a test can aim it at a shape element to press that shape instead.
- *
- * Containment still works, because node rects come from the model while only
- * the band corners come from the pointer. With layout zeroed, `clientToSlide`
- * reduces to `client / zoom`, so a band over the origin encloses the whole
- * slide and one far outside it encloses nothing.
+ * Stubs `document.elementsFromPoint`, which `hitTest` needs and happy-dom lacks.
+ * It reports empty canvas by default, the precondition for a band, or a shape a
+ * test aims it at. With layout zeroed, `clientToSlide` reduces to `client / zoom`,
+ * so a band over the origin encloses the whole slide and one far outside, nothing.
  */
 const OVER_SLIDE = 100_000;
 const PAST_SLIDE = 90_000;

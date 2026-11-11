@@ -24,7 +24,7 @@ const X_MASK = new Uint16Array(128);
 const Y_MASK = new Uint16Array(128);
 const DELTA_X = new Uint16Array(128);
 const DELTA_Y = new Uint16Array(128);
-const SIGNS = new Uint8Array(128); // bit 0 = negative x, bit 1 = negative y
+const SIGNS = new Uint8Array(128); // bit 0 = negative x, bit 1 = negative y.
 
 function setEncoding(index: number, encoding: Encoding): void {
   BYTE_COUNT[index] = encoding.bytes;

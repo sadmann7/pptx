@@ -118,8 +118,8 @@ function styledTableFrame(styleId: string): string {
 
 /**
  * Empty tblStyleLst part. Real PowerPoint packages always ship one; the
- * predefined-style fallback is only reachable when the part exists but does
- * not define the referenced GUID (see the TODO(spec?) test below).
+ * predefined-style fallback is only reachable when the part exists but doesn't
+ * define the referenced GUID (see the missing-part test below).
  */
 const EMPTY_TABLE_STYLES = `<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="${MEDIUM_STYLE_2_ACCENT1}"/>`;
 
@@ -172,8 +172,8 @@ describe("built-in table styles through the render pipeline", () => {
     const { rows } = await renderStyledTable(MEDIUM_STYLE_2_ACCENT1);
 
     const headerBg = rows[0].querySelector("td")!.style.backgroundColor;
-    const band1Bg = rows[1].querySelector("td")!.style.backgroundColor; // band1H: accent1 tint 40%
-    const plainBg = rows[2].querySelector("td")!.style.backgroundColor; // wholeTbl: accent1 tint 20%
+    const band1Bg = rows[1].querySelector("td")!.style.backgroundColor; // band1H: accent1 tint 40%.
+    const plainBg = rows[2].querySelector("td")!.style.backgroundColor; // wholeTbl: accent1 tint 20%.
 
     expect(band1Bg).not.toBe("");
     expect(plainBg).not.toBe("");
@@ -237,12 +237,10 @@ describe("built-in table styles through the render pipeline", () => {
     expect(td.style.backgroundColor).toBe("");
   });
 
-  // TODO(spec?): findTableStyle bails out when the package has no
-  // ppt/tableStyles.xml part at all (`!ctx.presentation.tableStyles`), so the
-  // predefined built-in fallback is unreachable for such packages even though
-  // the slide references a known built-in GUID. Real PowerPoint files always
-  // ship a tableStyles part, but a minimal producer that omits it silently
-  // loses built-in styling. Pinning the current behavior here.
+  // findTableStyle bails out when the package has no ppt/tableStyles.xml, so the
+  // built-in fallback is unreachable even for a known built-in GUID. PowerPoint
+  // always ships the part, but a minimal producer that omits it loses built-in
+  // styling. This pins the current behavior.
   it("does not apply built-in styles when the tableStyles part is missing entirely", async () => {
     const { rows } = await renderStyledTable(MEDIUM_STYLE_2_ACCENT1, {
       includeTableStylesPart: false,

@@ -18,11 +18,10 @@ export const GENERATED_DECKS: readonly Deck[] = [
 ];
 
 /**
- * Decks exported from an authoring tool: full themes and layouts, images,
- * gradients, charts, tables and mixed text. Their XML is nothing like the
- * minimal fixtures, which is where fidelity actually breaks down, so they are
- * only asserted against PowerPoint's own export (oracle.spec.ts) rather than
- * against hand-written expectations.
+ * Decks exported from an authoring tool, with full themes, layouts, images,
+ * gradients, charts, tables and mixed text. Their XML is where fidelity breaks
+ * down, so they're only checked against PowerPoint's own export (oracle.spec.ts),
+ * not hand-written expectations.
  */
 export const EXPORTED_DECKS: readonly Deck[] = [
   { name: "adventure-club-pin-and-paper", slides: 8 },

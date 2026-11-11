@@ -76,7 +76,7 @@ export interface BuildPresentationOptions {
 
 /**
  * Derive the base directory from a file path.
- * E.g., "ppt/slides/slide1.xml" → "ppt/slides"
+ * E.g., "ppt/slides/slide1.xml" → "ppt/slides".
  */
 function basePath(filePath: string): string {
   const idx = filePath.lastIndexOf("/");
@@ -85,7 +85,7 @@ function basePath(filePath: string): string {
 
 /**
  * For a given XML file path, find its corresponding .rels file path.
- * E.g., "ppt/slides/slide1.xml" → "ppt/slides/_rels/slide1.xml.rels"
+ * E.g., "ppt/slides/slide1.xml" → "ppt/slides/_rels/slide1.xml.rels".
  */
 function relsPathFor(filePath: string): string {
   const dir = basePath(filePath);
@@ -141,14 +141,13 @@ export function buildPresentation(
   const presRels = parseRels(files.presentationRels);
 
   const sldSz = presRoot.child("sldSz");
-  const width = emuToPx(sldSz.numAttr("cx") ?? 9144000); // default 10 inches
-  const height = emuToPx(sldSz.numAttr("cy") ?? 6858000); // default 7.5 inches
+  const width = emuToPx(sldSz.numAttr("cx") ?? 9144000); // default 10 inches.
+  const height = emuToPx(sldSz.numAttr("cy") ?? 6858000); // default 7.5 inches.
 
   const isWps = detectWps(files.presentation);
 
   const defaultTextStyle = presRoot.child("defaultTextStyle");
 
-  // --- Parse themes ---.
   const themes = new Map<string, ThemeData>();
   for (const [themePath, themeXml] of files.themes) {
     const themeRoot = parseXml(themeXml);
@@ -156,7 +155,6 @@ export function buildPresentation(
     themes.set(themePath, parseTheme(themeRoot));
   }
 
-  // --- Parse slide masters and build master→theme mapping ---.
   const masters = new Map<string, MasterData>();
   const masterToTheme = new Map<string, string>();
 
@@ -179,7 +177,6 @@ export function buildPresentation(
     masters.set(masterPath, masterData);
   }
 
-  // --- Parse slide layouts and build layout→master mapping ---.
   const layouts = new Map<string, LayoutData>();
   const layoutToMaster = new Map<string, string>();
 
@@ -202,7 +199,6 @@ export function buildPresentation(
     layouts.set(layoutPath, layoutData);
   }
 
-  // --- Parse charts ---.
   const charts = new Map<string, SafeXmlNode>();
   const chartThemes = new Map<string, ThemeData>();
   const chartStyles = new Map<string, SafeXmlNode>();
@@ -254,10 +250,8 @@ export function buildPresentation(
     }
   }
 
-  // --- Determine slide ordering ---
-  // The sldIdLst contains sldId elements with r:id attributes that reference
-  // presentation.xml.rels. We need to handle the fact that the attr might be
-  // stored as 'r:id' in the original XML but SafeXmlNode.attr() uses localName.
+  // sldId references presentation.xml.rels through `r:id`, which
+  // SafeXmlNode.attr() reads by its local name.
   const sldIdLst = presRoot.child("sldIdLst");
   const orderedSlideTargets: string[] = [];
 
@@ -294,7 +288,6 @@ export function buildPresentation(
     }
   }
 
-  // --- Parse slides ---.
   const slides: SlideData[] = [];
   const slideToLayout = new Map<number, string>();
 
@@ -657,7 +650,7 @@ export function resolveNodePlaceholderInheritance(
         )
       : undefined;
   const sizeIsEmpty = node.size.w === 0 && node.size.h === 0;
-  const positionLooksDefault = node.position.y < 5; // y=0 or near top → use layout position
+  const positionLooksDefault = node.position.y < 5; // y=0 or near top → use layout position.
 
   if (layout) {
     const layoutMatch = findMatchingLayoutPlaceholder(layout.placeholders, type, idx);

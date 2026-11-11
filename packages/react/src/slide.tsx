@@ -105,11 +105,9 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
             // than the viewport. The slide wrapper centers itself with
             // `margin: auto`, which degrades correctly to scrollable.
             overflow: "auto",
-            // Being the scroll container, this element has to stay within the
-            // viewport: sized by its content it would grow past it at high
-            // zoom and take its scrollbars off screen. Resolves to `none`
-            // when the parent's size is indefinite, so it costs nothing
-            // outside a bounded viewport.
+            // As the scroll container this has to stay within the viewport, or it would
+            // grow with its content at high zoom and push its scrollbars off screen. It
+            // resolves to `none` when the parent's size is indefinite.
             maxWidth: "100%",
             maxHeight: "100%",
           },
@@ -161,12 +159,10 @@ function SlideImpl({
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
-    // Patching positions in place instead of a full rebuild is safe when: same slide as the one currently rendered, node content
-    // unchanged (contentRevision), and node sizes/rotations unchanged
-    // (a resize needs SVG/text re-layout). The slide id check matters:
-    // different slides can have structurally identical node snapshots
-    // (e.g. one full-bleed picture per slide), which would otherwise
-    // skip the rebuild when navigating between them.
+    // Positions are patched in place instead of rebuilt when the slide, node content
+    // (contentRevision) and node sizes and rotations are unchanged, since a resize
+    // needs re-layout. The slide id matters: different slides can have identical
+    // node snapshots, like one full-bleed picture each.
     if (
       slideHandleRef.current &&
       nodeSnapshotRef.current &&
@@ -240,11 +236,9 @@ function SlideImpl({
   const { width, height } = presentation;
   const isEditable = presentation.sourcePackage != null;
 
-  // Pasteboard margin: scroll containers only extend their scrollable area
-  // toward the right/bottom, so content overhanging the top/left of the
-  // slide would be clipped and unreachable. Reserve room on every side the
-  // shapes overhang, and offset the slide within it, so off-slide shapes can
-  // always be scrolled into view.
+  // Scroll containers only extend their scrollable area right and down, so shapes
+  // overhanging the slide's top or left would be unreachable. The pasteboard
+  // reserves room on every overhanging side and offsets the slide within it.
   const overhang = isEditable
     ? getPasteboardOverhang(slide.nodes, width, height)
     : { left: 0, top: 0, right: 0, bottom: 0 };

@@ -9,11 +9,9 @@ export type SlideNode = RenderableNode;
 
 export interface SlideData {
   /**
-   * Stable unique identifier for this slide.
-   * Derived from the slide's file path inside the PPTX ZIP
-   * (e.g. `"ppt/slides/slide3.xml"`). Stable across reorders,
-   * insertions, and deletions. Safe to use as a React key or
-   * navigation target.
+   * Stable unique id from the slide's path in the PPTX zip, like
+   * `"ppt/slides/slide3.xml"`. It survives reorders, insertions and deletions,
+   * so it's safe as a React key or navigation target.
    */
   id: string;
   index: number;

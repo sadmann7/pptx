@@ -59,15 +59,11 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
 /**
  * Resolves a relative target path against a base path.
  *
- * Examples:
- *   resolveRelTarget('ppt/slides', '../slideLayouts/slideLayout1.xml')
- *     → 'ppt/slideLayouts/slideLayout1.xml'
- *
- *   resolveRelTarget('ppt/slides', 'media/image1.png')
- *     → 'ppt/slides/media/image1.png'
- *
- *   resolveRelTarget('ppt', 'slides/slide1.xml')
- *     → 'ppt/slides/slide1.xml'
+ * ```ts
+ * resolveRelTarget("ppt/slides", "../slideLayouts/slideLayout1.xml"); // "ppt/slideLayouts/slideLayout1.xml"
+ * resolveRelTarget("ppt/slides", "media/image1.png"); // "ppt/slides/media/image1.png"
+ * resolveRelTarget("ppt", "slides/slide1.xml"); // "ppt/slides/slide1.xml"
+ * ```
  */
 export function resolveRelTarget(basePath: string, target: string): string {
   const targetPath = stripUriSuffix(target);

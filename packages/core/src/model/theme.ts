@@ -11,10 +11,10 @@ export interface ThemeData {
   colorScheme: Map<string, string>;
   majorFont: ThemeFontInfo;
   minorFont: ThemeFontInfo;
-  fillStyles: SafeXmlNode[]; // from a:fillStyleLst children (indexed 1-based)
-  bgFillStyles?: SafeXmlNode[]; // from a:bgFillStyleLst children (indexed 1001-based for bgRef)
-  lineStyles: SafeXmlNode[]; // from a:lnStyleLst children (indexed 1-based)
-  effectStyles: SafeXmlNode[]; // from a:effectStyleLst children (indexed 1-based)
+  fillStyles: SafeXmlNode[]; // from a:fillStyleLst children (indexed 1-based).
+  bgFillStyles?: SafeXmlNode[]; // from a:bgFillStyleLst children (indexed 1001-based for bgRef).
+  lineStyles: SafeXmlNode[]; // from a:lnStyleLst children (indexed 1-based).
+  effectStyles: SafeXmlNode[]; // from a:effectStyleLst children (indexed 1-based).
 }
 
 /** Known color scheme slot names in a:clrScheme. */

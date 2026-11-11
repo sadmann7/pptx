@@ -954,13 +954,10 @@ function getOrCreateXfrmOn(
 }
 
 /**
- * Scales a table's grid to a new frame size, the way PowerPoint does when you
- * drag a table's resize handle.
- *
- * A table is laid out from its grid (the sum of `a:gridCol/@w` and of
- * `a:tr/@h`), not from the graphicFrame extent, so writing the extent alone
- * shrinks the selection box while the table keeps its old size. Returns an undo
- * closure, or null when there is no scalable grid.
+ * Scales a table's grid to a new frame size, as PowerPoint's resize handle does.
+ * Tables lay out from `a:gridCol/@w` and `a:tr/@h`, not the graphicFrame extent,
+ * so writing the extent alone would only shrink the selection box. Returns an
+ * undo closure, or null when there is no scalable grid.
  */
 function scaleTableGrid(table: TableNodeData, size: NodeSize): (() => void) | null {
   const tbl = table.source.child("graphic").child("graphicData").child("tbl");

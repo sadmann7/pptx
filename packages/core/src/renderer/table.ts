@@ -45,13 +45,10 @@ function clearCssFillBackground(el: HTMLElement): void {
 }
 
 /**
- * Finds a table style node by its ID from presentation.tableStyles.
- * tableStyles XML structure: <a:tblStyleLst> <a:tblStyle styleId="{UUID}" ...>
- *
- * A table without an <a:tableStyleId> falls back to the built-in "No Style,
- * Table Grid": PowerPoint paints a plain 1pt tx1 grid for such tables. The
- * `def` attribute on <a:tblStyleLst> is not used here: it only seeds the style
- * of newly inserted tables, it is not a render-time fallback.
+ * Finds a table style by id in presentation.tableStyles (`a:tblStyleLst > a:tblStyle`).
+ * A table without `a:tableStyleId` falls back to PowerPoint's built-in "No Style,
+ * Table Grid", a plain 1pt tx1 grid. The `def` attribute on `a:tblStyleLst` only
+ * seeds newly inserted tables, so it isn't a render-time fallback.
  */
 function findTableStyle(
   tableStyleId: string | undefined,
@@ -164,10 +161,9 @@ interface TableStyleTextProps {
 }
 
 /**
- * Gets the effective text properties from table style sections (last section with tcTxStyle wins).
- * tcTxStyle supports: b (bold), i (italic), and color children (schemeClr, solidFill, etc.).
- * When a style part (e.g. firstCol, firstRow) is applied, we use that part's tcTxStyle for cell
- * text styling so text stays readable on styled fill.
+ * Gets the effective text properties from the table style sections, where the
+ * last section with a tcTxStyle (b, i and color children) wins. An applied part
+ * such as firstRow styles its cells' text, so it stays readable on that fill.
  */
 function getEffectiveTableStyleTextProps(
   sections: SafeXmlNode[],
@@ -354,16 +350,16 @@ function collectStyleBorders(
     const lnRef = sideNode.child("lnRef");
     if (lnRef.exists()) {
       const idx = lnRef.numAttr("idx") ?? 0;
-      if (idx === 0) continue; // idx 0 = no line
+      if (idx === 0) continue; // idx 0 = no line.
 
       // The lnRef's color comes from its child color element.
       const { color, alpha } = resolveColor(lnRef, ctx);
       const hex = color.startsWith("#") ? color : `#${color}`;
 
-      let width = 1; // default 1px
+      let width = 1; // default 1px.
       if (ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
         const themeLn = ctx.theme.lineStyles[idx - 1];
-        const themeW = themeLn.numAttr("w") ?? 12700; // default 1pt
+        const themeW = themeLn.numAttr("w") ?? 12700; // default 1pt.
         width = emuToPx(themeW);
       }
 
@@ -415,16 +411,10 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
 }
 
 /**
- * Tracks whether every cell of a row resolved to the same opaque colour.
- *
- * Neighbouring cell backgrounds meet on a fractional device pixel once the
- * slide is scaled, and the anti-aliased seam exposes whatever is behind the
- * table, which on a dark row reads as a light hairline next to the border.
- * Painting the shared colour on the row fills that seam; row backgrounds sit
- * below every cell background and border, so nothing else changes.
- *
- * Returns the shared colour, or null once the row is disqualified (a cell with
- * no fill, a translucent fill, or a gradient/image fill, or differing colours).
+ * Tracks whether every cell in a row resolved to the same opaque color, which the
+ * row then paints to fill the anti-aliased seams between cells that show as light
+ * hairlines on dark rows at fractional scale. Returns null once a cell has no,
+ * translucent, gradient or image fill, or a different color.
  */
 function mergeRowFill(current: string | null | undefined, td: HTMLElement): string | null {
   if (current === null) return null;
@@ -462,18 +452,10 @@ function trackOuterEdge(
 }
 
 /**
- * Moves an outline edge from its cells onto the table element.
- *
- * Every cell paints its borders as its own rectangles, so two neighbouring
- * segments of the same outline meet on a fractional device pixel once the slide
- * is scaled, and their anti-aliased ends do not add up to full coverage. On an
- * interior grid line the shortfall exposes the neighbouring cell fill and stays
- * invisible; on the outline it exposes the slide background, so every grid line
- * reaching the outline leaves a light notch that reads as the line poking
- * through. One border on the table paints the edge as a single rectangle.
- *
- * Only possible when every cell along the edge resolved to the same border and
- * together they cover it completely (`expectedSpan`).
+ * Moves an outline edge from its cells onto the table element. Per-cell borders
+ * meet on fractional device pixels at scale, and on the outline the gap shows the
+ * slide background as light notches; one table border paints it in one piece.
+ * Only possible when every cell on the edge has the same border and they cover it.
  */
 function hoistOuterEdge(
   table: HTMLElement,
@@ -496,11 +478,9 @@ function tableFlipTransform(node: TableNodeData): string {
 }
 
 export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
-  // A table's true size is defined by its grid (sum of gridCol widths and
-  // tr heights), not by the graphicFrame extent. PowerPoint ignores the
-  // frame extent when laying out tables, and producers (notably Google
-  // Slides exports) often leave a stale dummy value there (3000000x3000000),
-  // which would crush the table into a small square.
+  // A table's real size is its grid (gridCol widths and tr heights). PowerPoint
+  // ignores the frame extent, which producers like Google Slides often leave at
+  // a dummy 3000000x3000000 that would crush the table into a small square.
   const gridWidth = node.columns.reduce((sum, w) => sum + w, 0);
   const gridHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
   const frameW = gridWidth > 0 ? gridWidth : node.size.w;
@@ -537,13 +517,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   const totalCols = node.columns.length;
 
   const table = document.createElement("table");
-  // Separate borders (with zero spacing, so the geometry matches the collapsed
-  // model) keep every cell's background covering its whole border box. Under
-  // `collapse` the shared border strip is composited against whatever sits
-  // behind the table instead, so at fractional zoom the anti-aliased line
-  // picks up the slide background and reads as a lighter or darker line
-  // depending on the fills it separates. Each shared edge is therefore painted
-  // exactly once, by the cell that owns it (see the row loop below).
+  // Separate borders with zero spacing keep each cell's background under its
+  // whole border box. Under `collapse`, shared borders composite against the
+  // slide background and look lighter or darker at fractional zoom, so each
+  // shared edge is painted once, by the cell that owns it (see the row loop).
   table.style.borderCollapse = "separate";
   table.style.borderSpacing = "0";
   // The outline may end up on the table itself (see hoistOuterEdge); keep it
@@ -570,11 +547,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 
   const totalRowHeight = node.rows.reduce((sum, r) => sum + r.height, 0);
 
-  // Shared edges are painted by the cell above/left of them: `bottomEdges`
-  // holds, per grid column, the bottom border of the cell that last covered it,
-  // and `leftEdge` the right border of the previous cell in the row. A cell
-  // drops its own top/left border when the neighbour already paints that edge,
-  // which mirrors the precedence of the collapsed-border model.
+  // Shared edges are painted by the cell above or to the left: `bottomEdges` holds
+  // each column's last bottom border and `leftEdge` the previous cell's right one.
+  // A cell drops a top or left border its neighbor already paints, matching the
+  // collapsed-border precedence.
   const tbody = document.createElement("tbody");
   const bottomEdges: (string | undefined)[] = [];
   const outline = {

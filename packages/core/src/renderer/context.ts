@@ -20,7 +20,7 @@ export interface RenderContext {
   layoutPath?: string;
   /** Resolved slide master part path for the current slide. */
   masterPath?: string;
-  mediaUrlCache: Map<string, string>; // path -> blob URL
+  mediaUrlCache: Map<string, string>; // path -> blob URL.
   colorCache: Map<string, { color: string; alpha: number }>;
   /** Async media/rendering work that callers may await before screenshot/export. */
   asyncTasks?: Promise<void>[];

@@ -839,12 +839,9 @@ function buildBarChartOption(
     };
   });
 
-  // A horizontal bar chart runs its category axis upwards, and PowerPoint
-  // clusters each category's bars the same way: the first series sits at the
-  // bottom of the cluster, and the legend lists them in that visual order, so
-  // it reads last series first. ECharts puts the first series at the top of the
-  // cluster instead, which lands every bar in the wrong band. Stacked bars are
-  // left alone, since both stack in series order.
+  // PowerPoint clusters a horizontal bar chart's series upwards, with the first at
+  // the bottom, while ECharts puts the first at the top, landing each bar in the
+  // wrong band. Stacked bars are left alone, since both stack in series order.
   const clustersUpwards = isHorizontal && !isStacked && !isPercentStacked;
   const drawOrder = clustersUpwards ? [...series].reverse() : series;
   const legendNames = seriesArr.map((s) => s.name);
@@ -1361,7 +1358,7 @@ function buildRadarChartOption(
   }
 
   const showValueAxisLabels = !valueAxis.deleted && valueAxis.tickLblPos !== "none";
-  const radarStyle = chartTypeNode.child("radarStyle").attr("val"); // 'marker' | 'filled' | undefined
+  const radarStyle = chartTypeNode.child("radarStyle").attr("val"); // 'marker' | 'filled' | undefined.
   const valueAxisLabel = showValueAxisLabels
     ? {
         show: true,
@@ -1818,10 +1815,10 @@ function buildStockChartOption(
     // OHLC: series 0=open, 1=high, 2=low, 3=close.
     for (let i = 0; i < dataLen; i++) {
       candleData.push([
-        seriesArr[0].values[i] ?? 0, // open
-        seriesArr[3].values[i] ?? 0, // close
-        seriesArr[2].values[i] ?? 0, // low
-        seriesArr[1].values[i] ?? 0, // high
+        seriesArr[0].values[i] ?? 0, // open.
+        seriesArr[3].values[i] ?? 0, // close.
+        seriesArr[2].values[i] ?? 0, // low.
+        seriesArr[1].values[i] ?? 0, // high.
       ]);
     }
   } else if (seriesArr.length >= 3) {
@@ -1829,10 +1826,10 @@ function buildStockChartOption(
     for (let i = 0; i < dataLen; i++) {
       const close = seriesArr[2].values[i] ?? 0;
       candleData.push([
-        close, // open = close
-        close, // close
-        seriesArr[1].values[i] ?? 0, // low
-        seriesArr[0].values[i] ?? 0, // high
+        close, // open = close.
+        close, // close.
+        seriesArr[1].values[i] ?? 0, // low.
+        seriesArr[0].values[i] ?? 0, // high.
       ]);
     }
   } else {

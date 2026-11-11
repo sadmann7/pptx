@@ -130,11 +130,10 @@ test.describe("table with no style id", () => {
   });
 
   test("would smear the same grid line under transform scaling", async ({ page }) => {
-    // Control for the spec above: it proves the sampled line really does fall
-    // between device pixels at this scale, so the crisp result there comes from
-    // zoom's layout-time scaling and not from a lucky alignment. If this ever
-    // starts failing, transform scaling became viable and the viewer's choice
-    // (applySlideScale) can be revisited rather than this spec relaxed.
+    // Control for the spec above: the sampled line really falls between device
+    // pixels at this scale, so the crisp result there comes from zoom, not luck.
+    // If this starts failing, transform scaling became viable and applySlideScale
+    // can be revisited instead of relaxing this spec.
     await openSlide(page, DECK, GRID_SLIDE, { scale: FRACTIONAL_SCALE, mode: "transform" });
 
     const cells = await cellBoxes(page);

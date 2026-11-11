@@ -67,12 +67,9 @@ export interface StoreState {
   presentation: PresentationData | null;
 
   /**
-   * Stable identity of the active slide (`SlideData.id`,
-   * e.g. `"ppt/slides/slide3.xml"`). `null` when no presentation is loaded.
-   *
-   * Using a stable id instead of a positional index means reordering,
-   * inserting, or deleting slides never silently redirects the viewer
-   * to the wrong slide.
+   * Stable id of the active slide (`SlideData.id`, e.g. `"ppt/slides/slide3.xml"`),
+   * or `null` with no presentation loaded. Unlike an index, it never redirects the
+   * viewer to the wrong slide when slides are reordered, inserted or deleted.
    */
   activeSlideId: string | null;
 
@@ -220,15 +217,10 @@ export interface Store {
   subscribe: (listener: () => void) => () => void;
 
   /**
-   * Listens for a specific store event.
-   *
-   * Unlike `subscribe`, which triggers on every state change and carries no
-   * payload, these events describe what happened and why: the reason for a
-   * change is known at the mutation site and cannot be recovered by diffing
-   * two state snapshots.
-   *
-   * Handlers run after the state has been updated and `subscribe` listeners
-   * have been notified, so `getState()` is already current.
+   * Listens for a store event. Unlike `subscribe`, events carry what happened and
+   * why, which is known at the mutation site and can't be recovered by diffing
+   * snapshots. Handlers run after the state updates and `subscribe` listeners run,
+   * so `getState()` is current.
    *
    * ```ts
    * const unsubscribe = store.on("slideChange", ({ slideId, reason }) => {
@@ -292,39 +284,28 @@ export interface Store {
       defaultZoom?: number;
 
       /**
-       * When `true`, only the active slide's contents are parsed during
-       * `load()`; other slides are parsed when first rendered or navigated
-       * to. Makes time-to-first-slide near-constant regardless of deck size.
-       * Set to `false` to parse every slide during `load()`.
-       *
-       * The store always materializes the active slide before notifying
-       * subscribers, so `SlideData.nodes` of the current slide is reliable.
-       * Non-active slides expose empty `nodes` until they are materialized.
+       * When `true`, `load()` parses only the active slide, and others when first
+       * rendered or navigated to, keeping time to first slide near-constant. The active
+       * slide is always materialized before subscribers hear of it, while others expose
+       * empty `nodes` until then. `false` parses every slide up front.
        *
        * @default true
        */
       lazySlides?: boolean;
 
       /**
-       * When `true`, fonts embedded in the PPTX are decoded and registered
-       * with the browser before the store transitions to `"ready"`. This
-       * eliminates font-swap layout shifts (FOUT) at the cost of a brief
-       * extra loading phase while workers decode the font binaries.
-       * Set to `false` to skip embedded font loading entirely (faster load,
-       * but text may render with fallback fonts).
+       * When `true`, embedded fonts are decoded and registered before the store
+       * becomes `"ready"`, avoiding font-swap layout shifts at the cost of a short
+       * extra loading phase. `false` skips them, loading faster with fallback fonts.
        *
        * @default true
        */
       embedFonts?: boolean;
 
       /**
-       * When `false`, the source package is retained so the presentation can
-       * be edited (`store.edit()`) and saved back to a .pptx (`store.save()`).
-       * The retained package keeps the source zip in memory (compressed).
-       *
-       * Follows the same convention as `<input readOnly>`: omitting the prop
-       * (or passing `true`) gives a read-only viewer; pass `false` to enable
-       * editing.
+       * When `false`, the source package is kept in memory (compressed) so the
+       * presentation can be edited with `store.edit()` and saved with `store.save()`.
+       * Like `<input readOnly>`, omitting it gives a read-only viewer.
        *
        * @default true
        */
@@ -430,12 +411,9 @@ export interface Store {
   canGoPrev: () => boolean;
 
   /**
-   * Applies an edit operation to the loaded presentation.
-   *
-   * Requires the deck to have been loaded with `{ readOnly: false }`.
-   * On success the edit is pushed onto the undo stack, the redo stack is
-   * cleared, and affected slides get a new revision so mounted views
-   * re-render.
+   * Applies an edit operation to the loaded presentation, which needs
+   * `{ readOnly: false }`. A successful edit is pushed onto the undo stack, clears
+   * the redo stack, and bumps affected slides' revisions so mounted views re-render.
    *
    * ```ts
    * await store.edit({

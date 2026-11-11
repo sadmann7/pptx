@@ -146,7 +146,7 @@ describe("navigation", () => {
     expect(store.getActiveSlideIndex()).toBe(2);
     expect(store.canGoNext()).toBe(false);
 
-    store.next(); // no-op on last slide
+    store.next(); // no-op on last slide.
     expect(store.getActiveSlideIndex()).toBe(2);
 
     store.prev();

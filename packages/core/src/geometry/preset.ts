@@ -141,10 +141,10 @@ presetShapes.set("plaque", (w, h, adjustments) => {
   const x2 = w - x1;
   const y2 = h - x1;
   // arcTo with a negative sweep makes the corner concave.
-  const a1 = ooArcTo(0, x1, x1, x1, 90, -90); // top-left: ends at (x1, 0)
-  const a2 = ooArcTo(x2, 0, x1, x1, 180, -90); // top-right: ends at (w, x1)
-  const a3 = ooArcTo(w, y2, x1, x1, 270, -90); // bottom-right: ends at (x2, h)
-  const a4 = ooArcTo(x1, h, x1, x1, 0, -90); // bottom-left: ends at (0, y2) -> close to (0, x1)
+  const a1 = ooArcTo(0, x1, x1, x1, 90, -90); // top-left: ends at (x1, 0).
+  const a2 = ooArcTo(x2, 0, x1, x1, 180, -90); // top-right: ends at (w, x1).
+  const a3 = ooArcTo(w, y2, x1, x1, 270, -90); // bottom-right: ends at (x2, h).
+  const a4 = ooArcTo(x1, h, x1, x1, 0, -90); // bottom-left: ends at (0, y2) -> close to (0, x1).
   return [
     `M0,${x1}`,
     a1.svg,
@@ -222,17 +222,17 @@ presetShapes.set("pentagon", (w, h) => {
   const hc = w / 2;
   const swd2 = (hc * 105146) / 100000;
   const shd2 = ((h / 2) * 110557) / 100000;
-  const svc = shd2; // svc = vc * vf/100000 = shd2, so top vertex at svc - shd2 = 0
-  const dx1 = swd2 * Math.cos((18 * Math.PI) / 180); // cos 1080000
-  const dx2 = swd2 * Math.cos((54 * Math.PI) / 180); // cos 18360000
-  const dy1 = shd2 * Math.sin((18 * Math.PI) / 180); // sin 1080000
-  const dy2 = shd2 * Math.sin((54 * Math.PI) / 180); // |sin 18360000|
+  const svc = shd2; // svc = vc * vf/100000 = shd2, so top vertex at svc - shd2 = 0.
+  const dx1 = swd2 * Math.cos((18 * Math.PI) / 180); // cos 1080000.
+  const dx2 = swd2 * Math.cos((54 * Math.PI) / 180); // cos 18360000.
+  const dy1 = shd2 * Math.sin((18 * Math.PI) / 180); // sin 1080000.
+  const dy2 = shd2 * Math.sin((54 * Math.PI) / 180); // |sin 18360000|.
   return [
-    `M${hc - dx1},${svc - dy1}`, // x1, y1 (upper-left)
-    `L${hc},0`, // hc, t (top)
-    `L${hc + dx1},${svc - dy1}`, // x4, y1 (upper-right)
-    `L${hc + dx2},${svc + dy2}`, // x3, y2 (lower-right)
-    `L${hc - dx2},${svc + dy2}`, // x2, y2 (lower-left)
+    `M${hc - dx1},${svc - dy1}`, // x1, y1 (upper-left).
+    `L${hc},0`, // hc, t (top).
+    `L${hc + dx1},${svc - dy1}`, // x4, y1 (upper-right).
+    `L${hc + dx2},${svc + dy2}`, // x3, y2 (lower-right).
+    `L${hc - dx2},${svc + dy2}`, // x2, y2 (lower-left).
     "Z",
   ].join(" ");
 });
@@ -292,20 +292,20 @@ presetShapes.set("heptagon", (w, h) => {
   const shd2 = ((h / 2) * 105210) / 100000;
   const svc = ((h / 2) * 105210) / 100000;
   // Pre-computed trig ratios from OOXML spec (scaled by 100000).
-  const dx1 = (swd2 * 97493) / 100000; // cos(12.857°) ≈ sin(77.14°)
-  const dx2 = (swd2 * 78183) / 100000; // cos(38.57°)
-  const dx3 = (swd2 * 43388) / 100000; // cos(64.29°)
-  const dy1 = (shd2 * 62349) / 100000; // sin(38.57°)
-  const dy2 = (shd2 * 22252) / 100000; // sin(12.857°)
-  const dy3 = (shd2 * 90097) / 100000; // sin(64.29°)
+  const dx1 = (swd2 * 97493) / 100000; // cos(12.857°) ≈ sin(77.14°).
+  const dx2 = (swd2 * 78183) / 100000; // cos(38.57°).
+  const dx3 = (swd2 * 43388) / 100000; // cos(64.29°).
+  const dy1 = (shd2 * 62349) / 100000; // sin(38.57°).
+  const dy2 = (shd2 * 22252) / 100000; // sin(12.857°).
+  const dy3 = (shd2 * 90097) / 100000; // sin(64.29°).
   return [
-    `M${hc - dx1},${svc + dy2}`, // x1, y2 (left)
-    `L${hc - dx2},${svc - dy1}`, // x2, y1 (upper-left)
-    `L${hc},0`, // hc, t (top: svc - shd2 = 0)
-    `L${hc + dx2},${svc - dy1}`, // x5, y1 (upper-right)
-    `L${hc + dx1},${svc + dy2}`, // x6, y2 (right)
-    `L${hc + dx3},${svc + dy3}`, // x4, y3 (lower-right)
-    `L${hc - dx3},${svc + dy3}`, // x3, y3 (lower-left)
+    `M${hc - dx1},${svc + dy2}`, // x1, y2 (left).
+    `L${hc - dx2},${svc - dy1}`, // x2, y1 (upper-left).
+    `L${hc},0`, // hc, t (top: svc - shd2 = 0).
+    `L${hc + dx2},${svc - dy1}`, // x5, y1 (upper-right).
+    `L${hc + dx1},${svc + dy2}`, // x6, y2 (right).
+    `L${hc + dx3},${svc + dy3}`, // x4, y3 (lower-right).
+    `L${hc - dx3},${svc + dy3}`, // x3, y3 (lower-left).
     "Z",
   ].join(" ");
 });
@@ -315,21 +315,21 @@ presetShapes.set("decagon", (w, h) => {
   const vc = h / 2;
   const shd2 = (vc * 105146) / 100000;
   // OOXML angles: 2160000=36°, 4320000=72°.
-  const dx1 = hc * Math.cos((36 * Math.PI) / 180); // cos(wd2, 2160000)
-  const dx2 = hc * Math.cos((72 * Math.PI) / 180); // cos(wd2, 4320000)
-  const dy1 = shd2 * Math.sin((72 * Math.PI) / 180); // sin(shd2, 4320000)
-  const dy2 = shd2 * Math.sin((36 * Math.PI) / 180); // sin(shd2, 2160000)
+  const dx1 = hc * Math.cos((36 * Math.PI) / 180); // cos(wd2, 2160000).
+  const dx2 = hc * Math.cos((72 * Math.PI) / 180); // cos(wd2, 4320000).
+  const dy1 = shd2 * Math.sin((72 * Math.PI) / 180); // sin(shd2, 4320000).
+  const dy2 = shd2 * Math.sin((36 * Math.PI) / 180); // sin(shd2, 2160000).
   return [
-    `M0,${vc}`, // l, vc
-    `L${hc - dx1},${vc - dy2}`, // x1, y2
-    `L${hc - dx2},${vc - dy1}`, // x2, y1
-    `L${hc + dx2},${vc - dy1}`, // x3, y1
-    `L${hc + dx1},${vc - dy2}`, // x4, y2
-    `L${w},${vc}`, // r, vc
-    `L${hc + dx1},${vc + dy2}`, // x4, y3
-    `L${hc + dx2},${vc + dy1}`, // x3, y4
-    `L${hc - dx2},${vc + dy1}`, // x2, y4
-    `L${hc - dx1},${vc + dy2}`, // x1, y3
+    `M0,${vc}`, // l, vc.
+    `L${hc - dx1},${vc - dy2}`, // x1, y2.
+    `L${hc - dx2},${vc - dy1}`, // x2, y1.
+    `L${hc + dx2},${vc - dy1}`, // x3, y1.
+    `L${hc + dx1},${vc - dy2}`, // x4, y2.
+    `L${w},${vc}`, // r, vc.
+    `L${hc + dx1},${vc + dy2}`, // x4, y3.
+    `L${hc + dx2},${vc + dy1}`, // x3, y4.
+    `L${hc - dx2},${vc + dy1}`, // x2, y4.
+    `L${hc - dx1},${vc + dy2}`, // x1, y3.
     "Z",
   ].join(" ");
 });
@@ -454,7 +454,7 @@ presetShapes.set("star6", (w, h, adjustments) => {
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 115470;
   const swd2 = ((w / 2) * hf) / 100000;
-  const shd2 = h / 2; // no vf for star6
+  const shd2 = h / 2; // no vf for star6.
   const iwd2 = (swd2 * a) / 50000;
   const ihd2 = (shd2 * a) / 50000;
   const cx = w / 2;
@@ -482,7 +482,7 @@ presetShapes.set("star7", (w, h, adjustments) => {
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const swd2 = ((w / 2) * 102572) / 100000;
   const shd2 = ((h / 2) * 105210) / 100000;
-  const svc = shd2; // = vc * vf/100000 so top vertex at svc - shd2 = 0
+  const svc = shd2; // = vc * vf/100000 so top vertex at svc - shd2 = 0.
   const iwd2 = (swd2 * a) / 50000;
   const ihd2 = (shd2 * a) / 50000;
   const cx = w / 2;
@@ -515,7 +515,7 @@ presetShapes.set("star10", (w, h, adjustments) => {
   const a = Math.min(Math.max(aRaw, 0), 50000);
   const hf = 105146;
   const swd2 = ((w / 2) * hf) / 100000;
-  const shd2 = h / 2; // no vf for star10
+  const shd2 = h / 2; // no vf for star10.
   const iwd2 = (swd2 * a) / 50000;
   const ihd2 = (shd2 * a) / 50000;
   const cx = w / 2;
@@ -609,8 +609,8 @@ presetShapes.set("curvedConnector2", (w, h) => {
 presetShapes.set("curvedConnector3", (w, h, adjustments) => {
   // OOXML: two cubic Bezier segments joined at midpoint (x2, vc).
   const x2 = w * adj(adjustments, "adj1", 50000);
-  const x1 = x2 / 2; // +/ l x2 2
-  const x3 = (w + x2) / 2; // +/ r x2 2
+  const x1 = x2 / 2; // +/ l x2 2.
+  const x3 = (w + x2) / 2; // +/ r x2 2.
   const vc = h / 2;
   const hd4 = h / 4;
   const y3 = (h * 3) / 4;
@@ -621,14 +621,14 @@ presetShapes.set("curvedConnector4", (w, h, adjustments) => {
   // OOXML: three cubic Bezier segments.
   const x2 = w * adj(adjustments, "adj1", 50000);
   const y4 = h * adj(adjustments, "adj2", 50000);
-  const x1 = x2 / 2; // +/ l x2 2
-  const x3 = (w + x2) / 2; // +/ r x2 2
-  const x4 = (x2 + x3) / 2; // +/ x2 x3 2
-  const x5 = (x3 + w) / 2; // +/ x3 r 2
-  const y1 = y4 / 2; // +/ t y4 2
-  const y2 = y1 / 2; // +/ t y1 2
-  const y3 = (y1 + y4) / 2; // +/ y1 y4 2
-  const y5 = (h + y4) / 2; // +/ b y4 2
+  const x1 = x2 / 2; // +/ l x2 2.
+  const x3 = (w + x2) / 2; // +/ r x2 2.
+  const x4 = (x2 + x3) / 2; // +/ x2 x3 2.
+  const x5 = (x3 + w) / 2; // +/ x3 r 2.
+  const y1 = y4 / 2; // +/ t y4 2.
+  const y2 = y1 / 2; // +/ t y1 2.
+  const y3 = (y1 + y4) / 2; // +/ y1 y4 2.
+  const y5 = (h + y4) / 2; // +/ b y4 2.
   return [
     `M0,0`,
     `C${x1},0 ${x2},${y2} ${x2},${y1}`,
@@ -642,17 +642,17 @@ presetShapes.set("curvedConnector5", (w, h, adjustments) => {
   const x3 = w * adj(adjustments, "adj1", 50000);
   const y4 = h * adj(adjustments, "adj2", 50000);
   const x6 = w * adj(adjustments, "adj3", 50000);
-  const x1 = (x3 + x6) / 2; // +/ x3 x6 2
-  const x2 = x3 / 2; // +/ l x3 2
-  const x4 = (x3 + x1) / 2; // +/ x3 x1 2
-  const x5 = (x6 + x1) / 2; // +/ x6 x1 2
-  const x7 = (x6 + w) / 2; // +/ x6 r 2
-  const y1 = y4 / 2; // +/ t y4 2
-  const y2 = y1 / 2; // +/ t y1 2
-  const y3 = (y1 + y4) / 2; // +/ y1 y4 2
-  const y5 = (h + y4) / 2; // +/ b y4 2
-  const y6 = (y5 + y4) / 2; // +/ y5 y4 2
-  const y7 = (y5 + h) / 2; // +/ y5 b 2
+  const x1 = (x3 + x6) / 2; // +/ x3 x6 2.
+  const x2 = x3 / 2; // +/ l x3 2.
+  const x4 = (x3 + x1) / 2; // +/ x3 x1 2.
+  const x5 = (x6 + x1) / 2; // +/ x6 x1 2.
+  const x7 = (x6 + w) / 2; // +/ x6 r 2.
+  const y1 = y4 / 2; // +/ t y4 2.
+  const y2 = y1 / 2; // +/ t y1 2.
+  const y3 = (y1 + y4) / 2; // +/ y1 y4 2.
+  const y5 = (h + y4) / 2; // +/ b y4 2.
+  const y6 = (y5 + y4) / 2; // +/ y5 y4 2.
+  const y7 = (y5 + h) / 2; // +/ y5 b 2.
   return [
     `M0,0`,
     `C${x2},0 ${x3},${y2} ${x3},${y1}`,
@@ -673,9 +673,9 @@ presetShapes.set("bentConnector5", (w, h, adjustments) => {
 });
 
 presetShapes.set("rightArrow", (w, h, adjustments) => {
-  const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio
-  const a2 = adj(adjustments, "adj2", 50000); // head length ratio
-  const ss = Math.min(w, h); // OOXML uses short side for head length
+  const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio.
+  const a2 = adj(adjustments, "adj2", 50000); // head length ratio.
+  const ss = Math.min(w, h); // OOXML uses short side for head length.
   const shaftHalfH = (h * a1) / 2;
   const headLen = ss * a2;
   const cy = h / 2;
@@ -1120,8 +1120,8 @@ presetShapes.set("upDownArrow", (w, h, adjustments) => {
   const maxAdj2 = (50000 * h) / Math.max(ss, 1);
   const a2 = Math.max(0, Math.min(adj2Raw, maxAdj2));
   const a1 = Math.max(0, Math.min(adj1Raw, 100000));
-  const dx1 = (ss * a1) / 200000; // shaft half-width
-  const dy = (ss * a2) / 100000; // arrowhead length
+  const dx1 = (ss * a1) / 200000; // shaft half-width.
+  const dy = (ss * a2) / 100000; // arrowhead length.
   const hc = w / 2;
   return [
     `M${hc},0`,
@@ -1139,9 +1139,9 @@ presetShapes.set("upDownArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("notchedRightArrow", (w, h, adjustments) => {
-  const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio
-  const a2 = adj(adjustments, "adj2", 50000); // head length ratio
-  const ss = Math.min(w, h); // OOXML uses short side for head length
+  const a1 = adj(adjustments, "adj1", 50000); // shaft width ratio.
+  const a2 = adj(adjustments, "adj2", 50000); // head length ratio.
+  const ss = Math.min(w, h); // OOXML uses short side for head length.
   const shaftHalfH = (h * a1) / 2;
   const headLen = ss * a2;
   const cy = h / 2;
@@ -1230,20 +1230,20 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   const adj1Raw = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
   const adj3Raw = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, 50000));
 
-  const th = (ss * adj1Raw) / 100000; // shaft width
-  const aw2 = (ss * adj2Raw) / 100000; // arrowhead half-width
+  const th = (ss * adj1Raw) / 100000; // shaft width.
+  const aw2 = (ss * adj2Raw) / 100000; // arrowhead half-width.
   const th2 = th / 2;
-  const dh2 = aw2 - th2; // arrowhead extension beyond shaft
-  const ah = (ss * adj3Raw) / 100000; // arrowhead length
+  const dh2 = aw2 - th2; // arrowhead extension beyond shaft.
+  const ah = (ss * adj3Raw) / 100000; // arrowhead length.
 
   const bw = w - ah;
   const bh = h - dh2;
   const bs = Math.min(bw, bh);
   const maxAdj4 = bs > 0 ? (100000 * bs) / ss : 0;
   const adj4Raw = Math.max(0, Math.min(adjustments?.get("adj4") ?? 43750, maxAdj4));
-  const bd = (ss * adj4Raw) / 100000; // outer bend radius
+  const bd = (ss * adj4Raw) / 100000; // outer bend radius.
 
-  const bd2 = Math.max(bd - th, 0); // inner bend radius
+  const bd2 = Math.max(bd - th, 0); // inner bend radius.
   const x3 = th + bd2;
   const x4 = w - ah;
 
@@ -1251,46 +1251,43 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   const y4 = y3 + dh2;
   const y5 = dh2 + bd;
 
-  // OOXML arcTo: from current point, arc with radii (wR, hR), start angle stAng, sweep swAng.
-  // Arc 1: outer bend; from (0, y5), radii=bd, 180°→270° (sweep +90°)
-  //   Center of arc is at (bd, y5) relative, endpoint at (bd, y5-bd) = (bd, dh2)
-  //   SVG: A bd,bd 0 0,1 bd,dh2
-  // Arc 2: inner bend; from (x3, y3), radii=bd2, 270°→180° (sweep -90°)
-  //   Center at (x3, y3+bd2), endpoint at (x3-bd2, y3+bd2) = (th, y3+bd2)
-  //   SVG: A bd2,bd2 0 0,0 th,y6  where y6 = y3+bd2.
+  // OOXML arcTo draws from the current point with radii (wR, hR), stAng and swAng.
+  // Arc 1, the outer bend, centers on (bd, y5) and ends at (bd, dh2): `A bd,bd 0 0,1 bd,dh2`.
+  // Arc 2, the inner bend, centers on (x3, y3+bd2) and ends at (th, y6), where
+  // y6 = y3+bd2: `A bd2,bd2 0 0,0 th,y6`.
 
   const y6 = y3 + bd2;
 
   const parts: string[] = [
-    `M0,${h}`, // bottom-left
-    `L0,${y5}`, // up left edge to arc start
+    `M0,${h}`, // bottom-left.
+    `L0,${y5}`, // up left edge to arc start.
   ];
 
   // Outer arc (rounded bend, going from left edge up to top edge).
   if (bd > 0.1) {
     parts.push(`A${bd},${bd} 0 0,1 ${bd},${dh2}`);
   } else {
-    parts.push(`L0,${dh2}`); // degenerate: straight corner
+    parts.push(`L0,${dh2}`); // degenerate: straight corner.
   }
 
   parts.push(
-    `L${x4},${dh2}`, // horizontal to arrowhead base (top)
-    `L${x4},0`, // up to arrowhead top-left wing
-    `L${w},${aw2}`, // arrowhead tip (pointing right)
-    `L${x4},${y4}`, // arrowhead bottom wing
-    `L${x4},${y3}`, // back to arrowhead base (bottom)
-    `L${x3},${y3}`, // horizontal back toward bend
+    `L${x4},${dh2}`, // horizontal to arrowhead base (top).
+    `L${x4},0`, // up to arrowhead top-left wing.
+    `L${w},${aw2}`, // arrowhead tip (pointing right).
+    `L${x4},${y4}`, // arrowhead bottom wing.
+    `L${x4},${y3}`, // back to arrowhead base (bottom).
+    `L${x3},${y3}`, // horizontal back toward bend.
   );
 
   // Inner arc (rounded bend, going from top down to right side of shaft).
   if (bd2 > 0.1) {
     parts.push(`A${bd2},${bd2} 0 0,0 ${th},${y6}`);
   } else {
-    parts.push(`L${th},${y3}`); // degenerate: straight corner
+    parts.push(`L${th},${y3}`); // degenerate: straight corner.
   }
 
   parts.push(
-    `L${th},${h}`, // down right side of shaft to bottom
+    `L${th},${h}`, // down right side of shaft to bottom.
     "Z",
   );
 
@@ -1654,7 +1651,7 @@ function buildCircularArrowPath(
   const wd2 = w / 2;
   const hd2 = h / 2;
   const ss = Math.min(w, h);
-  const cd2 = 10800000; // 180° in 60000ths
+  const cd2 = 10800000; // 180° in 60000ths.
 
   const toRad60k = (a: number) => ((a / 60000) * Math.PI) / 180;
 
@@ -1910,8 +1907,8 @@ function buildCircularArrowPath(
   if (isLeft) {
     // leftCircularArrow: swAng ≤ 0, then stAng0 = stAng + swAng, swAng0 = -swAng.
     const swAngRaw = sw0 >= 0 ? sw0 - 21600000 : sw0;
-    outerArcStAng = stAng + swAngRaw; // stAng0
-    outerArcSwAng = -swAngRaw; // swAng0 (positive)
+    outerArcStAng = stAng + swAngRaw; // stAng0.
+    outerArcSwAng = -swAngRaw; // swAng0 (positive).
   } else {
     const swAng = sw0 >= 0 ? sw0 : sw0 + 21600000;
     outerArcStAng = stAng;
@@ -2208,7 +2205,7 @@ presetShapes.set("swooshArrow", (w, h, adjustments) => {
   const ad2 = (ss * a2) / 100000;
   const ssd8 = ss / 8;
   const hd6 = h / 6;
-  const alfa = Math.PI / 2 / 14; // cd4/14 in radians
+  const alfa = Math.PI / 2 / 14; // cd4/14 in radians.
   const tanAlfa = Math.tan(alfa);
   const xB = w - ad2;
   const yB = ssd8;
@@ -2224,7 +2221,7 @@ presetShapes.set("swooshArrow", (w, h, adjustments) => {
   const dy3 = h / 20;
   const yD = dy22 + dy3;
   const xP1 = w / 6;
-  const yP1 = hd6 + hd6; // h/3
+  const yP1 = hd6 + hd6; // h/3.
   const dy5 = hd6 / 2;
   const yP2 = yF + dy5;
   const xP2 = w / 4;
@@ -2252,8 +2249,8 @@ presetShapes.set("flowChartTerminator", (w, h) => {
   // OOXML: path w=21600 h=21600, wR=3475, hR=10800 (elliptical caps, not circular).
   const x1 = (w * 3475) / 21600;
   const x2 = (w * 18125) / 21600;
-  const wR = x1; // w * 3475/21600
-  const hR = h / 2; // h * 10800/21600
+  const wR = x1; // w * 3475/21600.
+  const hR = h / 2; // h * 10800/21600.
   return [
     `M${x1},0`,
     `L${x2},0`,
@@ -2267,8 +2264,8 @@ presetShapes.set("flowChartTerminator", (w, h) => {
 presetShapes.set("flowChartDocument", (w, h) => {
   // OOXML: path w=21600 h=21600, cubic (21600,17322)(10800,17322)(10800,23922)(0,20172).
   const y1 = (h * 17322) / 21600;
-  const cy1 = y1; // h * 17322/21600
-  const cy2 = (h * 23922) / 21600; // extends below h (overshoot for curve)
+  const cy1 = y1; // h * 17322/21600.
+  const cy2 = (h * 23922) / 21600; // extends below h (overshoot for curve).
   const y2 = (h * 20172) / 21600;
   return [`M0,0`, `L${w},0`, `L${w},${y1}`, `C${w / 2},${cy1} ${w / 2},${cy2} 0,${y2}`, "Z"].join(
     " ",
@@ -2376,8 +2373,8 @@ presetShapes.set("flowChartDisplay", (w, h) => {
   // Scaled: left point at (0, h/2), top-left at (w/6, 0), arc center at (5w/6, h/2).
   const sx = w / 6;
   const sy = h / 6;
-  const arcWR = sx; // wR = 1 * (w/6)
-  const arcHR = sy * 3; // hR = 3 * (h/6) = h/2
+  const arcWR = sx; // wR = 1 * (w/6).
+  const arcHR = sy * 3; // hR = 3 * (h/6) = h/2.
   const a = ooArcTo(5 * sx, 0, arcWR, arcHR, 270, 180);
   return [`M0,${3 * sy}`, `L${sx},0`, `L${5 * sx},0`, a.svg, `L${sx},${h}`, "Z"].join(" ");
 });
@@ -2488,7 +2485,7 @@ presetShapes.set("flowChartSummingJunction", (w, h) => {
   // OOXML: Circle with X cross. Returns single path with circle + X lines.
   const wd2 = w / 2;
   const hd2 = h / 2;
-  const idx = wd2 * Math.cos(Math.PI / 4); // cos(45°)
+  const idx = wd2 * Math.cos(Math.PI / 4); // cos(45°).
   const idy = hd2 * Math.sin(Math.PI / 4);
   const il = wd2 - idx;
   const ir = wd2 + idx;
@@ -2563,9 +2560,9 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
   const hd2 = h / 2;
   const hc = wd2;
   const vc = hd2;
-  const ang1 = Math.atan2(h, w); // OOXML at2 w h = atan2(h, w)
-  const ib = vc + hd2 * Math.sin(Math.PI / 4); // sin(45°) * hd2
-  // arcTo helper: compute SVG arc from OOXML arcTo parameters
+  const ang1 = Math.atan2(h, w); // OOXML at2 w h = atan2(h, w).
+  const ib = vc + hd2 * Math.sin(Math.PI / 4); // sin(45°) * hd2.
+  // arcTo helper: compute SVG arc from OOXML arcTo parameters.
   const arcTo = (
     curX: number,
     curY: number,
@@ -2586,17 +2583,17 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
   };
   let curX = hc;
   let curY = h;
-  const a1 = arcTo(curX, curY, wd2, hd2, 90, 90); // cd4, cd4 → 90° to 180°
+  const a1 = arcTo(curX, curY, wd2, hd2, 90, 90); // cd4, cd4 → 90° to 180°.
   curX = a1.endX;
   curY = a1.endY;
-  const a2 = arcTo(curX, curY, wd2, hd2, 180, 90); // cd2, cd4 → 180° to 270°
+  const a2 = arcTo(curX, curY, wd2, hd2, 180, 90); // cd2, cd4 → 180° to 270°.
   curX = a2.endX;
   curY = a2.endY;
-  const a3 = arcTo(curX, curY, wd2, hd2, 270, 90); // 3cd4, cd4 → 270° to 360°
+  const a3 = arcTo(curX, curY, wd2, hd2, 270, 90); // 3cd4, cd4 → 270° to 360°.
   curX = a3.endX;
   curY = a3.endY;
   const ang1Deg = (ang1 * 180) / Math.PI;
-  const a4 = arcTo(curX, curY, wd2, hd2, 0, ang1Deg); // 0, ang1
+  const a4 = arcTo(curX, curY, wd2, hd2, 0, ang1Deg); // 0, ang1.
   return [`M${hc},${h}`, a1.svg, a2.svg, a3.svg, a4.svg, `L${w},${ib}`, `L${w},${h}`, "Z"].join(
     " ",
   );
@@ -2837,11 +2834,11 @@ presetShapes.set("heart", (w, h) => {
   const hd3 = h / 3;
   const dx1 = (w * 49) / 48;
   const dx2 = (w * 10) / 48;
-  const x1 = hc - dx1; // far left control
-  const x2 = hc - dx2; // inner left control
-  const x3 = hc + dx2; // inner right control
-  const x4 = hc + dx1; // far right control
-  const y1 = -hd3; // above top (negative y)
+  const x1 = hc - dx1; // far left control.
+  const x2 = hc - dx2; // inner left control.
+  const x3 = hc + dx2; // inner right control.
+  const x4 = hc + dx1; // far right control.
+  const y1 = -hd3; // above top (negative y).
   return [
     `M${hc},${hd4}`,
     `C${x3},${y1} ${x4},${hd4} ${hc},${h}`,
@@ -2875,7 +2872,7 @@ presetShapes.set("cloud", (w, h) => {
   // OOXML arcTo angles are visual (geometric ray) angles in path space, so they
   // become parametric before computing the center and end point.
   let ux = 3900,
-    uy = 14370; // unscaled current position
+    uy = 14370; // unscaled current position.
   for (const [wR, hR, stAng60k, swAng60k] of arcs) {
     const stDeg = stAng60k / 60000;
     const swDeg = swAng60k / 60000;
@@ -2968,8 +2965,8 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
   const vc = h / 2;
   const iwd2 = rx - dr;
   const ihd2 = ry - dr;
-  const ang = Math.atan2(h, w); // at2(w, h) in OOXML: at2 x y = atan2(y, x)
-  // Inner ellipse radius at diagonal angle
+  const ang = Math.atan2(h, w); // at2(w, h) in OOXML: at2 x y = atan2(y, x).
+  // Inner ellipse radius at diagonal angle.
   const ct = ihd2 * Math.cos(ang);
   const st = iwd2 * Math.sin(ang);
   const m = Math.sqrt(ct * ct + st * st) || 1;
@@ -3016,9 +3013,9 @@ presetShapes.set("noSmoking", (w, h, adjustments) => {
 });
 
 presetShapes.set("blockArc", (w, h, adjustments) => {
-  const adj1Raw = adjustments?.get("adj1") ?? 10800000; // start angle
-  const adj2Raw = adjustments?.get("adj2") ?? 0; // sweep/end angle
-  const adj3Raw = adjustments?.get("adj3") ?? 25000; // thickness ratio
+  const adj1Raw = adjustments?.get("adj1") ?? 10800000; // start angle.
+  const adj2Raw = adjustments?.get("adj2") ?? 0; // sweep/end angle.
+  const adj3Raw = adjustments?.get("adj3") ?? 25000; // thickness ratio.
   const startDeg = Math.min(Math.max(adj1Raw / 60000, 0), 360);
   const innerStartDeg = Math.min(Math.max(adj2Raw / 60000, 0), 360);
   const sweepDeg = (innerStartDeg - startDeg + 360) % 360 || 360;
@@ -3069,17 +3066,17 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
   const maxAdj2 = teeth === 6 ? 5358 : 2679;
   const a1v = Math.min(Math.max(adj1Raw, 0), 20000);
   const a2v = Math.min(Math.max(adj2Raw, 0), maxAdj2);
-  const th = (ss * a1v) / 100000; // tooth height
-  const lFD = (ss * a2v) / 100000; // tooth flat distance offset
+  const th = (ss * a1v) / 100000; // tooth height.
+  const lFD = (ss * a2v) / 100000; // tooth flat distance offset.
 
-  const rw = w / 2 - th; // inner ellipse width radius
-  const rh = h / 2 - th; // inner ellipse height radius
+  const rw = w / 2 - th; // inner ellipse width radius.
+  const rh = h / 2 - th; // inner ellipse height radius.
   if (rw <= 0 || rh <= 0) return `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 
   // OOXML: ha = at2(maxr, l3) where maxr=min(rw,rh), l3=th/2+lFD/2.
   const l3 = th / 2 + lFD / 2;
   const maxr = Math.min(rw, rh);
-  const ha = Math.atan2(l3, maxr); // half-angle of each tooth on the inner ellipse
+  const ha = Math.atan2(l3, maxr); // half-angle of each tooth on the inner ellipse.
 
   const centerDegs =
     teeth === 6 ? [330, 30, 90, 150, 210, 270] : [310, 350, 30, 70, 110, 150, 190, 230, 270];
@@ -3088,8 +3085,8 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
 
   for (let i = 0; i < centerDegs.length; i++) {
     const baseAngle = (centerDegs[i] * Math.PI) / 180;
-    const aStart = baseAngle - ha; // tooth base start angle (A point)
-    const aEnd = baseAngle + ha; // tooth base end angle (D point)
+    const aStart = baseAngle - ha; // tooth base start angle (A point).
+    const aEnd = baseAngle + ha; // tooth base end angle (D point).
 
     // A and D: inner ellipse points at tooth base edges.
     const ax = cx + rw * Math.cos(aStart);
@@ -3122,9 +3119,9 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
     // Narrowing: slide A and D inward along edge by lFD.
     const ex = edgeLen > 0 ? edgeX / edgeLen : 0;
     const ey = edgeLen > 0 ? edgeY / edgeLen : 0;
-    const axN = ax + ex * lFD; // A narrowed (moved toward D)
+    const axN = ax + ex * lFD; // A narrowed (moved toward D).
     const ayN = ay + ey * lFD;
-    const dxN = dx - ex * lFD; // D narrowed (moved toward A)
+    const dxN = dx - ex * lFD; // D narrowed (moved toward A).
     const dyN = dy - ey * lFD;
 
     // B and C: tip points = narrowed base + th * outward normal.
@@ -3218,7 +3215,7 @@ presetShapes.set("mathMultiply", (w, h, adjustments) => {
   const a = Math.atan2(h, w);
   const sa = Math.sin(a);
   const ca = Math.cos(a);
-  const ta = sa / ca; // tan(a)
+  const ta = sa / ca; // tan(a).
   const dl = Math.sqrt(w * w + h * h);
   const rw = (dl * 51965) / 100000;
   const lM = dl - rw;
@@ -3313,10 +3310,10 @@ presetShapes.set("mathEqual", (w, h, adjustments) => {
   const dx1 = (w * 73490) / 200000;
   const hc = w / 2;
   const vc = h / 2;
-  const y2 = vc - dy2; // center of top bar
-  const y3 = vc + dy2; // center of bottom bar
-  const y1 = y2 - dy1; // top of top bar
-  const y4 = y3 + dy1; // bottom of bottom bar
+  const y2 = vc - dy2; // center of top bar.
+  const y3 = vc + dy2; // center of bottom bar.
+  const y1 = y2 - dy1; // top of top bar.
+  const y4 = y3 + dy1; // bottom of bottom bar.
   const x1 = hc - dx1;
   const x2 = hc + dx1;
   return [
@@ -3628,8 +3625,8 @@ presetShapes.set("moon", (w, h, adjustments) => {
   const g18w = (g6w - g0w) / 2;
   return [
     `M${w},${h}`,
-    `A${w},${hd2} 0 0,1 ${w},0`, // outer: (w,h) → left semicircle → (w,0)
-    `A${g18w},${dy1} 0 0,0 ${w},${h}`, // inner: (w,0) → concave arc → (w,h)
+    `A${w},${hd2} 0 0,1 ${w},0`, // outer: (w,h) → left semicircle → (w,0).
+    `A${g18w},${dy1} 0 0,0 ${w},${h}`, // inner: (w,0) → concave arc → (w,h).
     "Z",
   ].join(" ");
 });
@@ -3723,8 +3720,8 @@ presetShapes.set("leftBracket", (w, h, adjustments) => {
     return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
   };
 
-  const a1 = arcFrom(w, h, w, y1, 5400000, 5400000); // cd4, cd4
-  const a2 = arcFrom(0, y1, w, y1, 10800000, 5400000); // cd2, cd4
+  const a1 = arcFrom(w, h, w, y1, 5400000, 5400000); // cd4, cd4.
+  const a2 = arcFrom(0, y1, w, y1, 10800000, 5400000); // cd2, cd4.
   return [`M${w},${h}`, a1.cmd, `L0,${y1}`, a2.cmd].join(" ");
 });
 
@@ -3754,8 +3751,8 @@ presetShapes.set("rightBracket", (w, h, adjustments) => {
     return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
   };
 
-  const a1 = arcFrom(0, 0, w, y1, 16200000, 5400000); // 3cd4, cd4
-  const a2 = arcFrom(w, y2, w, y1, 0, 5400000); // 0, cd4
+  const a1 = arcFrom(0, 0, w, y1, 16200000, 5400000); // 3cd4, cd4.
+  const a2 = arcFrom(w, y2, w, y1, 0, 5400000); // 0, cd4.
   return [`M0,0`, a1.cmd, `L${w},${y2}`, a2.cmd].join(" ");
 });
 
@@ -3794,12 +3791,12 @@ presetShapes.set("leftBrace", (w, h, adjustments) => {
 
   let x = w;
   let y = h;
-  const aTop = arcFrom(x, y, wd2, y1, 5400000, 5400000); // cd4, cd4
+  const aTop = arcFrom(x, y, wd2, y1, 5400000, 5400000); // cd4, cd4.
   x = aTop.x;
   y = aTop.y;
   const aMid1 = arcFrom(hc, y4, wd2, y1, 0, -5400000);
   const aMid2 = arcFrom(aMid1.x, aMid1.y, wd2, y1, 5400000, -5400000);
-  const aBot = arcFrom(hc, y1, wd2, y1, 10800000, 5400000); // cd2, cd4
+  const aBot = arcFrom(hc, y1, wd2, y1, 10800000, 5400000); // cd2, cd4.
   return [
     `M${w},${h}`,
     aTop.cmd,
@@ -3845,10 +3842,10 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
     return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
   };
 
-  const aTop = arcFrom(0, 0, wd2, y1, 16200000, 5400000); // 3cd4, cd4
-  const aMid1 = arcFrom(hc, y2, wd2, y1, 10800000, -5400000); // cd2,-cd4
-  const aMid2 = arcFrom(aMid1.x, aMid1.y, wd2, y1, 16200000, -5400000); //3cd4,-cd4
-  const aBot = arcFrom(hc, y4, wd2, y1, 0, 5400000); //0,cd4
+  const aTop = arcFrom(0, 0, wd2, y1, 16200000, 5400000); // 3cd4, cd4.
+  const aMid1 = arcFrom(hc, y2, wd2, y1, 10800000, -5400000); // cd2,-cd4.
+  const aMid2 = arcFrom(aMid1.x, aMid1.y, wd2, y1, 16200000, -5400000); //3cd4,-cd4.
+  const aBot = arcFrom(hc, y4, wd2, y1, 0, 5400000); //0,cd4.
   return [`M0,0`, aTop.cmd, `L${hc},${y2}`, aMid1.cmd, aMid2.cmd, `L${hc},${y4}`, aBot.cmd].join(
     " ",
   );
@@ -3889,12 +3886,12 @@ actionButtonIcons.set("actionButtonReturn", (w, h) => {
   const cx = w / 2,
     cy = h / 2,
     s = Math.min(w, h) * 0.28;
-  const thick = s * 0.22; // shaft thickness
+  const thick = s * 0.22; // shaft thickness.
   const bottomY = cy + s * 0.4;
   const topY = cy - s * 0.4;
   const leftX = cx - s * 0.6;
   const rightX = cx + s * 0.6;
-  const r = (bottomY - topY) / 2; // semicircle radius
+  const r = (bottomY - topY) / 2; // semicircle radius.
   return [
     // Outer edge: bottom-left → right → arc up → left to arrowhead junction.
     `M${leftX},${bottomY}`,
@@ -3994,9 +3991,9 @@ presetShapes.set("wave", (w, h, adjustments) => {
   const a2 = Math.min(Math.max(adjRaw(adjustments, "adj2", 0), -10000), 10000);
   const y1 = (h * a1) / 100000;
   const dy2 = (y1 * 10) / 3;
-  const y2 = y1 - dy2; // control above crest
-  const y3 = y1 + dy2; // control below crest
-  const y4 = h - y1; // bottom wave y
+  const y2 = y1 - dy2; // control above crest.
+  const y3 = y1 + dy2; // control below crest.
+  const y4 = h - y1; // bottom wave y.
   const y5 = y4 - dy2;
   const y6 = y4 + dy2;
   // Phase shift.
@@ -4144,7 +4141,7 @@ presetShapes.set("pie", (w, h, adjustments) => {
   // OOXML pie: adj1 = start angle, adj2 = end angle (60000ths of a degree). Sweep clockwise from start to end.
   // OOXML angles are "visual" (geometric); must convert to parametric for ellipses (rx≠ry).
   const adj1Raw = adjustments?.get("adj1") ?? 0;
-  const adj2Raw = adjustments?.get("adj2") ?? 16200000; // 270° end default
+  const adj2Raw = adjustments?.get("adj2") ?? 16200000; // 270° end default.
   const startDeg = (adj1Raw / 60000) % 360;
   const endDeg = (adj2Raw / 60000) % 360;
   let sweepDeg = (((endDeg - startDeg) % 360) + 360) % 360;
@@ -4176,8 +4173,8 @@ presetShapes.set("pieWedge", (w, h) => {
 presetShapes.set("arc", (w, h, adjustments) => {
   // OOXML arc: adj1/adj2 are angles in 60000ths of a degree
   // OOXML angles are "visual" (geometric); must convert to parametric for ellipses (rx≠ry).
-  const adj1Raw = adjustments?.get("adj1") ?? 16200000; // default 270°
-  const adj2Raw = adjustments?.get("adj2") ?? 0; // default 0°
+  const adj1Raw = adjustments?.get("adj1") ?? 16200000; // default 270°.
+  const adj2Raw = adjustments?.get("adj2") ?? 0; // default 0°.
   const startDeg = adj1Raw / 60000;
   const endDeg = adj2Raw / 60000;
   const rx = w / 2;
@@ -4201,8 +4198,8 @@ presetShapes.set("chord", (w, h, adjustments) => {
   // OOXML chord: arc + chord line. Spec uses ellipse (arcTo wR="wd2" hR="hd2") per presetShapeDefinitions.
   // OOXML angles are "visual" (geometric) angles; the angle of the ray from center to the point.
   // For ellipses (rx≠ry), convert to parametric angle: t = atan2(sin(θ)/ry, cos(θ)/rx).
-  const adj1Raw = adjustments?.get("adj1") ?? 2700000; // default 45°
-  const adj2Raw = adjustments?.get("adj2") ?? 16200000; // default 270°
+  const adj1Raw = adjustments?.get("adj1") ?? 2700000; // default 45°.
+  const adj2Raw = adjustments?.get("adj2") ?? 16200000; // default 270°.
   const startDeg = adj1Raw / 60000;
   const endDeg = adj2Raw / 60000;
   const cx = w / 2;
@@ -4239,9 +4236,9 @@ presetShapes.set("funnel", (w, h) => {
   const hc = w / 2;
   const b = h;
 
-  const d = ss / 20; // inset margin
-  const rw2 = wd2 - d; // inset top-ellipse x-radius
-  const rh2 = hd4 - d; // inset top-ellipse y-radius
+  const d = ss / 20; // inset margin.
+  const rw2 = wd2 - d; // inset top-ellipse x-radius.
+  const rh2 = hd4 - d; // inset top-ellipse y-radius.
 
   // Angle (in radians) where funnel sides are tangent to top ellipse.
   // OOXML: t1 = cos(wd2, 480000), t2 = sin(hd4, 480000) → da = atan2(t1, t2)
@@ -4249,14 +4246,14 @@ presetShapes.set("funnel", (w, h) => {
   const ang8 = (8 * Math.PI) / 180;
   const t1 = wd2 * Math.cos(ang8);
   const t2 = hd4 * Math.sin(ang8);
-  const da = Math.atan2(t2, t1); // radians
+  const da = Math.atan2(t2, t1); // radians.
 
   // Angles for the top rim arc (OOXML convention: sweep from stAng1 by swAng1).
-  const stAng1 = Math.PI - da; // cd2 - da
-  const swAng1 = Math.PI + 2 * da; // cd2 + 2*da
+  const stAng1 = Math.PI - da; // cd2 - da.
+  const swAng1 = Math.PI + 2 * da; // cd2 + 2*da.
 
   // Sweep for the bottom spout arc.
-  const swAng3 = Math.PI - 2 * da; // cd2 - 2*da
+  const swAng3 = Math.PI - 2 * da; // cd2 - 2*da.
 
   // Bottom spout ellipse radii: 1/4 of top ellipse.
   const rw3 = wd2 / 4;
@@ -4286,7 +4283,7 @@ presetShapes.set("funnel", (w, h) => {
   const y1e = hd4 + dy1e;
 
   // Point on spout ellipse at angle da.
-  const vc3 = b - rh3; // vertical center of spout ellipse
+  const vc3 = b - rh3; // vertical center of spout ellipse.
   const ct3 = rh3 * Math.cos(da);
   const st3 = rw3 * Math.sin(da);
   const m3 = Math.sqrt(ct3 * ct3 + st3 * st3);
@@ -4325,8 +4322,8 @@ presetShapes.set("funnel", (w, h) => {
   ].join(" ");
 
   // Sub-path 2: Inset top ellipse (full ellipse, counter-clockwise for even-odd hole).
-  const x2 = wd2 - rw2; // leftmost point of inset ellipse
-  const x2r = wd2 + rw2; // rightmost point
+  const x2 = wd2 - rw2; // leftmost point of inset ellipse.
+  const x2r = wd2 + rw2; // rightmost point.
   const inset = [
     `M${x2},${hd4}`,
     `A${rw2},${rh2} 0 1,0 ${x2r},${hd4}`,
@@ -4338,9 +4335,9 @@ presetShapes.set("funnel", (w, h) => {
 });
 
 export interface PresetOverlay {
-  /** SVG path d-attribute for the overlay */
+  /** SVG path d-attribute for the overlay. */
   path: string;
-  /** Fill modifier: 'lighten' brightens the base fill */
+  /** Fill modifier: 'lighten' brightens the base fill. */
   fillModifier: "lighten";
 }
 
@@ -4382,7 +4379,7 @@ export function getPresetOverlays(
 
 /** A single sub-path within a multi-path preset shape. */
 export interface PresetSubPath {
-  /** SVG path d-attribute string */
+  /** SVG path d-attribute string. */
   d: string;
   /**
    * Fill behavior:
@@ -4394,7 +4391,7 @@ export interface PresetSubPath {
    * - 'none': no fill (stroke-only detail lines)
    */
   fill: "norm" | "darken" | "darkenLess" | "lighten" | "lightenLess" | "none";
-  /** Whether this path should have a stroke (default true) */
+  /** Whether this path should have a stroke (default true). */
   stroke: boolean;
   /** Optional stroke width multiplier for detail lines that should render lighter than the outline. */
   strokeWidthScale?: number;
@@ -4419,7 +4416,7 @@ function _abGuides(w: number, h: number) {
   const ss = Math.min(w, h);
   const hc = w / 2,
     vc = h / 2;
-  const dx2 = (ss * 3) / 8; // icon half-extent
+  const dx2 = (ss * 3) / 8; // icon half-extent.
   return {
     ss,
     hc,
@@ -4507,9 +4504,9 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
   const g14 = (g13 * 7) / 8;
   const g15 = (g13 * 3) / 4;
   const g16 = (g13 * 5) / 8;
-  const g17 = (g13 * 3) / 8; // outer arc radius
+  const g17 = (g13 * 3) / 8; // outer arc radius.
   const g18 = g13 / 4;
-  const g27 = g13 / 8; // inner arc radius
+  const g27 = g13 / 8; // inner arc radius.
   const g19 = g9 + g15;
   const g20 = g9 + g16;
   const g21 = g9 + g18;
@@ -4519,30 +4516,24 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
   const g25 = g11 + g17;
   const g26 = g11 + g18;
 
-  // Fill icon path (paths 0 & 1 in OOXML spec; identical geometry)
-  // Arc 1: from (g24, g20), wR=g27 hR=g27 stAng=0° swAng=90°
-  //   center = (g24-g27, g20), endpoint = (g24-g27, g20+g27) = (g24-g27, g19)
-  // Arc 2: from (g25, g19), wR=g27 hR=g27 stAng=90° swAng=90°
-  //   center = (g25, g19-g27), endpoint = (g25-g27, g19-g27) = (g26, g20)
-  // Arc 3: from (g11, g20), wR=g17 hR=g17 stAng=180° swAng=-90°
-  //   center = (g11+g17, g20) = (g25, g20), endpoint = (g25, g20+g17) = (g25, g10)
-  // Arc 4: from (hc, g10), wR=g17 hR=g17 stAng=90° swAng=-90°
-  //   center = (hc, g10-g17), endpoint = (hc+g17, g10-g17).
+  // Fill icon path, shared by paths 0 and 1 in the OOXML spec. Arcs as center → end:
+  // 1: (g24-g27, g20) → (g24-g27, g19), 2: (g25, g19-g27) → (g26, g20),
+  // 3: (g25, g20) → (g25, g10), 4: (hc, g10-g17) → (hc+g17, g10-g17).
   const fillIcon = [
     `M${g12},${g21}`,
     `L${g23},${g9}`,
     `L${hc},${g21}`,
     `L${g24},${g21}`,
     `L${g24},${g20}`,
-    `A${g27},${g27} 0 0,1 ${g24 - g27},${g19}`, // arc 1: inner bottom-right corner
-    `L${g25},${g19}`, // across inner bottom
-    `A${g27},${g27} 0 0,1 ${g26},${g20}`, // arc 2: inner bottom-left corner
+    `A${g27},${g27} 0 0,1 ${g24 - g27},${g19}`, // arc 1: inner bottom-right corner.
+    `L${g25},${g19}`, // across inner bottom.
+    `A${g27},${g27} 0 0,1 ${g26},${g20}`, // arc 2: inner bottom-left corner.
     `L${g26},${g21}`,
     `L${g11},${g21}`,
     `L${g11},${g20}`,
-    `A${g17},${g17} 0 0,0 ${g25},${g10}`, // arc 3: outer bottom-left curve
-    `L${hc},${g10}`, // across outer bottom
-    `A${g17},${g17} 0 0,0 ${hc + g17},${g10 - g17}`, // arc 4: outer bottom-right curve
+    `A${g17},${g17} 0 0,0 ${g25},${g10}`, // arc 3: outer bottom-left curve.
+    `L${hc},${g10}`, // across outer bottom.
+    `A${g17},${g17} 0 0,0 ${hc + g17},${g10 - g17}`, // arc 4: outer bottom-right curve.
     `L${g22},${g21}`,
     `Z`,
   ].join(" ");
@@ -4553,15 +4544,15 @@ multiPathPresets.set("actionButtonReturn", (w, h) => {
     `M${g12},${g21}`,
     `L${g22},${g21}`,
     `L${g22},${g20}`,
-    `A${g17},${g17} 0 0,1 ${g11 + g13 / 2},${g10}`, // arc A: outer bottom-right (0°→90°)
-    `L${g25},${g10}`, // across outer bottom
-    `A${g17},${g17} 0 0,1 ${g11},${g20}`, // arc B: outer bottom-left (90°→180°)
+    `A${g17},${g17} 0 0,1 ${g11 + g13 / 2},${g10}`, // arc A: outer bottom-right (0°→90°).
+    `L${g25},${g10}`, // across outer bottom.
+    `A${g17},${g17} 0 0,1 ${g11},${g20}`, // arc B: outer bottom-left (90°→180°).
     `L${g11},${g21}`,
     `L${g26},${g21}`,
     `L${g26},${g20}`,
-    `A${g27},${g27} 0 0,0 ${g25},${g19}`, // arc C: inner bottom-left (180°→90°, CCW)
-    `L${hc},${g19}`, // across inner bottom
-    `A${g27},${g27} 0 0,0 ${g24},${g20}`, // arc D: inner bottom-right (90°→0°, CCW)
+    `A${g27},${g27} 0 0,0 ${g25},${g19}`, // arc C: inner bottom-left (180°→90°, CCW).
+    `L${hc},${g19}`, // across inner bottom.
+    `A${g27},${g27} 0 0,0 ${g24},${g20}`, // arc D: inner bottom-right (90°→0°, CCW).
     `L${g24},${g21}`,
     `L${hc},${g21}`,
     `L${g23},${g9}`,
@@ -4603,9 +4594,9 @@ multiPathPresets.set("actionButtonSound", (w, h) => {
   // Outline path: speaker outline (different winding) + 3 sound wave lines.
   const speakerOutline = `M${g11},${g21} L${g24},${g21} L${g25},${g9} L${g25},${g10} L${g24},${g22} L${g11},${g22} Z`;
 
-  const waveLine1 = `M${g26},${g21} L${g12},${g20}`; // top-right diagonal
-  const waveLine2 = `M${g26},${vc} L${g12},${vc}`; // middle horizontal
-  const waveLine3 = `M${g26},${g22} L${g12},${g23}`; // bottom-right diagonal
+  const waveLine1 = `M${g26},${g21} L${g12},${g20}`; // top-right diagonal.
+  const waveLine2 = `M${g26},${vc} L${g12},${vc}`; // middle horizontal.
+  const waveLine3 = `M${g26},${g22} L${g12},${g23}`; // bottom-right diagonal.
 
   const outlineWithWaves = `${speakerOutline} ${waveLine1} ${waveLine2} ${waveLine3}`;
 
@@ -4810,10 +4801,10 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
   const icon = `${qMark} ${dot}`;
 
   return [
-    { d: `${_rect(w, h)} ${icon}`, fill: "norm", stroke: false }, // Background with icon cutout
-    { d: icon, fill: "darken", stroke: false }, // Darkened icon fill
-    { d: icon, fill: "none", stroke: true }, // Icon outline
-    { d: _rect(w, h), fill: "none", stroke: true }, // Rect outline
+    { d: `${_rect(w, h)} ${icon}`, fill: "norm", stroke: false }, // Background with icon cutout.
+    { d: icon, fill: "darken", stroke: false }, // Darkened icon fill.
+    { d: icon, fill: "none", stroke: true }, // Icon outline.
+    { d: _rect(w, h), fill: "none", stroke: true }, // Rect outline.
   ];
 });
 
@@ -5026,11 +5017,11 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
 
   // Path 1: Main body (fill, no stroke).
   const cx1 = hc,
-    cy1 = ly1; // after lnTo (hc, ly1)
+    cy1 = ly1; // after lnTo (hc, ly1).
   const arc1a = arcTo(cx1, cy1, wd32, hR, 270, 180);
   const arc1b = arcTo(arc1a.endX, arc1a.endY, wd32, hR, 270, -180);
   const cx1c = hc,
-    cy1c = ry4; // after lnTo (hc, ry4)
+    cy1c = ry4; // after lnTo (hc, ry4).
   const arc1c = arcTo(cx1c, cy1c, wd32, hR, 90, 90);
 
   const body = [
@@ -5098,7 +5089,7 @@ multiPathPresets.set("ellipseRibbon", (w, h, adjustments) => {
 
   const y1 = parab(x3);
   const cx1 = x3 / 2;
-  const cy1 = f1 * cx1; // Bezier control (approximation)
+  const cy1 = f1 * cx1; // Bezier control (approximation).
   const cx2 = w - cx1;
 
   // q1 redefined: total fold height.
@@ -5513,7 +5504,7 @@ multiPathPresets.set("accentcallout3", (w, h, adjustments) => {
   ];
 });
 
-// --- callout1/2/3: filled rect (no stroke) + callout line segments ---.
+// callout1/2/3: a filled rect with no stroke, plus the callout line segments.
 multiPathPresets.set("callout1", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5553,7 +5544,7 @@ multiPathPresets.set("callout3", (w, h, adjustments) => {
   ];
 });
 
-// --- borderCallout2/3: filled+stroked rect + callout line segments ---.
+// borderCallout2/3: a filled and stroked rect, plus the callout line segments.
 multiPathPresets.set("bordercallout2", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5582,7 +5573,7 @@ multiPathPresets.set("bordercallout3", (w, h, adjustments) => {
   ];
 });
 
-// --- accentBorderCallout1/2/3: filled+stroked rect + accent bar + callout line ---.
+// accentBorderCallout1/2/3: a filled and stroked rect, an accent bar and the callout line.
 multiPathPresets.set("accentbordercallout1", (w, h, adjustments) => {
   const y1 = (h * (adjustments?.get("adj1") ?? 18750)) / 100000;
   const x1 = (w * (adjustments?.get("adj2") ?? -8333)) / 100000;
@@ -5680,8 +5671,8 @@ function ooArcTo(
   return { svg: `A${wR},${hR} 0 ${largeArc},${sweepFlag} ${ex},${ey}`, x: ex, y: ey };
 }
 
-// --- ribbon (OOXML spec: 3 paths with arcTo, adj1=16667, adj2=50000) ---
-// Ribbon with tails at top, front panel at bottom. Three paths: body, darkenLess folds, outline.
+// ribbon: tails at the top and the front panel at the bottom, drawn as body,
+// darkenLess folds and outline. OOXML defaults are adj1=16667 and adj2=50000.
 multiPathPresets.set("ribbon", (w, h, adjustments) => {
   const adj1Raw = adjustments?.get("adj1") ?? 16667;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
@@ -5872,7 +5863,7 @@ multiPathPresets.set("ribbon", (w, h, adjustments) => {
   ];
 });
 
-// --- ribbon2 (OOXML spec: 3 paths, inverted ribbon with tails at bottom) ---.
+// ribbon2: the inverted ribbon, with its tails at the bottom.
 multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   const adj1Raw = adjustments?.get("adj1") ?? 16667;
   const adj2Raw = adjustments?.get("adj2") ?? 50000;
@@ -6061,7 +6052,7 @@ multiPathPresets.set("ribbon2", (w, h, adjustments) => {
   ];
 });
 
-// --- horizontalScroll (OOXML spec: 3 paths with arcTo) ---.
+// horizontalScroll: three paths drawn with arcTo.
 multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   const adjVal = adjustments?.get("adj") ?? 12500;
   const a = Math.min(Math.max(adjVal, 0), 25000);
@@ -6241,7 +6232,7 @@ multiPathPresets.set("horizontalscroll", (w, h, adjustments) => {
   ];
 });
 
-// --- verticalScroll (OOXML spec: 3 paths with arcTo) ---.
+// verticalScroll: three paths drawn with arcTo.
 multiPathPresets.set("verticalscroll", (w, h, adjustments) => {
   const adjVal = adjustments?.get("adj") ?? 12500;
   const a = Math.min(Math.max(adjVal, 0), 25000);

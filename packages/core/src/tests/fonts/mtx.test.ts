@@ -68,9 +68,9 @@ describe("LZCOMP", () => {
     const seed = [1, 2, 3, 4, 5, 6];
     const ops = [
       ...seed.map((literal) => ({ literal })),
-      { dup: 2 as const }, // repeats 5
-      { dup: 4 as const }, // repeats 4
-      { dup: 6 as const }, // repeats 3
+      { dup: 2 as const }, // repeats 5.
+      { dup: 4 as const }, // repeats 4.
+      { dup: 6 as const }, // repeats 3.
     ];
     const decoded = decompressLzcomp(encodeLzcompOps(ops, 9), 3, LIMITS);
     expect(Array.from(decoded)).toEqual([1, 2, 3, 4, 5, 6, 5, 4, 3]);
@@ -376,11 +376,9 @@ describe("CFF-flavoured CTF", () => {
 
 describe("CTF table directory", () => {
   it("rejects a duplicated table tag", () => {
-    // Tag lookups take the last entry while every entry is emitted, so a
-    // duplicate would otherwise yield two directory records for one table --
-    // malformed output that validateSfnt still accepts.
-    // A passthrough table keeps the rest of the parse healthy, so the
-    // duplicate itself is the only thing under test.
+    // Tag lookups take the last entry but every entry is emitted, so a duplicate
+    // would give one table two directory records, which validateSfnt still accepts.
+    // A passthrough table keeps the rest of the parse healthy for this test.
     const gasp = { tag: "gasp", data: Uint8Array.of(0, 0, 0, 1, 0xff, 0xff, 0, 2) };
     const streams = buildCtfStreams({ ...FONT, extraTables: [gasp, gasp] });
     expect(() => parseCtf(streams, LIMITS)).toThrow(/Duplicate CTF table tag gasp/u);

@@ -19,12 +19,9 @@ import type { SelectionState } from "./selection";
 import type { ActiveTextStyle } from "./text-range";
 
 /**
- * Attribute that marks UI outside the slide as part of the editor: pressing
- * inside an element that has it (or inside one of its descendants) keeps the
- * selection and text editing alive instead of counting as a press outside.
- *
- * Put it on toolbars, and on the content of their popovers and menus, which
- * usually render in a portal outside the toolbar.
+ * Marks UI outside the slide as part of the editor: a press inside it keeps the
+ * selection and text editing alive instead of counting as a press outside. Put it
+ * on toolbars and on their popover and menu content, which usually portal out.
  */
 export const KEEP_SELECTION_ATTRIBUTE = "data-pptx-keep-selection";
 

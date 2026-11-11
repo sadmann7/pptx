@@ -35,8 +35,8 @@ describe("formatValue", () => {
   });
 
   it("drops trailing zeros for plain decimal codes without grouping", () => {
-    // TODO(spec?): Excel renders 2.5 as "2.50" for the "0.00" format code, but
-    // the non-grouped path re-parses toFixed output and loses trailing zeros.
+    // Excel renders 2.5 as "2.50" for the "0.00" format code, but the non-grouped
+    // path re-parses toFixed output and loses trailing zeros.
     expect(formatValue(2.5, "0.00")).toBe("2.5");
   });
 

@@ -112,7 +112,7 @@ describe.skipIf(!process.env.PROFILE)("cpu profile", () => {
     const files = await readPptx(buffer);
     const pres = buildPresentation(files);
     materializeAllSlides(pres);
-    renderSlide(pres, pres.slides[0]).dispose(); // warm up
+    renderSlide(pres, pres.slides[0]).dispose(); // warm up.
 
     const rows = await captureProfile(() => {
       for (let i = 0; i < 3; i++) {

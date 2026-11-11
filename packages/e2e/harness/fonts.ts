@@ -21,9 +21,9 @@
  *                    here and only yields once a slice runs long, which is what
  *                    dropping the worker would mean
  *   parts  multiplies the deck's font parts by this factor, to see how the two
- *          modes diverge on decks heavier than the ones we have (default 1)
+ *          modes diverge on decks heavier than the fixtures (default 1)
  *   mtx    replaces the deck's font parts with MTX-compressed ones, which is
- *          what PowerPoint itself writes; every deck we have embeds plain EOT,
+ *          what PowerPoint itself writes; every fixture deck embeds plain EOT,
  *          where decoding is a header strip and costs nothing
  *   build  "dist" to use the built font entry (inlined blob worker, minified),
  *          which is what consumers get; "src" (default) is what Vite spawns
@@ -61,9 +61,8 @@ async function loadFontsModule(): Promise<FontsModule> {
 }
 
 /**
- * MTX-compressed parts, taken from the core decode fixtures and served from
- * fixtures/fonts/. They stand in for the payload PowerPoint produces, which no
- * deck we have on disk contains.
+ * MTX-compressed parts from the core decode fixtures, served from fixtures/fonts/.
+ * They stand in for the payload PowerPoint produces, which no deck on disk contains.
  */
 const MTX_PARTS = [
   "/fonts/InstrumentSansSemiBold-regular.fntdata",
@@ -87,12 +86,9 @@ const SLICE_MS = 5;
 const FRAME_BUDGET_MS = 1000 / 60;
 
 /**
- * Copies the deck's font parts under fresh paths and family names.
- *
- * Our real decks embed 3 to 7 parts, which is few enough that both modes look
- * fine. Multiplying them is how the bench reaches the deck sizes the loader
- * was written for without needing such a deck on disk. The bytes are shared,
- * so only the decode work is duplicated, which is the part being measured.
+ * Copies the deck's font parts under fresh paths and family names. Real decks
+ * embed only 3 to 7 parts, so multiplying reaches the deck sizes the loader was
+ * written for. The bytes are shared, so only the measured decode work repeats.
  */
 function multiplyFontParts(presentation: PresentationData, factor: number): void {
   const base = presentation.embeddedFonts;
@@ -177,11 +173,9 @@ function repointVariants(presentation: PresentationData, from: string, to: strin
 }
 
 /**
- * Breaks one part per way a font can fail, so the loader has something to
- * report. Each kind fails at a different depth, which is the point: a dropped
- * part never reaches the decoder, an empty or garbage one is rejected by it,
- * and an sfnt signature over junk gets past it to be refused by the browser,
- * the one case only a real FontFace can produce.
+ * Breaks one part per way a font can fail, each at a different depth: a dropped
+ * part never reaches the decoder, an empty or garbage one is rejected by it, and
+ * an sfnt signature over junk passes it to be refused by the browser's FontFace.
  */
 function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
   const paths = fontPartPaths(presentation);
@@ -253,12 +247,9 @@ interface MainThreadStats {
 }
 
 /**
- * Watches the main thread for as long as the decode runs.
- *
- * Frames are the user-visible signal: a frame that arrives late is a frame the
- * page could not animate or respond in. Long tasks say the same thing from the
- * scheduler's side and are only available in Chromium, so they read as zero
- * elsewhere rather than being asserted on.
+ * Watches the main thread while the decode runs. Late frames are the visible
+ * signal; long tasks say the same from the scheduler's side but exist only in
+ * Chromium, so they read as zero elsewhere instead of being asserted on.
  */
 function startMainThreadMonitor(): () => MainThreadStats {
   let frames = 0;
@@ -302,15 +293,10 @@ function startMainThreadMonitor(): () => MainThreadStats {
 }
 
 /**
- * Decodes and registers every part here, yielding only once a slice has run
- * long, which is what the loader would do if there were no worker to fall back
- * from.
- *
- * The shipped fallback hands the event loop a turn after every part. A turn
- * costs about as much as decoding a part does, so on decks whose parts are
- * cheap that yield, not the decoding, is most of what the fallback spends. This
- * keeps the property the yield is there for (no single stretch long enough to
- * drop a frame) without paying for it per part.
+ * Decodes and registers every part, yielding only once a slice runs long, as the
+ * loader would with no worker. The shipped fallback yields after every part, which
+ * costs about as much as decoding a cheap part; this still avoids frame-long
+ * stretches without paying that per part.
  */
 async function decodeSliced(
   presentation: PresentationData,

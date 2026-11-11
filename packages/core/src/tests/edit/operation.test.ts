@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Tests for applyEdit(): every operation mutates the part XML, keeps the
- * typed model in sync, and survives a save → reopen round trip through the
- * real pipeline. Undo closures must restore both XML and model.
- *
- * Runs under jsdom (not the default happy-dom) because happy-dom's XML
- * parser drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the
- * slide-level operations depend on. Browsers and jsdom parse them correctly.
+ * Every applyEdit() operation must update the part XML and the typed model, and
+ * survive a save and reopen; undo closures must restore both. Runs under jsdom
+ * because happy-dom's XML parser drops namespaced attributes like `r:id` on
+ * `p:sldId`, which slide-level operations need.
  */
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
@@ -148,8 +145,8 @@ describe("setNodeTransform", () => {
       type: "setNodeTransform",
       slideId,
       nodeId: "2",
-      position: { x: 96, y: 192 }, // 1in, 2in
-      size: { w: 288, h: 96 }, // 3in, 1in
+      position: { x: 96, y: 192 }, // 1in, 2in.
+      size: { w: 288, h: 96 }, // 3in, 1in.
       rotation: 45,
     });
 
@@ -206,7 +203,7 @@ describe("setNodeTransform", () => {
       type: "setNodeTransform",
       slideId,
       nodeId: "2",
-      size: { w: 240, h: 48 }, // half the original 480x96
+      size: { w: 240, h: 48 }, // half the original 480x96.
     });
 
     const table = tableOn(pres, 0, "2");

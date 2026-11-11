@@ -1,13 +1,8 @@
 // @vitest-environment jsdom
 /**
- * The thumbnail strip does not implement drag-and-drop: reordering is left to
- * whatever sortable library the consumer already uses. These tests lock the
- * seams that make that possible, so a refactor of the list cannot quietly
- * break an integration.
- *
- * Runs under jsdom (not the default happy-dom) because `moveSlide` rewrites
- * `sldIdLst`, and happy-dom's XML parser drops the namespaced `r:id`
- * attributes it depends on.
+ * The thumbnail strip leaves drag-and-drop to the consumer's sortable library, so
+ * these tests lock the seams that integration relies on. Runs under jsdom because
+ * `moveSlide` rewrites `sldIdLst`, and happy-dom's XML parser drops its `r:id`.
  */
 
 import { act, render, screen } from "@testing-library/react";

@@ -68,29 +68,18 @@ export const SCORE_TOLERANCE = 0.01;
 export const TILE_TOLERANCE = 0.03;
 
 /**
- * How much further one region's ink may drift from PowerPoint's than its
- * baseline records. Re-running the same slide on the same machine moves this
- * 0.000, and the injected content-loss faults moved it 0.47 and up, so this
- * sits an order of magnitude below what it must catch while leaving room for
- * the font substitution that costs Linux ~0.015 SSIM. Recording baselines on a
- * new platform is the check on that headroom.
+ * How far one region's ink may drift from PowerPoint's beyond its baseline. Reruns
+ * move it 0.000 and injected content-loss faults 0.47 and up, so this sits an order
+ * of magnitude below what it must catch, with room for Linux's font substitution
+ * (~0.015 SSIM).
  */
 export const INK_TOLERANCE = 0.15;
 
 /**
- * Absolute floor, independent of baselines. Catches catastrophic breakage
- * (blank slide, missing chart) even on platforms with no recorded baseline
- * or with a badly-recorded one.
- *
- * The exported decks set the bar here: their worst slides score ~0.74 on
- * Windows, where line spacing accumulates a few pixels of drift down a
- * paragraph and the charts choose their own axis ticks, both of which SSIM
- * penalises across the whole image even though the slide reads correctly.
- * Linux scores ~0.015 lower again (0.06 on the worst slide) for want of the
- * decks' fonts, bottoming out at 0.705, so 0.65 is as high as the floor can
- * sit without turning runner variance into a failure; raising it means fixing
- * those two gaps first. Per-slide regressions are caught by the baseline
- * comparison, not by this floor.
+ * Absolute floor, independent of baselines, for catastrophic breakage like a blank
+ * slide or missing chart. The exported decks' worst slides score ~0.74 on Windows
+ * (line-spacing drift, chart ticks) and bottom out at 0.705 on Linux without the
+ * fonts, so 0.65 is as high as it can sit without runner variance failing it.
  */
 export const SCORE_FLOOR = 0.65;
 
@@ -228,12 +217,9 @@ export async function scoreAgainstPowerPoint(
   return { overall: ssim(actual, expected, undefined, width, height), worstTile, ink };
 }
 
-// Score baselines: one JSON file per (deck, slide, browser, OS) so parallel
-// workers never write the same file, and diffs stay reviewable.
-//
-// Platform is part of the key because text rendering differs per OS (Linux
-// lacks Calibri and antialiases differently), shifting SSIM by ~0.01-0.03
-// even when the renderer is unchanged.
+// Score baselines: one JSON file per deck, slide, browser and OS, so parallel
+// workers never write the same file. OS is in the key because text renders
+// differently per OS (Linux lacks Calibri), moving SSIM by ~0.01-0.03.
 
 function baselinePath(deck: string, slide: number, project: string): string {
   return join(BASELINES_DIR, process.platform, `${deck}-${slide}-${project}.json`);

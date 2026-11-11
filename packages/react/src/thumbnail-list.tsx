@@ -97,12 +97,10 @@ export function releaseOldThumbnails(
 }
 
 /**
- * Publishes `slideHandle` as the shared miniature for `slideId`.
- *
- * Returns `false` when a live entry for the current revision already holds the
- * slot, which happens while the same slide is mounted twice (a drag overlay
- * next to its list item). The caller then holds a private copy that it must
- * dispose itself, so the two previews never move one DOM node between them.
+ * Publishes `slideHandle` as the shared miniature for `slideId`. Returns `false`
+ * when a live entry for this revision holds the slot, as when a drag overlay and
+ * its list item mount the same slide; the caller then disposes its private copy,
+ * so the two previews never move one DOM node between them.
  */
 function getIsThumbnailCached(
   slideHandleCache: Map<string, CachedThumbnail>,
@@ -557,17 +555,10 @@ export interface ThumbnailItemProps extends Omit<
   slideId: string;
 
   /**
-   * Runs just before this item becomes the active slide, whether from a click
-   * or from keyboard roving (arrowing through the list changes slides, so it
-   * triggers there too). Call `preventDefault()` to stop the navigation.
-   *
-   * This exists because the list navigates on focus, which the browser
-   * delivers before `click`: a veto expressed in `onClick` would arrive after
-   * the slide had already changed. Use `onClick` for side effects that do not
-   * need to block navigation, such as analytics.
-   *
-   * Note that `ThumbnailItem` is memoized: passing a handler whose identity
-   * changes every render opts the item out of that memoization.
+   * Runs just before this item becomes the active slide, from a click or keyboard
+   * roving; `preventDefault()` stops the navigation. The list navigates on focus,
+   * before `click`, so a veto in `onClick` would come too late. An unstable handler
+   * opts the memoized `ThumbnailItem` out of memoization.
    *
    * ```tsx
    * <Presentation.ThumbnailItem
@@ -581,15 +572,10 @@ export interface ThumbnailItemProps extends Omit<
   onSelect?: (event: ThumbnailSelectEvent) => void;
 
   /**
-   * Renders the item's visuals only: no listbox role, no roving focus
-   * registration, no navigation on click or focus, and no presence in the
-   * accessibility tree.
-   *
-   * Use it for a second copy of an item that is already in the list, such as
-   * the floating thumbnail a drag overlay renders while reordering. Without
-   * it the copy claims the original's slot in the roving focus map and
-   * unregisters it on unmount, and the deck is announced with a duplicate
-   * option.
+   * Renders only the item's visuals, with no listbox role, roving focus, navigation
+   * or accessibility tree presence. Use it for a second copy of an item already in
+   * the list, like a drag overlay's thumbnail, which would otherwise take the
+   * original's roving focus slot and be announced as a duplicate option.
    *
    * @default false
    */

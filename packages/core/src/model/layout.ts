@@ -199,7 +199,7 @@ export function parseLayout(root: SafeXmlNode): LayoutData {
     background,
     placeholders,
     spTree,
-    rels: new Map(), // populated later by buildPresentation
+    rels: new Map(), // populated later by buildPresentation.
     showMasterSp,
   };
 }

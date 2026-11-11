@@ -25,9 +25,9 @@ describe("createGuideContext", () => {
 
   it("defines angle constants in 60000ths of a degree", () => {
     const ctx = createGuideContext(1, 1);
-    expect(ctx.get("cd2")).toBe(10800000); // 180°
-    expect(ctx.get("cd4")).toBe(5400000); // 90°
-    expect(ctx.get("3cd4")).toBe(16200000); // 270°
+    expect(ctx.get("cd2")).toBe(10800000); // 180°.
+    expect(ctx.get("cd4")).toBe(5400000); // 90°.
+    expect(ctx.get("3cd4")).toBe(16200000); // 270°.
   });
 });
 
@@ -79,13 +79,13 @@ describe("evaluateGuideFormula", () => {
   });
 
   it("evaluates trig ops with angles in 60000ths of a degree", () => {
-    expect(evaluateGuideFormula("cos 100 3600000", ctx)).toBeCloseTo(50, 9); // cos 60°
-    expect(evaluateGuideFormula("sin 100 5400000", ctx)).toBeCloseTo(100, 9); // sin 90°
-    expect(evaluateGuideFormula("tan 100 2700000", ctx)).toBeCloseTo(100, 9); // tan 45°
+    expect(evaluateGuideFormula("cos 100 3600000", ctx)).toBeCloseTo(50, 9); // cos 60°.
+    expect(evaluateGuideFormula("sin 100 5400000", ctx)).toBeCloseTo(100, 9); // sin 90°.
+    expect(evaluateGuideFormula("tan 100 2700000", ctx)).toBeCloseTo(100, 9); // tan 45°.
   });
 
   it("evaluates at2/cat2/sat2 with OOXML argument order", () => {
-    expect(evaluateGuideFormula("at2 1 1", ctx)).toBeCloseTo(2700000, 3); // atan2 → 45°
+    expect(evaluateGuideFormula("at2 1 1", ctx)).toBeCloseTo(2700000, 3); // atan2 → 45°.
     expect(evaluateGuideFormula("cat2 100 1 1", ctx)).toBeCloseTo(100 * Math.cos(Math.PI / 4), 9);
     expect(evaluateGuideFormula("sat2 100 1 1", ctx)).toBeCloseTo(100 * Math.sin(Math.PI / 4), 9);
   });
