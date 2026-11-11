@@ -118,6 +118,7 @@ import {
   BetweenVerticalStartIcon,
   BoldIcon,
   CheckIcon,
+  ChevronDownIcon,
   CopyPlusIcon,
   DownloadIcon,
   FolderOpenIcon,
@@ -249,6 +250,7 @@ interface PresentationEditorProps {
   header?: React.ReactNode;
   toolbar?: boolean;
   floatingToolbar?: boolean;
+  children?: React.ReactNode;
 }
 
 export function PresentationEditor({
@@ -257,6 +259,7 @@ export function PresentationEditor({
   header,
   toolbar = true,
   floatingToolbar = false,
+  children,
 }: PresentationEditorProps) {
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -304,6 +307,7 @@ export function PresentationEditor({
             {floatingToolbar && <FloatingToolbar store={store} />}
           </PresentationContent>
         </Presentation>
+        {children}
       </PresentationProvider>
     </div>
   );
@@ -393,6 +397,7 @@ interface ToolbarMenuTriggerProps {
   label: string;
   disabled?: boolean;
   active?: boolean;
+  chevron?: boolean;
   className?: string;
   children: React.ReactNode;
 }
@@ -401,6 +406,7 @@ function ToolbarMenuTrigger({
   label,
   disabled,
   active,
+  chevron = false,
   className,
   children,
 }: ToolbarMenuTriggerProps) {
@@ -417,7 +423,7 @@ function ToolbarMenuTrigger({
                   <Button
                     variant={active ? "secondary" : "ghost"}
                     size="icon-sm"
-                    className={className}
+                    className={cn(chevron && "h-7 w-auto gap-0.5 px-1.5", className)}
                   />
                 }
               />
@@ -426,6 +432,7 @@ function ToolbarMenuTrigger({
         }
       >
         {children}
+        {chevron && <ChevronDownIcon className="size-3 text-muted-foreground" />}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -825,6 +832,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
           >
             <Redo2Icon />
           </ToolbarIconButton>
+          <ToolbarSeparator />
           <ToolbarButton
             disabled={!isReady}
             render={
@@ -1013,7 +1021,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             <>
               <ToolbarSeparator />
               <DropdownMenu modal={false}>
-                <ToolbarMenuTrigger label="Arrange">
+                <ToolbarMenuTrigger label="Arrange" chevron>
                   <LayersIcon />
                 </ToolbarMenuTrigger>
                 <DropdownMenuContent
@@ -1202,7 +1210,7 @@ function TableEditMenu({
 }) {
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label="Edit table">
+      <ToolbarMenuTrigger label="Edit table" chevron>
         <Grid2x2PlusIcon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label="Edit table" className="w-48">
@@ -1264,7 +1272,7 @@ const CELL_ALIGNMENTS = [
 function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign) => void }) {
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label="Vertical align">
+      <ToolbarMenuTrigger label="Vertical align" chevron>
         <AlignVerticalJustifyCenterIcon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label="Vertical align" className="w-36">
@@ -1289,7 +1297,7 @@ function AlignMenu({
   const current = ALIGNMENTS.find(({ align }) => align === value) ?? ALIGNMENTS[0];
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label="Align">
+      <ToolbarMenuTrigger label="Align" chevron>
         <current.icon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent data-pptx-keep-selection="" aria-label="Align" className="w-40">

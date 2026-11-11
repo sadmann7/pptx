@@ -5,7 +5,6 @@ import { AutoTypeTable, type AutoTypeTableProps } from "fumadocs-typescript/ui";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 
-import { PresentationDemo } from "@/components/presentation-demo";
 import { PresentationEditingDemo } from "@/components/presentation-editing-demo";
 
 const generator = createGenerator({
@@ -25,7 +24,6 @@ export function getMDXComponents(components?: MDXComponents) {
     KbdGroup: (props: React.ComponentProps<typeof KbdGroup>) => (
       <KbdGroup {...props} className={cn("not-prose", props.className)} />
     ),
-    PresentationDemo,
     PresentationEditingDemo,
     ...components,
   } satisfies MDXComponents;

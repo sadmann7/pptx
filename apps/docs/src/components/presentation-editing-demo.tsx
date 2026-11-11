@@ -7,8 +7,8 @@ import { useCreatePresentationStore } from "@diceui/pptx";
 import { PresentationEditor } from "@/components/presentation-editor";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 
-/** The playground's editor, on the sample deck. */
-export function PresentationEditingDemo() {
+/** An editable store loaded with the sample deck. */
+export function useDemoDeckStore() {
   const store = useCreatePresentationStore();
 
   React.useEffect(() => {
@@ -25,6 +25,13 @@ export function PresentationEditingDemo() {
         // The editor shows load errors from `store.error`.
       });
   }, [store]);
+
+  return store;
+}
+
+/** The playground's editor, on the sample deck. */
+export function PresentationEditingDemo() {
+  const store = useDemoDeckStore();
 
   return <PresentationEditor store={store} className="not-prose h-[36rem] rounded-lg" />;
 }

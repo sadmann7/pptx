@@ -33,7 +33,7 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
     <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col p-4">
       <PresentationEditor
         store={store}
-        className={cn("h-[calc(100dvh-(--spacing(22)))]")}
+        className={cn("h-[calc(100dvh-(--spacing(22)))] md:h-[calc(100dvh-(--spacing(24)))]")}
         header={layout === "default" ? <PresentationDebugToolbar /> : undefined}
         toolbar={layout !== "compact"}
         floatingToolbar={params.floatingToolbar !== undefined}
