@@ -1,5 +1,5 @@
 /**
- * An editor toolbar outside the slide: `data-presentation-keep-selection` keeps the
+ * An editor toolbar outside the slide: `data-presentation-controls` keeps the
  * selection and text editing alive while it is pressed, and `useSelection`
  * reads and formats what is selected.
  */
@@ -42,7 +42,7 @@ async function renderEditor() {
   function Toolbar() {
     selection.current = useSelection();
     return (
-      <div data-presentation-keep-selection="" data-testid="toolbar">
+      <div data-presentation-controls="" data-testid="toolbar">
         <button type="button" data-testid="bold">
           Bold
         </button>
@@ -124,7 +124,7 @@ describe("anchor", () => {
   });
 });
 
-describe("data-presentation-keep-selection", () => {
+describe("data-presentation-controls", () => {
   it("keeps the selection when a marked toolbar is pressed", async () => {
     const { overlay, bold, press } = await renderEditor();
     act(() => {
@@ -145,7 +145,7 @@ describe("data-presentation-keep-selection", () => {
     });
 
     const popover = document.createElement("div");
-    popover.setAttribute("data-presentation-keep-selection", "");
+    popover.setAttribute("data-presentation-controls", "");
     const swatch = document.createElement("button");
     popover.appendChild(swatch);
     document.body.appendChild(popover);

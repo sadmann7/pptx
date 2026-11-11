@@ -27,7 +27,7 @@ async function audit(page: Page, state: string): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .include("[data-slot=presentation-editor]")
-    .include("[data-presentation-keep-selection]")
+    .include("[data-presentation-controls]")
     // The slide is the deck's own content, with the author's colors.
     .exclude("[data-slot=presentation-slide] [data-pptx-node-id]")
     // Non-modal popups add focus guards: aria-hidden sentinels that pass Tab

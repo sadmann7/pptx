@@ -80,7 +80,7 @@ const { canUndo, canRedo, isDirty, undo, redo } = useHistory();
 const { textStyle, setTextStyle, insertShape, startDrawing } = useSelection();
 ```
 
-`useSelection` drives a formatting toolbar outside the slide. Mark the toolbar with `data-presentation-keep-selection` so pressing it keeps the selection.
+`useSelection` drives a formatting toolbar outside the slide. Mark the toolbar with `data-presentation-controls` so pressing it keeps the selection.
 
 ### Uncontrolled
 

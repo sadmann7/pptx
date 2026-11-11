@@ -469,11 +469,7 @@ function ColorMenu({
           style={{ backgroundColor: value ?? "transparent" }}
         />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-presentation-keep-selection=""
-        aria-label={label}
-        className="w-auto"
-      >
+      <DropdownMenuContent data-presentation-controls="" aria-label={label} className="w-auto">
         {onNone && (
           <>
             <DropdownMenuItem onClick={onNone}>
@@ -569,7 +565,7 @@ function FontSelect({
         <TooltipContent>{value ? `Font: ${value}` : "Font"}</TooltipContent>
       </Tooltip>
       <SelectContent
-        data-presentation-keep-selection=""
+        data-presentation-controls=""
         alignItemWithTrigger={false}
         align="start"
         className="w-56"
@@ -792,7 +788,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
     <TooltipProvider delay={400}>
       <Toolbar
         aria-label="Edit presentation"
-        data-presentation-keep-selection=""
+        data-presentation-controls=""
         className="flex-nowrap border-b p-1.5"
       >
         {/* One scrolling row, so the contextual tools never wrap onto a new line. */}
@@ -1029,7 +1025,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                   <LayersIcon />
                 </ToolbarMenuTrigger>
                 <DropdownMenuContent
-                  data-presentation-keep-selection=""
+                  data-presentation-controls=""
                   aria-label="Arrange"
                   className="w-48"
                 >
@@ -1108,7 +1104,7 @@ function ShapeMenu({
         <ShapesIcon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent
-        data-presentation-keep-selection=""
+        data-presentation-controls=""
         aria-label="Shape"
         // The armed slide takes focus, so Escape disarms it.
         finalFocus={false}
@@ -1165,11 +1161,7 @@ function TableMenu({
       <ToolbarMenuTrigger label="Table" disabled={disabled}>
         <TableIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-presentation-keep-selection=""
-        aria-label="Table"
-        className="w-auto"
-      >
+      <DropdownMenuContent data-presentation-controls="" aria-label="Table" className="w-auto">
         <div
           className="grid gap-0.5"
           style={{ gridTemplateColumns: `repeat(${TABLE_PICKER_COLUMNS}, minmax(0, 1fr))` }}
@@ -1221,11 +1213,7 @@ function TableEditMenu({
       <ToolbarMenuTrigger label="Edit table" chevron>
         <Grid2x2PlusIcon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent
-        data-presentation-keep-selection=""
-        aria-label="Edit table"
-        className="w-48"
-      >
+      <DropdownMenuContent data-presentation-controls="" aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
           <DropdownMenuItem key={label} disabled={!hasCell} onClick={() => onSelect(change)}>
             <Icon />
@@ -1288,7 +1276,7 @@ function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign)
         <AlignVerticalJustifyCenterIcon />
       </ToolbarMenuTrigger>
       <DropdownMenuContent
-        data-presentation-keep-selection=""
+        data-presentation-controls=""
         aria-label="Vertical align"
         className="w-36"
       >
@@ -1316,7 +1304,7 @@ function AlignMenu({
       <ToolbarMenuTrigger label="Align" chevron>
         <current.icon />
       </ToolbarMenuTrigger>
-      <DropdownMenuContent data-presentation-keep-selection="" aria-label="Align" className="w-40">
+      <DropdownMenuContent data-presentation-controls="" aria-label="Align" className="w-40">
         <DropdownMenuRadioGroup
           value={value ?? ""}
           onValueChange={(align) => onSelect(align as ParagraphAlign)}
@@ -1629,7 +1617,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
         collisionPadding={8}
         initialFocus={false}
         finalFocus={false}
-        data-presentation-keep-selection=""
+        data-presentation-controls=""
         // Shown on every selection, so it appears without animating.
         className="w-auto p-1 data-open:animate-none data-closed:animate-none"
       >
@@ -1743,9 +1731,9 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
       </ContextMenuTrigger>
       {isShapeMenu ? (
         <ContextMenuContent
-          data-presentation-keep-selection=""
+          data-presentation-controls=""
           // Pressing outside only closes the menu, keeping the selection and text editing.
-          portalProps={{ render: <div data-presentation-keep-selection="" /> }}
+          portalProps={{ render: <div data-presentation-controls="" /> }}
           aria-label="Shape"
           className={isTableMenu ? "w-48" : "w-44"}
           // An edit can replace the text the menu opened on; the editor refocuses it then.
@@ -1806,7 +1794,7 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
               <LayersIcon />
               Order
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent data-presentation-keep-selection="" className="w-44">
+            <ContextMenuSubContent data-presentation-controls="" className="w-44">
               {ARRANGE.map(({ order, label }) => (
                 <ContextMenuItem key={order} onClick={() => run(() => reorder(order))}>
                   {label}

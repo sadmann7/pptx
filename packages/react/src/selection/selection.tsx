@@ -35,7 +35,7 @@ import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
 import { mergeRefs, renderElement } from "../render";
 import type { DrawTool, TableChange } from "./channel";
-import { getIsKeepSelectionTarget, getSelectionChannel } from "./channel";
+import { getIsControlsTarget, getSelectionChannel } from "./channel";
 import { readClipboardToken, stashNodes, takeStash, writeClipboardToken } from "./clipboard";
 import { getReportedMode, SelectionPartsContext } from "./context";
 import type { HandleDirection, Rect } from "./geometry";
@@ -125,7 +125,7 @@ function getIsPresentationTarget(
   }
   // An editor toolbar is part of the deck's UI: undo after pressing Bold
   // undoes the bold.
-  if (getIsKeepSelectionTarget(target)) return true;
+  if (getIsControlsTarget(target)) return true;
   return boundary?.contains(target) ?? false;
 }
 
@@ -2206,7 +2206,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
       // A toolbar formats the text being edited, so pressing it must not end
       // editing. The text range is remembered (see `savedRangeRef`).
-      if (getIsKeepSelectionTarget(event.target)) return;
+      if (getIsControlsTarget(event.target)) return;
 
       const wrapper = rootRef.current?.parentElement?.parentElement;
       if (!wrapper) return;
@@ -2306,7 +2306,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       }
 
       // Escape inside a toolbar closes its popover, not the text editing.
-      if (event.key === "Escape" && !getIsKeepSelectionTarget(event.target)) {
+      if (event.key === "Escape" && !getIsControlsTarget(event.target)) {
         event.preventDefault();
         doExitTextModeRef.current(currentState);
         return;
@@ -2511,7 +2511,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
 
   /**
    * A press outside the overlay deselects, as in PowerPoint, so handles don't linger
-   * once focus, and with it Escape, leaves the overlay; `data-presentation-keep-selection` UI
+   * once focus, and with it Escape, leaves the overlay; `data-presentation-controls` UI
    * is exempt. It acts on release, since a touch scroll starts with a pointerdown and
    * the browser fires pointercancel when it takes over, telling a scroll from a tap.
    */
@@ -2528,7 +2528,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       // Drags capture the pointer onto the overlay, so this skips those too.
       if (rootRef.current?.contains(event.target as Node)) return;
       // Toolbars act on the selection, so pressing them must keep it.
-      if (getIsKeepSelectionTarget(event.target)) return;
+      if (getIsControlsTarget(event.target)) return;
       pending = true;
     }
 

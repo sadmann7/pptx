@@ -3,7 +3,7 @@
  * the way an app wires `useSelection`, so editing.spec.ts can press real
  * toolbar buttons and check the selection and text editing survive.
  *
- * The toolbar and a portalled "popover" carry `data-presentation-keep-selection`; the
+ * The toolbar and a portalled "popover" carry `data-presentation-controls`; the
  * "outside" strip does not. The spec reads the model through `__editStore`.
  *
  * Query params:
@@ -35,7 +35,7 @@ function Toolbar() {
 
   return (
     <>
-      <div data-presentation-keep-selection="" style={{ display: "flex", gap: 4, padding: 4 }}>
+      <div data-presentation-controls="" style={{ display: "flex", gap: 4, padding: 4 }}>
         <button
           type="button"
           data-testid="italic"
@@ -96,7 +96,7 @@ function Toolbar() {
         </output>
       </div>
       {createPortal(
-        <div data-presentation-keep-selection="" style={{ position: "fixed", right: 8, bottom: 8 }}>
+        <div data-presentation-controls="" style={{ position: "fixed", right: 8, bottom: 8 }}>
           <button
             type="button"
             data-testid="swatch"

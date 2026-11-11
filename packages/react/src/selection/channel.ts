@@ -23,13 +23,13 @@ import type { ActiveTextStyle } from "./text-range";
  * selection and text editing alive instead of counting as a press outside. Put it
  * on toolbars and on their popover and menu content, which usually portal out.
  */
-export const KEEP_SELECTION_ATTRIBUTE = "data-presentation-keep-selection";
+export const CONTROLS_ATTRIBUTE = "data-presentation-controls";
 
-/** Whether an event target sits inside UI marked with `KEEP_SELECTION_ATTRIBUTE`. */
-export function getIsKeepSelectionTarget(target: EventTarget | null): boolean {
+/** Whether an event target sits inside UI marked with `CONTROLS_ATTRIBUTE`. */
+export function getIsControlsTarget(target: EventTarget | null): boolean {
   const element =
     target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
-  return element?.closest(`[${KEEP_SELECTION_ATTRIBUTE}]`) != null;
+  return element?.closest(`[${CONTROLS_ATTRIBUTE}]`) != null;
 }
 
 /** A row or column change at the table cell being edited. */
@@ -310,7 +310,7 @@ function requireController(channel: SelectionChannel): SelectionController {
  *
  * Works anywhere under `Presentation.Root` or `Presentation.Provider`, so a
  * toolbar outside the slide can follow the selection. Mark that toolbar with
- * `data-presentation-keep-selection` so pressing it doesn't clear the selection.
+ * `data-presentation-controls` so pressing it doesn't clear the selection.
  *
  * ```tsx
  * function BoldButton() {

@@ -250,7 +250,7 @@ In `setTextStyle`, `null` clears a value so it inherits from the layout, and a r
 
 `useSelection` gives a toolbar the selection and formatting commands. While editing text they format the selection, or the word at the caret; otherwise they format the whole shape.
 
-Mark the toolbar, and any popovers it portals, with `data-presentation-keep-selection` so pressing it keeps the selection.
+Mark the toolbar, and any popovers it portals, with `data-presentation-controls` so pressing it keeps the selection.
 
 ```tsx
 import { useSelection } from "@diceui/pptx";
@@ -259,7 +259,7 @@ function FormattingToolbar() {
   const { textStyle, setTextStyle, setParagraphStyle } = useSelection();
 
   return (
-    <div data-presentation-keep-selection="">
+    <div data-presentation-controls="">
       <button
         aria-pressed={textStyle?.bold ?? false}
         disabled={!textStyle}
@@ -303,11 +303,7 @@ function FloatingToolbar() {
     <Popover.Root open={anchor !== null && (mode === "selected" || mode === "text")}>
       <Popover.Portal>
         <Popover.Positioner anchor={anchor} side="top" sideOffset={8}>
-          <Popover.Popup
-            initialFocus={false}
-            finalFocus={false}
-            data-presentation-keep-selection=""
-          >
+          <Popover.Popup initialFocus={false} finalFocus={false} data-presentation-controls="">
             <FormattingToolbar />
           </Popover.Popup>
         </Popover.Positioner>
