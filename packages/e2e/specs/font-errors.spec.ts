@@ -14,7 +14,9 @@ const MODES: readonly BenchMode[] = ["worker", "main"];
 
 test.describe("embedded font failures", () => {
   for (const mode of MODES) {
-    test(`are reported per part when decoding on the ${mode} path`, async ({ page }) => {
+    test(`are reported per part when decoding on the ${mode} path`, async ({
+      page,
+    }) => {
       const query = new URLSearchParams({
         file: DECK,
         mode,
@@ -23,7 +25,8 @@ test.describe("embedded font failures", () => {
       });
       await page.goto(`/fonts.html?${query}`);
       await page.waitForFunction(
-        () => window.__fontsReady === true || window.__renderError !== undefined,
+        () =>
+          window.__fontsReady === true || window.__renderError !== undefined,
       );
       const harnessError = await page.evaluate(() => window.__renderError);
       expect(harnessError).toBeUndefined();
@@ -43,7 +46,9 @@ test.describe("embedded font failures", () => {
         const reported = errors.filter((error) => error.path === part.path);
         expect(reported).toHaveLength(1);
         expect(reported[0]?.stage).toBe(part.stage);
-        expect(reported[0]?.typefaces.sort()).toEqual([...part.typefaces].sort());
+        expect(reported[0]?.typefaces.sort()).toEqual(
+          [...part.typefaces].sort(),
+        );
         expect(reported[0]?.message).not.toBe("");
       }
 

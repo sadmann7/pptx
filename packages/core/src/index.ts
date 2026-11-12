@@ -10,7 +10,12 @@ export type {
   ThumbnailRenderOptions,
 } from "./viewer";
 
-export { applyEdit, copyNodes, getTableCellOrigin, getTableCellRange } from "./edit/operation";
+export {
+  applyEdit,
+  copyNodes,
+  getTableCellOrigin,
+  getTableCellRange,
+} from "./edit/operation";
 export type {
   AddImageOperation,
   AddShapeOperation,
@@ -67,7 +72,11 @@ export { writePptx } from "./ooxml/writer";
 export { readPptx, RECOMMENDED_PPTX_READ_LIMITS } from "./ooxml/zip";
 export type { PptxReadLimits, PptxReadOptions } from "./ooxml/zip";
 
-export { buildPresentation, materializeAllSlides, materializeSlide } from "./model/presentation";
+export {
+  buildPresentation,
+  materializeAllSlides,
+  materializeSlide,
+} from "./model/presentation";
 export type {
   BuildPresentationOptions,
   EmbeddedFontEntry,
@@ -80,9 +89,17 @@ export { getPresentationFonts } from "./model/presentation-fonts";
 export type { PresentationFonts } from "./model/presentation-fonts";
 
 export { serializePresentation } from "./model/serialize";
-export type { SerializedNode, SerializedPresentation, SerializedSlide } from "./model/serialize";
+export type {
+  SerializedNode,
+  SerializedPresentation,
+  SerializedSlide,
+} from "./model/serialize";
 
-export { buildTextIndex, searchPresentation, searchText } from "./model/text-search";
+export {
+  buildTextIndex,
+  searchPresentation,
+  searchText,
+} from "./model/text-search";
 export type {
   SearchTextKind,
   TextBounds,
@@ -95,7 +112,11 @@ export type {
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf";
 export { PPTX_ATTRS, PPTX_DATASET } from "./renderer/dom-attributes";
 export { renderSlide, renderThumbnail } from "./renderer/slide";
-export type { SlideHandle, SlideRendererOptions, ThumbnailRendererOptions } from "./renderer/slide";
+export type {
+  SlideHandle,
+  SlideRendererOptions,
+  ThumbnailRendererOptions,
+} from "./renderer/slide";
 
 export type {
   BaseNodeData,

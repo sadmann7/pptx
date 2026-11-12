@@ -6,8 +6,8 @@ function subscribe() {
 
 function getIsMac() {
   const platform =
-    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
-    navigator.platform;
+    (navigator as Navigator & { userAgentData?: { platform?: string } })
+      .userAgentData?.platform ?? navigator.platform;
   return /mac|iphone|ipad|ipod/i.test(platform);
 }
 

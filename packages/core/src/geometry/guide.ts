@@ -69,7 +69,10 @@ export function resolveGuideOperand(
 }
 
 // One `fmla` guide (ECMA-376 §20.1.9.11); unknown operators evaluate to 0.
-export function evaluateGuideFormula(fmla: string, guides: Map<string, number>): number {
+export function evaluateGuideFormula(
+  fmla: string,
+  guides: Map<string, number>,
+): number {
   const parts = fmla.trim().split(/\s+/);
   const op = parts[0];
   const x = resolveGuideOperand(parts[1], guides);

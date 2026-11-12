@@ -12,7 +12,12 @@ export interface ParsedArgs {
 }
 
 export function parseArgs(argv: readonly string[], spec: ArgSpec): ParsedArgs {
-  const parsed: ParsedArgs = { positional: [], numbers: {}, strings: {}, lists: {} };
+  const parsed: ParsedArgs = {
+    positional: [],
+    numbers: {},
+    strings: {},
+    lists: {},
+  };
   for (const name of spec.lists ?? []) parsed.lists[name] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -27,7 +32,8 @@ export function parseArgs(argv: readonly string[], spec: ArgSpec): ParsedArgs {
 
     if (spec.numbers?.includes(name)) {
       const parsedNumber = Number(value);
-      if (Number.isNaN(parsedNumber)) throw new Error(`--${name} expects a number, got "${value}"`);
+      if (Number.isNaN(parsedNumber))
+        throw new Error(`--${name} expects a number, got "${value}"`);
       parsed.numbers[name] = parsedNumber;
     } else if (spec.lists?.includes(name)) {
       parsed.lists[name].push(value);
@@ -41,7 +47,11 @@ export function parseArgs(argv: readonly string[], spec: ArgSpec): ParsedArgs {
   return parsed;
 }
 
-export function parseRange(value: string | undefined, from: number, to: number): [number, number] {
+export function parseRange(
+  value: string | undefined,
+  from: number,
+  to: number,
+): [number, number] {
   if (!value) return [from, to];
   const [start, end] = value.split(":");
   return [start ? Number(start) : from, end ? Number(end) : to];

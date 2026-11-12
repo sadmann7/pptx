@@ -10,7 +10,8 @@ import { createStore } from "./store";
 export const Context = React.createContext<Store | null>(null);
 
 // The deck's focus boundary, thumbnails included. A ref, since only event handlers read it.
-export const RootContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
+export const RootContext =
+  React.createContext<React.RefObject<HTMLElement | null> | null>(null);
 
 export interface ProviderProps {
   /** The `PresentationStore` to make available to descendants. */
@@ -100,7 +101,10 @@ export function useStoreSelector<T>(
 }
 
 /** Subscribes to `store.getSlideRevision`. */
-export function useSlideRevision(store: Store, slideId: string | null | undefined): number {
+export function useSlideRevision(
+  store: Store,
+  slideId: string | null | undefined,
+): number {
   return React.useSyncExternalStore(
     store.subscribe,
     () => (slideId != null ? store.getSlideRevision(slideId) : 0),
@@ -108,7 +112,10 @@ export function useSlideRevision(store: Store, slideId: string | null | undefine
   );
 }
 
-export function useSlideContentRevision(store: Store, slideId: string | null | undefined): number {
+export function useSlideContentRevision(
+  store: Store,
+  slideId: string | null | undefined,
+): number {
   return React.useSyncExternalStore(
     store.subscribe,
     () => (slideId != null ? store.getSlideContentRevision(slideId) : 0),
@@ -153,10 +160,26 @@ export function usePresentation(): UsePresentationResult {
     (s) => s.presentation,
     DEFAULT_STORE_STATE.presentation,
   );
-  const status = useStoreSelector(store, (s) => s.status, DEFAULT_STORE_STATE.status);
-  const error = useStoreSelector(store, (s) => s.error, DEFAULT_STORE_STATE.error);
-  const progress = useStoreSelector(store, (s) => s.progress, DEFAULT_STORE_STATE.progress);
-  const revision = useStoreSelector(store, (s) => s.revision, DEFAULT_STORE_STATE.revision);
+  const status = useStoreSelector(
+    store,
+    (s) => s.status,
+    DEFAULT_STORE_STATE.status,
+  );
+  const error = useStoreSelector(
+    store,
+    (s) => s.error,
+    DEFAULT_STORE_STATE.error,
+  );
+  const progress = useStoreSelector(
+    store,
+    (s) => s.progress,
+    DEFAULT_STORE_STATE.progress,
+  );
+  const revision = useStoreSelector(
+    store,
+    (s) => s.revision,
+    DEFAULT_STORE_STATE.revision,
+  );
 
   return { presentation, status, error, progress, revision };
 }
@@ -247,14 +270,22 @@ export interface UseZoomResult {
   setAutoFit: (isAutoFit: boolean) => void;
 
   /** Sets zoom once to fit the slide in a container of the given pixel size, minus padding. */
-  fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
+  fitTo: (
+    containerWidth: number,
+    containerHeight: number,
+    padding?: AutoFitPadding,
+  ) => void;
 }
 
 /** Subscribes to zoom state and exposes zoom actions; `Presentation.Viewport autoFit` does the fitting. */
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
-  const isAutoFit = useStoreSelector(store, (s) => s.isAutoFit, DEFAULT_STORE_STATE.isAutoFit);
+  const isAutoFit = useStoreSelector(
+    store,
+    (s) => s.isAutoFit,
+    DEFAULT_STORE_STATE.isAutoFit,
+  );
 
   return {
     zoom,
@@ -262,9 +293,13 @@ export function useZoom(): UseZoomResult {
     setZoom: React.useCallback((z: number) => store.setZoom(z), [store]),
     zoomIn: React.useCallback((step?: number) => store.zoomIn(step), [store]),
     zoomOut: React.useCallback((step?: number) => store.zoomOut(step), [store]),
-    setAutoFit: React.useCallback((next: boolean) => store.setAutoFit(next), [store]),
+    setAutoFit: React.useCallback(
+      (next: boolean) => store.setAutoFit(next),
+      [store],
+    ),
     fitTo: React.useCallback(
-      (w: number, h: number, padding?: AutoFitPadding) => store.fitTo(w, h, padding),
+      (w: number, h: number, padding?: AutoFitPadding) =>
+        store.fitTo(w, h, padding),
       [store],
     ),
   };
@@ -303,9 +338,21 @@ export function useHistory(): UseHistoryResult {
     [store],
   );
 
-  const canUndo = React.useSyncExternalStore(subscribe, store.canUndo, () => false);
-  const canRedo = React.useSyncExternalStore(subscribe, store.canRedo, () => false);
-  const isDirty = React.useSyncExternalStore(subscribe, store.isDirty, () => false);
+  const canUndo = React.useSyncExternalStore(
+    subscribe,
+    store.canUndo,
+    () => false,
+  );
+  const canRedo = React.useSyncExternalStore(
+    subscribe,
+    store.canRedo,
+    () => false,
+  );
+  const isDirty = React.useSyncExternalStore(
+    subscribe,
+    store.isDirty,
+    () => false,
+  );
 
   return {
     canUndo,

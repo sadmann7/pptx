@@ -3,11 +3,14 @@ import { chromium } from "@playwright/test";
 import { HARNESS_ORIGIN } from "../lib/constants";
 
 const url =
-  process.argv[2] ?? `${HARNESS_ORIGIN}/thumbnails.html?file=decks/bench-thumbnails.pptx&slides=64`;
+  process.argv[2] ??
+  `${HARNESS_ORIGIN}/thumbnails.html?file=decks/bench-thumbnails.pptx&slides=64`;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-page.on("console", (message) => console.log(`[${message.type()}]`, message.text()));
+page.on("console", (message) =>
+  console.log(`[${message.type()}]`, message.text()),
+);
 page.on("pageerror", (error) => console.log("[pageerror]", error.message));
 
 await page.goto(url);

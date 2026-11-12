@@ -5,7 +5,10 @@ import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
-async function renderConnector(spPrInner: string, extraAfterSpPr = ""): Promise<HTMLElement> {
+async function renderConnector(
+  spPrInner: string,
+  extraAfterSpPr = "",
+): Promise<HTMLElement> {
   const buffer = await buildPptxWithShapes(`<p:cxnSp>
 <p:nvCxnSpPr><p:cNvPr id="30" name="Connector"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
 <p:spPr>
@@ -105,12 +108,18 @@ describe("connector arrowheads (headEnd/tailEnd)", () => {
 
     const headId = markerStart!.slice(5, -1);
     const head = markers.find((m) => m.getAttribute("id") === headId)!;
-    expect(head.querySelector("polygon")!.getAttribute("points")).toBe("0,5 10,0 10,10");
-    expect(head.querySelector("polygon")!.getAttribute("fill")?.toLowerCase()).toBe("#ff0000");
+    expect(head.querySelector("polygon")!.getAttribute("points")).toBe(
+      "0,5 10,0 10,10",
+    );
+    expect(
+      head.querySelector("polygon")!.getAttribute("fill")?.toLowerCase(),
+    ).toBe("#ff0000");
 
     const tailId = markerEnd!.slice(5, -1);
     const tail = markers.find((m) => m.getAttribute("id") === tailId)!;
-    expect(tail.querySelector("polygon")!.getAttribute("points")).toBe("10,5 0,0 0,10");
+    expect(tail.querySelector("polygon")!.getAttribute("points")).toBe(
+      "10,5 0,0 0,10",
+    );
   });
 
   it("renders only marker-end when just tailEnd is set", async () => {
@@ -141,6 +150,8 @@ describe("connector arrowheads (headEnd/tailEnd)", () => {
     const oval = markers.find((m) => m.querySelector("circle"));
     expect(stealth).toBeDefined();
     expect(oval).toBeDefined();
-    expect(oval!.querySelector("circle")!.getAttribute("fill")?.toLowerCase()).toBe("#0000ff");
+    expect(
+      oval!.querySelector("circle")!.getAttribute("fill")?.toLowerCase(),
+    ).toBe("#0000ff");
   });
 });

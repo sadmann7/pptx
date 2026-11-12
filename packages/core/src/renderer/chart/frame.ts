@@ -6,7 +6,10 @@ import type { ChartFrameStyle } from "./type";
 
 // Authoring tools write "let the slide show through" as a `solidFill` with
 // `a:alpha` 0 rather than `noFill`; painting it would plate the chart, usually black.
-function resolveBackgroundFill(fill: SafeXmlNode, ctx: RenderContext): string | undefined {
+function resolveBackgroundFill(
+  fill: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   if (resolveColor(fill, ctx).alpha <= 0) return undefined;
   return resolveColorToCss(fill, ctx);
 }
@@ -53,7 +56,10 @@ export function extractChartFrameStyle(
   chartXml: SafeXmlNode,
   ctx: RenderContext,
 ): ChartFrameStyle | undefined {
-  const lineStyle = extractChartLineStyle(chartXml.child("spPr").child("ln"), ctx);
+  const lineStyle = extractChartLineStyle(
+    chartXml.child("spPr").child("ln"),
+    ctx,
+  );
   if (!lineStyle) return undefined;
 
   return {

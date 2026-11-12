@@ -44,7 +44,14 @@ export const DEFAULT_RADAR_GRIDLINE_STYLE: Required<ChartLineStyle> = {
   width: 1,
   type: "solid",
 };
-export const CHART_ACCENT_KEYS = ["accent1", "accent2", "accent3", "accent4", "accent5", "accent6"];
+export const CHART_ACCENT_KEYS = [
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+];
 
 export interface DataPointStyle {
   color?: string;
@@ -91,7 +98,9 @@ export interface DataLabelConfig {
   padding?: [number, number, number, number];
 }
 
-export type DataLabelManualLayout = Partial<Record<"x" | "y" | "width" | "height", number>>;
+export type DataLabelManualLayout = Partial<
+  Record<"x" | "y" | "width" | "height", number>
+>;
 
 export interface ChartTextStyle {
   color?: string;
@@ -118,7 +127,9 @@ export function markExplicitFontSize<T extends object>(style: T): T {
 
 export function hasExplicitFontSize(style: unknown): boolean {
   return Boolean(
-    style && typeof style === "object" && (style as Record<symbol, unknown>)[EXPLICIT_FONT_SIZE],
+    style &&
+    typeof style === "object" &&
+    (style as Record<symbol, unknown>)[EXPLICIT_FONT_SIZE],
   );
 }
 

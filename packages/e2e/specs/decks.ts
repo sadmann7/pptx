@@ -23,4 +23,7 @@ export const EXPORTED_DECKS: readonly Deck[] = [
   { name: "the-good-room-soft-editorial", slides: 8 },
 ];
 
-export const ALL_DECKS: readonly Deck[] = [...GENERATED_DECKS, ...EXPORTED_DECKS];
+export const ALL_DECKS: readonly Deck[] = [
+  ...GENERATED_DECKS,
+  ...EXPORTED_DECKS,
+];

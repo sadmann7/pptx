@@ -141,9 +141,11 @@ const greatCircleLine = (from: [number, number], to: [number, number]) => {
 
   // Great-circle routes crossing the antimeridian can become MultiLineString.
   // Keep the example valid by choosing the longest segment.
-  const longestSegment = route.geometry.coordinates.reduce((longest, segment) => {
-    return segment.length > longest.length ? segment : longest;
-  });
+  const longestSegment = route.geometry.coordinates.reduce(
+    (longest, segment) => {
+      return segment.length > longest.length ? segment : longest;
+    },
+  );
 
   return turf.lineString(longestSegment);
 };
@@ -167,7 +169,11 @@ const distanceAlong = (totalDistance: number, progress: number) => {
 };
 
 const getPartialTargetRoute = (progress: number) => {
-  return turf.lineSliceAlong(targetRoute, 0, distanceAlong(targetRouteDistance, progress));
+  return turf.lineSliceAlong(
+    targetRoute,
+    0,
+    distanceAlong(targetRouteDistance, progress),
+  );
 };
 
 const getCameraOptions = (
@@ -176,10 +182,14 @@ const getCameraOptions = (
   cameraAltitudeMeters: number,
   cameraLatitudeOffset: number,
 ) => {
-  const target = turf.along(targetRoute, distanceAlong(targetRouteDistance, progress)).geometry
-    .coordinates;
-  const camera = turf.along(cameraRoute, distanceAlong(cameraRouteDistance, progress)).geometry
-    .coordinates;
+  const target = turf.along(
+    targetRoute,
+    distanceAlong(targetRouteDistance, progress),
+  ).geometry.coordinates;
+  const camera = turf.along(
+    cameraRoute,
+    distanceAlong(cameraRouteDistance, progress),
+  ).geometry.coordinates;
 
   return map.calculateCameraOptionsFromTo(
     new maplibregl.LngLat(camera[0], camera[1] - cameraLatitudeOffset),
@@ -283,10 +293,15 @@ export const MyComposition = () => {
     }
 
     const handle = delayRender("Rendering MapLibre frame");
-    const timelineProgress = interpolate(frame, [0, durationInFrames - 1], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
+    const timelineProgress = interpolate(
+      frame,
+      [0, durationInFrames - 1],
+      [0, 1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      },
+    );
     const travelProgress = interpolate(timelineProgress, [0.2, 0.82], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
@@ -315,7 +330,14 @@ export const MyComposition = () => {
     const trace = map.getSource("trace") as GeoJSONSource | undefined;
 
     trace?.setData(getPartialTargetRoute(travelProgress));
-    map.jumpTo(getCameraOptions(map, travelProgress, cameraAltitudeMeters, cameraLatitudeOffset));
+    map.jumpTo(
+      getCameraOptions(
+        map,
+        travelProgress,
+        cameraAltitudeMeters,
+        cameraLatitudeOffset,
+      ),
+    );
 
     map.once("idle", () => continueRender(handle));
     // Force an idle event even if the camera parameters are unchanged from the previous frame.
@@ -335,7 +357,11 @@ export const MyComposition = () => {
 Use MapLibre's camera helper for camera movement:
 
 ```ts
-map.calculateCameraOptionsFromTo(cameraLngLat, cameraAltitudeMeters, targetLngLat);
+map.calculateCameraOptionsFromTo(
+  cameraLngLat,
+  cameraAltitudeMeters,
+  targetLngLat,
+);
 ```
 
 A good pattern is to keep two concepts separate:
@@ -346,8 +372,10 @@ A good pattern is to keep two concepts separate:
 Then use Turf to read positions from both routes for the same progress value:
 
 ```ts
-const target = turf.along(targetRoute, targetDistance * progress).geometry.coordinates;
-const camera = turf.along(cameraRoute, cameraDistance * progress).geometry.coordinates;
+const target = turf.along(targetRoute, targetDistance * progress).geometry
+  .coordinates;
+const camera = turf.along(cameraRoute, cameraDistance * progress).geometry
+  .coordinates;
 
 map.jumpTo(
   map.calculateCameraOptionsFromTo(
@@ -386,7 +414,9 @@ Use map-native GeoJSON layers for markers and labels:
 ```tsx
 mapInstance.addSource("markers", {
   type: "geojson",
-  data: turf.featureCollection([turf.point([-118.2437, 34.0522], { name: "Los Angeles" })]),
+  data: turf.featureCollection([
+    turf.point([-118.2437, 34.0522], { name: "Los Angeles" }),
+  ]),
 });
 
 mapInstance.addLayer({

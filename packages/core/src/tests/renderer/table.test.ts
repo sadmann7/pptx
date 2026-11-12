@@ -9,7 +9,11 @@ function tableCell(text: string, tcPrXml = "<a:tcPr/>"): string {
   return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody>${tcPrXml}</a:tc>`;
 }
 
-function borderedCell(text: string, fillHex: string, lineHex = "112233"): string {
+function borderedCell(
+  text: string,
+  fillHex: string,
+  lineHex = "112233",
+): string {
   const ln = (name: string) =>
     `<a:${name} w="12700"><a:solidFill><a:srgbClr val="${lineHex}"/></a:solidFill></a:${name}>`;
   return tableCell(
@@ -137,7 +141,12 @@ describe("table sizing", () => {
     );
 
     const table = wrapper.querySelector("table")!;
-    for (const side of ["borderTop", "borderBottom", "borderLeft", "borderRight"] as const) {
+    for (const side of [
+      "borderTop",
+      "borderBottom",
+      "borderLeft",
+      "borderRight",
+    ] as const) {
       expect(table.style[side]).toContain("#112233");
     }
     expect(table.style.boxSizing).toBe("border-box");

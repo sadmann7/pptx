@@ -79,15 +79,24 @@ export interface SelectionBoxState {
   rotation: number;
 }
 
-export interface SelectionBoxProps extends StatefulPrimitiveProps<"div", SelectionBoxState> {}
+export interface SelectionBoxProps extends StatefulPrimitiveProps<
+  "div",
+  SelectionBoxState
+> {}
 
 export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
   function SelectionBox(
     { render, className, style, children, ...selectionBoxProps },
     forwardedRef,
   ) {
-    const { state, zoom, selectedNodes, resizeRects, showResizeHandles, onBorderPointerDown } =
-      useSelectionParts(SELECTION_BOX_NAME);
+    const {
+      state,
+      zoom,
+      selectedNodes,
+      resizeRects,
+      showResizeHandles,
+      onBorderPointerDown,
+    } = useSelectionParts(SELECTION_BOX_NAME);
 
     const isTextMode = state.mode === "text";
     // Not on pointer-down, or a Shift+click that only toggles the selection blinks the handles.
@@ -101,7 +110,9 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
       } else if (state.mode === "resize") {
         rect = resizeRects?.get(node.id) ?? rect;
       }
-      const rotation = isRotating ? normalizeAngle(node.rotation + state.delta) : node.rotation;
+      const rotation = isRotating
+        ? normalizeAngle(node.rotation + state.delta)
+        : node.rotation;
       const showHandles = showResizeHandles && !isDragging && !isRotating;
       const showRotateHandle =
         showResizeHandles &&
@@ -145,7 +156,9 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                   children: (
                     <>
                       {/* Under the handles, which sit on the frame too. */}
-                      {(isTextMode || (node.nodeType === "table" && state.mode === "selected")) && (
+                      {(isTextMode ||
+                        (node.nodeType === "table" &&
+                          state.mode === "selected")) && (
                         <FrameGrabHitboxes
                           hitboxes={
                             node.nodeType === "table"
@@ -164,7 +177,8 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
                     top: rect.y * zoom,
                     width: rect.w * zoom,
                     height: rect.h * zoom,
-                    transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
+                    transform:
+                      rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
                     pointerEvents: "none",
                   },
                 },
@@ -184,7 +198,10 @@ interface FrameGrabHitboxesProps {
 }
 
 // While editing text, dragging the frame moves the shape, as in PowerPoint.
-function FrameGrabHitboxes({ hitboxes, onPointerDown }: FrameGrabHitboxesProps) {
+function FrameGrabHitboxes({
+  hitboxes,
+  onPointerDown,
+}: FrameGrabHitboxesProps) {
   return (
     <>
       {hitboxes.map((style, index) => (

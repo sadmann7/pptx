@@ -5,13 +5,23 @@ import { read255Short } from "./varint";
 // CTF hoists every value a glyph's hinting program pushes into one shared
 // stream; rebuilding the glyph re-emits them as a PUSHB/PUSHW burst. Both halves
 // use caller-owned buffers so a hinted glyph allocates nothing.
-export function readPushValuesInto(reader: Reader, count: number, out: Int16Array): void {
-  if (out.length < count) throw new RangeError("Push-value output buffer is too small");
+export function readPushValuesInto(
+  reader: Reader,
+  count: number,
+  out: Int16Array,
+): void {
+  if (out.length < count)
+    throw new RangeError("Push-value output buffer is too small");
   let length = 0;
   while (length < count) {
     const code = reader.data[reader.pos];
     if (code === 251 || code === 252) {
-      if (length < 2) fail("INVALID_CTF", "Hop code has no value two positions back", reader.pos);
+      if (length < 2)
+        fail(
+          "INVALID_CTF",
+          "Hop code has no value two positions back",
+          reader.pos,
+        );
       reader.pos++;
       const repeated = out[length - 2]!;
       const expansion = code === 251 ? 3 : 5;
@@ -48,7 +58,11 @@ function writePushRun(
   }
 }
 
-export function writePushInstructions(writer: Writer, values: Int16Array, count: number): void {
+export function writePushInstructions(
+  writer: Writer,
+  values: Int16Array,
+  count: number,
+): void {
   let start = 0;
   while (start < count) {
     const words = values[start]! < 0 || values[start]! > 255;

@@ -11,14 +11,28 @@ interface PptxCardProps extends React.ComponentProps<"div"> {
   slideIndex?: number;
 }
 
-export function PptxCard({ file, width, height, slideIndex = 0, style, ...props }: PptxCardProps) {
+export function PptxCard({
+  file,
+  width,
+  height,
+  slideIndex = 0,
+  style,
+  ...props
+}: PptxCardProps) {
   const { data, hostRef, onLoad } = useDeck(file);
 
   return (
     <div ref={hostRef} style={{ width, height, ...style }} {...props}>
       {data && (
-        <Presentation.Root file={data} defaultSlideIndex={slideIndex} onLoad={onLoad}>
-          <Presentation.Viewport autoFit style={{ width, height, overflow: "hidden" }}>
+        <Presentation.Root
+          file={data}
+          defaultSlideIndex={slideIndex}
+          onLoad={onLoad}
+        >
+          <Presentation.Viewport
+            autoFit
+            style={{ width, height, overflow: "hidden" }}
+          >
             <Presentation.Slide />
           </Presentation.Viewport>
         </Presentation.Root>

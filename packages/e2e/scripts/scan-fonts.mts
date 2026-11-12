@@ -22,7 +22,8 @@ const kb = (bytes: number) => `${(bytes / 1024).toFixed(0)} KB`;
 async function readProducer(zip: JSZip): Promise<string> {
   const app = await zip.file("docProps/app.xml")?.async("string");
   if (!app) return "unknown";
-  const name = /<Application>([^<]*)<\/Application>/.exec(app)?.[1] ?? "unknown";
+  const name =
+    /<Application>([^<]*)<\/Application>/.exec(app)?.[1] ?? "unknown";
   const version = /<AppVersion>([^<]*)<\/AppVersion>/.exec(app)?.[1];
   return version ? `${name} ${version}` : name;
 }
@@ -71,9 +72,14 @@ const CORE_FIXTURES = path.join(
 );
 if (fs.existsSync(CORE_FIXTURES)) {
   console.log("core decode fixtures");
-  for (const name of fs.readdirSync(CORE_FIXTURES).filter((n) => n.endsWith(".fntdata"))) {
+  for (const name of fs
+    .readdirSync(CORE_FIXTURES)
+    .filter((n) => n.endsWith(".fntdata"))) {
     console.log(
-      describePart(name, new Uint8Array(fs.readFileSync(path.join(CORE_FIXTURES, name)))),
+      describePart(
+        name,
+        new Uint8Array(fs.readFileSync(path.join(CORE_FIXTURES, name))),
+      ),
     );
   }
 }
@@ -95,7 +101,9 @@ for (const dir of dirs.length > 0 ? dirs : ["fixtures", "decks"]) {
       console.log(`${dir}/${name}\n    not a readable package, skipped`);
       continue;
     }
-    const parts = Object.values(zip.files).filter((f) => /\.fntdata$/i.test(f.name));
+    const parts = Object.values(zip.files).filter((f) =>
+      /\.fntdata$/i.test(f.name),
+    );
     if (parts.length === 0) continue;
 
     const rows: string[] = [];

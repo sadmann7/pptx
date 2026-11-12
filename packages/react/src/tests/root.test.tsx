@@ -72,7 +72,9 @@ describe("Presentation.Root file prop", () => {
   it("loads the file into the internal store and calls onLoad", async () => {
     const fixture = await loadFixture();
     let loaded: Store | null = null;
-    render(<Presentation.Root file={fixture} onLoad={(store) => (loaded = store)} />);
+    render(
+      <Presentation.Root file={fixture} onLoad={(store) => (loaded = store)} />,
+    );
 
     await waitFor(() => expect(loaded).not.toBeNull());
     expect(loaded!.getState().status).toBe("ready");
@@ -81,7 +83,12 @@ describe("Presentation.Root file prop", () => {
 
   it("calls onError for an invalid file", async () => {
     let error: Error | null = null;
-    render(<Presentation.Root file={new ArrayBuffer(8)} onError={(err) => (error = err)} />);
+    render(
+      <Presentation.Root
+        file={new ArrayBuffer(8)}
+        onError={(err) => (error = err)}
+      />,
+    );
     await waitFor(() => expect(error).not.toBeNull());
     expect(error).toBeInstanceOf(Error);
   });
@@ -93,12 +100,19 @@ describe("Presentation.Root file prop", () => {
 
     render(
       <Presentation.Provider store={store}>
-        <Presentation.Root file={fixture} onSlideChange={(event) => events.push(event)} />
+        <Presentation.Root
+          file={fixture}
+          onSlideChange={(event) => events.push(event)}
+        />
       </Presentation.Provider>,
     );
 
     await waitFor(() => expect(events).toHaveLength(1));
-    expect(events[0]).toMatchObject({ index: 0, reason: "load", previousSlideId: null });
+    expect(events[0]).toMatchObject({
+      index: 0,
+      reason: "load",
+      previousSlideId: null,
+    });
 
     act(() => store.next());
     expect(events).toHaveLength(2);

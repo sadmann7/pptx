@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import { decodeEmbeddedFont } from "../../fonts/decode";
-import { decodeMtx, MtxError, parseCtf, parseEotMetadata } from "../../fonts/mtx";
+import {
+  decodeMtx,
+  MtxError,
+  parseCtf,
+  parseEotMetadata,
+} from "../../fonts/mtx";
 import { Reader } from "../../fonts/mtx/binary";
 import { DEFAULT_LIMITS } from "../../fonts/mtx/limits";
-import { AdaptiveHuffman, BitReader, decompressLzcomp } from "../../fonts/mtx/lzcomp";
+import {
+  AdaptiveHuffman,
+  BitReader,
+  decompressLzcomp,
+} from "../../fonts/mtx/lzcomp";
 import { decodeTripletArrays } from "../../fonts/mtx/triplet";
 import {
   buildCompressedEot,
@@ -36,8 +45,12 @@ function pt(x: number, y: number, onCurve = true): GlyphPoint {
 
 describe("LZCOMP", () => {
   it("round-trips a literal-only stream", () => {
-    const expected = new TextEncoder().encode("MicroType Express literal stream");
-    expect(decompressLzcomp(encodeLzcompLiterals(expected), 3, LIMITS)).toEqual(expected);
+    const expected = new TextEncoder().encode(
+      "MicroType Express literal stream",
+    );
+    expect(decompressLzcomp(encodeLzcompLiterals(expected), 3, LIMITS)).toEqual(
+      expected,
+    );
   });
 
   it("round-trips back-references produced by a greedy matcher", () => {
@@ -51,8 +64,11 @@ describe("LZCOMP", () => {
 
   it("round-trips a stream long enough to need multiple distance ranges", () => {
     const expected = new Uint8Array(6000);
-    for (let i = 0; i < expected.length; i++) expected[i] = (i * 7 + (i >>> 5)) & 0xff;
-    expect(decompressLzcomp(encodeLzcompGreedy(expected), 3, LIMITS)).toEqual(expected);
+    for (let i = 0; i < expected.length; i++)
+      expected[i] = (i * 7 + (i >>> 5)) & 0xff;
+    expect(decompressLzcomp(encodeLzcompGreedy(expected), 3, LIMITS)).toEqual(
+      expected,
+    );
   });
 
   it("decodes the DUP2, DUP4, and DUP6 shorthands", () => {
@@ -74,21 +90,27 @@ describe("LZCOMP", () => {
       { literal: 0x43 },
       { distance: 1, length: 3 },
     ];
-    expect(Array.from(decompressLzcomp(encodeLzcompOps(ops, 6), 3, LIMITS))).toEqual([
-      0x41, 0x42, 0x43, 0x41, 0x42, 0x43,
-    ]);
+    expect(
+      Array.from(decompressLzcomp(encodeLzcompOps(ops, 6), 3, LIMITS)),
+    ).toEqual([0x41, 0x42, 0x43, 0x41, 0x42, 0x43]);
   });
 
   it("expands the optional run-length layer", () => {
     const expected = Uint8Array.from([1, 1, 1, 1, 1, 1, 2, 0xee, 0xee, 3]);
     const packed = packRunLength(expected, 0xee);
-    expect(decompressLzcomp(encodeLzcompLiterals(packed, { runLength: true }), 3, LIMITS)).toEqual(
-      expected,
-    );
+    expect(
+      decompressLzcomp(
+        encodeLzcompLiterals(packed, { runLength: true }),
+        3,
+        LIMITS,
+      ),
+    ).toEqual(expected);
   });
 
   it("reads a version-1 stream, which omits the run-length flag bit", () => {
-    const expected = new TextEncoder().encode("version one has no leading flag bit");
+    const expected = new TextEncoder().encode(
+      "version one has no leading flag bit",
+    );
     const stream = encodeLzcompGreedy(expected, { version: 1 });
     expect(decompressLzcomp(stream, 1, LIMITS)).toEqual(expected);
     // Reading the same bytes as version 3 consumes a length bit as the flag
@@ -98,9 +120,9 @@ describe("LZCOMP", () => {
 
   it("rejects a stream that declares more output than the limit allows", () => {
     const stream = encodeLzcompLiterals(Uint8Array.from([1, 2, 3]));
-    expect(() => decompressLzcomp(stream, 3, { ...LIMITS, maxStreamBytes: 2 })).toThrow(
-      /declares 3 bytes/u,
-    );
+    expect(() =>
+      decompressLzcomp(stream, 3, { ...LIMITS, maxStreamBytes: 2 }),
+    ).toThrow(/declares 3 bytes/u);
   });
 
   it("keeps the adaptive tree in lockstep between encoder and decoder", () => {
@@ -182,8 +204,18 @@ describe("triplet encoding", () => {
 
 // A font exercising each CTF glyph shape: contourless, computed bounding box,
 // explicit bounding box, composite, and hop-coded hint pushes.
-const SQUARE: GlyphPoint[] = [pt(50, 50), pt(650, 50), pt(650, 700), pt(50, 700)];
-const INNER: GlyphPoint[] = [pt(150, 150), pt(300, 200, false), pt(550, 150), pt(550, 600, false)];
+const SQUARE: GlyphPoint[] = [
+  pt(50, 50),
+  pt(650, 50),
+  pt(650, 700),
+  pt(50, 700),
+];
+const INNER: GlyphPoint[] = [
+  pt(150, 150),
+  pt(300, 200, false),
+  pt(550, 150),
+  pt(550, 600, false),
+];
 const WIDE: GlyphPoint[] = [
   pt(-400, -250),
   pt(1800, -250),
@@ -235,7 +267,9 @@ describe("CTF reconstruction", () => {
   it("produces a valid sfnt with a binary-sorted table directory", () => {
     const tags = font.tableTags;
     expect(tags).toEqual([...tags].sort());
-    expect(new Set(tags)).toEqual(new Set(["head", "maxp", "cvt ", "glyf", "loca"]));
+    expect(new Set(tags)).toEqual(
+      new Set(["head", "maxp", "cvt ", "glyf", "loca"]),
+    );
     expect(font.numGlyphs).toBe(FONT.glyphs.length);
   });
 
@@ -298,7 +332,9 @@ describe("CTF reconstruction", () => {
   it("decodes the control value table as an entry count, not a byte length", () => {
     const cvt = font.tables.get("cvt ")!;
     const view = new DataView(cvt.buffer, cvt.byteOffset, cvt.byteLength);
-    const values = Array.from({ length: cvt.length / 2 }, (_, i) => view.getUint16(i * 2, false));
+    const values = Array.from({ length: cvt.length / 2 }, (_, i) =>
+      view.getUint16(i * 2, false),
+    );
     expect(values).toEqual(FONT.cvt);
   });
 
@@ -314,7 +350,10 @@ describe("CTF reconstruction", () => {
       ],
     }));
     const decoded = decodeEmbeddedFont(
-      buildCompressedEot({ glyphs: filler, indexToLocFormat: 0 }, { literalOnly: true }),
+      buildCompressedEot(
+        { glyphs: filler, indexToLocFormat: 0 },
+        { literalOnly: true },
+      ),
     );
     expect(decoded).toBeDefined();
     const big = new TtfReader(decoded!);
@@ -329,7 +368,10 @@ describe("CTF reconstruction", () => {
 describe("CFF-flavoured CTF", () => {
   // Stands in for a real CFF table: the decoder must not look inside it, only
   // carry it through, so arbitrary bytes are enough to prove that it does.
-  const CFF = Uint8Array.from({ length: 512 }, (_, i) => (i * 31 + (i >>> 3)) & 0xff);
+  const CFF = Uint8Array.from(
+    { length: 512 },
+    (_, i) => (i * 31 + (i >>> 3)) & 0xff,
+  );
   const SPEC: CtfFontSpec = { cff: CFF, numGlyphs: 42 };
 
   it("passes an OTF through, since a CFF font has no glyf to rebuild", () => {
@@ -345,7 +387,9 @@ describe("CFF-flavoured CTF", () => {
 
   it("keeps the OTTO sfnt version, which is what makes it an OTF", () => {
     const decoded = decodeEmbeddedFont(buildCompressedEot(SPEC))!;
-    expect(Array.from(decoded.subarray(0, 4))).toEqual([0x4f, 0x54, 0x54, 0x4f]);
+    expect(Array.from(decoded.subarray(0, 4))).toEqual([
+      0x4f, 0x54, 0x54, 0x4f,
+    ]);
   });
 
   it("rejects an OTTO font with no CFF table", () => {
@@ -354,14 +398,18 @@ describe("CFF-flavoured CTF", () => {
     // flavour still claims CFF outlines while the table that would hold them is
     // gone.
     streams[0].set(new TextEncoder().encode("junk"), 12 + 2 * 16);
-    expect(() => parseCtf(streams, LIMITS)).toThrow(/CFF-flavoured CTF has no CFF table/u);
+    expect(() => parseCtf(streams, LIMITS)).toThrow(
+      /CFF-flavoured CTF has no CFF table/u,
+    );
   });
 
   it("still requires glyf and loca from a TrueType font", () => {
     const streams = buildCtfStreams(FONT);
     // The glyf entry follows head, maxp and cvt.
     streams[0].set(new TextEncoder().encode("junk"), 12 + 3 * 16);
-    expect(() => parseCtf(streams, LIMITS)).toThrow(/CTF is missing glyf or loca/u);
+    expect(() => parseCtf(streams, LIMITS)).toThrow(
+      /CTF is missing glyf or loca/u,
+    );
   });
 });
 
@@ -370,20 +418,29 @@ describe("CTF table directory", () => {
     // Tag lookups take the last entry but every entry is emitted, so a duplicate
     // would give one table two directory records, which validateSfnt still accepts.
     // A passthrough table keeps the rest of the parse healthy for this test.
-    const gasp = { tag: "gasp", data: Uint8Array.of(0, 0, 0, 1, 0xff, 0xff, 0, 2) };
+    const gasp = {
+      tag: "gasp",
+      data: Uint8Array.of(0, 0, 0, 1, 0xff, 0xff, 0, 2),
+    };
     const streams = buildCtfStreams({ ...FONT, extraTables: [gasp, gasp] });
-    expect(() => parseCtf(streams, LIMITS)).toThrow(/Duplicate CTF table tag gasp/u);
+    expect(() => parseCtf(streams, LIMITS)).toThrow(
+      /Duplicate CTF table tag gasp/u,
+    );
   });
 });
 
 describe("MTX container", () => {
   it("accepts a version-1 container", () => {
     const eot = buildCompressedEot(FONT, { version: 1 });
-    expect(new TtfReader(decodeEmbeddedFont(eot)!).numGlyphs).toBe(FONT.glyphs.length);
+    expect(new TtfReader(decodeEmbeddedFont(eot)!).numGlyphs).toBe(
+      FONT.glyphs.length,
+    );
   });
 
   it("rejects an unknown container version", () => {
-    const streams = buildCtfStreams(FONT).map((stream) => encodeLzcompGreedy(stream));
+    const streams = buildCtfStreams(FONT).map((stream) =>
+      encodeLzcompGreedy(stream),
+    );
     const mtx = buildMtx(streams as [Uint8Array, Uint8Array, Uint8Array], 2);
     expect(() => decodeMtx(mtx)).toThrow(/Unsupported MTX version 2/u);
   });
@@ -391,13 +448,17 @@ describe("MTX container", () => {
   it("undoes XOR obfuscation of the payload", () => {
     const eot = buildCompressedEot(FONT, { encrypted: true });
     expect(parseEotMetadata(eot).encrypted).toBe(true);
-    expect(new TtfReader(decodeEmbeddedFont(eot)!).numGlyphs).toBe(FONT.glyphs.length);
+    expect(new TtfReader(decodeEmbeddedFont(eot)!).numGlyphs).toBe(
+      FONT.glyphs.length,
+    );
   });
 });
 
 describe("EOT container", () => {
   it("reads the compression and encryption flags from the header", () => {
-    const metadata = parseEotMetadata(buildEot(Uint8Array.of(1, 2, 3, 4), TTEMBED_TTCOMPRESSED));
+    const metadata = parseEotMetadata(
+      buildEot(Uint8Array.of(1, 2, 3, 4), TTEMBED_TTCOMPRESSED),
+    );
     expect(metadata).toMatchObject({
       version: 1,
       fontDataSize: 4,

@@ -25,7 +25,10 @@ describe("getTextPosition", () => {
     const container = textContainer(BULLETED);
     const world = container.querySelector('[data-pptx-r="1"]')!.firstChild!;
 
-    expect(getTextPosition(container, world, 2)).toEqual({ paragraphIndex: 0, offset: 8 });
+    expect(getTextPosition(container, world, 2)).toEqual({
+      paragraphIndex: 0,
+      offset: 8,
+    });
     container.remove();
   });
 
@@ -33,8 +36,13 @@ describe("getTextPosition", () => {
     const container = textContainer(BULLETED);
     const lines = container.querySelector('[data-pptx-r="2"]')!.firstChild!;
 
-    expect(getTextPosition(container, lines, 1)).toEqual({ paragraphIndex: 1, offset: 5 });
-    expect(getParagraphText(container.children[1] as HTMLElement)).toBe("Two\nlines");
+    expect(getTextPosition(container, lines, 1)).toEqual({
+      paragraphIndex: 1,
+      offset: 5,
+    });
+    expect(getParagraphText(container.children[1] as HTMLElement)).toBe(
+      "Two\nlines",
+    );
     container.remove();
   });
 
@@ -62,8 +70,14 @@ describe("getTextPosition", () => {
   it("maps a DOM range spanning paragraphs", () => {
     const container = textContainer(BULLETED);
     const range = document.createRange();
-    range.setStart(container.querySelector('[data-pptx-r="1"]')!.firstChild!, 1);
-    range.setEnd(container.children[1].querySelector('[data-pptx-r="0"]')!.firstChild!, 2);
+    range.setStart(
+      container.querySelector('[data-pptx-r="1"]')!.firstChild!,
+      1,
+    );
+    range.setEnd(
+      container.children[1].querySelector('[data-pptx-r="0"]')!.firstChild!,
+      2,
+    );
 
     expect(getTextRange(container, range)).toEqual({
       start: { paragraphIndex: 0, offset: 7 },
@@ -114,7 +128,9 @@ describe("getActiveTextStyle", () => {
         `<span data-pptx-r="1" style="font-weight: bold; font-size: 18pt; color: rgb(255, 0, 0); font-family: Arial">B</span>` +
         `</div>`,
     );
-    const runs = Array.from(container.querySelectorAll<HTMLElement>("[data-pptx-r]"));
+    const runs = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-pptx-r]"),
+    );
     const paragraphs = [container.firstElementChild as HTMLElement];
 
     expect(getActiveTextStyle(runs, paragraphs)).toEqual({
@@ -142,7 +158,9 @@ describe("getActiveTextStyle font size", () => {
       `<div data-pptx-p="0"><span data-pptx-r="0" style="font-size: 15pt">A</span></div>`,
     );
     container.setAttribute("data-pptx-font-scale", "0.625");
-    const runs = Array.from(container.querySelectorAll<HTMLElement>("[data-pptx-r]"));
+    const runs = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-pptx-r]"),
+    );
 
     expect(getActiveTextStyle(runs, [])?.fontSize).toBe(24);
     container.remove();
@@ -152,7 +170,9 @@ describe("getActiveTextStyle font size", () => {
 describe("getRangeRuns", () => {
   it("skips a run the range only touches at its edge", () => {
     const container = textContainer(BULLETED);
-    const [hello, world] = Array.from(container.querySelectorAll<HTMLElement>("[data-pptx-r]"));
+    const [hello, world] = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-pptx-r]"),
+    );
     const range = document.createRange();
     range.setStart(hello.firstChild!, 0);
     range.setEnd(world.firstChild!, 0);

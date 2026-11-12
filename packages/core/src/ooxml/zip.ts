@@ -101,7 +101,8 @@ function setPathMapEntry<T>(map: Map<string, T>, path: string, value: T): void {
 }
 
 function readUncompressedSize(file: JSZipObject): number | undefined {
-  const data = (file as unknown as { _data?: { uncompressedSize?: number } })._data;
+  const data = (file as unknown as { _data?: { uncompressedSize?: number } })
+    ._data;
   const size = data?.uncompressedSize;
   return typeof size === "number" && Number.isFinite(size) ? size : undefined;
 }
@@ -135,7 +136,9 @@ class ZipLazyMediaResolver implements MediaResolver {
     private readonly state: PptxReadLimitState,
     readonly totalBytes: number,
   ) {
-    this.totalCount = new Set(Array.from(entries.values(), (entry) => entry.path)).size;
+    this.totalCount = new Set(
+      Array.from(entries.values(), (entry) => entry.path),
+    ).size;
   }
 
   get loadedBytes(): number {
@@ -170,11 +173,13 @@ class ZipLazyMediaResolver implements MediaResolver {
   private async readEntry(entry: LazyMediaEntry): Promise<Uint8Array> {
     let read = this.inflight.get(entry.path);
     if (!read) {
-      read = readZipBinaryEntry(entry.path, entry.file, this.state).then((bytes) => {
-        setPathMapEntry(this.media, entry.path, bytes);
-        this.loadedPaths.add(entry.path);
-        return bytes;
-      });
+      read = readZipBinaryEntry(entry.path, entry.file, this.state).then(
+        (bytes) => {
+          setPathMapEntry(this.media, entry.path, bytes);
+          this.loadedPaths.add(entry.path);
+          return bytes;
+        },
+      );
       this.inflight.set(entry.path, read);
     }
 
@@ -186,7 +191,11 @@ class ZipLazyMediaResolver implements MediaResolver {
   }
 }
 
-function validateDecodedEntrySize(path: string, size: number, state: PptxReadLimitState): void {
+function validateDecodedEntrySize(
+  path: string,
+  size: number,
+  state: PptxReadLimitState,
+): void {
   if (
     state.limits.maxEntryUncompressedBytes !== undefined &&
     size > state.limits.maxEntryUncompressedBytes
@@ -212,7 +221,10 @@ function validateDecodedEntrySize(path: string, size: number, state: PptxReadLim
   if (getIsMediaPath(path)) {
     state.unknownMediaBytes += size;
     const mediaBytes = state.knownMediaBytes + state.unknownMediaBytes;
-    if (state.limits.maxMediaBytes !== undefined && mediaBytes > state.limits.maxMediaBytes) {
+    if (
+      state.limits.maxMediaBytes !== undefined &&
+      mediaBytes > state.limits.maxMediaBytes
+    ) {
       throwZipLimitExceeded(
         `media bytes ${mediaBytes} > maxMediaBytes ${state.limits.maxMediaBytes}`,
       );
@@ -300,14 +312,18 @@ async function readPptxInternal(
 ): Promise<PptxFiles> {
   const maxConcurrency = limits.maxConcurrency ?? 8;
   if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
-    throwZipLimitExceeded(`maxConcurrency ${limits.maxConcurrency} must be an integer >= 1`);
+    throwZipLimitExceeded(
+      `maxConcurrency ${limits.maxConcurrency} must be an integer >= 1`,
+    );
   }
 
   const zip = await JSZip.loadAsync(buffer);
   const entries = Object.entries(zip.files).filter(([, file]) => !file.dir);
 
   if (limits.maxEntries !== undefined && entries.length > limits.maxEntries) {
-    throwZipLimitExceeded(`entries ${entries.length} > maxEntries ${limits.maxEntries}`);
+    throwZipLimitExceeded(
+      `entries ${entries.length} > maxEntries ${limits.maxEntries}`,
+    );
   }
 
   const knownSizeByPath = new Map<string, number>();
@@ -321,7 +337,10 @@ async function readPptxInternal(
 
     knownSizeByPath.set(normalizedPath, size);
 
-    if (limits.maxEntryUncompressedBytes !== undefined && size > limits.maxEntryUncompressedBytes) {
+    if (
+      limits.maxEntryUncompressedBytes !== undefined &&
+      size > limits.maxEntryUncompressedBytes
+    ) {
       throwZipLimitExceeded(
         `${normalizedPath} is ${size} bytes > maxEntryUncompressedBytes ${limits.maxEntryUncompressedBytes}`,
       );
@@ -339,7 +358,10 @@ async function readPptxInternal(
 
     if (getIsMediaPath(normalizedPath)) {
       knownMediaBytes += size;
-      if (limits.maxMediaBytes !== undefined && knownMediaBytes > limits.maxMediaBytes) {
+      if (
+        limits.maxMediaBytes !== undefined &&
+        knownMediaBytes > limits.maxMediaBytes
+      ) {
         throwZipLimitExceeded(
           `media bytes ${knownMediaBytes} > maxMediaBytes ${limits.maxMediaBytes}`,
         );
@@ -392,32 +414,54 @@ async function readPptxInternal(
     }
   });
 
-  async function categorizeEntry(path: string, file: JSZipObject): Promise<void> {
+  async function categorizeEntry(
+    path: string,
+    file: JSZipObject,
+  ): Promise<void> {
     const normalizedPath = path.replace(/\\/g, "/");
 
     if (normalizedPath === "[Content_Types].xml") {
-      result.contentTypes = await readZipTextEntry(normalizedPath, file, limitState);
+      result.contentTypes = await readZipTextEntry(
+        normalizedPath,
+        file,
+        limitState,
+      );
       return;
     }
 
     if (normalizedPath === "ppt/presentation.xml") {
-      result.presentation = await readZipTextEntry(normalizedPath, file, limitState);
+      result.presentation = await readZipTextEntry(
+        normalizedPath,
+        file,
+        limitState,
+      );
       return;
     }
 
     if (normalizedPath === "ppt/_rels/presentation.xml.rels") {
-      result.presentationRels = await readZipTextEntry(normalizedPath, file, limitState);
+      result.presentationRels = await readZipTextEntry(
+        normalizedPath,
+        file,
+        limitState,
+      );
       return;
     }
 
     if (normalizedPath === "ppt/tableStyles.xml") {
-      result.tableStyles = await readZipTextEntry(normalizedPath, file, limitState);
+      result.tableStyles = await readZipTextEntry(
+        normalizedPath,
+        file,
+        limitState,
+      );
       return;
     }
 
     if (getIsMediaPath(normalizedPath)) {
       if (options.lazyMedia) {
-        setPathMapEntry(lazyMediaEntries, normalizedPath, { path: normalizedPath, file });
+        setPathMapEntry(lazyMediaEntries, normalizedPath, {
+          path: normalizedPath,
+          file,
+        });
         return;
       }
 
@@ -488,7 +532,11 @@ async function readPptxInternal(
 
     // A master finds its theme by relationship, so some generators nest it
     // (ppt/slideMasters/theme/theme2.xml); match a theme/ folder at any depth.
-    if (/^ppt\/(?:[^/]+\/)*theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(normalizedPath)) {
+    if (
+      /^ppt\/(?:[^/]+\/)*theme\/(?!themeOverride[^/]*\.xml$)[^/]+\.xml$/.test(
+        normalizedPath,
+      )
+    ) {
       setPathMapEntry(
         result.themes,
         normalizedPath,
@@ -497,7 +545,9 @@ async function readPptxInternal(
       return;
     }
 
-    if (/^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
+    if (
+      /^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)
+    ) {
       if (result.themeOverrides) {
         setPathMapEntry(
           result.themeOverrides,
@@ -511,7 +561,9 @@ async function readPptxInternal(
     // Chart parts canonically live in ppt/charts/, but the location is
     // relationship-defined, and some generators (e.g. Open XML SDK) nest them
     // per-slide (ppt/slides/charts/chart1.xml), so match any depth under ppt/.
-    if (/^ppt\/(?:[^/]+\/)*charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)) {
+    if (
+      /^ppt\/(?:[^/]+\/)*charts\/_rels\/[^/]+\.xml\.rels$/.test(normalizedPath)
+    ) {
       if (result.chartRels) {
         setPathMapEntry(
           result.chartRels,

@@ -11,7 +11,9 @@ describe("snapMove", () => {
     const result = snapMove(BOX, 327, 0, [SLIDE], 6);
     expect(result.dx).toBe(330);
     expect(result.dy).toBe(0);
-    expect(result.guides).toEqual([{ axis: "x", position: 480, start: 0, end: 540 }]);
+    expect(result.guides).toEqual([
+      { axis: "x", position: 480, start: 0, end: 540 },
+    ]);
   });
 
   it("snaps edges onto another shape's edges, both axes at once", () => {
@@ -51,14 +53,21 @@ describe("snapResize", () => {
     // Dragging the east edge from 200 to 477 snaps it to the slide center.
     const result = snapResize(BOX, "e", 277, 0, [SLIDE], 6);
     expect(result.dx).toBe(280);
-    expect(result.guides).toEqual([{ axis: "x", position: 480, start: 0, end: 540 }]);
+    expect(result.guides).toEqual([
+      { axis: "x", position: 480, start: 0, end: 540 },
+    ]);
   });
 
   it("snaps a west edge and the guide follows the resized rect", () => {
     const other = { x: 40, y: 400, w: 20, h: 20 };
     const result = snapResize(BOX, "nw", -57, 0, [other], 6);
     expect(result.dx).toBe(-60);
-    expect(result.guides[0]).toEqual({ axis: "x", position: 40, start: 100, end: 420 });
+    expect(result.guides[0]).toEqual({
+      axis: "x",
+      position: 40,
+      start: 100,
+      end: 420,
+    });
   });
 
   it("skips aspect-locked corner drags", () => {

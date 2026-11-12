@@ -12,11 +12,15 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SLIDE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide";
-const SLIDE_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml";
+const SLIDE_REL =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide";
+const SLIDE_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.slide+xml";
 
 const count = Number(process.argv[2] ?? 300);
-const source = process.argv[3] ?? join(HERE, "..", "fixtures", "adventure-club-pin-and-paper.pptx");
+const source =
+  process.argv[3] ??
+  join(HERE, "..", "fixtures", "adventure-club-pin-and-paper.pptx");
 const outDir = join(HERE, "..", "recordings", "perf", "decks");
 
 const zip = await JSZip.loadAsync(readFileSync(source));
@@ -27,7 +31,9 @@ const slides = await Promise.all(
   sourceSlides.map(async (path) => ({
     xml: await zip.file(path)!.async("string"),
     rels:
-      (await zip.file(path.replace("slides/", "slides/_rels/") + ".rels")?.async("string")) ?? "",
+      (await zip
+        .file(path.replace("slides/", "slides/_rels/") + ".rels")
+        ?.async("string")) ?? "",
   })),
 );
 
@@ -51,7 +57,9 @@ for (let index = 0; index < count; index++) {
   presentationRels.push(
     `<Relationship Id="rIdBench${index}" Type="${SLIDE_REL}" Target="/ppt/slides/${name}"/>`,
   );
-  overrides.push(`<Override PartName="/ppt/slides/${name}" ContentType="${SLIDE_TYPE}"/>`);
+  overrides.push(
+    `<Override PartName="/ppt/slides/${name}" ContentType="${SLIDE_TYPE}"/>`,
+  );
 }
 
 const presentation = await zip.file("ppt/presentation.xml")!.async("string");
@@ -69,17 +77,26 @@ const rels = (await zip.file(relsPath)!.async("string")).replace(
 );
 zip.file(
   relsPath,
-  rels.replace("</Relationships>", `${presentationRels.join("")}</Relationships>`),
+  rels.replace(
+    "</Relationships>",
+    `${presentationRels.join("")}</Relationships>`,
+  ),
 );
 const types = (await zip.file("[Content_Types].xml")!.async("string")).replace(
   /<Override PartName="\/ppt\/slides\/slide\d+\.xml"[^>]*\/>/g,
   "",
 );
-zip.file("[Content_Types].xml", types.replace("</Types>", `${overrides.join("")}</Types>`));
+zip.file(
+  "[Content_Types].xml",
+  types.replace("</Types>", `${overrides.join("")}</Types>`),
+);
 
 mkdirSync(outDir, { recursive: true });
 const out = join(outDir, `bench-${count}.pptx`);
-writeFileSync(out, await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" }));
+writeFileSync(
+  out,
+  await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" }),
+);
 console.log(
   `Wrote ${out}: ${count} slides from ${basename(source)} (${slides.length} source slides)`,
 );

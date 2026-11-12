@@ -3,7 +3,15 @@ import { act } from "react";
 import type { SlideNode } from "@diceui/pptx-core";
 import { PPTX_DATASET } from "@diceui/pptx-core";
 import { fireEvent, render, waitFor } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { Presentation } from "../index";
 import type { HandleDirection, Rect } from "../selection/geometry";
@@ -18,7 +26,11 @@ import {
   toggleSelection,
 } from "../selection/geometry";
 import type { SelectionChangeEvent } from "../selection/selection";
-import { cleanText, readBackTextBody, textBodyChanged } from "../selection/text-range";
+import {
+  cleanText,
+  readBackTextBody,
+  textBodyChanged,
+} from "../selection/text-range";
 import { createStore } from "../store";
 import { editableStore } from "./test-utils";
 
@@ -56,37 +68,77 @@ describe("resizeRect", () => {
 
   describe("cardinal handles", () => {
     it("e: grows width rightward", () => {
-      expect(resizeRect(origin, "e", 50, 0)).toEqual({ x: 100, y: 100, w: 250, h: 100 });
+      expect(resizeRect(origin, "e", 50, 0)).toEqual({
+        x: 100,
+        y: 100,
+        w: 250,
+        h: 100,
+      });
     });
 
     it("w: grows width leftward (shifts x)", () => {
-      expect(resizeRect(origin, "w", -50, 0)).toEqual({ x: 50, y: 100, w: 250, h: 100 });
+      expect(resizeRect(origin, "w", -50, 0)).toEqual({
+        x: 50,
+        y: 100,
+        w: 250,
+        h: 100,
+      });
     });
 
     it("s: grows height downward", () => {
-      expect(resizeRect(origin, "s", 0, 30)).toEqual({ x: 100, y: 100, w: 200, h: 130 });
+      expect(resizeRect(origin, "s", 0, 30)).toEqual({
+        x: 100,
+        y: 100,
+        w: 200,
+        h: 130,
+      });
     });
 
     it("n: grows height upward (shifts y)", () => {
-      expect(resizeRect(origin, "n", 0, -40)).toEqual({ x: 100, y: 60, w: 200, h: 140 });
+      expect(resizeRect(origin, "n", 0, -40)).toEqual({
+        x: 100,
+        y: 60,
+        w: 200,
+        h: 140,
+      });
     });
   });
 
   describe("corner handles", () => {
     it("se: grows both dimensions", () => {
-      expect(resizeRect(origin, "se", 20, 10)).toEqual({ x: 100, y: 100, w: 220, h: 110 });
+      expect(resizeRect(origin, "se", 20, 10)).toEqual({
+        x: 100,
+        y: 100,
+        w: 220,
+        h: 110,
+      });
     });
 
     it("nw: grows both dimensions (shifts x and y)", () => {
-      expect(resizeRect(origin, "nw", -30, -20)).toEqual({ x: 70, y: 80, w: 230, h: 120 });
+      expect(resizeRect(origin, "nw", -30, -20)).toEqual({
+        x: 70,
+        y: 80,
+        w: 230,
+        h: 120,
+      });
     });
 
     it("ne: grows width right, height up", () => {
-      expect(resizeRect(origin, "ne", 10, -15)).toEqual({ x: 100, y: 85, w: 210, h: 115 });
+      expect(resizeRect(origin, "ne", 10, -15)).toEqual({
+        x: 100,
+        y: 85,
+        w: 210,
+        h: 115,
+      });
     });
 
     it("sw: grows width left, height down", () => {
-      expect(resizeRect(origin, "sw", -10, 15)).toEqual({ x: 90, y: 100, w: 210, h: 115 });
+      expect(resizeRect(origin, "sw", -10, 15)).toEqual({
+        x: 90,
+        y: 100,
+        w: 210,
+        h: 115,
+      });
     });
   });
 
@@ -148,7 +200,16 @@ describe("resizeRect", () => {
 
   describe("zero deltas", () => {
     it("returns same rect when dx=0 dy=0 for any handle", () => {
-      const handles: HandleDirection[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+      const handles: HandleDirection[] = [
+        "nw",
+        "n",
+        "ne",
+        "e",
+        "se",
+        "s",
+        "sw",
+        "w",
+      ];
       for (const h of handles) {
         expect(resizeRect(origin, h, 0, 0)).toEqual(origin);
       }
@@ -179,7 +240,10 @@ describe("handleScale", () => {
   });
 
   it("reports 1 for an axis with no extent to scale", () => {
-    expect(handleScale({ x: 0, y: 0, w: 0, h: 0 }, "se", 50, 50)).toEqual({ x: 1, y: 1 });
+    expect(handleScale({ x: 0, y: 0, w: 0, h: 0 }, "se", 50, 50)).toEqual({
+      x: 1,
+      y: 1,
+    });
   });
 });
 
@@ -187,9 +251,22 @@ describe("scaleRectFromHandle", () => {
   const rect: Rect = { x: 100, y: 200, w: 200, h: 100 };
 
   it("reproduces resizeRect for the shape whose handle was dragged", () => {
-    for (const handle of ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const) {
+    for (const handle of [
+      "nw",
+      "n",
+      "ne",
+      "e",
+      "se",
+      "s",
+      "sw",
+      "w",
+    ] as const) {
       const expected = resizeRect(rect, handle, 60, 40);
-      const scaled = scaleRectFromHandle(rect, handle, handleScale(rect, handle, 60, 40));
+      const scaled = scaleRectFromHandle(
+        rect,
+        handle,
+        handleScale(rect, handle, 60, 40),
+      );
       expect(scaled, handle).toEqual(expected);
     }
   });
@@ -326,7 +403,10 @@ describe("cleanText", () => {
 });
 
 describe("readBackTextBody", () => {
-  function makePara(pIndex: number, runs: { rIndex: number; text: string }[]): HTMLElement {
+  function makePara(
+    pIndex: number,
+    runs: { rIndex: number; text: string }[],
+  ): HTMLElement {
     const div = document.createElement("div");
     div.dataset[PPTX_DATASET.paragraph] = String(pIndex);
     for (const r of runs) {
@@ -429,7 +509,9 @@ describe("readBackTextBody", () => {
 });
 
 describe("textBodyChanged", () => {
-  function makeShapeNode(paragraphs: { runs: { text: string }[] }[]): SlideNode {
+  function makeShapeNode(
+    paragraphs: { runs: { text: string }[] }[],
+  ): SlideNode {
     return {
       id: "s1",
       name: "Shape",
@@ -469,7 +551,10 @@ describe("textBodyChanged", () => {
   });
 
   it("returns true when paragraph count differs", () => {
-    const node = makeShapeNode([{ runs: [{ text: "A" }] }, { runs: [{ text: "B" }] }]);
+    const node = makeShapeNode([
+      { runs: [{ text: "A" }] },
+      { runs: [{ text: "B" }] },
+    ]);
     const readBack = [{ sourceParagraphIndex: 0, runs: [{ text: "AB" }] }];
     expect(textBodyChanged(node, readBack)).toBe(true);
   });
@@ -487,12 +572,18 @@ async function renderSelection(props: Record<string, unknown> = {}) {
   );
 
   await waitFor(() => {
-    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-presentation-selection]"),
+    ).not.toBeNull();
   });
 
-  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>(
+    "[data-presentation-selection]",
+  )!;
   const slideWrapper = overlay.parentElement!.parentElement!;
-  const shapeElements = slideWrapper.querySelectorAll<HTMLElement>("[data-pptx-node-id]");
+  const shapeElements = slideWrapper.querySelectorAll<HTMLElement>(
+    "[data-pptx-node-id]",
+  );
 
   return { store, container, overlay, slideWrapper, shapeElements };
 }
@@ -554,7 +645,8 @@ describe("onSelectionChange and onModeChange", () => {
   it("reports mode transitions with the previous mode, and not on mount", async () => {
     const modes: [string, string][] = [];
     const { overlay } = await renderSelection({
-      onModeChange: (mode: string, previousMode: string) => modes.push([mode, previousMode]),
+      onModeChange: (mode: string, previousMode: string) =>
+        modes.push([mode, previousMode]),
     });
 
     expect(modes).toHaveLength(0);
@@ -630,7 +722,12 @@ describe("marquee selection", () => {
     const { overlay } = await renderSelection();
 
     act(() => {
-      fireEvent.pointerDown(overlay, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(overlay, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+      });
     });
 
     expect(overlay.getAttribute("data-mode")).toBe("marquee");
@@ -694,7 +791,8 @@ describe("multi-selection handles", () => {
   }
 
   function handleCount(container: HTMLElement): number {
-    return container.querySelectorAll("[data-presentation-resize-handle]").length;
+    return container.querySelectorAll("[data-presentation-resize-handle]")
+      .length;
   }
 
   it("keeps handles up while Shift+clicking a second shape", async () => {
@@ -736,10 +834,20 @@ describe("multi-selection handles", () => {
 
     hitTarget = shapeElements[1];
     act(() => {
-      fireEvent.pointerDown(overlay, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerDown(overlay, {
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+        pointerId: 1,
+      });
     });
     act(() => {
-      fireEvent.pointerMove(overlay, { buttons: 1, clientX: 60, clientY: 60, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        buttons: 1,
+        clientX: 60,
+        clientY: 60,
+        pointerId: 1,
+      });
     });
     expect(modes.at(-1)).toBe("move");
   });
@@ -805,10 +913,20 @@ describe("multi-selection handles", () => {
 
     hitTarget = shapeElements[0];
     act(() => {
-      fireEvent.pointerDown(overlay, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerDown(overlay, {
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+        pointerId: 1,
+      });
     });
     act(() => {
-      fireEvent.pointerMove(overlay, { buttons: 1, clientX: 200, clientY: 200, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        buttons: 1,
+        clientX: 200,
+        clientY: 200,
+        pointerId: 1,
+      });
     });
     expect(handleCount(container)).toBe(0);
 
@@ -826,16 +944,22 @@ describe("multi-selection handles", () => {
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
 
-    const boxes = container.querySelectorAll("[data-presentation-selection-box]");
+    const boxes = container.querySelectorAll(
+      "[data-presentation-selection-box]",
+    );
     expect(boxes.length).toBeGreaterThan(1);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(8);
+      expect(
+        box.querySelectorAll("[data-presentation-resize-handle]"),
+      ).toHaveLength(8);
     }
   });
 
   it("resizes the whole selection from one shape's handle", async () => {
     const { store, overlay, container } = await renderSelection();
-    const before = store.getActiveSlide()!.nodes.map((node) => ({ ...node.size }));
+    const before = store
+      .getActiveSlide()!
+      .nodes.map((node) => ({ ...node.size }));
     expect(before.length).toBeGreaterThan(1);
 
     act(() => {
@@ -844,12 +968,24 @@ describe("multi-selection handles", () => {
     });
 
     // Separate acts, since each handler needs the previous state update flushed.
-    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="se"]')!;
+    const handle = container.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="se"]',
+    )!;
     act(() => {
-      fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+      });
     });
     act(() => {
-      fireEvent.pointerMove(overlay, { clientX: 40, clientY: 40, buttons: 1, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        clientX: 40,
+        clientY: 40,
+        buttons: 1,
+        pointerId: 1,
+      });
     });
     // Async: a batch edit awaits between its sub-operations, so the shapes
     // after the first one land in later microtasks.
@@ -857,7 +993,9 @@ describe("multi-selection handles", () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
     });
 
-    const after = store.getActiveSlide()!.nodes.map((node) => ({ ...node.size }));
+    const after = store
+      .getActiveSlide()!
+      .nodes.map((node) => ({ ...node.size }));
     for (const [index, size] of after.entries()) {
       expect(size.w).toBeGreaterThan(before[index].w);
       expect(size.h).toBeGreaterThan(before[index].h);
@@ -869,23 +1007,34 @@ describe("right-click", () => {
   function rightClick(overlay: HTMLElement, target: HTMLElement | null): void {
     hitTarget = target;
     act(() => {
-      fireEvent.pointerDown(overlay, { button: 2, clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerDown(overlay, {
+        button: 2,
+        clientX: 10,
+        clientY: 10,
+        pointerId: 1,
+      });
       fireEvent.pointerUp(overlay, { button: 2, pointerId: 1 });
     });
   }
 
   it("selects the shape under the pointer", async () => {
     const onSelectionChange = vi.fn();
-    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+    const { overlay, shapeElements } = await renderSelection({
+      onSelectionChange,
+    });
 
     rightClick(overlay, shapeElements[1]);
     expect(overlay.getAttribute("data-mode")).toBe("selected");
-    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ nodeIds: ["3"] }));
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ nodeIds: ["3"] }),
+    );
   });
 
   it("keeps a selection that already includes the shape", async () => {
     const onSelectionChange = vi.fn();
-    const { overlay, shapeElements } = await renderSelection({ onSelectionChange });
+    const { overlay, shapeElements } = await renderSelection({
+      onSelectionChange,
+    });
     act(() => {
       overlay.focus();
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
@@ -1040,7 +1189,9 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+      expect(
+        container.querySelector("[data-presentation-selection]"),
+      ).not.toBeNull();
     });
 
     act(() => {
@@ -1065,7 +1216,9 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+      expect(
+        container.querySelector("[data-presentation-selection]"),
+      ).not.toBeNull();
     });
 
     act(() => {
@@ -1079,7 +1232,10 @@ describe("keyboard shortcuts", () => {
 
   it("acts on a keystroke aimed at the overlay", async () => {
     const onUndo = vi.fn();
-    const { overlay } = await renderSelection({ undoRedoShortcuts: true, onUndo });
+    const { overlay } = await renderSelection({
+      undoRedoShortcuts: true,
+      onUndo,
+    });
 
     act(() => overlay.focus());
     act(() => {
@@ -1107,10 +1263,14 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+      expect(
+        container.querySelector("[data-presentation-selection]"),
+      ).not.toBeNull();
     });
 
-    const outside = container.querySelector<HTMLDivElement>("[data-testid='outside']")!;
+    const outside = container.querySelector<HTMLDivElement>(
+      "[data-testid='outside']",
+    )!;
     act(() => outside.focus());
     await act(async () => {
       fireEvent.keyDown(outside, { key: "z", ctrlKey: true });
@@ -1136,10 +1296,13 @@ describe("keyboard shortcuts", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+      expect(
+        container.querySelector("[data-presentation-selection]"),
+      ).not.toBeNull();
     });
 
-    const thumbnail = container.querySelectorAll<HTMLElement>("[role='option']")[0];
+    const thumbnail =
+      container.querySelectorAll<HTMLElement>("[role='option']")[0];
     act(() => thumbnail.focus());
     act(() => {
       fireEvent.keyDown(thumbnail, { key: "z", ctrlKey: true });

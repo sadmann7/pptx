@@ -12,16 +12,28 @@ async function renderShapes(shapesXml: string): Promise<HTMLElement> {
   return renderSlide(presentation, presentation.slides[0]).element;
 }
 
-function shapeWrapperByFill(element: HTMLElement, hexLower: string): HTMLElement {
+function shapeWrapperByFill(
+  element: HTMLElement,
+  hexLower: string,
+): HTMLElement {
   const paths = [...element.querySelectorAll("svg path")];
-  const match = paths.find((p) => p.getAttribute("fill")?.toLowerCase() === hexLower);
+  const match = paths.find(
+    (p) => p.getAttribute("fill")?.toLowerCase() === hexLower,
+  );
   if (!match) throw new Error(`no path with fill ${hexLower}`);
   const wrapper = match.closest("div");
   if (!wrapper) throw new Error("shape has no wrapper div");
   return wrapper as HTMLElement;
 }
 
-function simpleRect(id: number, offX: number, offY: number, cx: number, cy: number, hex: string) {
+function simpleRect(
+  id: number,
+  offX: number,
+  offY: number,
+  cx: number,
+  cy: number,
+  hex: string,
+) {
   return `<p:sp>
 <p:nvSpPr><p:cNvPr id="${id}" name="Rect${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
 <p:spPr>
@@ -51,7 +63,9 @@ describe("group child coordinate remapping", () => {
   it("scales and positions children when chExt differs from ext", async () => {
     // Group: 96,96 px offset, 192x96 px box; child space 96x48 -> scale 2x/2x.
     // Child at (48,0) 48x48 in child space -> (96,0) 192x96-local, 96x96 px.
-    const element = await renderShapes(group(simpleRect(11, 457200, 0, 457200, 457200, "ED7D31")));
+    const element = await renderShapes(
+      group(simpleRect(11, 457200, 0, 457200, 457200, "ED7D31")),
+    );
 
     const shapeWrapper = shapeWrapperByFill(element, "#ed7d31");
     expect(shapeWrapper.style.left).toBe("96px");
@@ -134,7 +148,8 @@ describe("group flips and rotation", () => {
       group(simpleRect(11, 0, 0, 457200, 457200, "ED7D31"), ` rot="2700000"`),
     );
 
-    const groupWrapper = shapeWrapperByFill(element, "#ed7d31").parentElement as HTMLElement;
+    const groupWrapper = shapeWrapperByFill(element, "#ed7d31")
+      .parentElement as HTMLElement;
     expect(groupWrapper.style.transform).toContain("rotate(45deg)");
     expect(groupWrapper.style.transformOrigin).toBe("center center");
   });
@@ -156,7 +171,9 @@ describe("group fill inheritance (a:grpFill)", () => {
     );
 
     const paths = [...element.querySelectorAll("svg path")];
-    const inherited = paths.find((p) => p.getAttribute("fill")?.toLowerCase() === "#00ff77");
+    const inherited = paths.find(
+      (p) => p.getAttribute("fill")?.toLowerCase() === "#00ff77",
+    );
     expect(inherited).toBeDefined();
   });
 });
@@ -172,9 +189,12 @@ describe("group effects", () => {
       group(simpleRect(11, 0, 0, 457200, 457200, "ED7D31"), "", effect),
     );
 
-    const groupWrapper = shapeWrapperByFill(element, "#ed7d31").parentElement as HTMLElement;
+    const groupWrapper = shapeWrapperByFill(element, "#ed7d31")
+      .parentElement as HTMLElement;
     // dist 38100 EMU = 4px at dir 0; blurRad 19050 EMU = 2px.
-    expect(groupWrapper.style.filter).toContain("drop-shadow(4.0px 0.0px 2.0px");
+    expect(groupWrapper.style.filter).toContain(
+      "drop-shadow(4.0px 0.0px 2.0px",
+    );
     expect(groupWrapper.style.filter).toContain("rgba(0,0,0,0.500)");
   });
 });

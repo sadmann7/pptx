@@ -13,9 +13,13 @@ const THEME_FONT_SLOT_MAP: Record<ThemeFontSlot, ThemeFontKey> = {
 
 const EAST_ASIAN_SCRIPT_FALLBACKS = ["Hans", "Hant", "Jpan", "Hang"];
 
-function normalizeLanguageHints(hints?: LanguageHint | LanguageHint[]): string[] {
+function normalizeLanguageHints(
+  hints?: LanguageHint | LanguageHint[],
+): string[] {
   if (Array.isArray(hints)) {
-    return hints.filter((hint): hint is string => typeof hint === "string" && hint.length > 0);
+    return hints.filter(
+      (hint): hint is string => typeof hint === "string" && hint.length > 0,
+    );
   }
   return typeof hints === "string" && hints.length > 0 ? [hints] : [];
 }
@@ -30,7 +34,11 @@ function scriptFromLanguage(lang: string): string | undefined {
   if (normalized.startsWith("ar")) return "Arab";
   if (normalized.startsWith("he")) return "Hebr";
   if (normalized.startsWith("th")) return "Thai";
-  if (normalized.startsWith("hi") || normalized.startsWith("mr") || normalized.startsWith("ne")) {
+  if (
+    normalized.startsWith("hi") ||
+    normalized.startsWith("mr") ||
+    normalized.startsWith("ne")
+  ) {
     return "Deva";
   }
   return undefined;
@@ -128,7 +136,15 @@ const CJK_FONT_FAMILY_ALIAS_KEYS = new Set([
 
 const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   // Office default fonts, missing on most browsers.
-  calibri: ["Calibri", "Aptos", "Carlito", "system-ui", "Arial", "Helvetica", "sans-serif"],
+  calibri: [
+    "Calibri",
+    "Aptos",
+    "Carlito",
+    "system-ui",
+    "Arial",
+    "Helvetica",
+    "sans-serif",
+  ],
   "calibri light": [
     "Calibri Light",
     "Aptos Display",
@@ -140,7 +156,14 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
     "sans-serif",
   ],
   aptos: ["Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
-  "aptos display": ["Aptos Display", "Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
+  "aptos display": [
+    "Aptos Display",
+    "Aptos",
+    "system-ui",
+    "Arial",
+    "Helvetica",
+    "sans-serif",
+  ],
   "franklin gothic medium": [
     "Franklin Gothic Medium",
     "Franklin Gothic",
@@ -149,11 +172,23 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
     "Arial",
     "sans-serif",
   ],
-  "century gothic": ["Century Gothic", "Futura", "Trebuchet MS", "Arial", "sans-serif"],
+  "century gothic": [
+    "Century Gothic",
+    "Futura",
+    "Trebuchet MS",
+    "Arial",
+    "sans-serif",
+  ],
   "gill sans": ["Gill Sans", "Gill Sans MT", "Calibri", "sans-serif"],
   "gill sans mt": ["Gill Sans MT", "Gill Sans", "Calibri", "sans-serif"],
   "trebuchet ms": ["Trebuchet MS", "Arial", "sans-serif"],
-  "palatino linotype": ["Palatino Linotype", "Palatino", "Book Antiqua", "Georgia", "serif"],
+  "palatino linotype": [
+    "Palatino Linotype",
+    "Palatino",
+    "Book Antiqua",
+    "Georgia",
+    "serif",
+  ],
   "book antiqua": ["Book Antiqua", "Palatino", "Georgia", "serif"],
   garamond: ["Garamond", "EB Garamond", "Georgia", "serif"],
   cambria: ["Cambria", "Georgia", "serif"],
@@ -213,7 +248,9 @@ function expandFontFamilyAliases(fontFamily: string): string[] {
   }
   // A generic fallback keeps the browser off its default serif; decks are
   // overwhelmingly sans-serif.
-  const genericFallback = KNOWN_SERIF_FONTS.has(normalized) ? "serif" : "sans-serif";
+  const genericFallback = KNOWN_SERIF_FONTS.has(normalized)
+    ? "serif"
+    : "sans-serif";
   return [fontFamily.trim(), genericFallback];
 }
 
@@ -224,7 +261,9 @@ export function cssFontFamilyStack(fontFamily: string | string[]): string {
   const needsCjkFallbacks = baseFonts.some((font) =>
     CJK_FONT_FAMILY_ALIAS_KEYS.has(normalizeFontFamilyName(font)),
   );
-  const stack = needsCjkFallbacks ? [...baseFonts, ...CJK_SANS_FALLBACKS] : baseFonts;
+  const stack = needsCjkFallbacks
+    ? [...baseFonts, ...CJK_SANS_FALLBACKS]
+    : baseFonts;
   const seen = new Set<string>();
   const unique = stack.filter((font) => {
     const key = normalizeFontFamilyName(font);

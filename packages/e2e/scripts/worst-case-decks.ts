@@ -53,7 +53,10 @@ interface ShapeOptions {
 let nextId = 2;
 
 function escapeXml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function shape(options: ShapeOptions): string {
@@ -70,7 +73,9 @@ function shape(options: ShapeOptions): string {
           ]
             .filter(Boolean)
             .join(" ");
-          const font = run.font ? `<a:latin typeface="${escapeXml(run.font)}"/>` : "";
+          const font = run.font
+            ? `<a:latin typeface="${escapeXml(run.font)}"/>`
+            : "";
           return `<a:r><a:rPr ${attrs}>${font}</a:rPr><a:t>${escapeXml(run.text)}</a:t></a:r>`;
         })
         .join("");
@@ -122,7 +127,14 @@ function worstSlides(): string[] {
       h: 160,
       textBox: true,
       paragraphs: [
-        [{ text: "Rechtsschutzversicherungsgesellschaften", font: FONTS[0], size: 54, bold: true }],
+        [
+          {
+            text: "Rechtsschutzversicherungsgesellschaften",
+            font: FONTS[0],
+            size: 54,
+            bold: true,
+          },
+        ],
       ],
     }),
     shape({
@@ -148,7 +160,13 @@ function worstSlides(): string[] {
       h: 120,
       textBox: true,
       paragraphs: [
-        [{ text: "Báo cáo tài chính quý ba — Tiếng Việt", font: FONTS[2], size: 24 }],
+        [
+          {
+            text: "Báo cáo tài chính quý ba — Tiếng Việt",
+            font: FONTS[2],
+            size: 24,
+          },
+        ],
         [{ text: "تقرير الربع الثالث للمجلس", font: FONTS[4], size: 24 }],
         [{ text: "🚀 Launch day 🎉👩🏽‍💻", font: FONTS[5], size: 24 }],
       ],
@@ -177,7 +195,9 @@ function worstSlides(): string[] {
       textBox: true,
       bodyPr:
         '<a:bodyPr wrap="square"><a:normAutofit fontScale="25000" lnSpcReduction="20000"/></a:bodyPr>',
-      paragraphs: [[{ text: "Q3 2026", font: FONTS[8], size: 166, bold: true }]],
+      paragraphs: [
+        [{ text: "Q3 2026", font: FONTS[8], size: 166, bold: true }],
+      ],
     }),
   ];
   const geometry = [
@@ -223,12 +243,18 @@ function worstSlides(): string[] {
   ];
 }
 
-async function setSlideSize(buffer: ArrayBuffer, size: { cx: number; cy: number }) {
+async function setSlideSize(
+  buffer: ArrayBuffer,
+  size: { cx: number; cy: number },
+) {
   const zip = await JSZip.loadAsync(buffer);
   const xml = await zip.file("ppt/presentation.xml")!.async("string");
   zip.file(
     "ppt/presentation.xml",
-    xml.replace(/<p:sldSz [^>]*\/>/, `<p:sldSz cx="${size.cx}" cy="${size.cy}"/>`),
+    xml.replace(
+      /<p:sldSz [^>]*\/>/,
+      `<p:sldSz cx="${size.cx}" cy="${size.cy}"/>`,
+    ),
   );
   return zip.generateAsync({ type: "uint8array" });
 }
@@ -263,7 +289,9 @@ nextId = 2;
 writeFileSync(
   join(OUT_DIR, "many.pptx"),
   new Uint8Array(
-    await buildCustomPptx({ slides: Array.from({ length: 300 }, (_, i) => titleSlide(i)) }),
+    await buildCustomPptx({
+      slides: Array.from({ length: 300 }, (_, i) => titleSlide(i)),
+    }),
   ),
 );
 

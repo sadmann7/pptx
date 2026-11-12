@@ -38,7 +38,8 @@ export function Backdrop() {
           backgroundImage:
             "linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px)",
           backgroundSize: "72px 72px",
-          maskImage: "linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)",
+          maskImage:
+            "linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)",
         }}
       />
       <Noise />

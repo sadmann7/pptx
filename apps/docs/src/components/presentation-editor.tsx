@@ -23,7 +23,11 @@ import {
   useSelection,
   useSlide,
 } from "@diceui/pptx";
-import type { DragEndEvent, DragStartEvent, DropAnimation } from "@dnd-kit/core";
+import type {
+  DragEndEvent,
+  DragStartEvent,
+  DropAnimation,
+} from "@dnd-kit/core";
 import {
   DndContext,
   DragOverlay,
@@ -34,8 +38,15 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  restrictToFirstScrollableAncestor,
+  restrictToVerticalAxis,
+} from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, buttonVariants } from "@pptx/ui/components/button";
 import {
@@ -188,7 +199,11 @@ const ARRANGE = [
   { order: "forward", label: "Bring forward", shortcut: ["mod", "]"] },
   { order: "backward", label: "Send backward", shortcut: ["mod", "["] },
   { order: "back", label: "Send to back", shortcut: ["mod", "shift", "["] },
-] as const satisfies readonly { order: NodeOrder; label: string; shortcut: readonly string[] }[];
+] as const satisfies readonly {
+  order: NodeOrder;
+  label: string;
+  shortcut: readonly string[];
+}[];
 
 const TABLE_INSERTS = [
   {
@@ -211,7 +226,11 @@ const TABLE_INSERTS = [
     label: "Insert column right",
     icon: BetweenVerticalEndIcon,
   },
-] as const satisfies readonly { change: TableChange; label: string; icon: React.ElementType }[];
+] as const satisfies readonly {
+  change: TableChange;
+  label: string;
+  icon: React.ElementType;
+}[];
 
 const TABLE_DELETES = [
   { change: { type: "deleteRow" }, label: "Delete row" },
@@ -237,9 +256,17 @@ function getCanSplitCell(
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 4000;
 
-const COMMON_FONTS = ["Arial", "Calibri", "Georgia", "Helvetica", "Times New Roman", "Verdana"];
+const COMMON_FONTS = [
+  "Arial",
+  "Calibri",
+  "Georgia",
+  "Helvetica",
+  "Times New Roman",
+  "Verdana",
+];
 
-const PPTX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const PPTX_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 function onEditError(error: unknown) {
   toast.error(error instanceof Error ? error.message : "Edit failed");
@@ -279,7 +306,10 @@ export function PresentationEditor({
   return (
     <div
       data-slot="presentation-editor"
-      className={cn("flex flex-col overflow-hidden rounded-md border", className)}
+      className={cn(
+        "flex flex-col overflow-hidden rounded-md border",
+        className,
+      )}
     >
       <input
         ref={fileInputRef}
@@ -291,7 +321,12 @@ export function PresentationEditor({
       />
       <PresentationProvider store={store}>
         {header}
-        {toolbar && <EditorToolbar store={store} onOpen={() => fileInputRef.current?.click()} />}
+        {toolbar && (
+          <EditorToolbar
+            store={store}
+            onOpen={() => fileInputRef.current?.click()}
+          />
+        )}
         <Presentation className="min-h-0 flex-1">
           <SortableThumbnailList store={store} />
           <PresentationContent>
@@ -326,7 +361,8 @@ function EditorEmpty({ fileInputId }: { fileInputId: string }) {
         </EmptyMedia>
         <EmptyTitle>No presentation open</EmptyTitle>
         <EmptyDescription>
-          Pick a .pptx file to render it here, then edit, reorder, and save it back.
+          Pick a .pptx file to render it here, then edit, reorder, and save it
+          back.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -342,9 +378,19 @@ function EditorEmpty({ fileInputId }: { fileInputId: string }) {
 }
 
 const APPLE_KEYS: Record<string, string> = { mod: "⌘", shift: "⇧", alt: "⌥" };
-const OTHER_KEYS: Record<string, string> = { mod: "Ctrl", shift: "Shift", alt: "Alt" };
+const OTHER_KEYS: Record<string, string> = {
+  mod: "Ctrl",
+  shift: "Shift",
+  alt: "Alt",
+};
 
-function Shortcut({ keys, className }: { keys: readonly string[]; className?: string }) {
+function Shortcut({
+  keys,
+  className,
+}: {
+  keys: readonly string[];
+  className?: string;
+}) {
   const isMac = useIsMac();
   const names = isMac ? APPLE_KEYS : OTHER_KEYS;
   return (
@@ -380,7 +426,13 @@ function ToolbarIconButton({
             aria-pressed={pressed}
             disabled={disabled}
             onClick={onClick}
-            render={<Button variant={pressed ? "secondary" : "ghost"} size="icon-sm" {...props} />}
+            render={
+              <Button
+                variant={pressed ? "secondary" : "ghost"}
+                size="icon-sm"
+                {...props}
+              />
+            }
           >
             {children}
           </ToolbarButton>
@@ -424,7 +476,10 @@ function ToolbarMenuTrigger({
                   <Button
                     variant={active ? "secondary" : "ghost"}
                     size="icon-sm"
-                    className={cn(chevron && "h-7 w-auto gap-0.5 px-1.5", className)}
+                    className={cn(
+                      chevron && "h-7 w-auto gap-0.5 px-1.5",
+                      className,
+                    )}
                   />
                 }
               />
@@ -433,7 +488,9 @@ function ToolbarMenuTrigger({
         }
       >
         {children}
-        {chevron && <ChevronDownIcon className="size-3 text-muted-foreground" />}
+        {chevron && (
+          <ChevronDownIcon className="size-3 text-muted-foreground" />
+        )}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -462,7 +519,11 @@ function ColorMenu({
   const current = value?.toUpperCase() ?? null;
   return (
     <DropdownMenu modal={false}>
-      <ToolbarMenuTrigger label={label} disabled={disabled} className="relative">
+      <ToolbarMenuTrigger
+        label={label}
+        disabled={disabled}
+        className="relative"
+      >
         <Icon />
         <span
           aria-hidden="true"
@@ -492,7 +553,10 @@ function ColorMenu({
             >
               {current === color.value && (
                 <CheckIcon
-                  className={cn("size-3.5", getIsLight(color.value) ? "text-black" : "text-white")}
+                  className={cn(
+                    "size-3.5",
+                    getIsLight(color.value) ? "text-black" : "text-white",
+                  )}
                 />
               )}
             </DropdownMenuItem>
@@ -565,7 +629,11 @@ function FontSelect({
         />
         <TooltipContent>{value ? `Font: ${value}` : "Font"}</TooltipContent>
       </Tooltip>
-      <SelectContent alignItemWithTrigger={false} align="start" className="w-56">
+      <SelectContent
+        alignItemWithTrigger={false}
+        align="start"
+        className="w-56"
+      >
         {deckFonts.length > 0 && (
           <SelectGroup>
             <SelectLabel>In this presentation</SelectLabel>
@@ -608,9 +676,12 @@ function useOverflowEdges(ref: React.RefObject<HTMLElement | null>) {
     function update() {
       if (!element) return;
       const start = element.scrollLeft > 1;
-      const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+      const end =
+        element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
       setEdges((previous) =>
-        previous.start === start && previous.end === end ? previous : { start, end },
+        previous.start === start && previous.end === end
+          ? previous
+          : { start, end },
       );
     }
     update();
@@ -638,13 +709,15 @@ function FontSizeControl({
   onChange: (fontSize: number) => void;
 }) {
   const [draft, setDraft] = React.useState<string | null>(null);
-  const clamp = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, size));
+  const clamp = (size: number) =>
+    Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, size));
 
   function commit() {
     if (draft === null) return;
     const size = Number.parseFloat(draft);
     setDraft(null);
-    if (Number.isFinite(size) && size !== value) onChange(clamp(Math.round(size)));
+    if (Number.isFinite(size) && size !== value)
+      onChange(clamp(Math.round(size)));
   }
 
   return (
@@ -664,7 +737,9 @@ function FontSizeControl({
               inputMode="numeric"
               value={draft ?? (value === null ? "" : String(value))}
               className="h-7 w-9 rounded-md bg-transparent text-center text-xs tabular-nums outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
-              onChange={(event) => setDraft(event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) =>
+                setDraft(event.target.value.replace(/[^\d.]/g, ""))
+              }
               onFocus={(event) => event.target.select()}
               onBlur={commit}
               onKeyDown={(event) => {
@@ -726,8 +801,11 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   const isReady = status === "ready" && slideId != null;
   const hasText = textStyle != null;
   const shapes = nodes.filter((node) => node.nodeType === "shape");
-  const table = nodes.length === 1 && nodes[0].nodeType === "table" ? nodes[0] : null;
-  const outlined = nodes.filter((node) => node.nodeType === "shape" || node.nodeType === "picture");
+  const table =
+    nodes.length === 1 && nodes[0].nodeType === "table" ? nodes[0] : null;
+  const outlined = nodes.filter(
+    (node) => node.nodeType === "shape" || node.nodeType === "picture",
+  );
 
   function run(action: () => Promise<unknown>) {
     action().catch(onEditError);
@@ -739,7 +817,11 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   ) {
     if (!slideId || targets.length === 0) return;
     const operations = targets.map((node) => operation(node.id));
-    run(() => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }));
+    run(() =>
+      store.edit(
+        operations.length === 1 ? operations[0] : { type: "batch", operations },
+      ),
+    );
   }
 
   function onFormat(style: TextStyle) {
@@ -772,7 +854,9 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
 
   async function onExport() {
     const bytes = await store.save();
-    const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: PPTX_MIME_TYPE }));
+    const url = URL.createObjectURL(
+      new Blob([bytes.slice().buffer], { type: PPTX_MIME_TYPE }),
+    );
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "edited.pptx";
@@ -783,7 +867,12 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
   return (
     <TooltipProvider delay={400}>
       <PresentationPrimitive.Controls
-        render={<Toolbar aria-label="Edit presentation" className="flex-nowrap border-b p-1.5" />}
+        render={
+          <Toolbar
+            aria-label="Edit presentation"
+            className="flex-nowrap border-b p-1.5"
+          />
+        }
       >
         {/* One scrolling row, so the contextual tools never wrap onto a new line. */}
         <div
@@ -839,14 +928,22 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
           />
           <ToolbarSeparator />
 
-          <ToolbarIconButton label="New slide" disabled={!isReady} onClick={() => run(onAddSlide)}>
+          <ToolbarIconButton
+            label="New slide"
+            disabled={!isReady}
+            onClick={() => run(onAddSlide)}
+          >
             <PlusIcon />
           </ToolbarIconButton>
           <ToolbarIconButton
             label="Text box"
             disabled={!isReady}
             pressed={drawTool?.type === "textBox"}
-            onClick={() => startDrawing(drawTool?.type === "textBox" ? null : { type: "textBox" })}
+            onClick={() =>
+              startDrawing(
+                drawTool?.type === "textBox" ? null : { type: "textBox" },
+              )
+            }
           >
             <TypeIcon />
           </ToolbarIconButton>
@@ -881,11 +978,19 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 label="Background"
                 icon={PaintBucketIcon}
                 onSelect={(color) =>
-                  run(() => store.edit({ type: "setSlideBackground", slideId, color }))
+                  run(() =>
+                    store.edit({ type: "setSlideBackground", slideId, color }),
+                  )
                 }
                 noneLabel="Reset to layout"
                 onNone={() =>
-                  run(() => store.edit({ type: "setSlideBackground", slideId, color: null }))
+                  run(() =>
+                    store.edit({
+                      type: "setSlideBackground",
+                      slideId,
+                      color: null,
+                    }),
+                  )
                 }
               />
             </>
@@ -983,12 +1088,16 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
               <ColorMenu
                 label="Border color"
                 icon={PencilLineIcon}
-                onSelect={(color) => run(() => setTableCellStyle({ borders: { color } }))}
+                onSelect={(color) =>
+                  run(() => setTableCellStyle({ borders: { color } }))
+                }
                 noneLabel="No borders"
                 onNone={() => run(() => setTableCellStyle({ borders: null }))}
               />
               <CellAlignMenu
-                onSelect={(verticalAlign) => run(() => setTableCellStyle({ verticalAlign }))}
+                onSelect={(verticalAlign) =>
+                  run(() => setTableCellStyle({ verticalAlign }))
+                }
               />
               <TableEditMenu
                 hasCell={cell !== null}
@@ -1020,7 +1129,10 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
                 </ToolbarMenuTrigger>
                 <DropdownMenuContent aria-label="Arrange" className="w-48">
                   {ARRANGE.map(({ order, label, shortcut }) => (
-                    <DropdownMenuItem key={order} onClick={() => run(() => reorder(order))}>
+                    <DropdownMenuItem
+                      key={order}
+                      onClick={() => run(() => reorder(order))}
+                    >
                       {label}
                       <DropdownMenuShortcut>
                         <Shortcut keys={shortcut} />
@@ -1114,7 +1226,11 @@ function ShapeMenu({
                 className="size-4.5 overflow-visible"
               >
                 <path
-                  d={getPresetShapePath(geometry, SHAPE_PREVIEW_SIZE, SHAPE_PREVIEW_SIZE)}
+                  d={getPresetShapePath(
+                    geometry,
+                    SHAPE_PREVIEW_SIZE,
+                    SHAPE_PREVIEW_SIZE,
+                  )}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={1.5}
@@ -1153,24 +1269,29 @@ function TableMenu({
       <DropdownMenuContent aria-label="Table" className="w-auto">
         <div
           className="grid gap-0.5"
-          style={{ gridTemplateColumns: `repeat(${TABLE_PICKER_COLUMNS}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${TABLE_PICKER_COLUMNS}, minmax(0, 1fr))`,
+          }}
         >
-          {Array.from({ length: TABLE_PICKER_ROWS * TABLE_PICKER_COLUMNS }, (_, index) => {
-            const rows = Math.floor(index / TABLE_PICKER_COLUMNS) + 1;
-            const columns = (index % TABLE_PICKER_COLUMNS) + 1;
-            const isInside = rows <= size.rows && columns <= size.columns;
-            return (
-              <DropdownMenuItem
-                key={index}
-                aria-label={`${rows} by ${columns} table`}
-                data-inside={isInside ? "" : undefined}
-                className="size-4 rounded-[3px] border p-0 data-highlighted:bg-transparent data-inside:border-primary data-inside:bg-primary/15"
-                onPointerEnter={() => setSize({ rows, columns })}
-                onFocus={() => setSize({ rows, columns })}
-                onClick={() => onSelect(rows, columns)}
-              />
-            );
-          })}
+          {Array.from(
+            { length: TABLE_PICKER_ROWS * TABLE_PICKER_COLUMNS },
+            (_, index) => {
+              const rows = Math.floor(index / TABLE_PICKER_COLUMNS) + 1;
+              const columns = (index % TABLE_PICKER_COLUMNS) + 1;
+              const isInside = rows <= size.rows && columns <= size.columns;
+              return (
+                <DropdownMenuItem
+                  key={index}
+                  aria-label={`${rows} by ${columns} table`}
+                  data-inside={isInside ? "" : undefined}
+                  className="size-4 rounded-[3px] border p-0 data-highlighted:bg-transparent data-inside:border-primary data-inside:bg-primary/15"
+                  onPointerEnter={() => setSize({ rows, columns })}
+                  onFocus={() => setSize({ rows, columns })}
+                  onClick={() => onSelect(rows, columns)}
+                />
+              );
+            },
+          )}
         </div>
         <div className="pt-1.5 text-center text-xs text-muted-foreground tabular-nums">
           {size.rows} × {size.columns}
@@ -1204,17 +1325,27 @@ function TableEditMenu({
       </ToolbarMenuTrigger>
       <DropdownMenuContent aria-label="Edit table" className="w-48">
         {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
-          <DropdownMenuItem key={label} disabled={!hasCell} onClick={() => onSelect(change)}>
+          <DropdownMenuItem
+            key={label}
+            disabled={!hasCell}
+            onClick={() => onSelect(change)}
+          >
             <Icon />
             {label}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={!canMerge} onClick={() => onSelect({ type: "mergeCells" })}>
+        <DropdownMenuItem
+          disabled={!canMerge}
+          onClick={() => onSelect({ type: "mergeCells" })}
+        >
           <TableCellsMergeIcon />
           Merge cells
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={!canSplit} onClick={() => onSelect({ type: "splitCell" })}>
+        <DropdownMenuItem
+          disabled={!canSplit}
+          onClick={() => onSelect({ type: "splitCell" })}
+        >
           <TableCellsSplitIcon />
           Unmerge cells
         </DropdownMenuItem>
@@ -1239,7 +1370,9 @@ function TableEditMenu({
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={bandedRows}
-          onCheckedChange={(checked) => onOptionsChange({ bandedRows: checked })}
+          onCheckedChange={(checked) =>
+            onOptionsChange({ bandedRows: checked })
+          }
         >
           Banded rows
         </DropdownMenuCheckboxItem>
@@ -1258,7 +1391,11 @@ const CELL_ALIGNMENTS = [
   icon: React.ElementType;
 }[];
 
-function CellAlignMenu({ onSelect }: { onSelect: (align: TableCellVerticalAlign) => void }) {
+function CellAlignMenu({
+  onSelect,
+}: {
+  onSelect: (align: TableCellVerticalAlign) => void;
+}) {
   return (
     <DropdownMenu modal={false}>
       <ToolbarMenuTrigger label="Vertical align" chevron>
@@ -1283,7 +1420,8 @@ function AlignMenu({
   value: ParagraphAlign | null;
   onSelect: (align: ParagraphAlign) => void;
 }) {
-  const current = ALIGNMENTS.find(({ align }) => align === value) ?? ALIGNMENTS[0];
+  const current =
+    ALIGNMENTS.find(({ align }) => align === value) ?? ALIGNMENTS[0];
   return (
     <DropdownMenu modal={false}>
       <ToolbarMenuTrigger label="Align" chevron>
@@ -1361,11 +1499,16 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-      onDragStart={({ active }: DragStartEvent) => setDraggedId(String(active.id))}
+      onDragStart={({ active }: DragStartEvent) =>
+        setDraggedId(String(active.id))
+      }
       onDragCancel={() => setDraggedId(null)}
       onDragEnd={onDragEnd}
     >
-      <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={orderedIds}
+        strategy={verticalListSortingStrategy}
+      >
         <PresentationThumbnailList className="p-2">
           {() => (
             <>
@@ -1409,7 +1552,9 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
         onContextMenuCapture={(event) => {
           // Like PowerPoint, right-clicking a thumbnail selects it, and it
           // keeps focus once the menu closes.
-          const item = (event.target as Element).closest<HTMLElement>("[role=option]");
+          const item = (event.target as Element).closest<HTMLElement>(
+            "[role=option]",
+          );
           item?.focus();
           menuItemRef.current = item;
           setMenuSlideId(item?.dataset.slideId ?? null);
@@ -1472,15 +1617,21 @@ function useSlideActions(store: PresentationStore): SlideActions {
   }
 
   return {
-    add: (afterSlideId) => goToCreated(store.edit({ type: "addSlide", afterSlideId })),
-    duplicate: (slideId) => goToCreated(store.edit({ type: "duplicateSlide", slideId })),
+    add: (afterSlideId) =>
+      goToCreated(store.edit({ type: "addSlide", afterSlideId })),
+    duplicate: (slideId) =>
+      goToCreated(store.edit({ type: "duplicateSlide", slideId })),
     async remove(slideId) {
       await store.edit({ type: "deleteSlide", slideId });
       const activeSlideId = store.getActiveSlide()?.id;
       if (activeSlideId) focusThumbnail(activeSlideId);
     },
     async move(slideId, to) {
-      await store.edit({ type: "moveSlide", slideId, toIndex: targetIndex(slideId, to) });
+      await store.edit({
+        type: "moveSlide",
+        slideId,
+        toIndex: targetIndex(slideId, to),
+      });
       focusThumbnail(slideId);
     },
     canMove(slideId, to) {
@@ -1500,7 +1651,11 @@ function onThumbnailKeyDown(
   let action: (() => Promise<void>) | null = null;
   if ((event.key === "Delete" || event.key === "Backspace") && !mod) {
     if (actions.canRemove) action = () => actions.remove(slideId);
-  } else if (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "m") {
+  } else if (
+    event.ctrlKey &&
+    !event.metaKey &&
+    event.key.toLowerCase() === "m"
+  ) {
     // Ctrl on every platform: ⌘M minimizes the window on macOS.
     action = () => actions.add(slideId);
   } else if (mod && event.key.toLowerCase() === "d") {
@@ -1534,13 +1689,17 @@ function SlideMenuContent({
 
   return (
     <ContextMenuContent aria-label="Slide" className="w-44" {...props}>
-      <ContextMenuItem onClick={() => run(() => actions.add(slideId ?? undefined))}>
+      <ContextMenuItem
+        onClick={() => run(() => actions.add(slideId ?? undefined))}
+      >
         <PlusIcon />
         New slide
       </ContextMenuItem>
       {slideId && (
         <>
-          <ContextMenuItem onClick={() => run(() => actions.duplicate(slideId))}>
+          <ContextMenuItem
+            onClick={() => run(() => actions.duplicate(slideId))}
+          >
             <CopyPlusIcon />
             Duplicate slide
           </ContextMenuItem>
@@ -1561,13 +1720,24 @@ function SlideMenuContent({
 
 function FloatingToolbar({ store }: { store: PresentationStore }) {
   const { slideId } = useSlide();
-  const { mode, nodes, anchor, drawTool, textStyle, setTextStyle, setParagraphStyle } =
-    useSelection();
+  const {
+    mode,
+    nodes,
+    anchor,
+    drawTool,
+    textStyle,
+    setTextStyle,
+    setParagraphStyle,
+  } = useSelection();
   const isTextMode = mode === "text";
-  const shapes = isTextMode ? [] : nodes.filter((node) => node.nodeType === "shape");
+  const shapes = isTextMode
+    ? []
+    : nodes.filter((node) => node.nodeType === "shape");
   const outlined = isTextMode
     ? []
-    : nodes.filter((node) => node.nodeType === "shape" || node.nodeType === "picture");
+    : nodes.filter(
+        (node) => node.nodeType === "shape" || node.nodeType === "picture",
+      );
   const hasShapeTools = shapes.length > 0 || outlined.length > 0;
   const isOpen =
     anchor !== null &&
@@ -1585,7 +1755,11 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
   ) {
     if (!slideId || targets.length === 0) return;
     const operations = targets.map((node) => operation(node.id));
-    run(() => store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations }));
+    run(() =>
+      store.edit(
+        operations.length === 1 ? operations[0] : { type: "batch", operations },
+      ),
+    );
   }
 
   return (
@@ -1646,16 +1820,20 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
               {textStyle && (
                 <>
                   {hasShapeTools && <ToolbarSeparator />}
-                  {TEXT_TOGGLES.slice(0, 3).map(({ key, label, icon: Icon }) => (
-                    <ToolbarIconButton
-                      key={key}
-                      label={label}
-                      pressed={textStyle[key]}
-                      onClick={() => run(() => setTextStyle({ [key]: !textStyle[key] }))}
-                    >
-                      <Icon />
-                    </ToolbarIconButton>
-                  ))}
+                  {TEXT_TOGGLES.slice(0, 3).map(
+                    ({ key, label, icon: Icon }) => (
+                      <ToolbarIconButton
+                        key={key}
+                        label={label}
+                        pressed={textStyle[key]}
+                        onClick={() =>
+                          run(() => setTextStyle({ [key]: !textStyle[key] }))
+                        }
+                      >
+                        <Icon />
+                      </ToolbarIconButton>
+                    ),
+                  )}
                   <ColorMenu
                     label="Text color"
                     icon={BaselineIcon}
@@ -1664,7 +1842,9 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
                   />
                   <AlignMenu
                     value={textStyle.align}
-                    onSelect={(align) => run(() => setParagraphStyle({ align }))}
+                    onSelect={(align) =>
+                      run(() => setParagraphStyle({ align }))
+                    }
                   />
                 </>
               )}
@@ -1683,8 +1863,18 @@ interface CanvasContextMenuProps {
 
 function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const { slideId } = useSlide();
-  const { mode, nodes, cell, cellRange, editText, changeTable, duplicate, remove, reorder, clear } =
-    useSelection();
+  const {
+    mode,
+    nodes,
+    cell,
+    cellRange,
+    editText,
+    changeTable,
+    duplicate,
+    remove,
+    reorder,
+    clear,
+  } = useSelection();
   const actions = useSlideActions(store);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   // Fixed when the menu opens, so it can't swap menus while closing.
@@ -1692,7 +1882,8 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
   const [isTextMenu, setIsTextMenu] = React.useState(false);
   const [isTableMenu, setIsTableMenu] = React.useState(false);
   const textNode =
-    nodes.length === 1 && (nodes[0]?.nodeType === "shape" || nodes[0]?.nodeType === "table")
+    nodes.length === 1 &&
+    (nodes[0]?.nodeType === "shape" || nodes[0]?.nodeType === "table")
       ? nodes[0]
       : null;
 
@@ -1712,7 +1903,9 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           returnFocusRef.current =
             mode === "text" && document.activeElement instanceof HTMLElement
               ? document.activeElement
-              : (event.target as Element).closest<HTMLElement>("[data-presentation-selection]");
+              : (event.target as Element).closest<HTMLElement>(
+                  "[data-presentation-selection]",
+                );
         }}
       >
         {children}
@@ -1728,7 +1921,9 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           finalFocus={() =>
             returnFocusRef.current?.isConnected &&
             (returnFocusRef.current.isContentEditable ||
-              returnFocusRef.current.hasAttribute("data-presentation-selection"))
+              returnFocusRef.current.hasAttribute(
+                "data-presentation-selection",
+              ))
               ? returnFocusRef.current
               : false
           }
@@ -1747,25 +1942,35 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
           {isTableMenu && (
             <>
               {TABLE_INSERTS.map(({ change, label, icon: Icon }) => (
-                <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
+                <ContextMenuItem
+                  key={label}
+                  onClick={() => run(() => changeTable(change))}
+                >
                   <Icon />
                   {label}
                 </ContextMenuItem>
               ))}
               {cellRange && (
-                <ContextMenuItem onClick={() => run(() => changeTable({ type: "mergeCells" }))}>
+                <ContextMenuItem
+                  onClick={() => run(() => changeTable({ type: "mergeCells" }))}
+                >
                   <TableCellsMergeIcon />
                   Merge cells
                 </ContextMenuItem>
               )}
               {getCanSplitCell(nodes, cell) && (
-                <ContextMenuItem onClick={() => run(() => changeTable({ type: "splitCell" }))}>
+                <ContextMenuItem
+                  onClick={() => run(() => changeTable({ type: "splitCell" }))}
+                >
                   <TableCellsSplitIcon />
                   Unmerge cells
                 </ContextMenuItem>
               )}
               {TABLE_DELETES.map(({ change, label }) => (
-                <ContextMenuItem key={label} onClick={() => run(() => changeTable(change))}>
+                <ContextMenuItem
+                  key={label}
+                  onClick={() => run(() => changeTable(change))}
+                >
                   <Trash2Icon />
                   {label}
                 </ContextMenuItem>
@@ -1782,9 +1987,15 @@ function CanvasContextMenu({ store, children }: CanvasContextMenuProps) {
               <LayersIcon />
               Order
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent data-presentation-controls="" className="w-44">
+            <ContextMenuSubContent
+              data-presentation-controls=""
+              className="w-44"
+            >
               {ARRANGE.map(({ order, label }) => (
-                <ContextMenuItem key={order} onClick={() => run(() => reorder(order))}>
+                <ContextMenuItem
+                  key={order}
+                  onClick={() => run(() => reorder(order))}
+                >
                   {label}
                 </ContextMenuItem>
               ))}
@@ -1824,8 +2035,19 @@ interface SortableThumbnailItemProps {
   isMenuOpen: boolean;
 }
 
-function SortableThumbnailItem({ slideId, actions, isMenuOpen }: SortableThumbnailItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+function SortableThumbnailItem({
+  slideId,
+  actions,
+  isMenuOpen,
+}: SortableThumbnailItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: slideId,
   });
 

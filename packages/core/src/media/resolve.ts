@@ -74,7 +74,10 @@ function mediaRelativePath(target: string): string {
 }
 
 export function resolveMediaPath(target: string): string {
-  const decodedPath = mediaRelativePath(target).split("/").map(decodeUriPathSegment).join("/");
+  const decodedPath = mediaRelativePath(target)
+    .split("/")
+    .map(decodeUriPathSegment)
+    .join("/");
   return `ppt/media/${decodedPath}`;
 }
 

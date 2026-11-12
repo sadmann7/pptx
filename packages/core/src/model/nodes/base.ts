@@ -2,7 +2,13 @@
 import { angleToDeg, emuToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
 
-export type NodeType = "shape" | "picture" | "table" | "group" | "chart" | "unknown";
+export type NodeType =
+  | "shape"
+  | "picture"
+  | "table"
+  | "group"
+  | "chart"
+  | "unknown";
 
 export interface NodePosition {
   x: number;
@@ -47,8 +53,17 @@ export interface BaseNodeData {
 
 // The non-visual properties wrapper is named per shape kind: p:nvSpPr, p:nvPicPr,
 // p:nvGrpSpPr, p:nvGraphicFramePr (tables and charts), or p:nvCxnSpPr.
-function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode } {
-  const wrappers = ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"];
+function findNvProps(node: SafeXmlNode): {
+  cNvPr: SafeXmlNode;
+  nvPr: SafeXmlNode;
+} {
+  const wrappers = [
+    "nvSpPr",
+    "nvPicPr",
+    "nvGrpSpPr",
+    "nvGraphicFramePr",
+    "nvCxnSpPr",
+  ];
   for (const name of wrappers) {
     const wrapper = node.child(name);
     if (wrapper.exists()) {
@@ -94,7 +109,9 @@ function parsePlaceholder(nvPr: SafeXmlNode): PlaceholderInfo | undefined {
   return { type, idx };
 }
 
-export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeType"> {
+export function parseBaseProps(
+  spNode: SafeXmlNode,
+): Omit<BaseNodeData, "nodeType"> {
   const { cNvPr, nvPr } = findNvProps(spNode);
 
   const id = cNvPr.attr("id") ?? "";

@@ -19,12 +19,17 @@ export interface PixelGrid {
 }
 
 export async function readPixels(png: Buffer): Promise<PixelGrid> {
-  const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(png)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
 
   const at = (x: number, y: number): Pixel => {
     if (x < 0 || y < 0 || x >= width || y >= height) {
-      throw new Error(`pixel (${x}, ${y}) is outside the ${width}x${height} image`);
+      throw new Error(
+        `pixel (${x}, ${y}) is outside the ${width}x${height} image`,
+      );
     }
     const offset = (y * width + x) * channels;
     return { r: data[offset], g: data[offset + 1], b: data[offset + 2] };

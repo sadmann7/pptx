@@ -1,7 +1,12 @@
 import * as React from "react";
 
 import { buttonVariants } from "@pptx/ui/components/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@pptx/ui/components/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@pptx/ui/components/tabs";
 import { cn } from "@pptx/ui/lib/utils";
 import { highlight } from "fumadocs-core/highlight";
 import JSZip from "jszip";
@@ -19,7 +24,11 @@ import Link from "next/link";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { DemoDeckEditor, DemoDeckParts, DemoDeckProvider } from "@/components/landing-demo";
+import {
+  DemoDeckEditor,
+  DemoDeckParts,
+  DemoDeckProvider,
+} from "@/components/landing-demo";
 import type { DeckPart } from "@/components/landing-demo";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 import { DICEUI_URL, X_URL } from "@/lib/site";
@@ -28,12 +37,14 @@ const FEATURES = [
   {
     icon: Shapes,
     title: "Faithful rendering",
-    description: "Shapes, fills, shadows, and images, inherited through layouts and themes.",
+    description:
+      "Shapes, fills, shadows, and images, inherited through layouts and themes.",
   },
   {
     icon: ChartColumn,
     title: "Charts",
-    description: "Bar, line, area, pie, scatter, and more, drawn from the deck's data.",
+    description:
+      "Bar, line, area, pie, scatter, and more, drawn from the deck's data.",
   },
   {
     icon: Move,
@@ -80,15 +91,31 @@ const COVERAGE = [
     notes: "Bullets, autofit, vertical text, and embedded fonts",
     status: "supported",
   },
-  { area: "Tables", notes: "Merges, borders, and 74 built-in styles", status: "supported" },
-  { area: "Charts", notes: "Nine types; 3-D charts render flat", status: "partial" },
+  {
+    area: "Tables",
+    notes: "Merges, borders, and 74 built-in styles",
+    status: "supported",
+  },
+  {
+    area: "Charts",
+    notes: "Nine types; 3-D charts render flat",
+    status: "partial",
+  },
   {
     area: "SmartArt, EMF, and OLE",
     notes: "Drawn from the fallback stored in the file",
     status: "partial",
   },
-  { area: "Transitions and animations", notes: "Slides render as static frames", status: "none" },
-  { area: "Notes, comments, 3-D, and WMF", notes: "Kept on save, not rendered", status: "none" },
+  {
+    area: "Transitions and animations",
+    notes: "Slides render as static frames",
+    status: "none",
+  },
+  {
+    area: "Notes, comments, 3-D, and WMF",
+    notes: "Kept on save, not rendered",
+    status: "none",
+  },
 ] as const;
 
 const COVERAGE_STATUS = {
@@ -218,7 +245,10 @@ function CtaButtons() {
     <>
       <Link
         href="/docs"
-        className={cn(buttonVariants({ size: "lg" }), "h-10 rounded-md px-4 font-semibold")}
+        className={cn(
+          buttonVariants({ size: "lg" }),
+          "h-10 rounded-md px-4 font-semibold",
+        )}
       >
         Get started
         <ArrowRight className="size-3.75" />
@@ -248,11 +278,13 @@ async function RoundTrip() {
           Save the same file.
         </SectionHeading>
         <p className="text-[17px]/[26px] text-muted-foreground">
-          Only the parts you edit are rewritten. Everything else is saved byte-for-byte.
+          Only the parts you edit are rewritten. Everything else is saved
+          byte-for-byte.
         </p>
         <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
           <span className="size-1.75 rounded-full bg-green-500" />
-          Live: edit the slide above<span className="max-sm:hidden"> and this list updates</span>
+          Live: edit the slide above
+          <span className="max-sm:hidden"> and this list updates</span>
         </p>
       </div>
       <DemoDeckParts fileName={path.basename(DEMO_DECK_PATH)} parts={parts} />
@@ -261,7 +293,9 @@ async function RoundTrip() {
 }
 
 async function getDeckParts(): Promise<DeckPart[]> {
-  const deck = await readFile(path.join(process.cwd(), "public", DEMO_DECK_PATH));
+  const deck = await readFile(
+    path.join(process.cwd(), "public", DEMO_DECK_PATH),
+  );
   const zip = await JSZip.loadAsync(deck);
   const files = Object.values(zip.files).filter((file) => !file.dir);
 
@@ -309,12 +343,16 @@ async function ComposableApi() {
       ...file,
       rendered: await highlight(file.code, {
         lang: "tsx",
-        themes: { light: "material-theme-lighter", dark: "material-theme-darker" },
+        themes: {
+          light: "material-theme-lighter",
+          dark: "material-theme-darker",
+        },
         defaultColor: false,
         transformers: [
           {
             line(node, line) {
-              if (line === file.highlightedLine) node.properties["data-highlighted"] = "";
+              if (line === file.highlightedLine)
+                node.properties["data-highlighted"] = "";
             },
           },
         ],
@@ -338,7 +376,10 @@ async function ComposableApi() {
         defaultValue={files[0]?.name}
         className="dark min-w-0 gap-0 overflow-hidden rounded-xl border bg-card font-mono text-foreground"
       >
-        <TabsList variant="line" className="h-auto w-full justify-start rounded-none border-b px-2">
+        <TabsList
+          variant="line"
+          className="h-auto w-full justify-start rounded-none border-b px-2"
+        >
           {files.map((file) => (
             <TabsTrigger
               key={file.name}
@@ -360,7 +401,9 @@ async function ComposableApi() {
         ))}
       </Tabs>
       <div className="flex flex-col gap-6 max-lg:order-first">
-        <SectionHeading eyebrow="Composable API">Compose your editor.</SectionHeading>
+        <SectionHeading eyebrow="Composable API">
+          Compose your editor.
+        </SectionHeading>
         <p className="text-[17px]/[26px] text-muted-foreground">
           Unstyled, accessible parts you arrange and style like shadcn/ui.
         </p>
@@ -371,7 +414,9 @@ async function ComposableApi() {
               className="flex justify-between gap-x-4 gap-y-1 border-t py-3 max-sm:flex-col sm:items-center"
             >
               <dt className="font-mono">{primitive.name}</dt>
-              <dd className="text-muted-foreground sm:text-right">{primitive.description}</dd>
+              <dd className="text-muted-foreground sm:text-right">
+                {primitive.description}
+              </dd>
             </div>
           ))}
         </dl>
@@ -425,7 +470,9 @@ function Coverage() {
                   key={row.area}
                   className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 border-b px-4 py-3.5 last:border-b-0 md:grid-cols-[15rem_minmax(0,1fr)_7.5rem] md:items-center md:px-6 md:py-4"
                 >
-                  <span className="text-sm font-medium md:text-[15px]">{row.area}</span>
+                  <span className="text-sm font-medium md:text-[15px]">
+                    {row.area}
+                  </span>
                   <span className="text-[13px]/5 text-muted-foreground max-md:order-last max-md:col-span-2 md:text-sm">
                     {row.notes}
                   </span>
@@ -435,7 +482,9 @@ function Coverage() {
                       row.status === "none" && "text-muted-foreground",
                     )}
                   >
-                    <span className={cn("size-1.5 rounded-full", status.className)} />
+                    <span
+                      className={cn("size-1.5 rounded-full", status.className)}
+                    />
                     {status.label}
                   </span>
                 </li>
@@ -452,7 +501,9 @@ function Architecture() {
   return (
     <Section className="flex flex-col gap-8 md:items-center md:gap-16">
       <div className="flex flex-col gap-3.5 md:items-center md:gap-6 md:text-center">
-        <SectionHeading eyebrow="Architecture">React is optional.</SectionHeading>
+        <SectionHeading eyebrow="Architecture">
+          React is optional.
+        </SectionHeading>
         <p className="max-w-[40rem] text-[17px]/[26px] text-balance text-muted-foreground">
           The engine runs on its own. React adds the components.
         </p>
@@ -466,7 +517,11 @@ function Architecture() {
             <p className="pb-4 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <Tier name="Your app" tag={item.app} className="h-11 font-sans font-medium md:h-14" />
+            <Tier
+              name="Your app"
+              tag={item.app}
+              className="h-11 font-sans font-medium md:h-14"
+            />
             <TierConnector />
             <Tier
               name={item.layer}
@@ -481,7 +536,9 @@ function Architecture() {
             <Tier name="@diceui/pptx-core" tag="The engine">
               {CORE_STEPS.map((step, index) => (
                 <React.Fragment key={step}>
-                  {index > 0 && <ArrowRight className="size-3 text-muted-foreground" />}
+                  {index > 0 && (
+                    <ArrowRight className="size-3 text-muted-foreground" />
+                  )}
                   <Chip>{step}</Chip>
                 </React.Fragment>
               ))}
@@ -518,7 +575,9 @@ function Tier({
           {tag}
         </span>
       </div>
-      {children && <div className="flex flex-wrap items-center gap-1.5">{children}</div>}
+      {children && (
+        <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+      )}
     </div>
   );
 }
@@ -533,7 +592,9 @@ function TierConnector() {
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-sm border px-2 py-1 font-mono text-xs font-medium">{children}</span>
+    <span className="rounded-sm border px-2 py-1 font-mono text-xs font-medium">
+      {children}
+    </span>
   );
 }
 
@@ -563,15 +624,29 @@ function Footer() {
   );
 }
 
-function Section({ className, children }: { className?: string; children: React.ReactNode }) {
+function Section({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="px-5 py-14 md:px-8 md:py-24">
-      <div className={cn("mx-auto w-full max-w-300", className)}>{children}</div>
+      <div className={cn("mx-auto w-full max-w-300", className)}>
+        {children}
+      </div>
     </section>
   );
 }
 
-function SectionHeading({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
+function SectionHeading({
+  eyebrow,
+  children,
+}: {
+  eyebrow: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3.5 md:gap-5">
       <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">
@@ -584,7 +659,11 @@ function SectionHeading({ eyebrow, children }: { eyebrow: string; children: Reac
   );
 }
 
-function IconTile({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
+function IconTile({
+  icon: Icon,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
     <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
       <Icon className="size-4" />

@@ -10,7 +10,9 @@ function parseDlblBool(dLbls: SafeXmlNode, childName: string): boolean {
   return parseOoxmlBoolElement(dLbls.child(childName));
 }
 
-function parseDataLabelManualLayout(node: SafeXmlNode): DataLabelManualLayout | undefined {
+function parseDataLabelManualLayout(
+  node: SafeXmlNode,
+): DataLabelManualLayout | undefined {
   const manual = node.child("layout").child("manualLayout");
   if (!manual.exists()) return undefined;
   const out: DataLabelManualLayout = {};
@@ -38,7 +40,9 @@ export function parseDataLabels(
   const showPercent = parseDlblBool(dLbls, "showPercent");
   const showLeaderLines = parseDlblBool(dLbls, "showLeaderLines");
   const posNode = dLbls.child("dLblPos");
-  const position = posNode.exists() ? posNode.attr("val") || undefined : undefined;
+  const position = posNode.exists()
+    ? posNode.attr("val") || undefined
+    : undefined;
   const manualLayout = parseDataLabelManualLayout(dLbls);
 
   const txStyle = extractTxPrStyle(dLbls, ctx);
@@ -47,7 +51,8 @@ export function parseDataLabels(
   const bold = txStyle?.bold;
   const boxStyle = parseDataLabelBoxStyle(dLbls, ctx);
 
-  if (!showVal && !showCatName && !showSerName && !showPercent) return undefined;
+  if (!showVal && !showCatName && !showSerName && !showPercent)
+    return undefined;
 
   return {
     showVal,
@@ -64,13 +69,19 @@ export function parseDataLabels(
   };
 }
 
-function parseDlblBoolOptional(dLbl: SafeXmlNode, childName: string): boolean | undefined {
+function parseDlblBoolOptional(
+  dLbl: SafeXmlNode,
+  childName: string,
+): boolean | undefined {
   const el = dLbl.child(childName);
   if (!el.exists()) return undefined;
   return parseOoxmlBoolElement(el);
 }
 
-function parseDataLabelBoxStyle(dLbls: SafeXmlNode, ctx: RenderContext): Partial<DataLabelConfig> {
+function parseDataLabelBoxStyle(
+  dLbls: SafeXmlNode,
+  ctx: RenderContext,
+): Partial<DataLabelConfig> {
   const style: Partial<DataLabelConfig> = {};
   const spPr = dLbls.child("spPr");
   if (spPr.exists()) {

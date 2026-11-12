@@ -86,7 +86,9 @@ import { Still } from "remotion";
 import { Thumbnail } from "./Thumbnail";
 
 export const RemotionRoot = () => {
-  return <Still id="Thumbnail" component={Thumbnail} width={1280} height={720} />;
+  return (
+    <Still id="Thumbnail" component={Thumbnail} width={1280} height={720} />
+  );
 };
 ```
 

@@ -36,7 +36,9 @@ describe("readPptx media and auxiliary parts", () => {
   it("extracts ppt/tableStyles.xml into files.tableStyles", async () => {
     const tableStylesXml = `<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{X}"><a:tblStyle styleId="{X}" styleName="Custom"/></a:tblStyleLst>`;
     const files = await readPptx(
-      await buildCustomPptx({ extraFiles: { "ppt/tableStyles.xml": tableStylesXml } }),
+      await buildCustomPptx({
+        extraFiles: { "ppt/tableStyles.xml": tableStylesXml },
+      }),
     );
     expect(files.tableStyles).toBe(tableStylesXml);
   });
@@ -44,7 +46,9 @@ describe("readPptx media and auxiliary parts", () => {
   it("extracts embedded font parts under ppt/fonts/*.fntdata", async () => {
     const fontBytes = new Uint8Array([0x00, 0x01, 0x00, 0x00, 1, 2, 3]);
     const files = await readPptx(
-      await buildCustomPptx({ extraFiles: { "ppt/fonts/font1.fntdata": fontBytes } }),
+      await buildCustomPptx({
+        extraFiles: { "ppt/fonts/font1.fntdata": fontBytes },
+      }),
     );
     expect(files.fonts.get("ppt/fonts/font1.fntdata")).toEqual(fontBytes);
   });
@@ -52,14 +56,18 @@ describe("readPptx media and auxiliary parts", () => {
   it("extracts embedded font parts whatever their extension", async () => {
     const fontBytes = new Uint8Array([0x00, 0x01, 0x00, 0x00, 1, 2, 3]);
     const files = await readPptx(
-      await buildCustomPptx({ extraFiles: { "ppt/fonts/font.dat": fontBytes } }),
+      await buildCustomPptx({
+        extraFiles: { "ppt/fonts/font.dat": fontBytes },
+      }),
     );
     expect(files.fonts.get("ppt/fonts/font.dat")).toEqual(fontBytes);
   });
 
   it("stores masters, layouts, and rels keyed by normalized path", async () => {
     const files = await readPptx(await buildCustomPptx());
-    expect([...files.slideMasters.keys()]).toEqual(["ppt/slideMasters/slideMaster1.xml"]);
+    expect([...files.slideMasters.keys()]).toEqual([
+      "ppt/slideMasters/slideMaster1.xml",
+    ]);
     expect([...files.slideMasterRels.keys()]).toEqual([
       "ppt/slideMasters/_rels/slideMaster1.xml.rels",
     ]);
@@ -80,7 +88,9 @@ describe("readPptx media and auxiliary parts", () => {
       }),
     );
     expect(files.charts.get("ppt/slides/charts/chart1.xml")).toBe(chartXml);
-    expect(files.chartRels?.get("ppt/slides/charts/_rels/chart1.xml.rels")).toBe(relsXml);
+    expect(
+      files.chartRels?.get("ppt/slides/charts/_rels/chart1.xml.rels"),
+    ).toBe(relsXml);
     expect(files.chartStyles.has("ppt/slides/charts/style1.xml")).toBe(true);
     expect(files.chartColors.has("ppt/slides/charts/colors1.xml")).toBe(true);
     // Slide categorization must not swallow the nested chart parts.
@@ -97,9 +107,15 @@ describe("readPptx media and auxiliary parts", () => {
         },
       }),
     );
-    expect(files.themes.get("ppt/slideMasters/theme/theme2.xml")).toBe(themeXml);
-    expect(files.themes.has("ppt/slideMasters/theme/themeOverride1.xml")).toBe(false);
-    expect(files.themeOverrides?.has("ppt/slideMasters/theme/themeOverride1.xml")).toBe(true);
+    expect(files.themes.get("ppt/slideMasters/theme/theme2.xml")).toBe(
+      themeXml,
+    );
+    expect(files.themes.has("ppt/slideMasters/theme/themeOverride1.xml")).toBe(
+      false,
+    );
+    expect(
+      files.themeOverrides?.has("ppt/slideMasters/theme/themeOverride1.xml"),
+    ).toBe(true);
     expect(files.slideMasters.size).toBe(1);
   });
 
@@ -168,7 +184,9 @@ describe("readPptx lazyMedia", () => {
 
   it("resolves undefined for unknown targets", async () => {
     const files = await readPptx(await pptxWithMedia(), { lazyMedia: true });
-    await expect(files.mediaResolver!.resolve("../media/missing.png")).resolves.toBeUndefined();
+    await expect(
+      files.mediaResolver!.resolve("../media/missing.png"),
+    ).resolves.toBeUndefined();
   });
 
   it("otherwise categorizes XML parts exactly like eager readPptx", async () => {
@@ -186,9 +204,9 @@ describe("readPptx limits", () => {
     const buffer = await buildCustomPptx({
       extraFiles: { "ppt/media/big.png": fakePngBytes(1024) },
     });
-    await expect(readPptx(buffer, { limits: { maxMediaBytes: 512 } })).rejects.toThrow(
-      /media bytes/,
-    );
+    await expect(
+      readPptx(buffer, { limits: { maxMediaBytes: 512 } }),
+    ).rejects.toThrow(/media bytes/);
   });
 
   it("enforces maxMediaBytes up front in lazy mode via zip directory sizes", async () => {
@@ -208,37 +226,46 @@ describe("readPptx limits", () => {
       },
     });
     // Each entry fits alone but not together.
-    await expect(readPptx(buffer, { limits: { maxMediaBytes: 400 } })).rejects.toThrow(
-      /media bytes/,
-    );
-    await expect(readPptx(buffer, { limits: { maxMediaBytes: 600 } })).resolves.toBeDefined();
+    await expect(
+      readPptx(buffer, { limits: { maxMediaBytes: 400 } }),
+    ).rejects.toThrow(/media bytes/);
+    await expect(
+      readPptx(buffer, { limits: { maxMediaBytes: 600 } }),
+    ).resolves.toBeDefined();
   });
 
   it("admits the fixture under RECOMMENDED_PPTX_READ_LIMITS in both modes", async () => {
     const buffer = await pptxWithMedia();
-    await expect(readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS })).resolves.toBeDefined();
-    const lazy = await readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS, lazyMedia: true });
+    await expect(
+      readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS }),
+    ).resolves.toBeDefined();
+    const lazy = await readPptx(buffer, {
+      limits: RECOMMENDED_PPTX_READ_LIMITS,
+      lazyMedia: true,
+    });
     const resolved = await lazy.mediaResolver?.resolve("../media/image1.png");
     expect(resolved?.data).toEqual(PNG);
   });
 
   it("rejects invalid maxConcurrency values", async () => {
     const buffer = await buildCustomPptx();
-    await expect(readPptx(buffer, { limits: { maxConcurrency: 0 } })).rejects.toThrow(
-      /maxConcurrency/,
-    );
-    await expect(readPptx(buffer, { limits: { maxConcurrency: 1.5 } })).rejects.toThrow(
-      /maxConcurrency/,
-    );
-    await expect(readPptx(buffer, { limits: { maxConcurrency: 1 } })).resolves.toBeDefined();
+    await expect(
+      readPptx(buffer, { limits: { maxConcurrency: 0 } }),
+    ).rejects.toThrow(/maxConcurrency/);
+    await expect(
+      readPptx(buffer, { limits: { maxConcurrency: 1.5 } }),
+    ).rejects.toThrow(/maxConcurrency/);
+    await expect(
+      readPptx(buffer, { limits: { maxConcurrency: 1 } }),
+    ).resolves.toBeDefined();
   });
 
   it("enforces maxEntryUncompressedBytes against media entries", async () => {
     const buffer = await buildCustomPptx({
       extraFiles: { "ppt/media/big.png": fakePngBytes(2048) },
     });
-    await expect(readPptx(buffer, { limits: { maxEntryUncompressedBytes: 1024 } })).rejects.toThrow(
-      /maxEntryUncompressedBytes/,
-    );
+    await expect(
+      readPptx(buffer, { limits: { maxEntryUncompressedBytes: 1024 } }),
+    ).rejects.toThrow(/maxEntryUncompressedBytes/);
   });
 });

@@ -31,5 +31,10 @@ export function useDemoDeckStore() {
 export function PresentationEditingDemo() {
   const store = useDemoDeckStore();
 
-  return <PresentationEditor store={store} className="not-prose h-[36rem] rounded-lg" />;
+  return (
+    <PresentationEditor
+      store={store}
+      className="not-prose h-[36rem] rounded-lg"
+    />
+  );
 }

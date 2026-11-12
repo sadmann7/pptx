@@ -80,7 +80,8 @@ export const noLowValueComments = {
   meta: {
     type: "suggestion" as const,
     docs: {
-      description: "Flags comments that only repeat the name of the declaration below them",
+      description:
+        "Flags comments that only repeat the name of the declaration below them",
     },
   },
   create(context: Context) {
@@ -127,7 +128,8 @@ function getCommentGroups(context: Context) {
   }
   return groups.filter(
     ({ comments, lines }) =>
-      lines.length > 0 && !comments.some((comment) => DIRECTIVE.test(comment.value)),
+      lines.length > 0 &&
+      !comments.some((comment) => DIRECTIVE.test(comment.value)),
   );
 }
 
@@ -158,18 +160,32 @@ function checkGroup(context: Context, { comments, lines }: Group) {
   }
   if (TASK_MARKER.test(text) && !TASK_LINK.test(text)) {
     report("Link the issue that tracks this, or drop the marker.");
-  } else if (!TASK_MARKER.test(text) && BARE_ISSUE_REF.test(text.replace(CODE_SPAN, ""))) {
-    report("Drop the PR or issue number; git history records it. Keep the reason.");
+  } else if (
+    !TASK_MARKER.test(text) &&
+    BARE_ISSUE_REF.test(text.replace(CODE_SPAN, ""))
+  ) {
+    report(
+      "Drop the PR or issue number; git history records it. Keep the reason.",
+    );
   }
-  if (TS_FILE.test(context.filename) && lines.some((line) => JSDOC_TYPE.test(line))) {
+  if (
+    TS_FILE.test(context.filename) &&
+    lines.some((line) => JSDOC_TYPE.test(line))
+  ) {
     report("Drop the JSDoc type; TypeScript already has it.");
   }
   if (lines.some((line) => EMPTY_JSDOC_TAG.test(line))) {
     report("Drop the JSDoc tag that has no description.");
   }
   const isFileHeader = !context.sourceCode.text.slice(0, first.range[0]).trim();
-  if (getProseLineCount(comments) > MAX_LINES && !isFileHeader && !LICENSE.test(text)) {
-    report(`Cut this to ${MAX_LINES} lines or fewer: keep the constraint, drop the background.`);
+  if (
+    getProseLineCount(comments) > MAX_LINES &&
+    !isFileHeader &&
+    !LICENSE.test(text)
+  ) {
+    report(
+      `Cut this to ${MAX_LINES} lines or fewer: keep the constraint, drop the background.`,
+    );
   }
   const filler = FILLER.exec(lines[0] ?? "")?.[0];
   if (filler) {
@@ -223,7 +239,10 @@ function getSentenceEnd(comment: Comment) {
     const line = stripLine(raw);
     if (line.startsWith("@")) break;
     if (line) {
-      isSentence = !INDENTED_CODE.test(raw) && !LIST_ITEM.test(line) && !END_PUNCTUATION.test(line);
+      isSentence =
+        !INDENTED_CODE.test(raw) &&
+        !LIST_ITEM.test(line) &&
+        !END_PUNCTUATION.test(line);
       end = start + offset + raw.trimEnd().length;
     }
     offset += raw.length + 1;
@@ -238,13 +257,20 @@ function restatesNextName(context: Context, comment: Comment, lines: string[]) {
   const lineEnd = text.indexOf("\n", comment.range[1]);
   if (lineEnd === -1) return false;
   const nextLineEnd = text.indexOf("\n", lineEnd + 1);
-  const nextLine = text.slice(lineEnd + 1, nextLineEnd === -1 ? undefined : nextLineEnd);
+  const nextLine = text.slice(
+    lineEnd + 1,
+    nextLineEnd === -1 ? undefined : nextLineEnd,
+  );
   const name = DECLARATION.exec(nextLine)?.[1];
   if (!name) return false;
   const content = getWords(lines.join(" "));
   if (content.length === 0 || content.length > 6) return false;
   const nameWords = new Set(
-    getWords(name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")),
+    getWords(
+      name
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2"),
+    ),
   );
   return content.every((word) => nameWords.has(word));
 }

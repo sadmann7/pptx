@@ -11,7 +11,9 @@ export interface ComputePanelScaleResult {
   scaledHeight: number;
 }
 
-export function computePanelScale(input: ComputePanelScaleInput): ComputePanelScaleResult | null {
+export function computePanelScale(
+  input: ComputePanelScaleInput,
+): ComputePanelScaleResult | null {
   const panelWidth = Number.isFinite(input.panelWidth) ? input.panelWidth : 0;
   if (panelWidth <= 0) return null;
 

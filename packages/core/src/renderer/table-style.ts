@@ -136,7 +136,8 @@ function stylePart(
 ): string {
   if (!opts.textColor && !opts.bold && !opts.fill && !opts.borders) return "";
   const parts: string[] = [`<a:${tag}>`];
-  if (opts.textColor || opts.bold) parts.push(tcTxStyle(opts.textColor ?? "", opts.bold));
+  if (opts.textColor || opts.bold)
+    parts.push(tcTxStyle(opts.textColor ?? "", opts.bold));
   parts.push("<a:tcStyle>");
   if (opts.fill) parts.push(opts.fill);
   if (opts.borders) {
@@ -152,7 +153,11 @@ function stylePart(
 }
 
 function noStyleNoGrid(_accent: string, styleId: string): string {
-  return wrapTblStyle(styleId, "No-Style-No-Grid", stylePart("wholeTbl", { textColor: "tx1" }));
+  return wrapTblStyle(
+    styleId,
+    "No-Style-No-Grid",
+    stylePart("wholeTbl", { textColor: "tx1" }),
+  );
 }
 
 function noStyleTableGrid(_accent: string, styleId: string): string {
@@ -242,18 +247,30 @@ function themedStyle2(accent: string, styleId: string): string {
     top: borderLn(accentVal, `tint val="50000"`),
     bottom: borderLn(accentVal, `tint val="50000"`),
   };
-  parts.push(stylePart("wholeTbl", { textColor: "lt1", borders: outerBorders }));
+  parts.push(
+    stylePart("wholeTbl", { textColor: "lt1", borders: outerBorders }),
+  );
 
   const bandFill = fillSolid("lt1", `alpha val="20000"`);
   parts.push(stylePart("band1H", { fill: bandFill }));
   parts.push(stylePart("band1V", { fill: bandFill }));
 
   parts.push(
-    stylePart("firstRow", { textColor: "lt1", bold: true, borders: { bottom: borderLn("lt1") } }),
+    stylePart("firstRow", {
+      textColor: "lt1",
+      bold: true,
+      borders: { bottom: borderLn("lt1") },
+    }),
   );
-  parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn("lt1") } }));
-  parts.push(stylePart("firstCol", { bold: true, borders: { right: borderLn("lt1") } }));
-  parts.push(stylePart("lastCol", { bold: true, borders: { left: borderLn("lt1") } }));
+  parts.push(
+    stylePart("lastRow", { bold: true, borders: { top: borderLn("lt1") } }),
+  );
+  parts.push(
+    stylePart("firstCol", { bold: true, borders: { right: borderLn("lt1") } }),
+  );
+  parts.push(
+    stylePart("lastCol", { bold: true, borders: { left: borderLn("lt1") } }),
+  );
 
   return wrapTblStyle(styleId, "Themed-Style-2", tblBg + parts.join(""));
 }
@@ -284,7 +301,9 @@ function lightStyle1(accent: string, styleId: string): string {
     }),
   );
 
-  parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
+  parts.push(
+    stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }),
+  );
 
   parts.push(stylePart("firstCol", { textColor: "tx1", bold: true }));
   parts.push(stylePart("lastCol", { textColor: "tx1", bold: true }));
@@ -328,9 +347,17 @@ function lightStyle2(accent: string, styleId: string): string {
     }),
   );
 
-  parts.push(stylePart("firstRow", { textColor: "bg1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("firstRow", {
+      textColor: "bg1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
-  parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
+  parts.push(
+    stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }),
+  );
 
   parts.push(stylePart("firstCol", { bold: true }));
   parts.push(stylePart("lastCol", { bold: true }));
@@ -368,7 +395,9 @@ function lightStyle3(accent: string, styleId: string): string {
     }),
   );
 
-  parts.push(stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }));
+  parts.push(
+    stylePart("lastRow", { bold: true, borders: { top: borderLn(accentVal) } }),
+  );
 
   parts.push(stylePart("firstCol", { bold: true }));
   parts.push(stylePart("lastCol", { bold: true }));
@@ -398,7 +427,13 @@ function mediumStyle1(accent: string, styleId: string): string {
   parts.push(stylePart("band1H", { fill: bandFill }));
   parts.push(stylePart("band1V", { fill: bandFill }));
 
-  parts.push(stylePart("firstRow", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("firstRow", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
   parts.push(
     stylePart("lastRow", {
@@ -455,9 +490,21 @@ function mediumStyle2(accent: string, styleId: string): string {
     }),
   );
 
-  parts.push(stylePart("firstCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("firstCol", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
-  parts.push(stylePart("lastCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("lastCol", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
   return wrapTblStyle(styleId, "Medium-Style-2", parts.join(""));
 }
@@ -498,9 +545,21 @@ function mediumStyle3(accent: string, styleId: string): string {
     }),
   );
 
-  parts.push(stylePart("firstCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("firstCol", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
-  parts.push(stylePart("lastCol", { textColor: "lt1", bold: true, fill: fillSolid(accentVal) }));
+  parts.push(
+    stylePart("lastCol", {
+      textColor: "lt1",
+      bold: true,
+      fill: fillSolid(accentVal),
+    }),
+  );
 
   return wrapTblStyle(styleId, "Medium-Style-3", parts.join(""));
 }
@@ -648,11 +707,18 @@ function darkStyle2(accent: string, styleId: string): string {
   return wrapTblStyle(styleId, "Dark-Style-2", parts.join(""));
 }
 
-function wrapTblStyle(styleId: string, styleName: string, innerXml: string): string {
+function wrapTblStyle(
+  styleId: string,
+  styleName: string,
+  innerXml: string,
+): string {
   return `<a:tblStyle ${NS} styleId="${styleId}" styleName="${styleName}">${innerXml}</a:tblStyle>`;
 }
 
-const styleGenerators: Record<string, (accent: string, styleId: string) => string> = {
+const styleGenerators: Record<
+  string,
+  (accent: string, styleId: string) => string
+> = {
   "No-Style-No-Grid": noStyleNoGrid,
   "No-Style-Table-Grid": noStyleTableGrid,
   "Themed-Style-1": themedStyle1,
@@ -670,7 +736,9 @@ const styleGenerators: Record<string, (accent: string, styleId: string) => strin
 
 const cache = new Map<string, SafeXmlNode>();
 
-export function getPredefinedTableStyle(styleId: string): SafeXmlNode | undefined {
+export function getPredefinedTableStyle(
+  styleId: string,
+): SafeXmlNode | undefined {
   const cached = cache.get(styleId);
   if (cached) return cached;
 

@@ -21,7 +21,10 @@ export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 4;
 export const DEFAULT_ZOOM_STEP = 0.25;
 
-const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
+const ABORT_ERROR = new DOMException(
+  "Superseded by a newer load",
+  "AbortError",
+);
 
 // Load-progress cost per byte, relative to unzipping one compressed input byte.
 const READ_COST_PER_BYTE = 0.05;
@@ -178,7 +181,9 @@ export interface StoreEventMap {
   zoomChange: ZoomChangeEvent;
 }
 
-type StoreEventHandler<E extends keyof StoreEventMap> = (payload: StoreEventMap[E]) => void;
+type StoreEventHandler<E extends keyof StoreEventMap> = (
+  payload: StoreEventMap[E],
+) => void;
 
 /** Store returned by `useCreatePresentationStore` for controlled usage. */
 export interface Store {
@@ -207,7 +212,10 @@ export interface Store {
    * });
    * ```
    */
-  on: <E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>) => () => void;
+  on: <E extends keyof StoreEventMap>(
+    event: E,
+    handler: StoreEventHandler<E>,
+  ) => () => void;
 
   /**
    * Parses and displays a presentation file, resolving with its `PresentationData`.
@@ -336,7 +344,11 @@ export interface Store {
    * store.fitTo(containerWidth, containerHeight, 32);
    * ```
    */
-  fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
+  fitTo: (
+    containerWidth: number,
+    containerHeight: number,
+    padding?: AutoFitPadding,
+  ) => void;
 
   /** Returns the 0-based index of a slide by its stable id in constant time, or `-1` if not found. */
   getSlideIndex: (slideId: string) => number;
@@ -425,7 +437,9 @@ async function normalizeInput(input: PreviewInput): Promise<ArrayBuffer> {
   throw new Error("Unsupported input type.");
 }
 
-function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding {
+function normalizePadding(
+  padding: AutoFitPadding | undefined = 0,
+): SidePadding {
   if (typeof padding === "number") {
     return { top: padding, right: padding, bottom: padding, left: padding };
   }
@@ -441,7 +455,9 @@ function normalizePadding(padding: AutoFitPadding | undefined = 0): SidePadding 
 export function createStore(): Store {
   let state: StoreState = { ...DEFAULT_STORE_STATE };
   const listeners = new Set<() => void>();
-  const eventListeners: { [E in keyof StoreEventMap]: Set<StoreEventHandler<E>> } = {
+  const eventListeners: {
+    [E in keyof StoreEventMap]: Set<StoreEventHandler<E>>;
+  } = {
     slideChange: new Set(),
     edit: new Set(),
     historyChange: new Set(),
@@ -476,7 +492,9 @@ export function createStore(): Store {
   }
 
   function setState(
-    update: Partial<StoreState> | ((current: StoreState) => Partial<StoreState>),
+    update:
+      | Partial<StoreState>
+      | ((current: StoreState) => Partial<StoreState>),
   ): void {
     const patch = typeof update === "function" ? update(state) : update;
     const previous = state;
@@ -498,7 +516,10 @@ export function createStore(): Store {
   // or operation are emitted where the mutation happens.
   function emitStateEvents(previous: StoreState): void {
     if (state.status !== previous.status) {
-      emitEvent("statusChange", { status: state.status, previousStatus: previous.status });
+      emitEvent("statusChange", {
+        status: state.status,
+        previousStatus: previous.status,
+      });
     }
     if (state.zoom !== previous.zoom) {
       emitEvent("zoomChange", {
@@ -518,7 +539,10 @@ export function createStore(): Store {
     return () => listeners.delete(listener);
   }
 
-  function on<E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>): () => void {
+  function on<E extends keyof StoreEventMap>(
+    event: E,
+    handler: StoreEventHandler<E>,
+  ): () => void {
     const handlers = eventListeners[event] as Set<StoreEventHandler<E>>;
     handlers.add(handler);
     return () => {
@@ -526,11 +550,18 @@ export function createStore(): Store {
     };
   }
 
-  function emitEvent<E extends keyof StoreEventMap>(event: E, payload: StoreEventMap[E]): void {
-    for (const handler of eventListeners[event] as Set<StoreEventHandler<E>>) handler(payload);
+  function emitEvent<E extends keyof StoreEventMap>(
+    event: E,
+    payload: StoreEventMap[E],
+  ): void {
+    for (const handler of eventListeners[event] as Set<StoreEventHandler<E>>)
+      handler(payload);
   }
 
-  function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
+  function emitSlideChange(
+    previousSlideId: string | null,
+    reason: SlideChangeReason,
+  ): void {
     const slideId = state.activeSlideId;
     if (slideId === previousSlideId) return;
     emitEvent("slideChange", {
@@ -588,7 +619,10 @@ export function createStore(): Store {
     emitHistoryChange(previousHistory);
 
     // The budget grows once font bytes are known, so progress only ever moves forward.
-    const inputBytes = Math.max(1, input instanceof Blob ? input.size : input.byteLength);
+    const inputBytes = Math.max(
+      1,
+      input instanceof Blob ? input.size : input.byteLength,
+    );
     const readUnits = inputBytes * READ_COST_PER_BYTE;
     const zipUnits = inputBytes;
 
@@ -623,7 +657,9 @@ export function createStore(): Store {
       workDone = readUnits + zipUnits;
       reportProgress();
 
-      const presentation = buildPresentation(files, { lazySlides: options?.lazySlides ?? true });
+      const presentation = buildPresentation(files, {
+        lazySlides: options?.lazySlides ?? true,
+      });
       if (gen !== loadGeneration) throw ABORT_ERROR;
 
       const defaultSlideIndex = options?.defaultSlideIndex;
@@ -631,7 +667,11 @@ export function createStore(): Store {
         typeof defaultSlideIndex === "function"
           ? defaultSlideIndex(presentation.slides)
           : (defaultSlideIndex ?? 0);
-      const startIndex = clamp(requestedIndex, 0, presentation.slides.length - 1);
+      const startIndex = clamp(
+        requestedIndex,
+        0,
+        presentation.slides.length - 1,
+      );
       const startSlide = presentation.slides[startIndex];
 
       // Priority font detection needs the raw XML, which materialization
@@ -657,7 +697,9 @@ export function createStore(): Store {
         const fontBaseUnits = workDone;
         workTotal += fontUnits;
 
-        const priorityTypefaces = findPriorityTypefaces(presentation, [startSlideXml]);
+        const priorityTypefaces = findPriorityTypefaces(presentation, [
+          startSlideXml,
+        ]);
         embeddedFonts = loadEmbeddedFonts(presentation, {
           priorityTypefaces,
           onProgress: (done, total) => {
@@ -688,9 +730,11 @@ export function createStore(): Store {
 
       return presentation;
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      if (error instanceof DOMException && error.name === "AbortError")
+        throw error;
       if (gen !== loadGeneration) throw ABORT_ERROR;
-      const typedError = error instanceof Error ? error : new Error(String(error));
+      const typedError =
+        error instanceof Error ? error : new Error(String(error));
       setState({ status: "error", error: typedError });
       throw typedError;
     }
@@ -761,7 +805,11 @@ export function createStore(): Store {
   }
 
   // `isAutoFit` is written with the level so releasing it notifies only once.
-  function applyZoom(zoom: number, reason: ZoomChangeReason, isAutoFit = state.isAutoFit): void {
+  function applyZoom(
+    zoom: number,
+    reason: ZoomChangeReason,
+    isAutoFit = state.isAutoFit,
+  ): void {
     if (!Number.isFinite(zoom)) return;
     const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
     if (Object.is(clamped, state.zoom) && isAutoFit === state.isAutoFit) return;
@@ -797,7 +845,10 @@ export function createStore(): Store {
     const availW = containerWidth - left - right;
     const availH = containerHeight - top - bottom;
     if (availW <= 0 || availH <= 0) return;
-    applyZoom(Math.min(availW / presentation.width, availH / presentation.height), "fit");
+    applyZoom(
+      Math.min(availW / presentation.width, availH / presentation.height),
+      "fit",
+    );
   }
 
   function reset(): void {
@@ -854,15 +905,23 @@ export function createStore(): Store {
     for (const slideId of affectedSlideIds) {
       slideRevisionById.set(slideId, getSlideRevision(slideId) + 1);
       if (!transformOnly) {
-        slideContentRevisionById.set(slideId, getSlideContentRevision(slideId) + 1);
+        slideContentRevisionById.set(
+          slideId,
+          getSlideContentRevision(slideId) + 1,
+        );
       }
     }
     rebuildSlideIndex(presentation);
 
     let activeSlideId = state.activeSlideId;
-    const activeGone = activeSlideId !== null && !slideIndexById.has(activeSlideId);
+    const activeGone =
+      activeSlideId !== null && !slideIndexById.has(activeSlideId);
     if (activeGone || activeSlideId === null) {
-      const fallbackIndex = clamp(prevActiveIndex, 0, presentation.slides.length - 1);
+      const fallbackIndex = clamp(
+        prevActiveIndex,
+        0,
+        presentation.slides.length - 1,
+      );
       activeSlideId =
         fallbackSlideId !== null && slideIndexById.has(fallbackSlideId)
           ? fallbackSlideId
@@ -916,7 +975,12 @@ export function createStore(): Store {
 
     undoStack.push({ op, result, activeSlideId });
     redoStack = [];
-    commitEdit(result.affectedSlideIds, prevActiveIndex, false, isTransformOnly(op));
+    commitEdit(
+      result.affectedSlideIds,
+      prevActiveIndex,
+      false,
+      isTransformOnly(op),
+    );
     emitEvent("edit", { operation: op, result, source: "edit" });
     emitHistoryChange(previousHistory);
     return result;
@@ -937,8 +1001,18 @@ export function createStore(): Store {
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
-    commitEdit(affected, prevActiveIndex, true, isTransformOnly(entry.op), entry.activeSlideId);
-    emitEvent("edit", { operation: entry.op, result: entry.result, source: "undo" });
+    commitEdit(
+      affected,
+      prevActiveIndex,
+      true,
+      isTransformOnly(entry.op),
+      entry.activeSlideId,
+    );
+    emitEvent("edit", {
+      operation: entry.op,
+      result: entry.result,
+      source: "undo",
+    });
     emitHistoryChange(previousHistory);
     return true;
   }
@@ -956,8 +1030,17 @@ export function createStore(): Store {
 
     const prevActiveIndex = getActiveSlideIndex();
     const result = await applyEdit(presentation, entry.op);
-    undoStack.push({ op: entry.op, result, activeSlideId: entry.activeSlideId });
-    commitEdit(result.affectedSlideIds, prevActiveIndex, true, isTransformOnly(entry.op));
+    undoStack.push({
+      op: entry.op,
+      result,
+      activeSlideId: entry.activeSlideId,
+    });
+    commitEdit(
+      result.affectedSlideIds,
+      prevActiveIndex,
+      true,
+      isTransformOnly(entry.op),
+    );
     emitEvent("edit", { operation: entry.op, result, source: "redo" });
     emitHistoryChange(previousHistory);
     return true;

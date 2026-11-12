@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getMultiPathPreset, getPresetShapePath, presetShapes } from "../../geometry/preset";
+import {
+  getMultiPathPreset,
+  getPresetShapePath,
+  presetShapes,
+} from "../../geometry/preset";
 
 // All 187 preset names from ECMA-376 ST_ShapeType (dml-main.xsd, 5th edition).
 const ST_SHAPE_TYPE = [
@@ -212,21 +216,27 @@ describe("preset shape coverage", () => {
     expectValidPathData(getPresetShapePath(name, 200, 100), name);
   });
 
-  it.each(ST_SHAPE_TYPE)("renders %s at square/tall extents without NaN", (name) => {
-    for (const [w, h] of [
-      [100, 100],
-      [50, 300],
-    ] as const) {
-      const multi = getMultiPathPreset(name, w, h);
-      if (multi) {
-        for (const sub of multi) {
-          expectValidPathData(sub.d, `${name} sub-path at ${w}x${h}`);
+  it.each(ST_SHAPE_TYPE)(
+    "renders %s at square/tall extents without NaN",
+    (name) => {
+      for (const [w, h] of [
+        [100, 100],
+        [50, 300],
+      ] as const) {
+        const multi = getMultiPathPreset(name, w, h);
+        if (multi) {
+          for (const sub of multi) {
+            expectValidPathData(sub.d, `${name} sub-path at ${w}x${h}`);
+          }
+          continue;
         }
-        continue;
+        expectValidPathData(
+          getPresetShapePath(name, w, h),
+          `${name} at ${w}x${h}`,
+        );
       }
-      expectValidPathData(getPresetShapePath(name, w, h), `${name} at ${w}x${h}`);
-    }
-  });
+    },
+  );
 });
 
 describe("preset registry", () => {
@@ -249,8 +259,18 @@ describe("preset registry", () => {
 
 describe("adjustment values", () => {
   it("mathPlus reads the spec-named adj1 adjustment (regression)", () => {
-    const thin = getPresetShapePath("mathPlus", 200, 200, new Map([["adj1", 10000]]));
-    const thick = getPresetShapePath("mathPlus", 200, 200, new Map([["adj1", 50000]]));
+    const thin = getPresetShapePath(
+      "mathPlus",
+      200,
+      200,
+      new Map([["adj1", 10000]]),
+    );
+    const thick = getPresetShapePath(
+      "mathPlus",
+      200,
+      200,
+      new Map([["adj1", 50000]]),
+    );
     const unset = getPresetShapePath("mathPlus", 200, 200);
     expect(thin).not.toBe(unset);
     expect(thick).not.toBe(unset);
@@ -258,8 +278,18 @@ describe("adjustment values", () => {
   });
 
   it("roundRect corner radius follows adj", () => {
-    const sharp = getPresetShapePath("roundRect", 200, 100, new Map([["adj", 0]]));
-    const round = getPresetShapePath("roundRect", 200, 100, new Map([["adj", 50000]]));
+    const sharp = getPresetShapePath(
+      "roundRect",
+      200,
+      100,
+      new Map([["adj", 0]]),
+    );
+    const round = getPresetShapePath(
+      "roundRect",
+      200,
+      100,
+      new Map([["adj", 50000]]),
+    );
     expect(sharp).not.toBe(round);
   });
 

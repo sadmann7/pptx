@@ -1,7 +1,11 @@
 import { act, render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import type { UsePresentationResult, UseSlideResult, UseZoomResult } from "../context";
+import type {
+  UsePresentationResult,
+  UseSlideResult,
+  UseZoomResult,
+} from "../context";
 import { usePresentation, useSlide, useStore, useZoom } from "../context";
 import { Presentation } from "../index";
 import type { Store } from "../store";
@@ -57,7 +61,9 @@ describe("usePresentation", () => {
     expect(presentation().status).toBe("ready");
     expect(presentation().progress).toBe(100);
     expect(presentation().error).toBeNull();
-    expect(presentation().presentation?.slides).toHaveLength(FIXTURE_SLIDE_COUNT);
+    expect(presentation().presentation?.slides).toHaveLength(
+      FIXTURE_SLIDE_COUNT,
+    );
   });
 
   it("throws when used outside a Presentation tree", () => {

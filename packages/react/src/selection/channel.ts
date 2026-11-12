@@ -32,7 +32,11 @@ export function markControlsEvent(event: Event): void {
 
 export function getIsControlsTarget(target: EventTarget | null): boolean {
   const element =
-    target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+    target instanceof Element
+      ? target
+      : target instanceof Node
+        ? target.parentElement
+        : null;
   return element?.closest(`[${CONTROLS_ATTRIBUTE}]`) != null;
 }
 
@@ -50,7 +54,9 @@ export type TableChange =
   | { type: "splitCell" };
 
 /** What a click or drag on the slide places, once `startDrawing` arms it. */
-export type DrawTool = { type: "textBox" } | { type: "shape"; geometry: string };
+export type DrawTool =
+  | { type: "textBox" }
+  | { type: "shape"; geometry: string };
 
 export interface SelectionSnapshot {
   slideId: string | null;
@@ -96,13 +102,21 @@ const IDLE_SNAPSHOT: SelectionSnapshot = {
   drawTool: null,
 };
 
-function getIsSameTextStyle(a: ActiveTextStyle | null, b: ActiveTextStyle | null): boolean {
+function getIsSameTextStyle(
+  a: ActiveTextStyle | null,
+  b: ActiveTextStyle | null,
+): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
-  return (Object.keys(a) as (keyof ActiveTextStyle)[]).every((key) => a[key] === b[key]);
+  return (Object.keys(a) as (keyof ActiveTextStyle)[]).every(
+    (key) => a[key] === b[key],
+  );
 }
 
-function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean {
+function getIsSameSnapshot(
+  a: SelectionSnapshot,
+  b: SelectionSnapshot,
+): boolean {
   return (
     a.slideId === b.slideId &&
     a.mode === b.mode &&
@@ -117,7 +131,8 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
     getIsSameTextStyle(a.textStyle, b.textStyle) &&
     a.drawTool?.type === b.drawTool?.type &&
     (a.drawTool?.type !== "shape" ||
-      a.drawTool.geometry === (b.drawTool as { geometry?: string } | null)?.geometry)
+      a.drawTool.geometry ===
+        (b.drawTool as { geometry?: string } | null)?.geometry)
   );
 }
 
@@ -317,7 +332,8 @@ export function useSelection(): UseSelectionResult {
   // Edits mutate nodes in place; the revision is what tells the hook to re-read them.
   const revision = useSlideRevision(store, slideId);
 
-  const nodeIds = snapshot.slideId === slideId ? snapshot.nodeIds : IDLE_SNAPSHOT.nodeIds;
+  const nodeIds =
+    snapshot.slideId === slideId ? snapshot.nodeIds : IDLE_SNAPSHOT.nodeIds;
   const nodes = React.useMemo(
     () =>
       slide
@@ -354,18 +370,31 @@ export function useSelection(): UseSelectionResult {
     cellRange: snapshot.slideId === slideId ? snapshot.cellRange : null,
     textStyle: snapshot.slideId === slideId ? snapshot.textStyle : null,
     drawTool: snapshot.slideId === slideId ? snapshot.drawTool : null,
-    select: React.useCallback((ids: string[]) => channel.getController()?.select(ids), [channel]),
-    clear: React.useCallback(() => channel.getController()?.select([]), [channel]),
+    select: React.useCallback(
+      (ids: string[]) => channel.getController()?.select(ids),
+      [channel],
+    ),
+    clear: React.useCallback(
+      () => channel.getController()?.select([]),
+      [channel],
+    ),
     editText: React.useCallback(
-      (nodeId: string, cell?: TableCellAddress) => channel.getController()?.editText(nodeId, cell),
+      (nodeId: string, cell?: TableCellAddress) =>
+        channel.getController()?.editText(nodeId, cell),
       [channel],
     ),
     startDrawing: React.useCallback(
       (tool: DrawTool | null) => requireController(channel).startDrawing(tool),
       [channel],
     ),
-    duplicate: React.useCallback(async () => requireController(channel).duplicate(), [channel]),
-    remove: React.useCallback(async () => requireController(channel).remove(), [channel]),
+    duplicate: React.useCallback(
+      async () => requireController(channel).duplicate(),
+      [channel],
+    ),
+    remove: React.useCallback(
+      async () => requireController(channel).remove(),
+      [channel],
+    ),
     reorder: React.useCallback(
       async (order: NodeOrder) => requireController(channel).reorder(order),
       [channel],
@@ -410,7 +439,10 @@ export function useSelection(): UseSelectionResult {
       async (
         rows: number,
         columns: number,
-        options?: Omit<AddTableOperation, "type" | "slideId" | "rows" | "columns">,
+        options?: Omit<
+          AddTableOperation,
+          "type" | "slideId" | "rows" | "columns"
+        >,
       ) => {
         const controller = requireController(channel);
         const activeSlideId = store.getState().activeSlideId;
@@ -429,19 +461,23 @@ export function useSelection(): UseSelectionResult {
       [channel, store],
     ),
     changeTable: React.useCallback(
-      async (change: TableChange) => requireController(channel).changeTable(change),
+      async (change: TableChange) =>
+        requireController(channel).changeTable(change),
       [channel],
     ),
     setTableCellStyle: React.useCallback(
-      async (style: TableCellStyle) => requireController(channel).setTableCellStyle(style),
+      async (style: TableCellStyle) =>
+        requireController(channel).setTableCellStyle(style),
       [channel],
     ),
     setTextStyle: React.useCallback(
-      async (style: TextStyle) => requireController(channel).setTextStyle(style),
+      async (style: TextStyle) =>
+        requireController(channel).setTextStyle(style),
       [channel],
     ),
     setParagraphStyle: React.useCallback(
-      async (style: ParagraphStyle) => requireController(channel).setParagraphStyle(style),
+      async (style: ParagraphStyle) =>
+        requireController(channel).setParagraphStyle(style),
       [channel],
     ),
   };

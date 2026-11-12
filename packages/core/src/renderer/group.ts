@@ -15,7 +15,9 @@ function shouldPropagateGroupFlip(node: BaseNodeData): boolean {
 
 function rotationSwapsAxes(rotation: number): boolean {
   const normalized = ((rotation % 360) + 360) % 360;
-  return Math.abs(normalized - 90) < 0.0001 || Math.abs(normalized - 270) < 0.0001;
+  return (
+    Math.abs(normalized - 90) < 0.0001 || Math.abs(normalized - 270) < 0.0001
+  );
 }
 
 function remapShapeTextBoxBounds(
@@ -40,7 +42,11 @@ function remapShapeTextBoxBounds(
   };
 }
 
-function resolveEffectColor(node: SafeXmlNode, ctx: RenderContext, fallback: string): string {
+function resolveEffectColor(
+  node: SafeXmlNode,
+  ctx: RenderContext,
+  fallback: string,
+): string {
   const { color, alpha } = resolveColor(node, ctx);
   if (!color) return fallback;
   const hex = color.startsWith("#") ? color : `#${color}`;
@@ -77,12 +83,21 @@ function applyGroupOuterShadow(
   wrapper.style.filter = `drop-shadow(${offsetX.toFixed(1)}px ${offsetY.toFixed(1)}px ${blurPx.toFixed(1)}px ${shadowColor})`;
 }
 
-function applyGroupReflection(wrapper: HTMLElement, reflection: SafeXmlNode): void {
+function applyGroupReflection(
+  wrapper: HTMLElement,
+  reflection: SafeXmlNode,
+): void {
   const dist = emuToPx(reflection.numAttr("dist") ?? 0);
   const stA = (reflection.numAttr("stA") ?? 50000) / 100000;
   const endA = (reflection.numAttr("endA") ?? 0) / 100000;
-  const stPos = Math.max(0, Math.min(100, (reflection.numAttr("stPos") ?? 0) / 1000));
-  const endPos = Math.max(0, Math.min(100, (reflection.numAttr("endPos") ?? 100000) / 1000));
+  const stPos = Math.max(
+    0,
+    Math.min(100, (reflection.numAttr("stPos") ?? 0) / 1000),
+  );
+  const endPos = Math.max(
+    0,
+    Math.min(100, (reflection.numAttr("endPos") ?? 100000) / 1000),
+  );
   const mask = `linear-gradient(to bottom, rgba(255,255,255,${stA.toFixed(3)}) ${stPos.toFixed(1)}%, rgba(255,255,255,${endA.toFixed(3)}) ${endPos.toFixed(1)}%)`;
   const reflectValue = `below ${dist.toFixed(1)}px ${mask}`;
   wrapper.style.setProperty("-webkit-box-reflect", reflectValue);
@@ -151,7 +166,11 @@ export function renderGroup(
         break;
       }
     }
-    if (!childCtx.groupFillNode && grpSpPr.child("grpFill").exists() && ctx.groupFillNode) {
+    if (
+      !childCtx.groupFillNode &&
+      grpSpPr.child("grpFill").exists() &&
+      ctx.groupFillNode
+    ) {
       childCtx.groupFillNode = ctx.groupFillNode;
     }
   }
@@ -160,7 +179,10 @@ export function renderGroup(
   const parsedChildren = new Map<number, BaseNodeData | undefined>();
   const parseByIndex = (index: number): BaseNodeData | undefined => {
     if (!parsedChildren.has(index)) {
-      parsedChildren.set(index, parseGroupChild(node.children[index], ctx, node));
+      parsedChildren.set(
+        index,
+        parseGroupChild(node.children[index], ctx, node),
+      );
     }
     return parsedChildren.get(index);
   };
@@ -168,9 +190,12 @@ export function renderGroup(
   let pieCommon: { x: number; y: number; w: number; h: number } | null = null;
   let pieCenterOffsets: Map<number, { x: number; y: number }> | null = null;
   if (node.children.length === 6 && chExt.w > 0 && chExt.h > 0) {
-    const prst = (c: (typeof node.children)[0]) => c.child("spPr").child("prstGeom").attr("prst");
+    const prst = (c: (typeof node.children)[0]) =>
+      c.child("spPr").child("prstGeom").attr("prst");
     const firstPie = node.children.slice(0, 3).every((c) => prst(c) === "pie");
-    const nextArrow = node.children.slice(3, 6).every((c) => prst(c) === "circularArrow");
+    const nextArrow = node.children
+      .slice(3, 6)
+      .every((c) => prst(c) === "circularArrow");
     if (firstPie && nextArrow) {
       const pieNodes = [0, 1, 2].map((i) => parseByIndex(i)).filter(Boolean);
       if (pieNodes.length === 3) {
@@ -199,8 +224,12 @@ export function renderGroup(
             pieNodes.map((n, i) => [
               i,
               {
-                x: ((n!.position.x + n!.size.w / 2 - centerX) / chExt.w) * groupW,
-                y: ((n!.position.y + n!.size.h / 2 - centerY) / chExt.h) * groupH,
+                x:
+                  ((n!.position.x + n!.size.w / 2 - centerX) / chExt.w) *
+                  groupW,
+                y:
+                  ((n!.position.y + n!.size.h / 2 - centerY) / chExt.h) *
+                  groupH,
               },
             ]),
           );
@@ -225,15 +254,19 @@ export function renderGroup(
         const originalPosition = childNode.position;
         const originalSize = childNode.size;
         if (swapsAxes) {
-          const rotatedBBoxX = originalPosition.x + (originalSize.w - originalSize.h) / 2;
-          const rotatedBBoxY = originalPosition.y + (originalSize.h - originalSize.w) / 2;
+          const rotatedBBoxX =
+            originalPosition.x + (originalSize.w - originalSize.h) / 2;
+          const rotatedBBoxY =
+            originalPosition.y + (originalSize.h - originalSize.w) / 2;
           const nextSize = {
             w: originalSize.w * scaleY,
             h: originalSize.h * scaleX,
           };
           childNode.position = {
-            x: (rotatedBBoxX - chOff.x) * scaleX - (nextSize.w - nextSize.h) / 2,
-            y: (rotatedBBoxY - chOff.y) * scaleY - (nextSize.h - nextSize.w) / 2,
+            x:
+              (rotatedBBoxX - chOff.x) * scaleX - (nextSize.w - nextSize.h) / 2,
+            y:
+              (rotatedBBoxY - chOff.y) * scaleY - (nextSize.h - nextSize.w) / 2,
           };
           childNode.size = nextSize;
         } else {
@@ -272,7 +305,10 @@ export function renderGroup(
         const origW = childNode.size.w;
         const origH = childNode.size.h;
         const pieOffset = pieCenterOffsets?.get(index) ?? { x: 0, y: 0 };
-        childNode.position = { x: pieCommon.x + pieOffset.x, y: pieCommon.y + pieOffset.y };
+        childNode.position = {
+          x: pieCommon.x + pieOffset.x,
+          y: pieCommon.y + pieOffset.y,
+        };
         childNode.size = { w: pieCommon.w, h: pieCommon.h };
         // txXfrm is in the original shape space, so it scales with the shape to keep labels in their sector.
         const shapeNode = childNode as ShapeNodeData;
@@ -320,7 +356,9 @@ function parseGroupChild(
     skipPlaceholders: ctx.skipPlaceholderChildren,
   });
   if (child) {
-    resolveNodePlaceholderInheritance(child, ctx.layout, ctx.master, { parentGroup });
+    resolveNodePlaceholderInheritance(child, ctx.layout, ctx.master, {
+      parentGroup,
+    });
   }
   return child;
 }

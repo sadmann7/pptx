@@ -51,7 +51,12 @@ export function resolveRelTarget(basePath: string, target: string): string {
 
   // Absolute targets are package-root relative.
   if (targetPath.startsWith("/")) {
-    return targetPath.slice(1).replace(/\\/g, "/").split("/").map(decodeUriPathSegment).join("/");
+    return targetPath
+      .slice(1)
+      .replace(/\\/g, "/")
+      .split("/")
+      .map(decodeUriPathSegment)
+      .join("/");
   }
 
   const baseParts = basePath.replace(/\\/g, "/").split("/").filter(Boolean);

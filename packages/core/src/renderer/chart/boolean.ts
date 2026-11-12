@@ -6,6 +6,9 @@ export function parseOoxmlBoolElement(node: SafeXmlNode): boolean {
   return parseOoxmlBoolValue(node.attr("val"), true);
 }
 
-export function parseOoxmlBoolValue(value: string | undefined, defaultValue: boolean): boolean {
+export function parseOoxmlBoolValue(
+  value: string | undefined,
+  defaultValue: boolean,
+): boolean {
   return parseOoxmlBool(value, defaultValue);
 }

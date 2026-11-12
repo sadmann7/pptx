@@ -54,7 +54,11 @@ function darkestNear(
   samples: Pixel[],
   from: number,
 ): { pixel: Pixel; at: number; distance: number } {
-  let best = { pixel: samples[0], at: from, distance: colorDistance(samples[0], BORDER) };
+  let best = {
+    pixel: samples[0],
+    at: from,
+    distance: colorDistance(samples[0], BORDER),
+  };
   samples.forEach((pixel, index) => {
     const distance = colorDistance(pixel, BORDER);
     if (distance < best.distance) best = { pixel, at: from + index, distance };
@@ -63,7 +67,9 @@ function darkestNear(
 }
 
 test.describe("table with no style id", () => {
-  test("paints the built-in grid and hoists the outline onto the table", async ({ page }) => {
+  test("paints the built-in grid and hoists the outline onto the table", async ({
+    page,
+  }) => {
     await openSlide(page, DECK, GRID_SLIDE);
 
     // tx1 hairlines from the "No Style, Table Grid" fallback: 1pt black.
@@ -85,7 +91,9 @@ test.describe("table with no style id", () => {
     expect(middleLeft.top[0]).toBe("0px");
   });
 
-  test("keeps grid lines on whole pixels when the slide is scaled", async ({ page }) => {
+  test("keeps grid lines on whole pixels when the slide is scaled", async ({
+    page,
+  }) => {
     await openSlide(page, DECK, GRID_SLIDE, { scale: FRACTIONAL_SCALE });
 
     const cells = await cellBoxes(page);
@@ -107,14 +115,21 @@ test.describe("table with no style id", () => {
     // Both sides of the line are the untouched cell fill, so the line is one
     // pixel wide rather than a wide smear that happens to contain a dark core.
     for (const offset of [-3, 3]) {
-      expect(colorDistance(pixels.at(line.at + offset, y), BLANK_CELL_FILL)).toBeLessThanOrEqual(4);
+      expect(
+        colorDistance(pixels.at(line.at + offset, y), BLANK_CELL_FILL),
+      ).toBeLessThanOrEqual(4);
     }
   });
 
-  test("would smear the same grid line under transform scaling", async ({ page }) => {
+  test("would smear the same grid line under transform scaling", async ({
+    page,
+  }) => {
     // Proves the crisp result above comes from zoom. If this fails, transform
     // scaling became viable and applySlideScale can be revisited.
-    await openSlide(page, DECK, GRID_SLIDE, { scale: FRACTIONAL_SCALE, mode: "transform" });
+    await openSlide(page, DECK, GRID_SLIDE, {
+      scale: FRACTIONAL_SCALE,
+      mode: "transform",
+    });
 
     const cells = await cellBoxes(page);
     const bottomLeft = cells[6];
@@ -132,7 +147,9 @@ test.describe("table with no style id", () => {
 
   test("renders the grid", async ({ page }) => {
     await openSlide(page, DECK, GRID_SLIDE);
-    await expect(slideContainer(page)).toHaveScreenshot("table-borders-grid.png");
+    await expect(slideContainer(page)).toHaveScreenshot(
+      "table-borders-grid.png",
+    );
   });
 });
 
@@ -162,6 +179,8 @@ test.describe("table with per-cell borders", () => {
 
   test("renders the per-cell borders", async ({ page }) => {
     await openSlide(page, DECK, EXPLICIT_SLIDE);
-    await expect(slideContainer(page)).toHaveScreenshot("table-borders-explicit.png");
+    await expect(slideContainer(page)).toHaveScreenshot(
+      "table-borders-explicit.png",
+    );
   });
 });

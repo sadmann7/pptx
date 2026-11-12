@@ -2,7 +2,8 @@ import JSZip from "jszip";
 
 import { SafeXmlNode } from "./xml";
 
-const DEFAULT_XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
+const DEFAULT_XML_DECLARATION =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 // Model paths like slide ids and rel targets may be percent-decoded while zip
 // entry paths keep the original encoding.
@@ -133,7 +134,10 @@ export class PptxPackage {
   /** Replaces or adds a part's raw content, discarding its registered XML root and dirty flag. */
   setEntry(path: string, content: Uint8Array | string): void {
     const key = this.canonical(path);
-    this.overrides.set(key, typeof content === "string" ? encodeText(content) : content);
+    this.overrides.set(
+      key,
+      typeof content === "string" ? encodeText(content) : content,
+    );
     this.deleted.delete(key);
     this.dirty.delete(key);
     this.xmlRoots.delete(key);
@@ -185,7 +189,10 @@ export class PptxPackage {
       out.file(
         key,
         this.readBytes(key).then((bytes) => {
-          if (!bytes) throw new Error(`PptxPackage: part "${key}" disappeared during save.`);
+          if (!bytes)
+            throw new Error(
+              `PptxPackage: part "${key}" disappeared during save.`,
+            );
           return bytes;
         }),
         { binary: true },
@@ -201,17 +208,26 @@ export class PptxPackage {
   private async serializeDirtyPart(key: string): Promise<Uint8Array> {
     const element = this.xmlRoots.get(key)?.element;
     if (!element) {
-      throw new Error(`PptxPackage: dirty part "${key}" has no XML document to serialize.`);
+      throw new Error(
+        `PptxPackage: dirty part "${key}" has no XML document to serialize.`,
+      );
     }
 
     sharedSerializer ??= new XMLSerializer();
     const xml = sharedSerializer.serializeToString(element);
-    const original = this.overrides.get(key) ?? (await this.zip.file(key)?.async("uint8array"));
-    const declaration = (original && extractXmlDeclaration(original)) ?? DEFAULT_XML_DECLARATION;
+    const original =
+      this.overrides.get(key) ??
+      (await this.zip.file(key)?.async("uint8array"));
+    const declaration =
+      (original && extractXmlDeclaration(original)) ?? DEFAULT_XML_DECLARATION;
     return encodeText(declaration + xml);
   }
 
   private canonical(path: string): string {
-    return this.pathAliases.get(path) ?? this.pathAliases.get(decodeZipPath(path)) ?? path;
+    return (
+      this.pathAliases.get(path) ??
+      this.pathAliases.get(decodeZipPath(path)) ??
+      path
+    );
   }
 }

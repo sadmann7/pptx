@@ -11,7 +11,9 @@ import { Presentation } from "../index";
 import { editableStore } from "./test-utils";
 
 function renderedOrder(): (string | null)[] {
-  return screen.getAllByRole("option").map((option) => option.getAttribute("data-slide-id"));
+  return screen
+    .getAllByRole("option")
+    .map((option) => option.getAttribute("data-slide-id"));
 }
 
 describe("consumer-driven reordering", () => {
@@ -58,7 +60,9 @@ describe("consumer-driven reordering", () => {
     expect(options[0].style.width).toBe("100%");
 
     act(() => {
-      options[0].dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      options[0].dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true }),
+      );
     });
     expect(pointerDowns).toBe(1);
   });
@@ -99,18 +103,20 @@ describe("consumer-driven reordering", () => {
       </Presentation.Provider>,
     );
 
-    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "1",
-      "2",
-      "3",
-    ]);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["1", "2", "3"]);
 
     await act(async () => {
       await store.edit({ type: "moveSlide", slideId: movedId, toIndex: 2 });
     });
 
     const options = screen.getAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual(["1", "2", "3"]);
+    expect(options.map((option) => option.textContent)).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
     expect(options[2].getAttribute("data-slide-id")).toBe(movedId);
   });
 

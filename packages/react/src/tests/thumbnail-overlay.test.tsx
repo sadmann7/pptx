@@ -21,7 +21,12 @@ function stubIntersectionObserver(): void {
       constructor(private callback: IntersectionObserverCallback) {}
       observe(target: Element) {
         this.callback(
-          [{ isIntersecting: true, target } as unknown as IntersectionObserverEntry],
+          [
+            {
+              isIntersecting: true,
+              target,
+            } as unknown as IntersectionObserverEntry,
+          ],
           this as unknown as IntersectionObserver,
         );
       }
@@ -40,7 +45,9 @@ afterEach(() => {
 async function flushPreviews(): Promise<void> {
   for (let tick = 0; tick < 5; tick++) {
     await act(async () => {
-      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => setTimeout(resolve, 0)),
+      );
     });
   }
 }
@@ -61,13 +68,21 @@ function Strip({ store, overlaySlideId }: StripProps) {
         {({ slides }) => (
           <>
             {slides.map((slide) => (
-              <Presentation.ThumbnailItem key={slide.id} slideId={slide.id} data-testid="item">
+              <Presentation.ThumbnailItem
+                key={slide.id}
+                slideId={slide.id}
+                data-testid="item"
+              >
                 <Presentation.ThumbnailItemNumber />
                 <Presentation.ThumbnailItemPreview />
               </Presentation.ThumbnailItem>
             ))}
             {overlaySlideId ? (
-              <Presentation.ThumbnailItem decorative slideId={overlaySlideId} data-testid="overlay">
+              <Presentation.ThumbnailItem
+                decorative
+                slideId={overlaySlideId}
+                data-testid="overlay"
+              >
                 <Presentation.ThumbnailItemNumber />
                 <Presentation.ThumbnailItemPreview />
               </Presentation.ThumbnailItem>
@@ -103,7 +118,9 @@ describe("decorative thumbnail items", () => {
     render(<Strip store={store} overlaySlideId={slides[0].id} />);
 
     act(() => {
-      screen.getByTestId("overlay").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      screen
+        .getByTestId("overlay")
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(store.getState().activeSlideId).toBe(slides[1].id);
@@ -113,14 +130,20 @@ describe("decorative thumbnail items", () => {
     const store = await editableStore();
     const slides = store.getState().presentation!.slides;
 
-    const { rerender } = render(<Strip store={store} overlaySlideId={slides[0].id} />);
+    const { rerender } = render(
+      <Strip store={store} overlaySlideId={slides[0].id} />,
+    );
     rerender(<Strip store={store} />);
 
     const options = screen.getAllByRole("option");
     options[0].focus();
     act(() => {
       options[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", {
+          key: "ArrowDown",
+          bubbles: true,
+          cancelable: true,
+        }),
       );
     });
     // Roving focus is scheduled a tick later so the browser finishes the keydown.

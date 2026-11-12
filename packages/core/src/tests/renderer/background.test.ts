@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { buildPresentation } from "../../model/presentation";
 import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
-import { buildRichPptx, RichPptxOptions, tinyPngBytes } from "../fixtures/rich-pptx";
+import {
+  buildRichPptx,
+  RichPptxOptions,
+  tinyPngBytes,
+} from "../fixtures/rich-pptx";
 
 async function renderWith(options: RichPptxOptions): Promise<HTMLElement> {
   const buffer = await buildRichPptx(options);
@@ -99,7 +103,9 @@ describe("background fill variants (bgPr)", () => {
 </a:gradFill>
 <a:effectLst/></p:bgPr></p:bg>`,
     });
-    const svg = element.querySelector('svg[data-pptx-background-gradient="true"]');
+    const svg = element.querySelector(
+      'svg[data-pptx-background-gradient="true"]',
+    );
     expect(svg).not.toBeNull();
     const radial = svg!.querySelector("radialGradient");
     expect(radial).not.toBeNull();
@@ -119,7 +125,9 @@ describe("background fill variants (bgPr)", () => {
 </a:pattFill>
 <a:effectLst/></p:bgPr></p:bg>`,
     });
-    expect(element.style.backgroundImage).toContain("repeating-linear-gradient(-45deg");
+    expect(element.style.backgroundImage).toContain(
+      "repeating-linear-gradient(-45deg",
+    );
     expect(element.style.backgroundSize).toBe("8px 8px");
     expect(element.style.backgroundRepeat).toBe("repeat");
     expect(normalizeColor(element.style.backgroundColor)).toBe("#ffffff");

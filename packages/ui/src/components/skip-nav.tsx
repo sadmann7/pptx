@@ -38,7 +38,10 @@ function SkipNav(props: React.ComponentProps<"a">) {
   );
 }
 
-function skipToTarget(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
+function skipToTarget(
+  event: React.MouseEvent<HTMLAnchorElement>,
+  href: string,
+) {
   const target = getTarget(href);
   if (!target) return;
 

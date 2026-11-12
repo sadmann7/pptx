@@ -39,7 +39,8 @@ function setEncoding(index: number, encoding: Encoding): void {
 }
 
 export function tripletEncoding(index: number): Encoding {
-  if (index < 0 || index > 127) fail("INVALID_CTF", `Invalid triplet index ${index}`);
+  if (index < 0 || index > 127)
+    fail("INVALID_CTF", `Invalid triplet index ${index}`);
   if (index < 10)
     return {
       bytes: 2,
@@ -119,7 +120,10 @@ export function decodeTripletArrays(
   flags: Uint8Array,
   scratch?: TripletScratch,
 ): DecodedTriplets {
-  const target = scratch ?? { x: new Int16Array(flags.length), y: new Int16Array(flags.length) };
+  const target = scratch ?? {
+    x: new Int16Array(flags.length),
+    y: new Int16Array(flags.length),
+  };
   if (target.x.length < flags.length) {
     const capacity = Math.max(flags.length, target.x.length * 2, 16);
     target.x = new Int16Array(capacity);
@@ -142,7 +146,8 @@ export function decodeTripletArrays(
     const flag = flags[i]!;
     const index = flag & 0x7f;
     const byteCount = BYTE_COUNT[index]!;
-    if (pos + byteCount - 1 > end) fail("BOUNDS", "Unexpected end of triplet data", pos);
+    if (pos + byteCount - 1 > end)
+      fail("BOUNDS", "Unexpected end of triplet data", pos);
     let packed = 0;
     for (let j = 1; j < byteCount; j++) packed = packed * 256 + data[pos++]!;
     let dx = ((packed >>> X_SHIFT[index]!) & X_MASK[index]!) + DELTA_X[index]!;

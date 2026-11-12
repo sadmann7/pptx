@@ -1,8 +1,15 @@
 ﻿import { describe, expect, it } from "vitest";
 
-import { paragraphsOf, renderTextBox, spansOf } from "../fixtures/text-rendering-helpers";
+import {
+  paragraphsOf,
+  renderTextBox,
+  spansOf,
+} from "../fixtures/text-rendering-helpers";
 
-async function renderParagraph(pPrXml: string, runsXml?: string): Promise<HTMLElement> {
+async function renderParagraph(
+  pPrXml: string,
+  runsXml?: string,
+): Promise<HTMLElement> {
   const element = await renderTextBox(
     `<a:p>${pPrXml}${runsXml ?? "<a:r><a:t>MARKER</a:t></a:r>"}</a:p>`,
   );
@@ -104,7 +111,9 @@ describe("indentation", () => {
   });
 
   it("keeps a negative (hanging) indent when there is no bullet", async () => {
-    const paragraph = await renderParagraph(`<a:pPr marL="457200" indent="-228600"/>`);
+    const paragraph = await renderParagraph(
+      `<a:pPr marL="457200" indent="-228600"/>`,
+    );
     expect(parseFloat(paragraph.style.textIndent)).toBeCloseTo(-24, 3);
     expect(parseFloat(paragraph.style.paddingLeft)).toBeCloseTo(48, 3);
   });
@@ -119,7 +128,9 @@ describe("line breaks (a:br)", () => {
     const spans = spansOf(paragraph);
     expect(spans.map((s) => s.textContent)).toEqual(["first", "second"]);
     expect(paragraph.querySelectorAll("br")).toHaveLength(1);
-    const childTags = [...paragraph.children].map((child) => child.tagName.toLowerCase());
+    const childTags = [...paragraph.children].map((child) =>
+      child.tagName.toLowerCase(),
+    );
     expect(childTags).toEqual(["span", "br", "span"]);
   });
 
@@ -132,7 +143,9 @@ describe("line breaks (a:br)", () => {
     );
     const [paragraph] = paragraphsOf(element);
     expect(paragraph.querySelectorAll("br")).toHaveLength(0);
-    const lines = [...paragraph.children].filter((c) => c.tagName.toLowerCase() === "div");
+    const lines = [...paragraph.children].filter(
+      (c) => c.tagName.toLowerCase() === "div",
+    );
     expect(lines).toHaveLength(2);
     for (const line of lines as HTMLElement[]) {
       expect(line.style.height).toBe("24pt");
@@ -163,7 +176,9 @@ describe("line breaks (a:br)", () => {
 
 describe("tabs", () => {
   it("renders runs containing tabs with white-space:pre and a default tab size", async () => {
-    const element = await renderTextBox(`<a:p><a:r><a:t>a\tb</a:t></a:r></a:p>`);
+    const element = await renderTextBox(
+      `<a:p><a:r><a:t>a\tb</a:t></a:r></a:p>`,
+    );
     const [paragraph] = paragraphsOf(element);
     const [span] = spansOf(paragraph);
     expect(span.style.whiteSpace).toBe("pre");
@@ -190,7 +205,9 @@ describe("paragraph line strut", () => {
   });
 
   it("preserves consecutive spaces with non-breaking spaces", async () => {
-    const element = await renderTextBox(`<a:p><a:r><a:t>a  b</a:t></a:r></a:p>`);
+    const element = await renderTextBox(
+      `<a:p><a:r><a:t>a  b</a:t></a:r></a:p>`,
+    );
     const [paragraph] = paragraphsOf(element);
     const [span] = spansOf(paragraph);
     // Space pairs become " \u00a0" so they survive whitespace collapse.

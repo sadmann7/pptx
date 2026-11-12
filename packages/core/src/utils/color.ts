@@ -5,7 +5,12 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   }
   const full =
     cleaned.length === 3
-      ? cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2]
+      ? cleaned[0] +
+        cleaned[0] +
+        cleaned[1] +
+        cleaned[1] +
+        cleaned[2] +
+        cleaned[2]
       : cleaned;
   const num = parseInt(full, 16);
   return {
@@ -16,12 +21,22 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
 }
 
 export function rgbToHex(r: number, g: number, b: number): string {
-  const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
-  return "#" + [clamp(r), clamp(g), clamp(b)].map((c) => c.toString(16).padStart(2, "0")).join("");
+  const clamp = (v: number): number =>
+    Math.max(0, Math.min(255, Math.round(v)));
+  return (
+    "#" +
+    [clamp(r), clamp(g), clamp(b)]
+      .map((c) => c.toString(16).padStart(2, "0"))
+      .join("")
+  );
 }
 
 // Hue is 0-360, saturation and lightness 0-1.
-export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+export function rgbToHsl(
+  r: number,
+  g: number,
+  b: number,
+): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;
@@ -50,7 +65,11 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
   return { h, s, l };
 }
 
-export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+export function hslToRgb(
+  h: number,
+  s: number,
+  l: number,
+): { r: number; g: number; b: number } {
   h = ((h % 360) + 360) % 360;
   s = Math.max(0, Math.min(1, s));
   l = Math.max(0, Math.min(1, l));
@@ -181,15 +200,31 @@ function applyChannelValue(
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-function applyRgbMod(hex: string, channel: "r" | "g" | "b", val: number): string {
+function applyRgbMod(
+  hex: string,
+  channel: "r" | "g" | "b",
+  val: number,
+): string {
   return applyChannelValue(hex, channel, (current) => current * (val / 100000));
 }
 
-function applyRgbOff(hex: string, channel: "r" | "g" | "b", val: number): string {
-  return applyChannelValue(hex, channel, (current) => current + pctToChannel(val));
+function applyRgbOff(
+  hex: string,
+  channel: "r" | "g" | "b",
+  val: number,
+): string {
+  return applyChannelValue(
+    hex,
+    channel,
+    (current) => current + pctToChannel(val),
+  );
 }
 
-function applyRgbAbs(hex: string, channel: "r" | "g" | "b", val: number): string {
+function applyRgbAbs(
+  hex: string,
+  channel: "r" | "g" | "b",
+  val: number,
+): string {
   return applyChannelValue(hex, channel, () => pctToChannel(val));
 }
 
@@ -234,12 +269,20 @@ function applyComplement(hex: string): string {
 
 function applyGamma(hex: string): string {
   const { r, g, b } = hexToRgb(hex);
-  return rgbToHex(srgbToLinear(r) * 255, srgbToLinear(g) * 255, srgbToLinear(b) * 255);
+  return rgbToHex(
+    srgbToLinear(r) * 255,
+    srgbToLinear(g) * 255,
+    srgbToLinear(b) * 255,
+  );
 }
 
 function applyInvGamma(hex: string): string {
   const { r, g, b } = hexToRgb(hex);
-  return rgbToHex(linearToSrgb(r / 255), linearToSrgb(g / 255), linearToSrgb(b / 255));
+  return rgbToHex(
+    linearToSrgb(r / 255),
+    linearToSrgb(g / 255),
+    linearToSrgb(b / 255),
+  );
 }
 
 export function applyAlpha(alpha: number): number {

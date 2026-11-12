@@ -4,8 +4,15 @@
  */
 import { expect, type Page, test } from "@playwright/test";
 
-async function mountViewer(page: Page, file: string, store: ViewerStore = "root"): Promise<void> {
-  await page.evaluate(([name, from]) => window.__mountViewer?.(name, from), [file, store] as const);
+async function mountViewer(
+  page: Page,
+  file: string,
+  store: ViewerStore = "root",
+): Promise<void> {
+  await page.evaluate(([name, from]) => window.__mountViewer?.(name, from), [
+    file,
+    store,
+  ] as const);
 }
 
 async function waitForLoad(page: Page): Promise<void> {
@@ -30,14 +37,17 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/lifecycle.html");
 });
 
-test("unmounting the viewer revokes the slide's picture URLs", async ({ page }) => {
+test("unmounting the viewer revokes the slide's picture URLs", async ({
+  page,
+}) => {
   await mountViewer(page, "pictures.pptx");
   await waitForLoad(page);
 
   const picture = page.locator("[data-presentation-slide] img");
   await expect(picture).toHaveCount(1);
   const src = await picture.getAttribute("src");
-  if (!src?.startsWith("blob:")) throw new Error(`expected a blob URL, got ${src}`);
+  if (!src?.startsWith("blob:"))
+    throw new Error(`expected a blob URL, got ${src}`);
   expect(await isBlobAlive(page, src)).toBe(true);
 
   await page.evaluate(() => window.__unmountViewer?.());
@@ -53,7 +63,9 @@ const STORES: readonly { store: ViewerStore; label: string }[] = [
 
 for (const { store, label } of STORES) {
   test.describe(`with ${label}`, () => {
-    test("unmounting the viewer removes the deck's embedded fonts", async ({ page }) => {
+    test("unmounting the viewer removes the deck's embedded fonts", async ({
+      page,
+    }) => {
       await mountViewer(page, FONT_DECK, store);
       await waitForLoad(page);
       expect(await page.evaluate(() => document.fonts.size)).toBeGreaterThan(0);
@@ -62,7 +74,9 @@ for (const { store, label } of STORES) {
       expect(await page.evaluate(() => document.fonts.size)).toBe(0);
     });
 
-    test("unmounting the viewer mid-load removes the fonts it registered", async ({ page }) => {
+    test("unmounting the viewer mid-load removes the fonts it registered", async ({
+      page,
+    }) => {
       await mountViewer(page, FONT_DECK, store);
       await page.waitForFunction(() => document.fonts.size > 0);
 

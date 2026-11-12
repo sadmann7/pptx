@@ -1,7 +1,11 @@
 import * as React from "react";
 
 import { useDelayRender } from "remotion";
-import { createHighlighterCore, type HighlighterCore, type ThemedToken } from "shiki/core";
+import {
+  createHighlighterCore,
+  type HighlighterCore,
+  type ThemedToken,
+} from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import tsx from "shiki/langs/tsx.mjs";
 import githubDark from "shiki/themes/github-dark.mjs";

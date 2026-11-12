@@ -26,7 +26,10 @@ Effects are functions passed to the `effects` prop of canvas-based components su
 import { blur } from "@remotion/effects/blur";
 import { Video } from "@remotion/media";
 
-<Video src="https://remotion.media/video.mp4" effects={[blur({ radius: 8 })]} />;
+<Video
+  src="https://remotion.media/video.mp4"
+  effects={[blur({ radius: 8 })]}
+/>;
 ```
 
 Use the effect docs for exact props and imports. Most `@remotion/effects` imports use `@remotion/effects/<effect-slug>`; `uvTranslate()` and `xyTranslate()` use `@remotion/effects/translate`; `lightLeak()` uses `@remotion/light-leaks`; `starburst()` uses `@remotion/starburst`.
@@ -110,7 +113,12 @@ export const myEffect = createEffect<MyEffectParams, null>({
   cleanup: () => undefined,
   schema: myEffectSchema,
   validateParams: ({ amount = 1 }) => {
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || amount > 1) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount < 0 ||
+      amount > 1
+    ) {
       throw new TypeError("amount must be a number between 0 and 1");
     }
   },
@@ -177,7 +185,14 @@ export const rgbShift = createEffect<RgbShiftParams, RgbShiftState>({
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipSourceY);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, state.texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source as TexImageSource);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      source as TexImageSource,
+    );
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.useProgram(state.program);
@@ -194,7 +209,12 @@ export const rgbShift = createEffect<RgbShiftParams, RgbShiftState>({
   },
   schema: rgbShiftSchema,
   validateParams: ({ amount = 12 }) => {
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || amount > 80) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount < 0 ||
+      amount > 80
+    ) {
       throw new TypeError("amount must be a number between 0 and 80");
     }
   },
@@ -211,7 +231,12 @@ import { CanvasImage, staticFile } from "remotion";
 import { myEffect } from "./effects/my-effect";
 
 export const MyComp: React.FC = () => {
-  return <CanvasImage src={staticFile("image.png")} effects={[myEffect({ amount: 0.8 })]} />;
+  return (
+    <CanvasImage
+      src={staticFile("image.png")}
+      effects={[myEffect({ amount: 0.8 })]}
+    />
+  );
 };
 ```
 

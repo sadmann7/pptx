@@ -9,7 +9,10 @@ export interface LoadingState {
   progress: number;
 }
 
-export interface LoadingProps extends Omit<PrimitiveProps<"div", LoadingState>, "children"> {
+export interface LoadingProps extends Omit<
+  PrimitiveProps<"div", LoadingState>,
+  "children"
+> {
   /**
    * Rendered while the presentation is loading.
    * Pass a function to receive the current `progress` (0–100).
@@ -23,26 +26,29 @@ export interface LoadingProps extends Omit<PrimitiveProps<"div", LoadingState>, 
   children?: React.ReactNode | ((progress: number) => React.ReactNode);
 }
 
-export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(function Loading(
-  { children, render, ...loadingProps },
-  forwardedRef,
-) {
-  const { status, progress } = usePresentation();
+export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(
+  function Loading({ children, render, ...loadingProps }, forwardedRef) {
+    const { status, progress } = usePresentation();
 
-  if (status !== "loading") return null;
+    if (status !== "loading") return null;
 
-  const resolvedChildren = typeof children === "function" ? children(progress) : children;
+    const resolvedChildren =
+      typeof children === "function" ? children(progress) : children;
 
-  return renderElement(
-    "div",
-    { render },
-    {
-      state: { progress },
-      ref: forwardedRef,
-      props: [{ role: "status", "aria-live": "polite", children: resolvedChildren }, loadingProps],
-    },
-  );
-});
+    return renderElement(
+      "div",
+      { render },
+      {
+        state: { progress },
+        ref: forwardedRef,
+        props: [
+          { role: "status", "aria-live": "polite", children: resolvedChildren },
+          loadingProps,
+        ],
+      },
+    );
+  },
+);
 
 export namespace Loading {
   export type State = LoadingState;

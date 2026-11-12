@@ -62,10 +62,19 @@ function getNearestSnap(
 
 const EPSILON = 0.01;
 
-function getGuide(snapped: SnapRect, targets: SnapRect[], axis: Axis, position: number): SnapGuide {
+function getGuide(
+  snapped: SnapRect,
+  targets: SnapRect[],
+  axis: Axis,
+  position: number,
+): SnapGuide {
   let [start, end] = getCrossSpan(snapped, axis);
   for (const target of targets) {
-    if (!getAnchors(target, axis).some((anchor) => Math.abs(anchor - position) < EPSILON)) {
+    if (
+      !getAnchors(target, axis).some(
+        (anchor) => Math.abs(anchor - position) < EPSILON,
+      )
+    ) {
       continue;
     }
     const [targetStart, targetEnd] = getCrossSpan(target, axis);
@@ -98,13 +107,21 @@ export function snapMove(
   axes: { x: boolean; y: boolean } = { x: true, y: true },
 ): SnapResult {
   const moved = { ...rect, x: rect.x + dx, y: rect.y + dy };
-  const xSnap = axes.x ? getNearestSnap(getAnchors(moved, "x"), targets, "x", threshold) : null;
-  const ySnap = axes.y ? getNearestSnap(getAnchors(moved, "y"), targets, "y", threshold) : null;
+  const xSnap = axes.x
+    ? getNearestSnap(getAnchors(moved, "x"), targets, "x", threshold)
+    : null;
+  const ySnap = axes.y
+    ? getNearestSnap(getAnchors(moved, "y"), targets, "y", threshold)
+    : null;
 
   const nextDx = dx + (xSnap?.correction ?? 0);
   const nextDy = dy + (ySnap?.correction ?? 0);
   const snapped = { ...rect, x: rect.x + nextDx, y: rect.y + nextDy };
-  return { dx: nextDx, dy: nextDy, guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }) };
+  return {
+    dx: nextDx,
+    dy: nextDy,
+    guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }),
+  };
 }
 
 // Corner drags with the aspect ratio locked don't snap, since snapping one axis would break the ratio.
@@ -124,10 +141,20 @@ export function snapResize(
   const movesTop = handle.includes("n");
   const movesBottom = handle.includes("s");
 
-  const xEdge = movesLeft ? rect.x + dx : movesRight ? rect.x + rect.w + dx : null;
-  const yEdge = movesTop ? rect.y + dy : movesBottom ? rect.y + rect.h + dy : null;
-  const xSnap = xEdge === null ? null : getNearestSnap([xEdge], targets, "x", threshold);
-  const ySnap = yEdge === null ? null : getNearestSnap([yEdge], targets, "y", threshold);
+  const xEdge = movesLeft
+    ? rect.x + dx
+    : movesRight
+      ? rect.x + rect.w + dx
+      : null;
+  const yEdge = movesTop
+    ? rect.y + dy
+    : movesBottom
+      ? rect.y + rect.h + dy
+      : null;
+  const xSnap =
+    xEdge === null ? null : getNearestSnap([xEdge], targets, "x", threshold);
+  const ySnap =
+    yEdge === null ? null : getNearestSnap([yEdge], targets, "y", threshold);
 
   const nextDx = dx + (xSnap?.correction ?? 0);
   const nextDy = dy + (ySnap?.correction ?? 0);
@@ -137,7 +164,11 @@ export function snapResize(
     w: rect.w + (movesLeft ? -nextDx : movesRight ? nextDx : 0),
     h: rect.h + (movesTop ? -nextDy : movesBottom ? nextDy : 0),
   };
-  return { dx: nextDx, dy: nextDy, guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }) };
+  return {
+    dx: nextDx,
+    dy: nextDy,
+    guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }),
+  };
 }
 
 export function getUnionRect(rects: SnapRect[]): SnapRect | null {

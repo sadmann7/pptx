@@ -9,7 +9,10 @@ import {
 } from "../../../renderer/chart/axis";
 import { parseOoxmlBoolElement } from "../../../renderer/chart/boolean";
 import type { RenderContext } from "../../../renderer/context";
-import { parseChartFragment, createChartTestContext } from "../../fixtures/chart-pptx";
+import {
+  parseChartFragment,
+  createChartTestContext,
+} from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 
@@ -19,11 +22,15 @@ beforeAll(async () => {
 
 describe("parseOoxmlBoolElement", () => {
   it("is false for a missing element", () => {
-    expect(parseOoxmlBoolElement(parseChartFragment("").child("delete"))).toBe(false);
+    expect(parseOoxmlBoolElement(parseChartFragment("").child("delete"))).toBe(
+      false,
+    );
   });
 
   it("defaults to true when the element exists without val", () => {
-    expect(parseOoxmlBoolElement(parseChartFragment("<c:delete/>").child("delete"))).toBe(true);
+    expect(
+      parseOoxmlBoolElement(parseChartFragment("<c:delete/>").child("delete")),
+    ).toBe(true);
   });
 
   it("honors explicit val attributes in all OOXML spellings", () => {
@@ -35,7 +42,9 @@ describe("parseOoxmlBoolElement", () => {
       ["off", false],
       ["on", true],
     ] as const) {
-      const node = parseChartFragment(`<c:delete val="${val}"/>`).child("delete");
+      const node = parseChartFragment(`<c:delete val="${val}"/>`).child(
+        "delete",
+      );
       expect(parseOoxmlBoolElement(node)).toBe(expected);
     }
   });
@@ -164,7 +173,12 @@ describe("applyAxisInfo", () => {
     const def: Record<string, unknown> = { type: "value" };
     applyAxisInfo(
       def,
-      { deleted: true, tickLblPos: "nextTo", hasMajorGridlines: false, orientation: "minMax" },
+      {
+        deleted: true,
+        tickLblPos: "nextTo",
+        hasMajorGridlines: false,
+        orientation: "minMax",
+      },
       "value",
     );
     expect(def.axisLabel).toMatchObject({ show: false });
@@ -200,7 +214,12 @@ describe("applyAxisInfo", () => {
     const def: Record<string, unknown> = { type: "category" };
     applyAxisInfo(
       def,
-      { deleted: false, tickLblPos: "none", hasMajorGridlines: false, orientation: "minMax" },
+      {
+        deleted: false,
+        tickLblPos: "none",
+        hasMajorGridlines: false,
+        orientation: "minMax",
+      },
       "category",
     );
     expect(def.axisLabel).toMatchObject({ show: false });
@@ -259,7 +278,11 @@ describe("applyAxisInfo", () => {
     expect(def.nameLocation).toBe("middle");
     expect(def.nameGap).toBe(42);
     expect(def.nameRotate).toBe(-90);
-    expect(def.nameTextStyle).toEqual({ color: "#FF0000", fontSize: 12, fontWeight: "bold" });
+    expect(def.nameTextStyle).toEqual({
+      color: "#FF0000",
+      fontSize: 12,
+      fontWeight: "bold",
+    });
   });
 });
 
@@ -276,18 +299,26 @@ describe("getAxisTitleSpacePx", () => {
   });
 
   it("is zero for a deleted axis", () => {
-    expect(getAxisTitleSpacePx({ ...axis, deleted: true, title: "Revenue" })).toBe(0);
+    expect(
+      getAxisTitleSpacePx({ ...axis, deleted: true, title: "Revenue" }),
+    ).toBe(0);
   });
 
   it("scales with the title font size", () => {
     expect(getAxisTitleSpacePx({ ...axis, title: "Revenue" })).toBe(18);
-    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue", titleStyle: { fontSize: 13 } })).toBe(
-      23,
-    );
+    expect(
+      getAxisTitleSpacePx({
+        ...axis,
+        title: "Revenue",
+        titleStyle: { fontSize: 13 },
+      }),
+    ).toBe(23);
   });
 
   it("grows a line height per extra line", () => {
     expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD" })).toBe(31);
-    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD\nnet" })).toBe(43);
+    expect(getAxisTitleSpacePx({ ...axis, title: "Revenue\nUSD\nnet" })).toBe(
+      43,
+    );
   });
 });

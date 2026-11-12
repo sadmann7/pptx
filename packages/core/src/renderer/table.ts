@@ -6,7 +6,12 @@ import { hexToRgb } from "../utils/color";
 import { RenderContext } from "./context";
 import { PPTX_ATTRS } from "./dom-attributes";
 import { resolveThemeFontStack } from "./font";
-import { resolveColor, resolveFill, resolveLineStyle, resolveThemeFillReference } from "./style";
+import {
+  resolveColor,
+  resolveFill,
+  resolveLineStyle,
+  resolveThemeFillReference,
+} from "./style";
 import { getPredefinedTableStyle, NO_STYLE_TABLE_GRID } from "./table-style";
 import { renderTextBody } from "./text";
 
@@ -14,9 +19,13 @@ function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
   clearCssFillBackground(el);
 
   if (fillCss.includes("gradient") && fillCss.includes(" 0 0 / ")) {
-    const bgMatch = fillCss.match(/,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/);
+    const bgMatch = fillCss.match(
+      /,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/,
+    );
     if (bgMatch && bgMatch.index !== undefined) {
-      const imageLayers = fillCss.slice(0, bgMatch.index).replace(/\s+0 0\s*\/\s*8px 8px/g, "");
+      const imageLayers = fillCss
+        .slice(0, bgMatch.index)
+        .replace(/\s+0 0\s*\/\s*8px 8px/g, "");
       el.style.backgroundImage = imageLayers;
       el.style.backgroundSize = "8px 8px";
       el.style.backgroundRepeat = "repeat";
@@ -59,7 +68,10 @@ function findTableStyle(
     }
   }
   for (const style of tblStyleLst.children()) {
-    if (style.localName === "tblStyle" && style.attr("styleId") === tableStyleId) {
+    if (
+      style.localName === "tblStyle" &&
+      style.attr("styleId") === tableStyleId
+    ) {
       return style;
     }
   }
@@ -197,10 +209,16 @@ function getEffectiveTableStyleTextProps(
       if (fontRef.exists()) {
         const idx = fontRef.attr("idx");
         if (idx === "major") {
-          const fontStack = resolveThemeFontStack(["+mj-lt", "+mj-ea", "+mj-cs"], ctx);
+          const fontStack = resolveThemeFontStack(
+            ["+mj-lt", "+mj-ea", "+mj-cs"],
+            ctx,
+          );
           if (fontStack.length > 0) props.fontFamily = fontStack;
         } else if (idx === "minor") {
-          const fontStack = resolveThemeFontStack(["+mn-lt", "+mn-ea", "+mn-cs"], ctx);
+          const fontStack = resolveThemeFontStack(
+            ["+mn-lt", "+mn-ea", "+mn-cs"],
+            ctx,
+          );
           if (fontStack.length > 0) props.fontFamily = fontStack;
         }
       }
@@ -211,7 +229,11 @@ function getEffectiveTableStyleTextProps(
   return undefined;
 }
 
-function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContext): boolean {
+function applyStyleFill(
+  td: HTMLElement,
+  tcStyle: SafeXmlNode,
+  ctx: RenderContext,
+): boolean {
   const fill = tcStyle.child("fill");
   if (!fill.exists()) return false;
 
@@ -303,7 +325,8 @@ function collectStyleBorders(
 
       const style = resolveLineStyle(ln, ctx);
       if (style.width > 0 && style.color !== "transparent") {
-        borders[side] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
+        borders[side] =
+          `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
       }
       continue;
     }
@@ -334,7 +357,11 @@ function collectStyleBorders(
   }
 }
 
-function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: RenderContext): void {
+function applyTableBackground(
+  table: HTMLElement,
+  tblStyle: SafeXmlNode,
+  ctx: RenderContext,
+): void {
   const tblBg = tblStyle.child("tblBg");
   if (!tblBg.exists()) return;
 
@@ -367,11 +394,19 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
 
 // A row whose cells share one opaque color paints it behind them to hide the
 // anti-aliased seams that show as light hairlines on dark rows at fractional scale.
-function mergeRowFill(current: string | null | undefined, td: HTMLElement): string | null {
+function mergeRowFill(
+  current: string | null | undefined,
+  td: HTMLElement,
+): string | null {
   if (current === null) return null;
 
   const color = td.style.backgroundColor;
-  if (td.style.backgroundImage || !color || color === "transparent" || color.startsWith("rgba(")) {
+  if (
+    td.style.backgroundImage ||
+    !color ||
+    color === "transparent" ||
+    color.startsWith("rgba(")
+  ) {
     return null;
   }
   if (current === undefined) return color;
@@ -423,7 +458,10 @@ function tableFlipTransform(node: TableNodeData): string {
   return transforms.join(" ");
 }
 
-export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElement {
+export function renderTable(
+  node: TableNodeData,
+  ctx: RenderContext,
+): HTMLElement {
   // A table's real size is its grid (gridCol widths and tr heights). PowerPoint
   // ignores the frame extent, which producers like Google Slides often leave at
   // a dummy 3000000x3000000 that would crush the table into a small square.
@@ -542,12 +580,27 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       const borders: CellBorders = {};
       let sections: SafeXmlNode[] = [];
       if (tblStyle) {
-        sections = getStyleSections(tblStyle, rowIdx, colIdx, totalRows, totalCols, tblPr);
+        sections = getStyleSections(
+          tblStyle,
+          rowIdx,
+          colIdx,
+          totalRows,
+          totalCols,
+          tblPr,
+        );
         for (const section of sections) {
           const tcStyle = section.child("tcStyle");
           if (tcStyle.exists()) {
             applyStyleFill(td, tcStyle, ctx);
-            collectStyleBorders(borders, tcStyle, ctx, rowIdx, colIdx, totalRows, totalCols);
+            collectStyleBorders(
+              borders,
+              tcStyle,
+              ctx,
+              rowIdx,
+              colIdx,
+              totalRows,
+              totalCols,
+            );
           }
         }
       }
@@ -561,11 +614,13 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       if (borders.left) td.style.borderLeft = borders.left;
       if (borders.right) td.style.borderRight = borders.right;
 
-      if (rowIdx === 0) trackOuterEdge(outline.top, td, borders.top, cell.gridSpan);
+      if (rowIdx === 0)
+        trackOuterEdge(outline.top, td, borders.top, cell.gridSpan);
       if (rowIdx + cell.rowSpan === totalRows) {
         trackOuterEdge(outline.bottom, td, borders.bottom, cell.gridSpan);
       }
-      if (colIdx === 0) trackOuterEdge(outline.left, td, borders.left, cell.rowSpan);
+      if (colIdx === 0)
+        trackOuterEdge(outline.left, td, borders.left, cell.rowSpan);
       if (colIdx + cell.gridSpan === totalCols) {
         trackOuterEdge(outline.right, td, borders.right, cell.rowSpan);
       }
@@ -578,10 +633,14 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       filledCols += cell.gridSpan;
 
       const textProps =
-        sections.length > 0 ? getEffectiveTableStyleTextProps(sections, ctx) : undefined;
+        sections.length > 0
+          ? getEffectiveTableStyleTextProps(sections, ctx)
+          : undefined;
 
       if (cell.textBody) {
-        const textTarget = tableFlipTransform(node) ? document.createElement("div") : td;
+        const textTarget = tableFlipTransform(node)
+          ? document.createElement("div")
+          : td;
         const counterFlip = tableFlipTransform(node);
         if (counterFlip && textTarget !== td) {
           textTarget.style.width = "100%";
@@ -712,6 +771,7 @@ function collectBorder(
 
   const style = resolveLineStyle(ln, ctx);
   if (style.width > 0 && style.color !== "transparent") {
-    borders[side] = `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
+    borders[side] =
+      `${Math.max(style.width, 0.5)}px ${style.dash} ${style.color}`;
   }
 }

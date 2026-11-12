@@ -18,7 +18,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
 
-const SPECS_DIR = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
+const SPECS_DIR = dirname(
+  new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
+);
 
 export const POWERPOINT_DIR = join(SPECS_DIR, "..", "fixtures", "powerpoint");
 const BASELINES_DIR = join(SPECS_DIR, "oracle-baselines");
@@ -38,7 +40,11 @@ export const INK_TOLERANCE = 0.15;
 // fonts, so 0.65 is as high as it can sit without runner variance failing it.
 export const SCORE_FLOOR = 0.65;
 
-async function decodeTo(buffer: Buffer, width: number, height: number): Promise<Uint8ClampedArray> {
+async function decodeTo(
+  buffer: Buffer,
+  width: number,
+  height: number,
+): Promise<Uint8ClampedArray> {
   const data = await sharp(buffer)
     .resize(width, height, { fit: "fill" })
     .ensureAlpha()
@@ -67,7 +73,11 @@ const INK_ROWS = 3;
 // proportional comparison reads antialiasing as total loss.
 const MIN_REGION_INK = 0.02;
 
-async function inkPerRegion(buffer: Buffer, width: number, height: number): Promise<number[]> {
+async function inkPerRegion(
+  buffer: Buffer,
+  width: number,
+  height: number,
+): Promise<number[]> {
   const pixels = await sharp(buffer)
     .resize(width, height, { fit: "fill" })
     .greyscale()
@@ -76,7 +86,9 @@ async function inkPerRegion(buffer: Buffer, width: number, height: number): Prom
 
   // Slides are mostly background, so its tone is the median sample. Assuming
   // white would read a dark-themed slide as entirely painted.
-  const background = Uint8Array.prototype.slice.call(pixels).sort()[Math.floor(pixels.length / 2)];
+  const background = Uint8Array.prototype.slice.call(pixels).sort()[
+    Math.floor(pixels.length / 2)
+  ];
 
   const regionWidth = Math.floor(width / INK_COLUMNS);
   const regionHeight = Math.floor(height / INK_ROWS);
@@ -85,9 +97,11 @@ async function inkPerRegion(buffer: Buffer, width: number, height: number): Prom
     for (let column = 0; column < INK_COLUMNS; column++) {
       let painted = 0;
       for (let y = 0; y < regionHeight; y++) {
-        const rowStart = (row * regionHeight + y) * width + column * regionWidth;
+        const rowStart =
+          (row * regionHeight + y) * width + column * regionWidth;
         for (let x = 0; x < regionWidth; x++) {
-          if (Math.abs(pixels[rowStart + x] - background) > INK_THRESHOLD) painted++;
+          if (Math.abs(pixels[rowStart + x] - background) > INK_THRESHOLD)
+            painted++;
         }
       }
       regions.push(painted / (regionWidth * regionHeight));
@@ -149,17 +163,27 @@ export async function scoreAgainstPowerPoint(
     inkPerRegion(powerPointPng, width, height),
   ]);
   const ink = expectedInk.map((expected, index) =>
-    expected < MIN_REGION_INK ? 0 : Math.abs(actualInk[index] - expected) / expected,
+    expected < MIN_REGION_INK
+      ? 0
+      : Math.abs(actualInk[index] - expected) / expected,
   );
 
-  return { overall: ssim(actual, expected, undefined, width, height), worstTile, ink };
+  return {
+    overall: ssim(actual, expected, undefined, width, height),
+    worstTile,
+    ink,
+  };
 }
 
 // One file per deck, slide, browser and OS, so parallel workers never write the
 // same file. Text renders differently per OS (Linux lacks Calibri), moving SSIM
 // by ~0.01-0.03.
 function baselinePath(deck: string, slide: number, project: string): string {
-  return join(BASELINES_DIR, process.platform, `${deck}-${slide}-${project}.json`);
+  return join(
+    BASELINES_DIR,
+    process.platform,
+    `${deck}-${slide}-${project}.json`,
+  );
 }
 
 export function readScoreBaseline(
@@ -169,7 +193,9 @@ export function readScoreBaseline(
 ): OracleScore | null {
   const path = baselinePath(deck, slide, project);
   if (!existsSync(path)) return null;
-  const recorded = JSON.parse(readFileSync(path, "utf8")) as Partial<OracleScore>;
+  const recorded = JSON.parse(
+    readFileSync(path, "utf8"),
+  ) as Partial<OracleScore>;
   if (
     recorded.overall === undefined ||
     recorded.worstTile === undefined ||
@@ -178,7 +204,11 @@ export function readScoreBaseline(
     // A baseline missing a current metric asserts nothing until re-recorded.
     return null;
   }
-  return { overall: recorded.overall, worstTile: recorded.worstTile, ink: recorded.ink };
+  return {
+    overall: recorded.overall,
+    worstTile: recorded.worstTile,
+    ink: recorded.ink,
+  };
 }
 
 export function writeScoreBaseline(
@@ -193,7 +223,10 @@ export function writeScoreBaseline(
     worstTile: Number(score.worstTile.toFixed(4)),
     ink: score.ink.map((drift) => Number(drift.toFixed(4))),
   } satisfies OracleScore;
-  writeFileSync(baselinePath(deck, slide, project), `${JSON.stringify(rounded, null, 2)}\n`);
+  writeFileSync(
+    baselinePath(deck, slide, project),
+    `${JSON.stringify(rounded, null, 2)}\n`,
+  );
 }
 
 export const isUpdateMode = process.env.ORACLE_UPDATE === "1";

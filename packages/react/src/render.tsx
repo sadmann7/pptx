@@ -6,14 +6,21 @@ const LOWERCASE_CHARACTER_PATTERN = /[a-z]/;
 type AnyProps = Record<string, unknown>;
 type IntrinsicTag = keyof React.JSX.IntrinsicElements;
 
-export type ComponentRenderFn<P, S> = (props: P, state: S) => React.ReactElement;
+export type ComponentRenderFn<P, S> = (
+  props: P,
+  state: S,
+) => React.ReactElement;
 
-export type RenderFunctionProps<Tag extends IntrinsicTag | undefined = undefined> =
-  Tag extends IntrinsicTag ? React.JSX.IntrinsicElements[Tag] : React.HTMLAttributes<any>;
+export type RenderFunctionProps<
+  Tag extends IntrinsicTag | undefined = undefined,
+> = Tag extends IntrinsicTag
+  ? React.JSX.IntrinsicElements[Tag]
+  : React.HTMLAttributes<any>;
 
-export type RenderProp<S = Record<string, never>, P = React.HTMLAttributes<any>> =
-  | React.ReactElement
-  | ComponentRenderFn<P, S>;
+export type RenderProp<
+  S = Record<string, never>,
+  P = React.HTMLAttributes<any>,
+> = React.ReactElement | ComponentRenderFn<P, S>;
 
 export type PrimitiveProps<
   Tag extends React.ElementType,
@@ -46,7 +53,11 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
       typeof bv === "object"
     ) {
       result[key] = { ...(av as object), ...(bv as object) };
-    } else if (key.startsWith("on") && typeof av === "function" && typeof bv === "function") {
+    } else if (
+      key.startsWith("on") &&
+      typeof av === "function" &&
+      typeof bv === "function"
+    ) {
       const fa = av as (...args: unknown[]) => void;
       const fb = bv as (...args: unknown[]) => void;
       result[key] = (...args: unknown[]) => {
@@ -60,7 +71,9 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
   return result;
 }
 
-export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): React.RefCallback<T> {
+export function mergeRefs<T>(
+  ...refs: (React.Ref<T> | null | undefined)[]
+): React.RefCallback<T> {
   return (value) => {
     for (const ref of refs) {
       if (typeof ref === "function") {
@@ -80,7 +93,9 @@ export type StatefulPrimitiveProps<Tag extends React.ElementType, State> = Omit<
   className?: string | ((state: State) => string | undefined);
 
   /** Inline styles, or a function returning them from the component's state. */
-  style?: React.CSSProperties | ((state: State) => React.CSSProperties | undefined);
+  style?:
+    | React.CSSProperties
+    | ((state: State) => React.CSSProperties | undefined);
 };
 
 export interface RenderElementComponentProps<S, P = AnyProps> {
@@ -89,7 +104,11 @@ export interface RenderElementComponentProps<S, P = AnyProps> {
   style?: React.CSSProperties | ((state: S) => React.CSSProperties | undefined);
 }
 
-export interface RenderElementParams<S, E extends Element, Tag extends IntrinsicTag> {
+export interface RenderElementParams<
+  S,
+  E extends Element,
+  Tag extends IntrinsicTag,
+> {
   state: S;
   ref?: React.Ref<E> | (React.Ref<E> | null | undefined)[];
   // Merged left to right; the user's `className` and `style` always compose on top.
@@ -99,13 +118,22 @@ export interface RenderElementParams<S, E extends Element, Tag extends Intrinsic
 }
 
 // A plain function rather than a hook so it can run after a conditional return.
-export function renderElement<Tag extends IntrinsicTag, S, E extends Element = Element>(
+export function renderElement<
+  Tag extends IntrinsicTag,
+  S,
+  E extends Element = Element,
+>(
   defaultTag: Tag,
   componentProps: RenderElementComponentProps<S, RenderFunctionProps<Tag>>,
   params: RenderElementParams<S, E, Tag>,
 ): React.ReactElement {
   const outProps = composeRenderProps(componentProps, params);
-  return evaluateRenderProp(defaultTag, componentProps.render, outProps, params.state);
+  return evaluateRenderProp(
+    defaultTag,
+    componentProps.render,
+    outProps,
+    params.state,
+  );
 }
 
 function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
@@ -119,22 +147,34 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
       ? componentProps.className(state)
       : componentProps.className;
   const style =
-    typeof componentProps.style === "function" ? componentProps.style(state) : componentProps.style;
+    typeof componentProps.style === "function"
+      ? componentProps.style(state)
+      : componentProps.style;
 
   const outProps = Array.isArray(props)
-    ? props.reduce<AnyProps>((acc, p) => (p ? mergeProps(acc, p as AnyProps) : acc), {})
+    ? props.reduce<AnyProps>(
+        (acc, p) => (p ? mergeProps(acc, p as AnyProps) : acc),
+        {},
+      )
     : { ...(props as AnyProps | undefined) };
 
   if (className !== undefined) {
-    outProps.className = [outProps.className, className].filter(Boolean).join(" ") || undefined;
+    outProps.className =
+      [outProps.className, className].filter(Boolean).join(" ") || undefined;
   }
   if (style !== undefined) {
     outProps.style = { ...(outProps.style as object | undefined), ...style };
   }
 
-  const elementRef = React.isValidElement(render) ? getElementRef(render) : null;
+  const elementRef = React.isValidElement(render)
+    ? getElementRef(render)
+    : null;
   const paramRefs = Array.isArray(ref) ? ref : [ref];
-  if (outProps.ref != null || elementRef != null || paramRefs.some((r) => r != null)) {
+  if (
+    outProps.ref != null ||
+    elementRef != null ||
+    paramRefs.some((r) => r != null)
+  ) {
     outProps.ref = mergeRefs(
       outProps.ref as React.Ref<E> | undefined,
       elementRef as React.Ref<E> | null,
@@ -175,7 +215,10 @@ function evaluateRenderProp<Tag extends IntrinsicTag, S>(
   }
 
   if (render != null) {
-    if (process.env.NODE_ENV !== "production" && !React.isValidElement(render)) {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      !React.isValidElement(render)
+    ) {
       throw new Error("`render` must be a valid React element or a function.");
     }
     const merged = mergeProps(props, render.props as AnyProps);

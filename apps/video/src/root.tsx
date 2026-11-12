@@ -1,6 +1,10 @@
 import { Composition } from "remotion";
 
-import { calculateLaunchMetadata, DEFAULT_LAUNCH_PROPS, Launch } from "@/components/launch";
+import {
+  calculateLaunchMetadata,
+  DEFAULT_LAUNCH_PROPS,
+  Launch,
+} from "@/components/launch";
 import { LAUNCH_DURATION, VIDEO_H, VIDEO_W } from "@/lib/constants";
 import "@/styles/globals.css";
 

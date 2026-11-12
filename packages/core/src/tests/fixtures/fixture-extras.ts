@@ -165,7 +165,8 @@ const slideMasterRels =
 
 function slideLayoutFor(options: CustomPptxOptions): string {
   const clrMapOvr =
-    options.layoutClrMapOvrXml ?? `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>`;
+    options.layoutClrMapOvrXml ??
+    `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>`;
   return (
     XML_DECL +
     `<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank">
@@ -210,14 +211,22 @@ ${shapesXml}
 }
 
 // Defaults match minimal-pptx.
-export async function buildCustomPptx(options: CustomPptxOptions = {}): Promise<ArrayBuffer> {
+export async function buildCustomPptx(
+  options: CustomPptxOptions = {},
+): Promise<ArrayBuffer> {
   const slides = options.slides ?? [""];
 
   const zip = new JSZip();
-  zip.file("[Content_Types].xml", options.contentTypesXml ?? contentTypesFor(slides.length));
+  zip.file(
+    "[Content_Types].xml",
+    options.contentTypesXml ?? contentTypesFor(slides.length),
+  );
   zip.file("_rels/.rels", rootRels);
   zip.file("ppt/presentation.xml", presentationFor(slides.length));
-  zip.file("ppt/_rels/presentation.xml.rels", presentationRelsFor(slides.length));
+  zip.file(
+    "ppt/_rels/presentation.xml.rels",
+    presentationRelsFor(slides.length),
+  );
   zip.file("ppt/theme/theme1.xml", themeFor(options));
   zip.file("ppt/slideMasters/slideMaster1.xml", slideMasterFor(options));
   zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", slideMasterRels);

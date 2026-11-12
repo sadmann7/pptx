@@ -1,4 +1,5 @@
 {
+  "printWidth": 80,
   "ignorePatterns": ["packages/e2e/**/*.html"],
   "sortImports": {
     "customGroups": [

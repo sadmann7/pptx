@@ -13,7 +13,11 @@ import { parseCtf, parseEotMetadata, unpackMtx } from "../../fonts/mtx";
 import { DEFAULT_LIMITS } from "../../fonts/mtx/limits";
 import { buildSfnt, validateSfnt } from "../../fonts/mtx/sfnt";
 
-const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
+const FIXTURES = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "fixtures",
+);
 
 interface Workload {
   label: string;

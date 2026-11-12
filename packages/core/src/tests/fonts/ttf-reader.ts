@@ -18,7 +18,10 @@ export interface ReadCompositeGlyph {
   instructions: number[];
 }
 
-export type ReadGlyph = ReadSimpleGlyph | ReadCompositeGlyph | { kind: "empty" };
+export type ReadGlyph =
+  | ReadSimpleGlyph
+  | ReadCompositeGlyph
+  | { kind: "empty" };
 
 export class TtfReader {
   readonly tables = new Map<string, Uint8Array>();
@@ -62,12 +65,19 @@ export class TtfReader {
 
   get numGlyphs(): number {
     const maxp = this.table("maxp");
-    return new DataView(maxp.buffer, maxp.byteOffset, maxp.byteLength).getUint16(4, false);
+    return new DataView(
+      maxp.buffer,
+      maxp.byteOffset,
+      maxp.byteLength,
+    ).getUint16(4, false);
   }
 
   get indexToLocFormat(): number {
     const head = this.table("head");
-    return new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(50, false);
+    return new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(
+      50,
+      false,
+    );
   }
 
   get locaOffsets(): number[] {
@@ -127,7 +137,8 @@ function readSimple(
       for (let i = 0; i < repeat; i++) flags.push(flag);
     }
   }
-  if (flags.length !== pointCount) throw new Error("Flag run overshot the point count");
+  if (flags.length !== pointCount)
+    throw new Error("Flag run overshot the point count");
 
   const xs: number[] = [];
   let x = 0;
@@ -160,7 +171,11 @@ function readSimple(
   for (const endPoint of endPoints) {
     const contour: ReadPoint[] = [];
     for (; cursor <= endPoint; cursor++) {
-      contour.push({ x: xs[cursor]!, y: ys[cursor]!, onCurve: (flags[cursor]! & 0x01) !== 0 });
+      contour.push({
+        x: xs[cursor]!,
+        y: ys[cursor]!,
+        onCurve: (flags[cursor]! & 0x01) !== 0,
+      });
     }
     contours.push(contour);
   }

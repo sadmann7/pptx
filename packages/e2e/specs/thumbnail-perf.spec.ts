@@ -12,7 +12,12 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DECKS_DIR = join(HERE, "..", "decks");
 // The perf picture only means something on real content.
-const SOURCE_DECK = join(HERE, "..", "fixtures", "adventure-club-pin-and-paper.pptx");
+const SOURCE_DECK = join(
+  HERE,
+  "..",
+  "fixtures",
+  "adventure-club-pin-and-paper.pptx",
+);
 const BENCH_DECK = "bench-thumbnails.pptx";
 const TARGET_SLIDES = 64;
 
@@ -41,23 +46,37 @@ test.describe("thumbnail list scroll performance", () => {
     copyFileSync(SOURCE_DECK, join(DECKS_DIR, BENCH_DECK));
   });
 
-  test("reports render cost and skeleton exposure while scrolling", async ({ page }) => {
-    await page.goto(`/thumbnails.html?file=decks/${BENCH_DECK}&slides=${TARGET_SLIDES}`);
-    await page.waitForFunction(() => window.__thumbnailsReady === true, undefined, {
-      timeout: 120_000,
-    });
+  test("reports render cost and skeleton exposure while scrolling", async ({
+    page,
+  }) => {
+    await page.goto(
+      `/thumbnails.html?file=decks/${BENCH_DECK}&slides=${TARGET_SLIDES}`,
+    );
+    await page.waitForFunction(
+      () => window.__thumbnailsReady === true,
+      undefined,
+      {
+        timeout: 120_000,
+      },
+    );
 
     const slideCount = await page.evaluate(() => window.__slideCount ?? 0);
 
     const renderCost = await page.evaluate(() => window.__benchRenderModes?.());
-    if (!renderCost) throw new Error("harness did not expose __benchRenderModes");
+    if (!renderCost)
+      throw new Error("harness did not expose __benchRenderModes");
 
-    const sweep = await page.evaluate<SweepResult, { step: number; frames: number }>(
+    const sweep = await page.evaluate<
+      SweepResult,
+      { step: number; frames: number }
+    >(
       async ({ step, frames }) => {
         const list = document.getElementById("thumbnail-list");
         if (!list) throw new Error("missing #thumbnail-list");
 
-        const previews = Array.from(list.querySelectorAll<HTMLElement>("[aria-hidden='true']"));
+        const previews = Array.from(
+          list.querySelectorAll<HTMLElement>("[aria-hidden='true']"),
+        );
 
         // Measuring each preview's rect every frame would force a layout per
         // preview, enough work to change the number the sweep reports.
@@ -69,7 +88,10 @@ test.describe("thumbnail list scroll performance", () => {
           if (pitch <= 0) return 0;
           const top = list.scrollTop - firstTop;
           const first = Math.max(0, Math.floor(top / pitch));
-          const last = Math.min(previews.length - 1, Math.floor((top + viewportHeight) / pitch));
+          const last = Math.min(
+            previews.length - 1,
+            Math.floor((top + viewportHeight) / pitch),
+          );
           let pending = 0;
           for (let index = first; index <= last; index++) {
             if (previews[index]?.dataset.pending !== undefined) pending++;
@@ -78,7 +100,9 @@ test.describe("thumbnail list scroll performance", () => {
         };
 
         const nextFrame = () =>
-          new Promise<number>((resolve) => requestAnimationFrame((now) => resolve(now)));
+          new Promise<number>((resolve) =>
+            requestAnimationFrame((now) => resolve(now)),
+          );
 
         list.scrollTop = 0;
         // The initial viewport fills before measuring, so the sweep reports
@@ -102,7 +126,10 @@ test.describe("thumbnail list scroll performance", () => {
         }
 
         const settleStart = performance.now();
-        while (visiblePending() > 0 && performance.now() - settleStart < 10_000) {
+        while (
+          visiblePending() > 0 &&
+          performance.now() - settleStart < 10_000
+        ) {
           await nextFrame();
         }
         const settleMs = performance.now() - settleStart;
@@ -113,20 +140,28 @@ test.describe("thumbnail list scroll performance", () => {
           worstPending,
           meanPending: measured > 0 ? totalPending / measured : 0,
           settleMs,
-          renderedPreviews: previews.filter((preview) => preview.dataset.pending === undefined)
-            .length,
+          renderedPreviews: previews.filter(
+            (preview) => preview.dataset.pending === undefined,
+          ).length,
           totalPreviews: previews.length,
         };
       },
       { step: SCROLL_STEP_PX, frames: SCROLL_FRAMES },
     );
 
-    const total = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
+    const total = (values: number[]) =>
+      values.reduce((sum, value) => sum + value, 0);
     const worst = (values: number[]) => Math.max(...values);
-    const mean = (values: number[]) => (values.length > 0 ? total(values) / values.length : 0);
+    const mean = (values: number[]) =>
+      values.length > 0 ? total(values) / values.length : 0;
 
-    const cost = (label: string, timings: { render: number[]; mount: number[] }) => {
-      const both = timings.render.map((value, index) => value + (timings.mount[index] ?? 0));
+    const cost = (
+      label: string,
+      timings: { render: number[]; mount: number[] },
+    ) => {
+      const both = timings.render.map(
+        (value, index) => value + (timings.mount[index] ?? 0),
+      );
       return [
         `  ${label.padEnd(18)}mean ${mean(both).toFixed(1)}ms   worst ${worst(both).toFixed(1)}ms   deck ${total(both).toFixed(0)}ms`,
         `    render          mean ${mean(timings.render).toFixed(1)}ms   worst ${worst(timings.render).toFixed(1)}ms`,

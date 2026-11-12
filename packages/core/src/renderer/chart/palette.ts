@@ -3,7 +3,9 @@ import { RenderContext } from "../context";
 import { resolveColorToCss } from "../style";
 import { CHART_ACCENT_KEYS } from "./type";
 
-function parseChartColorMapOverride(chartXml: SafeXmlNode): Map<string, string> | undefined {
+function parseChartColorMapOverride(
+  chartXml: SafeXmlNode,
+): Map<string, string> | undefined {
   const clrMapOvr = chartXml.child("clrMapOvr");
   if (!clrMapOvr.exists()) return undefined;
 
@@ -26,7 +28,10 @@ function parseChartColorMapOverride(chartXml: SafeXmlNode): Map<string, string> 
   return map.size > 0 ? map : undefined;
 }
 
-export function createChartRenderContext(chartXml: SafeXmlNode, ctx: RenderContext): RenderContext {
+export function createChartRenderContext(
+  chartXml: SafeXmlNode,
+  ctx: RenderContext,
+): RenderContext {
   const colorMapOverride = parseChartColorMapOverride(chartXml);
   if (!colorMapOverride) return ctx;
   return {
@@ -64,9 +69,13 @@ function resolveChartColorStyleColor(
   colorNode: SafeXmlNode,
   ctx: RenderContext,
 ): string | undefined {
-  if (!colorNode.element || !CHART_COLOR_NODE_NAMES.has(colorNode.localName)) return undefined;
+  if (!colorNode.element || !CHART_COLOR_NODE_NAMES.has(colorNode.localName))
+    return undefined;
   const doc = colorNode.element.ownerDocument;
-  const wrapper = doc.createElementNS(colorNode.element.namespaceURI, "solidFill");
+  const wrapper = doc.createElementNS(
+    colorNode.element.namespaceURI,
+    "solidFill",
+  );
   wrapper.appendChild(colorNode.element.cloneNode(true));
   return resolveColorToCss(new SafeXmlNode(wrapper), ctx);
 }
@@ -94,7 +103,13 @@ function darkenHexColor(hex: string, factor: number): string {
   const cleaned = hex.replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) return hex;
   const channel = (start: number): number =>
-    Math.max(0, Math.min(255, Math.round(parseInt(cleaned.slice(start, start + 2), 16) * factor)));
+    Math.max(
+      0,
+      Math.min(
+        255,
+        Math.round(parseInt(cleaned.slice(start, start + 2), 16) * factor),
+      ),
+    );
   return `#${[channel(0), channel(2), channel(4)]
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("")}`;
@@ -105,7 +120,9 @@ export function getVaryColorPointPalette(
   options: { darken?: boolean } = {},
 ): string[] {
   const accents = getThemeAccentPalette(ctx);
-  return options.darken === false ? accents : accents.map((color) => darkenHexColor(color, 0.88));
+  return options.darken === false
+    ? accents
+    : accents.map((color) => darkenHexColor(color, 0.88));
 }
 
 export function buildChartPalette(

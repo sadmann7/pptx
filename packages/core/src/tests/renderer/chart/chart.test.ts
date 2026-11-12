@@ -5,8 +5,14 @@ import { buildPresentation } from "../../../model/presentation";
 import { parseXml } from "../../../ooxml/xml";
 import { readPptx } from "../../../ooxml/zip";
 import { parseChartXml } from "../../../renderer/chart";
-import { parseDataLabels, parsePointDataLabelOverrides } from "../../../renderer/chart/data-label";
-import { buildDataTableElement, parseDataTable } from "../../../renderer/chart/data-table";
+import {
+  parseDataLabels,
+  parsePointDataLabelOverrides,
+} from "../../../renderer/chart/data-label";
+import {
+  buildDataTableElement,
+  parseDataTable,
+} from "../../../renderer/chart/data-table";
 import type { SeriesData } from "../../../renderer/chart/type";
 import type { RenderContext } from "../../../renderer/context";
 import { renderSlide } from "../../../renderer/slide";
@@ -20,7 +26,14 @@ import {
   seriesXml,
 } from "../../fixtures/chart-pptx";
 
-const OFFICE_ACCENTS = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
+const OFFICE_ACCENTS = [
+  "#4472C4",
+  "#ED7D31",
+  "#A5A5A5",
+  "#FFC000",
+  "#5B9BD5",
+  "#70AD47",
+];
 
 let ctx: RenderContext;
 
@@ -59,12 +72,20 @@ describe("parseChartXml: bar chart", () => {
   });
 
   it("uses the categories on the category axis", () => {
-    expect(option.xAxis).toMatchObject({ type: "category", data: ["Q1", "Q2", "Q3"] });
+    expect(option.xAxis).toMatchObject({
+      type: "category",
+      data: ["Q1", "Q2", "Q3"],
+    });
   });
 
   it("applies a PowerPoint-like nice range to the value axis", () => {
     // data max 30 → interval 5, headroom to 35, floor at 0.
-    expect(option.yAxis).toMatchObject({ type: "value", min: 0, max: 35, interval: 5 });
+    expect(option.yAxis).toMatchObject({
+      type: "value",
+      min: 0,
+      max: 35,
+      interval: 5,
+    });
   });
 
   it("extracts the rich text title with theme font and default color", () => {
@@ -91,7 +112,11 @@ describe("parseChartXml: bar chart", () => {
   });
 
   it("reserves grid space for title and bottom legend", () => {
-    expect(option.grid).toMatchObject({ containLabel: true, top: 68, bottom: 35 });
+    expect(option.grid).toMatchObject({
+      containLabel: true,
+      top: 68,
+      bottom: 35,
+    });
   });
 });
 
@@ -235,7 +260,9 @@ ${seriesXml(0, "Solo", ["A", "B"], [1, 2])}
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
     // Darkened accent palette cycles per point.
-    expect(option.series[0].data[0]).toMatchObject({ itemStyle: { color: "#3c64ac" } });
+    expect(option.series[0].data[0]).toMatchObject({
+      itemStyle: { color: "#3c64ac" },
+    });
   });
 
   it("swaps axes for horizontal bar charts", () => {
@@ -260,7 +287,10 @@ ${seriesXml(1, "Second", ["A", "B"], [3, 4])}
     const { option } = parseOption(xml) as AnyRecord;
     // ECharts draws series[0] at the top of each cluster; PowerPoint puts it at
     // the bottom, so the drawn order is the reverse of the OOXML order.
-    expect(option.series.map((s: AnyRecord) => s.name)).toEqual(["Second", "First"]);
+    expect(option.series.map((s: AnyRecord) => s.name)).toEqual([
+      "Second",
+      "First",
+    ]);
     expect(option.legend.data).toEqual(["Second", "First"]);
   });
 
@@ -282,7 +312,10 @@ ${seriesXml(1, "Second", ["A"], [2])}
 <c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>`);
     for (const xml of [upright, stacked]) {
       const { option } = parseOption(xml) as AnyRecord;
-      expect(option.series.map((s: AnyRecord) => s.name)).toEqual(["First", "Second"]);
+      expect(option.series.map((s: AnyRecord) => s.name)).toEqual([
+        "First",
+        "Second",
+      ]);
       expect(option.legend.data).toEqual(["First", "Second"]);
     }
   });
@@ -298,7 +331,10 @@ ${seriesXml(1, "Second", ["A"], [2])}
     const colours = Object.fromEntries(
       option.series.map((s: AnyRecord) => [s.name, s.itemStyle?.color]),
     );
-    expect(colours).toEqual({ First: OFFICE_ACCENTS[0], Second: OFFICE_ACCENTS[1] });
+    expect(colours).toEqual({
+      First: OFFICE_ACCENTS[0],
+      Second: OFFICE_ACCENTS[1],
+    });
   });
 });
 
@@ -333,7 +369,11 @@ describe("parseChartXml: titles", () => {
 <c:barChart>${seriesXml(0, "S", ["A"], [1])}</c:barChart>
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
-    expect(option.title).toMatchObject({ text: "Placed", left: "10%", top: "5%" });
+    expect(option.title).toMatchObject({
+      text: "Placed",
+      left: "10%",
+      top: "5%",
+    });
   });
 });
 
@@ -363,7 +403,9 @@ describe("parseChartXml: line chart", () => {
   it("maps blank points according to dispBlanksAs", () => {
     const seriesFragment = seriesXml(0, "Gappy", ["A", "B", "C"], [1, null, 3]);
     const gap = parseOption(
-      chartSpaceXml(`<c:plotArea><c:lineChart>${seriesFragment}</c:lineChart></c:plotArea>`),
+      chartSpaceXml(
+        `<c:plotArea><c:lineChart>${seriesFragment}</c:lineChart></c:plotArea>`,
+      ),
     ) as AnyRecord;
     expect(gap.option.series[0].data).toEqual([1, null, 3]);
     expect(gap.option.series[0].connectNulls).toBe(false);
@@ -428,7 +470,9 @@ ${seriesXml(0, "Share", ["Alpha", "Beta", "Gamma"], [50, 30, 20], `<c:dLbls><c:d
     const label = option.series[0].label;
     expect(label.show).toBe(true);
     expect(label.position).toBe("outside");
-    expect(label.formatter({ value: 50, name: "Alpha", percent: 50 })).toBe("50 50%");
+    expect(label.formatter({ value: 50, name: "Alpha", percent: 50 })).toBe(
+      "50 50%",
+    );
     expect(option.series[0].labelLine.show).toBe(false);
   });
 
@@ -519,7 +563,11 @@ ${seriesXml(2, "Line", ["X", "Y"], [0.1, 0.9])}
 <c:legend><c:legendPos val="b"/></c:legend>`);
     const { option } = parseOption(xml) as AnyRecord;
 
-    expect(option.series.map((s: AnyRecord) => s.type)).toEqual(["bar", "bar", "line"]);
+    expect(option.series.map((s: AnyRecord) => s.type)).toEqual([
+      "bar",
+      "bar",
+      "line",
+    ]);
     expect(Array.isArray(option.yAxis)).toBe(true);
     expect(option.yAxis).toHaveLength(2);
     expect(option.series[2].yAxisIndex).toBe(1);
@@ -587,7 +635,10 @@ describe("data labels", () => {
 </c:dLbls>`).child("dLbls");
     const overrides = parsePointDataLabelOverrides(dLbls, ctx);
     expect(overrides.get(0)).toMatchObject({ deleted: true, showVal: false });
-    expect(overrides.get(2)).toMatchObject({ showVal: true, position: "outEnd" });
+    expect(overrides.get(2)).toMatchObject({
+      showVal: true,
+      position: "outEnd",
+    });
     expect(overrides.has(1)).toBe(false);
   });
 });
@@ -622,12 +673,18 @@ ${seriesXml(0, "S", ["A", "B"], [1, 2])}
         blankIndices: new Set([1]),
       },
     ];
-    const table = buildDataTableElement({ seriesArr, showKeys: true }, ["#FF0000"]);
+    const table = buildDataTableElement({ seriesArr, showKeys: true }, [
+      "#FF0000",
+    ]);
 
-    const headers = [...table.querySelectorAll("thead th")].map((th) => th.textContent);
+    const headers = [...table.querySelectorAll("thead th")].map(
+      (th) => th.textContent,
+    );
     expect(headers).toEqual(["", "Q1", "Q2", "Q3"]);
 
-    const cells = [...table.querySelectorAll("tbody td")].map((td) => td.textContent);
+    const cells = [...table.querySelectorAll("tbody td")].map(
+      (td) => td.textContent,
+    );
     expect(cells).toEqual(["Revenue", "1,000", "", "3,000"]);
 
     const key = table.querySelector("tbody td span") as HTMLElement;
@@ -650,7 +707,9 @@ describe("renderChart via renderSlide (happy-dom)", () => {
       ".pptx-chart-custom-legend",
     ) as HTMLElement | null;
     expect(legendOverlay).not.toBeNull();
-    const legendLabels = [...legendOverlay!.querySelectorAll("span")].map((s) => s.textContent);
+    const legendLabels = [...legendOverlay!.querySelectorAll("span")].map(
+      (s) => s.textContent,
+    );
     expect(legendLabels).toEqual(["Series A", "Series B"]);
 
     const wrapper = legendOverlay!.parentElement as HTMLElement;
@@ -664,7 +723,9 @@ describe("renderChart via renderSlide (happy-dom)", () => {
   });
 
   it("renders a placeholder when the chart part is missing from the package", async () => {
-    const buffer = await buildPptxWithChart(BAR_CHART_XML, { omitChartPart: true });
+    const buffer = await buildPptxWithChart(BAR_CHART_XML, {
+      omitChartPart: true,
+    });
     const presentation = buildPresentation(await readPptx(buffer));
     const handle = renderSlide(presentation, presentation.slides[0]);
     await handle.ready;

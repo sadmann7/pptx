@@ -6,9 +6,20 @@ import { parseXml, SafeXmlNode } from "../ooxml/xml";
 import { PptxFiles } from "../ooxml/zip";
 import { LayoutData, parseLayout, PlaceholderEntry } from "./layout";
 import { MasterData, parseMaster } from "./master";
-import { BaseNodeData, NodePosition, NodeSize, PlaceholderInfo } from "./nodes/base";
+import {
+  BaseNodeData,
+  NodePosition,
+  NodeSize,
+  PlaceholderInfo,
+} from "./nodes/base";
 import type { GroupNodeData } from "./nodes/group";
-import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode } from "./slide";
+import {
+  createLazySlide,
+  materializeSlideData,
+  parseSlide,
+  SlideData,
+  SlideNode,
+} from "./slide";
 import { parseTheme, ThemeData } from "./theme";
 
 export interface EmbeddedFontVariant {
@@ -95,7 +106,10 @@ function detectWps(presentationXml: string): boolean {
   );
 }
 
-function findRelByType(rels: Map<string, RelEntry>, typeSubstring: string): RelEntry | undefined {
+function findRelByType(
+  rels: Map<string, RelEntry>,
+  typeSubstring: string,
+): RelEntry | undefined {
   for (const [, entry] of rels) {
     if (entry.type.includes(typeSubstring)) {
       return entry;
@@ -104,7 +118,10 @@ function findRelByType(rels: Map<string, RelEntry>, typeSubstring: string): RelE
   return undefined;
 }
 
-function findRelsByType(rels: Map<string, RelEntry>, typeSubstring: string): [string, RelEntry][] {
+function findRelsByType(
+  rels: Map<string, RelEntry>,
+  typeSubstring: string,
+): [string, RelEntry][] {
   const results: [string, RelEntry][] = [];
   for (const [rId, entry] of rels) {
     if (entry.type.includes(typeSubstring)) {
@@ -155,7 +172,10 @@ export function buildPresentation(
       masterData.rels = masterRels;
       const themeRel = findRelByType(masterRels, "theme");
       if (themeRel) {
-        const themePath = resolveRelTarget(basePath(masterPath), themeRel.target);
+        const themePath = resolveRelTarget(
+          basePath(masterPath),
+          themeRel.target,
+        );
         masterToTheme.set(masterPath, themePath);
       }
     }
@@ -177,7 +197,10 @@ export function buildPresentation(
       layoutData.rels = layoutRels;
       const masterRel = findRelByType(layoutRels, "slideMaster");
       if (masterRel) {
-        const masterPath = resolveRelTarget(basePath(layoutPath), masterRel.target);
+        const masterPath = resolveRelTarget(
+          basePath(layoutPath),
+          masterRel.target,
+        );
         layoutToMaster.set(layoutPath, masterPath);
       }
     }
@@ -202,7 +225,10 @@ export function buildPresentation(
 
     const chartStyleRel = findRelByType(chartRels, "chartStyle");
     if (chartStyleRel) {
-      const chartStylePath = resolveRelTarget(basePath(chartPath), chartStyleRel.target);
+      const chartStylePath = resolveRelTarget(
+        basePath(chartPath),
+        chartStyleRel.target,
+      );
       const chartStyleXml = files.chartStyles?.get(chartStylePath);
       if (chartStyleXml) {
         const chartStyleRoot = parseXml(chartStyleXml);
@@ -213,20 +239,31 @@ export function buildPresentation(
 
     const chartColorStyleRel = findRelByType(chartRels, "chartColorStyle");
     if (chartColorStyleRel) {
-      const chartColorStylePath = resolveRelTarget(basePath(chartPath), chartColorStyleRel.target);
+      const chartColorStylePath = resolveRelTarget(
+        basePath(chartPath),
+        chartColorStyleRel.target,
+      );
       const chartColorStyleXml = files.chartColors?.get(chartColorStylePath);
       if (chartColorStyleXml) {
         const chartColorStyleRoot = parseXml(chartColorStyleXml);
-        sourcePackage?.registerXmlRoot(chartColorStylePath, chartColorStyleRoot);
-        if (chartColorStyleRoot.exists()) chartColorStyles.set(chartPath, chartColorStyleRoot);
+        sourcePackage?.registerXmlRoot(
+          chartColorStylePath,
+          chartColorStyleRoot,
+        );
+        if (chartColorStyleRoot.exists())
+          chartColorStyles.set(chartPath, chartColorStyleRoot);
       }
     }
 
     const themeOverrideRel = findRelByType(chartRels, "themeOverride");
     if (!themeOverrideRel) continue;
-    const themeOverridePath = resolveRelTarget(basePath(chartPath), themeOverrideRel.target);
+    const themeOverridePath = resolveRelTarget(
+      basePath(chartPath),
+      themeOverrideRel.target,
+    );
     const themeOverrideXml =
-      files.themeOverrides?.get(themeOverridePath) ?? files.themes.get(themeOverridePath);
+      files.themeOverrides?.get(themeOverridePath) ??
+      files.themes.get(themeOverridePath);
     if (!themeOverrideXml) continue;
     const themeOverrideRoot = parseXml(themeOverrideXml);
     sourcePackage?.registerXmlRoot(themeOverridePath, themeOverrideRoot);
@@ -283,7 +320,9 @@ export function buildPresentation(
 
     const slideRelsPath = relsPathFor(slidePath);
     const slideRelsXml = files.slideRels.get(slideRelsPath);
-    const slideRels = slideRelsXml ? parseRels(slideRelsXml) : new Map<string, RelEntry>();
+    const slideRels = slideRelsXml
+      ? parseRels(slideRelsXml)
+      : new Map<string, RelEntry>();
 
     let slideData: SlideData;
     if (options.lazySlides) {
@@ -291,11 +330,20 @@ export function buildPresentation(
     } else {
       const slideRoot = parseXml(slideXml);
       sourcePackage?.registerXmlRoot(slidePath, slideRoot);
-      slideData = parseSlide(slideRoot, i, slideRels, slidePath, files.diagramDrawings);
+      slideData = parseSlide(
+        slideRoot,
+        i,
+        slideRels,
+        slidePath,
+        files.diagramDrawings,
+      );
     }
 
     if (slideData.layoutIndex) {
-      const layoutPath = resolveRelTarget(basePath(slidePath), slideData.layoutIndex);
+      const layoutPath = resolveRelTarget(
+        basePath(slidePath),
+        slideData.layoutIndex,
+      );
       slideData.layoutIndex = layoutPath;
       slideToLayout.set(i, layoutPath);
     }
@@ -374,12 +422,16 @@ function parseEmbeddedFontList(
     const pitchFamilyStr = fontNode.attr("pitchFamily");
     const entry: EmbeddedFontEntry = {
       typeface,
-      pitchFamily: pitchFamilyStr !== undefined ? Number(pitchFamilyStr) : undefined,
+      pitchFamily:
+        pitchFamilyStr !== undefined ? Number(pitchFamilyStr) : undefined,
       charset: fontNode.attr("charset") ?? undefined,
       regular: resolveEmbeddedFontVariant(embFont.child("regular"), presRels),
       bold: resolveEmbeddedFontVariant(embFont.child("bold"), presRels),
       italic: resolveEmbeddedFontVariant(embFont.child("italic"), presRels),
-      boldItalic: resolveEmbeddedFontVariant(embFont.child("boldItalic"), presRels),
+      boldItalic: resolveEmbeddedFontVariant(
+        embFont.child("boldItalic"),
+        presRels,
+      ),
     };
     entries.push(entry);
   }
@@ -387,7 +439,13 @@ function parseEmbeddedFontList(
 }
 
 function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
-  for (const wrapper of ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
+  for (const wrapper of [
+    "nvSpPr",
+    "nvPicPr",
+    "nvGrpSpPr",
+    "nvGraphicFramePr",
+    "nvCxnSpPr",
+  ]) {
     const nvWrapper = phNode.child(wrapper);
     if (nvWrapper.exists()) {
       const nvPr = nvWrapper.child("nvPr");
@@ -396,14 +454,19 @@ function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
         const type = ph.attr("type");
         const idxStr = ph.attr("idx");
         const idx = idxStr !== undefined ? Number(idxStr) : undefined;
-        return { type, idx: idx !== undefined && !isNaN(idx) ? idx : undefined };
+        return {
+          type,
+          idx: idx !== undefined && !isNaN(idx) ? idx : undefined,
+        };
       }
     }
   }
   return {};
 }
 
-function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSize } | undefined {
+function getPhXfrm(
+  phNode: SafeXmlNode,
+): { position: NodePosition; size: NodeSize } | undefined {
   // spPr > xfrm on most shapes, a direct xfrm on graphic frames.
   const spPrXfrm = phNode.child("spPr").child("xfrm");
   const xfrm = spPrXfrm.exists() ? spPrXfrm : phNode.child("xfrm");
@@ -414,8 +477,14 @@ function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSiz
     const cx = ext.numAttr("cx");
     if (x !== undefined && cx !== undefined) {
       return {
-        position: { x: emuToPx(off.numAttr("x") ?? 0), y: emuToPx(off.numAttr("y") ?? 0) },
-        size: { w: emuToPx(ext.numAttr("cx") ?? 0), h: emuToPx(ext.numAttr("cy") ?? 0) },
+        position: {
+          x: emuToPx(off.numAttr("x") ?? 0),
+          y: emuToPx(off.numAttr("y") ?? 0),
+        },
+        size: {
+          w: emuToPx(ext.numAttr("cx") ?? 0),
+          h: emuToPx(ext.numAttr("cy") ?? 0),
+        },
       };
     }
   }
@@ -432,7 +501,9 @@ const PLACEHOLDER_TYPE_EQUIVALENCE: Record<string, string> = {
   obj: "body",
 };
 
-export function normalizePlaceholderType(type: string | undefined): string | undefined {
+export function normalizePlaceholderType(
+  type: string | undefined,
+): string | undefined {
   if (type === undefined) return undefined;
   return PLACEHOLDER_TYPE_EQUIVALENCE[type] ?? type;
 }
@@ -454,7 +525,8 @@ function findMatchingLayoutPlaceholder(
   for (const entry of placeholders) {
     const info = getPhInfo(entry.node);
     const sameType = type !== undefined && info.type === type;
-    const equivType = typeKey !== undefined && normalizePlaceholderType(info.type) === typeKey;
+    const equivType =
+      typeKey !== undefined && normalizePlaceholderType(info.type) === typeKey;
     const sameIdx = (info.idx ?? 0) === normIdx;
 
     let score = 0;
@@ -462,7 +534,8 @@ function findMatchingLayoutPlaceholder(
     else if (equivType && sameIdx) score = 5;
     else if (sameType) score = 4;
     else if (equivType) score = 3;
-    else if (sameIdx && type === undefined && info.type === undefined) score = 2;
+    else if (sameIdx && type === undefined && info.type === undefined)
+      score = 2;
     else if (sameIdx && idx !== undefined && info.idx !== undefined) score = 1;
 
     if (score > bestScore) {
@@ -476,7 +549,9 @@ function findMatchingLayoutPlaceholder(
 }
 
 function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {
-  return master.placeholderEntries ?? master.placeholders.map((node) => ({ node }));
+  return (
+    master.placeholderEntries ?? master.placeholders.map((node) => ({ node }))
+  );
 }
 
 // The template node's txBody carries the "Click to add title" prompt runs edit mode shows.
@@ -486,7 +561,11 @@ export function findPlaceholderTemplateNode(
   master: MasterData | undefined,
 ): SafeXmlNode | undefined {
   const layoutMatch = layout
-    ? findMatchingLayoutPlaceholder(layout.placeholders, placeholder.type, placeholder.idx)
+    ? findMatchingLayoutPlaceholder(
+        layout.placeholders,
+        placeholder.type,
+        placeholder.idx,
+      )
     : undefined;
   if (layoutMatch) return layoutMatch.node;
   const masterMatch = master
@@ -505,7 +584,10 @@ function resolvePlaceholderInheritance(pres: PresentationData): void {
   }
 }
 
-function resolveSlidePlaceholderInheritance(pres: PresentationData, slide: SlideData): void {
+function resolveSlidePlaceholderInheritance(
+  pres: PresentationData,
+  slide: SlideData,
+): void {
   if (slide.placeholderInheritanceResolved) return;
   resolveSlideNodePlaceholders(pres, slide, slide.nodes);
   slide.placeholderInheritanceResolved = true;
@@ -518,12 +600,17 @@ export function resolveSlideNodePlaceholders(
 ): void {
   const layoutPath = pres.slideToLayout.get(slide.index) || slide.layoutIndex;
   const layout = layoutPath ? pres.layouts.get(layoutPath) : undefined;
-  const masterPath = layoutPath ? pres.layoutToMaster.get(layoutPath) : undefined;
+  const masterPath = layoutPath
+    ? pres.layoutToMaster.get(layoutPath)
+    : undefined;
   const master = masterPath ? pres.masters.get(masterPath) : undefined;
   resolveNodesPlaceholders(nodes, layout, master);
 }
 
-export function materializeSlide(pres: PresentationData, slide: SlideData): void {
+export function materializeSlide(
+  pres: PresentationData,
+  slide: SlideData,
+): void {
   const slideRoot = materializeSlideData(slide, pres.diagramDrawings);
   if (slideRoot) {
     pres.sourcePackage?.registerXmlRoot(slide.id, slideRoot);
@@ -544,7 +631,10 @@ function getPhBodyPr(phNode: SafeXmlNode): SafeXmlNode | undefined {
   return bodyPr.exists() ? bodyPr : undefined;
 }
 
-function inheritPlaceholderType(target: PlaceholderInfo, sourceNode: SafeXmlNode): void {
+function inheritPlaceholderType(
+  target: PlaceholderInfo,
+  sourceNode: SafeXmlNode,
+): void {
   if (target.type) return;
 
   const source = getPhInfo(sourceNode);
@@ -563,8 +653,10 @@ function toGroupChildXfrm(
   xfrm: { position: NodePosition; size: NodeSize },
   group: GroupNodeData,
 ): { position: NodePosition; size: NodeSize } {
-  const scaleX = group.childExtent.w > 0 ? group.size.w / group.childExtent.w : 1;
-  const scaleY = group.childExtent.h > 0 ? group.size.h / group.childExtent.h : 1;
+  const scaleX =
+    group.childExtent.w > 0 ? group.size.w / group.childExtent.w : 1;
+  const scaleY =
+    group.childExtent.h > 0 ? group.size.h / group.childExtent.h : 1;
   if (scaleX === 0 || scaleY === 0) return xfrm;
 
   return {
@@ -583,7 +675,9 @@ function resolveInheritedXfrm(
   xfrm: { position: NodePosition; size: NodeSize },
   options: PlaceholderInheritanceOptions,
 ): { position: NodePosition; size: NodeSize } {
-  return options.parentGroup ? toGroupChildXfrm(xfrm, options.parentGroup) : xfrm;
+  return options.parentGroup
+    ? toGroupChildXfrm(xfrm, options.parentGroup)
+    : xfrm;
 }
 
 export function resolveNodePlaceholderInheritance(
@@ -607,7 +701,11 @@ export function resolveNodePlaceholderInheritance(
   const positionLooksDefault = node.position.y < 5; // Near the top counts as unset.
 
   if (layout) {
-    const layoutMatch = findMatchingLayoutPlaceholder(layout.placeholders, type, idx);
+    const layoutMatch = findMatchingLayoutPlaceholder(
+      layout.placeholders,
+      type,
+      idx,
+    );
     if (layoutMatch) {
       inheritPlaceholderType(node.placeholder, layoutMatch.node);
 
@@ -634,7 +732,11 @@ export function resolveNodePlaceholderInheritance(
         const masterMatch = findMasterMatch();
         if (masterMatch) {
           inheritPlaceholderType(node.placeholder, masterMatch.node);
-          if ("textBody" in node && node.textBody && !node.textBody.layoutBodyProperties) {
+          if (
+            "textBody" in node &&
+            node.textBody &&
+            !node.textBody.layoutBodyProperties
+          ) {
             const masterBodyPr = getPhBodyPr(masterMatch.node);
             if (masterBodyPr) {
               node.textBody.layoutBodyProperties = masterBodyPr;
@@ -661,7 +763,11 @@ export function resolveNodePlaceholderInheritance(
       }
     }
 
-    if ("textBody" in node && node.textBody && !node.textBody.layoutBodyProperties) {
+    if (
+      "textBody" in node &&
+      node.textBody &&
+      !node.textBody.layoutBodyProperties
+    ) {
       const masterBodyPr = getPhBodyPr(masterMatch.node);
       if (masterBodyPr) {
         node.textBody.layoutBodyProperties = masterBodyPr;

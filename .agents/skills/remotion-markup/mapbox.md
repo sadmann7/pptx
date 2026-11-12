@@ -166,9 +166,11 @@ const greatCircleLine = (from: [number, number], to: [number, number]) => {
 
   // Great-circle routes crossing the antimeridian can become MultiLineString.
   // Keep the example valid by choosing the longest segment.
-  const longestSegment = route.geometry.coordinates.reduce((longest, segment) => {
-    return segment.length > longest.length ? segment : longest;
-  });
+  const longestSegment = route.geometry.coordinates.reduce(
+    (longest, segment) => {
+      return segment.length > longest.length ? segment : longest;
+    },
+  );
 
   return turf.lineString(longestSegment);
 };
@@ -189,12 +191,18 @@ const distanceAlong = (totalDistance: number, progress: number) => {
 };
 
 const getPartialTargetRoute = (progress: number) => {
-  return turf.lineSliceAlong(targetRoute, 0, distanceAlong(targetRouteDistance, progress));
+  return turf.lineSliceAlong(
+    targetRoute,
+    0,
+    distanceAlong(targetRouteDistance, progress),
+  );
 };
 
 const getCameraOptions = (progress: number) => {
-  const target = turf.along(targetRoute, distanceAlong(targetRouteDistance, progress)).geometry
-    .coordinates as [number, number];
+  const target = turf.along(
+    targetRoute,
+    distanceAlong(targetRouteDistance, progress),
+  ).geometry.coordinates as [number, number];
 
   return {
     center: target,
@@ -311,10 +319,15 @@ export const MyComposition = () => {
     }
 
     const handle = delayRender("Rendering Mapbox frame");
-    const timelineProgress = interpolate(frame, [0, durationInFrames - 1], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
+    const timelineProgress = interpolate(
+      frame,
+      [0, durationInFrames - 1],
+      [0, 1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      },
+    );
     const travelProgress = interpolate(timelineProgress, [0.2, 0.82], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
@@ -379,7 +392,9 @@ Use map-native GeoJSON layers for markers and labels:
 ```tsx
 mapInstance.addSource("markers", {
   type: "geojson",
-  data: turf.featureCollection([turf.point([-118.2437, 34.0522], { name: "Los Angeles" })]),
+  data: turf.featureCollection([
+    turf.point([-118.2437, 34.0522], { name: "Los Angeles" }),
+  ]),
 });
 
 mapInstance.addLayer({

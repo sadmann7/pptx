@@ -15,17 +15,26 @@ function resolveGradientStop(
 
   for (const child of gsNode.allChildren()) {
     const ln = child.localName;
-    if (ln === "srgbClr" || ln === "schemeClr" || ln === "sysClr" || ln === "prstClr") {
+    if (
+      ln === "srgbClr" ||
+      ln === "schemeClr" ||
+      ln === "sysClr" ||
+      ln === "prstClr"
+    ) {
       try {
         const result = resolveColor(gsNode, ctx);
-        const hex = result.color.startsWith("#") ? result.color : `#${result.color}`;
+        const hex = result.color.startsWith("#")
+          ? result.color
+          : `#${result.color}`;
         return { color: hex, alpha: result.alpha, pos: pos / 100000 };
       } catch {
         if (ln === "sysClr") {
           const lastClr = child.attr("lastClr");
           if (lastClr) {
             const alphaNode = child.child("alpha");
-            const alphaVal = alphaNode.exists() ? (alphaNode.numAttr("val") ?? 100000) / 100000 : 1;
+            const alphaVal = alphaNode.exists()
+              ? (alphaNode.numAttr("val") ?? 100000) / 100000
+              : 1;
             return { color: `#${lastClr}`, alpha: alphaVal, pos: pos / 100000 };
           }
         }

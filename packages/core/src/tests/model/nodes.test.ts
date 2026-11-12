@@ -3,7 +3,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { GroupNodeData } from "../../model/nodes/group";
 import type { PictureNodeData } from "../../model/nodes/picture";
 import type { PresentationData } from "../../model/presentation";
-import { buildPresentation, materializeAllSlides } from "../../model/presentation";
+import {
+  buildPresentation,
+  materializeAllSlides,
+} from "../../model/presentation";
 import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
@@ -81,7 +84,9 @@ describe("group nodes", () => {
   it("renders grouped children scaled into the group box", () => {
     const element = renderSlide(presentation, presentation.slides[0]).element;
     const paths = [...element.querySelectorAll("svg path")];
-    const orange = paths.find((p) => p.getAttribute("fill")?.toLowerCase() === "#ed7d31");
+    const orange = paths.find(
+      (p) => p.getAttribute("fill")?.toLowerCase() === "#ed7d31",
+    );
     expect(orange).toBeDefined();
   });
 });
@@ -99,7 +104,8 @@ describe("picture nodes", () => {
 
   it("detects video placeholders with their media relationship", () => {
     const video = presentation.slides[0].nodes.find(
-      (n): n is PictureNodeData => n.nodeType === "picture" && n.isVideo === true,
+      (n): n is PictureNodeData =>
+        n.nodeType === "picture" && n.isVideo === true,
     );
     expect(video).toBeDefined();
     expect(video!.mediaRId).toBe("rId10");

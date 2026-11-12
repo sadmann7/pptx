@@ -3,7 +3,11 @@
  * Runs under jsdom because happy-dom's XML parser drops namespaced attributes
  * like `r:id` on `p:sldId`, which slide-level edits need.
  */
-import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
+import type {
+  EditOperation,
+  PictureNodeData,
+  ShapeNodeData,
+} from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -20,7 +24,9 @@ beforeAll(async () => {
 
 function slideText(store: Store, index: number): string | undefined {
   const slide = store.getState().presentation?.slides[index];
-  const shape = slide?.nodes.find((n) => n.nodeType === "shape") as ShapeNodeData | undefined;
+  const shape = slide?.nodes.find((n) => n.nodeType === "shape") as
+    | ShapeNodeData
+    | undefined;
   return shape?.textBody?.paragraphs[0]?.runs[0]?.text;
 }
 
@@ -71,7 +77,9 @@ describe("store.edit", () => {
     expect(store.getSlideRevision(slideId)).toBe(1);
     expect(store.getState().revision).toBe(1);
     expect(notified).toBeGreaterThan(0);
-    expect(store.getSlideRevision(store.getState().presentation!.slides[1].id)).toBe(0);
+    expect(
+      store.getSlideRevision(store.getState().presentation!.slides[1].id),
+    ).toBe(0);
   });
 
   it("save() round-trips edits through a real .pptx", async () => {
@@ -88,7 +96,9 @@ describe("store.edit", () => {
 
     const bytes = await store.save();
     const reopened = createStore();
-    await reopened.load(bytes.slice().buffer as ArrayBuffer, { embedFonts: false });
+    await reopened.load(bytes.slice().buffer as ArrayBuffer, {
+      embedFonts: false,
+    });
     expect(slideText(reopened, 0)).toBe("Persisted");
   });
 
@@ -101,12 +111,18 @@ describe("store.edit", () => {
 
     await store.edit({
       type: "batch",
-      operations: nodeIds.map((nodeId) => ({ type: "deleteNode" as const, slideId, nodeId })),
+      operations: nodeIds.map((nodeId) => ({
+        type: "deleteNode" as const,
+        slideId,
+        nodeId,
+      })),
     });
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(0);
 
     expect(await store.undo()).toBe(true);
-    expect(store.getState().presentation!.slides[0].nodes).toHaveLength(nodeIds.length);
+    expect(store.getState().presentation!.slides[0].nodes).toHaveLength(
+      nodeIds.length,
+    );
   });
 });
 
@@ -261,24 +277,36 @@ describe("structural edits and navigation", () => {
     const store = await editableStore();
     const sourceId = store.getState().presentation!.slides[0].id;
 
-    const result = await store.edit({ type: "duplicateSlide", slideId: sourceId });
-    expect(store.getState().presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT + 1);
+    const result = await store.edit({
+      type: "duplicateSlide",
+      slideId: sourceId,
+    });
+    expect(store.getState().presentation!.slides).toHaveLength(
+      FIXTURE_SLIDE_COUNT + 1,
+    );
     expect(store.getSlideIndex(result.createdSlideId!)).toBe(1);
 
     store.goTo(result.createdSlideId!);
     expect(store.getActiveSlideIndex()).toBe(1);
 
     await store.undo();
-    expect(store.getState().presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT);
+    expect(store.getState().presentation!.slides).toHaveLength(
+      FIXTURE_SLIDE_COUNT,
+    );
     // Back to the slide that was active before the copy, as in PowerPoint.
     expect(store.getState().activeSlideId).toBe(sourceId);
   });
 
   it("undoing an added slide returns to the slide it was added after", async () => {
     const store = await editableStore();
-    const [first, second] = store.getState().presentation!.slides.map((slide) => slide.id);
+    const [first, second] = store
+      .getState()
+      .presentation!.slides.map((slide) => slide.id);
 
-    const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: first });
+    const { createdSlideId } = await store.edit({
+      type: "addSlide",
+      afterSlideId: first,
+    });
     store.goTo(createdSlideId!);
     await store.undo();
 
@@ -308,7 +336,11 @@ describe("edit and historyChange events", () => {
     await store.undo();
     await store.redo();
 
-    expect(events.map((event) => event.source)).toEqual(["edit", "undo", "redo"]);
+    expect(events.map((event) => event.source)).toEqual([
+      "edit",
+      "undo",
+      "redo",
+    ]);
     expect(events.every((event) => event.operation === operation)).toBe(true);
     expect(events[0].result.affectedSlideIds).toContain(slideId);
   });
@@ -320,13 +352,25 @@ describe("edit and historyChange events", () => {
     store.on("historyChange", (event) => events.push(event));
 
     await store.edit(textEdit(slideId, "Edited"));
-    expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
+    expect(events.at(-1)).toEqual({
+      canUndo: true,
+      canRedo: false,
+      isDirty: true,
+    });
 
     await store.undo();
-    expect(events.at(-1)).toEqual({ canUndo: false, canRedo: true, isDirty: false });
+    expect(events.at(-1)).toEqual({
+      canUndo: false,
+      canRedo: true,
+      isDirty: false,
+    });
 
     await store.redo();
-    expect(events.at(-1)).toEqual({ canUndo: true, canRedo: false, isDirty: true });
+    expect(events.at(-1)).toEqual({
+      canUndo: true,
+      canRedo: false,
+      isDirty: true,
+    });
   });
 
   it("stays quiet when undo and redo find nothing to do", async () => {
@@ -522,17 +566,33 @@ describe("overlapping edits", () => {
     const slideId = store.getActiveSlide()!.id;
 
     await Promise.all([
-      store.edit({ type: "addImage", slideId, data: png(10), contentType: "image/png" }),
-      store.edit({ type: "addImage", slideId, data: png(20), contentType: "image/png" }),
+      store.edit({
+        type: "addImage",
+        slideId,
+        data: png(10),
+        contentType: "image/png",
+      }),
+      store.edit({
+        type: "addImage",
+        slideId,
+        data: png(20),
+        contentType: "image/png",
+      }),
     ]);
 
     const saved = await store.save();
     const reopened = buildPresentation(await readPptx(saved.slice().buffer));
-    const slide = reopened.slides.find((candidate) => candidate.id === slideId)!;
-    const pictures = slide.nodes.filter((node) => node.nodeType === "picture") as PictureNodeData[];
+    const slide = reopened.slides.find(
+      (candidate) => candidate.id === slideId,
+    )!;
+    const pictures = slide.nodes.filter(
+      (node) => node.nodeType === "picture",
+    ) as PictureNodeData[];
     expect(pictures).toHaveLength(2);
     for (const picture of pictures) {
-      expect(slide.rels.get(picture.blipEmbed!)?.target).toMatch(/^\.\.\/media\/image\d\.png$/);
+      expect(slide.rels.get(picture.blipEmbed!)?.target).toMatch(
+        /^\.\.\/media\/image\d\.png$/,
+      );
     }
   });
 });

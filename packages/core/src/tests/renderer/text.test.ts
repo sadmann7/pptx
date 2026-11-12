@@ -104,7 +104,10 @@ describe("empty paragraph rendering", () => {
   });
 });
 
-function runSpansContaining(element: HTMLElement, marker: string): HTMLElement[] {
+function runSpansContaining(
+  element: HTMLElement,
+  marker: string,
+): HTMLElement[] {
   const divs = [...element.querySelectorAll<HTMLElement>("div")];
   const para = divs.find((d) => d.textContent?.includes(marker));
   if (!para) throw new Error(`paragraph containing "${marker}" not found`);

@@ -17,7 +17,9 @@ describe("readCellGrid", () => {
   });
 
   it("leaves a single value and plain text to the cell", () => {
-    expect(readCellGrid("one", "<table><tr><td>one</td></tr></table>")).toBeNull();
+    expect(
+      readCellGrid("one", "<table><tr><td>one</td></tr></table>"),
+    ).toBeNull();
     expect(readCellGrid("line one\nline two", "")).toBeNull();
     expect(readCellGrid("Name:\tJohn", "")).toBeNull();
   });

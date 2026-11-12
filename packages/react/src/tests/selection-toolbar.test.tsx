@@ -22,10 +22,14 @@ function shapeRuns(store: Store, nodeId: string) {
 }
 
 function cellTexts(store: Store, nodeId: string) {
-  const table = store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+  const table = store
+    .getActiveSlide()!
+    .nodes.find((node) => node.id === nodeId) as TableNodeData;
   return table.rows.map((row) =>
     row.cells.map((cell) =>
-      cell.textBody!.paragraphs.map((p) => p.runs.map((run) => run.text).join("")).join("\n"),
+      cell
+        .textBody!.paragraphs.map((p) => p.runs.map((run) => run.text).join(""))
+        .join("\n"),
     ),
   );
 }
@@ -57,9 +61,13 @@ async function renderEditor() {
   );
 
   await waitFor(() => {
-    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-presentation-selection]"),
+    ).not.toBeNull();
   });
-  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>(
+    "[data-presentation-selection]",
+  )!;
 
   function press(target: Element) {
     act(() => {
@@ -74,8 +82,11 @@ async function renderEditor() {
       fireEvent.keyDown(overlay, { key: "Enter" });
     });
     await waitFor(() => expect(overlay.getAttribute("data-mode")).toBe("text"));
-    const shape = container.querySelector<HTMLElement>(`[data-pptx-node-id="${nodeId}"]`)!;
-    return shape.querySelector<HTMLElement>("[data-pptx-r]")!.firstChild as Text;
+    const shape = container.querySelector<HTMLElement>(
+      `[data-pptx-node-id="${nodeId}"]`,
+    )!;
+    return shape.querySelector<HTMLElement>("[data-pptx-r]")!
+      .firstChild as Text;
   }
 
   function selectText(node: Node, start: number, end: number) {
@@ -198,7 +209,9 @@ describe("useSelection", () => {
     await act(async () => {
       nodeId = await selection.current!.insertShape("ellipse");
     });
-    const shape = store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as ShapeNodeData;
+    const shape = store
+      .getActiveSlide()!
+      .nodes.find((node) => node.id === nodeId) as ShapeNodeData;
     expect(shape.presetGeometry).toBe("ellipse");
     await waitFor(() => expect(selection.current!.nodeIds).toEqual([nodeId]));
     expect(overlay.getAttribute("data-mode")).toBe("selected");
@@ -225,8 +238,12 @@ describe("useSelection", () => {
     });
 
     await act(() => selection.current!.setTextStyle({ bold: true }));
-    expect(shapeRuns(store, "2")).toEqual([{ text: "Slide 1", b: "1", i: undefined }]);
-    expect(shapeRuns(store, "3")).toEqual([{ text: "B", b: "1", i: undefined }]);
+    expect(shapeRuns(store, "2")).toEqual([
+      { text: "Slide 1", b: "1", i: undefined },
+    ]);
+    expect(shapeRuns(store, "3")).toEqual([
+      { text: "B", b: "1", i: undefined },
+    ]);
     await waitFor(() => expect(selection.current!.textStyle?.bold).toBe(true));
 
     await act(async () => {
@@ -241,20 +258,30 @@ describe("useSelection", () => {
     act(() => selection.current!.select(["2"]));
 
     await act(() => selection.current!.setParagraphStyle({ align: "center" }));
-    const shape = store.getActiveSlide()!.nodes.find((node) => node.id === "2") as ShapeNodeData;
+    const shape = store
+      .getActiveSlide()!
+      .nodes.find((node) => node.id === "2") as ShapeNodeData;
     expect(shape.textBody!.paragraphs[0].properties?.attr("algn")).toBe("ctr");
-    await waitFor(() => expect(selection.current!.textStyle?.align).toBe("center"));
+    await waitFor(() =>
+      expect(selection.current!.textStyle?.align).toBe("center"),
+    );
   });
 
   it("undoes formatting with Ctrl+Z without leaving the text", async () => {
-    const { store, overlay, selection, editText, selectText } = await renderEditor();
+    const { store, overlay, selection, editText, selectText } =
+      await renderEditor();
     const text = await editText("2");
     selectText(text, 0, 5);
 
     await act(() => selection.current!.setTextStyle({ italic: true }));
-    expect(shapeRuns(store, "2")[0]).toEqual({ text: "Slide", b: undefined, i: "1" });
+    expect(shapeRuns(store, "2")[0]).toEqual({
+      text: "Slide",
+      b: undefined,
+      i: "1",
+    });
 
-    const editable = overlay.ownerDocument.querySelector<HTMLElement>("[contenteditable]")!;
+    const editable =
+      overlay.ownerDocument.querySelector<HTMLElement>("[contenteditable]")!;
     await act(async () => {
       fireEvent.keyDown(editable, { key: "z", ctrlKey: true });
     });
@@ -263,7 +290,8 @@ describe("useSelection", () => {
   });
 
   it("formats the selected text in text mode after focus moved to the toolbar", async () => {
-    const { store, overlay, selection, bold, press, editText, selectText } = await renderEditor();
+    const { store, overlay, selection, bold, press, editText, selectText } =
+      await renderEditor();
     const text = await editText("2");
 
     selectText(text, 0, 5);
@@ -281,7 +309,9 @@ describe("useSelection", () => {
     await act(async () => {
       await store.undo();
     });
-    expect(shapeRuns(store, "2")).toEqual([{ text: "Slide 1", b: undefined, i: undefined }]);
+    expect(shapeRuns(store, "2")).toEqual([
+      { text: "Slide 1", b: undefined, i: undefined },
+    ]);
   });
 
   it("formats the word at a collapsed caret", async () => {
@@ -311,7 +341,9 @@ describe("useSelection", () => {
     await act(async () => {
       await store.undo();
     });
-    expect(shapeRuns(store, "2")).toEqual([{ text: "Slide 1", b: undefined, i: undefined }]);
+    expect(shapeRuns(store, "2")).toEqual([
+      { text: "Slide 1", b: undefined, i: undefined },
+    ]);
   });
 
   it("rejects formatting when no Selection is mounted", async () => {
@@ -327,9 +359,9 @@ describe("useSelection", () => {
       </Presentation.Provider>,
     );
 
-    await expect(selection.current!.setTextStyle({ bold: true })).rejects.toThrow(
-      /no `Presentation.Selection` is mounted/,
-    );
+    await expect(
+      selection.current!.setTextStyle({ bold: true }),
+    ).rejects.toThrow(/no `Presentation.Selection` is mounted/);
     expect(() => selection.current!.select(["2"])).not.toThrow();
   });
 });
@@ -340,7 +372,9 @@ describe("tables", () => {
     await act(async () => {
       nodeId = await editor.selection.current!.insertTable(2, 2);
     });
-    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+    await waitFor(() =>
+      expect(editor.overlay.getAttribute("data-mode")).toBe("text"),
+    );
     return nodeId!;
   }
 
@@ -362,12 +396,15 @@ describe("tables", () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
 
-    const editable = editor.container.querySelector<HTMLElement>("[contenteditable]")!;
+    const editable =
+      editor.container.querySelector<HTMLElement>("[contenteditable]")!;
     editable.querySelector("[data-pptx-p]")!.textContent = "Name";
     act(() => {
       fireEvent.keyDown(editable, { key: "Tab" });
     });
-    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0][0]).toBe("Name"));
+    await waitFor(() =>
+      expect(cellTexts(editor.store, nodeId)[0][0]).toBe("Name"),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
 
     act(() => {
@@ -386,34 +423,62 @@ describe("tables", () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
 
-    const first = editor.container.querySelector<HTMLElement>("[contenteditable]")!;
+    const first =
+      editor.container.querySelector<HTMLElement>("[contenteditable]")!;
     first.querySelector("[data-pptx-p]")!.textContent = "A";
     act(() => {
       fireEvent.keyDown(first, { key: "Tab" });
-      const next = editor.container.querySelector<HTMLElement>('[data-pptx-cell="0,1"]')!;
+      const next = editor.container.querySelector<HTMLElement>(
+        '[data-pptx-cell="0,1"]',
+      )!;
       next.querySelector("[data-pptx-p]")!.textContent = "B";
     });
 
-    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0].slice(0, 2)).toEqual(["A", "B"]));
+    await waitFor(() =>
+      expect(cellTexts(editor.store, nodeId)[0].slice(0, 2)).toEqual([
+        "A",
+        "B",
+      ]),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("0,1"));
   });
 
   it("reports the cell being edited and inserts rows around it", async () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
-    await waitFor(() => expect(editor.selection.current!.cell).toEqual({ row: 0, column: 0 }));
+    await waitFor(() =>
+      expect(editor.selection.current!.cell).toEqual({ row: 0, column: 0 }),
+    );
 
-    await act(() => editor.selection.current!.changeTable({ type: "insertRow", side: "above" }));
+    await act(() =>
+      editor.selection.current!.changeTable({
+        type: "insertRow",
+        side: "above",
+      }),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
     expect(cellTexts(editor.store, nodeId)).toHaveLength(3);
-    await waitFor(() => expect(editor.selection.current!.cell).toEqual({ row: 1, column: 0 }));
+    await waitFor(() =>
+      expect(editor.selection.current!.cell).toEqual({ row: 1, column: 0 }),
+    );
 
-    await act(() => editor.selection.current!.changeTable({ type: "insertColumn", side: "right" }));
-    await waitFor(() => expect(cellTexts(editor.store, nodeId)[0]).toHaveLength(3));
+    await act(() =>
+      editor.selection.current!.changeTable({
+        type: "insertColumn",
+        side: "right",
+      }),
+    );
+    await waitFor(() =>
+      expect(cellTexts(editor.store, nodeId)[0]).toHaveLength(3),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
 
-    await act(() => editor.selection.current!.changeTable({ type: "deleteRow" }));
-    await waitFor(() => expect(cellTexts(editor.store, nodeId)).toHaveLength(2));
+    await act(() =>
+      editor.selection.current!.changeTable({ type: "deleteRow" }),
+    );
+    await waitFor(() =>
+      expect(cellTexts(editor.store, nodeId)).toHaveLength(2),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("1,0"));
   });
 
@@ -440,7 +505,9 @@ describe("tables", () => {
         { key: "Tab" },
       );
     });
-    await waitFor(() => expect(cellTexts(editor.store, nodeId)).toHaveLength(3));
+    await waitFor(() =>
+      expect(cellTexts(editor.store, nodeId)).toHaveLength(3),
+    );
     await waitFor(() => expect(editingCell(editor.container)).toBe("2,0"));
   });
 
@@ -450,10 +517,16 @@ describe("tables", () => {
     await act(async () => {
       nodeId = await editor.selection.current!.insertTable(1, 2);
     });
-    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+    await waitFor(() =>
+      expect(editor.overlay.getAttribute("data-mode")).toBe("text"),
+    );
 
-    await act(() => editor.selection.current!.changeTable({ type: "deleteRow" }));
-    expect(editor.store.getActiveSlide()!.nodes.some((node) => node.id === nodeId)).toBe(false);
+    await act(() =>
+      editor.selection.current!.changeTable({ type: "deleteRow" }),
+    );
+    expect(
+      editor.store.getActiveSlide()!.nodes.some((node) => node.id === nodeId),
+    ).toBe(false);
     expect(editor.overlay.getAttribute("data-mode")).toBe("idle");
   });
 
@@ -461,15 +534,27 @@ describe("tables", () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
     const tableOf = () =>
-      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+      editor.store
+        .getActiveSlide()!
+        .nodes.find((node) => node.id === nodeId) as TableNodeData;
 
     for (const mode of ["text", "selected"]) {
-      if (mode === "selected") act(() => editor.selection.current!.select([nodeId]));
-      await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe(mode));
+      if (mode === "selected")
+        act(() => editor.selection.current!.select([nodeId]));
+      await waitFor(() =>
+        expect(editor.overlay.getAttribute("data-mode")).toBe(mode),
+      );
       const { x } = tableOf().position;
-      const frame = editor.container.querySelector<HTMLElement>("[data-presentation-border-move]")!;
+      const frame = editor.container.querySelector<HTMLElement>(
+        "[data-presentation-border-move]",
+      )!;
       act(() => {
-        fireEvent.pointerDown(frame, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+        fireEvent.pointerDown(frame, {
+          button: 0,
+          clientX: 100,
+          clientY: 100,
+          pointerId: 1,
+        });
       });
       act(() => {
         fireEvent.pointerMove(editor.overlay, {
@@ -480,7 +565,11 @@ describe("tables", () => {
         });
       });
       await act(async () => {
-        fireEvent.pointerUp(editor.overlay, { clientX: 140, clientY: 100, pointerId: 1 });
+        fireEvent.pointerUp(editor.overlay, {
+          clientX: 140,
+          clientY: 100,
+          pointerId: 1,
+        });
       });
       await waitFor(() => expect(tableOf().position.x).toBeGreaterThan(x));
     }
@@ -490,11 +579,19 @@ describe("tables", () => {
     const editor = await renderEditor();
     const nodeId = await insertTable(editor);
     const tableOf = () =>
-      editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData;
+      editor.store
+        .getActiveSlide()!
+        .nodes.find((node) => node.id === nodeId) as TableNodeData;
 
-    const target = editor.container.querySelector<HTMLElement>('[data-pptx-cell="1,1"]')!;
+    const target = editor.container.querySelector<HTMLElement>(
+      '[data-pptx-cell="1,1"]',
+    )!;
     act(() => {
-      fireEvent.pointerDown(target, { button: 0, shiftKey: true, pointerId: 1 });
+      fireEvent.pointerDown(target, {
+        button: 0,
+        shiftKey: true,
+        pointerId: 1,
+      });
     });
     await waitFor(() =>
       expect(editor.selection.current!.cellRange).toEqual({
@@ -502,22 +599,32 @@ describe("tables", () => {
         end: { row: 1, column: 1 },
       }),
     );
-    expect(editor.container.querySelector("[data-presentation-cell-range]")).not.toBeNull();
+    expect(
+      editor.container.querySelector("[data-presentation-cell-range]"),
+    ).not.toBeNull();
 
-    await act(() => editor.selection.current!.setParagraphStyle({ align: "center" }));
+    await act(() =>
+      editor.selection.current!.setParagraphStyle({ align: "center" }),
+    );
     expect(
       tableOf().rows.flatMap((row) =>
-        row.cells.map((cell) => cell.textBody!.paragraphs[0].properties?.attr("algn")),
+        row.cells.map((cell) =>
+          cell.textBody!.paragraphs[0].properties?.attr("algn"),
+        ),
       ),
     ).toEqual(["ctr", "ctr", "ctr", "ctr"]);
 
-    await act(() => editor.selection.current!.changeTable({ type: "mergeCells" }));
+    await act(() =>
+      editor.selection.current!.changeTable({ type: "mergeCells" }),
+    );
     await waitFor(() => expect(tableOf().rows[0].cells[0].gridSpan).toBe(2));
     expect(tableOf().rows[0].cells[0].rowSpan).toBe(2);
     await waitFor(() => expect(editingCell(editor.container)).toBe("0,0"));
     expect(editor.selection.current!.cellRange).toBeNull();
 
-    await act(() => editor.selection.current!.changeTable({ type: "splitCell" }));
+    await act(() =>
+      editor.selection.current!.changeTable({ type: "splitCell" }),
+    );
     await waitFor(() => expect(tableOf().rows[0].cells[0].gridSpan).toBe(1));
     expect(tableOf().rows[1].cells[1].vMerge).toBe(false);
   });
@@ -527,25 +634,45 @@ describe("tables", () => {
     const nodeId = await insertTable(editor);
     const fills = () =>
       (
-        editor.store.getActiveSlide()!.nodes.find((node) => node.id === nodeId) as TableNodeData
+        editor.store
+          .getActiveSlide()!
+          .nodes.find((node) => node.id === nodeId) as TableNodeData
       ).rows.flatMap((row) =>
-        row.cells.map((cell) => cell.properties?.child("solidFill").child("srgbClr").attr("val")),
+        row.cells.map((cell) =>
+          cell.properties?.child("solidFill").child("srgbClr").attr("val"),
+        ),
       );
 
-    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#ff0000" }));
+    await act(() =>
+      editor.selection.current!.setTableCellStyle({ fill: "#ff0000" }),
+    );
     expect(fills()).toEqual(["FF0000", undefined, undefined, undefined]);
-    await waitFor(() => expect(editor.overlay.getAttribute("data-mode")).toBe("text"));
+    await waitFor(() =>
+      expect(editor.overlay.getAttribute("data-mode")).toBe("text"),
+    );
 
-    const target = editor.container.querySelector<HTMLElement>('[data-pptx-cell="1,1"]')!;
+    const target = editor.container.querySelector<HTMLElement>(
+      '[data-pptx-cell="1,1"]',
+    )!;
     act(() => {
-      fireEvent.pointerDown(target, { button: 0, shiftKey: true, pointerId: 1 });
+      fireEvent.pointerDown(target, {
+        button: 0,
+        shiftKey: true,
+        pointerId: 1,
+      });
     });
-    await waitFor(() => expect(editor.selection.current!.cellRange).not.toBeNull());
-    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#00ff00" }));
+    await waitFor(() =>
+      expect(editor.selection.current!.cellRange).not.toBeNull(),
+    );
+    await act(() =>
+      editor.selection.current!.setTableCellStyle({ fill: "#00ff00" }),
+    );
     expect(fills()).toEqual(["00FF00", "00FF00", "00FF00", "00FF00"]);
 
     act(() => editor.selection.current!.select([nodeId]));
-    await act(() => editor.selection.current!.setTableCellStyle({ fill: "#0000ff" }));
+    await act(() =>
+      editor.selection.current!.setTableCellStyle({ fill: "#0000ff" }),
+    );
     expect(fills()).toEqual(["0000FF", "0000FF", "0000FF", "0000FF"]);
   });
 
@@ -554,12 +681,16 @@ describe("tables", () => {
     const nodeId = await insertTable(editor);
     act(() => editor.selection.current!.select([nodeId]));
 
-    await act(() => editor.selection.current!.setParagraphStyle({ align: "center" }));
+    await act(() =>
+      editor.selection.current!.setParagraphStyle({ align: "center" }),
+    );
     const table = editor.store
       .getActiveSlide()!
       .nodes.find((node) => node.id === nodeId) as TableNodeData;
     const aligns = table.rows.flatMap((row) =>
-      row.cells.map((cell) => cell.textBody!.paragraphs[0].properties?.attr("algn")),
+      row.cells.map((cell) =>
+        cell.textBody!.paragraphs[0].properties?.attr("algn"),
+      ),
     );
     expect(aligns).toEqual(["ctr", "ctr", "ctr", "ctr"]);
   });

@@ -49,7 +49,9 @@ describe("outer shadow effects", () => {
     expect(dropShadow.getAttribute("stdDeviation")).toBe("4.00");
     expect(dropShadow.getAttribute("flood-color")).toBe("rgb(0,0,0)");
     expect(dropShadow.getAttribute("flood-opacity")).toBe("0.5000");
-    expect(mainPath(element).getAttribute("filter")).toMatch(/^url\(#shape-shadow/);
+    expect(mainPath(element).getAttribute("filter")).toMatch(
+      /^url\(#shape-shadow/,
+    );
   });
 
   it("projects the shadow offset along the dir angle", async () => {
@@ -91,7 +93,10 @@ describe("outer shadow effects", () => {
 describe("shape flip transforms", () => {
   it("applies flipH as scaleX(-1) on the shape wrapper", async () => {
     const element = await renderShapes(
-      rectShape(`<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`, ` flipH="1"`),
+      rectShape(
+        `<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`,
+        ` flipH="1"`,
+      ),
     );
     const wrapper = element.querySelector("svg")?.closest("div") as HTMLElement;
     expect(wrapper.style.transform).toBe("scaleX(-1)");
@@ -99,7 +104,10 @@ describe("shape flip transforms", () => {
 
   it("applies flipV as scaleY(-1) on the shape wrapper", async () => {
     const element = await renderShapes(
-      rectShape(`<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`, ` flipV="1"`),
+      rectShape(
+        `<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`,
+        ` flipV="1"`,
+      ),
     );
     const wrapper = element.querySelector("svg")?.closest("div") as HTMLElement;
     expect(wrapper.style.transform).toBe("scaleY(-1)");

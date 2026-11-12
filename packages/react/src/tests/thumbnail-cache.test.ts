@@ -14,12 +14,18 @@ function entry(attached = false): CachedThumbnail {
   const element = document.createElement("div");
   if (attached) document.createElement("div").appendChild(element);
   const dispose = vi.fn();
-  const cached = { slideHandle: { element, dispose } as unknown as SlideHandle, revision: 0 };
+  const cached = {
+    slideHandle: { element, dispose } as unknown as SlideHandle,
+    revision: 0,
+  };
   disposeMocks.set(cached, dispose);
   return cached;
 }
 
-function fill(count: number, attached: (index: number) => boolean = () => false) {
+function fill(
+  count: number,
+  attached: (index: number) => boolean = () => false,
+) {
   const cache = new Map<string, CachedThumbnail>();
   for (let i = 0; i < count; i++) cache.set(`s${i}`, entry(attached(i)));
   return cache;
@@ -42,7 +48,10 @@ describe("thumbnail cache", () => {
   });
 
   it("keeps miniatures on screen and the one just added", () => {
-    const cache = fill(THUMBNAIL_CACHE_LIMIT + 1, (i) => i < THUMBNAIL_CACHE_LIMIT);
+    const cache = fill(
+      THUMBNAIL_CACHE_LIMIT + 1,
+      (i) => i < THUMBNAIL_CACHE_LIMIT,
+    );
     const newest = `s${THUMBNAIL_CACHE_LIMIT}`;
 
     releaseOldThumbnails(cache, newest);

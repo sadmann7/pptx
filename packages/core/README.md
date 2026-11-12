@@ -44,9 +44,16 @@ await viewer.goToSlide(2);
 Load with `keepSourcePackage: true` to retain the source archive, then apply typed edit operations and write back a `.pptx` that round-trips everything the parser doesn't model (animations, comments, vendor extensions):
 
 ```ts
-import { applyEdit, buildPresentation, readPptx, writePptx } from "@diceui/pptx-core";
+import {
+  applyEdit,
+  buildPresentation,
+  readPptx,
+  writePptx,
+} from "@diceui/pptx-core";
 
-const presentation = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+const presentation = buildPresentation(
+  await readPptx(buffer, { keepSourcePackage: true }),
+);
 
 const result = await applyEdit(presentation, {
   type: "setTextRun",

@@ -19,6 +19,10 @@ export class MtxError extends Error {
   }
 }
 
-export function fail(code: MtxErrorCode, message: string, offset?: number): never {
+export function fail(
+  code: MtxErrorCode,
+  message: string,
+  offset?: number,
+): never {
   throw new MtxError(code, message, offset);
 }

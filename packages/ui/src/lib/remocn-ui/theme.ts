@@ -85,8 +85,16 @@ export interface RemocnUIProviderProps {
   children: ReactNode;
 }
 
-export function RemocnUIProvider({ theme, mode, children }: RemocnUIProviderProps) {
-  return createElement(RemocnThemeContext.Provider, { value: { theme, mode } }, children);
+export function RemocnUIProvider({
+  theme,
+  mode,
+  children,
+}: RemocnUIProviderProps) {
+  return createElement(
+    RemocnThemeContext.Provider,
+    { value: { theme, mode } },
+    children,
+  );
 }
 
 export function useRemocnTheme(

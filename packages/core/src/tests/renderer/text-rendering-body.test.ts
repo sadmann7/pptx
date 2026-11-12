@@ -20,10 +20,15 @@ describe("bodyPr anchor (vertical alignment)", () => {
     ["t", "flex-start"],
     ["ctr", "center"],
     ["b", "flex-end"],
-  ] as const)("maps anchor=%s to justify-content %s", async (anchor, expected) => {
-    const container = await renderBody(`<a:bodyPr anchor="${anchor}"><a:noAutofit/></a:bodyPr>`);
-    expect(container.style.justifyContent).toBe(expected);
-  });
+  ] as const)(
+    "maps anchor=%s to justify-content %s",
+    async (anchor, expected) => {
+      const container = await renderBody(
+        `<a:bodyPr anchor="${anchor}"><a:noAutofit/></a:bodyPr>`,
+      );
+      expect(container.style.justifyContent).toBe(expected);
+    },
+  );
 
   it("defaults to flex-start without an anchor", async () => {
     const container = await renderBody(`<a:bodyPr><a:noAutofit/></a:bodyPr>`);
@@ -33,12 +38,16 @@ describe("bodyPr anchor (vertical alignment)", () => {
 
 describe("bodyPr wrap", () => {
   it('maps wrap="none" to white-space nowrap', async () => {
-    const container = await renderBody(`<a:bodyPr wrap="none"><a:noAutofit/></a:bodyPr>`);
+    const container = await renderBody(
+      `<a:bodyPr wrap="none"><a:noAutofit/></a:bodyPr>`,
+    );
     expect(container.style.whiteSpace).toBe("nowrap");
   });
 
   it('keeps normal wrapping for wrap="square"', async () => {
-    const container = await renderBody(`<a:bodyPr wrap="square"><a:noAutofit/></a:bodyPr>`);
+    const container = await renderBody(
+      `<a:bodyPr wrap="square"><a:noAutofit/></a:bodyPr>`,
+    );
     expect(container.style.whiteSpace).not.toBe("nowrap");
   });
 });
@@ -66,7 +75,9 @@ describe("bodyPr insets", () => {
 
 describe("bodyPr vertical text (vert)", () => {
   it("renders eaVert as vertical-rl writing mode", async () => {
-    const container = await renderBody(`<a:bodyPr vert="eaVert"><a:noAutofit/></a:bodyPr>`);
+    const container = await renderBody(
+      `<a:bodyPr vert="eaVert"><a:noAutofit/></a:bodyPr>`,
+    );
     expect(container.style.writingMode).toBe("vertical-rl");
     expect(container.style.justifyContent).toBe("center");
     const [paragraph] = paragraphsOf(container);
@@ -74,7 +85,9 @@ describe("bodyPr vertical text (vert)", () => {
   });
 
   it("renders vert270 as vertical-rl rotated 180 degrees", async () => {
-    const container = await renderBody(`<a:bodyPr vert="vert270"><a:noAutofit/></a:bodyPr>`);
+    const container = await renderBody(
+      `<a:bodyPr vert="vert270"><a:noAutofit/></a:bodyPr>`,
+    );
     expect(container.style.writingMode).toBe("vertical-rl");
     expect(container.style.transform).toContain("rotate(180deg)");
   });
@@ -87,7 +100,9 @@ describe("bodyPr vertical text (vert)", () => {
   });
 
   it("renders wordArtVert as upright vertical-lr text", async () => {
-    const container = await renderBody(`<a:bodyPr vert="wordArtVert"><a:noAutofit/></a:bodyPr>`);
+    const container = await renderBody(
+      `<a:bodyPr vert="wordArtVert"><a:noAutofit/></a:bodyPr>`,
+    );
     expect(container.style.writingMode).toBe("vertical-lr");
     expect(container.style.textOrientation).toBe("upright");
   });
@@ -160,7 +175,9 @@ describe("deferred autofit measurement", () => {
   // Enough frames for the double-rAF pass that follows the synchronous one.
   async function settleDeferredPasses(): Promise<void> {
     for (let frame = 0; frame < 4; frame++) {
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(undefined)),
+      );
     }
   }
 
@@ -222,7 +239,10 @@ describe("deferred autofit measurement", () => {
     // The observer waits for the shape to look laid out.
     function attachAndSize(slide: HTMLElement, shape: Element): void {
       document.body.appendChild(slide);
-      Object.defineProperty(shape, "offsetWidth", { value: 400, configurable: true });
+      Object.defineProperty(shape, "offsetWidth", {
+        value: 400,
+        configurable: true,
+      });
     }
 
     it("arms an observer on the shape rather than dropping the refinement", async () => {
@@ -314,17 +334,27 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
 
   it("invokes onNavigate with the target slide index on click", async () => {
     const onNavigate = vi.fn();
-    const element = await renderTextBox(LINK_PARAGRAPH, { renderOptions: { onNavigate } });
-    const link = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
+    const element = await renderTextBox(LINK_PARAGRAPH, {
+      renderOptions: { onNavigate },
+    });
+    const link = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
     link.click();
     expect(onNavigate).toHaveBeenCalledWith({ slideIndex: 0 });
   });
 
   it("invokes onNavigate on Enter for keyboard users", async () => {
     const onNavigate = vi.fn();
-    const element = await renderTextBox(LINK_PARAGRAPH, { renderOptions: { onNavigate } });
-    const link = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
-    link.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    const element = await renderTextBox(LINK_PARAGRAPH, {
+      renderOptions: { onNavigate },
+    });
+    const link = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
+    link.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
     expect(onNavigate).toHaveBeenCalledWith({ slideIndex: 0 });
   });
 
@@ -333,13 +363,17 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
       `<a:p><a:r><a:rPr><a:hlinkClick action="ppaction://hlinkshowjump?jump=lastslide" tooltip="Jump to end"/></a:rPr><a:t>MARKER</a:t></a:r></a:p>`,
       { renderOptions: { onNavigate: () => undefined } },
     );
-    const link = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
+    const link = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
     expect(link.title).toBe("Jump to end");
   });
 
   it("renders a plain span when no onNavigate handler is provided", async () => {
     const element = await renderTextBox(LINK_PARAGRAPH);
-    const span = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
+    const span = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
     expect(span.getAttribute("role")).toBeNull();
     expect(span.style.cursor).not.toBe("pointer");
   });
@@ -349,7 +383,9 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
       `<a:p><a:r><a:rPr><a:hlinkClick action="ppaction://hlinkshowjump?jump=nextslide"/></a:rPr><a:t>MARKER</a:t></a:r></a:p>`,
       { renderOptions: { onNavigate: () => undefined } },
     );
-    const span = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
+    const span = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
     // Single-slide deck: there is no next slide to jump to.
     expect(span.getAttribute("role")).toBeNull();
   });
@@ -359,7 +395,9 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
       `<a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill><a:hlinkClick action="ppaction://hlinkshowjump?jump=firstslide"/></a:rPr><a:t>MARKER</a:t></a:r></a:p>`,
       { renderOptions: { onNavigate: () => undefined } },
     );
-    const link = spansOf(paragraphsOf(element)[0]).find((s) => s.textContent === "MARKER")!;
+    const link = spansOf(paragraphsOf(element)[0]).find(
+      (s) => s.textContent === "MARKER",
+    )!;
     expect(normalizeColor(link.style.color)).toBe("255,0,0,1");
   });
 });

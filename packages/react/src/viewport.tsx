@@ -85,198 +85,216 @@ export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   onZoomChange?: (event: ZoomChangeEvent) => void;
 }
 
-export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function Viewport(
-  {
-    autoFit = false,
-    autoFitPadding = 0,
-    scrollNavigation = false,
-    scrollZoom = false,
-    render,
-    onZoomChange,
-    ...viewportProps
-  },
-  forwardedRef,
-) {
-  const viewportRef = React.useRef<HTMLDivElement>(null);
+export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(
+  function Viewport(
+    {
+      autoFit = false,
+      autoFitPadding = 0,
+      scrollNavigation = false,
+      scrollZoom = false,
+      render,
+      onZoomChange,
+      ...viewportProps
+    },
+    forwardedRef,
+  ) {
+    const viewportRef = React.useRef<HTMLDivElement>(null);
 
-  const store = useStoreContext("PresentationViewport");
-  const { zoom } = useZoom();
+    const store = useStoreContext("PresentationViewport");
+    const { zoom } = useZoom();
 
-  useStoreEvent(store, "zoomChange", onZoomChange);
+    useStoreEvent(store, "zoomChange", onZoomChange);
 
-  // The prop seeds the store's fit mode rather than owning it, so it never fights a `setAutoFit` call.
-  React.useEffect(() => {
-    store.setAutoFit(autoFit);
-  }, [autoFit, store]);
+    // The prop seeds the store's fit mode rather than owning it, so it never fights a `setAutoFit` call.
+    React.useEffect(() => {
+      store.setAutoFit(autoFit);
+    }, [autoFit, store]);
 
-  React.useEffect(() => {
-    if (!viewportRef.current) return;
+    React.useEffect(() => {
+      if (!viewportRef.current) return;
 
-    const viewportElement = viewportRef.current;
-    const fit = () => {
-      if (!store.getState().isAutoFit) return;
-      if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
-        store.fitTo(viewportElement.clientWidth, viewportElement.clientHeight, autoFitPadding);
-    };
+      const viewportElement = viewportRef.current;
+      const fit = () => {
+        if (!store.getState().isAutoFit) return;
+        if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
+          store.fitTo(
+            viewportElement.clientWidth,
+            viewportElement.clientHeight,
+            autoFitPadding,
+          );
+      };
 
-    fit();
+      fit();
 
-    // Observed even while fitting is off, so re-arming it picks up a resize in the meantime.
-    const resizeObserver = new ResizeObserver(fit);
-    resizeObserver.observe(viewportElement);
+      // Observed even while fitting is off, so re-arming it picks up a resize in the meantime.
+      const resizeObserver = new ResizeObserver(fit);
+      resizeObserver.observe(viewportElement);
 
-    // A new deck's aspect ratio may differ, so a reload re-fits as well.
-    let { presentation: lastPresentation, isAutoFit: wasAutoFit } = store.getState();
-    const unsubscribe = store.subscribe(() => {
-      const { presentation, isAutoFit } = store.getState();
-      const isArmed = isAutoFit && !wasAutoFit;
-      const isReloaded = presentation !== lastPresentation;
-      lastPresentation = presentation;
-      wasAutoFit = isAutoFit;
-      if (isArmed || isReloaded) fit();
-    });
+      // A new deck's aspect ratio may differ, so a reload re-fits as well.
+      let { presentation: lastPresentation, isAutoFit: wasAutoFit } =
+        store.getState();
+      const unsubscribe = store.subscribe(() => {
+        const { presentation, isAutoFit } = store.getState();
+        const isArmed = isAutoFit && !wasAutoFit;
+        const isReloaded = presentation !== lastPresentation;
+        lastPresentation = presentation;
+        wasAutoFit = isAutoFit;
+        if (isArmed || isReloaded) fit();
+      });
 
-    return () => {
-      unsubscribe();
-      resizeObserver.disconnect();
-    };
-  }, [autoFitPadding, store]);
+      return () => {
+        unsubscribe();
+        resizeObserver.disconnect();
+      };
+    }, [autoFitPadding, store]);
 
-  // As in PowerPoint, the slide scrolls first and a tick past its boundary changes slides.
-  React.useEffect(() => {
-    if (!scrollNavigation || !viewportRef.current) return;
+    // As in PowerPoint, the slide scrolls first and a tick past its boundary changes slides.
+    React.useEffect(() => {
+      if (!scrollNavigation || !viewportRef.current) return;
 
-    const viewportElement = viewportRef.current;
-    let cooldownUntil = 0;
+      const viewportElement = viewportRef.current;
+      let cooldownUntil = 0;
 
-    // Resolved per event rather than assumed to be the slide wrapper, for custom `render` layouts.
-    function findScroller(from: EventTarget | null): HTMLElement | null {
-      let element = from instanceof HTMLElement ? from : null;
-      while (element) {
-        if (element.scrollHeight > element.clientHeight + 1) {
-          const { overflowY } = getComputedStyle(element);
-          if (overflowY === "auto" || overflowY === "scroll") return element;
+      // Resolved per event rather than assumed to be the slide wrapper, for custom `render` layouts.
+      function findScroller(from: EventTarget | null): HTMLElement | null {
+        let element = from instanceof HTMLElement ? from : null;
+        while (element) {
+          if (element.scrollHeight > element.clientHeight + 1) {
+            const { overflowY } = getComputedStyle(element);
+            if (overflowY === "auto" || overflowY === "scroll") return element;
+          }
+          if (element === viewportElement) break;
+          element = element.parentElement;
         }
-        if (element === viewportElement) break;
-        element = element.parentElement;
-      }
-      return null;
-    }
-
-    function onWheel(event: WheelEvent): void {
-      if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
-
-      const goingDown = event.deltaY > 0;
-      const scroller = findScroller(event.target);
-      if (scroller) {
-        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-        const atTop = scroller.scrollTop <= 0;
-        if (goingDown ? !atBottom : !atTop) return;
+        return null;
       }
 
-      if (event.timeStamp < cooldownUntil) {
+      function onWheel(event: WheelEvent): void {
+        if (
+          event.deltaY === 0 ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey
+        )
+          return;
+
+        const goingDown = event.deltaY > 0;
+        const scroller = findScroller(event.target);
+        if (scroller) {
+          const atBottom =
+            scroller.scrollTop + scroller.clientHeight >=
+            scroller.scrollHeight - 1;
+          const atTop = scroller.scrollTop <= 0;
+          if (goingDown ? !atBottom : !atTop) return;
+        }
+
+        if (event.timeStamp < cooldownUntil) {
+          event.preventDefault();
+          return;
+        }
+
+        if (goingDown ? !store.canGoNext() : !store.canGoPrev()) return;
+
         event.preventDefault();
-        return;
+        cooldownUntil = event.timeStamp + WHEEL_NAVIGATION_COOLDOWN_MS;
+        if (goingDown) store.next();
+        else store.prev();
+
+        if (scroller) {
+          // As in PowerPoint, the new slide starts from the edge it was entered from, a frame later
+          // once its content height is in place.
+          requestAnimationFrame(() => {
+            scroller.scrollTop = goingDown ? 0 : scroller.scrollHeight;
+          });
+        }
       }
 
-      if (goingDown ? !store.canGoNext() : !store.canGoPrev()) return;
+      // Non-passive so preventDefault can stop scroll chaining to the page.
+      viewportElement.addEventListener("wheel", onWheel, { passive: false });
+      return () => viewportElement.removeEventListener("wheel", onWheel);
+    }, [scrollNavigation, store]);
 
-      event.preventDefault();
-      cooldownUntil = event.timeStamp + WHEEL_NAVIGATION_COOLDOWN_MS;
-      if (goingDown) store.next();
-      else store.prev();
+    React.useEffect(() => {
+      if (!scrollZoom || !viewportRef.current) return;
 
-      if (scroller) {
-        // As in PowerPoint, the new slide starts from the edge it was entered from, a frame later
-        // once its content height is in place.
+      const viewportElement = viewportRef.current;
+
+      // Matched on `overflow`, not current scrollability: at a fitted zoom there is nothing to scroll yet.
+      function findScroller(from: EventTarget | null): HTMLElement | null {
+        let element = from instanceof HTMLElement ? from : null;
+        while (element) {
+          const { overflowX, overflowY } = getComputedStyle(element);
+          if (getIsScrollable(overflowX) || getIsScrollable(overflowY))
+            return element;
+          if (element === viewportElement) break;
+          element = element.parentElement;
+        }
+        return null;
+      }
+
+      // Fractions, not scroll offsets: `margin: auto` centers the slide until it outgrows the viewport.
+      function getAnchor(event: WheelEvent): ZoomAnchor | null {
+        const scroller = findScroller(event.target);
+        const content = scroller?.firstElementChild;
+        if (!scroller || !(content instanceof HTMLElement)) return null;
+
+        const rect = content.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return null;
+
+        return {
+          scroller,
+          content,
+          ratioX: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+          ratioY: clamp((event.clientY - rect.top) / rect.height, 0, 1),
+          pointerX: event.clientX,
+          pointerY: event.clientY,
+        };
+      }
+
+      function onWheel(event: WheelEvent): void {
+        if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0) return;
+
+        // Claimed before the level is checked: releasing the gesture at either end
+        // of the range would zoom the page.
+        event.preventDefault();
+
+        const { zoom } = store.getState();
+        const next = clamp(
+          zoom * Math.exp(-getWheelDeltaPx(event) * ZOOM_WHEEL_SENSITIVITY),
+          MIN_ZOOM,
+          MAX_ZOOM,
+        );
+        if (next === zoom) return;
+
+        const anchor = getAnchor(event);
+        store.setZoom(next);
+        if (!anchor) return;
+
+        // Measured after layout, since `margin: auto` and the scrollbars both move the box.
         requestAnimationFrame(() => {
-          scroller.scrollTop = goingDown ? 0 : scroller.scrollHeight;
+          const rect = anchor.content.getBoundingClientRect();
+          anchor.scroller.scrollLeft +=
+            rect.left + anchor.ratioX * rect.width - anchor.pointerX;
+          anchor.scroller.scrollTop +=
+            rect.top + anchor.ratioY * rect.height - anchor.pointerY;
         });
       }
-    }
 
-    // Non-passive so preventDefault can stop scroll chaining to the page.
-    viewportElement.addEventListener("wheel", onWheel, { passive: false });
-    return () => viewportElement.removeEventListener("wheel", onWheel);
-  }, [scrollNavigation, store]);
+      viewportElement.addEventListener("wheel", onWheel, { passive: false });
+      return () => viewportElement.removeEventListener("wheel", onWheel);
+    }, [scrollZoom, store]);
 
-  React.useEffect(() => {
-    if (!scrollZoom || !viewportRef.current) return;
-
-    const viewportElement = viewportRef.current;
-
-    // Matched on `overflow`, not current scrollability: at a fitted zoom there is nothing to scroll yet.
-    function findScroller(from: EventTarget | null): HTMLElement | null {
-      let element = from instanceof HTMLElement ? from : null;
-      while (element) {
-        const { overflowX, overflowY } = getComputedStyle(element);
-        if (getIsScrollable(overflowX) || getIsScrollable(overflowY)) return element;
-        if (element === viewportElement) break;
-        element = element.parentElement;
-      }
-      return null;
-    }
-
-    // Fractions, not scroll offsets: `margin: auto` centers the slide until it outgrows the viewport.
-    function getAnchor(event: WheelEvent): ZoomAnchor | null {
-      const scroller = findScroller(event.target);
-      const content = scroller?.firstElementChild;
-      if (!scroller || !(content instanceof HTMLElement)) return null;
-
-      const rect = content.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return null;
-
-      return {
-        scroller,
-        content,
-        ratioX: clamp((event.clientX - rect.left) / rect.width, 0, 1),
-        ratioY: clamp((event.clientY - rect.top) / rect.height, 0, 1),
-        pointerX: event.clientX,
-        pointerY: event.clientY,
-      };
-    }
-
-    function onWheel(event: WheelEvent): void {
-      if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0) return;
-
-      // Claimed before the level is checked: releasing the gesture at either end
-      // of the range would zoom the page.
-      event.preventDefault();
-
-      const { zoom } = store.getState();
-      const next = clamp(
-        zoom * Math.exp(-getWheelDeltaPx(event) * ZOOM_WHEEL_SENSITIVITY),
-        MIN_ZOOM,
-        MAX_ZOOM,
-      );
-      if (next === zoom) return;
-
-      const anchor = getAnchor(event);
-      store.setZoom(next);
-      if (!anchor) return;
-
-      // Measured after layout, since `margin: auto` and the scrollbars both move the box.
-      requestAnimationFrame(() => {
-        const rect = anchor.content.getBoundingClientRect();
-        anchor.scroller.scrollLeft += rect.left + anchor.ratioX * rect.width - anchor.pointerX;
-        anchor.scroller.scrollTop += rect.top + anchor.ratioY * rect.height - anchor.pointerY;
-      });
-    }
-
-    viewportElement.addEventListener("wheel", onWheel, { passive: false });
-    return () => viewportElement.removeEventListener("wheel", onWheel);
-  }, [scrollZoom, store]);
-
-  return renderElement(
-    "div",
-    { render },
-    {
-      state: { zoom },
-      ref: [viewportRef, forwardedRef],
-      props: [viewportProps],
-    },
-  );
-});
+    return renderElement(
+      "div",
+      { render },
+      {
+        state: { zoom },
+        ref: [viewportRef, forwardedRef],
+        props: [viewportProps],
+      },
+    );
+  },
+);
 
 export namespace Viewport {
   export type State = ViewportState;

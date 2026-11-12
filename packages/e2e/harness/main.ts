@@ -64,7 +64,8 @@ async function showSlide(index: number): Promise<void> {
     await handle.ready;
     window.__renderDone = true;
   } catch (error) {
-    window.__renderError = error instanceof Error ? error.message : String(error);
+    window.__renderError =
+      error instanceof Error ? error.message : String(error);
     throw error;
   }
 }
@@ -100,7 +101,8 @@ async function main(): Promise<void> {
 
     await showSlide(slideIndex);
   } catch (error) {
-    window.__renderError = error instanceof Error ? error.message : String(error);
+    window.__renderError =
+      error instanceof Error ? error.message : String(error);
   }
 }
 

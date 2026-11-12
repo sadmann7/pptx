@@ -74,7 +74,10 @@ describe("basic picture rendering", () => {
 
   it("renders a placeholder when the blip relationship is missing", async () => {
     const element = await renderPicture(
-      pic(`<a:blip r:embed="rId99"/><a:stretch><a:fillRect/></a:stretch>`, RECT_GEOM),
+      pic(
+        `<a:blip r:embed="rId99"/><a:stretch><a:fillRect/></a:stretch>`,
+        RECT_GEOM,
+      ),
     );
     expect(element.querySelector("img")).toBeNull();
     expect(element.textContent).toContain("Missing image reference");
@@ -133,26 +136,40 @@ describe("picture geometry clipping", () => {
     // visibleW = 0.95 -> width 96/0.95; visibleH = 0.7 -> height 96/0.7.
     expect(Number(image.getAttribute("width"))).toBeCloseTo(96 / 0.95, 3);
     expect(Number(image.getAttribute("height"))).toBeCloseTo(96 / 0.7, 3);
-    expect(Number(image.getAttribute("x"))).toBeCloseTo(-0.05 * (1 / 0.95) * 96, 3);
-    expect(Number(image.getAttribute("y"))).toBeCloseTo(-0.1 * (1 / 0.7) * 96, 3);
+    expect(Number(image.getAttribute("x"))).toBeCloseTo(
+      -0.05 * (1 / 0.95) * 96,
+      3,
+    );
+    expect(Number(image.getAttribute("y"))).toBeCloseTo(
+      -0.1 * (1 / 0.7) * 96,
+      3,
+    );
   });
 });
 
 describe("picture transforms and effects", () => {
   it("applies flipH as scaleX(-1) on rectangular pictures", async () => {
-    const element = await renderPicture(pic(SIMPLE_BLIP, RECT_GEOM, ` flipH="1"`));
+    const element = await renderPicture(
+      pic(SIMPLE_BLIP, RECT_GEOM, ` flipH="1"`),
+    );
     const wrapper = element.querySelector("img")!.closest("div") as HTMLElement;
     expect(wrapper.style.transform).toBe("scaleX(-1)");
   });
 
   it("flips clipped pictures via SVG transforms instead of CSS scale", async () => {
     const element = await renderPicture(
-      pic(SIMPLE_BLIP, `<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>`, ` flipH="1"`),
+      pic(
+        SIMPLE_BLIP,
+        `<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>`,
+        ` flipH="1"`,
+      ),
     );
     const wrapper = element.querySelector("svg")!.closest("div") as HTMLElement;
     expect(wrapper.style.transform).not.toContain("scaleX");
     const clipPathPath = element.querySelector("svg defs clipPath path")!;
-    expect(clipPathPath.getAttribute("transform")).toBe("translate(96 0) scale(-1 1)");
+    expect(clipPathPath.getAttribute("transform")).toBe(
+      "translate(96 0) scale(-1 1)",
+    );
     const image = element.querySelector("svg image")!;
     expect(image.getAttribute("transform")).toBe("translate(96 0) scale(-1 1)");
   });

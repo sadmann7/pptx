@@ -18,7 +18,12 @@ export interface MasterData {
 }
 
 function isPlaceholder(node: SafeXmlNode): boolean {
-  for (const wrapper of ["nvSpPr", "nvPicPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
+  for (const wrapper of [
+    "nvSpPr",
+    "nvPicPr",
+    "nvGraphicFramePr",
+    "nvCxnSpPr",
+  ]) {
     const nvWrapper = node.child(wrapper);
     if (!nvWrapper.exists()) continue;
     const nvPr = nvWrapper.child("nvPr");
@@ -84,7 +89,12 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
 
 function extractPlaceholderEntriesRecursive(
   spTree: SafeXmlNode,
-  groupTransform: { offX: number; offY: number; scaleX: number; scaleY: number } | null,
+  groupTransform: {
+    offX: number;
+    offY: number;
+    scaleX: number;
+    scaleY: number;
+  } | null,
 ): PlaceholderEntry[] {
   const out: PlaceholderEntry[] = [];
   for (const child of spTree.allChildren()) {

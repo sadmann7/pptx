@@ -9,7 +9,10 @@ export default function Layout({ children }: LayoutProps<"/">) {
     <>
       <SkipNav />
       <HomeLayout {...baseOptions()} slots={{ header: SiteHeader }}>
-        <div id={MAIN_CONTENT_ID} className="flex flex-1 scroll-mt-14 flex-col md:scroll-mt-16">
+        <div
+          id={MAIN_CONTENT_ID}
+          className="flex flex-1 scroll-mt-14 flex-col md:scroll-mt-16"
+        >
           {children}
         </div>
       </HomeLayout>

@@ -1,4 +1,9 @@
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+} from "fumadocs-ui/layouts/docs/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -22,7 +27,9 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
           <DocsTitle className="flex-1">{page.data.title}</DocsTitle>
           <DocActions markdownUrl={markdownUrl} />
         </div>
-        <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+        <DocsDescription className="mb-0">
+          {page.data.description}
+        </DocsDescription>
       </div>
       <DocsBody>
         <MDX
@@ -39,7 +46,9 @@ export async function generateStaticParams() {
   return source.generateParams();
 }
 
-export async function generateMetadata(props: PageProps<"/docs/[[...slug]]">): Promise<Metadata> {
+export async function generateMetadata(
+  props: PageProps<"/docs/[[...slug]]">,
+): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();

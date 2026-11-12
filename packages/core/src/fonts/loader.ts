@@ -3,7 +3,11 @@ import type {
   EmbeddedFontVariant,
   PresentationData,
 } from "../model/presentation";
-import { copyToArrayBuffer, decodeEmbeddedFontPart, getIsCompressedFont } from "./decode";
+import {
+  copyToArrayBuffer,
+  decodeEmbeddedFontPart,
+  getIsCompressedFont,
+} from "./decode";
 import type { MtxErrorCode } from "./mtx";
 import type { FontWorkerRequest, FontWorkerResponse } from "./worker";
 import { createFontWorker } from "./worker-host";
@@ -15,7 +19,10 @@ const MAX_WORKER_COUNT = 6;
 const SLICE_MS = 5;
 
 const VARIANTS: {
-  key: keyof Pick<EmbeddedFontEntry, "regular" | "bold" | "italic" | "boldItalic">;
+  key: keyof Pick<
+    EmbeddedFontEntry,
+    "regular" | "bold" | "italic" | "boldItalic"
+  >;
   weight: string;
   style: string;
 }[] = [
@@ -89,7 +96,11 @@ interface DecodeFailure {
   code?: MtxErrorCode;
 }
 
-type OnDecoded = (path: string, buffer: ArrayBuffer | null, failure?: DecodeFailure) => void;
+type OnDecoded = (
+  path: string,
+  buffer: ArrayBuffer | null,
+  failure?: DecodeFailure,
+) => void;
 
 // Results arrive in queue order per worker. Jobs whose worker dies stay un-decoded,
 // and the caller runs a main-thread fallback for them.
@@ -105,7 +116,10 @@ async function decodeWithWorkerPool(
     typeof navigator !== "undefined" && navigator.hardwareConcurrency
       ? navigator.hardwareConcurrency
       : 4;
-  const poolSize = Math.max(1, Math.min(jobs.length, concurrency - 1, MAX_WORKER_COUNT));
+  const poolSize = Math.max(
+    1,
+    Math.min(jobs.length, concurrency - 1, MAX_WORKER_COUNT),
+  );
 
   const workers: Worker[] = [];
   for (let i = 0; i < poolSize; i++) {
@@ -141,7 +155,9 @@ async function decodeWithWorkerPool(
             onDecoded(
               path,
               buffer,
-              buffer ? undefined : { message: message ?? "Decode failed", code },
+              buffer
+                ? undefined
+                : { message: message ?? "Decode failed", code },
             );
             takeNext();
           };
@@ -173,14 +189,17 @@ export function loadEmbeddedFonts(
     dispose() {},
   };
 
-  if (!presentation.embeddedFonts || presentation.embeddedFonts.length === 0) return noop;
-  if (typeof document === "undefined" || typeof FontFace === "undefined") return noop;
+  if (!presentation.embeddedFonts || presentation.embeddedFonts.length === 0)
+    return noop;
+  if (typeof document === "undefined" || typeof FontFace === "undefined")
+    return noop;
 
   const tasks: FontTask[] = [];
   for (const entry of presentation.embeddedFonts) {
     for (const { key, weight, style } of VARIANTS) {
       const variant = entry[key];
-      if (variant) tasks.push({ typeface: entry.typeface, weight, style, variant });
+      if (variant)
+        tasks.push({ typeface: entry.typeface, weight, style, variant });
     }
   }
   if (tasks.length === 0) return noop;
@@ -225,7 +244,8 @@ export function loadEmbeddedFonts(
 
   const priority = options?.priorityTypefaces;
   const isPriorityPath = (path: string): boolean =>
-    !priority || (tasksByPath.get(path) ?? []).some((task) => priority.has(task.typeface));
+    !priority ||
+    (tasksByPath.get(path) ?? []).some((task) => priority.has(task.typeface));
 
   const jobs = [...jobByPath.values()].sort(
     (a, b) => Number(isPriorityPath(b.path)) - Number(isPriorityPath(a.path)),
@@ -309,7 +329,9 @@ export function loadEmbeddedFonts(
 
     // Starting a pool costs more than decoding uncompressed parts does, so one
     // compressed part sends the whole deck to the pool and none skips it.
-    const hasCompressedPart = jobs.some((job) => getIsCompressedFont(job.bytes, job.fontKey));
+    const hasCompressedPart = jobs.some((job) =>
+      getIsCompressedFont(job.bytes, job.fontKey),
+    );
 
     if (hasCompressedPart && typeof Worker !== "undefined") {
       try {
@@ -329,7 +351,10 @@ export function loadEmbeddedFonts(
       if (result.ok) {
         onDecoded(job.path, copyToArrayBuffer(result.bytes));
       } else {
-        onDecoded(job.path, null, { message: result.message, code: result.code });
+        onDecoded(job.path, null, {
+          message: result.message,
+          code: result.code,
+        });
       }
       if (performance.now() - sliceStart < SLICE_MS) continue;
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -365,7 +390,8 @@ export function findPriorityTypefaces(
 ): Set<string> | undefined {
   const embedded = presentation.embeddedFonts;
   const xmlSources = slideXml.filter((xml): xml is string => !!xml);
-  if (!embedded || embedded.length === 0 || xmlSources.length === 0) return undefined;
+  if (!embedded || embedded.length === 0 || xmlSources.length === 0)
+    return undefined;
 
   const priority = new Set<string>();
   const themeFonts = new Set<string>();

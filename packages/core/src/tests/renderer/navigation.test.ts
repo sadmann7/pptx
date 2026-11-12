@@ -31,7 +31,11 @@ describe("resolveSlideJumpIndex", () => {
   });
 
   it("returns undefined for external targets", () => {
-    const rel = { type: "hyperlink", target: "https://example.com", targetMode: "External" };
+    const rel = {
+      type: "hyperlink",
+      target: "https://example.com",
+      targetMode: "External",
+    };
     expect(resolveSlideJumpIndex(ctxAt(0), rel)).toBeUndefined();
   });
 
@@ -44,7 +48,9 @@ describe("resolveSlideJumpIndex", () => {
 describe("resolveSlideNavigationIndex", () => {
   it("handles hlinksldjump with a relationship", () => {
     const rel = { type: "slide", target: "slide4.xml" };
-    expect(resolveSlideNavigationIndex(ctxAt(0), "ppaction://hlinksldjump", rel)).toBe(3);
+    expect(
+      resolveSlideNavigationIndex(ctxAt(0), "ppaction://hlinksldjump", rel),
+    ).toBe(3);
   });
 
   it.each([
@@ -58,15 +64,23 @@ describe("resolveSlideNavigationIndex", () => {
 
   it("returns undefined at deck boundaries", () => {
     expect(
-      resolveSlideNavigationIndex(ctxAt(3), "ppaction://hlinkshowjump?jump=nextslide"),
+      resolveSlideNavigationIndex(
+        ctxAt(3),
+        "ppaction://hlinkshowjump?jump=nextslide",
+      ),
     ).toBeUndefined();
     expect(
-      resolveSlideNavigationIndex(ctxAt(0), "ppaction://hlinkshowjump?jump=previousslide"),
+      resolveSlideNavigationIndex(
+        ctxAt(0),
+        "ppaction://hlinkshowjump?jump=previousslide",
+      ),
     ).toBeUndefined();
   });
 
   it("returns undefined for unknown actions or missing input", () => {
-    expect(resolveSlideNavigationIndex(ctxAt(0), "ppaction://customshow")).toBeUndefined();
+    expect(
+      resolveSlideNavigationIndex(ctxAt(0), "ppaction://customshow"),
+    ).toBeUndefined();
     expect(resolveSlideNavigationIndex(ctxAt(0), undefined)).toBeUndefined();
   });
 });

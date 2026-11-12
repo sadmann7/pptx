@@ -35,13 +35,20 @@ describe("Presentation.Viewport", () => {
     const store = await loadedStore();
     const events: ZoomChangeEvent[] = [];
 
-    withStore(store, <Presentation.Viewport onZoomChange={(event) => events.push(event)} />);
+    withStore(
+      store,
+      <Presentation.Viewport onZoomChange={(event) => events.push(event)} />,
+    );
 
     act(() => store.setZoom(2));
     expect(events).toEqual([{ zoom: 2, previousZoom: 1, reason: "zoom" }]);
 
     act(() => store.zoomOut(0.5));
-    expect(events.at(-1)).toEqual({ zoom: 1.5, previousZoom: 2, reason: "zoom" });
+    expect(events.at(-1)).toEqual({
+      zoom: 1.5,
+      previousZoom: 2,
+      reason: "zoom",
+    });
   });
 
   describe("autoFit", () => {
@@ -72,11 +79,20 @@ describe("Presentation.Viewport", () => {
     it("fits the slide to the container on resize", async () => {
       const store = await loadedStore();
       const notifyResize = stubResizeObserver();
-      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport autoFit data-testid="viewport" />,
+      );
 
       const viewport = screen.getByTestId("viewport");
-      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
-      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+      Object.defineProperty(viewport, "clientWidth", {
+        value: 640,
+        configurable: true,
+      });
+      Object.defineProperty(viewport, "clientHeight", {
+        value: 360,
+        configurable: true,
+      });
       act(() => notifyResize());
 
       // Fixture deck is 1280x720.
@@ -86,11 +102,20 @@ describe("Presentation.Viewport", () => {
     it("stops fitting on resize once an explicit level is picked", async () => {
       const store = await loadedStore();
       const notifyResize = stubResizeObserver();
-      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport autoFit data-testid="viewport" />,
+      );
 
       const viewport = screen.getByTestId("viewport");
-      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
-      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+      Object.defineProperty(viewport, "clientWidth", {
+        value: 640,
+        configurable: true,
+      });
+      Object.defineProperty(viewport, "clientHeight", {
+        value: 360,
+        configurable: true,
+      });
 
       act(() => store.setZoom(2));
       act(() => notifyResize());
@@ -100,11 +125,20 @@ describe("Presentation.Viewport", () => {
     it("refits when auto-fit is turned back on", async () => {
       const store = await loadedStore();
       stubResizeObserver();
-      withStore(store, <Presentation.Viewport autoFit data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport autoFit data-testid="viewport" />,
+      );
 
       const viewport = screen.getByTestId("viewport");
-      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
-      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+      Object.defineProperty(viewport, "clientWidth", {
+        value: 640,
+        configurable: true,
+      });
+      Object.defineProperty(viewport, "clientHeight", {
+        value: 360,
+        configurable: true,
+      });
 
       act(() => store.setZoom(2));
       // No resize in between: re-arming fits against the container as it is.
@@ -118,8 +152,14 @@ describe("Presentation.Viewport", () => {
       withStore(store, <Presentation.Viewport data-testid="viewport" />);
 
       const viewport = screen.getByTestId("viewport");
-      Object.defineProperty(viewport, "clientWidth", { value: 640, configurable: true });
-      Object.defineProperty(viewport, "clientHeight", { value: 360, configurable: true });
+      Object.defineProperty(viewport, "clientWidth", {
+        value: 640,
+        configurable: true,
+      });
+      Object.defineProperty(viewport, "clientHeight", {
+        value: 360,
+        configurable: true,
+      });
       act(() => notifyResize());
 
       expect(store.getState().isAutoFit).toBe(false);
@@ -131,7 +171,9 @@ describe("Presentation.Viewport", () => {
       const reasons: string[] = [];
       withStore(
         store,
-        <Presentation.Viewport onZoomChange={({ reason }) => reasons.push(reason)} />,
+        <Presentation.Viewport
+          onZoomChange={({ reason }) => reasons.push(reason)}
+        />,
       );
 
       act(() => store.fitTo(640, 360));
@@ -140,8 +182,16 @@ describe("Presentation.Viewport", () => {
   });
 
   describe("scrollNavigation", () => {
-    function wheel(element: HTMLElement, deltaY: number, timeStamp?: number): void {
-      const event = new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true });
+    function wheel(
+      element: HTMLElement,
+      deltaY: number,
+      timeStamp?: number,
+    ): void {
+      const event = new WheelEvent("wheel", {
+        deltaY,
+        bubbles: true,
+        cancelable: true,
+      });
       // WheelEvent timestamps are read-only; override to control the cooldown.
       if (timeStamp !== undefined) {
         Object.defineProperty(event, "timeStamp", { value: timeStamp });
@@ -153,7 +203,10 @@ describe("Presentation.Viewport", () => {
 
     it("advances to the next slide on wheel down when there is nothing to scroll", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation data-testid="viewport" />,
+      );
 
       wheel(screen.getByTestId("viewport"), 100);
       expect(store.getActiveSlideIndex()).toBe(1);
@@ -161,7 +214,10 @@ describe("Presentation.Viewport", () => {
 
     it("swallows momentum ticks within the cooldown window", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation data-testid="viewport" />,
+      );
       const viewport = screen.getByTestId("viewport");
 
       wheel(viewport, 100, 1000);
@@ -174,7 +230,10 @@ describe("Presentation.Viewport", () => {
 
     it("goes back on wheel up and no-ops at the first slide", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation data-testid="viewport" />,
+      );
       const viewport = screen.getByTestId("viewport");
 
       wheel(viewport, -100, 1000);
@@ -187,10 +246,17 @@ describe("Presentation.Viewport", () => {
 
     it("ignores ctrl/cmd+wheel (zoom gesture)", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation data-testid="viewport" />,
+      );
 
       for (const modifier of ["ctrlKey", "metaKey"]) {
-        const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+        const event = new WheelEvent("wheel", {
+          deltaY: 100,
+          bubbles: true,
+          cancelable: true,
+        });
         // happy-dom's WheelEvent constructor drops modifier keys from the init.
         Object.defineProperty(event, modifier, { value: true });
         act(() => {
@@ -202,9 +268,16 @@ describe("Presentation.Viewport", () => {
 
     it("ignores shift+wheel (horizontal scroll gesture)", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollNavigation data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollNavigation data-testid="viewport" />,
+      );
 
-      const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+      const event = new WheelEvent("wheel", {
+        deltaY: 100,
+        bubbles: true,
+        cancelable: true,
+      });
       // happy-dom's WheelEvent constructor drops modifier keys from the init.
       Object.defineProperty(event, "shiftKey", { value: true });
       act(() => {
@@ -256,7 +329,10 @@ describe("Presentation.Viewport", () => {
 
     it("zooms in on ctrl/cmd+wheel up and out on ctrl/cmd+wheel down", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollZoom data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollZoom data-testid="viewport" />,
+      );
       const viewport = screen.getByTestId("viewport");
 
       // One mouse notch, applied multiplicatively.
@@ -269,7 +345,10 @@ describe("Presentation.Viewport", () => {
 
     it("claims the gesture so the page does not zoom", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollZoom data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollZoom data-testid="viewport" />,
+      );
 
       const event = zoomWheel(screen.getByTestId("viewport"), -100);
       expect(event.defaultPrevented).toBe(true);
@@ -277,7 +356,10 @@ describe("Presentation.Viewport", () => {
 
     it("keeps the gesture at the ends of the zoom range", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollZoom data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollZoom data-testid="viewport" />,
+      );
       act(() => store.setZoom(MAX_ZOOM));
 
       const event = zoomWheel(screen.getByTestId("viewport"), -100);
@@ -288,7 +370,10 @@ describe("Presentation.Viewport", () => {
 
     it("normalizes deltas reported in lines", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport scrollZoom data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport scrollZoom data-testid="viewport" />,
+      );
 
       zoomWheel(screen.getByTestId("viewport"), -3, { deltaMode: 1 });
       expect(store.getState().zoom).toBeCloseTo(Math.exp(48 * 0.0015), 5);
@@ -296,7 +381,10 @@ describe("Presentation.Viewport", () => {
 
     it("releases auto-fit, like any other explicit level", async () => {
       const store = await loadedStore();
-      withStore(store, <Presentation.Viewport autoFit scrollZoom data-testid="viewport" />);
+      withStore(
+        store,
+        <Presentation.Viewport autoFit scrollZoom data-testid="viewport" />,
+      );
       expect(store.getState().isAutoFit).toBe(true);
 
       zoomWheel(screen.getByTestId("viewport"), -100);
@@ -309,7 +397,10 @@ describe("Presentation.Viewport", () => {
         store,
         <Presentation.Viewport scrollZoom data-testid="viewport">
           {/* Longhands: the test DOM does not expand the `overflow` shorthand. */}
-          <div data-testid="scroller" style={{ overflowX: "auto", overflowY: "auto" }}>
+          <div
+            data-testid="scroller"
+            style={{ overflowX: "auto", overflowY: "auto" }}
+          >
             <div data-testid="content" />
           </div>
         </Presentation.Viewport>,
@@ -320,18 +411,27 @@ describe("Presentation.Viewport", () => {
       // Scroll offsets clamp to a scrollable range the test DOM never has, so
       // they stand in as plain properties to record what the correction wrote.
       const scroller = screen.getByTestId("scroller");
-      Object.defineProperty(scroller, "scrollLeft", { value: 0, writable: true });
-      Object.defineProperty(scroller, "scrollTop", { value: 0, writable: true });
+      Object.defineProperty(scroller, "scrollLeft", {
+        value: 0,
+        writable: true,
+      });
+      Object.defineProperty(scroller, "scrollTop", {
+        value: 0,
+        writable: true,
+      });
 
       const content = screen.getByTestId("content");
       content.getBoundingClientRect = () => {
         const size = 100 * store.getState().zoom;
         return { left: 0, top: 0, width: size, height: size } as DOMRect;
       };
-      vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-        callback(0);
-        return 0;
-      });
+      vi.stubGlobal(
+        "requestAnimationFrame",
+        (callback: FrameRequestCallback) => {
+          callback(0);
+          return 0;
+        },
+      );
 
       // Pointer at the center of the slide, which stays the center as it grows,
       // so the correction is half the growth on both axes.
@@ -346,13 +446,21 @@ describe("Presentation.Viewport", () => {
       const store = await loadedStore();
       withStore(
         store,
-        <Presentation.Viewport scrollNavigation scrollZoom data-testid="viewport" />,
+        <Presentation.Viewport
+          scrollNavigation
+          scrollZoom
+          data-testid="viewport"
+        />,
       );
 
       // Cmd+wheel: the navigation handler runs first, so it has to pass on the
       // modifiers the zoom handler claims or one gesture does both. Downwards,
       // because navigating back off the first slide is a no-op either way.
-      const event = new WheelEvent("wheel", { deltaY: 100, bubbles: true, cancelable: true });
+      const event = new WheelEvent("wheel", {
+        deltaY: 100,
+        bubbles: true,
+        cancelable: true,
+      });
       Object.defineProperty(event, "metaKey", { value: true });
       act(() => {
         screen.getByTestId("viewport").dispatchEvent(event);

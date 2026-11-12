@@ -6,7 +6,8 @@ export class Reader {
   readonly end: number;
 
   constructor(data: Uint8Array, start = 0, end = data.length) {
-    if (start < 0 || end < start || end > data.length) fail("BOUNDS", "Invalid reader range");
+    if (start < 0 || end < start || end > data.length)
+      fail("BOUNDS", "Invalid reader range");
     this.data = data;
     this.pos = start;
     this.end = end;
@@ -17,8 +18,16 @@ export class Reader {
   }
 
   ensure(count: number): void {
-    if (!Number.isSafeInteger(count) || count < 0 || this.pos + count > this.end) {
-      fail("BOUNDS", `Need ${count} byte(s), only ${this.remaining} remain`, this.pos);
+    if (
+      !Number.isSafeInteger(count) ||
+      count < 0 ||
+      this.pos + count > this.end
+    ) {
+      fail(
+        "BOUNDS",
+        `Need ${count} byte(s), only ${this.remaining} remain`,
+        this.pos,
+      );
     }
   }
 
@@ -58,7 +67,9 @@ export class Reader {
     this.ensure(3);
     const p = this.pos;
     this.pos += 3;
-    return this.data[p]! * 0x10000 + (this.data[p + 1]! << 8) + this.data[p + 2]!;
+    return (
+      this.data[p]! * 0x10000 + (this.data[p + 1]! << 8) + this.data[p + 2]!
+    );
   }
 
   u32be(): number {
@@ -166,16 +177,20 @@ export class Writer {
     while (this.length % multiple) this.u8(0);
   }
   patchU16be(offset: number, value: number): void {
-    if (offset + 2 > this.length) fail("BOUNDS", "Patch outside output", offset);
+    if (offset + 2 > this.length)
+      fail("BOUNDS", "Patch outside output", offset);
     this.view.setUint16(offset, value, false);
   }
   patchU32be(offset: number, value: number): void {
-    if (offset + 4 > this.length) fail("BOUNDS", "Patch outside output", offset);
+    if (offset + 4 > this.length)
+      fail("BOUNDS", "Patch outside output", offset);
     this.view.setUint32(offset, value >>> 0, false);
   }
   // Ownership transfers to the caller: an exactly sized buffer is returned without a
   // copy, so the writer must not be used afterwards.
   finish(): Uint8Array {
-    return this.length === this.data.length ? this.data : this.data.slice(0, this.length);
+    return this.length === this.data.length
+      ? this.data
+      : this.data.slice(0, this.length);
   }
 }

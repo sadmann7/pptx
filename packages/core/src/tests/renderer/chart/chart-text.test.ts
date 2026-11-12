@@ -9,7 +9,10 @@ import {
   getChartThemeFontFamily,
 } from "../../../renderer/chart/text";
 import type { RenderContext } from "../../../renderer/context";
-import { parseChartFragment, createChartTestContext } from "../../fixtures/chart-pptx";
+import {
+  parseChartFragment,
+  createChartTestContext,
+} from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 
@@ -35,14 +38,17 @@ describe("extractTitleText", () => {
   });
 
   it("falls back to strRef caches", () => {
-    const title = parseChartFragment(`<c:title><c:tx><c:strRef><c:f>Sheet1!$A$1</c:f>
+    const title =
+      parseChartFragment(`<c:title><c:tx><c:strRef><c:f>Sheet1!$A$1</c:f>
 <c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>Cached Title</c:v></c:pt></c:strCache>
 </c:strRef></c:tx></c:title>`).child("title");
     expect(extractTitleText(title)).toBe("Cached Title");
   });
 
   it("returns undefined without a tx element", () => {
-    expect(extractTitleText(parseChartFragment("<c:title/>").child("title"))).toBeUndefined();
+    expect(
+      extractTitleText(parseChartFragment("<c:title/>").child("title")),
+    ).toBeUndefined();
   });
 });
 
@@ -108,7 +114,11 @@ describe("extractTxPrStyle / extractTitleTextStyle", () => {
 describe("chartTextStyleToEChartsTextStyle", () => {
   it("maps bold to fontWeight and passes through visual props", () => {
     expect(
-      chartTextStyleToEChartsTextStyle({ color: "#112233", fontSize: 11, bold: false }),
+      chartTextStyleToEChartsTextStyle({
+        color: "#112233",
+        fontSize: 11,
+        bold: false,
+      }),
     ).toEqual({ color: "#112233", fontSize: 11, fontWeight: "normal" });
   });
 

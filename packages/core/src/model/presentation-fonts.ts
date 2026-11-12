@@ -22,11 +22,15 @@ function collectTypefaces(element: Element, into: Set<string>): void {
  * Lists the fonts a font picker should offer for a deck, skipping slides not yet loaded
  * with `materializeSlide`.
  */
-export function getPresentationFonts(pres: PresentationData): PresentationFonts {
+export function getPresentationFonts(
+  pres: PresentationData,
+): PresentationFonts {
   const theme = pres.themes.values().next().value;
   const heading = theme?.majorFont.latin || undefined;
   const body = theme?.minorFont.latin || undefined;
-  const embedded = [...new Set((pres.embeddedFonts ?? []).map((font) => font.typeface))];
+  const embedded = [
+    ...new Set((pres.embeddedFonts ?? []).map((font) => font.typeface)),
+  ];
 
   const typefaces = new Set<string>();
   for (const slide of pres.slides) {
@@ -36,7 +40,9 @@ export function getPresentationFonts(pres: PresentationData): PresentationFonts 
     }
   }
   const listed = new Set([heading, body, ...embedded]);
-  const used = [...typefaces].filter((typeface) => !listed.has(typeface)).sort();
+  const used = [...typefaces]
+    .filter((typeface) => !listed.has(typeface))
+    .sort();
 
   return { theme: { heading, body }, embedded, used };
 }

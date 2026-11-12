@@ -360,7 +360,8 @@ export function renderSlide(
   container.style.position = "relative";
   container.style.width = `${presentation.width}px`;
   container.style.height = `${presentation.height}px`;
-  container.style.overflow = options?.clipContent === false ? "visible" : "hidden";
+  container.style.overflow =
+    options?.clipContent === false ? "visible" : "hidden";
   container.style.backgroundColor = "#FFFFFF";
   resetTypography(container);
 

@@ -28,7 +28,9 @@ describe("getPredefinedTableStyle", () => {
   });
 
   it("returns undefined for unknown GUIDs", () => {
-    expect(getPredefinedTableStyle("{00000000-0000-0000-0000-000000000000}")).toBeUndefined();
+    expect(
+      getPredefinedTableStyle("{00000000-0000-0000-0000-000000000000}"),
+    ).toBeUndefined();
     expect(getPredefinedTableStyle("")).toBeUndefined();
     expect(getPredefinedTableStyle("not-a-guid")).toBeUndefined();
   });
@@ -57,7 +59,14 @@ describe("getPredefinedTableStyle", () => {
   it("gives No Style, Table Grid a 1pt tx1 line on all six cell edges", () => {
     const style = getPredefinedTableStyle(NO_STYLE_TABLE_GRID);
     const tcBdr = style!.child("wholeTbl").child("tcStyle").child("tcBdr");
-    for (const side of ["left", "right", "top", "bottom", "insideH", "insideV"]) {
+    for (const side of [
+      "left",
+      "right",
+      "top",
+      "bottom",
+      "insideH",
+      "insideV",
+    ]) {
       const ln = tcBdr.child(side).child("ln");
       expect(ln.exists(), `${side} should have a line`).toBe(true);
       expect(ln.attr("w")).toBe("12700");
@@ -130,7 +139,9 @@ async function renderStyledTable(
   const buffer = await buildCustomPptx({
     slides: [styledTableFrame(styleId)],
     extraFiles:
-      options.includeTableStylesPart === false ? {} : { "ppt/tableStyles.xml": EMPTY_TABLE_STYLES },
+      options.includeTableStylesPart === false
+        ? {}
+        : { "ppt/tableStyles.xml": EMPTY_TABLE_STYLES },
   });
 
   const files = await readPptx(buffer);
@@ -180,7 +191,8 @@ describe("built-in table styles through the render pipeline", () => {
   it("applies the Themed-Style-2 table background via its theme fillRef", async () => {
     const { table } = await renderStyledTable(THEMED_STYLE_2_ACCENT1);
     // tblBg fillRef idx=1 resolves through the theme fillStyleLst (phClr → accent1).
-    const bg = `${table.style.backgroundColor} ${table.style.background}`.toUpperCase();
+    const bg =
+      `${table.style.backgroundColor} ${table.style.background}`.toUpperCase();
     expect(bg).toContain("#4472C4");
   });
 
@@ -228,7 +240,9 @@ describe("built-in table styles through the render pipeline", () => {
   });
 
   it("leaves cells unstyled for an unknown style GUID", async () => {
-    const { rows } = await renderStyledTable("{00000000-0000-0000-0000-000000000000}");
+    const { rows } = await renderStyledTable(
+      "{00000000-0000-0000-0000-000000000000}",
+    );
     const td = rows[0].querySelector("td")!;
     expect(td.style.backgroundColor).toBe("");
   });

@@ -1,4 +1,11 @@
 {
   "title": "pptx",
-  "pages": ["index", "installation", "quick-start", "components", "editing", "store"]
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "components",
+    "editing",
+    "store"
+  ]
 }

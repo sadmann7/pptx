@@ -43,7 +43,9 @@ describe("theme fill references (a:fillRef)", () => {
 </p:style>`),
     );
     // fillStyleLst[1] = solidFill schemeClr phClr; phClr = accent1 = 4472C4.
-    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe("#4472c4");
+    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe(
+      "#4472c4",
+    );
   });
 
   it("applies color modifiers on the fillRef color before substituting phClr", async () => {
@@ -56,7 +58,9 @@ describe("theme fill references (a:fillRef)", () => {
 </p:style>`),
     );
     // lt1 = FFFFFF, lumMod 50% halves HSL lightness -> #808080.
-    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe("#808080");
+    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe(
+      "#808080",
+    );
   });
 
   it("prefers an explicit spPr fill over the fillRef", async () => {
@@ -71,7 +75,9 @@ describe("theme fill references (a:fillRef)", () => {
         `<a:solidFill><a:srgbClr val="FF0000"/></a:solidFill>`,
       ),
     );
-    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe("#ff0000");
+    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe(
+      "#ff0000",
+    );
   });
 });
 
@@ -102,7 +108,10 @@ describe("theme line references (a:lnRef)", () => {
 </p:style>`),
     );
     // lnStyleLst[2] = ln w=19050 EMU = 2px.
-    expect(Number(mainPath(element).getAttribute("stroke-width"))).toBeCloseTo(2, 3);
+    expect(Number(mainPath(element).getAttribute("stroke-width"))).toBeCloseTo(
+      2,
+      3,
+    );
   });
 
   it("explicit a:ln solidFill wins over the lnRef color", async () => {

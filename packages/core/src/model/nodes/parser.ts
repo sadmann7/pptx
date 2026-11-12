@@ -22,7 +22,13 @@ interface RenderableChildParseContext {
 }
 
 const CHILD_TAGS = new Set(["sp", "pic", "grpSp", "graphicFrame", "cxnSp"]);
-const PLACEHOLDER_WRAPPERS = ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"];
+const PLACEHOLDER_WRAPPERS = [
+  "nvSpPr",
+  "nvPicPr",
+  "nvGrpSpPr",
+  "nvGraphicFramePr",
+  "nvCxnSpPr",
+];
 
 export function isPlaceholderNode(node: SafeXmlNode): boolean {
   for (const wrapper of PLACEHOLDER_WRAPPERS) {
@@ -60,7 +66,10 @@ function findOleFallbackPic(graphicFrame: SafeXmlNode): SafeXmlNode | null {
   const hasResolvableBlip = (pic: SafeXmlNode): boolean => {
     const blip = pic.child("blipFill").child("blip");
     return Boolean(
-      blip.attr("embed") ?? blip.attr("r:embed") ?? blip.attr("link") ?? blip.attr("r:link"),
+      blip.attr("embed") ??
+      blip.attr("r:embed") ??
+      blip.attr("link") ??
+      blip.attr("r:link"),
     );
   };
 
@@ -83,7 +92,9 @@ function findOleFallbackPic(graphicFrame: SafeXmlNode): SafeXmlNode | null {
   return null;
 }
 
-export function parseOleFrameAsPicture(graphicFrame: SafeXmlNode): PictureNodeData | undefined {
+export function parseOleFrameAsPicture(
+  graphicFrame: SafeXmlNode,
+): PictureNodeData | undefined {
   const pic = findOleFallbackPic(graphicFrame);
   if (!pic) return undefined;
 
@@ -132,7 +143,9 @@ function parseDiagramFrame(
   const partDir = containingDir(ctx.partPath);
   const drawingCandidates = Array.from(ctx.rels.values())
     .filter(
-      (entry) => entry.type.includes("diagramDrawing") || entry.target.includes("diagrams/drawing"),
+      (entry) =>
+        entry.type.includes("diagramDrawing") ||
+        entry.target.includes("diagrams/drawing"),
     )
     .map((entry) => {
       const match = entry.target.match(/drawing(\d+)/);
@@ -142,7 +155,10 @@ function parseDiagramFrame(
       };
     });
 
-  const relIds = graphicFrame.child("graphic").child("graphicData").child("relIds");
+  const relIds = graphicFrame
+    .child("graphic")
+    .child("graphicData")
+    .child("relIds");
   if (relIds.exists()) {
     const dmRId = relIds.attr("r:dm") ?? relIds.attr("dm");
     const dmRel = dmRId ? ctx.rels.get(dmRId) : undefined;
@@ -150,8 +166,14 @@ function parseDiagramFrame(
     if (dataNum) {
       const drawingNum = Number.parseInt(dataNum, 10);
       drawingCandidates.sort((a, b) => {
-        const da = a.num === undefined ? Number.POSITIVE_INFINITY : Math.abs(a.num - drawingNum);
-        const db = b.num === undefined ? Number.POSITIVE_INFINITY : Math.abs(b.num - drawingNum);
+        const da =
+          a.num === undefined
+            ? Number.POSITIVE_INFINITY
+            : Math.abs(a.num - drawingNum);
+        const db =
+          b.num === undefined
+            ? Number.POSITIVE_INFINITY
+            : Math.abs(b.num - drawingNum);
         return da - db;
       });
     }
@@ -182,7 +204,8 @@ export function parseRenderableChild(
       return parseGroupNode(childXml);
     case "graphicFrame":
       if (isTableFrame(childXml)) return parseTableNode(childXml);
-      if (isChartFrame(childXml)) return parseChartNode(childXml, ctx.rels, ctx.partPath ?? "");
+      if (isChartFrame(childXml))
+        return parseChartNode(childXml, ctx.rels, ctx.partPath ?? "");
       if (isDiagramFrame(childXml)) return parseDiagramFrame(childXml, ctx);
       return parseOleFrameAsPicture(childXml);
     default:

@@ -7,8 +7,13 @@ import {
   spansOf,
 } from "../fixtures/text-rendering-helpers";
 
-async function renderRun(rPrXml: string, text = "MARKER"): Promise<HTMLElement> {
-  const element = await renderTextBox(`<a:p><a:r>${rPrXml}<a:t>${text}</a:t></a:r></a:p>`);
+async function renderRun(
+  rPrXml: string,
+  text = "MARKER",
+): Promise<HTMLElement> {
+  const element = await renderTextBox(
+    `<a:p><a:r>${rPrXml}<a:t>${text}</a:t></a:r></a:p>`,
+  );
   const [paragraph] = paragraphsOf(element);
   const span = spansOf(paragraph).find((s) => s.textContent?.includes(text));
   if (!span) throw new Error("run span not found");
@@ -100,7 +105,9 @@ describe("run color", () => {
     const span = await renderRun(
       `<a:rPr><a:solidFill><a:srgbClr val="FF0000"><a:alpha val="50000"/></a:srgbClr></a:solidFill></a:rPr>`,
     );
-    expect(span.style.color).toMatch(/rgba\(\s*255\s*,\s*0\s*,\s*0\s*,\s*0?\.50*\s*\)/);
+    expect(span.style.color).toMatch(
+      /rgba\(\s*255\s*,\s*0\s*,\s*0\s*,\s*0?\.50*\s*\)/,
+    );
   });
 
   it("defaults to black when no color is specified", async () => {
@@ -111,7 +118,9 @@ describe("run color", () => {
 
 describe("run typeface", () => {
   it("applies a:latin typeface as the font family", async () => {
-    const span = await renderRun(`<a:rPr><a:latin typeface="Georgia"/></a:rPr>`);
+    const span = await renderRun(
+      `<a:rPr><a:latin typeface="Georgia"/></a:rPr>`,
+    );
     expect(span.style.fontFamily).toContain("Georgia");
     expect(span.style.fontFamily).toMatch(/serif\s*$/);
   });
@@ -133,7 +142,9 @@ describe("run typeface", () => {
     const families = span.style.fontFamily;
     expect(families).toContain("Arial");
     expect(families).toContain("Microsoft YaHei");
-    expect(families.indexOf("Arial")).toBeLessThan(families.indexOf("Microsoft YaHei"));
+    expect(families.indexOf("Arial")).toBeLessThan(
+      families.indexOf("Microsoft YaHei"),
+    );
   });
 });
 

@@ -45,7 +45,9 @@ function PresentationZoomSelect({
         )}
         {...props}
       >
-        <SelectValue>{isAutoFit ? `Fit · ${percentage}` : percentage}</SelectValue>
+        <SelectValue>
+          {isAutoFit ? `Fit · ${percentage}` : percentage}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent className="min-w-22 p-0.5">
         <SelectItem

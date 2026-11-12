@@ -11,7 +11,10 @@ export interface ErrorState {
   error: GlobalError;
 }
 
-export interface ErrorProps extends Omit<PrimitiveProps<"div", ErrorState>, "children"> {
+export interface ErrorProps extends Omit<
+  PrimitiveProps<"div", ErrorState>,
+  "children"
+> {
   /**
    * Rendered when the presentation is in the `"error"` state.
    * Pass a function to receive the `Error` instance.
@@ -25,26 +28,26 @@ export interface ErrorProps extends Omit<PrimitiveProps<"div", ErrorState>, "chi
   children?: React.ReactNode | ((error: GlobalError) => React.ReactNode);
 }
 
-export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(function Error(
-  { children, render, ...errorProps },
-  forwardedRef,
-) {
-  const { status, error } = usePresentation();
+export const Error = React.forwardRef<HTMLDivElement, ErrorProps>(
+  function Error({ children, render, ...errorProps }, forwardedRef) {
+    const { status, error } = usePresentation();
 
-  if (status !== "error" || !error) return null;
+    if (status !== "error" || !error) return null;
 
-  const resolvedChildren = typeof children === "function" ? children(error) : children;
+    const resolvedChildren =
+      typeof children === "function" ? children(error) : children;
 
-  return renderElement(
-    "div",
-    { render },
-    {
-      state: { error },
-      ref: forwardedRef,
-      props: [{ role: "alert", children: resolvedChildren }, errorProps],
-    },
-  );
-});
+    return renderElement(
+      "div",
+      { render },
+      {
+        state: { error },
+        ref: forwardedRef,
+        props: [{ role: "alert", children: resolvedChildren }, errorProps],
+      },
+    );
+  },
+);
 
 export namespace Error {
   export type State = ErrorState;

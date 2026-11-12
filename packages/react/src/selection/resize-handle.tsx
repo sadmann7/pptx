@@ -2,7 +2,11 @@ import * as React from "react";
 
 import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
+import {
+  SELECTION_BOX_NAME,
+  SelectionBoxContext,
+  useSelectionParts,
+} from "./context";
 import type { HandleDirection } from "./geometry";
 import { HANDLE_DIRECTIONS, getHandleCursor } from "./geometry";
 
@@ -25,7 +29,11 @@ const SMALL_SIZE = 24;
 const SMALL_OFFSET = 12;
 
 // A line shows only its two ends, as in Google Slides.
-function getIsHandleShown(direction: HandleDirection, width: number, height: number): boolean {
+function getIsHandleShown(
+  direction: HandleDirection,
+  width: number,
+  height: number,
+): boolean {
   const changesHeight = direction.includes("n") || direction.includes("s");
   const changesWidth = direction.includes("e") || direction.includes("w");
   if (height < 1 && width >= 1) return !changesHeight;
@@ -33,10 +41,22 @@ function getIsHandleShown(direction: HandleDirection, width: number, height: num
   return true;
 }
 
-function getHandleOffset(direction: HandleDirection, width: number, height: number) {
+function getHandleOffset(
+  direction: HandleDirection,
+  width: number,
+  height: number,
+) {
   if (width >= SMALL_SIZE || height >= SMALL_SIZE) return { x: 0, y: 0 };
-  const x = direction.includes("e") ? SMALL_OFFSET : direction.includes("w") ? -SMALL_OFFSET : 0;
-  const y = direction.includes("s") ? SMALL_OFFSET : direction.includes("n") ? -SMALL_OFFSET : 0;
+  const x = direction.includes("e")
+    ? SMALL_OFFSET
+    : direction.includes("w")
+      ? -SMALL_OFFSET
+      : 0;
+  const y = direction.includes("s")
+    ? SMALL_OFFSET
+    : direction.includes("n")
+      ? -SMALL_OFFSET
+      : 0;
   return { x, y };
 }
 
@@ -46,14 +66,22 @@ export interface ResizeHandleState {
   direction: HandleDirection;
 }
 
-export interface ResizeHandleProps extends StatefulPrimitiveProps<"div", ResizeHandleState> {}
+export interface ResizeHandleProps extends StatefulPrimitiveProps<
+  "div",
+  ResizeHandleState
+> {}
 
 export const ResizeHandle = React.forwardRef<HTMLDivElement, ResizeHandleProps>(
-  function ResizeHandle({ render, className, style, ...resizeHandleProps }, forwardedRef) {
+  function ResizeHandle(
+    { render, className, style, ...resizeHandleProps },
+    forwardedRef,
+  ) {
     const { onHandlePointerDown } = useSelectionParts(RESIZE_HANDLE_NAME);
     const box = React.useContext(SelectionBoxContext);
     if (!box) {
-      throw new Error(`\`${RESIZE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
+      throw new Error(
+        `\`${RESIZE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`,
+      );
     }
     if (!box.showHandles) return null;
 

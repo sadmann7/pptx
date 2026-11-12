@@ -12,8 +12,16 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { Presentation, useCreatePresentationStore, usePresentation } from "@diceui/pptx";
-import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
+import {
+  Presentation,
+  useCreatePresentationStore,
+  usePresentation,
+} from "@diceui/pptx";
+import type {
+  PresentationData,
+  SlideData,
+  SlideHandle,
+} from "@diceui/pptx-core";
 import { renderSlide, renderThumbnail } from "@diceui/pptx-core";
 import { createRoot } from "react-dom/client";
 
@@ -64,7 +72,8 @@ function timeRenders(
 // Grown in the browser rather than written to disk, since the parser needs the
 // DOM APIs.
 async function growDeck(store: PresentationStore): Promise<void> {
-  const sourceIds = store.getState().presentation?.slides.map((slide) => slide.id) ?? [];
+  const sourceIds =
+    store.getState().presentation?.slides.map((slide) => slide.id) ?? [];
   if (sourceIds.length === 0) return;
 
   let index = 0;
@@ -124,7 +133,8 @@ function App({ deck }: { deck: ArrayBuffer }) {
         readOnly={false}
         onLoad={(loaded) => {
           growDeck(loaded).catch((error: unknown) => {
-            window.__renderError = error instanceof Error ? error.message : String(error);
+            window.__renderError =
+              error instanceof Error ? error.message : String(error);
           });
         }}
         style={{ display: "flex" }}
@@ -150,7 +160,8 @@ async function main(): Promise<void> {
     const deck = await response.arrayBuffer();
     createRoot(root).render(<App deck={deck} />);
   } catch (error) {
-    window.__renderError = error instanceof Error ? error.message : String(error);
+    window.__renderError =
+      error instanceof Error ? error.message : String(error);
   }
 }
 

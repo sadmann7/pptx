@@ -12,7 +12,17 @@ import { fileURLToPath } from "node:url";
 import { SourceMapConsumer } from "source-map-js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const CHUNKS_DIR = path.join(HERE, "..", "..", "..", "apps", "docs", ".next", "static", "chunks");
+const CHUNKS_DIR = path.join(
+  HERE,
+  "..",
+  "..",
+  "..",
+  "apps",
+  "docs",
+  ".next",
+  "static",
+  "chunks",
+);
 
 interface TraceEvent {
   name: string;
@@ -42,7 +52,13 @@ interface TraceEvent {
 }
 
 const GROUPS: Record<string, string[]> = {
-  scripting: ["FunctionCall", "EvaluateScript", "TimerFire", "FireAnimationFrame", "RunMicrotasks"],
+  scripting: [
+    "FunctionCall",
+    "EvaluateScript",
+    "TimerFire",
+    "FireAnimationFrame",
+    "RunMicrotasks",
+  ],
   style: ["UpdateLayoutTree"],
   layout: ["Layout"],
   paint: ["PrePaint", "Paint", "Layerize", "Commit"],
@@ -59,7 +75,9 @@ const mainThreads = new Set(
   events
     .filter(
       (event) =>
-        event.ph === "M" && event.name === "thread_name" && event.args?.name === "CrRendererMain",
+        event.ph === "M" &&
+        event.name === "thread_name" &&
+        event.args?.name === "CrRendererMain",
     )
     .map((event) => `${event.pid}:${event.tid}`),
 );
@@ -96,7 +114,12 @@ for (const task of tasks) {
   const end = task.ts + (task.dur ?? 0);
   const byName = new Map<string, number>();
   for (const event of onMain) {
-    if (event === task || event.ts < task.ts || event.ts + (event.dur ?? 0) > end) continue;
+    if (
+      event === task ||
+      event.ts < task.ts ||
+      event.ts + (event.dur ?? 0) > end
+    )
+      continue;
     byName.set(event.name, (byName.get(event.name) ?? 0) + (event.dur ?? 0));
   }
   const top = [...byName.entries()]
@@ -113,19 +136,26 @@ function resolve(url: string, line: number, column: number, name: string) {
     // Turbopack names a chunk's map separately, in its sourceMappingURL comment.
     const chunkPath = path.join(CHUNKS_DIR, chunk);
     const mapName = existsSync(chunkPath)
-      ? /\/\/# sourceMappingURL=(\S+)\s*$/.exec(readFileSync(chunkPath, "utf8"))?.[1]
+      ? /\/\/# sourceMappingURL=(\S+)\s*$/.exec(
+          readFileSync(chunkPath, "utf8"),
+        )?.[1]
       : undefined;
     const mapPath = path.join(CHUNKS_DIR, mapName ?? `${chunk}.map`);
     consumers.set(
       chunk,
-      existsSync(mapPath) ? new SourceMapConsumer(JSON.parse(readFileSync(mapPath, "utf8"))) : null,
+      existsSync(mapPath)
+        ? new SourceMapConsumer(JSON.parse(readFileSync(mapPath, "utf8")))
+        : null,
     );
   }
   const consumer = consumers.get(chunk);
   if (!consumer) return `${name || "(anonymous)"} ${chunk}`;
   const original = consumer.originalPositionFor({ line: line + 1, column });
   if (!original.source) return `${name || "(anonymous)"} ${chunk}`;
-  const source = original.source.replace(/^.*?(packages|apps|node_modules)\//, "$1/");
+  const source = original.source.replace(
+    /^.*?(packages|apps|node_modules)\//,
+    "$1/",
+  );
   return `${original.name ?? name ?? "(anonymous)"} ${source}:${original.line}`;
 }
 
@@ -151,6 +181,8 @@ for (const event of events) {
   });
 }
 console.log("\nMost self time:");
-for (const [key, micros] of [...selfTime.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+for (const [key, micros] of [...selfTime.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 15)) {
   console.log(`  ${String(Math.round(micros / 1000)).padStart(5)}ms  ${key}`);
 }

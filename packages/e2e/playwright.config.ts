@@ -22,7 +22,8 @@ export default defineConfig({
   },
   // Baselines are named per-browser but not per-OS: whichever machine records
   // them defines them (see snapshotPathTemplate without {platform}).
-  snapshotPathTemplate: "{testDir}/screenshots/{testFilePath}/{arg}-{projectName}{ext}",
+  snapshotPathTemplate:
+    "{testDir}/screenshots/{testFilePath}/{arg}-{projectName}{ext}",
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },

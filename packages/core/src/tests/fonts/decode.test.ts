@@ -8,8 +8,14 @@ import { deobfuscateFont } from "../../fonts/deobfuscate";
 import { parseEotMetadata } from "../../fonts/mtx";
 import { TtfReader } from "./ttf-reader";
 
-const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
-const PARTS = fs.readdirSync(FIXTURES).filter((name) => name.endsWith(".fntdata"));
+const FIXTURES = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "fixtures",
+);
+const PARTS = fs
+  .readdirSync(FIXTURES)
+  .filter((name) => name.endsWith(".fntdata"));
 
 function read(name: string): Uint8Array {
   return new Uint8Array(fs.readFileSync(path.join(FIXTURES, name)));
@@ -24,7 +30,9 @@ describe("embedded font parts", () => {
     const raw = read(name);
     const metadata = parseEotMetadata(raw);
     expect(metadata.fontDataSize).toBeGreaterThan(0);
-    expect(metadata.fontDataOffset + metadata.fontDataSize).toBe(metadata.totalSize);
+    expect(metadata.fontDataOffset + metadata.fontDataSize).toBe(
+      metadata.totalSize,
+    );
 
     const decoded = decodeEmbeddedFont(raw);
     expect(decoded).toBeDefined();
@@ -37,7 +45,8 @@ describe("embedded font parts", () => {
     expect(font.numGlyphs).toBeGreaterThan(0);
 
     // Exercising every glyph proves loca and glyf agree end to end.
-    for (let i = 0; i < font.numGlyphs; i++) expect(() => font.glyph(i)).not.toThrow();
+    for (let i = 0; i < font.numGlyphs; i++)
+      expect(() => font.glyph(i)).not.toThrow();
   });
 
   it.each(PARTS)("reports %s container flags rather than guessing", (name) => {
@@ -57,10 +66,11 @@ describe("embedded font parts", () => {
     expect(hhea).toBeDefined();
     expect(hmtx).toBeDefined();
 
-    const metrics = new DataView(hhea!.buffer, hhea!.byteOffset, hhea!.byteLength).getUint16(
-      34,
-      false,
-    );
+    const metrics = new DataView(
+      hhea!.buffer,
+      hhea!.byteOffset,
+      hhea!.byteLength,
+    ).getUint16(34, false);
     expect(metrics).toBeGreaterThan(0);
     expect(metrics).toBeLessThanOrEqual(font.numGlyphs);
     // Long metrics, then one side bearing for each remaining glyph.
@@ -91,7 +101,9 @@ describe("embedded font parts", () => {
     expect(stub).toMatchObject({ code: "INVALID_EOT" });
 
     const truncated = read(PARTS[0]!);
-    const failure = decodeEmbeddedFontPart(truncated.subarray(0, truncated.length - 1));
+    const failure = decodeEmbeddedFontPart(
+      truncated.subarray(0, truncated.length - 1),
+    );
     expect(failure.ok).toBe(false);
     expect(failure).toMatchObject({ code: expect.any(String) });
     if (!failure.ok) expect(failure.message).not.toBe("");
@@ -108,6 +120,8 @@ describe("embedded font parts", () => {
     const key = "{9A0A2B1C-3D4E-5F60-7182-93A4B5C6D7E8}";
     const obfuscated = deobfuscateFont(raw, key); // The transform is its own inverse.
     expect(obfuscated).not.toEqual(raw);
-    expect(decodeEmbeddedFont(obfuscated, key)).toEqual(decodeEmbeddedFont(raw));
+    expect(decodeEmbeddedFont(obfuscated, key)).toEqual(
+      decodeEmbeddedFont(raw),
+    );
   });
 });

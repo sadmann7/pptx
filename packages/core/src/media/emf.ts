@@ -218,7 +218,8 @@ function parseStretchDibits(
       imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2];
       imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1];
       imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0];
-      imageData.data[dstOffset + x * 4 + 3] = biBitCount === 32 ? bitsData[srcIdx + 3] : 255;
+      imageData.data[dstOffset + x * 4 + 3] =
+        biBitCount === 32 ? bitsData[srcIdx + 3] : 255;
     }
   }
 

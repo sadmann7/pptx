@@ -9,7 +9,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const origin = process.argv[2] ?? "http://localhost:3000";
-const deck = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "basic.pptx");
+const deck = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "fixtures",
+  "basic.pptx",
+);
 
 interface Finding {
   id: string;
@@ -47,7 +52,9 @@ async function audit(page: Page, state: string): Promise<void> {
       states: new Set<string>(),
     };
     for (const node of violation.nodes) {
-      finding.targets.add(`${node.target.join(" ")}  ${node.html.slice(0, 140)}`);
+      finding.targets.add(
+        `${node.target.join(" ")}  ${node.html.slice(0, 140)}`,
+      );
     }
     finding.states.add(state);
     findings.set(violation.id, finding);
@@ -107,7 +114,9 @@ if (sorted.length === 0) console.log("No violations.");
 for (const finding of sorted) {
   console.log(`\n[${finding.impact}] ${finding.id}: ${finding.help}`);
   console.log(`  states: ${[...finding.states].join("; ")}`);
-  for (const target of [...finding.targets].slice(0, 60)) console.log(`  - ${target}`);
-  if (finding.targets.size > 60) console.log(`  … ${finding.targets.size - 60} more`);
+  for (const target of [...finding.targets].slice(0, 60))
+    console.log(`  - ${target}`);
+  if (finding.targets.size > 60)
+    console.log(`  … ${finding.targets.size - 60} more`);
 }
 process.exitCode = sorted.length > 0 ? 1 : 0;

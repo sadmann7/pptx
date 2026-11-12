@@ -9,7 +9,12 @@ export function normalizeAngle(degrees: number): number {
 }
 
 // Degrees clockwise from the x axis.
-export function getPointerAngle(centerX: number, centerY: number, x: number, y: number): number {
+export function getPointerAngle(
+  centerX: number,
+  centerY: number,
+  x: number,
+  y: number,
+): number {
   return (Math.atan2(y - centerY, x - centerX) * 180) / Math.PI;
 }
 
@@ -19,7 +24,16 @@ export const MIN_SIZE = 8;
 // Screen px.
 export const DRAG_THRESHOLD = 3;
 
-export const HANDLE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+export const HANDLE_DIRECTIONS = [
+  "nw",
+  "n",
+  "ne",
+  "e",
+  "se",
+  "s",
+  "sw",
+  "w",
+] as const;
 export type HandleDirection = (typeof HANDLE_DIRECTIONS)[number];
 
 export const HANDLE_CURSORS: Record<HandleDirection, string> = {
@@ -33,7 +47,12 @@ export const HANDLE_CURSORS: Record<HandleDirection, string> = {
   w: "ew-resize",
 };
 
-const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set(["nw", "ne", "se", "sw"]);
+const CORNER_HANDLES: ReadonlySet<HandleDirection> = new Set([
+  "nw",
+  "ne",
+  "se",
+  "sw",
+]);
 
 export interface Rect {
   x: number;
@@ -43,7 +62,12 @@ export interface Rect {
 }
 
 // Below the threshold the band stays invisible and the handles stay up.
-export function isBandDrag(startX: number, startY: number, curX: number, curY: number): boolean {
+export function isBandDrag(
+  startX: number,
+  startY: number,
+  curX: number,
+  curY: number,
+): boolean {
   return Math.hypot(curX - startX, curY - startY) > DRAG_THRESHOLD;
 }
 
@@ -68,9 +92,16 @@ export function resizeRect(
     y = origin.y + dy;
   }
 
-  if (lockAspect && CORNER_HANDLES.has(handle) && origin.w > 0 && origin.h > 0) {
+  if (
+    lockAspect &&
+    CORNER_HANDLES.has(handle) &&
+    origin.w > 0 &&
+    origin.h > 0
+  ) {
     let scale =
-      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1) ? w / origin.w : h / origin.h;
+      Math.abs(w / origin.w - 1) >= Math.abs(h / origin.h - 1)
+        ? w / origin.w
+        : h / origin.h;
     scale = Math.max(scale, MIN_SIZE / Math.min(origin.w, origin.h));
     w = origin.w * scale;
     h = origin.h * scale;
@@ -92,25 +123,40 @@ export function resizeRect(
 }
 
 // With `lockAxis` the larger delta wins, as in PowerPoint; ties keep the horizontal one.
-export function constrainMove(dx: number, dy: number, lockAxis = false): NodePosition {
+export function constrainMove(
+  dx: number,
+  dy: number,
+  lockAxis = false,
+): NodePosition {
   if (!lockAxis) return { x: dx, y: dy };
   return Math.abs(dx) >= Math.abs(dy) ? { x: dx, y: 0 } : { x: 0, y: dy };
 }
 
 // Unlike Shift+click, an additive band never toggles a selected shape back out.
-export function mergeSelection(baseIds: string[], addedIds: string[]): string[] {
+export function mergeSelection(
+  baseIds: string[],
+  addedIds: string[],
+): string[] {
   const baseIdsSet = new Set(baseIds);
   return [...baseIds, ...addedIds.filter((id) => !baseIdsSet.has(id))];
 }
 
-export function toggleSelection(selectedIds: string[], nodeId: string): string[] {
+export function toggleSelection(
+  selectedIds: string[],
+  nodeId: string,
+): string[] {
   return selectedIds.includes(nodeId)
     ? selectedIds.filter((id) => id !== nodeId)
     : [...selectedIds, nodeId];
 }
 
 export function getNodeRect(node: SlideNode): Rect {
-  return { x: node.position.x, y: node.position.y, w: node.size.w, h: node.size.h };
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    w: node.size.w,
+    h: node.size.h,
+  };
 }
 
 export function getNodeBounds(node: SlideNode): Rect {
@@ -137,7 +183,13 @@ export function resizeRotatedRect(
   const radians = (rotation * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
-  const local = resizeRect(origin, handle, dx * cos + dy * sin, -dx * sin + dy * cos, lockAspect);
+  const local = resizeRect(
+    origin,
+    handle,
+    dx * cos + dy * sin,
+    -dx * sin + dy * cos,
+    lockAspect,
+  );
   return placeRotated(origin, rotation, local);
 }
 
@@ -150,12 +202,22 @@ function placeRotated(origin: Rect, rotation: number, local: Rect): Rect {
   const offsetY = local.y + local.h / 2 - (origin.y + origin.h / 2);
   const centerX = origin.x + origin.w / 2 + offsetX * cos - offsetY * sin;
   const centerY = origin.y + origin.h / 2 + offsetX * sin + offsetY * cos;
-  return { x: centerX - local.w / 2, y: centerY - local.h / 2, w: local.w, h: local.h };
+  return {
+    x: centerX - local.w / 2,
+    y: centerY - local.h / 2,
+    w: local.w,
+    h: local.h,
+  };
 }
 
-export function getHandleCursor(handle: HandleDirection, rotation: number): string {
+export function getHandleCursor(
+  handle: HandleDirection,
+  rotation: number,
+): string {
   const steps = Math.round(normalizeAngle(rotation) / 45);
-  return HANDLE_CURSORS[HANDLE_DIRECTIONS[(HANDLE_DIRECTIONS.indexOf(handle) + steps) % 8]];
+  return HANDLE_CURSORS[
+    HANDLE_DIRECTIONS[(HANDLE_DIRECTIONS.indexOf(handle) + steps) % 8]
+  ];
 }
 
 export interface ResizeScale {
@@ -179,7 +241,11 @@ export function handleScale(
 }
 
 // PowerPoint scales each shape in a multi-selection in place, so the gaps between them don't scale.
-export function scaleRectFromHandle(rect: Rect, handle: HandleDirection, scale: ResizeScale): Rect {
+export function scaleRectFromHandle(
+  rect: Rect,
+  handle: HandleDirection,
+  scale: ResizeScale,
+): Rect {
   const w = Math.max(MIN_SIZE, rect.w * scale.x);
   const h = Math.max(MIN_SIZE, rect.h * scale.y);
   return {
@@ -199,7 +265,14 @@ export function getResizedRects(
   lockAspect: boolean,
 ): Map<string, Rect> {
   const origin = getNodeRect(handleNode);
-  const resized = resizeRotatedRect(origin, handleNode.rotation, handle, dx, dy, lockAspect);
+  const resized = resizeRotatedRect(
+    origin,
+    handleNode.rotation,
+    handle,
+    dx,
+    dy,
+    lockAspect,
+  );
   const scale: ResizeScale = {
     x: origin.w === 0 ? 1 : resized.w / origin.w,
     y: origin.h === 0 ? 1 : resized.h / origin.h,
@@ -208,7 +281,14 @@ export function getResizedRects(
     nodes.map((node) => {
       if (node === handleNode) return [node.id, resized];
       const rect = getNodeRect(node);
-      return [node.id, placeRotated(rect, node.rotation, scaleRectFromHandle(rect, handle, scale))];
+      return [
+        node.id,
+        placeRotated(
+          rect,
+          node.rotation,
+          scaleRectFromHandle(rect, handle, scale),
+        ),
+      ];
     }),
   );
 }

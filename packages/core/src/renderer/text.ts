@@ -13,7 +13,10 @@ import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveColorToCss, resolveFill } from "./style";
 import { getEffectiveBodyPrChild } from "./text-body-props";
 
-function findStyleAtLevel(styleNode: SafeXmlNode | undefined, level: number): SafeXmlNode {
+function findStyleAtLevel(
+  styleNode: SafeXmlNode | undefined,
+  level: number,
+): SafeXmlNode {
   if (!styleNode || !styleNode.exists()) {
     return new SafeXmlNode(null);
   }
@@ -65,7 +68,10 @@ function findPlaceholderNode(
     // Matches by idx, then exact type, then equivalent type (title≡ctrTitle, body≡subTitle≡obj).
     if (info.idx !== undefined && phIdx === info.idx) return ph;
     if (info.type && phType === info.type) return ph;
-    if (info.type && normalizePlaceholderType(phType) === normalizePlaceholderType(info.type)) {
+    if (
+      info.type &&
+      normalizePlaceholderType(phType) === normalizePlaceholderType(info.type)
+    ) {
       return ph;
     }
   }
@@ -105,7 +111,10 @@ interface MergedParagraphStyle {
   defRPrs?: SafeXmlNode[];
 }
 
-function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): void {
+function mergeParagraphProps(
+  target: MergedParagraphStyle,
+  pPr: SafeXmlNode,
+): void {
   if (!pPr.exists()) return;
 
   const algn = pPr.attr("algn");
@@ -267,16 +276,24 @@ interface MergedRunStyle {
   textShadow?: string;
 }
 
-function getRunColorKind(rPr: SafeXmlNode | undefined): "none" | "defaultTextScheme" | "explicit" {
+function getRunColorKind(
+  rPr: SafeXmlNode | undefined,
+): "none" | "defaultTextScheme" | "explicit" {
   if (!rPr?.exists()) return "none";
   if (rPr.child("gradFill").exists()) return "explicit";
   const solidFill = rPr.child("solidFill");
   if (!solidFill.exists()) return "none";
   const scheme = solidFill.child("schemeClr").attr("val");
-  return scheme === "tx1" || scheme === "tx2" ? "defaultTextScheme" : "explicit";
+  return scheme === "tx1" || scheme === "tx2"
+    ? "defaultTextScheme"
+    : "explicit";
 }
 
-function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderContext): void {
+function mergeRunProps(
+  target: MergedRunStyle,
+  rPr: SafeXmlNode,
+  ctx: RenderContext,
+): void {
   if (!rPr.exists()) return;
 
   const sz = rPr.numAttr("sz");
@@ -293,7 +310,8 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
   if (u === "none") target.underline = false;
 
   const strike = rPr.attr("strike");
-  if (strike !== undefined && strike !== "noStrike") target.strikethrough = true;
+  if (strike !== undefined && strike !== "noStrike")
+    target.strikethrough = true;
   if (strike === "noStrike") target.strikethrough = false;
 
   const highlight = rPr.child("highlight");
@@ -372,7 +390,11 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
       target.hlinkSlideIndex = slideIndex;
       target.hlinkTooltip = hlinkClick.attr("tooltip");
       if (target.underline === undefined) target.underline = true;
-    } else if (rel && isExternalTargetMode(rel.targetMode) && isAllowedExternalUrl(rel.target)) {
+    } else if (
+      rel &&
+      isExternalTargetMode(rel.targetMode) &&
+      isAllowedExternalUrl(rel.target)
+    ) {
       target.hlinkClick = rel.target;
       if (target.underline === undefined) target.underline = true;
     }
@@ -450,7 +472,12 @@ function hexToRgbInternal(hex: string): { r: number; g: number; b: number } {
   const cleaned = hex.replace(/^#/, "");
   const num = parseInt(
     cleaned.length === 3
-      ? cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2]
+      ? cleaned[0] +
+          cleaned[0] +
+          cleaned[1] +
+          cleaned[1] +
+          cleaned[2] +
+          cleaned[2]
       : cleaned,
     16,
   );
@@ -464,7 +491,10 @@ function colorToCssLocal(color: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 }
 
-function resolveTextGlowShadow(glow: SafeXmlNode, ctx: RenderContext): string | undefined {
+function resolveTextGlowShadow(
+  glow: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   const radiusPx = emuToPx(glow.numAttr("rad") ?? 0);
   if (!(radiusPx > 0)) return undefined;
 
@@ -474,7 +504,10 @@ function resolveTextGlowShadow(glow: SafeXmlNode, ctx: RenderContext): string | 
   return `0px 0px ${radiusPx.toFixed(1)}px ${colorToCssLocal(color, alpha)}`;
 }
 
-function resolveTextOuterShadow(outerShdw: SafeXmlNode, ctx: RenderContext): string | undefined {
+function resolveTextOuterShadow(
+  outerShdw: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   const distPx = emuToPx(outerShdw.numAttr("dist") ?? 0);
   const blurPx = emuToPx(outerShdw.numAttr("blurRad") ?? 0);
   const dirDeg = (outerShdw.numAttr("dir") ?? 0) / 60000;
@@ -488,17 +521,24 @@ function resolveTextOuterShadow(outerShdw: SafeXmlNode, ctx: RenderContext): str
 }
 
 function appendTextShadow(target: MergedRunStyle, shadow: string): void {
-  target.textShadow = target.textShadow ? `${target.textShadow}, ${shadow}` : shadow;
+  target.textShadow = target.textShadow
+    ? `${target.textShadow}, ${shadow}`
+    : shadow;
 }
 
-function getResolvedRunColor(rPr: SafeXmlNode | undefined, ctx: RenderContext): string | undefined {
+function getResolvedRunColor(
+  rPr: SafeXmlNode | undefined,
+  ctx: RenderContext,
+): string | undefined {
   if (!rPr?.exists()) return undefined;
   const style: MergedRunStyle = {};
   mergeRunProps(style, rPr, ctx);
   return style.color;
 }
 
-function normalizeCssColorForCompare(color: string | undefined): string | undefined {
+function normalizeCssColorForCompare(
+  color: string | undefined,
+): string | undefined {
   if (!color) return undefined;
   const trimmed = color.trim().toLowerCase();
   if (trimmed.startsWith("#")) {
@@ -514,7 +554,10 @@ function normalizeCssColorForCompare(color: string | undefined): string | undefi
   return `${Number(r)},${Number(g)},${Number(b)},${Number(alpha)}`;
 }
 
-function colorsEqualForCompare(a: string | undefined, b: string | undefined): boolean {
+function colorsEqualForCompare(
+  a: string | undefined,
+  b: string | undefined,
+): boolean {
   const normalizedA = normalizeCssColorForCompare(a);
   const normalizedB = normalizeCssColorForCompare(b);
   return normalizedA !== undefined && normalizedA === normalizedB;
@@ -558,11 +601,15 @@ function shouldUseHyperlinkThemeColor(
 ): boolean {
   if (!hasRenderableHyperlink(runStyle)) return false;
   if (!hasExplicitRunColor || runColorKind === "defaultTextScheme") return true;
-  if (runColorKind !== "explicit" || !hasSrgbSolidFill(run.properties)) return false;
+  if (runColorKind !== "explicit" || !hasSrgbSolidFill(run.properties))
+    return false;
   return hasMatchingNonHyperlinkTextColor(run, paragraph, runStyle.color, ctx);
 }
 
-function resolveGradientForText(gradFill: SafeXmlNode, ctx: RenderContext): string {
+function resolveGradientForText(
+  gradFill: SafeXmlNode,
+  ctx: RenderContext,
+): string {
   const gsLst = gradFill.child("gsLst");
   const stops: { position: number; color: string }[] = [];
   for (const gs of gsLst.children("gs")) {
@@ -573,7 +620,9 @@ function resolveGradientForText(gradFill: SafeXmlNode, ctx: RenderContext): stri
   }
   if (stops.length === 0) return "";
   stops.sort((a, b) => a.position - b.position);
-  const stopsStr = stops.map((s) => `${s.color} ${s.position.toFixed(1)}%`).join(", ");
+  const stopsStr = stops
+    .map((s) => `${s.color} ${s.position.toFixed(1)}%`)
+    .join(", ");
   const lin = gradFill.child("lin");
   if (lin.exists()) {
     const angle = angleToDeg(lin.numAttr("ang") ?? 0);
@@ -592,7 +641,9 @@ function applyClippedTextBackground(element: HTMLElement, css: string): void {
     const backgroundImages = layers.slice(0, -1).map((layer) => layer.trim());
     if (backgroundImages.length > 0) {
       element.style.backgroundImage = backgroundImages.join(", ");
-      element.style.backgroundSize = backgroundImages.map(() => "8px 8px").join(", ");
+      element.style.backgroundSize = backgroundImages
+        .map(() => "8px 8px")
+        .join(", ");
     }
     if (backgroundColor) {
       element.style.backgroundColor = backgroundColor;
@@ -634,7 +685,21 @@ function generateAutoNumber(type: string, num: number): string {
 
 function toRoman(num: number): string {
   const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-  const syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+  const syms = [
+    "M",
+    "CM",
+    "D",
+    "CD",
+    "C",
+    "XC",
+    "L",
+    "XL",
+    "X",
+    "IX",
+    "V",
+    "IV",
+    "I",
+  ];
   let result = "";
   let remaining = num;
   for (let i = 0; i < vals.length; i++) {
@@ -679,20 +744,26 @@ export function renderTextBody(
     const lsr = normAutofit.numAttr("lnSpcReduction");
     if (lsr !== undefined) lnSpcReduction = lsr / 100000;
   }
-  if (fontScale !== 1) container.dataset[PPTX_DATASET.fontScale] = String(fontScale);
+  if (fontScale !== 1)
+    container.dataset[PPTX_DATASET.fontScale] = String(fontScale);
 
   const bulletCounters = new Map<string, number>();
   const visibleParagraphIndexes = textBody.paragraphs
     .map((paragraph, index) => ({
       index,
-      visible: paragraph.runs.some((run) => run.text != null && run.text.length > 0),
+      visible: paragraph.runs.some(
+        (run) => run.text != null && run.text.length > 0,
+      ),
     }))
     .filter((item) => item.visible)
     .map((item) => item.index);
   const firstVisibleParagraphIndex = visibleParagraphIndexes[0];
-  const lastVisibleParagraphIndex = visibleParagraphIndexes[visibleParagraphIndexes.length - 1];
+  const lastVisibleParagraphIndex =
+    visibleParagraphIndexes[visibleParagraphIndexes.length - 1];
   const singleVisibleParagraph =
-    visibleParagraphIndexes.length === 1 ? visibleParagraphIndexes[0] : undefined;
+    visibleParagraphIndexes.length === 1
+      ? visibleParagraphIndexes[0]
+      : undefined;
 
   for (const [paragraphIndex, paragraph] of textBody.paragraphs.entries()) {
     const paraDiv = document.createElement("div");
@@ -707,7 +778,9 @@ export function renderTextBody(
       paraDiv.style.wordBreak = "keep-all";
     }
     const hasLineBreaks = paragraph.runs.some((r) => r.text === "\n");
-    const hasVisibleRuns = paragraph.runs.some((r) => r.text != null && r.text.length > 0);
+    const hasVisibleRuns = paragraph.runs.some(
+      (r) => r.text != null && r.text.length > 0,
+    );
     const isSingleLineAutoFitParagraph =
       options?.compactSingleLineSpacing &&
       paragraphIndex === singleVisibleParagraph &&
@@ -715,9 +788,15 @@ export function renderTextBody(
 
     const merged: MergedParagraphStyle = {};
 
-    mergeParagraphProps(merged, findStyleAtLevel(ctx.presentation.defaultTextStyle, level));
+    mergeParagraphProps(
+      merged,
+      findStyleAtLevel(ctx.presentation.defaultTextStyle, level),
+    );
 
-    mergeParagraphProps(merged, findStyleAtLevel(ctx.master.defaultTextStyle, level));
+    mergeParagraphProps(
+      merged,
+      findStyleAtLevel(ctx.master.defaultTextStyle, level),
+    );
 
     const masterTextStyle =
       category === "title"
@@ -728,7 +807,10 @@ export function renderTextBody(
     mergeParagraphProps(merged, findStyleAtLevel(masterTextStyle, level));
 
     if (placeholder) {
-      const masterPh = findPlaceholderNode(ctx.master.placeholders, placeholder);
+      const masterPh = findPlaceholderNode(
+        ctx.master.placeholders,
+        placeholder,
+      );
       if (masterPh) {
         const lstStyle = getPlaceholderLstStyle(masterPh);
         mergeParagraphProps(merged, findStyleAtLevel(lstStyle, level));
@@ -795,9 +877,12 @@ export function renderTextBody(
     // Percentage-based spacing is relative to defRPr or the first run's size.
     let effectiveFontSize = 12;
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
-    if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
+    if (defaultRunStyle.fontSize !== undefined)
+      effectiveFontSize = defaultRunStyle.fontSize;
     const firstRunSize =
-      paragraph.runs.length > 0 ? paragraph.runs[0].properties?.numAttr("sz") : undefined;
+      paragraph.runs.length > 0
+        ? paragraph.runs[0].properties?.numAttr("sz")
+        : undefined;
     if (firstRunSize !== undefined) {
       effectiveFontSize = firstRunSize / 100;
     } else if (!hasVisibleRuns && paragraph.endParaRPr) {
@@ -820,21 +905,31 @@ export function renderTextBody(
     if (!hasVisibleRuns) {
       const endBold = paragraph.endParaRPr?.attr("b") !== undefined;
       const endItalic = paragraph.endParaRPr?.attr("i") !== undefined;
-      if (endBold ? paraDefaultStyle.bold : (options?.cellTextBold ?? paraDefaultStyle.bold)) {
+      if (
+        endBold
+          ? paraDefaultStyle.bold
+          : (options?.cellTextBold ?? paraDefaultStyle.bold)
+      ) {
         paraDiv.style.fontWeight = "bold";
       }
       if (
-        endItalic ? paraDefaultStyle.italic : (options?.cellTextItalic ?? paraDefaultStyle.italic)
+        endItalic
+          ? paraDefaultStyle.italic
+          : (options?.cellTextItalic ?? paraDefaultStyle.italic)
       ) {
         paraDiv.style.fontStyle = "italic";
       }
       const decorations: string[] = [];
       if (paraDefaultStyle.underline) decorations.push("underline");
       if (paraDefaultStyle.strikethrough) decorations.push("line-through");
-      if (decorations.length > 0) paraDiv.style.textDecoration = decorations.join(" ");
+      if (decorations.length > 0)
+        paraDiv.style.textDecoration = decorations.join(" ");
     }
     paraDiv.style.color =
-      options?.fontRefColor ?? options?.cellTextColor ?? paraDefaultStyle.color ?? "#000000";
+      options?.fontRefColor ??
+      options?.cellTextColor ??
+      paraDefaultStyle.color ??
+      "#000000";
     // Same for font family: without this, text typed into an empty paragraph
     // inherits the page font, then switches to the theme font on commit.
     {
@@ -853,9 +948,11 @@ export function renderTextBody(
     }
 
     const trimSpaceBefore =
-      options?.trimOuterParagraphSpacing && paragraphIndex === firstVisibleParagraphIndex;
+      options?.trimOuterParagraphSpacing &&
+      paragraphIndex === firstVisibleParagraphIndex;
     const trimSpaceAfter =
-      options?.trimOuterParagraphSpacing && paragraphIndex === lastVisibleParagraphIndex;
+      options?.trimOuterParagraphSpacing &&
+      paragraphIndex === lastVisibleParagraphIndex;
 
     if (trimSpaceBefore) {
       paraDiv.style.marginTop = "0px";
@@ -887,7 +984,8 @@ export function renderTextBody(
         bulletPrefix = merged.bulletChar;
       } else if (merged.bulletAutoNum) {
         const counterKey = `${level}:${merged.bulletAutoNum}`;
-        const num = merged.bulletAutoNumStartAt ?? bulletCounters.get(counterKey) ?? 1;
+        const num =
+          merged.bulletAutoNumStartAt ?? bulletCounters.get(counterKey) ?? 1;
         bulletPrefix = generateAutoNumber(merged.bulletAutoNum, num);
         bulletCounters.set(counterKey, num + 1);
       }
@@ -901,7 +999,10 @@ export function renderTextBody(
       const marginLeft = merged.marginLeft;
       const textIndent = merged.textIndent;
       const useHangingBulletGutter =
-        marginLeft !== undefined && marginLeft > 0 && textIndent !== undefined && textIndent < 0;
+        marginLeft !== undefined &&
+        marginLeft > 0 &&
+        textIndent !== undefined &&
+        textIndent < 0;
       if (useHangingBulletGutter) {
         const markerLeft = Math.max(0, marginLeft + textIndent);
         const markerWidth = Math.max(0, marginLeft - markerLeft);
@@ -921,9 +1022,12 @@ export function renderTextBody(
         }
       }
       if (merged.bulletFont) {
-        bulletSpan.style.fontFamily = cssFontFamilyStack(resolveThemeFont(merged.bulletFont, ctx));
+        bulletSpan.style.fontFamily = cssFontFamilyStack(
+          resolveThemeFont(merged.bulletFont, ctx),
+        );
       }
-      const bulletFontSize = merged.bulletSizePt ?? effectiveFontSize * (merged.bulletSizePct ?? 1);
+      const bulletFontSize =
+        merged.bulletSizePt ?? effectiveFontSize * (merged.bulletSizePct ?? 1);
       bulletSpan.style.fontSize = `${bulletFontSize * fontScale}pt`;
       let bulletColor: string | undefined;
       const firstVisibleRunTextColor = (): string | undefined => {
@@ -962,7 +1066,10 @@ export function renderTextBody(
         }
       }
       bulletSpan.style.color =
-        bulletColor ?? options?.fontRefColor ?? options?.cellTextColor ?? "#000000";
+        bulletColor ??
+        options?.fontRefColor ??
+        options?.cellTextColor ??
+        "#000000";
       paraDiv.appendChild(bulletSpan);
     }
 
@@ -979,7 +1086,8 @@ export function renderTextBody(
       paraDiv.style.tabSize = `${defaultTabPx}px`;
     }
     // CJK fonts have content areas taller than an absolute line-height, so each line gets a fixed-height block.
-    const useLineWrappers = merged.lineHeightAbsolute && hasLineBreaks && effectiveLineHeight;
+    const useLineWrappers =
+      merged.lineHeightAbsolute && hasLineBreaks && effectiveLineHeight;
     let currentLineDiv: HTMLElement | null = null;
     if (useLineWrappers) {
       currentLineDiv = document.createElement("div");
@@ -1084,11 +1192,19 @@ export function renderTextBody(
       const fontSize = runStyle.fontSize || 12;
       element.style.fontSize = `${fontSize * fontScale}pt`;
       const hasExplicitRunBold = run.properties?.attr("b") !== undefined;
-      if (hasExplicitRunBold ? runStyle.bold : (options?.cellTextBold ?? runStyle.bold)) {
+      if (
+        hasExplicitRunBold
+          ? runStyle.bold
+          : (options?.cellTextBold ?? runStyle.bold)
+      ) {
         element.style.fontWeight = "bold";
       }
       const hasExplicitRunItalic = run.properties?.attr("i") !== undefined;
-      if (hasExplicitRunItalic ? runStyle.italic : (options?.cellTextItalic ?? runStyle.italic)) {
+      if (
+        hasExplicitRunItalic
+          ? runStyle.italic
+          : (options?.cellTextItalic ?? runStyle.italic)
+      ) {
         element.style.fontStyle = "italic";
       }
 
@@ -1106,7 +1222,9 @@ export function renderTextBody(
       const hasExplicitRunColor = runColorKind !== "none";
       let effectiveColor: string | undefined;
       if (options?.fontRefColor) {
-        effectiveColor = hasExplicitRunColor ? runStyle.color : options.fontRefColor;
+        effectiveColor = hasExplicitRunColor
+          ? runStyle.color
+          : options.fontRefColor;
       } else if (options?.cellTextColor && !hasExplicitRunColor) {
         effectiveColor = options.cellTextColor;
       } else {
@@ -1174,7 +1292,8 @@ export function renderTextBody(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (element.style as any).webkitTextStrokeColor = runStyle.textOutlineColor;
+          (element.style as any).webkitTextStrokeColor =
+            runStyle.textOutlineColor;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
         } else if (runStyle.textNoFill) {
@@ -1183,7 +1302,8 @@ export function renderTextBody(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (element.style as any).webkitTextStrokeColor = runStyle.textOutlineColor;
+          (element.style as any).webkitTextStrokeColor =
+            runStyle.textOutlineColor;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
         }
@@ -1195,7 +1315,9 @@ export function renderTextBody(
         run.properties?.child("cs").exists();
       const effectiveFont = hasExplicitRunFont
         ? (runStyle.fontFamilyStack ?? runStyle.fontFamily)
-        : (options?.cellTextFontFamily ?? runStyle.fontFamilyStack ?? runStyle.fontFamily);
+        : (options?.cellTextFontFamily ??
+          runStyle.fontFamilyStack ??
+          runStyle.fontFamily);
       if (effectiveFont) {
         const resolvedFont = Array.isArray(effectiveFont)
           ? effectiveFont.map((font) => resolveThemeFont(font, ctx))
@@ -1213,7 +1335,8 @@ export function renderTextBody(
       }
       if (runStyle.kern !== undefined) {
         const effectivePt = (runStyle.fontSize || 12) * fontScale;
-        element.style.fontKerning = effectivePt >= runStyle.kern ? "normal" : "none";
+        element.style.fontKerning =
+          effectivePt >= runStyle.kern ? "normal" : "none";
       }
 
       if (runStyle.cap === "all") {

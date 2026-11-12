@@ -21,7 +21,10 @@ export interface RootState {
   file: PreviewInput | null | undefined;
 }
 
-export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoad" | "onError"> {
+export interface RootProps extends Omit<
+  PrimitiveProps<"div", RootState>,
+  "onLoad" | "onError"
+> {
   /**
    * The file to parse and display, as a `File`, `Blob`, `ArrayBuffer` or `Uint8Array`.
    * Whoever sets it triggers the load, with an internal or a `Presentation.Provider` store.
@@ -190,9 +193,19 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+        onErrorRef.current?.(
+          err instanceof Error ? err : new Error(String(err)),
+        );
       });
-  }, [store, file, readOnly, defaultSlideIndexRef, defaultZoomRef, onLoadRef, onErrorRef]);
+  }, [
+    store,
+    file,
+    readOnly,
+    defaultSlideIndexRef,
+    defaultZoomRef,
+    onLoadRef,
+    onErrorRef,
+  ]);
 
   return (
     <Context.Provider value={store}>

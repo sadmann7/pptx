@@ -98,5 +98,13 @@ export function parseTheme(root: SafeXmlNode): ThemeData {
   const effectStyleLst = fmtScheme.child("effectStyleLst");
   const effectStyles: SafeXmlNode[] = effectStyleLst.allChildren();
 
-  return { colorScheme, majorFont, minorFont, fillStyles, bgFillStyles, lineStyles, effectStyles };
+  return {
+    colorScheme,
+    majorFont,
+    minorFont,
+    fillStyles,
+    bgFillStyles,
+    lineStyles,
+    effectStyles,
+  };
 }

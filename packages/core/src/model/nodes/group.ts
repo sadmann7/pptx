@@ -10,7 +10,13 @@ export interface GroupNodeData extends BaseNodeData {
   children: SafeXmlNode[];
 }
 
-const GROUP_CHILD_TAGS = new Set(["sp", "pic", "grpSp", "graphicFrame", "cxnSp"]);
+const GROUP_CHILD_TAGS = new Set([
+  "sp",
+  "pic",
+  "grpSp",
+  "graphicFrame",
+  "cxnSp",
+]);
 
 export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
   const base = parseBaseProps(grpNode);
@@ -22,7 +28,10 @@ export function parseGroupNode(grpNode: SafeXmlNode): GroupNodeData {
   const chExt = xfrm.child("chExt");
 
   const childOffset: NodePosition = chOff.exists()
-    ? { x: emuToPx(chOff.numAttr("x") ?? 0), y: emuToPx(chOff.numAttr("y") ?? 0) }
+    ? {
+        x: emuToPx(chOff.numAttr("x") ?? 0),
+        y: emuToPx(chOff.numAttr("y") ?? 0),
+      }
     : { x: 0, y: 0 };
 
   const childExtent: NodeSize = (() => {

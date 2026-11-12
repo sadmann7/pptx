@@ -18,7 +18,8 @@ export class BitReader {
   }
 
   refill(): void {
-    if (this.index >= this.data.length) fail("BOUNDS", "Unexpected end of LZCOMP bitstream");
+    if (this.index >= this.data.length)
+      fail("BOUNDS", "Unexpected end of LZCOMP bitstream");
     do {
       this.buffer = ((this.buffer << 8) | this.data[this.index++]!) >>> 0;
       this.available += 8;
@@ -76,7 +77,8 @@ export class AdaptiveHuffman {
       this.symbolIndex[symbol] = node;
     }
     for (let i = range - 1; i >= 1; i--) {
-      this.weight[i] = this.weight[this.child[i * 2]!]! + this.weight[this.child[i * 2 + 1]!]!;
+      this.weight[i] =
+        this.weight[this.child[i * 2]!]! + this.weight[this.child[i * 2 + 1]!]!;
     }
 
     if (range > 256) {
@@ -86,7 +88,8 @@ export class AdaptiveHuffman {
       for (let i = 0; i < 6; i++) this.update(this.symbolIndex[range - 2]!);
     } else {
       for (let pass = 0; pass < 2; pass++) {
-        for (let symbol = 0; symbol < range; symbol++) this.update(this.symbolIndex[symbol]!);
+        for (let symbol = 0; symbol < range; symbol++)
+          this.update(this.symbolIndex[symbol]!);
       }
     }
   }
@@ -116,7 +119,8 @@ export class AdaptiveHuffman {
   }
 
   encode(symbol: number): number[] {
-    if (symbol < 0 || symbol >= this.range) fail("INVALID_MTX", `Symbol ${symbol} outside tree`);
+    if (symbol < 0 || symbol >= this.range)
+      fail("INVALID_MTX", `Symbol ${symbol} outside tree`);
     let node = this.symbolIndex[symbol]!;
     const reverse: number[] = [];
     const original = node;
@@ -201,7 +205,8 @@ function makePreload(): Uint8Array {
 const PRELOAD = makePreload();
 
 function expandRunLength(encoded: Uint8Array, limit: number): Uint8Array {
-  if (encoded.length === 0) fail("INVALID_MTX", "Run-length stream has no escape byte");
+  if (encoded.length === 0)
+    fail("INVALID_MTX", "Run-length stream has no escape byte");
   const escape = encoded[0]!;
   let length = 0;
   for (let i = 1; i < encoded.length;) {
@@ -209,16 +214,19 @@ function expandRunLength(encoded: Uint8Array, limit: number): Uint8Array {
     if (value !== escape) {
       length++;
     } else {
-      if (i >= encoded.length) fail("INVALID_MTX", "Truncated run-length escape");
+      if (i >= encoded.length)
+        fail("INVALID_MTX", "Truncated run-length escape");
       const count = encoded[i++]!;
       if (count === 0) length++;
       else {
-        if (i >= encoded.length) fail("INVALID_MTX", "Truncated run-length value");
+        if (i >= encoded.length)
+          fail("INVALID_MTX", "Truncated run-length value");
         i++;
         length += count;
       }
     }
-    if (length > limit) fail("LIMIT_EXCEEDED", "Run-length output exceeds configured limit");
+    if (length > limit)
+      fail("LIMIT_EXCEEDED", "Run-length output exceeds configured limit");
   }
 
   const out = new Uint8Array(length);
@@ -253,7 +261,8 @@ export function decompressLzcomp(
   // resulting alphabet (256 + 8n + 3 = 323) is still within the tree's limit.
   let distanceRanges = 1;
   while (2 ** (3 * distanceRanges) < encodedLength) distanceRanges++;
-  if (distanceRanges > 8) fail("INVALID_MTX", "LZCOMP distance range is not representable");
+  if (distanceRanges > 8)
+    fail("INVALID_MTX", "LZCOMP distance range is not representable");
   const dup2 = 256 + 8 * distanceRanges;
   const dup4 = dup2 + 1;
   const dup6 = dup4 + 1;
@@ -289,7 +298,8 @@ export function decompressLzcomp(
     while ((range & 4) !== 0) {
       range = lengthTree.read(bits);
       length = length * 4 + (range & 3);
-      if (length > encodedLength) fail("INVALID_MTX", "LZCOMP copy length overflow");
+      if (length > encodedLength)
+        fail("INVALID_MTX", "LZCOMP copy length overflow");
     }
     length += 2;
 
@@ -316,5 +326,7 @@ export function decompressLzcomp(
   }
 
   const decoded = history.slice(PRELOAD_SIZE);
-  return isRunLengthEncoded ? expandRunLength(decoded, limits.maxExpandedStreamBytes) : decoded;
+  return isRunLengthEncoded
+    ? expandRunLength(decoded, limits.maxExpandedStreamBytes)
+    : decoded;
 }

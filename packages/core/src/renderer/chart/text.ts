@@ -67,8 +67,12 @@ export function chartTextStyleToEChartsTextStyle(
     ...(style.color ? { color: style.color } : {}),
     ...(style.fontSize !== undefined ? { fontSize: style.fontSize } : {}),
     ...(style.fontFamily ? { fontFamily: style.fontFamily } : {}),
-    ...(style.textShadowColor ? { textShadowColor: style.textShadowColor } : {}),
-    ...(style.textShadowBlur !== undefined ? { textShadowBlur: style.textShadowBlur } : {}),
+    ...(style.textShadowColor
+      ? { textShadowColor: style.textShadowColor }
+      : {}),
+    ...(style.textShadowBlur !== undefined
+      ? { textShadowBlur: style.textShadowBlur }
+      : {}),
     ...(style.textShadowOffsetX !== undefined
       ? { textShadowOffsetX: style.textShadowOffsetX }
       : {}),
@@ -82,7 +86,10 @@ export function chartTextStyleToEChartsTextStyle(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-export function extractTxPrColor(parentNode: SafeXmlNode, ctx: RenderContext): string | undefined {
+export function extractTxPrColor(
+  parentNode: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   const txPr = parentNode.child("txPr");
   if (!txPr.exists()) return undefined;
   for (const p of txPr.children("p")) {
@@ -102,7 +109,12 @@ function hexToRgbInternal(hex: string): { r: number; g: number; b: number } {
   const cleaned = hex.replace(/^#/, "");
   const expanded =
     cleaned.length === 3
-      ? cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2]
+      ? cleaned[0] +
+        cleaned[0] +
+        cleaned[1] +
+        cleaned[1] +
+        cleaned[2] +
+        cleaned[2]
       : cleaned;
   const num = parseInt(expanded, 16);
   return { r: (num >> 16) & 0xff, g: (num >> 8) & 0xff, b: num & 0xff };
@@ -143,7 +155,10 @@ function extractTextOuterShadow(
   }
 }
 
-function extractDefRPrStyle(defRPr: SafeXmlNode, ctx: RenderContext): ChartTextStyle | undefined {
+function extractDefRPrStyle(
+  defRPr: SafeXmlNode,
+  ctx: RenderContext,
+): ChartTextStyle | undefined {
   if (!defRPr.exists()) return undefined;
 
   const style: ChartTextStyle = {};
@@ -161,10 +176,11 @@ function extractDefRPrStyle(defRPr: SafeXmlNode, ctx: RenderContext): ChartTextS
   const latinTypeface = defRPr.child("latin").attr("typeface");
   const eaTypeface = defRPr.child("ea").attr("typeface");
   const csTypeface = defRPr.child("cs").attr("typeface");
-  const fontStack = resolveThemeFontStack([latinTypeface, eaTypeface, csTypeface], ctx, [
-    defRPr.attr("lang"),
-    defRPr.attr("altLang"),
-  ]);
+  const fontStack = resolveThemeFontStack(
+    [latinTypeface, eaTypeface, csTypeface],
+    ctx,
+    [defRPr.attr("lang"), defRPr.attr("altLang")],
+  );
   if (fontStack.length > 0) {
     style.fontFamily = cssFontFamilyStack(fontStack);
   }
@@ -208,7 +224,8 @@ export function extractTitleTextStyle(
   ctx: RenderContext,
 ): ChartTextStyle | undefined {
   return (
-    extractTxPrStyle(title, ctx) ?? extractParagraphTextStyle(title.child("tx").child("rich"), ctx)
+    extractTxPrStyle(title, ctx) ??
+    extractParagraphTextStyle(title.child("tx").child("rich"), ctx)
   );
 }
 
@@ -256,7 +273,12 @@ export function extractTitleRichText(
   return { text: paragraphs.join("\n"), rich };
 }
 
-export function getChartThemeFontFamily(ctx: RenderContext): string | undefined {
-  const fontStack = resolveThemeFontStack(["+mn-lt", "+mn-ea", "+mj-lt", "+mj-ea"], ctx);
+export function getChartThemeFontFamily(
+  ctx: RenderContext,
+): string | undefined {
+  const fontStack = resolveThemeFontStack(
+    ["+mn-lt", "+mn-ea", "+mj-lt", "+mj-ea"],
+    ctx,
+  );
   return fontStack.length > 0 ? cssFontFamilyStack(fontStack) : undefined;
 }

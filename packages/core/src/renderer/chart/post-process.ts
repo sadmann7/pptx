@@ -22,30 +22,47 @@ export interface ChartPixelSize {
   h: number;
 }
 
-function getRadarNameTextStyles(option: echarts.EChartsOption): Record<string, unknown>[] {
+function getRadarNameTextStyles(
+  option: echarts.EChartsOption,
+): Record<string, unknown>[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opt = option as any;
-  const radars = (Array.isArray(opt.radar) ? opt.radar : opt.radar ? [opt.radar] : []) as unknown[];
+  const radars = (
+    Array.isArray(opt.radar) ? opt.radar : opt.radar ? [opt.radar] : []
+  ) as unknown[];
   return radars
-    .filter((radar): radar is RadarTextContainer => typeof radar === "object" && radar !== null)
+    .filter(
+      (radar): radar is RadarTextContainer =>
+        typeof radar === "object" && radar !== null,
+    )
     .map((radar) => {
       const name = radar.name ?? (radar.name = {});
       return name.textStyle ?? (name.textStyle = {});
     });
 }
 
-function getRadarAxisLabelStyles(option: echarts.EChartsOption): Record<string, unknown>[] {
+function getRadarAxisLabelStyles(
+  option: echarts.EChartsOption,
+): Record<string, unknown>[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opt = option as any;
-  const radars = (Array.isArray(opt.radar) ? opt.radar : opt.radar ? [opt.radar] : []) as unknown[];
+  const radars = (
+    Array.isArray(opt.radar) ? opt.radar : opt.radar ? [opt.radar] : []
+  ) as unknown[];
   return radars
-    .filter((radar): radar is RadarTextContainer => typeof radar === "object" && radar !== null)
+    .filter(
+      (radar): radar is RadarTextContainer =>
+        typeof radar === "object" && radar !== null,
+    )
     .flatMap((radar) => radar.indicator ?? [])
     .map((indicator) => indicator.axisLabel)
     .filter((axisLabel): axisLabel is Record<string, unknown> => !!axisLabel);
 }
 
-export function applyDefaultFontSizes(option: echarts.EChartsOption, defaultFs: number): void {
+export function applyDefaultFontSizes(
+  option: echarts.EChartsOption,
+  defaultFs: number,
+): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opt = option as any;
 
@@ -69,9 +86,17 @@ export function applyDefaultFontSizes(option: echarts.EChartsOption, defaultFs: 
     }
   }
 
-  const seriesArr = Array.isArray(opt.series) ? opt.series : opt.series ? [opt.series] : [];
+  const seriesArr = Array.isArray(opt.series)
+    ? opt.series
+    : opt.series
+      ? [opt.series]
+      : [];
   for (const s of seriesArr) {
-    if (s?.label?.fontSize && (s.label.fontSize as number) <= 10 && !hasExplicitFontSize(s.label)) {
+    if (
+      s?.label?.fontSize &&
+      (s.label.fontSize as number) <= 10 &&
+      !hasExplicitFontSize(s.label)
+    ) {
       s.label.fontSize = defaultFs;
     }
   }
@@ -84,19 +109,33 @@ export function applyDefaultFontSizes(option: echarts.EChartsOption, defaultFs: 
     }
   };
 
-  const xAxes = Array.isArray(opt.xAxis) ? opt.xAxis : opt.xAxis ? [opt.xAxis] : [];
-  const yAxes = Array.isArray(opt.yAxis) ? opt.yAxis : opt.yAxis ? [opt.yAxis] : [];
+  const xAxes = Array.isArray(opt.xAxis)
+    ? opt.xAxis
+    : opt.xAxis
+      ? [opt.xAxis]
+      : [];
+  const yAxes = Array.isArray(opt.yAxis)
+    ? opt.yAxis
+    : opt.yAxis
+      ? [opt.yAxis]
+      : [];
   for (const axis of [...xAxes, ...yAxes]) applyAxisDefaultFontSize(axis);
 
   if (opt.legend?.textStyle) {
     const current = opt.legend.textStyle.fontSize;
-    if ((current === undefined || current <= 10) && !hasExplicitFontSize(opt.legend.textStyle)) {
+    if (
+      (current === undefined || current <= 10) &&
+      !hasExplicitFontSize(opt.legend.textStyle)
+    ) {
       opt.legend.textStyle.fontSize = defaultFs;
     }
   }
 }
 
-export function applyDefaultFontFamily(option: echarts.EChartsOption, fontFamily: string): void {
+export function applyDefaultFontFamily(
+  option: echarts.EChartsOption,
+  fontFamily: string,
+): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opt = option as any;
 
@@ -115,8 +154,16 @@ export function applyDefaultFontFamily(option: echarts.EChartsOption, fontFamily
     }
   };
 
-  const xAxes = Array.isArray(opt.xAxis) ? opt.xAxis : opt.xAxis ? [opt.xAxis] : [];
-  const yAxes = Array.isArray(opt.yAxis) ? opt.yAxis : opt.yAxis ? [opt.yAxis] : [];
+  const xAxes = Array.isArray(opt.xAxis)
+    ? opt.xAxis
+    : opt.xAxis
+      ? [opt.xAxis]
+      : [];
+  const yAxes = Array.isArray(opt.yAxis)
+    ? opt.yAxis
+    : opt.yAxis
+      ? [opt.yAxis]
+      : [];
   for (const axis of [...xAxes, ...yAxes]) applyAxisFontFamily(axis);
 
   if (opt.legend?.textStyle && !opt.legend.textStyle.fontFamily) {
@@ -142,7 +189,11 @@ export function applyDefaultTextColors(option: echarts.EChartsOption): void {
     opt.title.textStyle.color = DEFAULT_CHART_FOREGROUND_COLOR;
   }
 
-  const legends = Array.isArray(opt.legend) ? opt.legend : opt.legend ? [opt.legend] : [];
+  const legends = Array.isArray(opt.legend)
+    ? opt.legend
+    : opt.legend
+      ? [opt.legend]
+      : [];
   for (const legend of legends) {
     if (!legend || legend.show === false) continue;
     const textStyle = legend.textStyle ?? (legend.textStyle = {});
@@ -151,8 +202,16 @@ export function applyDefaultTextColors(option: echarts.EChartsOption): void {
     }
   }
 
-  const xAxes = Array.isArray(opt.xAxis) ? opt.xAxis : opt.xAxis ? [opt.xAxis] : [];
-  const yAxes = Array.isArray(opt.yAxis) ? opt.yAxis : opt.yAxis ? [opt.yAxis] : [];
+  const xAxes = Array.isArray(opt.xAxis)
+    ? opt.xAxis
+    : opt.xAxis
+      ? [opt.xAxis]
+      : [];
+  const yAxes = Array.isArray(opt.yAxis)
+    ? opt.yAxis
+    : opt.yAxis
+      ? [opt.yAxis]
+      : [];
   for (const axis of [...xAxes, ...yAxes]) {
     if (!axis?.name) continue;
     const nameTextStyle = axis.nameTextStyle ?? (axis.nameTextStyle = {});
@@ -191,7 +250,9 @@ export function applyLegendGridMargins(
   const posVal = legend.child("legendPos").attr("val") || "r";
 
   if (posVal === "r" || posVal === "l") {
-    const legendData = opt.legend.data as (string | { name: string })[] | undefined;
+    const legendData = opt.legend.data as
+      | (string | { name: string })[]
+      | undefined;
     if (!legendData || legendData.length === 0) return;
 
     const names = legendData.map((d: string | { name: string }) =>
@@ -210,16 +271,29 @@ export function applyLegendGridMargins(
     const estimatedLegendPx = iconWidth + 8 + maxTextPx + 14;
     const plotArea = chartNode.child("plotArea");
     const isLineChart = plotArea.child("lineChart").exists();
-    const seriesCount = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
+    const seriesCount = Array.isArray(opt.series)
+      ? opt.series.length
+      : opt.series
+        ? 1
+        : 0;
     const xAxis = Array.isArray(opt.xAxis) ? opt.xAxis[0] : opt.xAxis;
     const categoryCount = Array.isArray(xAxis?.data) ? xAxis.data.length : 0;
     const isDenseSingleSeriesLineRightLegend =
       posVal === "r" && isLineChart && seriesCount === 1 && categoryCount >= 20;
-    const legendPaddingPx = isLineChart ? (isDenseSingleSeriesLineRightLegend ? -10 : 0) : 18;
-    const gridMarginPx = Math.max(84, Math.round(estimatedLegendPx + legendPaddingPx));
+    const legendPaddingPx = isLineChart
+      ? isDenseSingleSeriesLineRightLegend
+        ? -10
+        : 0
+      : 18;
+    const gridMarginPx = Math.max(
+      84,
+      Math.round(estimatedLegendPx + legendPaddingPx),
+    );
 
-    if (typeof opt.grid.left === "string" && opt.grid.left.includes("%")) return;
-    if (typeof opt.grid.right === "string" && opt.grid.right.includes("%")) return;
+    if (typeof opt.grid.left === "string" && opt.grid.left.includes("%"))
+      return;
+    if (typeof opt.grid.right === "string" && opt.grid.right.includes("%"))
+      return;
 
     if (posVal === "r") {
       opt.grid.right = gridMarginPx;
@@ -229,7 +303,11 @@ export function applyLegendGridMargins(
   }
 }
 
-function gridEdgePx(value: unknown, fullSize: number, fallback: number): number {
+function gridEdgePx(
+  value: unknown,
+  fullSize: number,
+  fallback: number,
+): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -247,7 +325,9 @@ function gridPlotSpanPx(
 ): number | undefined {
   if (!chartSize) return undefined;
   const fullSize = axisDimension === "x" ? chartSize.w : chartSize.h;
-  const gridObj = (Array.isArray(grid) ? grid[0] : grid) as Record<string, unknown> | undefined;
+  const gridObj = (Array.isArray(grid) ? grid[0] : grid) as
+    | Record<string, unknown>
+    | undefined;
   if (!gridObj) return fullSize;
 
   const startKey = axisDimension === "x" ? "left" : "top";
@@ -269,7 +349,8 @@ function densityLimitedDesiredTicks(
   if (plotSpan === undefined || plotSpan <= 0) return desiredTicks;
 
   const axisLabel = axis.axisLabel ?? {};
-  const fontSize = typeof axisLabel.fontSize === "number" ? axisLabel.fontSize : 12;
+  const fontSize =
+    typeof axisLabel.fontSize === "number" ? axisLabel.fontSize : 12;
   const minLabelSpacing = Math.max(28, fontSize * labelSpacingFactor);
   const maxLabels = Math.max(2, Math.floor(plotSpan / minLabelSpacing) + 1);
   return Math.max(1, Math.min(desiredTicks, maxLabels - 1));
@@ -287,9 +368,16 @@ export function applyNiceAxisRange(
   const allValues: number[] = [];
   const xValues: number[] = [];
   const yValues: number[] = [];
-  const seriesArr = Array.isArray(opt.series) ? opt.series : opt.series ? [opt.series] : [];
+  const seriesArr = Array.isArray(opt.series)
+    ? opt.series
+    : opt.series
+      ? [opt.series]
+      : [];
 
-  const stackGroups = new Map<string, { axisIndex: number; values: number[][] }>();
+  const stackGroups = new Map<
+    string,
+    { axisIndex: number; values: number[][] }
+  >();
   const unstackedValues: number[] = [];
   const valuesByYAxis = new Map<number, number[]>();
 
@@ -304,10 +392,19 @@ export function applyNiceAxisRange(
     for (const d of s.data) {
       if (typeof d === "number") {
         vals.push(d);
-      } else if (d && typeof d === "object" && "value" in d && typeof d.value === "number") {
+      } else if (
+        d &&
+        typeof d === "object" &&
+        "value" in d &&
+        typeof d.value === "number"
+      ) {
         vals.push(d.value);
       } else if (Array.isArray(d)) {
-        if (d.length >= 2 && typeof d[0] === "number" && typeof d[1] === "number") {
+        if (
+          d.length >= 2 &&
+          typeof d[0] === "number" &&
+          typeof d[1] === "number"
+        ) {
           xValues.push(d[0]);
           yValues.push(d[1]);
         }
@@ -319,10 +416,13 @@ export function applyNiceAxisRange(
       }
     }
     const yAxisIndex =
-      typeof s.yAxisIndex === "number" && Number.isFinite(s.yAxisIndex) ? s.yAxisIndex : 0;
+      typeof s.yAxisIndex === "number" && Number.isFinite(s.yAxisIndex)
+        ? s.yAxisIndex
+        : 0;
     if (s.stack) {
       const key = `${yAxisIndex}:${String(s.stack)}`;
-      if (!stackGroups.has(key)) stackGroups.set(key, { axisIndex: yAxisIndex, values: [] });
+      if (!stackGroups.has(key))
+        stackGroups.set(key, { axisIndex: yAxisIndex, values: [] });
       stackGroups.get(key)!.values.push(vals);
     } else {
       unstackedValues.push(...vals);
@@ -345,8 +445,12 @@ export function applyNiceAxisRange(
   }
   allValues.push(...unstackedValues);
 
-  const hasBarSeries = seriesArr.some((s: { type?: string }) => s.type === "bar");
-  const hasNonBarSeries = seriesArr.some((s: { type?: string }) => s.type && s.type !== "bar");
+  const hasBarSeries = seriesArr.some(
+    (s: { type?: string }) => s.type === "bar",
+  );
+  const hasNonBarSeries = seriesArr.some(
+    (s: { type?: string }) => s.type && s.type !== "bar",
+  );
   const isPureBarChart = hasBarSeries && !hasNonBarSeries;
   const defaultDesiredTicks = isPureBarChart ? 10 : 8;
   const labelSpacingFactor = isPureBarChart ? 2.6 : 2.0;
@@ -393,10 +497,18 @@ export function applyNiceAxisRange(
   };
 
   if (cartesianScatter) {
-    const xAxes = (Array.isArray(opt.xAxis) ? opt.xAxis : [opt.xAxis]) as Record<string, unknown>[];
-    const yAxes = (Array.isArray(opt.yAxis) ? opt.yAxis : [opt.yAxis]) as Record<string, unknown>[];
-    xAxes.forEach((ax) => applyAxisExtent(ax, xValues, scatterDesiredTicks(xValues)));
-    yAxes.forEach((ax) => applyAxisExtent(ax, yValues, scatterDesiredTicks(yValues)));
+    const xAxes = (
+      Array.isArray(opt.xAxis) ? opt.xAxis : [opt.xAxis]
+    ) as Record<string, unknown>[];
+    const yAxes = (
+      Array.isArray(opt.yAxis) ? opt.yAxis : [opt.yAxis]
+    ) as Record<string, unknown>[];
+    xAxes.forEach((ax) =>
+      applyAxisExtent(ax, xValues, scatterDesiredTicks(xValues)),
+    );
+    yAxes.forEach((ax) =>
+      applyAxisExtent(ax, yValues, scatterDesiredTicks(yValues)),
+    );
     return;
   }
 
@@ -428,7 +540,11 @@ export function applyNiceAxisRange(
 
       if (ax.max === undefined) {
         let max = niceAxisMax(dataMax, dataMin, desiredTicks);
-        if (desiredTicks > 1 && max > dataMax && max - dataMax < interval * 0.25) {
+        if (
+          desiredTicks > 1 &&
+          max > dataMax &&
+          max - dataMax < interval * 0.25
+        ) {
           max += interval;
         }
         ax.max = max;
@@ -448,19 +564,31 @@ export function applyNiceAxisRange(
   processAxis(opt.yAxis, "y", valuesByYAxis);
 }
 
-export function niceAxisMax(dataMax: number, dataMin: number, desiredTicks = 5): number {
+export function niceAxisMax(
+  dataMax: number,
+  dataMin: number,
+  desiredTicks = 5,
+): number {
   const niceInterval = niceAxisInterval(dataMax, dataMin, desiredTicks);
   const niceMax = Math.ceil(dataMax / niceInterval) * niceInterval;
   return niceMax <= dataMax ? niceMax + niceInterval : niceMax;
 }
 
-function niceAxisMin(dataMax: number, dataMin: number, desiredTicks = 5): number {
+function niceAxisMin(
+  dataMax: number,
+  dataMin: number,
+  desiredTicks = 5,
+): number {
   const niceInterval = niceAxisInterval(dataMax, dataMin, desiredTicks);
   const niceMin = Math.floor(dataMin / niceInterval) * niceInterval;
   return niceMin >= dataMin ? niceMin - niceInterval : niceMin;
 }
 
-export function niceAxisInterval(dataMax: number, dataMin: number, desiredTicks = 5): number {
+export function niceAxisInterval(
+  dataMax: number,
+  dataMin: number,
+  desiredTicks = 5,
+): number {
   if (dataMax === 0 && dataMin === 0) return 1;
   const range = dataMax - Math.min(0, dataMin);
   if (range === 0) return dataMax > 0 ? dataMax * 1.2 : 1;
@@ -475,7 +603,9 @@ export function niceAxisInterval(dataMax: number, dataMin: number, desiredTicks 
   return niceInterval;
 }
 
-export function extractChartDefaultFontSize(chartSpaceNode: SafeXmlNode): number | undefined {
+export function extractChartDefaultFontSize(
+  chartSpaceNode: SafeXmlNode,
+): number | undefined {
   const txPr = chartSpaceNode.child("txPr");
   if (!txPr.exists()) return undefined;
   for (const p of txPr.children("p")) {

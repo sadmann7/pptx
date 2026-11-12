@@ -95,9 +95,14 @@ function resolveColorUncached(
 
       case "schemeClr": {
         const scheme = child.attr("val") || "tx1";
-        if (scheme.toLowerCase() === "phclr" && placeholderColorNode?.exists()) {
+        if (
+          scheme.toLowerCase() === "phclr" &&
+          placeholderColorNode?.exists()
+        ) {
           const base = resolveColor(placeholderColorNode, ctx);
-          const baseHex = base.color.startsWith("#") ? base.color.slice(1) : base.color;
+          const baseHex = base.color.startsWith("#")
+            ? base.color.slice(1)
+            : base.color;
           const adjusted = applyColorModifiers(baseHex, modifiers);
           return { color: adjusted.color, alpha: adjusted.alpha * base.alpha };
         }
@@ -148,8 +153,13 @@ function resolveColorUncached(
     const scheme = colorNode.attr("val") || "tx1";
     if (scheme.toLowerCase() === "phclr" && placeholderColorNode?.exists()) {
       const base = resolveColor(placeholderColorNode, ctx);
-      const baseHex = base.color.startsWith("#") ? base.color.slice(1) : base.color;
-      const adjusted = applyColorModifiers(baseHex, collectModifiers(colorNode));
+      const baseHex = base.color.startsWith("#")
+        ? base.color.slice(1)
+        : base.color;
+      const adjusted = applyColorModifiers(
+        baseHex,
+        collectModifiers(colorNode),
+      );
       return { color: adjusted.color, alpha: adjusted.alpha * base.alpha };
     }
     const hex = resolveSchemeColor(scheme, ctx);
@@ -162,7 +172,10 @@ function resolveColorUncached(
   if (selfTag === "prstClr") {
     const name = colorNode.attr("val") || "black";
     const hex = presetColorToHex(name) || "#000000";
-    return applyColorModifiers(hex.replace("#", ""), collectModifiers(colorNode));
+    return applyColorModifiers(
+      hex.replace("#", ""),
+      collectModifiers(colorNode),
+    );
   }
   if (selfTag === "hslClr") {
     const hue = (colorNode.numAttr("hue") ?? 0) / 60000;
@@ -183,7 +196,10 @@ function resolveColorUncached(
   return { color: "#000000", alpha: 1 };
 }
 
-export function resolveColorToCss(node: SafeXmlNode, ctx: RenderContext): string {
+export function resolveColorToCss(
+  node: SafeXmlNode,
+  ctx: RenderContext,
+): string {
   const { color, alpha } = resolveColor(node, ctx);
   return colorToCss(color, alpha);
 }
@@ -257,19 +273,28 @@ function resolvePatternFill(
 
   const fgClr = pattFill.child("fgClr");
   if (fgClr.exists()) {
-    const { color, alpha } = resolveColorWithPlaceholder(fgClr, ctx, placeholderColorNode);
+    const { color, alpha } = resolveColorWithPlaceholder(
+      fgClr,
+      ctx,
+      placeholderColorNode,
+    );
     fg = colorToCss(color, alpha);
   }
 
   const bgClr = pattFill.child("bgClr");
   if (bgClr.exists()) {
-    const { color, alpha } = resolveColorWithPlaceholder(bgClr, ctx, placeholderColorNode);
+    const { color, alpha } = resolveColorWithPlaceholder(
+      bgClr,
+      ctx,
+      placeholderColorNode,
+    );
     bg = colorToCss(color, alpha);
   }
 
   const s = 8;
 
-  const pat = (gradient: string): string => `${gradient} 0 0 / ${s}px ${s}px, ${bg}`;
+  const pat = (gradient: string): string =>
+    `${gradient} 0 0 / ${s}px ${s}px, ${bg}`;
   const pat2 = (g1: string, g2: string): string =>
     `${g1} 0 0 / ${s}px ${s}px, ${g2} 0 0 / ${s}px ${s}px, ${bg}`;
 
@@ -395,7 +420,11 @@ function resolveGradient(
   for (const gs of gsLst.children("gs")) {
     const pos = gs.numAttr("pos") ?? 0;
     const posPercent = pctToDecimal(pos) * 100;
-    const { color, alpha } = resolveColorWithPlaceholder(gs, ctx, placeholderColorNode);
+    const { color, alpha } = resolveColorWithPlaceholder(
+      gs,
+      ctx,
+      placeholderColorNode,
+    );
     stops.push({ position: posPercent, color: colorToCss(color, alpha) });
   }
 
@@ -458,11 +487,14 @@ export function resolveLineStyle(
   const solidFill = ln.child("solidFill");
   if (solidFill.exists()) {
     const phClr = solidFill.child("schemeClr");
-    const usesPlaceholder = phClr.exists() && (phClr.attr("val") ?? "").toLowerCase() === "phclr";
+    const usesPlaceholder =
+      phClr.exists() && (phClr.attr("val") ?? "").toLowerCase() === "phclr";
     if (usesPlaceholder && lnRef && lnRef.exists()) {
       // Theme line styles often use schemeClr=phClr and expect the concrete color from lnRef.
       const base = resolveColor(lnRef, ctx);
-      const baseHex = base.color.startsWith("#") ? base.color.slice(1) : base.color;
+      const baseHex = base.color.startsWith("#")
+        ? base.color.slice(1)
+        : base.color;
       const adjusted = applyColorModifiers(baseHex, collectModifiers(phClr));
       color = colorToCss(adjusted.color, adjusted.alpha * base.alpha);
     } else {
@@ -597,7 +629,11 @@ function clampUnit(value: number): number {
 
 export function getGradientFocusOffset(
   gradientFillData: Pick<GradientFillData, "fillToRect" | "cx" | "cy">,
-  options: { axis?: "x" | "y" | "radial"; width?: number; height?: number } = {},
+  options: {
+    axis?: "x" | "y" | "radial";
+    width?: number;
+    height?: number;
+  } = {},
 ): number {
   const fillToRect = gradientFillData.fillToRect;
   if (!fillToRect) return 0;
@@ -626,8 +662,15 @@ export function getGradientFocusOffset(
 }
 
 export function getFocusedGradientStops(
-  gradientFillData: Pick<GradientFillData, "stops" | "fillToRect" | "cx" | "cy">,
-  options: { axis?: "x" | "y" | "radial"; width?: number; height?: number } = {},
+  gradientFillData: Pick<
+    GradientFillData,
+    "stops" | "fillToRect" | "cx" | "cy"
+  >,
+  options: {
+    axis?: "x" | "y" | "radial";
+    width?: number;
+    height?: number;
+  } = {},
 ): Array<{ position: number; color: string }> {
   const focusOffset = getGradientFocusOffset(gradientFillData, options);
   if (focusOffset <= 0) return gradientFillData.stops;
@@ -638,7 +681,9 @@ export function getFocusedGradientStops(
   }));
 }
 
-function formatGradientStops(stops: Array<{ position: number; color: string }>): string {
+function formatGradientStops(
+  stops: Array<{ position: number; color: string }>,
+): string {
   return stops.map((s) => `${s.color} ${s.position.toFixed(1)}%`).join(", ");
 }
 
@@ -653,7 +698,11 @@ function resolveGradientFillNode(
   for (const gs of gsLst.children("gs")) {
     const pos = gs.numAttr("pos") ?? 0;
     const posPercent = pctToDecimal(pos) * 100;
-    const { color, alpha } = resolveColorWithPlaceholder(gs, ctx, placeholderColorNode);
+    const { color, alpha } = resolveColorWithPlaceholder(
+      gs,
+      ctx,
+      placeholderColorNode,
+    );
     stops.push({ position: posPercent, color: colorToCss(color, alpha) });
   }
 
@@ -694,7 +743,11 @@ export function resolveGradientFill(
 ): GradientFillData | null {
   let gradFill = spPr.child("gradFill");
 
-  if (!gradFill.exists() && spPr.child("grpFill").exists() && ctx.groupFillNode) {
+  if (
+    !gradFill.exists() &&
+    spPr.child("grpFill").exists() &&
+    ctx.groupFillNode
+  ) {
     gradFill = ctx.groupFillNode.child("gradFill");
   }
 
@@ -708,7 +761,12 @@ export function resolveThemeFillReference(
   ctx: RenderContext,
 ): { fillCss: string; gradientFillData: GradientFillData | null } {
   const idx = fillRef.numAttr("idx") ?? 0;
-  return resolveThemeFillReferenceFromList(fillRef, ctx, ctx.theme.fillStyles, idx);
+  return resolveThemeFillReferenceFromList(
+    fillRef,
+    ctx,
+    ctx.theme.fillStyles,
+    idx,
+  );
 }
 
 export function resolveThemeBackgroundFillReference(
@@ -717,10 +775,20 @@ export function resolveThemeBackgroundFillReference(
 ): { fillCss: string; gradientFillData: GradientFillData | null } {
   const idx = bgRef.numAttr("idx") ?? 0;
   if (idx >= 1001) {
-    return resolveThemeFillReferenceFromList(bgRef, ctx, ctx.theme.bgFillStyles ?? [], idx - 1000);
+    return resolveThemeFillReferenceFromList(
+      bgRef,
+      ctx,
+      ctx.theme.bgFillStyles ?? [],
+      idx - 1000,
+    );
   }
 
-  return resolveThemeFillReferenceFromList(bgRef, ctx, ctx.theme.fillStyles, idx);
+  return resolveThemeFillReferenceFromList(
+    bgRef,
+    ctx,
+    ctx.theme.fillStyles,
+    idx,
+  );
 }
 
 function resolveThemeFillReferenceFromList(
@@ -740,7 +808,10 @@ function resolveThemeFillReferenceFromList(
 
   if (themeFill.localName === "solidFill") {
     const resolved = resolveColorWithPlaceholder(themeFill, ctx, fillRef);
-    return { fillCss: colorToCss(resolved.color, resolved.alpha), gradientFillData: null };
+    return {
+      fillCss: colorToCss(resolved.color, resolved.alpha),
+      gradientFillData: null,
+    };
   }
 
   if (themeFill.localName === "gradFill") {
@@ -751,7 +822,10 @@ function resolveThemeFillReferenceFromList(
   }
 
   if (themeFill.localName === "pattFill") {
-    return { fillCss: resolvePatternFill(themeFill, ctx, fillRef), gradientFillData: null };
+    return {
+      fillCss: resolvePatternFill(themeFill, ctx, fillRef),
+      gradientFillData: null,
+    };
   }
 
   if (themeFill.localName === "noFill") {

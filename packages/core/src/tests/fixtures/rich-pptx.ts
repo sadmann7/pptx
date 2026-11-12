@@ -54,7 +54,9 @@ export interface RichPptxOptions {
 }
 
 // Defaults produce the same package as `buildPptxWithShapes("")`.
-export async function buildRichPptx(options: RichPptxOptions = {}): Promise<ArrayBuffer> {
+export async function buildRichPptx(
+  options: RichPptxOptions = {},
+): Promise<ArrayBuffer> {
   const {
     shapesXml = "",
     slideBg = "",

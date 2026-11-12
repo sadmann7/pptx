@@ -22,15 +22,23 @@ export interface SelectionPartsContextValue {
     nodeId: string,
   ) => void;
   onBorderPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
-  onRotatePointerDown: (event: React.PointerEvent<HTMLDivElement>, nodeId: string) => void;
+  onRotatePointerDown: (
+    event: React.PointerEvent<HTMLDivElement>,
+    nodeId: string,
+  ) => void;
 }
 
-export const SelectionPartsContext = React.createContext<SelectionPartsContextValue | null>(null);
+export const SelectionPartsContext =
+  React.createContext<SelectionPartsContextValue | null>(null);
 
-export function useSelectionParts(partName: string): SelectionPartsContextValue {
+export function useSelectionParts(
+  partName: string,
+): SelectionPartsContextValue {
   const context = React.useContext(SelectionPartsContext);
   if (!context) {
-    throw new Error(`\`${partName}\` must be used within \`Presentation.Selection\`.`);
+    throw new Error(
+      `\`${partName}\` must be used within \`Presentation.Selection\`.`,
+    );
   }
   return context;
 }
@@ -45,7 +53,8 @@ export interface SelectionBoxContextValue {
   showRotateHandle: boolean;
 }
 
-export const SelectionBoxContext = React.createContext<SelectionBoxContextValue | null>(null);
+export const SelectionBoxContext =
+  React.createContext<SelectionBoxContextValue | null>(null);
 
 export const SELECTION_BOX_NAME = "Presentation.SelectionBox";
 

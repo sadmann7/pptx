@@ -17,19 +17,27 @@ import { fileURLToPath } from "node:url";
 
 import { buildCustomPptx } from "../../core/src/tests/fixtures/fixture-extras";
 
-const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
+const FIXTURES_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "fixtures",
+);
 
 const BOM = "\uFEFF";
 
 const RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
 const CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types";
-const REL_TYPE_BASE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const REL_TYPE_BASE =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
 // The shared fixture helper declares a "rel" Default instead of "rels", which
 // PowerPoint rejects as corrupt, and the oracle needs decks PowerPoint opens.
-function contentTypesXml(slideCount: number, chartParts: string[] = []): string {
+function contentTypesXml(
+  slideCount: number,
+  chartParts: string[] = [],
+): string {
   const slideOverrides = Array.from(
     { length: slideCount },
     (_, i) =>
@@ -44,7 +52,12 @@ function contentTypesXml(slideCount: number, chartParts: string[] = []): string 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Types xmlns="${CT_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>${slideOverrides}${chartOverrides}<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/></Types>`;
 }
 
-function rectWithText(id: number, color: string, text: string, offY = 914400): string {
+function rectWithText(
+  id: number,
+  color: string,
+  text: string,
+  offY = 914400,
+): string {
   return `<p:sp>
 <p:nvSpPr><p:cNvPr id="${id}" name="Rect ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
 <p:spPr>
@@ -85,12 +98,16 @@ function slideRelsWithChart(chartTarget: string): string {
 }
 
 function strLit(values: string[]): string {
-  const pts = values.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join("");
+  const pts = values
+    .map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`)
+    .join("");
   return `<c:strLit><c:ptCount val="${values.length}"/>${pts}</c:strLit>`;
 }
 
 function numLit(values: number[]): string {
-  const pts = values.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join("");
+  const pts = values
+    .map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`)
+    .join("");
   return `<c:numLit><c:formatCode>General</c:formatCode><c:ptCount val="${values.length}"/>${pts}</c:numLit>`;
 }
 
@@ -156,8 +173,13 @@ const BORDER_TABLE_GEOMETRY = {
 function borderTableFrame(id: number, rows: string[]): string {
   const { x, y, colWidth, rowHeight, cols } = BORDER_TABLE_GEOMETRY;
   const emu = (px: number) => Math.round((px / 96) * 914400);
-  const gridCols = Array.from({ length: cols }, () => `<a:gridCol w="${emu(colWidth)}"/>`).join("");
-  const body = rows.map((cells) => `<a:tr h="${emu(rowHeight)}">${cells}</a:tr>`).join("");
+  const gridCols = Array.from(
+    { length: cols },
+    () => `<a:gridCol w="${emu(colWidth)}"/>`,
+  ).join("");
+  const body = rows
+    .map((cells) => `<a:tr h="${emu(rowHeight)}">${cells}</a:tr>`)
+    .join("");
   return `<p:graphicFrame>
 <p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
 <p:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(colWidth * cols)}" cy="${emu(rowHeight * rows.length)}"/></p:xfrm>
@@ -171,7 +193,12 @@ ${body}
 </p:graphicFrame>`;
 }
 
-function borderCell(text: string, fill: string, textColor: string, tcBdr = ""): string {
+function borderCell(
+  text: string,
+  fill: string,
+  textColor: string,
+  tcBdr = "",
+): string {
   const run = text
     ? `<a:r><a:rPr lang="en-US" sz="1400"><a:solidFill><a:srgbClr val="${textColor}"/></a:solidFill></a:rPr><a:t>${text}</a:t></a:r>`
     : "<a:endParaRPr/>";
@@ -192,7 +219,11 @@ function styleFallbackGridSlide(): string {
   ]);
 }
 
-function tcLine(side: "lnL" | "lnR" | "lnT" | "lnB", widthPt: number, color: string): string {
+function tcLine(
+  side: "lnL" | "lnR" | "lnT" | "lnB",
+  widthPt: number,
+  color: string,
+): string {
   return `<a:${side} w="${Math.round(widthPt * 12700)}" cap="flat"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
 }
 
@@ -301,8 +332,12 @@ async function buildNestedCharts(): Promise<ArrayBuffer> {
     extraFiles: {
       "ppt/slides/charts/chart1.xml": doughnutChartXml(),
       "ppt/slides/charts/chart2.xml": barChartXml(),
-      "ppt/slides/_rels/slide1.xml.rels": slideRelsWithChart("/ppt/slides/charts/chart1.xml"),
-      "ppt/slides/_rels/slide2.xml.rels": slideRelsWithChart("/ppt/slides/charts/chart2.xml"),
+      "ppt/slides/_rels/slide1.xml.rels": slideRelsWithChart(
+        "/ppt/slides/charts/chart1.xml",
+      ),
+      "ppt/slides/_rels/slide2.xml.rels": slideRelsWithChart(
+        "/ppt/slides/charts/chart2.xml",
+      ),
     },
   });
 }

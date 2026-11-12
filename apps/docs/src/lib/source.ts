@@ -2,7 +2,11 @@ import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
 
-import { DOCS_CONTENT_ROUTE, DOCS_IMAGE_ROUTE, DOCS_ROUTE } from "@/lib/constants";
+import {
+  DOCS_CONTENT_ROUTE,
+  DOCS_IMAGE_ROUTE,
+  DOCS_ROUTE,
+} from "@/lib/constants";
 
 export const source = loader({
   baseUrl: DOCS_ROUTE,

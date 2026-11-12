@@ -3,13 +3,17 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { ChartNodeData } from "../../../model/nodes/chart";
 import { parseChartNode } from "../../../model/nodes/chart";
 import type { PresentationData } from "../../../model/presentation";
-import { buildPresentation, materializeAllSlides } from "../../../model/presentation";
+import {
+  buildPresentation,
+  materializeAllSlides,
+} from "../../../model/presentation";
 import type { RelEntry } from "../../../ooxml/rel";
 import { parseXml } from "../../../ooxml/xml";
 import { readPptx } from "../../../ooxml/zip";
 import { BAR_CHART_XML, buildPptxWithChart } from "../../fixtures/chart-pptx";
 
-const CHART_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";
+const CHART_REL_TYPE =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";
 
 function chartFrameXml(chartRef: string): string {
   return `<p:graphicFrame xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart">
@@ -53,7 +57,9 @@ describe("chart node via full pipeline", () => {
     const chartXml = presentation.charts.get("ppt/charts/chart1.xml");
     expect(chartXml).toBeDefined();
     expect(chartXml!.localName).toBe("chartSpace");
-    expect(chartXml!.child("chart").child("plotArea").child("barChart").exists()).toBe(true);
+    expect(
+      chartXml!.child("chart").child("plotArea").child("barChart").exists(),
+    ).toBe(true);
   });
 });
 
@@ -89,7 +95,9 @@ describe("parseChartNode", () => {
 
   it("returns undefined when the graphicData has no chart element", () => {
     const frame = parseXml(chartFrameXml(""));
-    expect(parseChartNode(frame, rels, "ppt/slides/slide1.xml")).toBeUndefined();
+    expect(
+      parseChartNode(frame, rels, "ppt/slides/slide1.xml"),
+    ).toBeUndefined();
   });
 
   it("returns undefined when the relationship id is not in the slide rels", () => {
@@ -98,6 +106,8 @@ describe("parseChartNode", () => {
         `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId99"/>`,
       ),
     );
-    expect(parseChartNode(frame, rels, "ppt/slides/slide1.xml")).toBeUndefined();
+    expect(
+      parseChartNode(frame, rels, "ppt/slides/slide1.xml"),
+    ).toBeUndefined();
   });
 });

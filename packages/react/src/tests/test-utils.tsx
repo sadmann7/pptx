@@ -28,5 +28,7 @@ export async function editableStore(): Promise<Store> {
 }
 
 export function withStore(store: Store, ui: React.ReactNode): RenderResult {
-  return render(<Presentation.Provider store={store}>{ui}</Presentation.Provider>);
+  return render(
+    <Presentation.Provider store={store}>{ui}</Presentation.Provider>,
+  );
 }

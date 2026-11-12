@@ -85,7 +85,9 @@ describe("OOXML modifiers", () => {
   it("lumOff shifts luminance up", () => {
     const lighter = applyLumOff("#4472C4", 20000);
     const before = rgbToHsl(68, 114, 196).l;
-    const after = rgbToHsl(...(Object.values(hexToRgb(lighter)) as [number, number, number])).l;
+    const after = rgbToHsl(
+      ...(Object.values(hexToRgb(lighter)) as [number, number, number]),
+    ).l;
     expect(after).toBeCloseTo(before + 0.2, 1);
   });
 
@@ -116,8 +118,12 @@ describe("applyColorModifiers", () => {
   });
 
   it("strips a: prefixes from modifier names", () => {
-    const withPrefix = applyColorModifiers("#336699", [{ name: "a:shade", val: 50000 }]);
-    const without = applyColorModifiers("#336699", [{ name: "shade", val: 50000 }]);
+    const withPrefix = applyColorModifiers("#336699", [
+      { name: "a:shade", val: 50000 },
+    ]);
+    const without = applyColorModifiers("#336699", [
+      { name: "shade", val: 50000 },
+    ]);
     expect(withPrefix.color).toBe(without.color);
   });
 
@@ -131,18 +137,26 @@ describe("applyColorModifiers", () => {
   });
 
   it("ignores unknown modifiers", () => {
-    const { color, alpha } = applyColorModifiers("#FF0000", [{ name: "frobnicate", val: 1 }]);
+    const { color, alpha } = applyColorModifiers("#FF0000", [
+      { name: "frobnicate", val: 1 },
+    ]);
     expect(color).toBe("#FF0000");
     expect(alpha).toBe(1);
   });
 
   it("applies inv, gray, and comp", () => {
-    expect(applyColorModifiers("#000000", [{ name: "inv", val: 0 }]).color).toBe("#ffffff");
-    const gray = applyColorModifiers("#FF0000", [{ name: "gray", val: 0 }]).color;
+    expect(
+      applyColorModifiers("#000000", [{ name: "inv", val: 0 }]).color,
+    ).toBe("#ffffff");
+    const gray = applyColorModifiers("#FF0000", [
+      { name: "gray", val: 0 },
+    ]).color;
     const { r, g, b } = hexToRgb(gray);
     expect(r).toBe(g);
     expect(g).toBe(b);
-    expect(applyColorModifiers("#FF0000", [{ name: "comp", val: 0 }]).color).toBe("#00ffff");
+    expect(
+      applyColorModifiers("#FF0000", [{ name: "comp", val: 0 }]).color,
+    ).toBe("#00ffff");
   });
 });
 

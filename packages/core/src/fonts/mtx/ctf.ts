@@ -4,7 +4,11 @@ import { fail } from "./error";
 import type { DecoderLimits } from "./limits";
 import { readPushValuesInto, writePushInstructions } from "./push";
 import { tagAt, type SfntContainer, type SfntTable } from "./sfnt";
-import { decodeTripletArrays, type DecodedTriplets, type TripletScratch } from "./triplet";
+import {
+  decodeTripletArrays,
+  type DecodedTriplets,
+  type TripletScratch,
+} from "./triplet";
 import { read255UShort } from "./varint";
 
 // sfnt version tag `OTTO`, marking outlines in a `CFF ` table instead of `glyf`/`loca`.
@@ -25,7 +29,11 @@ interface DirectoryEntry {
 }
 
 function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
-  if (entry.offset < 0 || entry.length < 0 || entry.offset + entry.length > data.length) {
+  if (
+    entry.offset < 0 ||
+    entry.length < 0 ||
+    entry.offset + entry.length > data.length
+  ) {
     fail("INVALID_CTF", `Table ${entry.tag} lies outside CTF stream`);
   }
   return data.subarray(entry.offset, entry.offset + entry.length);
@@ -53,7 +61,9 @@ function writeInstructions(
     );
   }
   if (scratch.pushValues.length < pushCount) {
-    scratch.pushValues = new Int16Array(Math.max(pushCount, scratch.pushValues.length * 2, 16));
+    scratch.pushValues = new Int16Array(
+      Math.max(pushCount, scratch.pushValues.length * 2, 16),
+    );
   }
   readPushValuesInto(push, pushCount, scratch.pushValues);
 
@@ -61,8 +71,14 @@ function writeInstructions(
   writer.u16be(0);
   writePushInstructions(writer, scratch.pushValues, pushCount);
   const instructionLength = writer.length - lengthOffset - 2 + codeSize;
-  if (instructionLength > 0xffff || instructionLength > limits.maxInstructionsPerGlyph) {
-    fail("LIMIT_EXCEEDED", "Reconstructed glyph instructions exceed TrueType limits");
+  if (
+    instructionLength > 0xffff ||
+    instructionLength > limits.maxInstructionsPerGlyph
+  ) {
+    fail(
+      "LIMIT_EXCEEDED",
+      "Reconstructed glyph instructions exceed TrueType limits",
+    );
   }
   writer.patchU16be(lengthOffset, instructionLength);
   writer.bytes(code.bytes(codeSize));
@@ -141,7 +157,12 @@ function pointFlags(
   let i = 0;
   while (i < points.length) {
     let run = 1;
-    while (i + run < points.length && rawFlags[i + run] === rawFlags[i] && run < 256) run++;
+    while (
+      i + run < points.length &&
+      rawFlags[i + run] === rawFlags[i] &&
+      run < 256
+    )
+      run++;
     if (run > 1) {
       compressedFlags[flagsLength++] = rawFlags[i]! | 0x08;
       compressedFlags[flagsLength++] = run - 1;
@@ -167,7 +188,9 @@ function readSimpleGlyph(
   // zero-contour record.
   if (numContours === 0) return;
   if (scratch.endPoints.length < numContours)
-    scratch.endPoints = new Uint16Array(Math.max(numContours, scratch.endPoints.length * 2, 8));
+    scratch.endPoints = new Uint16Array(
+      Math.max(numContours, scratch.endPoints.length * 2, 8),
+    );
   const endPoints = scratch.endPoints;
   let pointCount = 0;
   for (let i = 0; i < numContours; i++) {
@@ -262,19 +285,42 @@ function reconstructGlyphs(
         rest.i16be(),
         rest.i16be(),
       ];
-      readCompositeGlyph(box, rest, push, code, limits, glyphId, writer, scratch);
+      readCompositeGlyph(
+        box,
+        rest,
+        push,
+        code,
+        limits,
+        glyphId,
+        writer,
+        scratch,
+      );
     } else {
       let box: [number, number, number, number] | undefined;
       if (numContours === 0x7fff) {
         numContours = rest.i16be();
-        if (numContours < 0) fail("INVALID_CTF", "Invalid explicit simple-glyph contour count");
+        if (numContours < 0)
+          fail("INVALID_CTF", "Invalid explicit simple-glyph contour count");
         box = [rest.i16be(), rest.i16be(), rest.i16be(), rest.i16be()];
       }
-      readSimpleGlyph(numContours, box, rest, push, code, limits, glyphId, writer, scratch);
+      readSimpleGlyph(
+        numContours,
+        box,
+        rest,
+        push,
+        code,
+        limits,
+        glyphId,
+        writer,
+        scratch,
+      );
     }
     if (writer.length & 1) writer.u8(0);
     if (writer.length > limits.maxFontBytes)
-      fail("LIMIT_EXCEEDED", "Reconstructed glyf table exceeds configured limit");
+      fail(
+        "LIMIT_EXCEEDED",
+        "Reconstructed glyf table exceeds configured limit",
+      );
   }
   offsets[glyphCount] = writer.length;
   return { glyf: writer.finish(), offsets };
@@ -328,9 +374,11 @@ export function parseCtf(
   const maxpEntry = byTag.get("maxp");
   const glyfEntry = byTag.get("glyf");
   const locaEntry = byTag.get("loca");
-  if (!headEntry || !maxpEntry) fail("INVALID_CTF", "CTF is missing head or maxp");
+  if (!headEntry || !maxpEntry)
+    fail("INVALID_CTF", "CTF is missing head or maxp");
   if (isCff) {
-    if (!byTag.has("CFF ")) fail("INVALID_CTF", "CFF-flavoured CTF has no CFF table");
+    if (!byTag.has("CFF "))
+      fail("INVALID_CTF", "CFF-flavoured CTF has no CFF table");
   } else if (!glyfEntry || !locaEntry) {
     fail("INVALID_CTF", "CTF is missing glyf or loca");
   }
@@ -339,13 +387,16 @@ export function parseCtf(
   // buildSfnt copies them into the font.
   const head = tableView(restData, headEntry).slice();
   const maxp = tableView(restData, maxpEntry);
-  if (head.length < 54 || maxp.length < 6) fail("INVALID_CTF", "Malformed head or maxp table");
+  if (head.length < 54 || maxp.length < 6)
+    fail("INVALID_CTF", "Malformed head or maxp table");
   head.fill(0, 8, 12);
-  const glyphCount = new DataView(maxp.buffer, maxp.byteOffset, maxp.byteLength).getUint16(
-    4,
-    false,
-  );
-  if (glyphCount > limits.maxGlyphs) fail("LIMIT_EXCEEDED", `Font declares ${glyphCount} glyphs`);
+  const glyphCount = new DataView(
+    maxp.buffer,
+    maxp.byteOffset,
+    maxp.byteLength,
+  ).getUint16(4, false);
+  if (glyphCount > limits.maxGlyphs)
+    fail("LIMIT_EXCEEDED", `Font declares ${glyphCount} glyphs`);
 
   let reconstructed: { glyf: Uint8Array; offsets: Uint32Array } | undefined;
   let loca: Uint8Array | undefined;
@@ -358,11 +409,13 @@ export function parseCtf(
       glyphCount,
       limits,
     );
-    const oldLocaFormat = new DataView(head.buffer, head.byteOffset, head.byteLength).getInt16(
-      50,
-      false,
-    );
-    const isShortLoca = oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
+    const oldLocaFormat = new DataView(
+      head.buffer,
+      head.byteOffset,
+      head.byteLength,
+    ).getInt16(50, false);
+    const isShortLoca =
+      oldLocaFormat === 0 && reconstructed.glyf.length / 2 <= 0xffff;
     new DataView(head.buffer, head.byteOffset, head.byteLength).setInt16(
       50,
       isShortLoca ? 0 : 1,
@@ -381,10 +434,16 @@ export function parseCtf(
     else if (entry.tag === "cvt ") data = decodeCvt(tableView(restData, entry));
     else if (entry.tag === "hdmx" || entry.tag === "VDMX") {
       droppedTables.push(entry.tag);
-      onWarn?.(`Dropped optional ${entry.tag} table; outlines and metrics remain usable.`);
+      onWarn?.(
+        `Dropped optional ${entry.tag} table; outlines and metrics remain usable.`,
+      );
       continue;
     } else data = tableView(restData, entry);
     tables.push({ tag: entry.tag, data });
   }
-  return { sfntVersion, tables, ...(droppedTables.length ? { droppedTables } : {}) };
+  return {
+    sfntVersion,
+    tables,
+    ...(droppedTables.length ? { droppedTables } : {}),
+  };
 }

@@ -30,7 +30,12 @@
   },
   "overrides": [
     {
-      "files": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx", "**/*.bench.ts"],
+      "files": [
+        "**/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.bench.ts"
+      ],
       "rules": {
         "react/globals": "off",
         "react/immutability": "off"

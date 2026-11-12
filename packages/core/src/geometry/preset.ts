@@ -1,6 +1,10 @@
 ﻿import { shapeArc } from "./arc";
 
-type PresetShapeGenerator = (w: number, h: number, adjustments?: Map<string, number>) => string;
+type PresetShapeGenerator = (
+  w: number,
+  h: number,
+  adjustments?: Map<string, number>,
+) => string;
 
 // OOXML stores adjustments in 100000ths, so 50000 is 0.5.
 function adj(
@@ -20,7 +24,12 @@ function adjRaw(
   return adjustments?.get(name) ?? defaultVal;
 }
 
-function starShape(w: number, h: number, points: number, innerRatio: number = 0.4): string {
+function starShape(
+  w: number,
+  h: number,
+  points: number,
+  innerRatio: number = 0.4,
+): string {
   const cx = w / 2;
   const cy = h / 2;
   const outerRx = w / 2;
@@ -69,7 +78,15 @@ function mirrorAbsolutePathHorizontally(path: string, width: number): string {
       const sweep = Number(tokens[i++]);
       const x = Number(tokens[i++]);
       const y = Number(tokens[i++]);
-      out.push(rx, ry, rot, largeArc, String(sweep ? 0 : 1), String(width - x), String(y));
+      out.push(
+        rx,
+        ry,
+        rot,
+        largeArc,
+        String(sweep ? 0 : 1),
+        String(width - x),
+        String(y),
+      );
       continue;
     }
     return path;
@@ -103,7 +120,15 @@ function mirrorAbsolutePathVertically(path: string, height: number): string {
       const sweep = Number(tokens[i++]);
       const x = Number(tokens[i++]);
       const y = Number(tokens[i++]);
-      out.push(rx, ry, rot, largeArc, String(sweep ? 0 : 1), String(x), String(height - y));
+      out.push(
+        rx,
+        ry,
+        rot,
+        largeArc,
+        String(sweep ? 0 : 1),
+        String(x),
+        String(height - y),
+      );
     }
   }
   return out.join(" ");
@@ -187,9 +212,12 @@ presetShapes.set("plaqueTabs", (w, h) => {
 presetShapes.set("ellipse", (w, h) => {
   const rx = w / 2;
   const ry = h / 2;
-  return [`M${w},${ry}`, `A${rx},${ry} 0 1,1 0,${ry}`, `A${rx},${ry} 0 1,1 ${w},${ry}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M${w},${ry}`,
+    `A${rx},${ry} 0 1,1 0,${ry}`,
+    `A${rx},${ry} 0 1,1 ${w},${ry}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("triangle", (w, h, adjustments) => {
@@ -390,9 +418,15 @@ presetShapes.set("corner", (w, h, adjustments) => {
   const x1 = ss * a2;
   const dy1 = ss * a1;
   const y1 = h - dy1;
-  return [`M0,0`, `L${x1},0`, `L${x1},${y1}`, `L${w},${y1}`, `L${w},${h}`, `L0,${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${x1},0`,
+    `L${x1},${y1}`,
+    `L${w},${y1}`,
+    `L${w},${h}`,
+    `L0,${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("diagStripe", (w, h, adjustments) => {
@@ -774,7 +808,10 @@ presetShapes.set("rightArrowCallout", (w, h, adjustments) => {
   const maxAdj3 = (100000 * w) / Math.max(ss, 1);
   const a3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3));
   const q2 = (a3 * ss) / Math.max(w, 1);
-  const a4 = Math.max(0, Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2));
+  const a4 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2),
+  );
   const vc = h / 2;
   const dy1 = (ss * a2) / 100000;
   const dy2 = (ss * a1) / 200000;
@@ -809,7 +846,10 @@ presetShapes.set("leftArrowCallout", (w, h, adjustments) => {
   const maxAdj3 = (100000 * w) / Math.max(ss, 1);
   const a3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3));
   const q2 = (a3 * ss) / Math.max(w, 1);
-  const a4 = Math.max(0, Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2));
+  const a4 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2),
+  );
   const vc = h / 2;
   const dy1 = (ss * a2) / 100000;
   const dy2 = (ss * a1) / 200000;
@@ -844,7 +884,10 @@ presetShapes.set("upArrowCallout", (w, h, adjustments) => {
   const maxAdj3 = (100000 * h) / Math.max(ss, 1);
   const a3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3));
   const q2 = (a3 * ss) / Math.max(h, 1);
-  const a4 = Math.max(0, Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2));
+  const a4 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj4") ?? 64977, 100000 - q2),
+  );
   const hc = w / 2;
   const dx1 = (ss * a2) / 100000;
   const dx2 = (ss * a1) / 200000;
@@ -1048,11 +1091,20 @@ presetShapes.set("leftRightArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftUpArrow", (w, h, adjustments) => {
-  const rawAdj2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
+  const rawAdj2 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj2") ?? 25000, 50000),
+  );
   const maxAdj1 = rawAdj2 * 2;
-  const rawAdj1 = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
+  const rawAdj1 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1),
+  );
   const maxAdj3 = 100000 - maxAdj1;
-  const rawAdj3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3));
+  const rawAdj3 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3),
+  );
 
   const ss = Math.min(w, h);
   const x1 = (ss * rawAdj3) / 100000;
@@ -1153,9 +1205,14 @@ presetShapes.set("homePlate", (w, h, adjustments) => {
   const ss = Math.min(w, h);
   const offset = ss * a;
   const shoulderX = w - offset;
-  return [`M0,0`, `L${shoulderX},0`, `L${w},${h / 2}`, `L${shoulderX},${h}`, `L0,${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${shoulderX},0`,
+    `L${w},${h / 2}`,
+    `L${shoulderX},${h}`,
+    `L0,${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("stripedRightArrow", (w, h, adjustments) => {
@@ -1191,10 +1248,19 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   const ss = Math.min(w, h);
 
   // Raw adjustment values, not fractions, since the math below is OOXML's own.
-  const adj2Raw = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
+  const adj2Raw = Math.max(
+    0,
+    Math.min(adjustments?.get("adj2") ?? 25000, 50000),
+  );
   const maxAdj1 = adj2Raw * 2;
-  const adj1Raw = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
-  const adj3Raw = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, 50000));
+  const adj1Raw = Math.max(
+    0,
+    Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1),
+  );
+  const adj3Raw = Math.max(
+    0,
+    Math.min(adjustments?.get("adj3") ?? 25000, 50000),
+  );
 
   const th = (ss * adj1Raw) / 100000;
   const aw2 = (ss * adj2Raw) / 100000;
@@ -1206,7 +1272,10 @@ presetShapes.set("bentArrow", (w, h, adjustments) => {
   const bh = h - dh2;
   const bs = Math.min(bw, bh);
   const maxAdj4 = bs > 0 ? (100000 * bs) / ss : 0;
-  const adj4Raw = Math.max(0, Math.min(adjustments?.get("adj4") ?? 43750, maxAdj4));
+  const adj4Raw = Math.max(
+    0,
+    Math.min(adjustments?.get("adj4") ?? 43750, maxAdj4),
+  );
   const bd = (ss * adj4Raw) / 100000;
 
   const bd2 = Math.max(bd - th, 0);
@@ -1377,10 +1446,16 @@ presetShapes.set("curvedRightArrow", (w, h, adjustments) => {
 });
 
 presetShapes.set("curvedLeftArrow", (w, h, adjustments) =>
-  mirrorAbsolutePathHorizontally(presetShapes.get("curvedRightArrow")!(w, h, adjustments), w),
+  mirrorAbsolutePathHorizontally(
+    presetShapes.get("curvedRightArrow")!(w, h, adjustments),
+    w,
+  ),
 );
 
-function splitFirstClosedContour(path: string): { outer: string; remainder: string } {
+function splitFirstClosedContour(path: string): {
+  outer: string;
+  remainder: string;
+} {
   const closeIdx = path.indexOf("Z");
   if (closeIdx === -1) {
     return { outer: path, remainder: "" };
@@ -1608,11 +1683,15 @@ function buildCircularArrowPath(
 
   const ooxSin = (val: number, ang: number) => val * Math.sin(toRad60k(ang));
   const ooxCos = (val: number, ang: number) => val * Math.cos(toRad60k(ang));
-  const cat2 = (r: number, ht: number, wt: number) => r * Math.cos(Math.atan2(wt, ht));
-  const sat2 = (r: number, ht: number, wt: number) => r * Math.sin(Math.atan2(wt, ht));
+  const cat2 = (r: number, ht: number, wt: number) =>
+    r * Math.cos(Math.atan2(wt, ht));
+  const sat2 = (r: number, ht: number, wt: number) =>
+    r * Math.sin(Math.atan2(wt, ht));
   // OOXML: at2(x, y) = atan2(y, x); first arg is x, second is y.
-  const at2 = (x: number, y: number) => ((Math.atan2(y, x) * 180) / Math.PI) * 60000;
-  const modF = (x: number, y: number, z: number) => Math.sqrt(x * x + y * y + z * z);
+  const at2 = (x: number, y: number) =>
+    ((Math.atan2(y, x) * 180) / Math.PI) * 60000;
+  const modF = (x: number, y: number, z: number) =>
+    Math.sqrt(x * x + y * y + z * z);
 
   const isLeft = variant === "leftCircularArrow";
   const adj1 = adjustments?.get("adj1") ?? 12500;
@@ -2018,7 +2097,10 @@ presetShapes.set("quadArrowCallout", (w, h, adjustments) => {
   const maxAdj3 = 50000 - a2;
   const a3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 18515, maxAdj3));
   const q2 = a3 * 2;
-  const a4 = Math.max(a1, Math.min(adjustments?.get("adj4") ?? 48123, 100000 - q2));
+  const a4 = Math.max(
+    a1,
+    Math.min(adjustments?.get("adj4") ?? 48123, 100000 - q2),
+  );
   const dx2 = (ss * a2) / 100000;
   const dx3 = (ss * a1) / 200000;
   const ah = (ss * a3) / 100000;
@@ -2076,12 +2158,21 @@ presetShapes.set("quadArrowCallout", (w, h, adjustments) => {
 });
 
 presetShapes.set("leftRightUpArrow", (w, h, adjustments) => {
-  const rawAdj2 = Math.max(0, Math.min(adjustments?.get("adj2") ?? 25000, 50000));
+  const rawAdj2 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj2") ?? 25000, 50000),
+  );
   const maxAdj1 = rawAdj2 * 2;
-  const rawAdj1 = Math.max(0, Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1));
+  const rawAdj1 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj1") ?? 25000, maxAdj1),
+  );
   const q1 = 100000 - maxAdj1;
   const maxAdj3 = q1 / 2;
-  const rawAdj3 = Math.max(0, Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3));
+  const rawAdj3 = Math.max(
+    0,
+    Math.min(adjustments?.get("adj3") ?? 25000, maxAdj3),
+  );
 
   const ss = Math.min(w, h);
   const hc = w / 2;
@@ -2166,7 +2257,10 @@ presetShapes.set("swooshArrow", (w, h, adjustments) => {
   ].join(" ");
 });
 
-presetShapes.set("flowChartProcess", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
+presetShapes.set(
+  "flowChartProcess",
+  (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
+);
 
 presetShapes.set("flowChartDecision", (w, h) => {
   const cx = w / 2;
@@ -2196,9 +2290,13 @@ presetShapes.set("flowChartDocument", (w, h) => {
   const cy1 = y1; // h * 17322/21600.
   const cy2 = (h * 23922) / 21600; // extends below h (overshoot for curve).
   const y2 = (h * 20172) / 21600;
-  return [`M0,0`, `L${w},0`, `L${w},${y1}`, `C${w / 2},${cy1} ${w / 2},${cy2} 0,${y2}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${w},0`,
+    `L${w},${y1}`,
+    `C${w / 2},${cy1} ${w / 2},${cy2} 0,${y2}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("flowChartInputOutput", (w, h) => {
@@ -2295,38 +2393,62 @@ presetShapes.set("flowChartDisplay", (w, h) => {
   const arcWR = sx; // wR = 1 * (w/6).
   const arcHR = sy * 3; // hR = 3 * (h/6) = h/2.
   const a = ooArcTo(5 * sx, 0, arcWR, arcHR, 270, 180);
-  return [`M0,${3 * sy}`, `L${sx},0`, `L${5 * sx},0`, a.svg, `L${sx},${h}`, "Z"].join(" ");
+  return [
+    `M0,${3 * sy}`,
+    `L${sx},0`,
+    `L${5 * sx},0`,
+    a.svg,
+    `L${sx},${h}`,
+    "Z",
+  ].join(" ");
 });
 
-presetShapes.set("flowChartExtract", (w, h) => `M${w / 2},0 L${w},${h} L0,${h} Z`);
+presetShapes.set(
+  "flowChartExtract",
+  (w, h) => `M${w / 2},0 L${w},${h} L0,${h} Z`,
+);
 
 presetShapes.set("flowChartMerge", (w, h) => `M0,0 L${w},0 L${w / 2},${h} Z`);
 
 presetShapes.set("flowChartOffpageConnector", (w, h) => {
   const arrowH = h * 0.2;
-  return [`M0,0`, `L${w},0`, `L${w},${h - arrowH}`, `L${w / 2},${h}`, `L0,${h - arrowH}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${w},0`,
+    `L${w},${h - arrowH}`,
+    `L${w / 2},${h}`,
+    `L0,${h - arrowH}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("flowChartConnector", (w, h) => {
   const rx = w / 2;
   const ry = h / 2;
-  return [`M${w},${ry}`, `A${rx},${ry} 0 1,1 0,${ry}`, `A${rx},${ry} 0 1,1 ${w},${ry}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M${w},${ry}`,
+    `A${rx},${ry} 0 1,1 0,${ry}`,
+    `A${rx},${ry} 0 1,1 ${w},${ry}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("flowChartSort", (w, h) => {
   const cx = w / 2;
   const cy = h / 2;
-  return [`M${cx},0 L${w},${cy} L${cx},${h} L0,${cy} Z`, `M0,${cy} L${w},${cy}`].join(" ");
+  return [
+    `M${cx},0 L${w},${cy} L${cx},${h} L0,${cy} Z`,
+    `M0,${cy} L${w},${cy}`,
+  ].join(" ");
 });
 
 presetShapes.set("flowChartCollate", (w, h) => {
   const cx = w / 2;
   const cy = h / 2;
-  return [`M0,0 L${w},0 L${cx},${cy} Z`, `M0,${h} L${w},${h} L${cx},${cy} Z`].join(" ");
+  return [
+    `M0,0 L${w},0 L${cx},${cy} Z`,
+    `M0,${h} L${w},${h} L${cx},${cy} Z`,
+  ].join(" ");
 });
 
 presetShapes.set("flowChartPunchedTape", (w, h) => {
@@ -2351,7 +2473,11 @@ presetShapes.set("flowChartPunchedTape", (w, h) => {
     const endY = cy + hR * Math.sin(endRad);
     const largeArc = Math.abs(swDeg) > 180 ? 1 : 0;
     const sweep = swDeg > 0 ? 1 : 0;
-    return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
+    return {
+      endX,
+      endY,
+      svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}`,
+    };
   };
   const wR = 5 * sx;
   const hR = 2 * sy;
@@ -2472,7 +2598,11 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
     const endY = cy + hR * Math.sin(endRad);
     const largeArc = Math.abs(swDeg) > 180 ? 1 : 0;
     const sweep = swDeg > 0 ? 1 : 0;
-    return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
+    return {
+      endX,
+      endY,
+      svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}`,
+    };
   };
   let curX = hc;
   let curY = h;
@@ -2487,9 +2617,16 @@ presetShapes.set("flowChartMagneticTape", (w, h) => {
   curY = a3.endY;
   const ang1Deg = (ang1 * 180) / Math.PI;
   const a4 = arcTo(curX, curY, wd2, hd2, 0, ang1Deg);
-  return [`M${hc},${h}`, a1.svg, a2.svg, a3.svg, a4.svg, `L${w},${ib}`, `L${w},${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M${hc},${h}`,
+    a1.svg,
+    a2.svg,
+    a3.svg,
+    a4.svg,
+    `L${w},${ib}`,
+    `L${w},${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("flowChartMultidocument", (w, h) => {
@@ -2758,7 +2895,10 @@ presetShapes.set("cloud", (w, h) => {
     const stVisRad = (stDeg * Math.PI) / 180;
     const stRad = Math.atan2(wR * Math.sin(stVisRad), hR * Math.cos(stVisRad));
     const endVisRad = ((stDeg + swDeg) * Math.PI) / 180;
-    const endRad = Math.atan2(wR * Math.sin(endVisRad), hR * Math.cos(endVisRad));
+    const endRad = Math.atan2(
+      wR * Math.sin(endVisRad),
+      hR * Math.cos(endVisRad),
+    );
     const acx = ux - wR * Math.cos(stRad);
     const acy = uy - hR * Math.sin(stRad);
     const endUX = acx + wR * Math.cos(endRad);
@@ -2801,9 +2941,15 @@ presetShapes.set("halfFrame", (w, h, adjustments) => {
   const y1 = (minWH * a1) / 100000;
   const x2 = w - (y1 * w) / Math.max(h, 1);
   const y2 = h - (x1 * h) / Math.max(w, 1);
-  return [`M0,0`, `L${w},0`, `L${x2},${y1}`, `L${x1},${y1}`, `L${x1},${y2}`, `L0,${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${w},0`,
+    `L${x2},${y1}`,
+    `L${x1},${y1}`,
+    `L${x1},${y2}`,
+    `L0,${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("donut", (w, h, adjustments) => {
@@ -2924,7 +3070,13 @@ presetShapes.set("gear9", (w, h, adjustments) => {
   return gearShape(w, h, 9, a1, a2);
 });
 
-function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw: number): string {
+function gearShape(
+  w: number,
+  h: number,
+  teeth: number,
+  adj1Raw: number,
+  adj2Raw: number,
+): string {
   const cx = w / 2;
   const cy = h / 2;
   const ss = Math.min(w, h);
@@ -2944,7 +3096,9 @@ function gearShape(w: number, h: number, teeth: number, adj1Raw: number, adj2Raw
   const ha = Math.atan2(l3, maxr);
 
   const centerDegs =
-    teeth === 6 ? [330, 30, 90, 150, 210, 270] : [310, 350, 30, 70, 110, 150, 190, 230, 270];
+    teeth === 6
+      ? [330, 30, 90, 150, 210, 270]
+      : [310, 350, 30, 70, 110, 150, 190, 230, 270];
 
   const parts: string[] = [];
 
@@ -3253,9 +3407,14 @@ presetShapes.set("mathNotEqual", (w, h, adjustments) => {
 presetShapes.set("round1Rect", (w, h, adjustments) => {
   const a = adj(adjustments, "adj", 16667);
   const r = Math.min(w, h) * a;
-  return [`M0,0`, `L${w - r},0`, `A${r},${r} 0 0,1 ${w},${r}`, `L${w},${h}`, `L0,${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    `L${w - r},0`,
+    `A${r},${r} 0 0,1 ${w},${r}`,
+    `L${w},${h}`,
+    `L0,${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("round2SameRect", (w, h, adjustments) => {
@@ -3445,9 +3604,12 @@ presetShapes.set("moon", (w, h, adjustments) => {
   const g8 = g5 / 2 - g0;
   const dy1 = (g8 * hd2) / ss;
   const g18w = (g6w - g0w) / 2;
-  return [`M${w},${h}`, `A${w},${hd2} 0 0,1 ${w},0`, `A${g18w},${dy1} 0 0,0 ${w},${h}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M${w},${h}`,
+    `A${w},${hd2} 0 0,1 ${w},0`,
+    `A${g18w},${dy1} 0 0,0 ${w},${h}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("lightningBolt", (w, h) => {
@@ -3531,7 +3693,11 @@ presetShapes.set("leftBracket", (w, h, adjustments) => {
     const y1p = cy + ry * Math.sin(st + sw);
     const large = Math.abs(toDeg(swAng)) > 180 ? 1 : 0;
     const sweep = swAng >= 0 ? 1 : 0;
-    return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
+    return {
+      cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`,
+      x: x1,
+      y: y1p,
+    };
   };
 
   const a1 = arcFrom(w, h, w, y1, 5400000, 5400000);
@@ -3562,7 +3728,11 @@ presetShapes.set("rightBracket", (w, h, adjustments) => {
     const y1p = cy + ry * Math.sin(st + sw);
     const large = Math.abs(toDeg(swAng)) > 180 ? 1 : 0;
     const sweep = swAng >= 0 ? 1 : 0;
-    return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
+    return {
+      cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`,
+      x: x1,
+      y: y1p,
+    };
   };
 
   const a1 = arcFrom(0, 0, w, y1, 16200000, 5400000);
@@ -3600,7 +3770,11 @@ presetShapes.set("leftBrace", (w, h, adjustments) => {
     const y1p = cy + ry * Math.sin(st + sw);
     const large = Math.abs(toDeg(swAng)) > 180 ? 1 : 0;
     const sweep = swAng >= 0 ? 1 : 0;
-    return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
+    return {
+      cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`,
+      x: x1,
+      y: y1p,
+    };
   };
 
   let x = w;
@@ -3653,22 +3827,35 @@ presetShapes.set("rightBrace", (w, h, adjustments) => {
     const y1p = cy + ry * Math.sin(st + sw);
     const large = Math.abs(toDeg(swAng)) > 180 ? 1 : 0;
     const sweep = swAng >= 0 ? 1 : 0;
-    return { cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`, x: x1, y: y1p };
+    return {
+      cmd: `A${rx},${ry} 0 ${large},${sweep} ${x1},${y1p}`,
+      x: x1,
+      y: y1p,
+    };
   };
 
   const aTop = arcFrom(0, 0, wd2, y1, 16200000, 5400000);
   const aMid1 = arcFrom(hc, y2, wd2, y1, 10800000, -5400000);
   const aMid2 = arcFrom(aMid1.x, aMid1.y, wd2, y1, 16200000, -5400000);
   const aBot = arcFrom(hc, y4, wd2, y1, 0, 5400000);
-  return [`M0,0`, aTop.cmd, `L${hc},${y2}`, aMid1.cmd, aMid2.cmd, `L${hc},${y4}`, aBot.cmd].join(
-    " ",
-  );
+  return [
+    `M0,0`,
+    aTop.cmd,
+    `L${hc},${y2}`,
+    aMid1.cmd,
+    aMid2.cmd,
+    `L${hc},${y4}`,
+    aBot.cmd,
+  ].join(" ");
 });
 
 // OOXML uses ss*3/8 as the icon half-size, centred at (hc, vc). Buttons without a
 // multi-path preset fall back to the flat actionButtonIcons overlay.
 
-presetShapes.set("actionButtonBlank", (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`);
+presetShapes.set(
+  "actionButtonBlank",
+  (w, h) => `M0,0 L${w},0 L${w},${h} L0,${h} Z`,
+);
 
 // Rendered as a second <path> with contrasting fill.
 const actionButtonIcons = new Map<string, (w: number, h: number) => string>();
@@ -3765,7 +3952,8 @@ export function getActionButtonIconPath(
   h: number,
 ): string | undefined {
   const key = shapeType.toLowerCase();
-  const generator = actionButtonIcons.get(key) ?? actionButtonIcons.get(shapeType);
+  const generator =
+    actionButtonIcons.get(key) ?? actionButtonIcons.get(shapeType);
   return generator?.(w, h);
 }
 
@@ -3914,7 +4102,13 @@ presetShapes.set("irregularSeal2", (w, h) => {
 presetShapes.set("teardrop", (w, h) => {
   const rx = w / 2;
   const ry = h / 2;
-  return [`M${w},${ry}`, `A${rx},${ry} 0 1,1 ${rx},0`, `L${w},0`, `L${w},${ry}`, "Z"].join(" ");
+  return [
+    `M${w},${ry}`,
+    `A${rx},${ry} 0 1,1 ${rx},0`,
+    `L${w},0`,
+    `L${w},${ry}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("pie", (w, h, adjustments) => {
@@ -3938,9 +4132,12 @@ presetShapes.set("pie", (w, h, adjustments) => {
   const x2 = rx + rx * Math.cos(endParam);
   const y2 = ry + ry * Math.sin(endParam);
   const largeArc = sweepDeg > 180 ? 1 : 0;
-  return [`M${rx},${ry}`, `L${x1},${y1}`, `A${rx},${ry} 0 ${largeArc},1 ${x2},${y2}`, "Z"].join(
-    " ",
-  );
+  return [
+    `M${rx},${ry}`,
+    `L${x1},${y1}`,
+    `A${rx},${ry} 0 ${largeArc},1 ${x2},${y2}`,
+    "Z",
+  ].join(" ");
 });
 
 presetShapes.set("pieWedge", (w, h) => {
@@ -4117,9 +4314,12 @@ presetOverlays.set("can", (w, h) => {
   const rx = w / 2;
   return [
     {
-      path: [`M0,${ry}`, `A${rx},${ry} 0 0,1 ${w},${ry}`, `A${rx},${ry} 0 0,1 0,${ry}`, "Z"].join(
-        " ",
-      ),
+      path: [
+        `M0,${ry}`,
+        `A${rx},${ry} 0 0,1 ${w},${ry}`,
+        `A${rx},${ry} 0 0,1 0,${ry}`,
+        "Z",
+      ].join(" "),
       fillModifier: "lighten",
     },
   ];
@@ -4460,7 +4660,11 @@ multiPathPresets.set("actionButtonHelp", (w, h) => {
     const endY = cy + hR * Math.sin(endRad);
     const largeArc = Math.abs(swDeg) > 180 ? 1 : 0;
     const sweep = swDeg > 0 ? 1 : 0;
-    return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
+    return {
+      endX,
+      endY,
+      svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}`,
+    };
   };
 
   // Follows the OOXML arcTo sequence exactly, starting at (g33, g27).
@@ -4618,7 +4822,13 @@ multiPathPresets.set("cube", (w, h, adjustments) => {
     `L0,${h}`,
     "Z",
   ].join(" ");
-  const top = [`M0,${depth}`, `L${depth},0`, `L${w},0`, `L${w - depth},${depth}`, "Z"].join(" ");
+  const top = [
+    `M0,${depth}`,
+    `L${depth},0`,
+    `L${w},0`,
+    `L${w - depth},${depth}`,
+    "Z",
+  ].join(" ");
   const right = [
     `M${w - depth},${depth}`,
     `L${w},0`,
@@ -4658,12 +4868,21 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
   const hc = w / 2;
   const vc = h / 2;
 
-  const a3 = Math.min(Math.max((adjustments?.get("adj3") ?? 16667) / 100000, 0), 0.33333);
+  const a3 = Math.min(
+    Math.max((adjustments?.get("adj3") ?? 16667) / 100000, 0),
+    0.33333,
+  );
   const maxAdj1 = 1 - a3;
-  const a1 = Math.min(Math.max((adjustments?.get("adj1") ?? 50000) / 100000, 0), maxAdj1);
+  const a1 = Math.min(
+    Math.max((adjustments?.get("adj1") ?? 50000) / 100000, 0),
+    maxAdj1,
+  );
   const w1 = wd2 - wd32;
   const maxAdj2 = w1 / ss;
-  const a2 = Math.min(Math.max((adjustments?.get("adj2") ?? 50000) / 100000, 0), maxAdj2);
+  const a2 = Math.min(
+    Math.max((adjustments?.get("adj2") ?? 50000) / 100000, 0),
+    maxAdj2,
+  );
 
   const x1 = ss * a2;
   const x4 = w - x1;
@@ -4701,7 +4920,11 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
     const endY = cy + hRad * Math.sin(endRad);
     const largeArc = Math.abs(swDeg) > 180 ? 1 : 0;
     const sweep = swDeg > 0 ? 1 : 0;
-    return { endX, endY, svg: `A${wR},${hRad} 0 ${largeArc},${sweep} ${endX},${endY}` };
+    return {
+      endX,
+      endY,
+      svg: `A${wR},${hRad} 0 ${largeArc},${sweep} ${endX},${endY}`,
+    };
   };
 
   const cx1 = hc,
@@ -4735,9 +4958,19 @@ multiPathPresets.set("leftRightRibbon", (w, h, adjustments) => {
   const arc2a = arcTo(x3, y1, wd32, hR, 0, 90);
   const arc2b = arcTo(arc2a.endX, arc2a.endY, wd32, hR, 270, -180);
 
-  const shadow = [`M${x3},${y1}`, arc2a.svg, arc2b.svg, `L${x3},${ry2}`, "Z"].join(" ");
+  const shadow = [
+    `M${x3},${y1}`,
+    arc2a.svg,
+    arc2b.svg,
+    `L${x3},${ry2}`,
+    "Z",
+  ].join(" ");
 
-  const outline = [body, `M${x3},${y1} L${x3},${ry2}`, `M${x2},${y2} L${x2},${ly3}`].join(" ");
+  const outline = [
+    body,
+    `M${x3},${y1} L${x3},${ry2}`,
+    `M${x2},${y2} L${x2},${ly3}`,
+  ].join(" ");
 
   return [
     { d: body, fill: "norm", stroke: false },
@@ -5073,7 +5306,11 @@ multiPathPresets.set("can", (w, h, adjustments) => {
     const endY = cy + hR * Math.sin(endRad);
     const largeArc = Math.abs(swDeg) > 180 ? 1 : 0;
     const sweep = swDeg > 0 ? 1 : 0;
-    return { endX, endY, svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}` };
+    return {
+      endX,
+      endY,
+      svg: `A${wR},${hR} 0 ${largeArc},${sweep} ${endX},${endY}`,
+    };
   };
   const a1 = arcSeg(0, y1, wd2, y1, 180, -180);
   const a2 = arcSeg(w, y3, wd2, y1, 0, 180);
@@ -5157,7 +5394,11 @@ multiPathPresets.set("accentcallout3", (w, h, adjustments) => {
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: false },
     { d: `M${x1},0 L${x1},${h}`, fill: "none", stroke: true },
-    { d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`, fill: "none", stroke: true },
+    {
+      d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`,
+      fill: "none",
+      stroke: true,
+    },
   ];
 });
 
@@ -5196,7 +5437,11 @@ multiPathPresets.set("callout3", (w, h, adjustments) => {
   const x4 = (w * (adjustments?.get("adj8") ?? -8333)) / 100000;
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: false },
-    { d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`, fill: "none", stroke: true },
+    {
+      d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`,
+      fill: "none",
+      stroke: true,
+    },
   ];
 });
 
@@ -5224,7 +5469,11 @@ multiPathPresets.set("bordercallout3", (w, h, adjustments) => {
   const x4 = (w * (adjustments?.get("adj8") ?? -8333)) / 100000;
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: true },
-    { d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`, fill: "none", stroke: true },
+    {
+      d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`,
+      fill: "none",
+      stroke: true,
+    },
   ];
 });
 
@@ -5266,7 +5515,11 @@ multiPathPresets.set("accentbordercallout3", (w, h, adjustments) => {
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: true },
     { d: `M${x1},0 L${x1},${h}`, fill: "none", stroke: true },
-    { d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`, fill: "none", stroke: true },
+    {
+      d: `M${x1},${y1} L${x2},${y2} L${x3},${y3} L${x4},${y4}`,
+      fill: "none",
+      stroke: true,
+    },
   ];
 });
 
@@ -5283,7 +5536,11 @@ multiPathPresets.set("chartplus", (w, h) => {
   const cy = h / 2;
   return [
     { d: `M0,0 L${w},0 L${w},${h} L0,${h} Z`, fill: "norm", stroke: false },
-    { d: `M${cx},0 L${cx},${h} M0,${cy} L${w},${cy}`, fill: "none", stroke: true },
+    {
+      d: `M${cx},0 L${cx},${h} M0,${cy} L${w},${cy}`,
+      fill: "none",
+      stroke: true,
+    },
   ];
 });
 
@@ -5319,7 +5576,11 @@ function ooArcTo(
   const absSweep = Math.abs(swAngDeg);
   const largeArc = absSweep > 180 ? 1 : 0;
   const sweepFlag = swAngDeg >= 0 ? 1 : 0;
-  return { svg: `A${wR},${hR} 0 ${largeArc},${sweepFlag} ${ex},${ey}`, x: ex, y: ey };
+  return {
+    svg: `A${wR},${hR} 0 ${largeArc},${sweepFlag} ${ex},${ey}`,
+    x: ex,
+    y: ey,
+  };
 }
 
 multiPathPresets.set("ribbon", (w, h, adjustments) => {
@@ -6025,13 +6286,16 @@ export function getPresetShapePath(
   adjustments?: Map<string, number>,
 ): string {
   // <a:prstGeom prst="textNoShape"> means text-only shape without geometry.
-  if (shapeType === "textNoShape" || shapeType.toLowerCase() === "textnoshape") return "";
+  if (shapeType === "textNoShape" || shapeType.toLowerCase() === "textnoshape")
+    return "";
   // OOXML preset names are often camelCase; normalize to lowercase for lookup.
   const key = shapeType.toLowerCase();
   const generator = presetShapes.get(key) ?? presetShapes.get(shapeType);
   if (generator) {
     return generator(w, h, adjustments);
   }
-  console.warn(`Unknown preset shape: "${shapeType}", falling back to rectangle`);
+  console.warn(
+    `Unknown preset shape: "${shapeType}", falling back to rectangle`,
+  );
   return `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
 }

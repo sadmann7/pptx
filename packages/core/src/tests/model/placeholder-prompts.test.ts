@@ -41,7 +41,9 @@ async function renderFirstSlide(slideXml: string, placeholderPrompts: boolean) {
   });
   const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
-  return renderSlide(presentation, presentation.slides[0], { placeholderPrompts }).element;
+  return renderSlide(presentation, presentation.slides[0], {
+    placeholderPrompts,
+  }).element;
 }
 
 describe("placeholder prompts (edit-mode affordance)", () => {
@@ -50,11 +52,15 @@ describe("placeholder prompts (edit-mode affordance)", () => {
 
     expect(element.textContent).toContain("Presentation Title");
 
-    const empty = element.querySelector<HTMLElement>("[data-pptx-placeholder-empty]");
+    const empty = element.querySelector<HTMLElement>(
+      "[data-pptx-placeholder-empty]",
+    );
     expect(empty).not.toBeNull();
     expect(empty!.style.outline).toContain("dashed");
 
-    const prompt = element.querySelector<HTMLElement>("[data-pptx-placeholder-prompt]");
+    const prompt = element.querySelector<HTMLElement>(
+      "[data-pptx-placeholder-prompt]",
+    );
     expect(prompt).not.toBeNull();
     expect(prompt!.style.pointerEvents).toBe("none");
   });

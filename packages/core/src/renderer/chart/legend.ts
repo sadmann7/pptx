@@ -48,16 +48,36 @@ export function extractLegendInfo(
       option = { ...base, top: topBelowTitle, orient: "horizontal" as const };
       break;
     case "l":
-      option = { ...base, left: "2%", top: "middle", orient: "vertical" as const };
+      option = {
+        ...base,
+        left: "2%",
+        top: "middle",
+        orient: "vertical" as const,
+      };
       break;
     case "r":
-      option = { ...base, right: "2%", top: "middle", orient: "vertical" as const };
+      option = {
+        ...base,
+        right: "2%",
+        top: "middle",
+        orient: "vertical" as const,
+      };
       break;
     case "tr":
-      option = { ...base, top: topBelowTitle, right: "2%", orient: "vertical" as const };
+      option = {
+        ...base,
+        top: topBelowTitle,
+        right: "2%",
+        orient: "vertical" as const,
+      };
       break;
     default:
-      option = { ...base, right: "2%", top: "middle", orient: "vertical" as const };
+      option = {
+        ...base,
+        right: "2%",
+        top: "middle",
+        orient: "vertical" as const,
+      };
       break;
   }
   return {
@@ -75,9 +95,15 @@ export function extractLegendInfo(
         ...(s.bold === true ? { fontWeight: "bold" } : {}),
         ...(s.fontFamily ? { fontFamily: s.fontFamily } : {}),
         ...(s.textShadowColor ? { textShadowColor: s.textShadowColor } : {}),
-        ...(s.textShadowBlur !== undefined ? { textShadowBlur: s.textShadowBlur } : {}),
-        ...(s.textShadowOffsetX !== undefined ? { textShadowOffsetX: s.textShadowOffsetX } : {}),
-        ...(s.textShadowOffsetY !== undefined ? { textShadowOffsetY: s.textShadowOffsetY } : {}),
+        ...(s.textShadowBlur !== undefined
+          ? { textShadowBlur: s.textShadowBlur }
+          : {}),
+        ...(s.textShadowOffsetX !== undefined
+          ? { textShadowOffsetX: s.textShadowOffsetX }
+          : {}),
+        ...(s.textShadowOffsetY !== undefined
+          ? { textShadowOffsetY: s.textShadowOffsetY }
+          : {}),
       };
       if (hasExplicitFontSize(s)) textStyle[EXPLICIT_FONT_SIZE] = true;
       return textStyle;
@@ -107,7 +133,10 @@ export function legendIsAtTop(legendInfo: LegendInfo | undefined): boolean {
   return legendInfo?.position === "t" || legendInfo?.position === "tr";
 }
 
-export function getGridTopPx(hasTitle: boolean, legendInfo: LegendInfo | undefined): number {
+export function getGridTopPx(
+  hasTitle: boolean,
+  legendInfo: LegendInfo | undefined,
+): number {
   const atTop = legendIsAtTop(legendInfo);
   const overlayLegend = legendInfo?.overlay ?? false;
   if (hasTitle) return atTop && !overlayLegend ? 52 : 68;
@@ -135,7 +164,12 @@ export function getLegendPlacement(
   }
   const opt = legendInfo.option as Record<string, unknown>;
   if (opt.bottom !== undefined) return "bottom";
-  if (opt.top !== undefined && opt.left === undefined && opt.right === undefined) return "top";
+  if (
+    opt.top !== undefined &&
+    opt.left === undefined &&
+    opt.right === undefined
+  )
+    return "top";
   if (opt.left !== undefined) return "left";
   if (opt.right !== undefined) return "right";
   return "none";
@@ -163,7 +197,11 @@ export function buildLegendOption(
   if (!legendOpt) return { show: false };
   const manual = legendInfo?.manualLayout ?? {};
   const top =
-    manual.top !== undefined ? manual.top : legendTopPx !== undefined ? legendTopPx : undefined;
+    manual.top !== undefined
+      ? manual.top
+      : legendTopPx !== undefined
+        ? legendTopPx
+        : undefined;
   const iconSize = textStyle.fontSize ?? 10;
   const hasPerItemIcons = data.some((d) => typeof d === "object" && d.icon);
   const sharedIcon =
@@ -176,18 +214,32 @@ export function buildLegendOption(
     )
       ? (data[0] as { icon?: string }).icon
       : undefined;
-  const useSharedIcon = sharedIcon !== undefined && !sharedIcon.startsWith("path://");
-  const legendData = useSharedIcon ? data.map((d) => (typeof d === "string" ? d : d.name)) : data;
+  const useSharedIcon =
+    sharedIcon !== undefined && !sharedIcon.startsWith("path://");
+  const legendData = useSharedIcon
+    ? data.map((d) => (typeof d === "string" ? d : d.name))
+    : data;
   const hasLineLikeIcons = data.some(
-    (d) => typeof d === "object" && typeof d.icon === "string" && d.icon.startsWith("path://"),
+    (d) =>
+      typeof d === "object" &&
+      typeof d.icon === "string" &&
+      d.icon.startsWith("path://"),
   );
   return {
     ...legendOpt,
     ...manual,
     ...(top !== undefined ? { top } : {}),
-    ...(useSharedIcon ? { icon: sharedIcon } : hasPerItemIcons ? {} : { icon: "rect" }),
-    itemWidth: hasLineLikeIcons ? Math.max(24, Math.round(iconSize * 2.2)) : iconSize,
-    itemHeight: hasLineLikeIcons ? Math.max(8, Math.round(iconSize * 0.9)) : iconSize,
+    ...(useSharedIcon
+      ? { icon: sharedIcon }
+      : hasPerItemIcons
+        ? {}
+        : { icon: "rect" }),
+    itemWidth: hasLineLikeIcons
+      ? Math.max(24, Math.round(iconSize * 2.2))
+      : iconSize,
+    itemHeight: hasLineLikeIcons
+      ? Math.max(8, Math.round(iconSize * 0.9))
+      : iconSize,
     data: legendData,
     textStyle,
   };
@@ -234,8 +286,10 @@ export function pickVisualStringColor(
   visual: Record<string, unknown> | undefined,
   fallback: string,
 ): string {
-  const lineStyle = (visual?.lineStyle as Record<string, unknown> | undefined) ?? {};
-  const itemStyle = (visual?.itemStyle as Record<string, unknown> | undefined) ?? {};
+  const lineStyle =
+    (visual?.lineStyle as Record<string, unknown> | undefined) ?? {};
+  const itemStyle =
+    (visual?.itemStyle as Record<string, unknown> | undefined) ?? {};
   return (
     (typeof lineStyle.color === "string" ? lineStyle.color : undefined) ??
     (typeof itemStyle.color === "string" ? itemStyle.color : undefined) ??

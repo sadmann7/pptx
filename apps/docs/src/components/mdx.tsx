@@ -1,6 +1,9 @@
 import { Kbd, KbdGroup } from "@pptx/ui/components/kbd";
 import { cn } from "@pptx/ui/lib/utils";
-import { createFileSystemGeneratorCache, createGenerator } from "fumadocs-typescript";
+import {
+  createFileSystemGeneratorCache,
+  createGenerator,
+} from "fumadocs-typescript";
 import { AutoTypeTable, type AutoTypeTableProps } from "fumadocs-typescript/ui";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
