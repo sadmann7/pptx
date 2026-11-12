@@ -12,7 +12,7 @@ import Link from "next/link";
 
 import { GitHubIcon } from "@/components/icons";
 import { SiteLogo } from "@/lib/layout.shared";
-import { siteConfig } from "@/lib/site";
+import { GITHUB_URL } from "@/lib/site";
 
 const LINKS = [{ text: "Docs", href: "/docs" }];
 
@@ -87,7 +87,7 @@ export function SiteHeader({ className, ...props }: React.ComponentProps<"header
           aria-label="GitHub"
           nativeButton={false}
           render={
-            <Link href={siteConfig.links.github} target="_blank" rel="noreferrer">
+            <Link href={GITHUB_URL} target="_blank" rel="noreferrer">
               <GitHubIcon className="size-4.5" />
             </Link>
           }
