@@ -183,12 +183,8 @@ function getSlideXml(index: number): string {
   );
 }
 
-/**
- * Builds the fixture and returns it as an ArrayBuffer (like a fetched file).
- *
- * `slideCount` is only worth passing to cover degenerate decks, such as the
- * slide-less one the store has to survive.
- */
+// `slideCount` is only worth passing to cover degenerate decks, such as the
+// slide-less one the store has to survive.
 export async function buildMinimalPptx(slideCount = SLIDE_COUNT): Promise<ArrayBuffer> {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", getContentTypes(slideCount));

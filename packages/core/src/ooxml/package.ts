@@ -4,11 +4,8 @@ import { SafeXmlNode } from "./xml";
 
 const DEFAULT_XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
-/**
- * Decode percent-encoded zip path segments (e.g. "%20" → " ").
- * Model paths (slide ids, rel targets) may be percent-decoded while zip entry
- * paths keep the original encoding.
- */
+// Model paths like slide ids and rel targets may be percent-decoded while zip
+// entry paths keep the original encoding.
 export function decodeZipPath(path: string): string {
   return path
     .split("/")
@@ -35,11 +32,8 @@ function encodeText(text: string): Uint8Array {
   return encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
 }
 
-/**
- * Extracts the original `<?xml ...?>` declaration (including any trailing
- * newline) so a re-serialized part keeps the source's prolog; XMLSerializer
- * never emits the declaration itself.
- */
+// XMLSerializer never emits the `<?xml ...?>` declaration, so a re-serialized
+// part keeps the source's, trailing newline included.
 function extractXmlDeclaration(bytes: Uint8Array): string | undefined {
   sharedDecoder ??= new TextDecoder("utf-8");
   const head = sharedDecoder.decode(bytes.subarray(0, 256));
@@ -53,23 +47,19 @@ export interface PptxSaveOptions {
 }
 
 /**
- * Source package kept for round-trip saves. Untouched parts are copied byte for
- * byte, so what the parser doesn't understand (animations, comments, vendor
- * extensions) survives an edit. Don't detach the input buffer, such as by
- * transferring it to a worker, while saving is still needed.
+ * The source package kept for round-trip saves, which copies untouched parts
+ * byte for byte so animations, comments, and vendor extensions survive an edit.
+ * Don't detach the input buffer, such as by transferring it to a worker, while
+ * saving is still needed.
  */
 export class PptxPackage {
-  /** Source archive; entries stay compressed until read. */
+  // Entries stay compressed until read.
   private readonly zip: JSZip;
-  /** Alias (normalized / percent-decoded path) → actual zip entry key. */
+  // Normalized or percent-decoded path to the actual zip entry key.
   private readonly pathAliases = new Map<string, string>();
-  /** Replaced or newly added part content, keyed by canonical path. */
   private readonly overrides = new Map<string, Uint8Array>();
-  /** Parts removed from the package. */
   private readonly deleted = new Set<string>();
-  /** Live parsed XML roots for parts the model exposes, keyed by canonical path. */
   private readonly xmlRoots = new Map<string, SafeXmlNode>();
-  /** Parts whose XML documents have been mutated since load. */
   private readonly dirty = new Set<string>();
 
   constructor(zip: JSZip) {
@@ -85,7 +75,7 @@ export class PptxPackage {
     }
   }
 
-  /** Canonical paths of all parts currently in the package. */
+  /** Lists the canonical paths of every part in the package. */
   paths(): string[] {
     const result = new Set<string>();
     for (const [key, file] of Object.entries(this.zip.files)) {
@@ -110,10 +100,9 @@ export class PptxPackage {
   }
 
   /**
-   * Associate a part path with its parsed XML root so DOM mutations can be
-   * serialized back on save. First registration wins: some parts (e.g. themes
-   * reused as chart theme overrides) are parsed more than once, and only the
-   * document the model actually holds references into must be saved.
+   * Links a part to its parsed XML root so DOM edits save. The first
+   * registration wins, since a theme reused as a chart theme override is parsed
+   * more than once and only the document the model references must be saved.
    *
    * @internal
    */
@@ -125,10 +114,7 @@ export class PptxPackage {
     }
   }
 
-  /**
-   * Mark a part's XML document as mutated so it is re-serialized from the
-   * live DOM on save instead of copied through from the original bytes.
-   */
+  /** Marks a part as edited so save re-serializes it from the live DOM. */
   markDirty(path: string): void {
     const key = this.canonical(path);
     if (!this.xmlRoots.has(key)) {
@@ -144,11 +130,7 @@ export class PptxPackage {
     return this.dirty.has(this.canonical(path));
   }
 
-  /**
-   * Replaces or adds a part's raw content. The given content becomes the saved
-   * bytes for this part; any previously registered XML root and dirty flag
-   * for the path are discarded as stale.
-   */
+  /** Replaces or adds a part's raw content, discarding its registered XML root and dirty flag. */
   setEntry(path: string, content: Uint8Array | string): void {
     const key = this.canonical(path);
     this.overrides.set(key, typeof content === "string" ? encodeText(content) : content);
@@ -157,7 +139,7 @@ export class PptxPackage {
     this.xmlRoots.delete(key);
   }
 
-  /** Remove a part from the package. Returns whether the part existed. */
+  /** Removes a part, returning whether it existed. */
   deleteEntry(path: string): boolean {
     const key = this.canonical(path);
     const existed = this.has(key);
@@ -168,11 +150,7 @@ export class PptxPackage {
     return existed;
   }
 
-  /**
-   * Current content of a part as it would be written on save: live-XML
-   * serialization when dirty, raw override when replaced, source bytes
-   * otherwise.
-   */
+  /** Reads a part's content as save would write it. */
   async readBytes(path: string): Promise<Uint8Array | undefined> {
     const key = this.canonical(path);
     if (this.deleted.has(key)) return undefined;
@@ -197,7 +175,7 @@ export class PptxPackage {
     return sharedDecoder.decode(bytes);
   }
 
-  /** Write the package to a new .pptx archive. */
+  /** Writes the package to a new .pptx archive. */
   async save(options: PptxSaveOptions = {}): Promise<Uint8Array> {
     const out = new JSZip();
 

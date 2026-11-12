@@ -19,20 +19,12 @@ const HANDLE_POSITIONS: Record<HandleDirection, React.CSSProperties> = {
   w: { left: 0, top: "50%" },
 };
 
-/**
- * Below this many screen px on both axes, handles sit outside the box so its
- * inside stays draggable. A box short on only one axis can still be grabbed
- * between its handles.
- */
+// Below this many screen px on both axes, handles sit outside the box so its inside stays draggable.
 const SMALL_SIZE = 24;
 
-/** How far outside a small box its handles sit, in screen px. */
 const SMALL_OFFSET = 12;
 
-/**
- * Handles that only change a flat axis (a line's height) are left out, so a
- * line shows its two ends, as in Google Slides.
- */
+// A line shows only its two ends, as in Google Slides.
 function getIsHandleShown(direction: HandleDirection, width: number, height: number): boolean {
   const changesHeight = direction.includes("n") || direction.includes("s");
   const changesWidth = direction.includes("e") || direction.includes("w");

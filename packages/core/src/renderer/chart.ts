@@ -108,7 +108,6 @@ import { RenderContext } from "./context";
 
 export type { ChartFrameStyle } from "./chart/type";
 
-/** Subset of ECharts label formatter callback params used in this renderer. */
 interface LabelFormatterParams {
   value: number | number[] | unknown;
   name: string;
@@ -117,7 +116,6 @@ interface LabelFormatterParams {
   dataIndex?: number;
 }
 
-/** ECharts pie/doughnut series data item. */
 interface PieDataItem {
   name: string;
   value: number;
@@ -132,13 +130,12 @@ interface PieDataItem {
   label?: echarts.PieSeriesOption["label"];
 }
 
-/** ECharts bar series data item (value or annotated object). */
 type BarDataItem =
   | number
   | null
   | { value: number | null; itemStyle?: Record<string, unknown>; label?: Record<string, unknown> };
 
-/** ECharts grid component option extended with properties not yet in the public typings. */
+// ECharts' public typings lack these grid properties.
 interface GridOptionExtended extends echarts.GridComponentOption {
   backgroundColor?: string;
   show?: boolean;
@@ -154,8 +151,7 @@ function extractChartTitle(chartNode: SafeXmlNode, seriesArr?: SeriesData[]): st
 
   const title = chartNode.child("title");
   if (!title.exists()) {
-    // Some producers omit autoTitleDeleted entirely for no-title charts.
-    // Only synthesize the Office auto-title when the XML explicitly requests it.
+    // Some producers omit autoTitleDeleted for no-title charts, so only an explicit false synthesizes the auto-title.
     if (
       autoTitleDeleted.exists() &&
       !parseOoxmlBoolElement(autoTitleDeleted) &&
@@ -258,14 +254,12 @@ function mapFirstSliceAngle(firstSliceAng: number | undefined): number | undefin
   return (((90 - firstSliceAng) % 360) + 360) % 360;
 }
 
-/** Map OOXML c:marker > c:symbol values to ECharts symbol names. */
 const OOXML_SYMBOL_MAP: Record<string, string> = {
   circle: "circle",
   square: "rect",
   diamond: "diamond",
   triangle: "triangle",
   none: "none",
-  // Less common symbols: fallback to circle.
   star: "circle",
   dash: "circle",
   dot: "circle",
@@ -752,7 +746,6 @@ function buildBarChartOption(
       return cfg.fontSize !== undefined ? markExplicitFontSize(label) : label;
     };
 
-    // Per-series label config (override shared).
     const label: echarts.BarSeriesOption["label"] = buildLabel(perSeriesLabels);
     const dLblsNode = getDataLabelsNode(serNodesByOrder[idx], chartTypeNode);
     const pointOverrides = parsePointDataLabelOverrides(dLblsNode, ctx);
@@ -879,7 +872,6 @@ function buildBarChartOption(
   const hasTitle = !!titleOption;
   const gridTop = isHorizontal && hasTitle ? 60 : getGridTopPx(hasTitle, legendInfo);
   const legendTopPx = getLegendTopPx(hasTitle, legendInfo);
-  // When value axis is hidden, reduce left/right padding so bars use full width.
   const leftAxis = isHorizontal ? categoryAxis : valueAxis;
   const bottomAxis = isHorizontal ? valueAxis : categoryAxis;
   const gridLeft = (isHorizontal ? 15 : valueAxis.deleted ? 4 : 18) + getAxisTitleSpacePx(leftAxis);
@@ -1335,7 +1327,6 @@ function buildRadarChartOption(
   const legendOpt = legendInfo?.option;
   const legendTextStyle = { fontSize: 10, ...legendInfo?.textStyle };
 
-  // Categories come from the first series that has them.
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
   const plotArea = chartNode.child("plotArea");
@@ -1358,7 +1349,7 @@ function buildRadarChartOption(
   }
 
   const showValueAxisLabels = !valueAxis.deleted && valueAxis.tickLblPos !== "none";
-  const radarStyle = chartTypeNode.child("radarStyle").attr("val"); // 'marker' | 'filled' | undefined.
+  const radarStyle = chartTypeNode.child("radarStyle").attr("val");
   const valueAxisLabel = showValueAxisLabels
     ? {
         show: true,
@@ -1400,9 +1391,7 @@ function buildRadarChartOption(
         },
       };
 
-  // PowerPoint radar charts place categories clockwise from top,
-  // but ECharts places indicators counterclockwise. To match PowerPoint,
-  // keep the first category at top and reverse the rest.
+  // PowerPoint places radar categories clockwise from the top; ECharts goes counterclockwise.
   const cwCategories =
     categories.length > 1 ? [categories[0], ...categories.slice(1).reverse()] : categories;
 
@@ -1427,7 +1416,6 @@ function buildRadarChartOption(
     (radarHasTopLegend ? "58%" : radarStyle === "filled" ? "76%" : "86%");
 
   const radarData = seriesArr.map((s, idx) => {
-    // Reorder values to match the reversed category order.
     const cwValues = s.values.length > 1 ? [s.values[0], ...s.values.slice(1).reverse()] : s.values;
     const echartsSymbol = mapOoxmlSymbol(s.markerSymbol);
     const showSymbol =
@@ -1802,38 +1790,29 @@ function buildStockChartOption(
   const titleOption = buildChartTitleOption(chartNode, seriesArr, ctx, 14);
   const legendInfo = extractLegendInfo(chartNode, ctx);
 
-  // Stock charts have 3 (HLC) or 4 (OHLC) series:
-  // OHLC order: open, high, low, close
-  // HLC order: high, low, close (open defaults to close → collapsed body).
+  // Stock series come as open, high, low, close or as high, low, close.
   const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
 
-  // ECharts candlestick expects [open, close, low, high] per data point.
+  // ECharts candlesticks take [open, close, low, high].
   const dataLen = categories.length || Math.max(...seriesArr.map((s) => s.values.length), 0);
   const candleData: number[][] = [];
 
   if (seriesArr.length >= 4) {
-    // OHLC: series 0=open, 1=high, 2=low, 3=close.
     for (let i = 0; i < dataLen; i++) {
       candleData.push([
-        seriesArr[0].values[i] ?? 0, // open.
-        seriesArr[3].values[i] ?? 0, // close.
-        seriesArr[2].values[i] ?? 0, // low.
-        seriesArr[1].values[i] ?? 0, // high.
+        seriesArr[0].values[i] ?? 0,
+        seriesArr[3].values[i] ?? 0,
+        seriesArr[2].values[i] ?? 0,
+        seriesArr[1].values[i] ?? 0,
       ]);
     }
   } else if (seriesArr.length >= 3) {
-    // HLC: series 0=high, 1=low, 2=close; open=close (collapsed body).
+    // Without an open series, the body collapses onto the close.
     for (let i = 0; i < dataLen; i++) {
       const close = seriesArr[2].values[i] ?? 0;
-      candleData.push([
-        close, // open = close.
-        close, // close.
-        seriesArr[1].values[i] ?? 0, // low.
-        seriesArr[0].values[i] ?? 0, // high.
-      ]);
+      candleData.push([close, close, seriesArr[1].values[i] ?? 0, seriesArr[0].values[i] ?? 0]);
     }
   } else {
-    // Fallback: single series treated as close values with zero open.
     for (let i = 0; i < dataLen; i++) {
       const val = seriesArr[0]?.values[i] ?? 0;
       candleData.push([0, val, 0, val]);
@@ -1908,7 +1887,6 @@ function buildStockChartOption(
           type: "custom",
           name: seriesArr[2].name,
           coordinateSystem: "cartesian2d",
-          // data: [categoryIndex, high, low, close].
           data: Array.from({ length: dataLen }, (_, i) => [
             i,
             seriesArr[0].values[i] ?? 0,
@@ -1973,7 +1951,6 @@ function buildStockChartOption(
           name: seriesArr.length >= 3 ? seriesArr[2].name : seriesArr[0]?.name,
           data: candleData,
           itemStyle: {
-            // OOXML up/down colors from series spPr; fallback to standard financial convention.
             color: pickSeriesStringColor(
               seriesArr[seriesArr.length >= 4 ? 3 : 2]?.colorHex,
               "#ec0000",
@@ -2098,7 +2075,6 @@ function prependGraphicOption(
   option.graphic = Array.isArray(current) ? [graphic, ...current] : [graphic, current];
 }
 
-/** Result of parsing chart XML: option for ECharts, optional data table info. */
 export interface ParseChartResult {
   option: echarts.EChartsOption;
   dataTable?: DataTableInfo;
@@ -2329,10 +2305,6 @@ function mergeCartesianComboOptions(
   };
 }
 
-/**
- * Parses a chart XML (chartSpace root) into an ECharts option object and optional data table info.
- * Exported for unit testing.
- */
 export function parseChartXml(
   chartXml: SafeXmlNode,
   ctx: RenderContext,
@@ -2401,7 +2373,6 @@ export function parseChartXml(
       }
     }
 
-    // Chart-space font sizes replace the hardcoded defaults.
     const defaultFs = extractChartDefaultFontSize(chartXml);
     if (defaultFs) {
       applyDefaultFontSizes(option, defaultFs);
@@ -2412,10 +2383,8 @@ export function parseChartXml(
     }
     applyDefaultTextColors(option);
 
-    // Adjust grid margins for legend placement (non-overlay).
     applyLegendGridMargins(option, chart, defaultFs);
 
-    // Apply PowerPoint-like nice axis range (adds headroom beyond data max).
     applyNiceAxisRange(option, chartSize);
 
     // The entrance animation is an ECharts default, not something the file asks
@@ -2488,9 +2457,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
   wrapper.style.height = `${node.size.h}px`;
   wrapper.style.overflow = "hidden";
 
-  // Thumbnail mode: skip full ECharts initialisation (heavy canvas setup).
-  // Render a lightweight placeholder that communicates "chart here" without
-  // the cost of loading and painting an ECharts instance.
   if (ctx.thumbnail) {
     wrapper.style.background = "#f3f4f6";
     wrapper.style.border = "1px solid #e5e7eb";
@@ -2513,7 +2479,6 @@ export function renderChart(node: ChartNodeData, ctx: RenderContext): HTMLElemen
     return wrapper;
   }
 
-  // Clipped so the legend/title stay inside.
   const chartDiv = document.createElement("div");
   chartDiv.style.width = "100%";
   chartDiv.style.flex = "1";
@@ -2614,10 +2579,8 @@ function initChart(
       return;
     }
 
-    // A detached container reports a 0x0 box, which is not a signal to tear the
-    // chart down: callers such as the thumbnail list park a rendered slide
-    // off-DOM and re-attach it later, and it must come back with its canvas
-    // intact. The owning SlideHandle disposes the chart instead.
+    // A detached container reports a 0x0 box but may be re-attached later with
+    // its canvas intact, so only the owning SlideHandle disposes the chart.
     const ro = new ResizeObserver(() => {
       if (container.isConnected) chart.resize();
     });

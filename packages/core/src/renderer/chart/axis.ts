@@ -213,11 +213,8 @@ export function parseScatterAxes(
   return { xAxis, yAxis };
 }
 
-/**
- * Room an axis title needs beyond its tick labels. ECharts' `containLabel`
- * grows the grid for labels but never for the axis name, so a grid that pays
- * only for labels pushes the title into the legend or past the chart's clip.
- */
+// ECharts' `containLabel` grows the grid for tick labels but never for the
+// axis name, so the title's room has to be reserved separately.
 export function getAxisTitleSpacePx(info: AxisInfo): number {
   if (!info.title || info.deleted) return 0;
   const fontSize = info.titleStyle?.fontSize ?? 10;

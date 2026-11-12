@@ -11,15 +11,12 @@
  */
 import { expect, test } from "@playwright/test";
 
-/** Three embedded parts, doubled, so several can break and several still load. */
+// Enough embedded parts that several can break and several still load.
 const DECK = "the-good-room-soft-editorial.pptx";
 const PART_FACTOR = 2;
 
-/**
- * MTX payloads, because a compressed part is what sends the deck to the worker
- * pool in `worker` mode: a failure then has to survive a postMessage to reach
- * the caller, which is a separate path from the fallback's.
- */
+// MTX payloads send the deck to the worker pool in `worker` mode, where a failure
+// has to survive a postMessage to reach the caller.
 const MODES: readonly BenchMode[] = ["worker", "main"];
 
 test.describe("embedded font failures", () => {

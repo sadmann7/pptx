@@ -154,9 +154,6 @@ function renderResolvedImage(
   mediaPath: string,
   data: Uint8Array,
 ): void {
-  // Handle EMF images: extract embedded PDF/bitmap content.
-  // In thumbnail mode the async EMF→PDF fallback is skipped (too expensive
-  // for preview scale); EMF-only slides render as an empty box at that size.
   if (isEmfFormat(mediaPath)) {
     if (!ctx.thumbnail) {
       const emfData = data instanceof Uint8Array ? data : new Uint8Array(data);
@@ -213,22 +210,15 @@ function renderImageUrl(
     applyImageFillRect(img, fillRectBox);
   }
 
-  // OOXML srcRect crops the source image, and the remaining region must
-  // stretch to fill the shape's bounding box. The <img> is scaled larger than
-  // the wrapper and offset, and the wrapper's overflow:hidden clips it.
+  // The srcRect remainder stretches to fill the shape's bounding box.
   if (node.crop) {
     const { top, right, bottom, left } = node.crop;
-    // Visible fraction of original image in each dimension.
     const visibleW = 1 - left - right;
     const visibleH = 1 - top - bottom;
-    // Guard against degenerate crops (<=0 visible).
     if (visibleW > 0.001 && visibleH > 0.001) {
-      // Scaled so the visible portion fills the wrapper exactly.
-      const scaleX = 1 / visibleW; // e.g. if 95.4% visible → scale to ~104.8%.
+      const scaleX = 1 / visibleW;
       const scaleY = 1 / visibleH;
-      // Pixels, because CSS margin-top/margin-left percentages are both relative
-      // to the containing block's WIDTH (not height), which causes incorrect offsets
-      // for non-square wrappers with significant crops.
+      // Pixels, because CSS margin percentages are relative to the containing block's width, even vertically.
       const wrapperW = node.size.w * ((fillRectBox?.width ?? 100) / 100);
       const wrapperH = node.size.h * ((fillRectBox?.height ?? 100) / 100);
       img.style.width = `${(scaleX * wrapperW).toFixed(4)}px`;
@@ -242,25 +232,21 @@ function renderImageUrl(
     wrapper.style.opacity = `${Number(blipOpacity.toFixed(4))}`;
   }
 
-  // Grayscale: render the image luminance-only.
   const grayscl = blip.child("grayscl");
   if (grayscl.exists()) {
     appendCssFilter(img, "grayscale(1)");
   }
 
-  // Duotone: recolor image (dark→color1, light→color2).
   const duotone = blip.child("duotone");
   if (duotone.exists()) {
     applyDuotoneFilter(duotone, ctx, img, wrapper);
   }
 
-  // Luminance: brightness/contrast adjustment.
   const lum = blip.child("lum");
   if (lum.exists()) {
     applyLumEffect(lum, img);
   }
 
-  // BiLevel: threshold to black/white.
   const biLevel = blip.child("biLevel");
   if (biLevel.exists()) {
     applyBiLevelEffect(biLevel, img);
@@ -647,14 +633,6 @@ function applyPictureHyperlink(
   });
 }
 
-/**
- * Resolves overall image opacity from OOXML blip alpha modifiers.
- *
- * Supported today:
- * - alphaModFix amt="N"
- * - alphaMod val="N"
- * - alphaOff val="N"
- */
 function resolveBlipOpacity(blip: SafeXmlNode): number {
   let alpha = 1;
 
@@ -701,7 +679,6 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
     }
     wrapper.appendChild(video);
   } else if (posterUrl) {
-    // No video data available: show poster with play overlay.
     const img = document.createElement("img");
     img.src = posterUrl;
     img.style.width = "100%";
@@ -718,7 +695,7 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
     overlay.style.backgroundColor = "rgba(0,0,0,0.3)";
     overlay.style.color = "#fff";
     overlay.style.fontSize = "24px";
-    overlay.textContent = "\u25B6"; // play symbol.
+    overlay.textContent = "\u25B6";
     wrapper.appendChild(overlay);
   } else {
     renderPlaceholder(wrapper, "Video");
@@ -807,7 +784,7 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
   const icon = document.createElement("div");
   icon.style.fontSize = "24px";
   icon.style.marginBottom = "4px";
-  icon.textContent = "\uD83D\uDDBC"; // framed picture emoji.
+  icon.textContent = "\uD83D\uDDBC";
 
   const label = document.createElement("div");
   label.textContent = `Unsupported format: ${ext}`;
@@ -817,9 +794,6 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
   wrapper.appendChild(placeholder);
 }
 
-/**
- * Renders EMF content by extracting embedded PDF or bitmap data.
- */
 function renderEmf(
   data: Uint8Array,
   node: PictureNodeData,
@@ -839,17 +813,11 @@ function renderEmf(
     case "empty":
       break;
     case "unsupported":
-      // Vector-only EMF cannot be faithfully rendered in the browser. A visible
-      // placeholder is worse than transparent fallback because it pollutes the
-      // slide with artifacts that are not present in PowerPoint/PDF exports.
+      // A placeholder would add artifacts that PowerPoint and PDF exports don't show.
       break;
   }
 }
 
-/**
- * Renders an embedded PDF from EMF using pdfjs-dist.
- * Populates the wrapper asynchronously. The wrapper is returned immediately.
- */
 function renderEmfPdf(
   pdfData: Uint8Array,
   wrapper: HTMLElement,
@@ -872,7 +840,7 @@ function renderEmfPdf(
       }
     })
     .catch(() => {
-      // PDF rendering failed: leave wrapper empty (transparent).
+      // A failed decode leaves the wrapper transparent.
     });
   ctx.asyncTasks?.push(task);
 }
@@ -921,19 +889,13 @@ function createFillImage(url: string): HTMLImageElement {
   return img;
 }
 
-/**
- * Applies a duotone effect to an image via canvas pixel manipulation.
- *
- * OOXML `<a:duotone>` contains two color children (dark and light).
- * The image is converted to grayscale, then black→color1, white→color2.
- */
 function applyDuotoneFilter(
   duotone: SafeXmlNode,
   ctx: RenderContext,
   img: HTMLImageElement,
   _wrapper: HTMLElement,
 ): void {
-  // First color is dark, second is light.
+  // `a:duotone` lists the dark color first, then the light one.
   const colorChildren = duotone.allChildren();
   if (colorChildren.length < 2) return;
 
@@ -946,7 +908,6 @@ function applyDuotoneFilter(
   const rgb1 = hexToRgb(hex1);
   const rgb2 = hexToRgb(hex2);
 
-  // After the image loads, redraw it through a canvas with duotone applied.
   const apply = () => {
     const w = img.naturalWidth;
     const h = img.naturalHeight;
@@ -964,7 +925,6 @@ function applyDuotoneFilter(
 
     for (let i = 0; i < data.length; i += 4) {
       const gray = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
-      // Linearly interpolate between color1 (dark) and color2 (light).
       data[i] = Math.round(rgb1.r + (rgb2.r - rgb1.r) * gray);
       data[i + 1] = Math.round(rgb1.g + (rgb2.g - rgb1.g) * gray);
       data[i + 2] = Math.round(rgb1.b + (rgb2.b - rgb1.b) * gray);
@@ -981,13 +941,7 @@ function applyDuotoneFilter(
   }
 }
 
-/**
- * Applies a luminance (brightness/contrast) effect to an image.
- *
- * OOXML `<a:lum>` supports `bright` (additive brightness offset, 0–100000 = 0–100%)
- * and `contrast` (multiplicative contrast, -100000 to 100000).
- * e.g. bright="100000" makes the entire image white (preserving alpha).
- */
+// `bright` is an additive offset and `contrast` a multiplier, both in 1/100000 units.
 function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
   const bright = (lum.numAttr("bright") ?? 0) / 100000; // 0–1.
   const contrast = (lum.numAttr("contrast") ?? 0) / 100000; // -1 to 1.
@@ -1031,13 +985,6 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
   }
 }
 
-/**
- * Applies a bi-level (threshold) effect to an image.
- *
- * OOXML `<a:biLevel thresh="25000">` converts the image to black and white.
- * Each pixel's luminance is compared to the threshold (0–100000 = 0–100%).
- * Pixels above become white, pixels below become black. Alpha is preserved.
- */
 function applyBiLevelEffect(biLevel: SafeXmlNode, img: HTMLImageElement): void {
   const thresh = (biLevel.numAttr("thresh") ?? 50000) / 100000; // 0–1.
 

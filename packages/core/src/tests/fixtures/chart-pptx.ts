@@ -20,10 +20,7 @@ const CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 const RELS_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
-/**
- * A graphicFrame hosting a chart reference (rId2 → ../charts/chart1.xml).
- * Placed at 914400,914400 EMU (96,96 px) sized 6096000x4572000 EMU (640x480 px).
- */
+// Placed at 914400,914400 EMU (96,96 px), sized 6096000x4572000 EMU (640x480 px).
 export const CHART_GRAPHIC_FRAME = `<p:graphicFrame>
 <p:nvGraphicFramePr><p:cNvPr id="5" name="Chart 1"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
 <p:xfrm><a:off x="914400" y="914400"/><a:ext cx="6096000" cy="4572000"/></p:xfrm>
@@ -42,10 +39,6 @@ const slideRelsWithChart =
 const chartContentTypeOverride =
   '<Override PartName="/ppt/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>';
 
-/**
- * Builds a single-slide .pptx whose slide contains a chart graphicFrame and
- * whose package includes the given chart1.xml part.
- */
 export async function buildPptxWithChart(
   chartXml: string,
   options: { omitChartPart?: boolean } = {},
@@ -65,7 +58,6 @@ export async function buildPptxWithChart(
   return zip.generateAsync({ type: "arraybuffer" });
 }
 
-/** Wrap chart XML content in a complete c:chartSpace document. */
 export function chartSpaceXml(chartChildren: string, chartSpaceExtras = ""): string {
   return (
     XML_DECL +
@@ -78,7 +70,6 @@ ${chartChildren}
   );
 }
 
-/** Build a c:ser element for cartesian charts (strRef categories + numRef values). */
 export function seriesXml(
   idx: number,
   name: string,
@@ -99,7 +90,6 @@ ${extras}
 </c:ser>`;
 }
 
-/** Standard catAx + valAx pair wired to the given axis ids. */
 export function axesXml(catAxId = "111111111", valAxId = "222222222", valAxExtras = ""): string {
   return `<c:catAx>
 <c:axId val="${catAxId}"/>
@@ -119,10 +109,6 @@ ${valAxExtras}
 </c:valAx>`;
 }
 
-/**
- * A realistic minimal bar chart part: clustered column chart, 2 series with
- * 3 string categories and 3 numeric values each, catAx + valAx, legend, title.
- */
 export const BAR_CHART_XML =
   chartSpaceXml(`<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Sales 2024</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>
 <c:autoTitleDeleted val="0"/>
@@ -142,20 +128,12 @@ ${axesXml()}
 <c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>
 <c:plotVisOnly val="1"/>`);
 
-/**
- * Parses a chart XML fragment (using the standard c:/a:/r: prefixes) and returns
- * the wrapper node; access parts through `.child(...)`.
- */
 export function parseChartFragment(xml: string): SafeXmlNode {
   return parseXml(
     `<c:root xmlns:c="${CHART_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${RELS_NS}">${xml}</c:root>`,
   );
 }
 
-/**
- * Creates a real RenderContext backed by the minimal single-slide package
- * (Office theme accents, blank layout/master) for chart submodule tests.
- */
 export async function createChartTestContext(): Promise<RenderContext> {
   const buffer = await buildPptxWithShapes("");
   const presentation = buildPresentation(await readPptx(buffer));

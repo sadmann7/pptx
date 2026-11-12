@@ -9,7 +9,6 @@ function custGeom(inner: string): ReturnType<typeof parseXml> {
   return parseXml(`<a:custGeom ${A_NS}>${inner}</a:custGeom>`);
 }
 
-/** Parse "M1,2 L3,4 …" into [["M",1,2], ["L",3,4], …] for numeric assertions. */
 function pathCommands(d: string): Array<[string, ...number[]]> {
   const out: Array<[string, ...number[]]> = [];
   for (const m of d.matchAll(/([MLQCAZ])([^MLQCAZ]*)/g)) {
@@ -42,8 +41,7 @@ describe("renderCustomGeometry with numeric coordinates", () => {
 });
 
 describe("renderCustomGeometry with gdLst guides", () => {
-  // Regression for the gdlst-test.pptx arrow: guide-referencing points used to
-  // collapse to 0 because they were read with numAttr().
+  // The gdlst-test.pptx arrow, whose points reference guides.
   const W_EMU = 2743200;
   const H_EMU = 1828800;
 

@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 /**
- * `useHistory` tests.
- *
- * Runs under jsdom (not the default happy-dom) because happy-dom's XML parser
- * drops namespaced attributes (e.g. `r:id` on `p:sldId`), which the slide-level
- * edit operations these tests drive depend on.
+ * Runs under jsdom because happy-dom's XML parser drops namespaced attributes
+ * like `r:id` on `p:sldId`, which slide-level edits need.
  */
 import { act, render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";

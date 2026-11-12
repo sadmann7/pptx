@@ -19,11 +19,8 @@ interface PresentationPlaygroundProps {
   searchParams: Promise<SearchParams>;
 }
 
-/**
- * The editor at full height. `?layout=editing` drops the debug bar, and
- * `?layout=compact` the toolbar as well. `?floatingToolbar` adds the
- * toolbar floating above the selection.
- */
+// `?layout=editing` drops the debug bar, `?layout=compact` the toolbar as well,
+// and `?floatingToolbar` floats the toolbar above the selection.
 export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
   const store = useCreatePresentationStore();
   const params = React.use(searchParams);
@@ -55,11 +52,8 @@ const DATASETS = [
 
 type Dataset = (typeof DATASETS)[number]["value"];
 
-/**
- * Dev-only, and only with `?data=` (e.g. `/pg?data=worst`): loads a fixture
- * deck through `store.load`, the way a user's file arrives, to see the editor
- * with worst-case data. `?data=` keeps the choice.
- */
+// Dev-only, and only with `?data=` (e.g. `/pg?data=worst`). Loads through
+// `store.load`, the way a user's file arrives.
 function DataToggle({
   store,
   initial,

@@ -229,10 +229,7 @@ describe("part placement", () => {
 });
 
 describe("rotating", () => {
-  /**
-   * Selects shape 2 alone and returns a pointer helper around its center. With
-   * layout zeroed in happy-dom, client coordinates are slide pixels times zoom.
-   */
+  // With layout zeroed in happy-dom, client coordinates are slide pixels times zoom.
   async function renderRotatable() {
     const rendered = await renderOverlay();
     const node = rendered.store.getActiveSlide()!.nodes[0];
@@ -248,7 +245,6 @@ describe("rotating", () => {
       "[data-presentation-rotate-handle]",
     )!;
 
-    /** Presses above the center, then drags to `degrees` clockwise from there. */
     function drag(degrees: number, init: { shiftKey?: boolean } = {}) {
       const radians = ((degrees - 90) * Math.PI) / 180;
       act(() => {

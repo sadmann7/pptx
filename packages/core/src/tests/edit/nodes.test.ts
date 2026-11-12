@@ -1,10 +1,5 @@
 // @vitest-environment jsdom
-/**
- * Tests for the node-level operations: duplicateNode, reorderNode, and
- * addImage. Each keeps XML and model in sync, undoes cleanly, and survives a
- * save → reopen round trip. jsdom for namespaced attributes (see
- * operation.test.ts).
- */
+// jsdom, since happy-dom's XML parser drops namespaced attributes (see operation.test.ts).
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
@@ -49,7 +44,7 @@ async function savedZip(pres: PresentationData): Promise<JSZip> {
 
 const ids = (pres: PresentationData) => pres.slides[0].nodes.map((node) => node.id);
 
-/** A PNG header is enough for the size reader; nothing decodes the pixels here. */
+// A PNG header is enough for the size reader.
 function pngBytes(width: number, height: number): Uint8Array {
   const bytes = new Uint8Array(33);
   bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
@@ -302,7 +297,6 @@ describe("copyNodes and pasteNodes", () => {
 
     expect(result.createdNodeIds).toEqual(["4", "5"]);
     expect(ids(pres)).toEqual(["2", "3", "4", "5"]);
-    // Stacking order is kept, and nothing moves without an offset.
     const texts = pres.slides[0].nodes.map(
       (node) => (node as ShapeNodeData).textBody!.paragraphs[0].runs[0].text,
     );
@@ -331,7 +325,6 @@ describe("copyNodes and pasteNodes", () => {
 
     expect(clipboard.nodes[0]).toContain('<a:off x="457200" y="274638"/>');
     expect(clipboard.nodes[0]).toContain('<a:ext cx="8229600" cy="1143000"/>');
-    // The source slide itself is untouched.
     const sourceXml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");
     expect(sourceXml).not.toContain('<a:off x="457200"');
   });
@@ -348,7 +341,6 @@ describe("copyNodes and pasteNodes", () => {
     const clipboard = await copyNodes(source, sourceSlide, ["2"]);
     expect(Object.values(clipboard.relationships)[0].media?.extension).toBe("png");
 
-    // Within the same deck the image part is shared.
     await applyEdit(source, { type: "pasteNodes", slideId: sourceSlide, clipboard });
     const [first, second] = source.slides[0].nodes as PictureNodeData[];
     expect(source.slides[0].rels.get(second.blipEmbed!)?.target).toBe(
@@ -356,7 +348,6 @@ describe("copyNodes and pasteNodes", () => {
     );
     expect([...source.media.keys()]).toEqual(["ppt/media/image1.png"]);
 
-    // Into another deck, the image comes along.
     const target = await openEditable([textShape(2, "A")]);
     const targetSlide = target.slides[0].id;
     const result = await applyEdit(target, {

@@ -7,26 +7,17 @@ import type { AutoFitPadding, ZoomChangeEvent } from "./store";
 import { MAX_ZOOM, MIN_ZOOM } from "./store";
 import { clamp } from "./utils";
 
-/**
- * Ignores wheel events for this long after a wheel-triggered navigation.
- * Trackpads emit a burst of momentum events for one physical gesture;
- * without a cooldown a single flick would skip through several slides.
- */
+// Trackpad momentum sends a burst of wheel events per flick, which would otherwise skip several slides.
 const WHEEL_NAVIGATION_COOLDOWN_MS = 300;
 
-/**
- * Zoom change per pixel of wheel delta, applied multiplicatively so a step is
- * the same proportion at every level. Tuned so one mouse notch (~100px) is
- * ~14%, which leaves a trackpad pinch (a few px per event) smooth.
- */
+// One mouse notch (~100px) zooms ~14%, which keeps a trackpad pinch (a few px per event) smooth.
 const ZOOM_WHEEL_SENSITIVITY = 0.0015;
 
 export interface ViewportState {
-  /** Current zoom level (1 = 100%, 0.5 = 50%). */
+  /** Current zoom level, where `1` is 100%. */
   zoom: number;
 }
 
-/** The point a zoom gesture has to keep still, and what to scroll to keep it. */
 interface ZoomAnchor {
   scroller: HTMLElement;
   content: HTMLElement;
@@ -40,10 +31,7 @@ function getIsScrollable(overflow: string): boolean {
   return overflow === "auto" || overflow === "scroll";
 }
 
-/**
- * Wheel delta in pixels. Firefox reports lines and, when scrolling by page,
- * pages, which without normalizing would make a notch there barely register.
- */
+// Firefox reports lines, or pages when scrolling by page.
 function getWheelDeltaPx(event: WheelEvent): number {
   if (event.deltaMode === 1) return event.deltaY * 16;
   if (event.deltaMode === 2) return event.deltaY * 100;
@@ -52,38 +40,31 @@ function getWheelDeltaPx(event: WheelEvent): number {
 
 export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   /**
-   * When `true`, scales the slide to fill the viewport whenever it resizes. It's the
-   * starting mode, not a latch: `setZoom`, `zoomIn` and `zoomOut` turn fitting off so
-   * an explicit level survives resizes, and `setAutoFit(true)` turns it back on.
+   * When `true`, scales the slide to fill the viewport whenever it resizes. `setZoom`, `zoomIn`
+   * and `zoomOut` turn fitting off, and `setAutoFit(true)` turns it back on.
    *
    * @default false
    */
   autoFit?: boolean;
 
   /**
-   * When `true`, the wheel navigates slides like PowerPoint: scrolling past the
-   * current slide's scroll range moves to the next or previous slide, and any tick
-   * does when nothing scrolls. Off by default, since it captures wheel events from
-   * a page the viewer is embedded in.
+   * When `true`, scrolling past the current slide's scroll range moves to the next or previous
+   * slide, like PowerPoint. It captures wheel events from an embedding page.
    *
    * @default false
    */
   scrollNavigation?: boolean;
 
   /**
-   * When `true`, Ctrl/Cmd+wheel and trackpad pinch zoom the deck instead of the page,
-   * keeping the point under the pointer in place, like PowerPoint. Off by default,
-   * since it takes page zoom from readers of an embedded viewer; turn it on when the
-   * presentation owns the window. Ctrl/Cmd with plus or minus still zooms the page.
+   * When `true`, Ctrl/Cmd+wheel and trackpad pinch zoom the deck around the pointer instead of
+   * zooming the page. Ctrl/Cmd with plus or minus still zooms the page.
    *
    * @default false
    */
   scrollZoom?: boolean;
 
   /**
-   * Padding in pixels around the slide when `autoFit` is `true`. A number pads every
-   * side; an object sets each side, defaulting to `0`, like Radix and Base UI
-   * `collisionPadding`.
+   * Padding in pixels around the slide when `autoFit` is `true`, for every side or per side.
    *
    * @example
    * autoFitPadding={32}
@@ -95,8 +76,7 @@ export interface ViewportProps extends PrimitiveProps<"div", ViewportState> {
   autoFitPadding?: AutoFitPadding;
 
   /**
-   * Event handler called whenever the zoom level changes, including the
-   * automatic fits performed while `autoFit` is on.
+   * Event handler called whenever the zoom level changes, including fits while `autoFit` is on.
    *
    * ```tsx
    * onZoomChange={({ zoom }) => setZoom(`${Math.round(zoom * 100)}%`)}
@@ -124,10 +104,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 
   useStoreEvent(store, "zoomChange", onZoomChange);
 
-  // The prop seeds the store's fit mode rather than owning it, so a zoom
-  // control can release and re-arm fitting without the consumer mirroring it
-  // in state. Runs only when the prop itself changes, so it never fights a
-  // `setAutoFit` call made from the UI.
+  // The prop seeds the store's fit mode rather than owning it, so it never fights a `setAutoFit` call.
   React.useEffect(() => {
     store.setAutoFit(autoFit);
   }, [autoFit, store]);
@@ -136,8 +113,6 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     if (!viewportRef.current) return;
 
     const viewportElement = viewportRef.current;
-    // Measurement lives here because only the viewport knows its own box; the
-    // store decides whether a measurement should be applied.
     const fit = () => {
       if (!store.getState().isAutoFit) return;
       if (viewportElement.clientWidth > 0 && viewportElement.clientHeight > 0)
@@ -146,14 +121,11 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
 
     fit();
 
-    // Observed even while fitting is off, so re-arming it picks up a resize
-    // that happened in the meantime.
+    // Observed even while fitting is off, so re-arming it picks up a resize in the meantime.
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(viewportElement);
 
-    // Re-fit when fitting is re-armed, and when a new presentation loads: the
-    // new deck's aspect ratio may differ so the zoom needs to be recalculated.
-    // Both are identity/flag flips, not zoom or navigation updates.
+    // A new deck's aspect ratio may differ, so a reload re-fits as well.
     let { presentation: lastPresentation, isAutoFit: wasAutoFit } = store.getState();
     const unsubscribe = store.subscribe(() => {
       const { presentation, isAutoFit } = store.getState();
@@ -170,21 +142,14 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     };
   }, [autoFitPadding, store]);
 
-  // PowerPoint-style wheel navigation: the slide scrolls first, and once the scroll
-  // container hits its boundary in the wheel direction, or can't scroll, a tick
-  // changes slides. Native non-passive wheel events need an effect.
+  // As in PowerPoint, the slide scrolls first and a tick past its boundary changes slides.
   React.useEffect(() => {
     if (!scrollNavigation || !viewportRef.current) return;
 
     const viewportElement = viewportRef.current;
     let cooldownUntil = 0;
 
-    /**
-     * Nearest vertically scrollable element between the event target and the
-     * viewport (inclusive). This is normally the `Presentation.Slide`
-     * wrapper (`overflow: auto`), but resolving it dynamically keeps the
-     * behavior correct with custom `render` layouts.
-     */
+    // Resolved per event rather than assumed to be the slide wrapper, for custom `render` layouts.
     function findScroller(from: EventTarget | null): HTMLElement | null {
       let element = from instanceof HTMLElement ? from : null;
       while (element) {
@@ -199,7 +164,6 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     }
 
     function onWheel(event: WheelEvent): void {
-      // Ctrl/Cmd/Shift+wheel is zoom or horizontal scroll, not paging.
       if (event.deltaY === 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
       const goingDown = event.deltaY > 0;
@@ -207,12 +171,10 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       if (scroller) {
         const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
         const atTop = scroller.scrollTop <= 0;
-        // Not at the boundary yet: let the browser scroll the slide.
         if (goingDown ? !atBottom : !atTop) return;
       }
 
       if (event.timeStamp < cooldownUntil) {
-        // Swallow momentum after navigation to prevent chaining.
         event.preventDefault();
         return;
       }
@@ -225,9 +187,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       else store.prev();
 
       if (scroller) {
-        // The new slide starts from the edge it was entered from (top when
-        // going forward, bottom when going back), like PowerPoint. Deferred
-        // one frame so the new slide's content height is in place.
+        // As in PowerPoint, the new slide starts from the edge it was entered from, a frame later
+        // once its content height is in place.
         requestAnimationFrame(() => {
           scroller.scrollTop = goingDown ? 0 : scroller.scrollHeight;
         });
@@ -239,19 +200,12 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     return () => viewportElement.removeEventListener("wheel", onWheel);
   }, [scrollNavigation, store]);
 
-  // Ctrl/Cmd+wheel zoom. External system again (the browser owns this gesture
-  // until preventDefault takes it, which a passive listener cannot do).
   React.useEffect(() => {
     if (!scrollZoom || !viewportRef.current) return;
 
     const viewportElement = viewportRef.current;
 
-    /**
-     * Nearest scroll container between the event target and the viewport
-     * (inclusive), normally the `Presentation.Slide` wrapper. Matched on
-     * `overflow` rather than on current scrollability, because at a fitted
-     * zoom there is nothing to scroll yet and zooming in is what creates it.
-     */
+    // Matched on `overflow`, not current scrollability: at a fitted zoom there is nothing to scroll yet.
     function findScroller(from: EventTarget | null): HTMLElement | null {
       let element = from instanceof HTMLElement ? from : null;
       while (element) {
@@ -263,12 +217,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       return null;
     }
 
-    /**
-     * Where the pointer sits on the slide, as a fraction of the slide's box.
-     * Fractions rather than scroll offsets because the slide is centered by
-     * `margin: auto` until it outgrows the viewport, so its origin moves as
-     * the zoom crosses that threshold.
-     */
+    // Fractions, not scroll offsets: `margin: auto` centers the slide until it outgrows the viewport.
     function getAnchor(event: WheelEvent): ZoomAnchor | null {
       const scroller = findScroller(event.target);
       const content = scroller?.firstElementChild;
@@ -306,9 +255,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
       store.setZoom(next);
       if (!anchor) return;
 
-      // The correction has to wait for the slide to be laid out at the new
-      // level; measuring it beats predicting it, since `margin: auto` and the
-      // scrollbars themselves both move the box.
+      // Measured after layout, since `margin: auto` and the scrollbars both move the box.
       requestAnimationFrame(() => {
         const rect = anchor.content.getBoundingClientRect();
         anchor.scroller.scrollLeft += rect.left + anchor.ratioX * rect.width - anchor.pointerX;

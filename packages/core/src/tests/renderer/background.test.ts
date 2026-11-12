@@ -1,7 +1,3 @@
-/**
- * Slide background rendering: slide/layout/master precedence, theme bgRef
- * references, gradient/pattern/image backgrounds.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -16,7 +12,6 @@ async function renderWith(options: RichPptxOptions): Promise<HTMLElement> {
   return renderSlide(presentation, presentation.slides[0]).element;
 }
 
-/** Normalize a CSS color (hex or rgb()) to a comparable lowercase hex string. */
 function normalizeColor(value: string): string {
   const rgbMatch = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (rgbMatch) {

@@ -146,7 +146,7 @@ describe("readPptx lazyMedia", () => {
     expect(resolved?.mediaPath).toBe("ppt/media/image1.png");
     expect(resolved?.data).toEqual(PNG);
 
-    // The resolved entry is now visible to eager lookups too.
+    // The resolved entry is visible to eager lookups too.
     expect(files.media.get("ppt/media/image1.png")).toEqual(PNG);
     expect(files.mediaResolver?.loadedCount).toBe(1);
     expect(files.mediaResolver?.loadedBytes).toBe(64);

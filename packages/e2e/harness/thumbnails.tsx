@@ -28,18 +28,12 @@ const width = Number.parseInt(params.get("width") ?? "180", 10);
 const height = Number.parseInt(params.get("height") ?? "720", 10);
 
 interface RenderTimings {
-  /** Produces the miniature, which the list does off-document. */
   render: number[];
-  /** Puts it in the document, which is what forces the layout. */
   mount: number[];
 }
 
-/**
- * Times one render of every slide and one mount of the result. Read the mount
- * time as a lower bound: the host is off-screen, so it covers insertion and the
- * forced layout but not paint. `renderSlide` measures text in its own host
- * before reading metrics, so its forced layouts happen either way.
- */
+// Mount time is a lower bound: the host is off-screen, so it covers insertion
+// and the forced layout but not paint.
 function timeRenders(
   presentation: PresentationData,
   render: (presentation: PresentationData, slide: SlideData) => SlideHandle,
@@ -71,12 +65,8 @@ function timeRenders(
   return timings;
 }
 
-/**
- * Duplicates the deck's own slides until it reaches `targetSlides`.
- *
- * Growing here rather than writing a long deck on disk keeps this in the
- * browser, where the parser has the DOM APIs it needs.
- */
+// Grown in the browser rather than written to disk, since the parser needs the
+// DOM APIs.
 async function growDeck(store: PresentationStore): Promise<void> {
   const sourceIds = store.getState().presentation?.slides.map((slide) => slide.id) ?? [];
   if (sourceIds.length === 0) return;

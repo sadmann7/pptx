@@ -35,9 +35,7 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   file?: PreviewInput | null | undefined;
 
   /**
-   * 0-based index of the slide to navigate to after a successful parse.
-   * Also accepts a resolver called with the parsed slides, useful when the
-   * target depends on content (e.g. last slide, or a specific id).
+   * 0-based index of the slide to open at, or a resolver called with the parsed slides.
    *
    * @default 0
    *
@@ -52,10 +50,7 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   defaultSlideIndex?: number | ((slides: SlideData[]) => number);
 
   /**
-   * Zoom level to open at, where `1` equals 100%.
-   *
-   * Only meaningful without auto-fitting: a `Viewport autoFit` fits on mount
-   * and overrides it.
+   * Zoom level to open at, where `1` is 100%. A `Viewport` with `autoFit` overrides it.
    *
    * ```tsx
    * <Presentation.Root file={file} defaultZoom={0.5} />
@@ -64,11 +59,7 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   defaultZoom?: number;
 
   /**
-   * When `false`, the source package is retained so the presentation can be
-   * edited via `store.edit()` and saved back to a .pptx via `store.save()`.
-   *
-   * Follows the same convention as `<input readOnly>`: omit the prop (or
-   * pass `true`) for a read-only viewer; pass `false` to enable editing.
+   * When `false`, the presentation can be edited with `store.edit()` and saved with `store.save()`.
    *
    * @default true
    */
@@ -97,9 +88,8 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   onError?: (error: Error) => void;
 
   /**
-   * Event handler called whenever the active slide changes, whether from
-   * navigation, a completed load, an edit that moved the active slide, or a
-   * reset. Inspect `reason` to tell them apart.
+   * Event handler called whenever the active slide changes; `reason` tells navigation, load, edit
+   * and reset apart.
    *
    * ```tsx
    * onSlideChange={({ slideId, index, reason }) => {
@@ -110,15 +100,12 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   onSlideChange?: (event: SlideChangeEvent) => void;
 
   /**
-   * Event handler called whenever the load status changes, e.g. `"idle"` to
-   * `"loading"` or `"loading"` to `"ready"`. Covers loads started by the
-   * `file` prop and by `store.load()` alike.
+   * Event handler called whenever the load status changes, from the `file` prop or `store.load()`.
    */
   onStatusChange?: (event: StatusChangeEvent) => void;
 
   /**
-   * Event handler called after an edit is applied, undone, or redone.
-   * Inspect `source` to tell them apart.
+   * Event handler called after an edit is applied, undone or redone, as `source` tells.
    *
    * ```tsx
    * onEdit={({ operation, source }) => {
@@ -129,8 +116,7 @@ export interface RootProps extends Omit<PrimitiveProps<"div", RootState>, "onLoa
   onEdit?: (event: EditEvent) => void;
 
   /**
-   * Event handler called when undo/redo availability or the unsaved-changes
-   * flag moves. Use it to drive toolbar state without polling the store.
+   * Event handler called when undo/redo availability or the unsaved-changes flag changes.
    *
    * ```tsx
    * onHistoryChange={({ canUndo, canRedo, isDirty }) => {
@@ -189,11 +175,8 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
   }, [store]);
 
   React.useEffect(() => {
-    // `undefined` means the file API is not in use: Root leaves the store
-    // alone so an owner (e.g. via `Presentation.Provider`) can drive it.
+    // `undefined` leaves the store to an owner such as `Presentation.Provider`.
     if (file === undefined) return;
-
-    // `null` is an explicit request to clear the viewer.
     if (file === null) {
       store.reset();
       return;
@@ -207,7 +190,7 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
       })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
-        // AbortError means a newer load() superseded this one so it's not a real failure.
+        // A newer `load()` superseded this one.
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });

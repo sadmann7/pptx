@@ -10,7 +10,7 @@ export interface FontWorkerRequest {
 export interface FontWorkerResponse {
   path: string;
   buffer: ArrayBuffer | null;
-  /** Why decoding failed, set whenever `buffer` is `null`. */
+  // Set whenever `buffer` is `null`.
   message?: string;
   code?: MtxErrorCode;
 }

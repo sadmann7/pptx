@@ -1,13 +1,9 @@
 import type { NodeClipboard, PresentationData } from "@diceui/pptx-core";
 
-/**
- * The clipboard type a copy writes. It carries only a token: the shapes stay
- * in this page, since packaging their images is async and a copy event has to
- * set its data synchronously.
- */
+// Carries only a token: packaging images is async, and a copy event sets its data synchronously.
 const CLIPBOARD_TYPE = "application/x-diceui-pptx";
 
-/** The px each repeated paste onto the copied slide shifts by, as in PowerPoint. */
+// Each repeated paste onto the copied slide shifts by this, as in PowerPoint.
 export const PASTE_OFFSET = 10;
 
 interface Stash {
@@ -26,11 +22,7 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-/**
- * Writes a stash token, and the shapes' text for other apps. The token also
- * rides in the HTML: some clipboards (headless Firefox, for one) drop custom
- * types and keep only text and HTML.
- */
+// The token also rides in the HTML, since some clipboards (headless Firefox) keep only text and HTML.
 export function writeClipboardToken(data: DataTransfer, token: string, text: string): void {
   data.setData(CLIPBOARD_TYPE, token);
   const paragraphs = text ? text.split("\n").map((line) => `<p>${escapeHtml(line)}</p>`) : [];
@@ -54,10 +46,6 @@ export function stashNodes(
   return token;
 }
 
-/**
- * The stashed shapes for a pasted token, and how far to shift them: onto the
- * slide they came from, each paste lands a step further along.
- */
 export function takeStash(
   token: string,
   presentation: PresentationData,

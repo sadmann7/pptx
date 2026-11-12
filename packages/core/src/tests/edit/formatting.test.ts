@@ -1,10 +1,5 @@
 // @vitest-environment jsdom
-/**
- * Tests for the formatting and slide-creation operations: setTextStyle,
- * setParagraphStyle, addSlide, and setSlideBackground. Like operation.test.ts,
- * each one must keep XML and model in sync, undo cleanly, and survive a
- * save → reopen round trip. jsdom for the same namespaced-attribute reason.
- */
+// jsdom, since happy-dom's XML parser drops namespaced attributes (see operation.test.ts).
 import { describe, expect, it } from "vitest";
 
 import { applyEdit } from "../../edit/operation";
@@ -256,7 +251,6 @@ describe("setParagraphStyle", () => {
     const aligns = (shape: ShapeNodeData) =>
       shape.textBody!.paragraphs.map((p) => p.properties?.attr("algn"));
     expect(aligns(shapeOn(pres, 0, "2"))).toEqual(["ctr", "ctr", undefined]);
-    // Existing paragraph properties are kept.
     expect(shapeOn(pres, 0, "2").textBody!.paragraphs[0].level).toBe(1);
     expect(aligns(shapeOn(await saveAndReopen(pres), 0, "2"))).toEqual(["ctr", "ctr", undefined]);
 

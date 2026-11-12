@@ -41,7 +41,6 @@ export function parseArgs(argv: readonly string[], spec: ArgSpec): ParsedArgs {
   return parsed;
 }
 
-/** Parses a "from:to" range, defaulting either end to the given bounds. */
 export function parseRange(value: string | undefined, from: number, to: number): [number, number] {
   if (!value) return [from, to];
   const [start, end] = value.split(":");

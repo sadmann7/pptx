@@ -24,7 +24,7 @@ function textShape(id: number, text: string, extraSpPr = ""): string {
 </p:sp>`;
 }
 
-/** Shape without an xfrm; position/size resolve to 0 (inherited-transform case). */
+// No xfrm, so position and size resolve to 0.
 function shapeWithoutXfrm(id: number): string {
   return `<p:sp>
 <p:nvSpPr><p:cNvPr id="${id}" name="NoXfrm ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
@@ -33,7 +33,7 @@ function shapeWithoutXfrm(id: number): string {
 </p:sp>`;
 }
 
-/** 2x2 table, 480x96px: grid columns 120px + 360px, rows 48px each. */
+// 2x2 table, 480x96px: grid columns 120px + 360px, rows 48px each.
 function tableFrame(id: number): string {
   const cell = (text: string) =>
     `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
@@ -187,15 +187,12 @@ describe("setNodeTransform", () => {
 
     result.undo();
     const undoneXml = await savedPartText(pres, "ppt/slides/slide1.xml");
-    // The created xfrm is removed again; spPr starts with prstGeom as before.
     expect(undoneXml).toContain("<p:spPr><a:prstGeom");
     expect(shapeOn(pres, 0, "2").position).toEqual({ x: 0, y: 0 });
   });
 
   it("scales a table's grid so the table matches its new frame", async () => {
-    // A table's rendered size comes from the grid (sum of gridCol widths and
-    // tr heights), not the frame extent, so resizing the frame alone left the
-    // table at its old size while the selection box shrank around it.
+    // A table's rendered size comes from its grid, not the frame extent.
     const pres = await openEditable([tableFrame(2)]);
     const slideId = pres.slides[0].id;
 
@@ -367,7 +364,6 @@ describe("duplicateSlide", () => {
     expect(pres.slides).toHaveLength(3);
     expect(pres.slides[1].id).toBe("ppt/slides/slide3.xml");
 
-    // The copy is editable independently of the source.
     await applyEdit(pres, {
       type: "setTextRun",
       slideId: result.createdSlideId!,
@@ -443,7 +439,6 @@ describe("deleteSlide", () => {
     );
     expect(texts).toEqual(["Keep", "Gone"]);
 
-    // The restored slide's live XML is re-registered; edits still work.
     await applyEdit(pres, {
       type: "setTextRun",
       slideId: deletedId,
@@ -507,12 +502,10 @@ describe("setTextBody", () => {
     expect(updated.textBody?.paragraphs[0].runs[0].text).toBe("New bold");
     expect(updated.textBody?.paragraphs[0].runs[1].text).toBe(" still normal");
 
-    // Bold run's rPr should be cloned from source [0,0].
     const savedXml = await savedPartText(pres, "ppt/slides/slide1.xml");
     expect(savedXml).toContain('b="1"');
     expect(savedXml).toContain("New bold");
 
-    // Reopened file has the same content.
     const reopened = await saveAndReopen(pres);
     const roShape = shapeOn(reopened, 0, "2");
     expect(roShape.textBody?.paragraphs[0].runs[0].text).toBe("New bold");
@@ -561,7 +554,6 @@ describe("setTextBody", () => {
     expect(shape.textBody?.paragraphs[0].runs[1].text).toBe(" normal");
     expect(shape.textBody?.paragraphs[1].runs[0].text).toBe("Italic second");
 
-    // Undo survives save/reopen.
     const reopened = await saveAndReopen(pres);
     const roShape = shapeOn(reopened, 0, "2");
     expect(roShape.textBody?.paragraphs).toHaveLength(2);
@@ -595,12 +587,10 @@ describe("setTextBody", () => {
     expect(run?.properties?.numAttr("sz")).toBe(1800);
     expect(run?.properties?.attr("b")).toBe("1");
 
-    // Saved XML carries the rPr (converted from endParaRPr) on the new run.
     const savedXml = await savedPartText(pres, "ppt/slides/slide1.xml");
     expect(savedXml).toContain("typed");
     expect(savedXml).toMatch(/<a:r>\s*<a:rPr[^>]*sz="1800"/);
 
-    // Survives save/reopen with the same formatting.
     const reopened = await saveAndReopen(pres);
     const roRun = shapeOn(reopened, 0, "2").textBody?.paragraphs[0].runs[0];
     expect(roRun?.text).toBe("typed");
@@ -651,7 +641,6 @@ describe("batch", () => {
     expect(shapeOn(pres, 0, "2").position).toEqual({ x: 10, y: 20 });
     expect(shapeOn(pres, 0, "3").position).toEqual({ x: 30, y: 40 });
 
-    // One undo restores every sub-operation.
     result.undo();
     expect(shapeOn(pres, 0, "2").position).toEqual(before2);
     expect(shapeOn(pres, 0, "3").position).toEqual(before3);

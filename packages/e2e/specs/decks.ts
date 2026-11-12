@@ -1,14 +1,9 @@
-/** The fixture decks the specs run against, and how many slides each has. */
 export interface Deck {
-  /** File name without the .pptx extension, as served from fixtures/. */
   name: string;
   slides: number;
 }
 
-/**
- * Hand-built decks from scripts/generate-fixtures.ts: one narrow feature each,
- * with XML the structural specs can assert against exactly.
- */
+// One narrow feature each, with XML the structural specs can assert exactly.
 export const GENERATED_DECKS: readonly Deck[] = [
   { name: "basic", slides: 3 },
   { name: "bom-rels", slides: 1 },
@@ -17,12 +12,8 @@ export const GENERATED_DECKS: readonly Deck[] = [
   { name: "tables-groups", slides: 2 },
 ];
 
-/**
- * Decks exported from an authoring tool, with full themes, layouts, images,
- * gradients, charts, tables and mixed text. Their XML is where fidelity breaks
- * down, so they're only checked against PowerPoint's own export (oracle.spec.ts),
- * not hand-written expectations.
- */
+// Their XML is where fidelity breaks down, so they're only checked against
+// PowerPoint's own export, not hand-written expectations.
 export const EXPORTED_DECKS: readonly Deck[] = [
   { name: "adventure-club-pin-and-paper", slides: 8 },
   { name: "geometry-of-attention-cartesian", slides: 8 },

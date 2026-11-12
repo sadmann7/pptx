@@ -44,12 +44,8 @@ function clearCssFillBackground(el: HTMLElement): void {
   el.style.backgroundSize = "";
 }
 
-/**
- * Finds a table style by id in presentation.tableStyles (`a:tblStyleLst > a:tblStyle`).
- * A table without `a:tableStyleId` falls back to PowerPoint's built-in "No Style,
- * Table Grid", a plain 1pt tx1 grid. The `def` attribute on `a:tblStyleLst` only
- * seeds newly inserted tables, so it isn't a render-time fallback.
- */
+// The `def` attribute on `a:tblStyleLst` only seeds newly inserted tables, so it
+// isn't a render-time fallback.
 function findTableStyle(
   tableStyleId: string | undefined,
   ctx: RenderContext,
@@ -62,20 +58,14 @@ function findTableStyle(
       return style;
     }
   }
-  // Also check from root if tableStyles IS the tblStyleLst.
   for (const style of tblStyleLst.children()) {
     if (style.localName === "tblStyle" && style.attr("styleId") === tableStyleId) {
       return style;
     }
   }
-  // Fallback: check predefined (built-in) Office table styles not embedded in the PPTX.
   return getPredefinedTableStyle(tableStyleId);
 }
 
-/**
- * Gets the appropriate style section from a table style for a given cell position.
- * Priority: specific section > wholeTbl (fallback).
- */
 function getStyleSections(
   tblStyle: SafeXmlNode,
   rowIdx: number,
@@ -86,8 +76,7 @@ function getStyleSections(
 ): SafeXmlNode[] {
   const sections: SafeXmlNode[] = [];
 
-  // Style parts are off unless tblPr sets them to "1" (or true). pptxjs reads
-  // attributes only; child elements are accepted too for compatibility.
+  // Style parts are off unless tblPr sets them; some producers write child elements instead of attributes.
   const flag = (attrName: string, childName: string): boolean => {
     if (!tblPr) return false;
     const attr = tblPr.attr(attrName);
@@ -105,11 +94,9 @@ function getStyleSections(
   const isFirstCol = flag("firstCol", "firstCol");
   const isLastCol = flag("lastCol", "lastCol");
 
-  // wholeTbl is the base (lowest priority).
   const wholeTbl = tblStyle.child("wholeTbl");
   if (wholeTbl.exists()) sections.push(wholeTbl);
 
-  // Banding (applied on top of wholeTbl).
   if (bandRow) {
     const effectiveRow = isFirstRow ? rowIdx - 1 : rowIdx;
     if (effectiveRow >= 0 && effectiveRow % 2 === 1) {
@@ -131,7 +118,6 @@ function getStyleSections(
     }
   }
 
-  // Special rows/cols (highest priority, override banding).
   if (isFirstRow && rowIdx === 0) {
     const s = tblStyle.child("firstRow");
     if (s.exists()) sections.push(s);
@@ -152,7 +138,6 @@ function getStyleSections(
   return sections;
 }
 
-/** Resolved text properties from table style tcTxStyle. */
 interface TableStyleTextProps {
   color?: string;
   bold?: boolean;
@@ -160,11 +145,7 @@ interface TableStyleTextProps {
   fontFamily?: string | string[];
 }
 
-/**
- * Gets the effective text properties from the table style sections, where the
- * last section with a tcTxStyle (b, i and color children) wins. An applied part
- * such as firstRow styles its cells' text, so it stays readable on that fill.
- */
+// The last section with a tcTxStyle wins, so a part such as firstRow keeps its text readable on its fill.
 function getEffectiveTableStyleTextProps(
   sections: SafeXmlNode[],
   ctx: RenderContext,
@@ -175,15 +156,12 @@ function getEffectiveTableStyleTextProps(
 
     const props: TableStyleTextProps = {};
 
-    // Bold: b="on" or b="off" (OOXML CT_TableStyleTextStyle).
     const b = tcTxStyle.attr("b");
     if (b !== undefined) props.bold = parseOoxmlBool(b);
 
-    // Italic: i="on" or i="off".
     const italic = tcTxStyle.attr("i");
     if (italic !== undefined) props.italic = parseOoxmlBool(italic);
 
-    // Color: child elements (schemeClr, solidFill, srgbClr, etc.).
     for (const child of tcTxStyle.allChildren()) {
       const tag = child.localName;
       if (
@@ -206,7 +184,6 @@ function getEffectiveTableStyleTextProps(
       }
     }
 
-    // Font family: <font><latin>/<ea>/<cs> typeface or <fontRef idx="major|minor">.
     const font = tcTxStyle.child("font");
     if (font.exists()) {
       const latin = font.child("latin").attr("typeface");
@@ -234,10 +211,6 @@ function getEffectiveTableStyleTextProps(
   return undefined;
 }
 
-/**
- * Applies fill from a table style tcStyle node.
- * Structure: <a:tcStyle> <a:fill> <a:solidFill>... or <a:fillRef>...
- */
 function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContext): boolean {
   const fill = tcStyle.child("fill");
   if (!fill.exists()) return false;
@@ -263,14 +236,12 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
     return true;
   }
 
-  // gradFill / pattFill.
   const directFillCss = resolveFill(fill, ctx);
   if (directFillCss) {
     applyCssFillBackground(td, directFillCss);
     return true;
   }
 
-  // fillRef (theme fill reference).
   const fillRef = fill.child("fillRef");
   if (fillRef.exists()) {
     const { fillCss } = resolveThemeFillReference(fillRef, ctx);
@@ -281,13 +252,8 @@ function applyStyleFill(td: HTMLElement, tcStyle: SafeXmlNode, ctx: RenderContex
   return false;
 }
 
-/** The four CSS border shorthands of a cell, as resolved from OOXML. */
 type CellBorders = Partial<Record<"top" | "bottom" | "left" | "right", string>>;
 
-/**
- * Collect borders from a table style tcStyle node.
- * Structure: <a:tcStyle> <a:tcBdr> <a:top>/<a:bottom>/<a:left>/<a:right> <a:ln>...
- */
 function collectStyleBorders(
   borders: CellBorders,
   tcStyle: SafeXmlNode,
@@ -307,9 +273,6 @@ function collectStyleBorders(
     ["right", "right"],
   ];
 
-  // Map insideH/insideV to individual cell borders:
-  // insideH → bottom for non-last rows, top for non-first rows
-  // insideV → right for non-last cols, left for non-first cols.
   const insideH = tcBdr.child("insideH");
   if (insideH.exists() && rowIdx !== undefined && totalRows !== undefined) {
     if (rowIdx < totalRows - 1) {
@@ -333,7 +296,6 @@ function collectStyleBorders(
     const sideNode = tcBdr.child(xmlName);
     if (!sideNode.exists()) continue;
 
-    // Direct <a:ln> element.
     const ln = sideNode.child("ln");
     if (ln.exists()) {
       const noFill = ln.child("noFill");
@@ -346,20 +308,18 @@ function collectStyleBorders(
       continue;
     }
 
-    // <a:lnRef>: reference to theme line style (common in table styles).
     const lnRef = sideNode.child("lnRef");
     if (lnRef.exists()) {
       const idx = lnRef.numAttr("idx") ?? 0;
-      if (idx === 0) continue; // idx 0 = no line.
+      if (idx === 0) continue; // An lnRef idx of 0 means no line.
 
-      // The lnRef's color comes from its child color element.
       const { color, alpha } = resolveColor(lnRef, ctx);
       const hex = color.startsWith("#") ? color : `#${color}`;
 
-      let width = 1; // default 1px.
+      let width = 1;
       if (ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
         const themeLn = ctx.theme.lineStyles[idx - 1];
-        const themeW = themeLn.numAttr("w") ?? 12700; // default 1pt.
+        const themeW = themeLn.numAttr("w") ?? 12700; // 1pt in EMU.
         width = emuToPx(themeW);
       }
 
@@ -374,15 +334,10 @@ function collectStyleBorders(
   }
 }
 
-/**
- * Applies table-level background from tblStyle > tblBg.
- * tblBg can contain fillRef (theme fill reference) or solidFill.
- */
 function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: RenderContext): void {
   const tblBg = tblStyle.child("tblBg");
   if (!tblBg.exists()) return;
 
-  // fillRef: references a theme fill style with a color override.
   const fillRef = tblBg.child("fillRef");
   if (fillRef.exists()) {
     const { fillCss } = resolveThemeFillReference(fillRef, ctx);
@@ -410,12 +365,8 @@ function applyTableBackground(table: HTMLElement, tblStyle: SafeXmlNode, ctx: Re
   }
 }
 
-/**
- * Tracks whether every cell in a row resolved to the same opaque color, which the
- * row then paints to fill the anti-aliased seams between cells that show as light
- * hairlines on dark rows at fractional scale. Returns null once a cell has no,
- * translucent, gradient or image fill, or a different color.
- */
+// A row whose cells share one opaque color paints it behind them to hide the
+// anti-aliased seams that show as light hairlines on dark rows at fractional scale.
 function mergeRowFill(current: string | null | undefined, td: HTMLElement): string | null {
   if (current === null) return null;
 
@@ -427,7 +378,6 @@ function mergeRowFill(current: string | null | undefined, td: HTMLElement): stri
   return current === color ? current : null;
 }
 
-/** One edge of the table's outline, collected while the rows are built. */
 type OuterEdge = {
   tds: HTMLElement[];
   value: string | undefined;
@@ -451,12 +401,8 @@ function trackOuterEdge(
   edge.span += span;
 }
 
-/**
- * Moves an outline edge from its cells onto the table element. Per-cell borders
- * meet on fractional device pixels at scale, and on the outline the gap shows the
- * slide background as light notches; one table border paints it in one piece.
- * Only possible when every cell on the edge has the same border and they cover it.
- */
+// Per-cell outline borders meet on fractional device pixels and show the slide
+// background as light notches; one table border paints the edge in one piece.
 function hoistOuterEdge(
   table: HTMLElement,
   edge: OuterEdge,
@@ -492,9 +438,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   wrapper.style.top = `${node.position.y}px`;
   wrapper.style.width = `${frameW}px`;
   wrapper.style.height = `${frameH}px`;
-  // Row heights are minimums in OOXML: PowerPoint grows rows to fit their
-  // text, letting the table extend beyond the declared height. Clipping here
-  // would cut off cell content mid-row.
+  // Row heights are minimums: PowerPoint grows rows to fit their text past the declared height.
   wrapper.style.overflow = "visible";
 
   const transforms: string[] = [];
@@ -571,8 +515,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
 
     colIdx = 0;
     let leftEdge: string | undefined;
-    // Uniform opaque row fill, used as a backdrop for the sub-pixel seams
-    // between neighbouring cell backgrounds (see mergeRowFill).
     let rowFill: string | null | undefined;
     let filledCols = 0;
     for (const [cellIdx, cell] of row.cells.entries()) {
@@ -597,12 +539,10 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
         td.rowSpan = cell.rowSpan;
       }
 
-      // Table style is the base; direct tcPr overrides it below.
       const borders: CellBorders = {};
       let sections: SafeXmlNode[] = [];
       if (tblStyle) {
         sections = getStyleSections(tblStyle, rowIdx, colIdx, totalRows, totalCols, tblPr);
-        // Later sections override earlier ones.
         for (const section of sections) {
           const tcStyle = section.child("tcStyle");
           if (tcStyle.exists()) {
@@ -637,7 +577,6 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
       rowFill = mergeRowFill(rowFill, td);
       filledCols += cell.gridSpan;
 
-      // Table style text properties (color, bold, italic) come from tcTxStyle.
       const textProps =
         sections.length > 0 ? getEffectiveTableStyleTextProps(sections, ctx) : undefined;
 
@@ -691,10 +630,7 @@ export function renderTable(node: TableNodeData, ctx: RenderContext): HTMLElemen
   return wrapper;
 }
 
-/**
- * Applies table cell properties (tcPr) to a <td> element, collecting the cell's
- * borders into `borders` (they are painted later, once per shared edge).
- */
+// Borders are only collected here; they're painted later, once per shared edge.
 function applyCellProperties(
   td: HTMLElement,
   cell: TableCell,
@@ -707,7 +643,6 @@ function applyCellProperties(
     td.style.overflow = "visible";
   }
 
-  // Fill (overrides table style fill).
   if (tcPr) {
     const noFill = tcPr.child("noFill");
     if (noFill.exists()) {
@@ -731,7 +666,6 @@ function applyCellProperties(
       }
     }
 
-    // Borders (override table style borders).
     collectBorder(borders, tcPr, "lnT", "top", ctx);
     collectBorder(borders, tcPr, "lnB", "bottom", ctx);
     collectBorder(borders, tcPr, "lnL", "left", ctx);
@@ -743,7 +677,7 @@ function applyCellProperties(
   const marT = tcPr?.numAttr("marT");
   const marB = tcPr?.numAttr("marB");
 
-  // Default margin is 91440 EMU (0.1 inch) = ~9.6px.
+  // OOXML's default cell margin, 0.1 inch.
   const defaultMargin = 91440;
   td.style.paddingLeft = `${emuToPx(marL ?? defaultMargin)}px`;
   td.style.paddingRight = `${emuToPx(marR ?? defaultMargin)}px`;
@@ -769,7 +703,7 @@ function collectBorder(
   const ln = tcPr.child(lineName);
   if (!ln.exists()) return;
 
-  // noFill: the cell explicitly suppresses any border the table style set.
+  // A cell's noFill line suppresses any border the table style set.
   const noFill = ln.child("noFill");
   if (noFill.exists()) {
     delete borders[side];

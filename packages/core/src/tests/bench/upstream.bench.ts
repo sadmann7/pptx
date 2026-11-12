@@ -36,8 +36,6 @@ const largeFilesOurs = await readPptx(largeBuffer);
 const mediumFilesUpstream = await upstreamParseZip(mediumBuffer);
 const largeFilesUpstream = await upstreamParseZip(largeBuffer);
 
-// ─── readPptx ────────────────────────────────────────────────────────────────.
-
 describe("readPptx: medium (20 slides)", () => {
   bench("ours", async () => {
     await readPptx(mediumBuffer);
@@ -65,8 +63,6 @@ describe("readPptx lazyMedia: large (100 slides)", () => {
   });
 });
 
-// ─── buildPresentation ───────────────────────────────────────────────────────.
-
 describe("buildPresentation: medium", () => {
   bench("ours", () => {
     ourBuild(mediumFilesOurs);
@@ -84,8 +80,6 @@ describe("buildPresentation: large", () => {
     upstreamBuild(largeFilesUpstream);
   });
 });
-
-// ─── end-to-end load (buffer → first slide ready) ────────────────────────────.
 
 describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {
@@ -113,7 +107,6 @@ describe("time-to-first-slide: large", () => {
   });
 });
 
-// ─── full-deck materialization ────────────────────────────────────────────────
 // Skipped for upstream: jsdom's DOM node allocations for 100 slides × repeated
 // rounds exhaust the default Node heap (~4 GB). The per-slide cost can be
 // inferred from time-to-first-slide above times slide count.

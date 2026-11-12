@@ -84,7 +84,7 @@ function tableCell(text: string): string {
   return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
 }
 
-/** Table with an empty `a:tblPr`, i.e. no table style reference at all. */
+// An empty `a:tblPr`, so no table style reference at all.
 function unstyledTableFrame(): string {
   return `<p:graphicFrame>
 <p:nvGraphicFramePr><p:cNvPr id="4" name="Table"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
@@ -116,14 +116,10 @@ function styledTableFrame(styleId: string): string {
 </p:graphicFrame>`;
 }
 
-/**
- * Empty tblStyleLst part. Real PowerPoint packages always ship one; the
- * predefined-style fallback is only reachable when the part exists but doesn't
- * define the referenced GUID (see the missing-part test below).
- */
+// PowerPoint always ships a tblStyleLst part; the predefined-style fallback is only
+// reachable when the part exists but lacks the referenced GUID.
 const EMPTY_TABLE_STYLES = `<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="${MEDIUM_STYLE_2_ACCENT1}"/>`;
 
-/** Render a 3x2 table styled by a built-in GUID and return the rendered rows. */
 async function renderStyledTable(
   styleId: string,
   options: { includeTableStylesPart?: boolean } = {},

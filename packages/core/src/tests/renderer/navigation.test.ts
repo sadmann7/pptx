@@ -7,7 +7,7 @@ import {
   slideJumpTitle,
 } from "../../renderer/navigation";
 
-/** Minimal structural RenderContext: navigation only reads slide + presentation.slides. */
+// Navigation only reads the slide and presentation.slides.
 function ctxAt(currentIndex: number, slideCount = 4): RenderContext {
   const slides = Array.from({ length: slideCount }, (_, i) => ({
     id: `ppt/slides/slide${i + 1}.xml`,

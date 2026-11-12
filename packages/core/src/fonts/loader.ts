@@ -27,8 +27,8 @@ const VARIANTS: {
 
 export interface EmbeddedFontsHandle {
   /**
-   * Resolves when the priority fonts are registered (or skipped). When no
-   * `priorityTypefaces` were given, this waits for every embedded font.
+   * Resolves when the priority fonts are registered or skipped, or every embedded font
+   * when no `priorityTypefaces` were given.
    */
   ready: Promise<void>;
   /** Resolves when every embedded font has been registered (or skipped). */
@@ -55,20 +55,18 @@ export interface EmbeddedFontError {
 
 export interface LoadEmbeddedFontsOptions {
   /**
-   * Typeface names that block `ready`. Anything else decodes in the
-   * background after them. Names must match `EmbeddedFontEntry.typeface`.
+   * Typeface names that block `ready`, matching `EmbeddedFontEntry.typeface`; the rest
+   * decode in the background after them.
    */
   priorityTypefaces?: ReadonlySet<string>;
   /**
-   * Called after each font part finishes (decoded and registered, or
-   * skipped on failure). `done` counts finished parts, `total` is the
-   * number of unique font parts in the deck.
+   * Called after each font part is registered or skipped, with `total` counting the deck's
+   * unique font parts.
    */
   onProgress?: (done: number, total: number) => void;
   /**
-   * Called for each embedded font that can't be used, whose text then renders
-   * with a fallback typeface. `"missing"` reports fire while `loadEmbeddedFonts`
-   * is still building its job list, before it returns.
+   * Called for each embedded font that falls back to another typeface; `"missing"` reports
+   * fire before `loadEmbeddedFonts` returns.
    */
   onError?: (error: EmbeddedFontError) => void;
 }
@@ -93,12 +91,8 @@ interface DecodeFailure {
 
 type OnDecoded = (path: string, buffer: ArrayBuffer | null, failure?: DecodeFailure) => void;
 
-/**
- * Decode jobs across a Web Worker pool, invoking `onDecoded` as each result
- * arrives (in queue order per worker, priority jobs first in the queue).
- * Jobs whose worker dies (e.g. the worker script failed to load) are left
- * un-decoded; the caller runs a main-thread fallback for anything missing.
- */
+// Results arrive in queue order per worker. Jobs whose worker dies stay un-decoded,
+// and the caller runs a main-thread fallback for them.
 async function decodeWithWorkerPool(
   jobs: DecodeJob[],
   isDisposed: () => boolean,
@@ -259,7 +253,6 @@ export function loadEmbeddedFonts(
     options?.onError?.(error);
   };
 
-  /** Register every typeface variant backed by a decoded part. */
   async function registerPath(
     path: string,
     buffer: ArrayBuffer | null,
@@ -367,10 +360,8 @@ export function loadEmbeddedFonts(
 }
 
 /**
- * Picks the embedded typefaces the given slides reference, for `priorityTypefaces`,
- * so `ready` doesn't wait on every family. `slideXml` includes each slide's layout
- * and master, which text inherits from. Theme fonts are always included, since
- * text reaches them through `+mj-lt`/`+mn-lt` rather than by name.
+ * Picks the embedded typefaces the given slides reference, for `priorityTypefaces`. Pass
+ * each slide's layout and master XML too, since text inherits typefaces from them.
  */
 export function findPriorityTypefaces(
   presentation: PresentationData,

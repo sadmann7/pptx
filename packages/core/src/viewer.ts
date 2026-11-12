@@ -24,28 +24,40 @@ export type PptxSource = ArrayBuffer | Uint8Array | Blob;
 
 export interface PptxViewerOptions {
   width?: number;
-  /** Scaling mode. contain = fit container width, none = use intrinsic slide size. */
+  /**
+   * How slides scale: `contain` fits the container width and `none` keeps the intrinsic
+   * slide size.
+   */
   fitMode?: FitMode;
-  /** Initial zoom percentage. Effective scale = fitScale * zoomPercent/100. */
+  /** The initial zoom percentage, applied on top of the fit scale. */
   zoomPercent?: number;
   /**
-   * Scroll container element used as IntersectionObserver root in list mode
-   * (both windowed mounting and scroll-based slide tracking).
-   * When omitted, the viewport (null root) is used.
+   * The scroll container list mode observes for windowed mounting and slide tracking,
+   * defaulting to the viewport.
    */
   scrollContainer?: HTMLElement;
-  /** Optional ZIP parsing limits for controlling resource usage and DoS surface. */
+  /** ZIP parsing limits that bound resource use on untrusted files. */
   readLimits?: PptxReadLimits;
-  /** Decode embedded media on demand instead of during ZIP parsing. Default `false`. */
+  /**
+   * Whether to decode embedded media on demand instead of during ZIP parsing.
+   *
+   * @default false
+   */
   lazyMedia?: boolean;
-  /** Parse slide shape/table/chart nodes on demand instead of during model build. Default `false`. */
+  /**
+   * Whether to parse a slide's nodes on demand instead of during the model build.
+   *
+   * @default false
+   */
   lazySlides?: boolean;
   /**
-   * Retain the source package on the presentation (`presentationData.sourcePackage`) so
-   * it can be written back to a .pptx via `writePptx()`. Default `false`.
+   * Whether to keep the source package on `presentationData.sourcePackage` so `writePptx()`
+   * can save it.
+   *
+   * @default false
    */
   keepSourcePackage?: boolean;
-  /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. Use `false` to disable. */
+  /** The pdfjs URLs for rendering PDFs embedded in EMF previews, or `false` to disable them. */
   pdfjs?: PdfjsConfig;
   onSlideChange?: (index: number) => void;
   onSlideRendered?: (index: number, element: HTMLElement) => void;
@@ -61,21 +73,25 @@ export interface ListRenderOptions {
   batchSize?: number;
   initialSlides?: number;
   overscanViewport?: number;
-  /** Show "Slide N" labels below each slide. Default `false`. */
+  /**
+   * Whether to show "Slide N" labels below each slide.
+   *
+   * @default false
+   */
   showSlideLabels?: boolean;
 }
 
 export interface ThumbnailRenderOptions {
-  /** Target preview width in CSS pixels. Preserves the slide aspect ratio. */
+  /** The preview width in CSS pixels, keeping the slide's aspect ratio. */
   width?: number;
-  /** Target preview height in CSS pixels. Preserves the slide aspect ratio. */
+  /** The preview height in CSS pixels, keeping the slide's aspect ratio. */
   height?: number;
-  /** Explicit scale factor. Takes precedence over width/height when provided. */
+  /** An explicit scale factor, which takes precedence over `width` and `height`. */
   scale?: number;
 }
 
 export interface SearchHighlightOptions {
-  /** Additional CSS class for application-specific styling. */
+  /** An extra CSS class for the overlay. */
   className?: string;
   /** Border color for the highlight overlay. */
   borderColor?: string;
@@ -83,17 +99,21 @@ export interface SearchHighlightOptions {
   backgroundColor?: string;
   /** CSS box-shadow for the highlight overlay. */
   boxShadow?: string;
-  /** Overlay border radius. Numbers are treated as CSS pixels. */
+  /** The overlay's border radius, with numbers in CSS pixels. */
   borderRadius?: number | string;
-  /** Overlay border width. Numbers are treated as CSS pixels. */
+  /** The overlay's border width, with numbers in CSS pixels. */
   borderWidth?: number | string;
-  /** Extra intrinsic-slide padding around the matched node bounds. */
+  /** Padding around the matched node's bounds, in intrinsic slide pixels. */
   padding?: number;
-  /** z-index applied to the overlay. */
+  /** The overlay's z-index. */
   zIndex?: number;
-  /** Additional inline CSS properties applied after the default/custom fields. */
+  /** Inline CSS properties applied after the other style options. */
   style?: Record<string, string | number | undefined>;
-  /** Scroll or navigate to the result before drawing. Defaults to `true`. */
+  /**
+   * Whether to scroll or navigate to the result before drawing.
+   *
+   * @default true
+   */
   scrollIntoView?: boolean | ScrollIntoViewOptions;
 }
 
@@ -115,10 +135,9 @@ export interface PptxViewerEventMap {
 }
 
 /**
- * Scales a rendered slide to its display size with `zoom`, not `transform: scale()`.
- * A transform rasterizes at the intrinsic size, so hairlines straddle two device
- * pixels and wash out at fractional scales; `zoom` scales at layout time and keeps
- * them crisp, as in PowerPoint. Client rects use the same post-zoom coordinates.
+ * Scales a rendered slide with `zoom`, which keeps hairlines crisp at fractional
+ * scales where `transform: scale()` washes them out. Client rects come back in
+ * the same post-zoom coordinates.
  */
 export function applySlideScale(element: HTMLElement, scale: number): void {
   element.style.setProperty("zoom", String(scale));
@@ -231,8 +250,8 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Loads a parsed presentation model. Does NOT render. Call `renderList()` or
-   * `renderSlide()` afterwards.
+   * Loads a parsed presentation without rendering it, ahead of `renderList()` or
+   * `renderSlide()`.
    */
   load(presentation: PresentationData): void {
     this.renderGeneration++;
@@ -440,9 +459,8 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Renders a single slide into an external container, for framework integration
-   * or thumbnails. The caller owns the returned {@link SlideHandle} and must call
-   * `handle.dispose()`, since `destroy()` doesn't dispose externally rendered handles.
+   * Renders a single slide into an external container, returning a {@link SlideHandle}
+   * the caller must dispose, since `destroy()` doesn't.
    */
   renderSlideToContainer(
     index: number,
@@ -471,9 +489,8 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Searches loaded presentation text without depending on rendered DOM.
-   * Results point to slide/node locations that callers can use for navigation
-   * or custom highlighting.
+   * Searches the loaded presentation's text without the rendered DOM, returning slide and
+   * node locations.
    */
   searchText(
     query: string | RegExp,
@@ -485,9 +502,8 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Renders a scaled preview of a slide into an external container.
-   * The slide is laid out from the same intrinsic geometry and only scaled, so
-   * this avoids thumbnail-only reflow differences.
+   * Renders a scaled preview of a slide into an external container, laid out like the
+   * full-size slide.
    */
   renderThumbnailToContainer(
     index: number,
@@ -540,10 +556,8 @@ export class PptxViewer extends EventTarget {
   }
 
   /**
-   * Draw a node-level overlay for a text search result.
-   *
-   * The overlay uses result bounds in intrinsic slide coordinates and is
-   * scaled together with the rendered slide. It does not modify slide text.
+   * Draws an overlay over a text search result's node, scaled with the slide and leaving
+   * its text untouched.
    */
   async highlightSearchResult(
     result: TextSearchResult,
@@ -596,10 +610,7 @@ export class PptxViewer extends EventTarget {
     this.searchHighlightHandles.clear();
   }
 
-  /**
-   * Hook called after rendering a single slide. Override in subclasses to
-   * append additional UI (e.g. navigation buttons).
-   */
+  /** Runs after a single slide renders, for subclasses to append UI like navigation buttons. */
   protected afterSingleSlideRender(): void {}
 
   destroy(): void {
@@ -1191,11 +1202,8 @@ export class PptxViewer extends EventTarget {
     this.afterSingleSlideRender();
   }
 
-  /**
-   * Appending slides can bring up a page scrollbar that narrows the container.
-   * When its width changed since the scale was computed, resize every wrapper
-   * and rescale each slide in place, without rebuilding the DOM.
-   */
+  // Appending slides can bring up a page scrollbar that narrows the container,
+  // so wrappers resize and slides rescale in place without rebuilding the DOM.
   private correctListMetricsIfNeeded(): void {
     if (!this.presentation) return;
     if (this._fitMode !== "contain") return;

@@ -19,7 +19,6 @@ export interface SlideRect {
   top: number;
   width: number;
   height: number;
-  /** Slide scale relative to `SLIDE_W` by `SLIDE_H`. */
   zoom: number;
 }
 
@@ -27,12 +26,8 @@ export function rectCenter(rect: SlideRect) {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
-/**
- * Rect of the slide inside the composition scene's preview panel.
- *
- * `railIn` mirrors `EditorPreview`'s rail progress: the canvas sits half a rail
- * further left until the thumbnail rail lands.
- */
+// `railIn` mirrors `EditorPreview`'s rail progress: the canvas sits half a rail
+// further left until the thumbnail rail lands.
 export function previewSlideRect(railIn: number): SlideRect {
   const rowWidth = CODE_PANEL_W + COMPOSITION_GAP + PREVIEW_W;
   const previewLeft = (VIDEO_W - rowWidth) / 2 + CODE_PANEL_W + COMPOSITION_GAP;
@@ -58,7 +53,6 @@ export function previewSlideRect(railIn: number): SlideRect {
   };
 }
 
-/** Rect of the slide inside the editor demo recording, in video pixels. */
 export function demoSlideRect(): SlideRect {
   const zoom = DEMO_SLIDE.width / SLIDE_W;
 

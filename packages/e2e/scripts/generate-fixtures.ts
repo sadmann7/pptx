@@ -27,11 +27,8 @@ const REL_TYPE_BASE = "http://schemas.openxmlformats.org/officeDocument/2006/rel
 const CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
-/**
- * Valid [Content_Types].xml (the shared fixture helper declares a "rel"
- * Default instead of "rels", which real PowerPoint rejects as corrupt; the
- * oracle needs decks PowerPoint will open cleanly).
- */
+// The shared fixture helper declares a "rel" Default instead of "rels", which
+// PowerPoint rejects as corrupt, and the oracle needs decks PowerPoint opens.
 function contentTypesXml(slideCount: number, chartParts: string[] = []): string {
   const slideOverrides = Array.from(
     { length: slideCount },
@@ -82,7 +79,7 @@ function picture(id: number, relId: string): string {
 </p:pic>`;
 }
 
-/** Slide rels with an absolute chart target, mimicking Open XML SDK output. */
+// An absolute chart target, as Open XML SDK writes it.
 function slideRelsWithChart(chartTarget: string): string {
   return `<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="${RELS_NS}"><Relationship Type="${REL_TYPE_BASE}/slideLayout" Target="/ppt/slideLayouts/slideLayout1.xml" Id="rId1" /><Relationship Type="${REL_TYPE_BASE}/chart" Target="${chartTarget}" Id="rId2" /></Relationships>`;
 }
@@ -99,7 +96,6 @@ function numLit(values: number[]): string {
 
 const NO_FILL_LINE = `<a:ln w="0" xmlns:a="${DRAWING_NS}"><a:noFill/><a:prstDash val="solid"/></a:ln>`;
 
-/** Doughnut chart with per-point dPt colors and literal (strLit/numLit) data. */
 function doughnutChartXml(): string {
   const dPt = (idx: number, color: string) =>
     `<c:dPt><c:idx val="${idx}"/><c:spPr><a:solidFill xmlns:a="${DRAWING_NS}"><a:srgbClr val="${color}"/></a:solidFill></c:spPr></c:dPt>`;
@@ -110,7 +106,6 @@ ${dPt(0, "1C1C1C")}${dPt(1, "91832A")}${dPt(2, "F5D200")}
 </c:ser><c:firstSliceAng val="270"/><c:holeSize val="68"/></c:doughnutChart></c:plotArea><c:plotVisOnly val="1"/></c:chart></c:chartSpace>`;
 }
 
-/** Bar chart with literal data, noFill axis lines, and a dark filled plot area. */
 function barChartXml(): string {
   const axSpPr = `<c:spPr>${NO_FILL_LINE}</c:spPr>`;
   return `<?xml version="1.0" encoding="utf-8"?><c:chartSpace xmlns:c="${CHART_NS}"><c:chart><c:plotArea><c:barChart><c:barDir val="bar"/><c:grouping val="clustered"/><c:varyColors val="0"/>
@@ -125,10 +120,8 @@ function barChartXml(): string {
 </c:plotArea><c:plotVisOnly val="1"/></c:chart></c:chartSpace>`;
 }
 
-/**
- * Table with deliberately unequal column widths (480/320/160 px) so a renderer
- * that ignores tblGrid and splits the frame evenly produces a visible diff.
- */
+// Unequal column widths, so a renderer that ignores tblGrid and splits the frame
+// evenly produces a visible diff.
 function tableFrame(id: number): string {
   const cell = (text: string, fill: string) =>
     `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="1400"/><a:t>${text}</a:t></a:r></a:p></a:txBody><a:tcPr><a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></a:tcPr></a:tc>`;
@@ -148,13 +141,9 @@ ${data}
 </p:graphicFrame>`;
 }
 
-/**
- * 3x3 table, 320x96 px per cell, at (96, 96) px.
- *
- * Shared by both border slides so a spec can address a grid line by arithmetic
- * on those numbers. The bottom row and right column are deliberately textless:
- * a pixel scan along their centre lines crosses grid lines and cell fills only.
- */
+// Shared by both border slides so a spec can find a grid line by arithmetic. The
+// bottom row and right column are textless, so a pixel scan along their centre
+// lines crosses grid lines and cell fills only.
 const BORDER_TABLE_GEOMETRY = {
   x: 96,
   y: 96,
@@ -189,12 +178,9 @@ function borderCell(text: string, fill: string, textColor: string, tcBdr = ""): 
   return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p>${run}</a:p></a:txBody><a:tcPr>${tcBdr}<a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></a:tcPr></a:tc>`;
 }
 
-/**
- * No a:tableStyleId at all, so the grid comes entirely from the built-in
- * fallback style. Cell fills alternate dark/light: a grid line composited
- * against the slide background instead of against the cells it separates picks
- * up the neighbouring fill and is visibly wrong on exactly this arrangement.
- */
+// No a:tableStyleId, so the grid comes from the built-in fallback style. Fills
+// alternate dark and light, so a grid line composited against the slide instead
+// of the cells it separates is visibly wrong.
 function styleFallbackGridSlide(): string {
   const dark = (text: string) => borderCell(text, "1C1C1C", "FFFFFF");
   const light = (text: string) => borderCell(text, "F2F2F2", "1C1C1C");
@@ -206,16 +192,12 @@ function styleFallbackGridSlide(): string {
   ]);
 }
 
-/** A tcPr border line of an explicit width and colour. */
 function tcLine(side: "lnL" | "lnR" | "lnT" | "lnB", widthPt: number, color: string): string {
   return `<a:${side} w="${Math.round(widthPt * 12700)}" cap="flat"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
 }
 
-/**
- * Per-cell tcPr borders whose top edges disagree (red over the first column,
- * green over the rest), so the outline cannot be painted as one rectangle on
- * the table and has to stay on the cells.
- */
+// The cells' top edges disagree, so the outline cannot be painted as one
+// rectangle on the table and has to stay on the cells.
 function explicitBorderSlide(): string {
   const cell = (text: string, top: string) =>
     borderCell(
@@ -255,10 +237,7 @@ function plainRect(
 </p:sp>`;
 }
 
-/**
- * Group at (96,96) sized 384x192 px whose child space is half that
- * (chExt 1828800x914400), so children render at 2x scale.
- */
+// The child space is half the group's size, so children render at 2x scale.
 function groupWithChildren(id: number): string {
   return `<p:grpSp>
 <p:nvGrpSpPr><p:cNvPr id="${id}" name="Group ${id}"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>

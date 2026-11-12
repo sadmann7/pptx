@@ -43,11 +43,8 @@ const useBuild = params.get("build") === "dist";
 
 type FontsModule = typeof import("@diceui/pptx-core/fonts");
 
-/**
- * The font pipeline under test. Loading the built entry through a plain URL is
- * deliberate: bundling it would defeat the point, which is to time the blob
- * worker and minified decoder exactly as published.
- */
+// Loaded through a plain URL, since bundling it would stop the blob worker and
+// minified decoder being timed exactly as published.
 async function loadFontsModule(): Promise<FontsModule> {
   if (!useBuild) return import("@diceui/pptx-core/fonts");
   // The specifier is a URL the dev server answers, not a module TypeScript can
@@ -60,16 +57,12 @@ async function loadFontsModule(): Promise<FontsModule> {
   return module as FontsModule;
 }
 
-/**
- * MTX-compressed parts from the core decode fixtures, served from fixtures/fonts/.
- * They stand in for the payload PowerPoint produces, which no deck on disk contains.
- */
+// MTX stands in for the payload PowerPoint writes, which no deck on disk contains.
 const MTX_PARTS = [
   "/fonts/InstrumentSansSemiBold-regular.fntdata",
   "/fonts/SpaceGroteskSemiBold-bold.fntdata",
 ];
 
-/** The four variants an embedded font entry can carry, with their CSS values. */
 const VARIANTS = [
   { key: "regular", weight: "normal", style: "normal" },
   { key: "bold", weight: "bold", style: "normal" },
@@ -79,17 +72,12 @@ const VARIANTS = [
 
 const VARIANT_KEYS = VARIANTS.map((variant) => variant.key);
 
-/** How long the sliced fallback may hold the main thread before yielding. */
 const SLICE_MS = 5;
 
-/** One frame budget at 60Hz; anything past it is time the page could not use. */
 const FRAME_BUDGET_MS = 1000 / 60;
 
-/**
- * Copies the deck's font parts under fresh paths and family names. Real decks
- * embed only 3 to 7 parts, so multiplying reaches the deck sizes the loader was
- * written for. The bytes are shared, so only the measured decode work repeats.
- */
+// Real decks embed only 3 to 7 parts, so multiplying reaches the deck sizes the
+// loader was written for. The bytes are shared, so only the decode work repeats.
 function multiplyFontParts(presentation: PresentationData, factor: number): void {
   const base = presentation.embeddedFonts;
   if (!base || factor <= 1) return;
@@ -113,11 +101,8 @@ function multiplyFontParts(presentation: PresentationData, factor: number): void
   base.push(...added);
 }
 
-/**
- * Swaps every font part for an MTX-compressed one, cycling through the
- * fixtures. The bytes carry their own EOT header, so the fontKey the deck
- * declared no longer applies and is dropped with them.
- */
+// The MTX bytes carry their own EOT header, so the deck's fontKey no longer
+// applies and is dropped.
 async function applyMtxFontParts(presentation: PresentationData): Promise<void> {
   const payloads: Uint8Array[] = [];
   for (const url of MTX_PARTS) {
@@ -139,7 +124,6 @@ async function applyMtxFontParts(presentation: PresentationData): Promise<void> 
   }
 }
 
-/** Unique part paths in the order the deck declares them. */
 function fontPartPaths(presentation: PresentationData): string[] {
   const paths = new Set<string>();
   for (const entry of presentation.embeddedFonts ?? []) {
@@ -151,7 +135,6 @@ function fontPartPaths(presentation: PresentationData): string[] {
   return [...paths];
 }
 
-/** Families that would lose their font if the part at `path` failed. */
 function typefacesForPath(presentation: PresentationData, path: string): string[] {
   const typefaces = new Set<string>();
   for (const entry of presentation.embeddedFonts ?? []) {
@@ -162,7 +145,6 @@ function typefacesForPath(presentation: PresentationData, path: string): string[
   return [...typefaces];
 }
 
-/** Points whatever uses `from` at `to`, so one part backs two families. */
 function repointVariants(presentation: PresentationData, from: string, to: string): void {
   for (const entry of presentation.embeddedFonts ?? []) {
     for (const key of VARIANT_KEYS) {
@@ -172,11 +154,9 @@ function repointVariants(presentation: PresentationData, from: string, to: strin
   }
 }
 
-/**
- * Breaks one part per way a font can fail, each at a different depth: a dropped
- * part never reaches the decoder, an empty or garbage one is rejected by it, and
- * an sfnt signature over junk passes it to be refused by the browser's FontFace.
- */
+// One part per failure depth: a dropped part never reaches the decoder, an empty
+// or garbage one is rejected by it, and an sfnt signature over junk passes it to
+// be refused by the browser's FontFace.
 function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
   const paths = fontPartPaths(presentation);
   const broken: BrokenFontPart[] = [];
@@ -223,7 +203,6 @@ function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
   return broken;
 }
 
-/** Unique font parts the loader will decode, and their total size. */
 function fontPartStats(presentation: PresentationData): { parts: number; bytes: number } {
   const paths = new Set<string>();
   for (const entry of presentation.embeddedFonts ?? []) {
@@ -246,11 +225,6 @@ interface MainThreadStats {
   totalTaskMs: number;
 }
 
-/**
- * Watches the main thread while the decode runs. Late frames are the visible
- * signal; long tasks say the same from the scheduler's side but exist only in
- * Chromium, so they read as zero elsewhere instead of being asserted on.
- */
 function startMainThreadMonitor(): () => MainThreadStats {
   let frames = 0;
   let worstFrameMs = 0;
@@ -292,12 +266,8 @@ function startMainThreadMonitor(): () => MainThreadStats {
   };
 }
 
-/**
- * Decodes and registers every part, yielding only once a slice runs long, as the
- * loader would with no worker. The shipped fallback yields after every part, which
- * costs about as much as decoding a cheap part; this still avoids frame-long
- * stretches without paying that per part.
- */
+// Yields only once a slice runs long, since yielding after every part as the
+// shipped fallback does costs about as much as decoding a cheap part.
 async function decodeSliced(
   presentation: PresentationData,
   decodeEmbeddedFont: FontsModule["decodeEmbeddedFont"],
@@ -308,7 +278,6 @@ async function decodeSliced(
     faces: { typeface: string; weight: string; style: string }[];
   }
 
-  // One decode per part, one face per family that uses it, same as the loader.
   const parts = new Map<string, Part>();
   for (const entry of presentation.embeddedFonts ?? []) {
     for (const { key, weight, style } of VARIANTS) {
@@ -355,11 +324,8 @@ async function decodeSliced(
   await Promise.all(registrations);
 }
 
-/**
- * Renders a line per embedded family, so registering a face invalidates real
- * layout. Without text to reflow, `document.fonts.add` costs almost nothing
- * and the main thread work would be understated in both modes.
- */
+// Without text to reflow, `document.fonts.add` costs almost nothing and the
+// main thread work would be understated in both modes.
 function renderProbeText(presentation: PresentationData): void {
   const probe = document.getElementById("font-probe");
   if (!probe) return;
@@ -394,9 +360,6 @@ async function main(): Promise<void> {
     window.__fontParts = parts;
     window.__fontBytes = bytes;
 
-    // Times each part on its own, the number both modes are built out of:
-    // decoding is what a worker moves, so its cost per part decides whether
-    // moving it is worth a second copy of the decoder in the bundle.
     window.__benchDecodeParts = () => {
       const timings: { path: string; bytes: number; ms: number }[] = [];
       for (const entry of presentation.embeddedFonts ?? []) {
@@ -421,8 +384,6 @@ async function main(): Promise<void> {
       const broken = breakFontParts(presentation);
       const facesBefore = document.fonts.size;
 
-      // Same Worker switch the bench uses, so both the pool (failures cross a
-      // postMessage) and the fallback (failures stay here) can be checked.
       if (mode === "main") {
         Object.defineProperty(window, "Worker", { value: undefined, configurable: true });
       }
@@ -435,9 +396,8 @@ async function main(): Promise<void> {
     };
 
     window.__benchFonts = async () => {
-      // Faces the document ends up with, which is what says the decode produced
-      // fonts the browser accepts rather than merely finishing quickly. A part
-      // that fails to decode is skipped silently, so timings alone cannot tell.
+      // A part that fails to decode is skipped silently, so only the face count
+      // shows whether the browser accepted the fonts.
       const facesBefore = document.fonts.size;
 
       if (mode === "sliced") {
@@ -445,7 +405,6 @@ async function main(): Promise<void> {
         const start = performance.now();
         await decodeSliced(presentation, decodeEmbeddedFont);
         const completeMs = performance.now() - start;
-        // Nothing is prioritized here, so there is one number to report.
         return {
           mode,
           parts,
@@ -457,9 +416,7 @@ async function main(): Promise<void> {
         };
       }
 
-      // The loader picks its path from `typeof Worker`, so taking Worker away
-      // here is what selects the main-thread fallback, without a second code
-      // path in the loader that only the bench would use.
+      // The loader picks its path from `typeof Worker`.
       if (mode === "main") {
         Object.defineProperty(window, "Worker", { value: undefined, configurable: true });
       }

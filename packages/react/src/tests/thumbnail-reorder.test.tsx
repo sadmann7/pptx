@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 import { Presentation } from "../index";
 import { editableStore } from "./test-utils";
 
-/** Slide ids in the order their buttons appear in the DOM. */
 function renderedOrder(): (string | null)[] {
   return screen.getAllByRole("option").map((option) => option.getAttribute("data-slide-id"));
 }
@@ -130,7 +129,7 @@ describe("consumer-driven reordering", () => {
       </Presentation.Provider>,
     );
 
-    // Pressing a thumbnail pins the tab stop, which is what used to strand it.
+    // Pressing a thumbnail pins the tab stop.
     act(() => screen.getAllByRole("option")[2].focus());
     expect(store.getState().activeSlideId).toBe(third);
 

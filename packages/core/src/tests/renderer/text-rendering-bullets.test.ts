@@ -1,7 +1,3 @@
-/**
- * Bullet rendering (a:buChar / a:buAutoNum / a:buNone / a:buClr / sizing)
- * through the real render pipeline.
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,7 +7,6 @@ import {
   spansOf,
 } from "../fixtures/text-rendering-helpers";
 
-/** The bullet span is prepended before the run spans. */
 function bulletOf(paragraph: HTMLElement): HTMLElement | undefined {
   const first = paragraph.firstElementChild as HTMLElement | null;
   if (!first || first.tagName.toLowerCase() !== "span") return undefined;

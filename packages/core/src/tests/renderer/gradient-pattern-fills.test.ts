@@ -1,7 +1,3 @@
-/**
- * Gradient fills (linear angle mapping, modifier stops, radial paths) and
- * pattern fills rendered as SVG by the shape renderer.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";

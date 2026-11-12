@@ -5,7 +5,6 @@ import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
-/** Renders a single text box with the given txBody paragraphs through the full pipeline. */
 async function renderTextBox(paragraphsXml: string): Promise<HTMLElement> {
   const buffer = await buildPptxWithShapes(`<p:sp>
 <p:nvSpPr><p:cNvPr id="2" name="TextBox"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
@@ -28,7 +27,6 @@ ${paragraphsXml}
   return handle.element;
 }
 
-/** Paragraph divs are the direct children of the text container. */
 function paragraphDivs(element: HTMLElement): HTMLElement[] {
   const withText = [...element.querySelectorAll("div")].filter((div) =>
     div.textContent?.includes("MARKER"),
@@ -44,8 +42,8 @@ const EMPTY_PPR = `<a:pPr indent="0" lvl="0" marL="0" rtl="0" algn="l"><a:buNone
 
 describe("empty paragraph rendering", () => {
   it("gives empty-text-run paragraphs a line box at the endParaRPr size (Google Slides spacers)", async () => {
-    // Regression: 4 spacer paragraphs with an empty <a:t/> run used to collapse
-    // to zero height, letting the following text overlap content above it.
+    // Google Slides spacer paragraphs: an empty <a:t/> run still needs a line box, or
+    // the following text overlaps the content above it.
     const spacer = `<a:p>${EMPTY_PPR}<a:r><a:t></a:t></a:r><a:endParaRPr b="1" sz="2000"/></a:p>`;
     const element = await renderTextBox(
       `${spacer.repeat(4)}<a:p>${EMPTY_PPR}<a:r><a:rPr b="1" lang="en" sz="2000"/><a:t>MARKER July 3, 2025</a:t></a:r><a:endParaRPr sz="2000"/></a:p>`,
@@ -140,9 +138,7 @@ describe("leading whitespace preservation", () => {
 
     const spans = runSpansContaining(element, "MARKER");
     expect(spans).toHaveLength(2);
-    // First run: no special whitespace needed.
     expect(spans[0].style.whiteSpace).toBe("");
-    // Second run: space but NOT at line start; no pre-wrap.
     expect(spans[1].style.whiteSpace).toBe("");
   });
 
@@ -154,9 +150,7 @@ describe("leading whitespace preservation", () => {
     );
 
     const spans = runSpansContaining(element, "MARKER first");
-    // First run: no pre-wrap.
     expect(spans[0].style.whiteSpace).toBe("");
-    // After <br>, a leading space needs pre-wrap.
     expect(spans[1].style.whiteSpace).toBe("pre-wrap");
     expect(spans[1].textContent).toBe("  second line");
   });

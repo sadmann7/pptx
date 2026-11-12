@@ -5,14 +5,10 @@ interface SnapRect {
   h: number;
 }
 
-/** Screen pixels within which an edge or center snaps. */
+// Screen px.
 export const SNAP_THRESHOLD = 6;
 
-/**
- * A guide line in slide pixels. An `x` guide is a vertical line at
- * `x = position`, running from `start` to `end` down the y axis; a `y` guide
- * is horizontal.
- */
+// Slide px. An `x` guide is a vertical line at `x = position` from `start` to `end`.
 export interface SnapGuide {
   axis: "x" | "y";
   position: number;
@@ -28,14 +24,12 @@ export interface SnapResult {
 
 type Axis = "x" | "y";
 
-/** Start, center, and end of a rect along an axis. */
 function getAnchors(rect: SnapRect, axis: Axis): [number, number, number] {
   const start = axis === "x" ? rect.x : rect.y;
   const size = axis === "x" ? rect.w : rect.h;
   return [start, start + size / 2, start + size];
 }
 
-/** The rect's extent across the other axis, which is where a guide runs. */
 function getCrossSpan(rect: SnapRect, axis: Axis): [number, number] {
   return axis === "x" ? [rect.y, rect.y + rect.h] : [rect.x, rect.x + rect.w];
 }
@@ -45,7 +39,6 @@ interface AxisSnap {
   position: number;
 }
 
-/** The smallest correction that puts one of `edges` on a target anchor, if any is close enough. */
 function getNearestSnap(
   edges: number[],
   targets: SnapRect[],
@@ -69,7 +62,6 @@ function getNearestSnap(
 
 const EPSILON = 0.01;
 
-/** A guide through `position` spanning the snapped rect and every target aligned on it. */
 function getGuide(snapped: SnapRect, targets: SnapRect[], axis: Axis, position: number): SnapGuide {
   let [start, end] = getCrossSpan(snapped, axis);
   for (const target of targets) {
@@ -96,11 +88,7 @@ function getGuides(
   return guides;
 }
 
-/**
- * Snaps a move. `rect` is the dragged bounds before the move (the union of a
- * multi-selection), `dx`/`dy` the drag so far. An axis set to `false` in
- * `axes` keeps its delta, for Shift-constrained drags.
- */
+// An axis off in `axes` keeps its delta, for Shift-constrained drags.
 export function snapMove(
   rect: SnapRect,
   dx: number,
@@ -119,11 +107,7 @@ export function snapMove(
   return { dx: nextDx, dy: nextDy, guides: getGuides(snapped, targets, { x: xSnap, y: ySnap }) };
 }
 
-/**
- * Snaps a resize: only the edges the handle moves snap. `handle` is a compass
- * direction ("e", "nw", ...). Corner drags with the aspect ratio locked are
- * left alone, since snapping one axis would break the ratio.
- */
+// Corner drags with the aspect ratio locked don't snap, since snapping one axis would break the ratio.
 export function snapResize(
   rect: SnapRect,
   handle: string,

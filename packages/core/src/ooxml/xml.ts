@@ -1,19 +1,10 @@
-/**
- * Lazily built per-element index of children by localName. Renderers probe the
- * same elements repeatedly (a shape's `spPr` for a dozen child names), which made
- * linear scans a measurable share of parse/render profiles.
- *
- * Two-phase so the single-pass model build, which queries most elements once,
- * isn't taxed: the first lookup scans, and the index is built on the second.
- * Edits that change children must call {@link invalidateChildIndex}.
- */
+// The first lookup on an element scans and the second builds the index, so the
+// single-pass model build, which queries most elements once, isn't taxed.
+// Edits that change children must call invalidateChildIndex.
 const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
 const queriedOnce = new WeakSet<Element>();
 
-/**
- * Drops the cached child index for an element whose children were mutated.
- * Attribute and text mutations don't affect the index.
- */
+// Attribute and text mutations don't affect the index.
 export function invalidateChildIndex(el: Element): void {
   childIndexCache.delete(el);
   queriedOnce.delete(el);
@@ -50,18 +41,13 @@ export class SafeXmlNode {
     this.el = el;
   }
 
-  /**
-   * Shared instance for every missing-element result. SafeXmlNode is immutable,
-   * so misses can alias one object, and since most optional OOXML elements are
-   * absent, per-miss allocations dominated GC pressure in parse profiles.
-   */
+  // Every miss shares this instance, since SafeXmlNode is immutable and most
+  // optional OOXML elements are absent.
   static readonly EMPTY = new SafeXmlNode(null);
 
-  /** Get a string attribute value, or undefined if missing. */
+  // An unprefixed name matches any attribute with that local name.
   attr(name: string): string | undefined {
     if (!this.el) return undefined;
-    // Fast path: direct hit (covers non-prefixed attributes and exact-name
-    // prefixed ones). getAttribute returns null when absent.
     const direct = this.el.getAttribute(name);
     if (direct !== null) return direct;
 
@@ -92,7 +78,6 @@ export class SafeXmlNode {
     );
   }
 
-  /** Get a numeric attribute value, or undefined if missing or not a number. */
   numAttr(name: string): number | undefined {
     const raw = this.attr(name);
     if (raw === undefined) return undefined;
@@ -100,10 +85,8 @@ export class SafeXmlNode {
     return Number.isNaN(n) ? undefined : n;
   }
 
-  /**
-   * Finds the first child element matching the given localName (namespace-agnostic).
-   * Returns an empty SafeXmlNode if not found, so chaining never crashes.
-   */
+  // Matches by localName in any namespace and returns an empty node on a miss,
+  // so chains never throw.
   child(localName: string): SafeXmlNode {
     if (!this.el) return SafeXmlNode.EMPTY;
     const index = getChildIndex(this.el);
@@ -120,10 +103,6 @@ export class SafeXmlNode {
     return SafeXmlNode.EMPTY;
   }
 
-  /**
-   * Gets child elements, optionally filtered by localName (namespace-agnostic).
-   * If no localName is given, returns all direct child elements.
-   */
   children(localName?: string): SafeXmlNode[] {
     if (!this.el) return [];
     if (localName !== undefined) {
@@ -143,28 +122,23 @@ export class SafeXmlNode {
     return result;
   }
 
-  /** Get the text content, or empty string if the element is missing. */
   text(): string {
     if (!this.el) return "";
     return this.el.textContent ?? "";
   }
 
-  /** Whether the underlying element actually exists. */
   exists(): boolean {
     return this.el !== null;
   }
 
-  /** All direct child elements as SafeXmlNode[]. */
   allChildren(): SafeXmlNode[] {
     return this.children();
   }
 
-  /** The localName of the underlying element, or empty string. */
   get localName(): string {
     return this.el?.localName ?? "";
   }
 
-  /** Raw access to the underlying Element (may be null). */
   get element(): Element | null {
     return this.el;
   }
@@ -174,7 +148,6 @@ export class SafeXmlNode {
 // parses hundreds of parts).
 let sharedParser: DOMParser | undefined;
 
-/** Parses an XML string into a SafeXmlNode wrapping the document element. */
 export function parseXml(xmlString: string): SafeXmlNode {
   sharedParser ??= new DOMParser();
   // Some generators (e.g. Open XML SDK) write a UTF-8 BOM into XML parts.
@@ -185,9 +158,8 @@ export function parseXml(xmlString: string): SafeXmlNode {
   }
   const doc = sharedParser.parseFromString(xmlString, "application/xml");
 
-  // DOMParser returns a parsererror document on failure. Browsers differ on
-  // its placement (document root vs. child of the root), hence both the root's
-  // tag and a direct tag-name scan; both are far cheaper than a querySelector CSS match on every parsed part.
+  // DOMParser returns a parsererror document on failure, which browsers place
+  // at the root or as its child; checking both is cheaper than a querySelector.
   const root = doc.documentElement;
   const errorNode =
     root?.localName === "parsererror" ? root : doc.getElementsByTagName("parsererror")[0];

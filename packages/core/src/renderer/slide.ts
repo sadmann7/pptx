@@ -24,11 +24,7 @@ import { renderTable } from "./table";
 export interface SlideRendererOptions {
   /** Called when a single node fails to render. */
   onNodeError?: (nodeId: string, error: unknown) => void;
-  /**
-   * Navigation callback for shape-level hyperlink actions (action buttons, etc.).
-   * Called with target slide index (0-based) for slide jumps,
-   * or with a URL string for external links.
-   */
+  /** Called when a shape's hyperlink action targets a slide (zero-based index) or an external URL. */
   onNavigate?: (target: { slideIndex?: number; url?: string }) => void;
   /** Shared media URL cache for blob URL reuse across slides. */
   mediaUrlCache?: Map<string, string>;
@@ -37,36 +33,29 @@ export interface SlideRendererOptions {
   /** Shared set of live ECharts instances for explicit disposal. */
   chartInstances?: Set<ECharts>;
   /**
-   * Renders empty slide placeholders with a dashed outline and the
-   * layout/master prompt text, like PowerPoint's editing view.
-   * Intended for edit mode; default `false`.
+   * Renders empty placeholders with a dashed outline and their prompt text, like PowerPoint's editing view.
+   * @default false
    */
   placeholderPrompts?: boolean;
   /**
-   * Clips node content to the slide bounds (default `true`).
-   * Set `false` in editing surfaces so shapes dragged past the slide edge
-   * stay visible, like PowerPoint's pasteboard.
+   * Clips node content to the slide bounds; set `false` to keep shapes past the edge visible, like PowerPoint's pasteboard.
+   * @default true
    */
   clipContent?: boolean;
 }
 
-/**
- * Per-slide resource handle returned by `renderSlide()`.
- * Allows the caller to dispose of slide-specific resources (chart instances,
- * blob URLs in standalone mode) without tearing down the whole viewer.
- */
+/** Handle returned by `renderSlide()` for disposing one slide's resources without tearing down the viewer. */
 export interface SlideHandle {
   /** The rendered slide DOM element. */
   readonly element: HTMLElement;
   /** Resolves when asynchronous slide resources (for example EMF-PDF fallbacks) finish. */
   readonly ready: Promise<void>;
-  /** Dispose slide-specific resources (charts inside this slide, blob URLs if standalone). */
+  /** Disposes this slide's charts, and its blob URLs when no shared cache was passed. */
   dispose(): void;
-  /** Support `using` declarations (TC39 Explicit Resource Management). */
+  /** Supports `using` declarations. */
   [Symbol.dispose](): void;
 }
 
-/** Also passed to `renderGroup` for recursive child rendering. */
 function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
   switch (node.nodeType) {
     case "shape":
@@ -80,7 +69,6 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "chart":
       return renderChart(node as ChartNodeData, ctx);
     default: {
-      // Unknown node type: render as empty positioned div.
       const el = document.createElement("div");
       el.style.position = "absolute";
       el.style.left = `${node.position.x}px`;
@@ -124,12 +112,7 @@ interface TemplateShapeCacheEntry {
 
 const templateShapeCache = new WeakMap<SafeXmlNode, TemplateShapeCacheEntry>();
 
-/**
- * Parses and collects renderable shapes from a master or layout spTree.
- * Only includes NON-placeholder shapes (decorative elements, logos, footers).
- * Placeholder shapes are never rendered from master/layout; they only serve
- * as position/size inheritance templates.
- */
+// Master and layout placeholders only serve as inheritance templates and never render.
 function parseTemplateShapes(
   spTree: SafeXmlNode,
   rels?: Map<string, RelEntry>,
@@ -145,7 +128,6 @@ function parseTemplateShapes(
   };
 
   for (const child of spTree.allChildren()) {
-    // Skip ALL placeholder shapes: they're templates, not renderable content.
     if (isPlaceholderNode(child)) continue;
 
     try {
@@ -186,12 +168,7 @@ function getTemplateShapes(
   return nodes;
 }
 
-/**
- * Hidden host that connects slide containers to the document while they render,
- * so text autofit can measure. Created lazily and shared by every `renderSlide()`;
- * `contain: strict` keeps appends and removals from invalidating the page's
- * layout, which keeps rendering during scroll cheap.
- */
+// Connects slide containers to the document while they render so text autofit can measure.
 let measurementHost: HTMLElement | null = null;
 
 function getMeasurementHost(): HTMLElement {
@@ -215,10 +192,7 @@ function getMeasurementHost(): HTMLElement {
   return host;
 }
 
-/**
- * Resets inherited typography such as Tailwind's base styles
- * or `.prose`, keeping text metrics and autofit consistent after mounting.
- */
+// Inherited typography such as Tailwind's base styles or `.prose` would skew autofit metrics.
 function resetTypography(container: HTMLElement): void {
   container.style.fontSize = "initial";
   container.style.fontFamily = "initial";
@@ -243,24 +217,12 @@ function temporarilyConnectForMeasurement(container: HTMLElement): () => void {
   };
 }
 
-/**
- * Options for `renderThumbnail()`.
- */
 export interface ThumbnailRendererOptions {
   /** Shared media URL cache for blob URL reuse across slides. */
   mediaUrlCache?: Map<string, string>;
 }
 
-/**
- * Renders a slide for thumbnail display with `renderSlide()`'s pipeline, minus
- * the work that's invisible at thumbnail size and expensive on the main thread:
- * - no text autofit measurement
- * - charts render as a grey placeholder instead of ECharts
- * - EMF images render as empty boxes instead of starting an async PDF decode
- *
- * `ready` resolves immediately, but dispose is still needed to revoke blob URLs
- * in standalone mode.
- */
+/** Renders a slide like `renderSlide()` but skips autofit, ECharts, and EMF decoding, which are invisible at thumbnail size. */
 export function renderThumbnail(
   presentation: PresentationData,
   slide: SlideData,
@@ -272,7 +234,6 @@ export function renderThumbnail(
 
   const ctx = createRenderContext(presentation, slide, options?.mediaUrlCache);
   ctx.thumbnail = true;
-  // No asyncTasks array; async work is never started in thumbnail mode.
 
   const container = document.createElement("div");
   container.style.position = "relative";
@@ -281,8 +242,6 @@ export function renderThumbnail(
   container.style.overflow = "hidden";
   container.style.backgroundColor = "#FFFFFF";
   resetTypography(container);
-
-  // No measurement host: thumbnails skip text-autofit measurement.
 
   try {
     try {
@@ -368,15 +327,7 @@ export function renderThumbnail(
   };
 }
 
-/**
- * Renders a complete slide into an HTML element.
- *
- * Rendering order:
- * 1. Background (slide → layout → master inheritance)
- * 2. Master non-placeholder shapes (behind everything)
- * 3. Layout non-placeholder shapes
- * 4. Slide shapes (on top)
- */
+/** Renders a slide, with its layout and master shapes, into an HTML element. */
 export function renderSlide(
   presentation: PresentationData,
   slide: SlideData,
@@ -423,9 +374,7 @@ export function renderSlide(
       options?.onNodeError?.("__background__", error);
     }
 
-    // showMasterSp:
-    //  - layout.showMasterSp === false  → skip master shapes
-    //  - slide.showMasterSp === false   → skip both master AND layout shapes.
+    // A slide's `showMasterSp="0"` hides layout shapes too; a layout's hides only master shapes.
     if (slide.showMasterSp && ctx.layout.showMasterSp) {
       const masterCtx: RenderContext = {
         ...ctx,
@@ -475,8 +424,7 @@ export function renderSlide(
     for (const node of slide.nodes) {
       try {
         const el = renderNode(node, ctx);
-        // Only slide-level (editable) nodes are stamped; master/layout
-        // template shapes are not part of the slide's editable content.
+        // Master and layout shapes are not editable, so only slide nodes are stamped.
         el.setAttribute(PPTX_ATTRS.nodeId, node.id);
         container.appendChild(el);
       } catch (error) {
@@ -502,7 +450,6 @@ export function renderSlide(
     for (const cleanup of cleanups) cleanup();
     cleanups.length = 0;
 
-    // Dispose chart instances whose DOM is inside this slide container.
     if (chartInstances) {
       for (const chart of chartInstances) {
         if (!chart.isDisposed() && container.contains(chart.getDom())) {
@@ -512,7 +459,7 @@ export function renderSlide(
       }
     }
 
-    // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache).
+    // A shared cache belongs to the caller.
     if (!isSharedCache) {
       for (const url of mediaUrlCache.values()) {
         URL.revokeObjectURL(url);

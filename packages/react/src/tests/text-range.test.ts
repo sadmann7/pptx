@@ -11,7 +11,6 @@ import {
   readBackTextBody,
 } from "../selection/text-range";
 
-/** A rendered text container: paragraphs of run spans, as the renderer emits them. */
 function textContainer(html: string): HTMLElement {
   const container = document.createElement("div");
   container.innerHTML = html;

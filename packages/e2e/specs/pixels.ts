@@ -19,13 +19,10 @@ export interface PixelGrid {
   width: number;
   height: number;
   at(x: number, y: number): Pixel;
-  /** Pixels down a vertical line, `from`..`to` inclusive. */
   column(x: number, from: number, to: number): Pixel[];
-  /** Pixels across a horizontal line, `from`..`to` inclusive. */
   row(y: number, from: number, to: number): Pixel[];
 }
 
-/** Decodes a PNG screenshot into an addressable RGB grid. */
 export async function readPixels(png: Buffer): Promise<PixelGrid> {
   const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
@@ -50,7 +47,6 @@ export async function readPixels(png: Buffer): Promise<PixelGrid> {
   };
 }
 
-/** Perceptual-ish distance between two colours, 0 when identical. */
 export function colorDistance(pixel: Pixel, hex: string): number {
   const value = Number.parseInt(hex.replace("#", ""), 16);
   return Math.max(
@@ -60,7 +56,6 @@ export function colorDistance(pixel: Pixel, hex: string): number {
   );
 }
 
-/** `rgb(r,g,b)` for assertion messages. */
 export function formatPixel({ r, g, b }: Pixel): string {
   return `rgb(${r},${g},${b})`;
 }

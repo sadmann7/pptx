@@ -27,7 +27,7 @@ const EXPLICIT_SLIDE = 1;
 const BORDER = "#000000";
 const BLANK_CELL_FILL = "#ffffff";
 
-/** A scale that lands the grid lines between device pixels. */
+// Lands the grid lines between device pixels.
 const FRACTIONAL_SCALE = 0.86;
 
 interface CellBox {
@@ -37,7 +37,6 @@ interface CellBox {
   height: number;
 }
 
-/** Client rects of every rendered cell, in document order. */
 async function cellBoxes(page: Page): Promise<CellBox[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll("table td")].map((td) => {
@@ -47,7 +46,6 @@ async function cellBoxes(page: Page): Promise<CellBox[]> {
   );
 }
 
-/** The computed border widths and colours of one element, per side. */
 async function borderStyles(page: Page, selector: string, index = 0) {
   return page.evaluate(
     ({ sel, at }) => {
@@ -63,7 +61,6 @@ async function borderStyles(page: Page, selector: string, index = 0) {
   );
 }
 
-/** The darkest pixel within `radius` of `x` along row `y`, and its position. */
 function darkestNear(
   samples: Pixel[],
   from: number,
@@ -130,10 +127,9 @@ test.describe("table with no style id", () => {
   });
 
   test("would smear the same grid line under transform scaling", async ({ page }) => {
-    // Control for the spec above: the sampled line really falls between device
-    // pixels at this scale, so the crisp result there comes from zoom, not luck.
-    // If this starts failing, transform scaling became viable and applySlideScale
-    // can be revisited instead of relaxing this spec.
+    // Proves the line falls between device pixels at this scale, so the crisp
+    // result above comes from zoom. If this fails, transform scaling became
+    // viable and applySlideScale can be revisited instead of relaxing this spec.
     await openSlide(page, DECK, GRID_SLIDE, { scale: FRACTIONAL_SCALE, mode: "transform" });
 
     const cells = await cellBoxes(page);

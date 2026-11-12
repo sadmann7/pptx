@@ -1,7 +1,3 @@
-/**
- * Theme style references (`p:style` > fillRef/lnRef/effectRef) resolution
- * through the real parse/render pipeline.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";

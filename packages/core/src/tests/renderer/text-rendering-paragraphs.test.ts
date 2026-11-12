@@ -1,13 +1,7 @@
-﻿/**
- * Paragraph-level formatting (a:pPr) through the real render pipeline:
- * alignment, line spacing, space before/after, indentation, line breaks,
- * tabs and the trailing endParaRPr spacer.
- */
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import { paragraphsOf, renderTextBox, spansOf } from "../fixtures/text-rendering-helpers";
 
-/** Renders a single paragraph with the given pPr and returns its div. */
 async function renderParagraph(pPrXml: string, runsXml?: string): Promise<HTMLElement> {
   const element = await renderTextBox(
     `<a:p>${pPrXml}${runsXml ?? "<a:r><a:t>MARKER</a:t></a:r>"}</a:p>`,

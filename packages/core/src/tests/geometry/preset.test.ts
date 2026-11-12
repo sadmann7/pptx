@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getMultiPathPreset, getPresetShapePath, presetShapes } from "../../geometry/preset";
 
-/** All 187 preset names from ECMA-376 ST_ShapeType (dml-main.xsd, 5th edition). */
+// All 187 preset names from ECMA-376 ST_ShapeType (dml-main.xsd, 5th edition).
 const ST_SHAPE_TYPE = [
   "accentBorderCallout1",
   "accentBorderCallout2",

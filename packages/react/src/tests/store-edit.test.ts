@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Store-level editing tests for `edit()`, `undo()`, `redo()`, `save()` and
- * per-slide revisions. Runs under jsdom because happy-dom's XML parser drops
- * namespaced attributes like `r:id` on `p:sldId`, which slide-level edits need.
+ * Runs under jsdom because happy-dom's XML parser drops namespaced attributes
+ * like `r:id` on `p:sldId`, which slide-level edits need.
  */
 import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";

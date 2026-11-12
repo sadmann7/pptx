@@ -15,12 +15,10 @@ import { decompressLzcomp } from "./lzcomp";
 import { buildSfnt, validateSfnt, type SfntContainer, type SfntTable } from "./sfnt";
 
 export interface DecodeOptions {
-  /** Undo the EOT XOR obfuscation before unpacking. */
+  // EOT XOR obfuscation, undone before unpacking.
   encrypted?: boolean;
-  /** Whether the payload is MTX-compressed rather than a raw sfnt. */
   compressed?: boolean;
   limits?: Partial<DecoderLimits>;
-  /** Called when the decoder drops something recoverable, such as `hdmx`. */
   onWarn?: (message: string) => void;
 }
 
@@ -29,7 +27,6 @@ export interface UnpackedMtx {
   sizes: [number, number, number];
 }
 
-/** Decompress the three LZCOMP blocks of an MTX payload into CTF streams. */
 export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): UnpackedMtx {
   const size = data.length;
   if (size < 10) fail("INVALID_MTX", "Invalid MTX size");
@@ -54,10 +51,7 @@ export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): Un
   return { streams, sizes: [streams[0].length, streams[1].length, streams[2].length] };
 }
 
-/**
- * Turns the font-data block of an EOT into an sfnt. An uncompressed block is
- * already one, so it is deobfuscated if needed and returned untouched.
- */
+// An uncompressed block is already an sfnt, so it is only deobfuscated.
 export function decodeMtx(data: Uint8Array, options: DecodeOptions = {}): Uint8Array {
   const encrypted = options.encrypted ?? false;
   const compressed = options.compressed ?? true;

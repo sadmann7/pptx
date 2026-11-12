@@ -15,7 +15,6 @@ beforeAll(async () => {
   fixture = await loadFixture();
 });
 
-/** Renders probes for all three hooks inside a Provider with a loaded store. */
 async function renderHooks(): Promise<{
   store: Store;
   presentation: () => UsePresentationResult;

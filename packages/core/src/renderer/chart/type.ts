@@ -69,7 +69,6 @@ export interface AxisInfo {
   labelColor?: string;
   labelFontSize?: number;
   lineColor?: string;
-  /** True when the axis spPr declares a noFill line: the axis line must not be drawn. */
   lineHidden?: boolean;
   majorGridlineStyle?: ChartLineStyle;
 }

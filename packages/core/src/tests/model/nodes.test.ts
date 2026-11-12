@@ -80,7 +80,6 @@ describe("group nodes", () => {
 
   it("renders grouped children scaled into the group box", () => {
     const element = renderSlide(presentation, presentation.slides[0]).element;
-    // The inner orange rect must appear in the rendered slide.
     const paths = [...element.querySelectorAll("svg path")];
     const orange = paths.find((p) => p.getAttribute("fill")?.toLowerCase() === "#ed7d31");
     expect(orange).toBeDefined();

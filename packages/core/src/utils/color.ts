@@ -1,4 +1,3 @@
-/** Parses a hex color string (with or without '#') into RGB components. */
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const cleaned = hex.replace(/^#/, "");
   if (cleaned.length !== 6 && cleaned.length !== 3) {
@@ -16,13 +15,12 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   };
 }
 
-/** Converts RGB (0-255) to a `#rrggbb` string. */
 export function rgbToHex(r: number, g: number, b: number): string {
   const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
   return "#" + [clamp(r), clamp(g), clamp(b)].map((c) => c.toString(16).padStart(2, "0")).join("");
 }
 
-/** Converts RGB (0-255) to HSL (h: 0-360, s: 0-1, l: 0-1). */
+// Hue is 0-360, saturation and lightness 0-1.
 export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
@@ -52,9 +50,8 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
   return { h, s, l };
 }
 
-/** Converts HSL (h: 0-360, s: 0-1, l: 0-1) to RGB (0-255). */
 export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  h = ((h % 360) + 360) % 360; // normalize hue.
+  h = ((h % 360) + 360) % 360;
   s = Math.max(0, Math.min(1, s));
   l = Math.max(0, Math.min(1, l));
 
@@ -96,7 +93,7 @@ function linearToSrgb(c: number): number {
   return Math.max(0, Math.min(255, Math.round(s * 255)));
 }
 
-/** Mixes toward white in linear RGB. `tint` is 0-100000; 100000 keeps the color. */
+// A tint of 100000 keeps the color; lower values mix toward white.
 export function applyTint(hex: string, tint: number): string {
   const { r, g, b } = hexToRgb(hex);
   const t = tint / 100000;
@@ -110,7 +107,7 @@ export function applyTint(hex: string, tint: number): string {
   );
 }
 
-/** Mixes toward black in linear RGB. `shade` is 0-100000; 100000 keeps the color. */
+// A shade of 100000 keeps the color; lower values mix toward black.
 export function applyShade(hex: string, shade: number): string {
   const { r, g, b } = hexToRgb(hex);
   const s = shade / 100000;
@@ -121,7 +118,6 @@ export function applyShade(hex: string, shade: number): string {
   );
 }
 
-/** Multiplies HSL lightness; `lumMod` 75000 = 75%. */
 export function applyLumMod(hex: string, lumMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -130,7 +126,6 @@ export function applyLumMod(hex: string, lumMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/** Adds to HSL lightness; `lumOff` 25000 = +25%. */
 export function applyLumOff(hex: string, lumOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -139,7 +134,6 @@ export function applyLumOff(hex: string, lumOff: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/** Multiplies HSL saturation; `satMod` 120000 = 120%. */
 export function applySatMod(hex: string, satMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -148,7 +142,6 @@ export function applySatMod(hex: string, satMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/** Multiplies the hue (`hueMod` 100000 = 100%), wrapping at 360. */
 export function applyHueMod(hex: string, hueMod: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -157,7 +150,6 @@ export function applyHueMod(hex: string, hueMod: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/** Adds to the hue, wrapping at 360; `hueOff` is in 60000ths of a degree. */
 export function applyHueOff(hex: string, hueOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -167,7 +159,6 @@ export function applyHueOff(hex: string, hueOff: number): string {
   return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
-/** Adds to HSL saturation; `satOff` 100000 = +100%. */
 export function applySatOff(hex: string, satOff: number): string {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
@@ -251,7 +242,6 @@ function applyInvGamma(hex: string): string {
   return rgbToHex(linearToSrgb(r / 255), linearToSrgb(g / 255), linearToSrgb(b / 255));
 }
 
-/** Converts OOXML alpha (0-100000) to CSS opacity (0-1). */
 export function applyAlpha(alpha: number): number {
   return Math.max(0, Math.min(1, alpha / 100000));
 }
@@ -261,7 +251,7 @@ export interface ColorModifier {
   val: number;
 }
 
-/** Applies color modifiers in XML document order and returns the color and alpha. */
+// Modifiers apply in XML document order.
 export function applyColorModifiers(
   hex: string,
   modifiers: ColorModifier[],
@@ -366,7 +356,6 @@ export function applyColorModifiers(
 }
 
 const PRESET_COLORS: Record<string, string> = {
-  // Basic colors.
   black: "#000000",
   white: "#FFFFFF",
   red: "#FF0000",
@@ -376,7 +365,6 @@ const PRESET_COLORS: Record<string, string> = {
   cyan: "#00FFFF",
   magenta: "#FF00FF",
 
-  // Extended standard colors.
   orange: "#FFA500",
   purple: "#800080",
   brown: "#A52A2A",
@@ -392,7 +380,6 @@ const PRESET_COLORS: Record<string, string> = {
   aqua: "#00FFFF",
   fuchsia: "#FF00FF",
 
-  // OOXML-specific preset colors.
   aliceBlue: "#F0F8FF",
   antiqueWhite: "#FAEBD7",
   aquamarine: "#7FFFD4",
@@ -520,7 +507,6 @@ const PRESET_COLORS: Record<string, string> = {
   yellowGreen: "#9ACD32",
 };
 
-/** Looks up an OOXML preset color name, case-insensitively. */
 export function presetColorToHex(name: string): string | undefined {
   if (PRESET_COLORS[name] !== undefined) {
     return PRESET_COLORS[name];

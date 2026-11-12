@@ -3,8 +3,7 @@ import { expect, test } from "@playwright/test";
 import { openSlide, slideContainer, waitForRender } from "./utils";
 
 test.describe("slide navigation", () => {
-  // Regression: switching between structurally identical slides skipped the
-  // rebuild, so the main view kept showing the previous slide's content.
+  // Structurally identical slides still differ in content, so they must rebuild.
   test("re-renders when switching to another slide", async ({ page }) => {
     await openSlide(page, "basic.pptx", 0);
     await expect(slideContainer(page)).toContainText("Slide one");

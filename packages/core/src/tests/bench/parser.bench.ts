@@ -31,7 +31,7 @@ import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 interface Workload {
   buffer: ArrayBuffer;
   files: PptxFiles;
-  /** Fully built + materialized, for render/search benches. */
+  // Fully built and materialized, for the render and search benches.
   presentation: PresentationData;
 }
 

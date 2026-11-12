@@ -137,10 +137,6 @@ const slideRels =
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
 </Relationships>`;
 
-/**
- * Builds a single-slide .pptx whose spTree contains the given shapes XML
- * (`p:sp`/`p:pic`/... elements using the standard `a:`/`p:`/`r:` prefixes).
- */
 export async function buildPptxWithShapes(shapesXml: string): Promise<ArrayBuffer> {
   const slide =
     XML_DECL +

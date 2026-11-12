@@ -19,8 +19,8 @@ function collectTypefaces(element: Element, into: Set<string>): void {
 }
 
 /**
- * The fonts a font picker should offer for a deck. Slides that haven't been
- * loaded yet (`materializeSlide`) aren't scanned.
+ * Lists the fonts a font picker should offer for a deck, skipping slides not yet loaded
+ * with `materializeSlide`.
  */
 export function getPresentationFonts(pres: PresentationData): PresentationFonts {
   const theme = pres.themes.values().next().value;

@@ -15,10 +15,8 @@ import { getStructure, openSlide, slideContainer } from "./utils";
 // competing for the CPU.
 test.describe.configure({ timeout: 120_000 });
 
-/**
- * Sources that failed to decode. Covers both <img> elements and the blob URLs
- * the renderer hands to background-image for fills and crops.
- */
+// Covers both <img> elements and the blob URLs the renderer hands to
+// background-image for fills and crops.
 async function brokenMedia(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
     const container = document.querySelector("#slide-container");

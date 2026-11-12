@@ -1,4 +1,3 @@
-/** The cells a spreadsheet put on the clipboard, or `null` when there's no grid to fill. */
 export function readCellGrid(text: string, html: string): string[][] | null {
   const grid = (html && readHtmlGrid(html)) || readTsvGrid(text);
   return grid && (grid.length > 1 || grid[0].length > 1) ? grid : null;

@@ -54,8 +54,6 @@ test.describe("BOM deck structure", () => {
 });
 
 test.describe("tables and groups deck structure", () => {
-  // Regression: table columns were sized from the frame ext instead of the
-  // per-column w values in tblGrid.
   test("parses table grid column widths and cell text", async ({ page }) => {
     await openSlide(page, "tables-groups.pptx", 0);
     const structure = await getStructure(page);

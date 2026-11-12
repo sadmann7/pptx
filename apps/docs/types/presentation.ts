@@ -1,7 +1,7 @@
 ﻿// Types for AutoTypeTable: exposes component-specific props only,
 // with inherited HTML element props stripped out.
 //
-// `Omit<Props, keyof ComponentProps<"div">>` also drops names we override
+// `Omit<Props, keyof ComponentProps<"div">>` also drops names the props override
 // (`onLoad`, `onError`, `onSelect`, render-function `children`) because
 // those keys exist on the host element. They get picked back.
 //

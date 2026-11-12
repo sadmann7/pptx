@@ -13,14 +13,14 @@ export interface TextParagraph {
   properties?: SafeXmlNode;
   runs: TextRun[];
   level: number;
-  /** @internal End-of-paragraph run properties (a:endParaRPr). Defines font size for trailing paragraph mark. */
+  /** @internal The `a:endParaRPr` that sizes the trailing paragraph mark. */
   endParaRPr?: SafeXmlNode;
 }
 
 export interface TextBody {
   /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   bodyProperties?: SafeXmlNode;
-  /** @internal Fallback bodyPr from layout/master placeholder (used when shape's own bodyPr is missing attrs). */
+  /** @internal The placeholder's bodyPr, for attributes the shape's own bodyPr lacks. */
   layoutBodyProperties?: SafeXmlNode;
   /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   listStyle?: SafeXmlNode;
@@ -33,7 +33,7 @@ export interface LineEndInfo {
   len?: string; // 'sm', 'med', 'lg'.
 }
 
-/** Text box bounds in shape-local coordinates (used by diagram shapes with txXfrm). */
+/** Text box bounds in shape-local coordinates, from a diagram shape's `txXfrm`. */
 export interface TextBoxBounds {
   x: number;
   y: number;
@@ -55,15 +55,15 @@ export interface ShapeNodeData extends BaseNodeData {
   headEnd?: LineEndInfo;
   tailEnd?: LineEndInfo;
   textBody?: TextBody;
-  /** When set (e.g. diagram txXfrm), text is laid out in this rect instead of full shape. */
+  /** The rect text lays out in instead of the full shape, like a diagram's `txXfrm`. */
   textBoxBounds?: TextBoxBounds;
-  /** True for dedicated text boxes (`cNvSpPr txBox="1"`), false for regular shapes with text. */
+  /**
+   * Whether the shape is a dedicated text box (`cNvSpPr txBox="1"`) rather than a shape
+   * with text.
+   */
   isTextBox?: boolean;
 }
 
-/**
- * Parses a single text paragraph (`a:p`).
- */
 export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   const pPr = pNode.child("pPr");
   const level = pPr.numAttr("lvl") ?? 0;
@@ -108,9 +108,6 @@ export function parseParagraph(pNode: SafeXmlNode): TextParagraph {
   };
 }
 
-/**
- * Parses a text body (`p:txBody` or `a:txBody`).
- */
 export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
   if (!txBody.exists()) return undefined;
 
@@ -129,7 +126,6 @@ export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
   };
 }
 
-/** Fill type local names in priority order. */
 const FILL_TYPES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"] as const;
 
 function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
@@ -140,10 +136,6 @@ function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
   return undefined;
 }
 
-/**
- * Parses adjustment values from `a:avLst > a:gd` elements.
- * Each guide has a `name` attribute and a `fmla` attribute like "val 50000".
- */
 function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
   const adjustments = new Map<string, number>();
   for (const gd of avLst.children("gd")) {
@@ -151,7 +143,7 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
     const fmla = gd.attr("fmla") ?? "";
     if (!name) continue;
 
-    // fmla is typically "val NNNNN": extract the numeric part.
+    // A guide's fmla is typically "val 50000".
     const match = fmla.match(/val\s+(-?\d+)/);
     if (match) {
       adjustments.set(name, Number(match[1]));
@@ -165,9 +157,6 @@ function parseAdjustments(avLst: SafeXmlNode): Map<string, number> {
   return adjustments;
 }
 
-/**
- * Parses a shape XML node (`p:sp` or `p:cxnSp`) into ShapeNodeData.
- */
 export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
   const base = parseBaseProps(spNode);
   const spPr = spNode.child("spPr");

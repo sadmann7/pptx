@@ -27,10 +27,10 @@ import { buildSfnt, validateSfnt } from "../../fonts/mtx/sfnt";
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
 interface Workload {
-  /** Fixture name, shortened to the family so bench labels stay readable. */
+  // Shortened to the family so bench labels stay readable.
   label: string;
   raw: Uint8Array;
-  /** The MTX payload, with the EOT header already stripped. */
+  // The EOT header is already stripped.
   payload: Uint8Array;
   streams: [Uint8Array, Uint8Array, Uint8Array];
   font: Uint8Array;

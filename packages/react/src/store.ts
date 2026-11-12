@@ -23,9 +23,7 @@ export const DEFAULT_ZOOM_STEP = 0.25;
 
 const ABORT_ERROR = new DOMException("Superseded by a newer load", "AbortError");
 
-// Load-progress cost model. Work is measured in byte-equivalent units where
-// 1 unit ≈ unzipping one compressed input byte; these ratios express how
-// expensive the other phases are per byte relative to that baseline.
+// Load-progress cost per byte, relative to unzipping one compressed input byte.
 const READ_COST_PER_BYTE = 0.05;
 const FONT_DECODE_COST_PER_BYTE = 20;
 
@@ -41,7 +39,7 @@ export type AutoFitPadding = number | Partial<SidePadding>;
 interface HistoryEntry {
   op: EditOperation;
   result: EditResult;
-  /** The slide that was active before the edit, where undoing it returns. */
+  // Undo returns to this slide.
   activeSlideId: string | null;
 }
 
@@ -67,9 +65,8 @@ export interface StoreState {
   presentation: PresentationData | null;
 
   /**
-   * Stable id of the active slide (`SlideData.id`, e.g. `"ppt/slides/slide3.xml"`),
-   * or `null` with no presentation loaded. Unlike an index, it never redirects the
-   * viewer to the wrong slide when slides are reordered, inserted or deleted.
+   * Stable id of the active slide (`SlideData.id`), or `null` with no presentation
+   * loaded. Unlike an index, it survives slides being reordered, inserted or deleted.
    */
   activeSlideId: string | null;
 
@@ -81,31 +78,22 @@ export interface StoreState {
   zoom: number;
 
   /**
-   * Whether zoom is tracking the container size. While `true`, a mounted
-   * `Presentation.Viewport` refits the slide on every resize; `setZoom`,
-   * `zoomIn`, and `zoomOut` turn it back off.
-   *
-   * Survives `load()` and `reset()`: it describes the viewport, not the deck.
+   * Whether a mounted `Presentation.Viewport` refits the slide on every resize.
+   * `setZoom`, `zoomIn` and `zoomOut` turn it off, and it survives `load()` and `reset()`.
    *
    * @default false
    */
   isAutoFit: boolean;
 
-  /**
-   * Parse progress from `0` to `100`.
-   * Only meaningful while `status === "loading"`.
-   */
+  /** Parse progress from `0` to `100` while `status` is `"loading"`. */
   progress: number;
 
   /** Error produced by the last failed `load()` call, or `null`. */
   error: Error | null;
 
   /**
-   * Monotonic counter bumped on every applied edit, undo, or redo.
-   *
-   * The `presentation` object is mutated in place by edits, so its identity
-   * never changes; subscribe to `revision` to react to content changes.
-   * Resets to `0` on `load()` and `reset()`.
+   * Counter bumped on every edit, undo, or redo, and reset to `0` on `load()` and `reset()`.
+   * Edits mutate `presentation` in place, so watch `revision` to react to content changes.
    */
   revision: number;
 }
@@ -178,11 +166,7 @@ export interface ZoomChangeEvent {
   /** The zoom level it changed from. */
   previousZoom: number;
 
-  /**
-   * What triggered the change. `"fit"` covers both `fitTo()` and the automatic
-   * fits a `Viewport autoFit` performs, which is how a zoom control tells a
-   * container resize apart from a level someone asked for.
-   */
+  /** What triggered the change, where `"fit"` covers `fitTo()` and `Viewport autoFit` refits. */
   reason: ZoomChangeReason;
 }
 
@@ -202,7 +186,7 @@ export interface Store {
   /** Returns the current state snapshot. Non-reactive: use `subscribe` to watch for changes. */
   getState: () => StoreState;
   /**
-   * Subscribes to state changes.
+   * Subscribes to state changes and returns an unsubscribe function.
    *
    * ```ts
    * const unsubscribe = store.subscribe(() => {
@@ -211,34 +195,24 @@ export interface Store {
    * // Later:
    * unsubscribe();
    * ```
-   *
-   * @returns A function that removes the subscription when called.
    */
   subscribe: (listener: () => void) => () => void;
 
   /**
-   * Listens for a store event. Unlike `subscribe`, events carry what happened and
-   * why, which is known at the mutation site and can't be recovered by diffing
-   * snapshots. Handlers run after the state updates and `subscribe` listeners run,
-   * so `getState()` is current.
+   * Listens for a store event, which carries what happened and why, and returns an
+   * unsubscribe function. Handlers run after `subscribe` listeners, so `getState()` is current.
    *
    * ```ts
    * const unsubscribe = store.on("slideChange", ({ slideId, reason }) => {
    *   console.log("now on", slideId, "because of", reason);
    * });
    * ```
-   *
-   * @returns A function that removes the listener when called.
    */
   on: <E extends keyof StoreEventMap>(event: E, handler: StoreEventHandler<E>) => () => void;
 
   /**
-   * Parses and displays a presentation file.
-   *
-   * @returns The parsed `PresentationData` on success.
-   * Rejects with a `DOMException` named `"AbortError"` if a newer `load()`
-   * call superseded this one before it completed: callers can safely ignore
-   * that error.
+   * Parses and displays a presentation file, resolving with its `PresentationData`.
+   * Rejects with an `"AbortError"` `DOMException`, safe to ignore, when a newer `load()` supersedes it.
    *
    * ```ts
    * try {
@@ -254,9 +228,7 @@ export interface Store {
     input: PreviewInput,
     options?: {
       /**
-       * 0-based index of the slide to navigate to after a successful parse.
-       * Also accepts a resolver called with the parsed slides, useful when the
-       * target index depends on content.
+       * 0-based index of the slide to open, or a resolver called with the parsed slides.
        *
        * @default 0
        *
@@ -275,37 +247,28 @@ export interface Store {
        */
       defaultSlideIndex?: number | ((slides: SlideData[]) => number);
 
-      /**
-       * Zoom level to start at, where `1` equals 100%.
-       *
-       * Only meaningful without auto-fitting: a `Viewport autoFit` fits on
-       * mount and overrides it.
-       */
+      /** Zoom level to start at, where `1` equals 100%, overridden by a `Viewport autoFit`. */
       defaultZoom?: number;
 
       /**
-       * When `true`, `load()` parses only the active slide, and others when first
-       * rendered or navigated to, keeping time to first slide near-constant. The active
-       * slide is always materialized before subscribers hear of it, while others expose
-       * empty `nodes` until then. `false` parses every slide up front.
+       * When `true`, only the active slide is parsed up front and others on first render
+       * or navigation, exposing empty `nodes` until then.
        *
        * @default true
        */
       lazySlides?: boolean;
 
       /**
-       * When `true`, embedded fonts are decoded and registered before the store
-       * becomes `"ready"`, avoiding font-swap layout shifts at the cost of a short
-       * extra loading phase. `false` skips them, loading faster with fallback fonts.
+       * When `true`, embedded fonts are registered before the store is `"ready"`, avoiding
+       * font-swap layout shifts at the cost of a longer load.
        *
        * @default true
        */
       embedFonts?: boolean;
 
       /**
-       * When `false`, the source package is kept in memory (compressed) so the
-       * presentation can be edited with `store.edit()` and saved with `store.save()`.
-       * Like `<input readOnly>`, omitting it gives a read-only viewer.
+       * When `false`, the source package is kept so the deck can be edited with
+       * `store.edit()` and saved with `store.save()`.
        *
        * @default true
        */
@@ -322,16 +285,10 @@ export interface Store {
    */
   reset: () => void;
 
-  /**
-   * Navigates to a slide by its stable id (`SlideData.id`).
-   * No-op if the id is not found in the current presentation.
-   */
+  /** Navigates to a slide by its stable id (`SlideData.id`), if it exists. */
   goTo: (slideId: string) => void;
 
-  /**
-   * Navigates to a slide by its 0-based index.
-   * Clamps to the valid range; no-op when no presentation is loaded.
-   */
+  /** Navigates to a slide by its 0-based index, clamped to the valid range. */
   goToIndex: (index: number) => void;
 
   /** Navigates to the next slide. No-op when already on the last slide. */
@@ -341,9 +298,7 @@ export interface Store {
   prev: () => void;
 
   /**
-   * Sets the zoom level directly.
-   * Clamped to `[MIN_ZOOM, MAX_ZOOM]`. Turns auto-fit off, so the next
-   * container resize leaves the level alone.
+   * Sets the zoom level, clamped to `[MIN_ZOOM, MAX_ZOOM]`, and turns auto-fit off.
    *
    * @default 1
    */
@@ -364,11 +319,8 @@ export interface Store {
   zoomOut: (step?: number) => void;
 
   /**
-   * Turns auto-fit on or off. While on, a mounted `Presentation.Viewport`
-   * fits the slide to itself immediately and on every resize.
-   *
-   * A `Viewport autoFit` sets this on mount, so a zoom control only needs it
-   * to return to fitting after an explicit level:
+   * Turns auto-fit on or off; while on, a mounted `Presentation.Viewport` refits the
+   * slide on every resize. A `Viewport autoFit` turns it on at mount.
    *
    * ```ts
    * store.setAutoFit(true); // "Fit"
@@ -378,11 +330,8 @@ export interface Store {
   setAutoFit: (isAutoFit: boolean) => void;
 
   /**
-   * Fits the presentation to a container by computing the largest zoom level
-   * that keeps all slides fully visible.
-   *
-   * A one-shot measurement: it does not turn auto-fit on, so nothing refits
-   * on the next resize. Use `setAutoFit(true)` for that.
+   * Sets zoom once to the largest level that fits the slide in the container; use
+   * `setAutoFit(true)` to keep refitting on resize.
    *
    * ```ts
    * store.fitTo(containerWidth, containerHeight, 32);
@@ -390,12 +339,7 @@ export interface Store {
    */
   fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
 
-  /**
-   * Returns the 0-based index of a slide by its stable id, or `-1` if not found.
-   *
-   * O(1) lookup via an internal id→index map. Safe to call inside
-   * `useSyncExternalStore` selectors without the O(N) cost of `findIndex`.
-   */
+  /** Returns the 0-based index of a slide by its stable id in constant time, or `-1` if not found. */
   getSlideIndex: (slideId: string) => number;
 
   /** Returns the 0-based index of the active slide, or `-1` when none is active. */
@@ -411,9 +355,8 @@ export interface Store {
   canGoPrev: () => boolean;
 
   /**
-   * Applies an edit operation to the loaded presentation, which needs
-   * `{ readOnly: false }`. A successful edit is pushed onto the undo stack, clears
-   * the redo stack, and bumps affected slides' revisions so mounted views re-render.
+   * Applies an edit operation to a deck loaded with `{ readOnly: false }` and pushes
+   * it onto the undo stack, clearing the redo stack.
    *
    * ```ts
    * await store.edit({
@@ -442,10 +385,8 @@ export interface Store {
   canRedo: () => boolean;
 
   /**
-   * Returns `true` when the deck has edits that have not been written out by
-   * `save()`. Undoing back to the last saved point clears it again.
-   *
-   * Use it to guard navigation away from unsaved work:
+   * Returns `true` when the deck has edits not yet written by `save()`; undoing back to
+   * the last save clears it.
    *
    * ```ts
    * window.addEventListener("beforeunload", (event) => {
@@ -455,25 +396,13 @@ export interface Store {
    */
   isDirty: () => boolean;
 
-  /**
-   * Serializes the (possibly edited) presentation back to a .pptx archive.
-   * Requires the deck to have been loaded with `{ readOnly: false }`.
-   */
+  /** Serializes the presentation, edits included, to a .pptx archive; requires `{ readOnly: false }`. */
   save: (options?: PptxSaveOptions) => Promise<Uint8Array>;
 
-  /**
-   * Returns the render revision of a slide: bumped whenever an edit, undo,
-   * or redo affects that slide. Safe to call inside `useSyncExternalStore`
-   * selectors.
-   */
+  /** Returns a slide's render revision, bumped whenever an edit, undo, or redo affects it. */
   getSlideRevision: (slideId: string) => number;
 
-  /**
-   * Returns the content revision of a slide: like `getSlideRevision`, but
-   * NOT bumped by transform-only edits (`setNodeTransform` moves/resizes).
-   * Views can compare this against a previous value to know whether a
-   * revision bump requires a full re-render or just a position patch.
-   */
+  /** Returns a slide's content revision, which unlike `getSlideRevision` skips move and resize edits. */
   getSlideContentRevision: (slideId: string) => number;
 }
 
@@ -523,22 +452,14 @@ export function createStore(): Store {
   let loadGeneration = 0;
   let embeddedFonts: EmbeddedFontsHandle | undefined;
 
-  /**
-   * Reason for the zoom write in flight, read by `emitStateEvents`. Zoom is
-   * written from several paths and the state diff alone cannot say which, so
-   * each mutation site records it here first.
-   */
+  // Zoom is written from several paths, so each records its reason here for `emitStateEvents`.
   let zoomChangeReason: ZoomChangeReason = "zoom";
 
   let slideIndexById = new Map<string, number>();
 
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
-  /**
-   * Undo-stack depth as of the last `save()`. The deck is clean while the
-   * stack sits exactly here, so undoing back to a saved state clears the dirty
-   * flag. `-1` marks the save point unreachable (see `edit()`).
-   */
+  // Undo depth at the last save; `-1` means the save point is unreachable.
   let savedUndoDepth = 0;
   let slideRevisionById = new Map<string, number>();
   let slideContentRevisionById = new Map<string, number>();
@@ -574,12 +495,8 @@ export function createStore(): Store {
     emitStateEvents(previous);
   }
 
-  /**
-   * Events that are a pure function of two state snapshots are emitted here,
-   * so every path that writes state reports them without having to remember
-   * to. Events that carry more than the diff (`slideChange`'s reason, `edit`'s
-   * operation) are emitted at their mutation site instead.
-   */
+  // Only events derivable from two snapshots belong here; ones carrying a reason
+  // or operation are emitted where the mutation happens.
   function emitStateEvents(previous: StoreState): void {
     if (state.status !== previous.status) {
       emitEvent("statusChange", { status: state.status, previousStatus: previous.status });
@@ -614,10 +531,6 @@ export function createStore(): Store {
     for (const handler of eventListeners[event] as Set<StoreEventHandler<E>>) handler(payload);
   }
 
-  /**
-   * Emits `slideChange` when the active slide actually moved. Call after the
-   * state update so handlers observe the new state.
-   */
   function emitSlideChange(previousSlideId: string | null, reason: SlideChangeReason): void {
     const slideId = state.activeSlideId;
     if (slideId === previousSlideId) return;
@@ -666,8 +579,7 @@ export function createStore(): Store {
     embeddedFonts = undefined;
     clearEditHistory();
     zoomChangeReason = "load";
-    // `isAutoFit` describes the mounted viewport, which outlives the deck, so
-    // a load carries it over instead of dropping back to the idle default.
+    // `isAutoFit` describes the viewport, which outlives the deck.
     replaceState({
       ...DEFAULT_STORE_STATE,
       isAutoFit: state.isAutoFit,
@@ -676,9 +588,7 @@ export function createStore(): Store {
     });
     emitHistoryChange(previousHistory);
 
-    // Progress = workDone / workTotal in byte-equivalent units (see cost
-    // model above). The budget grows once font bytes are known after unzip;
-    // the monotonic clamp keeps the bar from moving backward when it does.
+    // The budget grows once font bytes are known, so progress only ever moves forward.
     const inputBytes = Math.max(1, input instanceof Blob ? input.size : input.byteLength);
     const readUnits = inputBytes * READ_COST_PER_BYTE;
     const zipUnits = inputBytes;
@@ -688,7 +598,7 @@ export function createStore(): Store {
     let reportedProgress = 0;
     const reportProgress = (): void => {
       if (gen !== loadGeneration) return;
-      // Hold at 99 while loading; only the ready state reports 100.
+      // Only the ready state reports 100.
       const pct = Math.min(99, Math.floor((workDone / workTotal) * 100));
       if (pct > reportedProgress) {
         reportedProgress = pct;
@@ -714,8 +624,6 @@ export function createStore(): Store {
       workDone = readUnits + zipUnits;
       reportProgress();
 
-      // Lazy by default: per-slide node parsing is deferred until a slide
-      // is rendered, keeping load time flat for large decks.
       const presentation = buildPresentation(files, { lazySlides: options?.lazySlides ?? true });
       if (gen !== loadGeneration) throw ABORT_ERROR;
 
@@ -735,17 +643,13 @@ export function createStore(): Store {
       // reports "ready", even in lazy mode.
       if (startSlide) materializeSlide(presentation, startSlide);
 
-      // Embedded fonts decode while still "loading", and all of them are awaited,
-      // so no font can swap in after slides are visible (no FOUT). The font
-      // pipeline is a lazily imported chunk; decks without embedded fonts
-      // (or embedFonts: false) never fetch it.
+      // All fonts are awaited while still loading so none swaps in after slides show.
       if (options?.embedFonts !== false && presentation.embeddedFonts?.length) {
         const { findPriorityTypefaces, loadEmbeddedFonts } =
           await import("@diceui/pptx-core/fonts");
         if (gen !== loadGeneration) throw ABORT_ERROR;
 
-        // The decode workload is only known now, so it widens the progress budget.
-        // Dedupe: the fonts map can alias one part under two paths.
+        // The fonts map can alias one part under two paths.
         let fontBytes = 0;
         for (const part of new Set(presentation.fonts.values())) {
           fontBytes += part.byteLength;
@@ -818,8 +722,7 @@ export function createStore(): Store {
     const index = slideIndexById.get(slideId);
     if (index === undefined) return;
 
-    // Materialize the target before subscribers observe the navigation
-    // (lazy mode); no-op when already materialized.
+    // Subscribers must see the target's nodes in lazy mode.
     const target = presentation.slides[index];
     if (target) materializeSlide(presentation, target);
 
@@ -858,11 +761,7 @@ export function createStore(): Store {
     return getActiveSlideIndex() > 0;
   }
 
-  /**
-   * Single write path for zoom. `isAutoFit` is written alongside the level so
-   * that releasing auto-fit and applying the level someone picked land in one
-   * notification instead of two.
-   */
+  // `isAutoFit` is written with the level so releasing it notifies only once.
   function applyZoom(zoom: number, reason: ZoomChangeReason, isAutoFit = state.isAutoFit): void {
     if (!Number.isFinite(zoom)) return;
     const clamped = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
@@ -941,12 +840,6 @@ export function createStore(): Store {
     return false;
   }
 
-  /**
-   * Publishes the outcome of an edit/undo/redo: bumps affected slide revisions,
-   * repairs navigation if the active slide disappeared, and notifies
-   * subscribers. The presentation object is mutated in place, so the state
-   * `revision` counter is the only identity change subscribers see.
-   */
   function commitEdit(
     affectedSlideIds: string[],
     prevActiveIndex: number,
@@ -976,8 +869,7 @@ export function createStore(): Store {
           ? fallbackSlideId
           : (presentation.slides[fallbackIndex]?.id ?? null);
     }
-    // Undo/redo: jump to the slide the action touched so the user sees the
-    // change (PowerPoint behavior). Only when that slide still exists.
+    // Undo and redo jump to the slide they touched, as PowerPoint does.
     if (navigateToFirstAffected) {
       const target = affectedSlideIds.find((id) => slideIndexById.has(id));
       if (target) activeSlideId = target;
@@ -991,11 +883,7 @@ export function createStore(): Store {
     emitSlideChange(previousSlideId, "edit");
   }
 
-  /**
-   * Edits read and rewrite shared parts (relationships, content types) across
-   * awaits, so two in flight could overwrite each other. Each one waits for
-   * the previous to settle.
-   */
+  // Edits rewrite shared parts like relationships across awaits, so they run one at a time.
   let editQueue: Promise<unknown> = Promise.resolve();
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
@@ -1024,9 +912,7 @@ export function createStore(): Store {
     const activeSlideId = state.activeSlideId;
     const result = await applyEdit(presentation, op);
 
-    // A new edit made while below the save point discards the path back to
-    // it, so that depth no longer means "saved": the deck stays dirty until
-    // the next save.
+    // A new edit below the save point discards the path back to it.
     if (savedUndoDepth > undoStack.length) savedUndoDepth = -1;
 
     undoStack.push({ op, result, activeSlideId });
@@ -1048,8 +934,7 @@ export function createStore(): Store {
     const prevActiveIndex = getActiveSlideIndex();
     entry.result.undo();
     redoStack.push(entry);
-    // Undo of a duplicate removes the created slide; include it so any
-    // mounted view of it is invalidated.
+    // Undoing a duplicate removes the created slide, so its views need invalidating.
     const affected = entry.result.createdSlideId
       ? [...entry.result.affectedSlideIds, entry.result.createdSlideId]
       : entry.result.affectedSlideIds;
@@ -1099,7 +984,6 @@ export function createStore(): Store {
     }
     const previousHistory = historySnapshot();
     const bytes = await writePptx(presentation, options);
-    // Everything up to here is now on disk: this depth is the clean state.
     savedUndoDepth = undoStack.length;
     emitHistoryChange(previousHistory);
     return bytes;

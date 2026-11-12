@@ -46,7 +46,7 @@ export interface SetTextRunOperation {
   text: string;
 }
 
-/** Move / resize / rotate / flip a top-level slide node. */
+/** Move, resize, rotate, or flip a top-level slide node. */
 export interface SetNodeTransformOperation {
   type: "setNodeTransform";
   slideId: string;
@@ -107,15 +107,17 @@ export interface SetTextBodyOperation {
 }
 
 export interface SetTextBodyParagraph {
-  /** Index of the source paragraph whose `a:pPr` / `a:endParaRPr` to clone. -1 = bare paragraph. */
+  /** The paragraph whose `a:pPr` and `a:endParaRPr` are cloned, or -1 for a bare paragraph. */
   sourceParagraphIndex: number;
   runs: SetTextBodyRun[];
 }
 
 export interface SetTextBodyRun {
   text: string;
-  /** Source `[paragraphIndex, runIndex]` to copy `a:rPr` from. When omitted the
-   *  first run of the source paragraph (or no rPr at all) is used. */
+  /**
+   * The `[paragraphIndex, runIndex]` to copy `a:rPr` from, defaulting to the source
+   * paragraph's first run.
+   */
   sourceRun?: [number, number];
 }
 
@@ -192,9 +194,8 @@ export interface SetParagraphStyleOperation {
 export interface AddSlideOperation {
   type: "addSlide";
   /**
-   * Layout part path (a key of `presentation.layouts`, e.g.
-   * "ppt/slideLayouts/slideLayout2.xml"). Defaults to the layout of
-   * `afterSlideId`, or of the last slide.
+   * The layout's part path, a key of `presentation.layouts`, defaulting to the
+   * layout of `afterSlideId` or of the last slide.
    */
   layoutId?: string;
   /** Insert after this slide. Defaults to the end of the deck. */
@@ -405,9 +406,8 @@ export interface AddImageOperation {
 }
 
 /**
- * Applies several operations as one atomic edit with a single undo (e.g.
- * moving a multi-selection). Sub-operations are applied in order and undone
- * in reverse. If one fails midway, the already-applied ones are rolled back.
+ * Apply several operations as one atomic edit with a single undo, rolling back
+ * the applied ones when one fails.
  */
 export interface BatchOperation {
   type: "batch";
@@ -461,10 +461,9 @@ export interface EditResult {
 }
 
 /**
- * Applies an operation to a presentation opened with `keepSourcePackage: true`:
- * mutates the live part XML that `writePptx()` saves, updates the model, and
- * marks the touched parts dirty. Undos capture element references and part
- * snapshots, so apply them in reverse order.
+ * Applies an operation to a presentation opened with `keepSourcePackage: true`,
+ * editing both the model and the part XML `writePptx()` saves. Undos capture
+ * element references, so apply them in reverse order.
  */
 export async function applyEdit(
   presentation: PresentationData,
@@ -596,10 +595,8 @@ function findNode(pres: PresentationData, slide: SlideData, nodeId: string): Sli
   return node;
 }
 
-/**
- * The node's element in the slide's shape tree. A node's source can sit
- * deeper, such as the fallback picture inside an OLE object's frame.
- */
+// A node's source can sit deeper than its shape tree element, such as the
+// fallback picture inside an OLE object's frame.
 function topLevelElement(node: SlideNode): Element {
   let element = requireElement(node.source, "node element");
   while (element.parentElement && element.parentElement.localName !== "spTree") {
@@ -614,7 +611,6 @@ function requireElement(node: SafeXmlNode, what: string): Element {
   return element;
 }
 
-/** Update slide indexes and the index-keyed slide→layout map after reordering. */
 function reindexSlides(pres: PresentationData): void {
   pres.slideToLayout.clear();
   for (let i = 0; i < pres.slides.length; i++) {
@@ -667,7 +663,6 @@ function findTextTarget(
   return { textBody: (node as ShapeNodeData).textBody!, txBody: node.source.child("txBody") };
 }
 
-/** Localnames that produce entries in TextParagraph.runs, in document order. */
 const RUN_LOCAL_NAMES = new Set(["r", "br", "tab", "fld"]);
 
 function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditResult {
@@ -717,11 +712,8 @@ function applySetTextRun(pres: PresentationData, op: SetTextRunOperation): EditR
   };
 }
 
-/**
- * The `a:p` children of a text body. A direct-children scan rather than
- * `getElementsByTagNameNS`, whose namespace matching is unreliable in some
- * DOM implementations (happy-dom misses the paragraphs entirely).
- */
+// `getElementsByTagNameNS` namespace matching is unreliable in some DOM
+// implementations; happy-dom misses the paragraphs entirely.
 function childParagraphs(txBodyElement: Element): Element[] {
   return Array.from(txBodyElement.children).filter((child) => child.localName === "p");
 }
@@ -884,11 +876,8 @@ interface XfrmHandle {
   created: boolean;
 }
 
-/**
- * Finds the node's xfrm element, creating one when the node inherits its
- * transform (e.g. layout placeholders have no xfrm of their own; moving
- * them requires writing a new one into the slide part).
- */
+// A node that inherits its transform, like a placeholder, has no xfrm of its
+// own, so moving it writes a new one into the slide part.
 function getOrCreateXfrm(node: SlideNode): XfrmHandle {
   return getOrCreateXfrmOn(node.source, node.nodeType, node.id);
 }
@@ -953,12 +942,8 @@ function getOrCreateXfrmOn(
   return { xfrmElement, offElement, extElement, created };
 }
 
-/**
- * Scales a table's grid to a new frame size, as PowerPoint's resize handle does.
- * Tables lay out from `a:gridCol/@w` and `a:tr/@h`, not the graphicFrame extent,
- * so writing the extent alone would only shrink the selection box. Returns an
- * undo closure, or null when there is no scalable grid.
- */
+// Tables lay out from `a:gridCol/@w` and `a:tr/@h`, not the graphicFrame
+// extent, so writing the extent alone would only shrink the selection box.
 function scaleTableGrid(table: TableNodeData, size: NodeSize): (() => void) | null {
   const tbl = table.source.child("graphic").child("graphicData").child("tbl");
   const columnElements = tbl.child("tblGrid").children("gridCol");
@@ -1107,7 +1092,7 @@ function applySetNodeTransform(pres: PresentationData, op: SetNodeTransformOpera
 }
 
 const FILL_LOCAL_NAMES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"];
-/** spPr children that come after the fill in the schema sequence. */
+// spPr children that come after the fill in the schema sequence.
 const AFTER_FILL_LOCAL_NAMES = new Set([
   "ln",
   "effectLst",
@@ -1177,7 +1162,7 @@ function applySetSolidFill(pres: PresentationData, op: SetSolidFillOperation): E
   };
 }
 
-/** rPr fill children (EG_FillProperties). */
+// EG_FillProperties.
 const RPR_FILL_LOCAL_NAMES = new Set([
   "noFill",
   "solidFill",
@@ -1186,7 +1171,7 @@ const RPR_FILL_LOCAL_NAMES = new Set([
   "pattFill",
   "grpFill",
 ]);
-/** rPr children that come after `a:latin` in the schema sequence. */
+// rPr children that come after `a:latin` in the schema sequence.
 const RPR_AFTER_LATIN_LOCAL_NAMES = new Set([
   "ea",
   "cs",
@@ -1196,7 +1181,7 @@ const RPR_AFTER_LATIN_LOCAL_NAMES = new Set([
   "rtl",
   "extLst",
 ]);
-/** rPr children that come after the fill in the schema sequence. */
+// rPr children that come after the fill in the schema sequence.
 const RPR_AFTER_FILL_LOCAL_NAMES = new Set([
   "effectLst",
   "effectDag",
@@ -1242,12 +1227,12 @@ function runText(run: Element): string {
   return childNamed(run, "t")?.textContent ?? "";
 }
 
-/** Character length of a run-like element, matching `TextParagraph.runs` text. */
+// Matches the run's text length in `TextParagraph.runs`.
 function runLength(run: Element): number {
   return run.localName === "br" || run.localName === "tab" ? 1 : runText(run).length;
 }
 
-/** Splits an `a:r` at `at` characters; the original keeps the left part. Returns the right part. */
+// The original run keeps the left part and the right part is returned.
 function splitRun(run: Element, at: number): Element {
   const text = runText(run);
   const right = run.cloneNode(true) as Element;
@@ -1270,7 +1255,6 @@ function setBoolAttr(element: Element, name: string, value: boolean | undefined)
   if (value !== undefined) element.setAttribute(name, value ? "1" : "0");
 }
 
-/** Writes `style` onto character properties (`a:rPr` or `a:endParaRPr`). */
 function applyCharacterStyle(rPr: Element, style: TextStyle): void {
   const doc = rPr.ownerDocument;
 
@@ -1319,10 +1303,7 @@ function applyCharacterStyle(rPr: Element, style: TextStyle): void {
   }
 }
 
-/**
- * Formats the characters `[from, to)` of a detached `a:p` clone, splitting runs
- * at the range edges. `whole` formats every run and the paragraph mark.
- */
+// `whole` formats every run and the paragraph mark, not just `[from, to)`.
 function styleParagraph(
   paragraph: Element,
   from: number,
@@ -1376,7 +1357,6 @@ function styleParagraph(
   if (endParaRPr && (whole || to >= position)) applyCharacterStyle(endParaRPr, style);
 }
 
-/** Ordered `[paragraphIndex, from, to]` spans a range covers, or every paragraph. */
 function paragraphSpans(
   paragraphCount: number,
   range: TextRange | undefined,
@@ -1407,11 +1387,8 @@ function paragraphSpans(
   return spans;
 }
 
-/**
- * Rewrites some of a text body's paragraphs. Each `a:p` is cloned, mutated
- * detached, and swapped in, so undo is a swap back and the model paragraph is
- * re-parsed from the clone.
- */
+// Each `a:p` is cloned, mutated detached, and swapped in, so undo is a swap
+// back and the model paragraph is re-parsed from the clone.
 function rewriteParagraphs(
   pres: PresentationData,
   slideId: string,
@@ -1526,7 +1503,6 @@ function descendantsNamed(root: Element, localName: string): Element[] {
   return found;
 }
 
-/** The slide's spTree element; new nodes go in it. */
 function requireSpTree(pres: PresentationData, slide: SlideData): Element {
   const root = requirePkg(pres).getXmlRoot(slide.id);
   const spTree = root?.child("cSld").child("spTree");
@@ -1534,7 +1510,7 @@ function requireSpTree(pres: PresentationData, slide: SlideData): Element {
   return requireElement(spTree, "spTree");
 }
 
-/** The next free shape id on a slide. Ids must be unique across the whole part. */
+// Shape ids must be unique across the whole part.
 function nextShapeId(spTree: Element): number {
   let max = 0;
   for (const cNvPr of descendantsNamed(spTree, "cNvPr")) {
@@ -1544,11 +1520,8 @@ function nextShapeId(spTree: Element): number {
   return max + 1;
 }
 
-/**
- * Gives every shape in a copied element a fresh id from `nextId`, a group's
- * children included, and points connectors inside it at the copies.
- * Connections to shapes outside the copy are left alone.
- */
+// Connectors inside the copy are pointed at the copies, while connections to
+// shapes outside it are left alone.
 function renumberShapes(copy: Element, nextId: number): number {
   const ids = new Map<string, string>();
   for (const cNvPr of descendantsNamed(copy, "cNvPr")) {
@@ -1567,7 +1540,6 @@ function renumberShapes(copy: Element, nextId: number): number {
   return nextId;
 }
 
-/** Parses a node element added to a slide, with its placeholder inheritance resolved. */
 function parseAddedNode(pres: PresentationData, slide: SlideData, element: Element): SlideNode {
   const node = parseRenderableChild(new SafeXmlNode(element), {
     rels: slide.rels,
@@ -1673,7 +1645,6 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/gif": "gif",
 };
 
-/** Pixel size from a PNG, GIF, or JPEG header, or undefined when it can't be read. */
 export function readImageSize(data: Uint8Array): NodeSize | undefined {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   if (data.length >= 24 && view.getUint32(0) === 0x89504e47) {
@@ -1704,11 +1675,8 @@ export function readImageSize(data: Uint8Array): NodeSize | undefined {
   return undefined;
 }
 
-/**
- * Media paths handed out this session. An undone image frees its path in the
- * package, but a renderer may still cache a blob URL under it, so a new image
- * must not take it over.
- */
+// An undone image frees its media path in the package, but a renderer may
+// still cache a blob URL under it, so a new image must not take it over.
 const issuedMediaPaths = new WeakMap<PresentationData, Set<string>>();
 
 function nextMediaPath(pres: PresentationData, extension: string): string {
@@ -1729,7 +1697,6 @@ interface PartChange {
   undo: () => void;
 }
 
-/** Adds a media part, declaring its extension's content type when the deck lacks it. */
 async function addMediaPart(
   pres: PresentationData,
   extension: string,
@@ -1767,7 +1734,6 @@ async function addMediaPart(
   };
 }
 
-/** Adds relationships to a slide's rels part, creating the part when missing. */
 async function addSlideRels(
   pres: PresentationData,
   slide: SlideData,
@@ -1847,9 +1813,8 @@ function contentTypeOf(ctRoot: SafeXmlNode, partPath: string): string | undefine
 }
 
 /**
- * Copies top-level nodes for `pasteNodes`, in their stacking order. Nodes that
- * inherit their position (placeholders) get it written out, and the image
- * parts they use travel with them.
+ * Copies top-level nodes for `pasteNodes` in stacking order, writing out
+ * inherited positions and carrying the image parts they use.
  */
 export async function copyNodes(
   pres: PresentationData,
@@ -1936,7 +1901,6 @@ export interface PasteNodesOperation {
   offset?: NodePosition;
 }
 
-/** A media part in the deck holding exactly these bytes, if there is one. */
 async function findMediaPart(
   pres: PresentationData,
   data: Uint8Array,
@@ -2039,7 +2003,7 @@ async function applyPasteNodes(
   };
 }
 
-/** One line of 18pt text, plus the default insets. */
+// One line of 18pt text, plus the default insets.
 const TEXT_BOX_HEIGHT = 40;
 
 type ElementBuilder = (
@@ -2069,7 +2033,6 @@ function xfrm(el: ElementBuilder, position: NodePosition, size: NodeSize): Eleme
   );
 }
 
-/** Appends a new top-level shape built by `build`, given its id, to a slide. */
 function insertNewShape(
   pres: PresentationData,
   slideId: string,
@@ -2787,7 +2750,7 @@ function applyDeleteTableColumn(
   });
 }
 
-/** spPr children that come after `a:ln` in the schema sequence. */
+// spPr children that come after `a:ln` in the schema sequence.
 const AFTER_LINE_LOCAL_NAMES = new Set(["effectLst", "effectDag", "scene3d", "sp3d", "extLst"]);
 
 function applySetOutline(pres: PresentationData, op: SetOutlineOperation): EditResult {
@@ -2954,7 +2917,6 @@ async function loadSlideListContext(pres: PresentationData): Promise<SlideListCo
   return { sourcePackage, lstNode, lstElement, relsText, rels: parseRels(relsText) };
 }
 
-/** Locate the p:sldId element referencing the given slide part. */
 function findSldIdEntry(ctx: SlideListContext, slideId: string): { element: Element; rId: string } {
   for (const sldId of ctx.lstNode.children("sldId")) {
     const rId = sldId.attr("r:id");
@@ -3069,18 +3031,11 @@ async function applyDuplicateSlide(
 interface InsertSlidePartOptions {
   slideText: string;
   slideRelsText: string | undefined;
-  /** Existing slide part whose content type override to copy. */
   contentTypeFrom?: string;
-  /** Insert the `p:sldId` after this entry; `null` appends. */
-  afterSldIdElement: Element | null;
-  /** Position of the new slide in the deck. */
+  afterSldIdElement: Element | null; // `null` appends.
   index: number;
 }
 
-/**
- * Registers a new slide part on the package (part, rels, content type,
- * presentation relationship, and `p:sldId`) and parses it into the model.
- */
 async function insertSlidePart(
   pres: PresentationData,
   ctx: SlideListContext,
@@ -3157,7 +3112,7 @@ async function insertSlidePart(
 
 const SLIDE_LAYOUT_REL_TYPE =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout";
-/** Layout placeholders PowerPoint leaves off a new slide (header/footer furniture). */
+// PowerPoint leaves header and footer placeholders off a new slide.
 const SKIPPED_PLACEHOLDER_TYPES = new Set(["dt", "ftr", "sldNum", "hdr"]);
 
 const EMPTY_SLIDE_XML =
@@ -3169,11 +3124,8 @@ const EMPTY_SLIDE_XML =
   "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>" +
   "</p:sld>";
 
-/**
- * Builds slide XML holding an empty copy of each content placeholder on the
- * layout. The copies carry only the `p:ph` reference, so position, size and
- * text styles keep inheriting from the layout.
- */
+// Placeholder copies carry only the `p:ph` reference, so position, size, and
+// text styles keep inheriting from the layout.
 function buildSlideFromLayout(layoutSpTree: SafeXmlNode): string {
   const root = parseXml(EMPTY_SLIDE_XML);
   const rootElement = requireElement(root, "slide root");

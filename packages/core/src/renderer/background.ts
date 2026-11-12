@@ -15,11 +15,7 @@ import {
 
 let backgroundGradientIdCounter = 0;
 
-/**
- * Composite a semi-transparent color on white so the result is always opaque.
- * This prevents the slide background from becoming see-through when embedded
- * in containers with dark backgrounds (e.g. e2e-compare panels).
- */
+// Keeps the slide opaque when embedded in a container with a dark background.
 function compositeOnWhite(r: number, g: number, b: number, a: number): string {
   const cr = Math.round(r * a + 255 * (1 - a));
   const cg = Math.round(g * a + 255 * (1 - a));
@@ -244,12 +240,6 @@ function tryRenderSvgGradientBackgroundData(
   return true;
 }
 
-/**
- * Renders the background for a slide onto the container element.
- *
- * Background priority: slide.background -> layout.background -> master.background.
- * The first found background is used.
- */
 export function renderBackground(ctx: RenderContext, container: HTMLElement): void {
   // Image references resolve against the rels of whichever level supplied the background.
   let bgNode: SafeXmlNode | undefined;
@@ -277,7 +267,6 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
     return;
   }
 
-  // p:bgRef is a theme reference.
   const bgRef = bgNode.child("bgRef");
   if (bgRef.exists()) {
     renderBgRef(bgRef, ctx, container);
@@ -287,10 +276,6 @@ export function renderBackground(ctx: RenderContext, container: HTMLElement): vo
   container.style.backgroundColor = "#FFFFFF";
 }
 
-/**
- * Renders background from bgPr (background properties).
- * Contains direct fill definitions: solidFill, gradFill, blipFill, etc.
- */
 function renderBgPr(
   bgPr: SafeXmlNode,
   ctx: RenderContext,
@@ -346,11 +331,8 @@ function renderBgPr(
   }
 }
 
-/**
- * Renders background from bgRef (theme format scheme reference).
- * bgRef values 1001+ reference theme bgFillStyleLst; lower values fall back
- * to regular fillStyleLst for compatibility with non-standard producers.
- */
+// idx 1001+ references the theme's bgFillStyleLst; lower values fall back to
+// fillStyleLst for non-standard producers.
 function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElement): void {
   const idx = bgRef.numAttr("idx") ?? 0;
   const hasThemeFill =
@@ -365,7 +347,6 @@ function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElem
     return;
   }
 
-  // bgRef may contain a color child (schemeClr, srgbClr, etc.).
   const { color, alpha } = resolveColor(bgRef, ctx);
   if (color && color !== "#000000") {
     const hex = color.startsWith("#") ? color : `#${color}`;
@@ -393,7 +374,6 @@ function renderBlipBackground(
 
   if (!relId) return;
 
-  // The image resolves against the provided rels, else the slide's.
   const relsMap = rels ?? ctx.slide.rels;
   const rel = relsMap.get(relId);
   if (!rel) return;

@@ -10,10 +10,7 @@ import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
-/**
- * Smallest well-formed PNG: 1x1 pixel, 8-bit RGB (opaque red-ish pixel).
- * Kept as base64 so the fixture stays readable.
- */
+// Smallest well-formed PNG: a 1x1 8-bit RGB pixel.
 const TINY_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
@@ -52,31 +49,19 @@ const DEFAULT_FMT_SCHEME = `<a:fmtScheme name="Office">
 const DEFAULT_MASTER_BG = `<p:bg><p:bgPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
 
 export interface RichPptxOptions {
-  /** `p:sp`/`p:pic`/... elements inserted into the slide's spTree. */
   shapesXml?: string;
-  /** Full `<p:bg>...</p:bg>` block placed on the slide's cSld. */
   slideBg?: string;
-  /** Full `<p:bg>...</p:bg>` block placed on the layout's cSld. */
   layoutBg?: string;
-  /**
-   * Full `<p:bg>...</p:bg>` block for the master's cSld.
-   * Defaults to the minimal fixture's `lt1` solid fill; pass "" to remove it.
-   */
+  // Defaults to the minimal fixture's `lt1` solid fill; "" removes it.
   masterBg?: string;
-  /** Replacement for the theme's entire `<a:fmtScheme>` block. */
   fmtSchemeXml?: string;
-  /** Extra `<Relationship .../>` entries appended to slide1.xml.rels. */
   extraSlideRelsXml?: string;
-  /** Extra binary zip parts, keyed by full path (e.g. "ppt/media/image1.png"). */
+  // Keyed by full path, such as "ppt/media/image1.png".
   binaryParts?: Record<string, Uint8Array>;
-  /** Extra `<Default>`/`<Override>` entries for [Content_Types].xml. */
   extraContentTypesXml?: string;
 }
 
-/**
- * Builds a single-slide .pptx with the given customizations.
- * Defaults produce the same package as `buildPptxWithShapes("")`.
- */
+// Defaults produce the same package as `buildPptxWithShapes("")`.
 export async function buildRichPptx(options: RichPptxOptions = {}): Promise<ArrayBuffer> {
   const {
     shapesXml = "",

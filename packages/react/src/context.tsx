@@ -9,11 +9,7 @@ import { createStore } from "./store";
 
 export const Context = React.createContext<Store | null>(null);
 
-/**
- * `Presentation.Root`'s DOM node, the presentation's focus boundary. `Selection`
- * uses it to tell keystrokes aimed at the deck, thumbnails included, from the
- * rest of the page. A ref, not state, since only event handlers read it.
- */
+// The deck's focus boundary, thumbnails included. A ref, since only event handlers read it.
 export const RootContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
 
 export interface ProviderProps {
@@ -36,11 +32,8 @@ export namespace Provider {
  *
  * ```tsx
  * const store = useCreatePresentationStore();
- *
- * // Load manually: e.g. after a fetch/upload
  * await store.load(buffer, { defaultSlideIndex: 2 });
  *
- * // Provide the store; `Root` inherits it and the `file` prop is not needed
  * <Presentation.Provider store={store}>
  *   <Presentation.Root>…</Presentation.Root>
  * </Presentation.Provider>
@@ -52,10 +45,6 @@ export function useCreateStore(): Store {
   return store;
 }
 
-/**
- * Returns the `PresentationStore` from the nearest `Presentation.Root`
- * or `Presentation.Provider`. Throws if called outside either.
- */
 export function useStoreContext(consumerName: string): Store {
   const store = React.useContext(Context);
   if (!store) {
@@ -67,10 +56,8 @@ export function useStoreContext(consumerName: string): Store {
 }
 
 /**
- * Returns the `PresentationStore` driving the tree, from `Presentation.Provider`
- * or `Presentation.Root`'s internal one, and throws outside either. It reaches
- * `load`, `edit`, `undo`, `redo`, `save` and `reset` without prop drilling, and is
- * stable and subscribes to nothing; read state with `usePresentation`, `useSlide` or `useZoom`.
+ * Returns the stable `PresentationStore` from `Presentation.Provider` or `Presentation.Root`
+ * without subscribing to it; read state with `usePresentation`, `useSlide` or `useZoom`.
  *
  * ```tsx
  * function SaveButton() {
@@ -78,7 +65,6 @@ export function useStoreContext(consumerName: string): Store {
  *   return <button onClick={() => store.save()}>Save</button>;
  * }
  *
- * // No `useCreatePresentationStore`, no `Provider`, no prop drilling.
  * <Presentation.Root file={file} readOnly={false}>
  *   <SaveButton />
  * </Presentation.Root>
@@ -88,11 +74,6 @@ export function useStore(): Store {
   return useStoreContext("usePresentationStore");
 }
 
-/**
- * Bridges an optional event-handler prop to a store event for the component's
- * lifetime, so consumers pass a callback instead of managing a subscription. The
- * callback is read through a ref, so an inline function doesn't resubscribe.
- */
 export function useStoreEvent<E extends keyof StoreEventMap>(
   store: Store,
   event: E,
@@ -100,20 +81,12 @@ export function useStoreEvent<E extends keyof StoreEventMap>(
 ): void {
   const callbackRef = useLatestRef(callback);
 
-  // Subscribing to an external store: an effect is the right tool here.
   React.useEffect(
     () => store.on(event, (payload) => callbackRef.current?.(payload)),
     [store, event, callbackRef],
   );
 }
 
-/**
- * Subscribes to a single derived value from the presentation store.
- *
- * Re-renders the caller only when `selector(state)` returns a different value
- * (compared with `Object.is`). Use this instead of calling `store.getState()`
- * directly so unrelated state changes don't cause unnecessary re-renders.
- */
 export function useStoreSelector<T>(
   store: Store,
   selector: (state: StoreState) => T,
@@ -135,10 +108,6 @@ export function useSlideRevision(store: Store, slideId: string | null | undefine
   );
 }
 
-/**
- * Subscribes to a slide's content revision (`store.getSlideContentRevision`):
- * bumped by content edits but not by transform-only moves.
- */
 export function useSlideContentRevision(store: Store, slideId: string | null | undefined): number {
   return React.useSyncExternalStore(
     store.subscribe,
@@ -166,25 +135,17 @@ export interface UsePresentationResult {
   /** Error thrown during the last failed parse, or `null` otherwise. */
   error: Error | null;
 
-  /** Parse progress reported by the store (0-100). */
+  /** Parse progress from `0` to `100`. */
   progress: number;
 
   /**
-   * Edit revision counter; bumps on every `store.edit()`, `undo()`, or
-   * `redo()`. The `presentation` object is mutated in place by edits, so
-   * derive from this value (not object identity) to react to content changes.
+   * Counter bumped on every edit, undo, or redo. Edits mutate `presentation` in place,
+   * so derive from `revision` to react to content changes.
    */
   revision: number;
 }
 
-/**
- * Subscribes to top-level presentation state: parse status, progress, and errors.
- *
- * Must be called inside `Presentation.Root` or `Presentation.Provider`.
- *
- * Each field is subscribed independently so that unrelated store updates
- * (zoom changes, slide navigation) do not cause consumers to re-render.
- */
+/** Subscribes to the loaded presentation, its parse status, progress, error and revision. */
 export function usePresentation(): UsePresentationResult {
   const store = useStoreContext("usePresentation");
   const presentation = useStoreSelector(
@@ -204,17 +165,10 @@ export interface UseSlideResult {
   /** Full parsed data for the active slide, or `null` before load. */
   slide: SlideData | null;
 
-  /**
-   * Stable identity of the active slide (`SlideData.id`).
-   * Use this (not `index`) as the source of truth for navigation,
-   * keys, and any future editing operations.
-   */
+  /** Stable id of the active slide (`SlideData.id`), to use over `index` for keys and navigation. */
   slideId: string | null;
 
-  /**
-   * Current display position (0-based). Derived from `slideId` via
-   * `findIndex`. Safe to use for display but do NOT store it as identity.
-   */
+  /** 0-based position of the active slide, for display rather than identity. */
   index: number;
 
   /** Total number of slides in the loaded presentation. `0` before load. */
@@ -239,17 +193,12 @@ export interface UseSlideResult {
   prev: () => void;
 }
 
-/**
- * Subscribes to slide navigation state and exposes navigation actions.
- *
- * Must be called inside `Presentation.Root` or `Presentation.Provider`.
- */
+/** Subscribes to the active slide and exposes navigation actions. */
 export function useSlide(): UseSlideResult {
   const store = useStoreContext("useSlide");
 
-  // Primitives/stable refs only; new object literals on every call cause infinite loops.
+  // Selectors must return stable values; a fresh object each call loops forever.
   const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
-  // Stable object ref that only changes on new file load, not on slide navigation.
   const presentation = useStoreSelector(store, (s) => s.presentation, null);
 
   const index = slideId ? store.getSlideIndex(slideId) : -1;
@@ -271,13 +220,10 @@ export function useSlide(): UseSlideResult {
 }
 
 export interface UseZoomResult {
-  /** Current zoom level (1 = 100%, 0.5 = 50%). */
+  /** Current zoom level, where `1` equals 100%. */
   zoom: number;
 
-  /**
-   * Whether zoom is tracking the viewport size. A zoom control reads this to
-   * show "Fit" instead of a level, without keeping a flag of its own.
-   */
+  /** Whether zoom tracks the viewport size, so a zoom control can show "Fit". */
   isAutoFit: boolean;
 
   /** Set an explicit zoom level. Turns auto-fit off. */
@@ -297,30 +243,14 @@ export interface UseZoomResult {
    */
   zoomOut: (step?: number) => void;
 
-  /**
-   * Turns auto-fit on or off. Turning it on refits the slide to the viewport
-   * immediately and on every resize after it.
-   */
+  /** Turns auto-fit on or off; while on, the slide refits to the viewport on every resize. */
   setAutoFit: (isAutoFit: boolean) => void;
 
-  /**
-   * Computes and applies a zoom that fits the slide inside the given container
-   * dimensions, respecting the optional padding.
-   *
-   * @param containerWidth - Available width in pixels.
-   * @param containerHeight - Available height in pixels.
-   * @param padding - Uniform padding or per-side values in pixels.
-   */
+  /** Sets zoom once to fit the slide in a container of the given pixel size, minus padding. */
   fitTo: (containerWidth: number, containerHeight: number, padding?: AutoFitPadding) => void;
 }
 
-/**
- * Subscribes to zoom state and exposes zoom actions.
- *
- * Must be called inside `Presentation.Root` or `Presentation.Provider`.
- * Fitting needs a measured container, so it belongs to `<Presentation.Viewport autoFit>`:
- * this hook only reports and toggles the mode.
- */
+/** Subscribes to zoom state and exposes zoom actions; `Presentation.Viewport autoFit` does the fitting. */
 export function useZoom(): UseZoomResult {
   const store = useStoreContext("useZoom");
   const zoom = useStoreSelector(store, (s) => s.zoom, 1);
@@ -347,10 +277,7 @@ export interface UseHistoryResult {
   /** Whether there is an edit to redo. */
   canRedo: boolean;
 
-  /**
-   * Whether the deck has unsaved changes. Undoing back to the last saved
-   * point clears it again.
-   */
+  /** Whether the deck has unsaved changes, cleared again by undoing back to the last save. */
   isDirty: boolean;
 
   /** Revert the most recent edit. Resolves `false` when the undo stack is empty. */
@@ -361,9 +288,7 @@ export interface UseHistoryResult {
 }
 
 /**
- * Undo, redo, and whether the deck has unsaved edits.
- *
- * Must be called inside `Presentation.Root` or `Presentation.Provider`.
+ * Subscribes to undo, redo, and whether the deck has unsaved edits.
  *
  * ```tsx
  * const { canUndo, undo } = useHistory();

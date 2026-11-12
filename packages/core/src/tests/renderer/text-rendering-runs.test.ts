@@ -1,7 +1,3 @@
-/**
- * Run-level formatting (a:rPr) through the real render pipeline:
- * bold/italic/underline/strike, font size, fill color, and typefaces.
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,7 +7,6 @@ import {
   spansOf,
 } from "../fixtures/text-rendering-helpers";
 
-/** Renders one paragraph and returns the span for its single run. */
 async function renderRun(rPrXml: string, text = "MARKER"): Promise<HTMLElement> {
   const element = await renderTextBox(`<a:p><a:r>${rPrXml}<a:t>${text}</a:t></a:r></a:p>`);
   const [paragraph] = paragraphsOf(element);

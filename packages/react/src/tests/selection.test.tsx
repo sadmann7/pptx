@@ -22,23 +22,14 @@ import { cleanText, readBackTextBody, textBodyChanged } from "../selection/text-
 import { createStore } from "../store";
 import { editableStore } from "./test-utils";
 
-/**
- * Stubs `document.elementsFromPoint`, which `hitTest` needs and happy-dom lacks.
- * It reports empty canvas by default, the precondition for a band, or a shape a
- * test aims it at. With layout zeroed, `clientToSlide` reduces to `client / zoom`,
- * so a band over the origin encloses the whole slide and one far outside, nothing.
- */
+// With layout zeroed, `clientToSlide` reduces to `client / zoom`, so a band over
+// the origin encloses the whole slide and one far outside, nothing.
 const OVER_SLIDE = 100_000;
 const PAST_SLIDE = 90_000;
 
-/**
- * What the stubbed hit test reports under the pointer: `null` means empty
- * canvas, which is what a band needs. Point it at a shape element to simulate
- * pressing that shape.
- */
+// `null` reports empty canvas, which a band needs.
 let hitTarget: HTMLElement | null = null;
 
-/** Set when the stub below is ours to remove again. */
 let stubbedHitTest = false;
 
 beforeAll(() => {
@@ -49,8 +40,7 @@ beforeAll(() => {
 });
 
 // The suite runs with `isolate: false`, so `document` is shared with the other
-// test files in this worker: clean up after the last test, not just before the
-// next one, or a stale target follows them.
+// test files in this worker and a stale target would follow them.
 afterEach(() => {
   hitTarget = null;
 });
@@ -488,10 +478,6 @@ describe("textBodyChanged", () => {
   });
 });
 
-/**
- * Renders a full Presentation tree with Slide + Selection, waits for ready,
- * and returns helpers for interacting with the overlay.
- */
 async function renderSelection(props: Record<string, unknown> = {}) {
   const store = await editableStore();
 
@@ -606,7 +592,7 @@ describe("onSelectionChange and onModeChange", () => {
     });
     expect(calls).toBe(2);
 
-    // Selecting all again lands on the same set.
+    // The same set again is not a change.
     act(() => {
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
@@ -691,7 +677,6 @@ describe("marquee selection", () => {
 });
 
 describe("multi-selection handles", () => {
-  /** Press and release the given shape, optionally with Shift held. */
   function clickShape(
     overlay: HTMLElement,
     shape: HTMLElement,
@@ -862,8 +847,7 @@ describe("multi-selection handles", () => {
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
 
-    // Drag the first shape's south-east handle outward. Separate acts: each
-    // handler needs the previous state update flushed to see it.
+    // Separate acts, since each handler needs the previous state update flushed.
     const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="se"]')!;
     act(() => {
       fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
@@ -930,7 +914,6 @@ describe("right-click", () => {
 });
 
 describe("pressing outside the overlay", () => {
-  /** Selects every shape, leaving the overlay focused and in `selected`. */
   async function withSelection() {
     const rendered = await renderSelection();
 
@@ -956,8 +939,6 @@ describe("pressing outside the overlay", () => {
   it("keeps the selection while a scroll gesture is running", async () => {
     const { overlay } = await withSelection();
 
-    // The press has landed but the gesture is not resolved yet, so nothing
-    // should have happened on the way down.
     act(() => {
       fireEvent.pointerDown(document.body);
     });
@@ -1147,8 +1128,7 @@ describe("keyboard shortcuts", () => {
     const onUndo = vi.fn();
     const store = await editableStore();
 
-    // Undo after reordering thumbnails is the motivating case: focus sits on a
-    // thumbnail, which is inside `Root` but outside the overlay.
+    // A focused thumbnail is inside `Root` but outside the overlay.
     const { container } = render(
       <Presentation.Provider store={store}>
         <Presentation.Root>

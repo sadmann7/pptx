@@ -22,11 +22,8 @@ const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46]; // "%%EOF".
 const BI_RGB = 0;
 const MAX_EMF_BITMAP_PIXELS = 16_777_216;
 
-/**
- * Extracts the content embedded in an EMF, without interpreting its drawing
- * records. PPTX OLE previews are usually EMFs wrapping a PDF in a GDI comment
- * or a bitmap in a STRETCHDIBITS record.
- */
+// PPTX OLE previews are usually EMFs wrapping a PDF in a GDI comment or a
+// bitmap in a STRETCHDIBITS record, so drawing records aren't interpreted.
 export function parseEmfContent(data: Uint8Array): EmfContent {
   if (data.length < 44) return { type: "unsupported" };
 
@@ -182,7 +179,6 @@ function parseStretchDibits(
   const bmiStart = offset + offBmiSrc;
   if (bmiStart + 40 > data.length) return null;
 
-  // Parse BITMAPINFOHEADER.
   const biWidth = view.getInt32(bmiStart + 4, true);
   const biHeight = view.getInt32(bmiStart + 8, true);
   const biBitCount = view.getUint16(bmiStart + 14, true);
@@ -222,9 +218,9 @@ function parseStretchDibits(
       if (srcIdx + bytesPerPixel > bitsData.length) break;
 
       // DIB stores BGR(A).
-      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2]; // R.
-      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1]; // G.
-      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0]; // B.
+      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2];
+      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1];
+      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0];
       imageData.data[dstOffset + x * 4 + 3] = biBitCount === 32 ? bitsData[srcIdx + 3] : 255;
     }
   }

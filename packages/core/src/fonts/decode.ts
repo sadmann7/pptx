@@ -18,10 +18,7 @@ function getIsRawFont(data: Uint8Array): boolean {
   return false;
 }
 
-/**
- * The outcome of decoding one part, carrying why it failed when it did, so
- * callers can report a font that silently fell back.
- */
+/** The outcome of decoding one part, with the reason when it failed. */
 export type FontDecodeResult =
   | { ok: true; bytes: Uint8Array }
   | { ok: false; message: string; code?: MtxErrorCode };
@@ -50,20 +47,16 @@ export function decodeEmbeddedFontPart(part: Uint8Array, fontKey?: string): Font
 }
 
 /**
- * Decode one embedded font part into a raw TrueType/OpenType binary.
- * Returns `undefined` when the data cannot be decoded.
+ * Decode one embedded font part into a raw TrueType/OpenType binary, or `undefined`
+ * when it can't be decoded.
  */
 export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Array | undefined {
   const result = decodeEmbeddedFontPart(part, fontKey);
   return result.ok ? result.bytes : undefined;
 }
 
-/**
- * Whether decoding this part runs the MTX decompressor, the only expensive case
- * (a few ms per part, versus microseconds for uncompressed EOT), so callers can
- * decide whether to move the work off the main thread. Obfuscated parts are
- * copied to undo the XOR, which costs far less than the decompression.
- */
+// Only MTX decompression is expensive, a few ms per part versus microseconds for
+// uncompressed EOT. Undoing obfuscation is a cheap copy.
 export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
   if (part.length === 0) return false;
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
@@ -76,10 +69,7 @@ export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean
   }
 }
 
-/**
- * Copy the bytes into an ArrayBuffer of their own, detached from any larger
- * buffer they were a view into, so it can be transferred to a worker.
- */
+// A detached copy, so the buffer can be transferred to a worker.
 export function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }

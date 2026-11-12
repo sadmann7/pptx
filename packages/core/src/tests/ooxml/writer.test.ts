@@ -92,7 +92,6 @@ describe("writePptx", () => {
 
     expect(slideXml).toContain("After edit");
     expect(slideXml).not.toContain("Before edit");
-    // Original XML declaration is preserved on the re-serialized part.
     expect(slideXml.startsWith('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')).toBe(
       true,
     );
@@ -102,7 +101,6 @@ describe("writePptx", () => {
       expect(roundTripped.get(path), path).toEqual(originalBytes);
     }
 
-    // The edit is visible when the saved file is opened again.
     const reopened = buildPresentation(await readPptx(saved.slice().buffer));
     const serialized = serializePresentation(reopened);
     expect(JSON.stringify(serialized)).toContain("After edit");

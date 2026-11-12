@@ -1,12 +1,7 @@
 import type { TextBody } from "../model/nodes/shape";
 import { SafeXmlNode } from "../ooxml/xml";
 
-/**
- * Resolves a child under the effective bodyPr for a text body.
- *
- * Slide-level bodyPr wins. Layout/master bodyPr is a fallback and is used when
- * the slide shape omits the child entirely, matching placeholder inheritance.
- */
+// Layout/master bodyPr applies only when the slide shape omits the child entirely.
 export function getEffectiveBodyPrChild(
   textBody: TextBody | undefined,
   childName: string,

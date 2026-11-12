@@ -10,13 +10,12 @@ import JSZip from "jszip";
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 export interface DeckSpec {
-  /** Number of slides. */
   slides: number;
-  /** Text boxes per slide (3 paragraphs, 2 runs each). */
+  // Three paragraphs of two runs each.
   textBoxes?: number;
-  /** Preset shapes per slide (mix of geometries, gradient every 3rd). */
+  // A mix of geometries, with a gradient on every third.
   shapes?: number;
-  /** Include a 4x6 table on every slide. */
+  // A 4x6 table.
   withTable?: boolean;
 }
 
@@ -186,7 +185,6 @@ const SLIDE_LAYOUT =
 <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
 </p:sldLayout>`;
 
-/** Build a deck per spec; returns the zipped package. */
 export async function generateDeck(spec: DeckSpec): Promise<ArrayBuffer> {
   const n = spec.slides;
 
@@ -263,7 +261,7 @@ ${Array.from({ length: n }, (_, i) => `<Relationship Id="rId${2 + i}" Type="http
   return zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
 }
 
-/** Standard specs shared by benchmarks and profiling so numbers are comparable. */
+// Shared by benchmarks and profiling so their numbers are comparable.
 export const DECK_SPECS = {
   small: { slides: 5, textBoxes: 3, shapes: 3, withTable: false },
   medium: { slides: 20, textBoxes: 4, shapes: 6, withTable: true },

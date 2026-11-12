@@ -1,7 +1,3 @@
-/**
- * Connector shapes (p:cxnSp): straight connector geometry, stroke,
- * arrowhead markers (headEnd/tailEnd), and flips.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -78,7 +74,7 @@ describe("connector strokes and geometry", () => {
 <a:ln w="12700"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>`,
     );
     const path = mainPath(element);
-    // Line now runs bottom-left to top-right.
+    // The line runs bottom-left to top-right.
     expect(path.getAttribute("d")).toBe("M0,96 L192,0");
     const wrapper = element.querySelector("svg")?.closest("div") as HTMLElement;
     expect(wrapper.style.transform).not.toContain("scale");

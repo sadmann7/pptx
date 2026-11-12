@@ -1,6 +1,3 @@
-/**
- * Shape effects (a:effectLst outerShdw) and flip transforms on plain shapes.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";

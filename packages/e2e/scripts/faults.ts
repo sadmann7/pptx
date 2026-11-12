@@ -22,12 +22,8 @@ import {
 } from "../specs/oracle";
 import { parseArgs } from "./args";
 
-/**
- * Faults chosen to span the ways a render breaks: content lost, content
- * shrunk, a graphic lost, everything shifted, and a fill recoloured. The first
- * two are the classes SSIM is known to score *better* on than a correct
- * render, which is the whole reason a coverage measure exists.
- */
+// SSIM scores the first two better than a correct render, which is why a
+// coverage measure exists.
 const FAULTS = [
   "control",
   "control-2",
@@ -38,11 +34,8 @@ const FAULTS = [
   "recolor",
 ] as const;
 
-/**
- * Slides the tolerances were sized against: text-heavy, chart, photo-backed,
- * table, textured, and gradient-heavy, so no single measure can look good by
- * suiting one kind of slide.
- */
+// Text-heavy, chart, photo-backed, table, textured, and gradient-heavy, so no
+// single measure can look good by suiting one kind of slide.
 const DEFAULT_SLIDES = [
   "the-good-room-soft-editorial:1",
   "geometry-of-attention-cartesian:5",
@@ -68,7 +61,6 @@ const slides = (args.lists.slide?.length ? args.lists.slide : DEFAULT_SLIDES).ma
   return { deck, slide: Number(index ?? 0) };
 });
 
-/** Worst movement of any one region away from its control value. */
 function worstRegionMoved(score: OracleScore, control: OracleScore): number {
   return score.ink.reduce(
     (worst, drift, region) => Math.max(worst, drift - (control.ink[region] ?? 0)),
@@ -76,7 +68,6 @@ function worstRegionMoved(score: OracleScore, control: OracleScore): number {
   );
 }
 
-/** Which measures a fault moved past the tolerances oracle.spec.ts asserts. */
 function caughtBy(score: OracleScore, control: OracleScore): string {
   const caught: string[] = [];
   if (control.overall - score.overall > SCORE_TOLERANCE) caught.push("overall");

@@ -38,7 +38,6 @@ const TRACE_CATEGORIES = [
 
 interface Scenario {
   name: string;
-  /** Counts blank thumbnails on screen per frame. */
   thumbnails?: boolean;
   run: (page: Page) => Promise<void>;
 }
@@ -151,7 +150,6 @@ interface FrameStats {
   droppedFrames: number;
   longAnimationFrames: number;
   loafScriptMs: number;
-  /** Share of frames with a blank (still rendering) thumbnail on screen, in %. */
   blankFramesPct: number;
   mainThreadMs: number;
 }
@@ -243,7 +241,6 @@ async function main() {
   console.log(`Traces and summary written to ${outDir}`);
 }
 
-/** Back to the first slide, nothing selected, thumbnails scrolled to the top. */
 async function reset(page: Page) {
   await page.keyboard.press("Escape");
   await page.locator(`${LIST} [role=option]`).first().click();
@@ -416,7 +413,7 @@ async function recordTrace(page: Page, cdp: CDPSession, outFile: string, run: ()
   return getMainThreadBusyMs(events as TraceEvent[]);
 }
 
-/** Total duration of top-level tasks on the page's main thread, which shows headroom even when fps is capped. */
+// Top-level task time shows headroom even when fps is capped.
 function getMainThreadBusyMs(events: TraceEvent[]) {
   const mainThreads = new Set(
     events

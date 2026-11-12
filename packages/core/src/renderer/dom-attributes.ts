@@ -1,10 +1,6 @@
 /**
- * DOM data-attribute contract written by the slide renderer.
- *
- * Consumers (e.g. the React selection overlay) use these to locate shapes,
- * paragraphs, and runs in rendered slide DOM, and to map edited content back
- * to model indices. Treat the values as a public API: renaming one is a
- * breaking change for anything selecting against rendered output.
+ * Data attributes the slide renderer writes, for mapping rendered shapes, paragraphs, and
+ * runs back to the model. Renaming one breaks anything that selects against rendered output.
  */
 export const PPTX_ATTRS = {
   /** Shape/node wrapper element; the value is the node id. */

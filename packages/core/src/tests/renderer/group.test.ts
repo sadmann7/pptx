@@ -1,7 +1,3 @@
-/**
- * Group rendering: child coordinate-space remapping, nested groups,
- * group flips/rotation, grpFill inheritance, and group-level effects.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -16,7 +12,6 @@ async function renderShapes(shapesXml: string): Promise<HTMLElement> {
   return renderSlide(presentation, presentation.slides[0]).element;
 }
 
-/** Find the wrapper div of the shape whose SVG path has the given fill. */
 function shapeWrapperByFill(element: HTMLElement, hexLower: string): HTMLElement {
   const paths = [...element.querySelectorAll("svg path")];
   const match = paths.find((p) => p.getAttribute("fill")?.toLowerCase() === hexLower);

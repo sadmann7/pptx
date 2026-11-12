@@ -47,11 +47,8 @@ export interface ComparableSlideInfo {
   hidden?: boolean;
 }
 
-/**
- * Maps PPTX slide indexes to exported PDF page indexes.
- * PowerPoint PDF export skips hidden slides, so slides after a hidden slide
- * should compare against the next visible PDF page rather than the same index.
- */
+// PowerPoint's PDF export skips hidden slides, so later slides compare against the
+// next visible page rather than the same index.
 export function resolveComparablePdfPages(
   slides: readonly ComparableSlideInfo[],
   pdfPageCount: number,
@@ -65,11 +62,7 @@ export function resolveComparablePdfPages(
   });
 }
 
-/**
- * Determine how many slides should be shown in E2E compare mode.
- * - displaySlideCount: all PPTX slides should stay visible to users
- * - comparableSlideCount: only slides with matching PDF pages can be scored visually
- */
+// Every slide stays visible, but only slides with a matching PDF page can be scored.
 export function resolveCompareSlideCounts(
   pptxSlideCount: number,
   pdfPageCount: number,

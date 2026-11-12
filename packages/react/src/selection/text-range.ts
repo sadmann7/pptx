@@ -31,18 +31,12 @@ export interface ActiveTextStyle {
   align: ParagraphAlign | null;
 }
 
-/**
- * Strip zero-width spaces: line-height spacer spans from the renderer must
- * not reach the model.
- */
+// The renderer's zero-width line-height spacers must not reach the model.
 export function cleanText(raw: string | null | undefined): string {
   return (raw ?? "").replace(/​/g, "");
 }
 
-/**
- * Paragraph elements of a text container in model order. A container whose
- * paragraphs were flattened by editing is treated as one paragraph.
- */
+// A container whose paragraphs were flattened by editing counts as one paragraph.
 export function getParagraphElements(container: HTMLElement): HTMLElement[] {
   const children = Array.from(container.children).filter(
     (element): element is HTMLElement => element instanceof HTMLElement,
@@ -55,15 +49,11 @@ export function getParagraphElements(container: HTMLElement): HTMLElement[] {
     : [container];
 }
 
-/**
- * A `<br>` the renderer emitted for an `a:br` run, rather than the one a
- * browser adds to keep an empty line open: it has content after it.
- */
+// The `<br>` a browser adds to keep an empty line open has nothing after it, unlike an `a:br` one.
 function isRenderedBreak(element: HTMLBRElement): boolean {
   return element.nextSibling !== null && !element.hasAttribute(PPTX_ATTRS.emptyLine);
 }
 
-/** Text-bearing leaves of a paragraph in order, skipping bullets. */
 function getTextLeaves(paragraph: HTMLElement): (Text | HTMLBRElement)[] {
   const leaves: (Text | HTMLBRElement)[] = [];
   const walker = document.createTreeWalker(
@@ -90,14 +80,12 @@ function getLeafLength(leaf: Text | HTMLBRElement): number {
   return leaf instanceof HTMLBRElement ? 1 : cleanText(leaf.data).length;
 }
 
-/** The text of a paragraph element as the model counts it. */
 export function getParagraphText(paragraph: HTMLElement): string {
   return getTextLeaves(paragraph)
     .map((leaf) => (leaf instanceof HTMLBRElement ? "\n" : cleanText(leaf.data)))
     .join("");
 }
 
-/** Maps a DOM point inside a text container to a model text position. */
 export function getTextPosition(
   container: HTMLElement,
   node: Node,
@@ -135,17 +123,12 @@ export function getTextPosition(
   return { paragraphIndex, offset: count };
 }
 
-/** Maps a DOM range inside a text container to a model text range. */
 export function getTextRange(container: HTMLElement, range: AbstractRange): TextRange | null {
   const start = getTextPosition(container, range.startContainer, range.startOffset);
   const end = getTextPosition(container, range.endContainer, range.endOffset);
   return start && end ? { start, end } : null;
 }
 
-/**
- * Maps a model text position back to a DOM point in freshly rendered text.
- * The inverse of `getTextPosition`.
- */
 export function getDomPoint(
   container: HTMLElement,
   position: TextPosition,
@@ -167,10 +150,7 @@ export function getDomPoint(
 
 const WORD_CHARACTER = /[\p{L}\p{N}_'’-]/u;
 
-/**
- * The word around a collapsed caret, the way PowerPoint formats the word
- * under the caret. Returns `null` when the caret is not touching a word.
- */
+// PowerPoint formats the word under a collapsed caret.
 export function expandToWord(text: string, offset: number): [start: number, end: number] | null {
   let start = offset;
   let end = offset;
@@ -189,11 +169,7 @@ function toHexColor(cssColor: string): string | null {
     .toUpperCase()}`;
 }
 
-/**
- * The font size in points as the file stores it: the inline `pt` size, which
- * CSS `zoom` leaves alone unlike the computed size, divided by the
- * `normAutofit` scale the renderer marks on the text container.
- */
+// The inline `pt` size, which CSS `zoom` leaves alone, divided by the container's `normAutofit` scale.
 function getFontSize(element: HTMLElement): number | null {
   const scale = Number(
     element.closest<HTMLElement>(`[${PPTX_ATTRS.fontScale}]`)?.dataset[PPTX_DATASET.fontScale] ?? 1,
@@ -213,15 +189,10 @@ function toAlign(textAlign: string): ParagraphAlign {
   return "left";
 }
 
-/** One value when all agree, else `null`. */
 function getShared<T>(values: T[]): T | null {
   return values.every((value) => value === values[0]) ? (values[0] ?? null) : null;
 }
 
-/**
- * Reads the formatting of rendered runs and paragraphs. Toggles are on only
- * when every run has them; values are `null` when the runs disagree.
- */
 export function getActiveTextStyle(
   runs: HTMLElement[],
   paragraphs: HTMLElement[],
@@ -257,7 +228,6 @@ export function getActiveTextStyle(
   };
 }
 
-/** The text of `node` inside `range`; empty when the range only touches its edge. */
 function getSelectedText(range: Range, node: Node): string {
   const overlap = document.createRange();
   overlap.selectNodeContents(node);
@@ -270,11 +240,7 @@ function getSelectedText(range: Range, node: Node): string {
   return cleanText(overlap.toString());
 }
 
-/**
- * Run spans a DOM range touches inside a text container. A collapsed caret
- * reads the run it sits in, falling back to its paragraph's first run (or the
- * paragraph itself, which carries the paragraph mark's size, when empty).
- */
+// An empty paragraph returns itself, since it carries the paragraph mark's size.
 export function getRangeRuns(
   container: HTMLElement,
   range: AbstractRange,
@@ -306,9 +272,7 @@ export function getRangeRuns(
 }
 
 export function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
-  // Empty placeholders also render a prompt overlay ("Click to add text")
-  // whose paragraphs carry the paragraph attribute; skip it: only the real
-  // text container is editable.
+  // An empty placeholder's prompt overlay also carries the paragraph attribute but is not editable.
   for (const paragraphElement of Array.from(
     shapeElement.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.paragraph}]`),
   )) {
@@ -322,11 +286,6 @@ export function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | nu
   return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
 }
 
-/**
- * Walks the edited contentEditable container and produces a `setTextBody`
- * paragraphs payload. Uses the paragraph/run data attributes (see
- * `PPTX_ATTRS`) to map back to source indices for style inheritance.
- */
 export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
   let lastSourceParagraph = 0;
@@ -365,8 +324,6 @@ function readRunsFromParagraphElement(
         lastSourceRun = sourceRun;
       }
     } else if (child instanceof HTMLBRElement) {
-      // A line break the renderer emitted for an a:br; the <br> a browser
-      // adds to keep an empty line open has nothing after it.
       if (isRenderedBreak(child)) runs.push({ text: "\n", sourceRun: lastSourceRun });
     } else if (child.nodeType === Node.TEXT_NODE) {
       const text = cleanText(child.textContent);

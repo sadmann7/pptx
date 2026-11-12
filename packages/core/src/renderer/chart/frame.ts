@@ -4,12 +4,8 @@ import { resolveColor, resolveColorToCss } from "../style";
 import { extractChartLineStyle } from "./style";
 import type { ChartFrameStyle } from "./type";
 
-/**
- * A chart background, or nothing when the deck paints it at zero opacity:
- * authoring tools write "let the slide show through" as a `solidFill` carrying
- * `a:alpha` 0 rather than as a `noFill`, and reading that as a color plates the
- * chart in whatever hue happens to carry the alpha, usually black.
- */
+// Authoring tools write "let the slide show through" as a `solidFill` with
+// `a:alpha` 0 rather than `noFill`; painting it would plate the chart, usually black.
 function resolveBackgroundFill(fill: SafeXmlNode, ctx: RenderContext): string | undefined {
   if (resolveColor(fill, ctx).alpha <= 0) return undefined;
   return resolveColorToCss(fill, ctx);

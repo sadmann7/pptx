@@ -11,9 +11,6 @@
  *   2. skeleton exposure during a fast scroll: for every animation frame of the
  *      sweep, how many previews inside the viewport are still `[data-pending]`,
  *      plus how long the list takes to settle once scrolling stops.
- *
- * The second number is the one that matches the complaint: a bunch of
- * skeleton slides while scrolling, until the scroll settles.
  */
 import { test } from "@playwright/test";
 import { copyFileSync, mkdirSync } from "node:fs";
@@ -22,13 +19,12 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DECKS_DIR = join(HERE, "..", "decks");
-/** A committed real-world deck; the perf picture only means something on real content. */
+// The perf picture only means something on real content.
 const SOURCE_DECK = join(HERE, "..", "fixtures", "adventure-club-pin-and-paper.pptx");
 const BENCH_DECK = "bench-thumbnails.pptx";
-/** Enough slides that the list scrolls for a while at a realistic speed. */
 const TARGET_SLIDES = 64;
 
-/** Pixels per animation frame, roughly a fast but not absurd flick. */
+// Roughly a fast but not absurd flick.
 const SCROLL_STEP_PX = 120;
 const SCROLL_FRAMES = 90;
 
@@ -71,15 +67,12 @@ test.describe("thumbnail list scroll performance", () => {
 
         const previews = Array.from(list.querySelectorAll<HTMLElement>("[aria-hidden='true']"));
 
-        // Geometry is read once, here, and the visible range is derived from
-        // the scroll offset afterwards. Measuring each preview's rect every
-        // frame instead would force a layout per preview inside the sweep,
-        // which is enough work to change the number the sweep is reporting.
+        // Measuring each preview's rect every frame would force a layout per
+        // preview, enough work to change the number the sweep reports.
         const firstTop = previews[0]?.offsetTop ?? 0;
         const pitch = (previews[1]?.offsetTop ?? firstTop) - firstTop;
         const viewportHeight = list.clientHeight;
 
-        /** Previews overlapping the scroller viewport, i.e. what the user sees. */
         const visiblePending = () => {
           if (pitch <= 0) return 0;
           // Preview i sits at firstTop + i * pitch, so the viewport spans the
@@ -142,7 +135,6 @@ test.describe("thumbnail list scroll performance", () => {
     const worst = (values: number[]) => Math.max(...values);
     const mean = (values: number[]) => (values.length > 0 ? total(values) / values.length : 0);
 
-    /** Both halves of what one preview costs, plus what the whole deck comes to. */
     const cost = (label: string, timings: { render: number[]; mount: number[] }) => {
       const both = timings.render.map((value, index) => value + (timings.mount[index] ?? 0));
       return [

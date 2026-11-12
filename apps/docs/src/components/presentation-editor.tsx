@@ -233,7 +233,7 @@ function getCanSplitCell(
   return merged != null && (merged.gridSpan > 1 || merged.rowSpan > 1);
 }
 
-/** The font sizes OOXML allows, in points. */
+// The font sizes OOXML allows, in points.
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 4000;
 
@@ -1318,17 +1318,14 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuItemRef = React.useRef<HTMLElement | null>(null);
 
-  /**
-   * Order to paint while a drop is being committed. `store.edit()` is async, so
-   * without this the strip would snap back to the old order for a frame between
-   * the pointer release and the edit landing.
-   */
+  // `store.edit()` is async, so without this the strip would snap back to the old
+  // order for a frame between the pointer release and the edit landing.
   const [pendingIds, setPendingIds] = React.useState<string[] | null>(null);
   const orderedIds = pendingIds ?? slideIds;
 
   const [draggedId, setDraggedId] = React.useState<string | null>(null);
 
-  // Use PointerSensor only to prevent keyboard drag from conflicting with ArrowUp/Down roving focus.
+  // Pointer only, so keyboard drag can't conflict with ArrowUp/Down roving focus.
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 },

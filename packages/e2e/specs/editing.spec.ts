@@ -12,7 +12,6 @@ import { expect, test, type Page } from "@playwright/test";
 const LINE_START = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
 const LINE_END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
 
-/** `[text, rPr attributes]` for each run of the first shape's first paragraph. */
 function readRuns(page: Page) {
   return page.evaluate(() => {
     const slide = window.__editStore!.getActiveSlide()!;
@@ -198,7 +197,6 @@ test.describe("editing toolbar", () => {
 });
 
 test.describe("snapping", () => {
-  /** The shape's committed x, and where its center would sit on the slide's center. */
   function readGeometry(page: Page) {
     return page.evaluate(() => {
       const store = window.__editStore!;
@@ -208,7 +206,6 @@ test.describe("snapping", () => {
     });
   }
 
-  /** Drags shape 2 so its center ends `offset` px right of the slide's center. */
   async function dragNearCenter(page: Page, offset: number, modifiers: "Alt"[] = []) {
     const { x, centeredX } = await readGeometry(page);
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
@@ -392,7 +389,6 @@ test.describe("images", () => {
 });
 
 test.describe("text boxes", () => {
-  /** The text of the most recently added node, as the overlay currently shows it. */
   function lastNodeText(page: Page) {
     return page.evaluate(() => {
       const nodes = window.__editStore!.getActiveSlide()!.nodes;
@@ -628,7 +624,7 @@ test.describe("tables", () => {
   const readState = async (page: Page) =>
     JSON.parse((await page.getByTestId("state").textContent()) ?? "{}");
 
-  /** Inserts a 2×3 table, which starts editing its first cell. Returns its id. */
+  // Inserting the table starts editing its first cell.
   async function insertTable(page: Page) {
     const { overlay } = await open(page);
     await page.getByTestId("insert-table").click();
@@ -777,11 +773,7 @@ test.describe("tables", () => {
       .toEqual(["Oldab", "Keep", ""]);
   });
 
-  /**
-   * Fills the first two cells, drags across the top-left 2×2 cells, then edits
-   * cell 1,2 and presses `keys` before the next frame, while the editing cell is
-   * detached. Returns the table id.
-   */
+  // Presses `keys` before the next frame, while the editing cell is detached.
   async function pressWhileRerendering(page: Page, keys: { key: string; ctrlKey?: boolean }[]) {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");

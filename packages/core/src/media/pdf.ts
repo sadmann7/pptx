@@ -61,12 +61,9 @@ function resolvePdfWorkerUrl(config?: PdfjsConfig): string | null {
   return explicitUrl(config, "workerUrl") ?? getPdfWorkerUrl();
 }
 
-/**
- * PDFs render only in this worker, with its own pdfjs, because pdfjs keeps
- * process-level state (GlobalWorkerOptions.workerSrc, PagesMapper) that would
- * clobber the host app's setup. Receives `{ id, pdfData, width, height, pdfjsUrl,
- * pdfWorkerUrl }` and posts back `{ id, blob }` or `{ id, error }`.
- */
+// PDFs render only in this worker, with its own pdfjs, because pdfjs keeps
+// process-level state (GlobalWorkerOptions.workerSrc, PagesMapper) that would
+// clobber the host app's setup.
 const WORKER_SRC = /* js. */ `
 let pdfjsLib = null;
 
@@ -205,10 +202,7 @@ function renderInWorker(
   });
 }
 
-/**
- * Renders page 1 of a PDF to a blob URL in a worker, or returns null when
- * rendering fails or Worker/OffscreenCanvas are unavailable.
- */
+// Returns null when rendering fails or Worker or OffscreenCanvas is unavailable.
 export async function renderPdfToImage(
   pdfData: Uint8Array,
   width: number,

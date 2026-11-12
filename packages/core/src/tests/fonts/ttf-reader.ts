@@ -205,7 +205,6 @@ function readComposite(
   return { kind: "composite", bbox, components, instructions };
 }
 
-/** Expand a TrueType PUSH burst back into the values it pushes. */
 export function decodePushBurst(instructions: readonly number[]): {
   values: number[];
   rest: number[];

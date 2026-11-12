@@ -142,7 +142,6 @@ describe("getOrCreateBlobUrl", () => {
     const again = getOrCreateBlobUrl("ppt/media/image1.png", new Uint8Array([4, 5]), cache);
     expect(again).toBe(url);
 
-    // Different path → different URL.
     const other = getOrCreateBlobUrl("ppt/media/image2.png", new Uint8Array([6]), cache);
     expect(other).not.toBe(url);
     expect(cache.size).toBe(2);

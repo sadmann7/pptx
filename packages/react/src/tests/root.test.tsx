@@ -9,7 +9,6 @@ import type { SlideChangeEvent, Store } from "../store";
 import { createStore } from "../store";
 import { loadFixture } from "./test-utils";
 
-/** Captures the store visible at its position in the tree. */
 function StoreProbe({ onStore }: { onStore: (store: Store) => void }) {
   onStore(useStoreContext("StoreProbe"));
   return null;
