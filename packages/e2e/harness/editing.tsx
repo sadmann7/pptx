@@ -102,7 +102,16 @@ function Toolbar() {
       >
         Fill
       </button>
-      <output data-testid="state">
+      {/* Growing past one line would push the slide down mid-drag. */}
+      <output
+        data-testid="state"
+        style={{
+          flex: "1 1 0",
+          minWidth: 0,
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
         {JSON.stringify({
           mode,
           nodeIds,

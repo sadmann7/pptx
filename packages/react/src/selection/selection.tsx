@@ -743,18 +743,20 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
         element: textElement,
         text: getPlainText(readBackTextBody(textElement)),
       };
-      const previous = stateRef.current;
-      const isSameCell =
-        previous.mode === "text" &&
-        previous.nodeId === nodeId &&
-        getIsSameCell(previous.cell, cell);
-      setState({
-        mode: "text",
-        nodeId,
-        cell,
-        rangeEnd: isSameCell ? previous.rangeEnd : undefined,
-        rangeStart: isSameCell ? previous.rangeStart : undefined,
-        editingElement: textElement,
+      // An updater, so a range a drag set since the last render carries over.
+      setState((previous) => {
+        const isSameCell =
+          previous.mode === "text" &&
+          previous.nodeId === nodeId &&
+          getIsSameCell(previous.cell, cell);
+        return {
+          mode: "text",
+          nodeId,
+          cell,
+          rangeEnd: isSameCell ? previous.rangeEnd : undefined,
+          rangeStart: isSameCell ? previous.rangeStart : undefined,
+          editingElement: textElement,
+        };
       });
     }
 
@@ -2417,6 +2419,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     const getRangeGridRef = useLatestRef(getRangeGrid);
     const clearCellRangeRef = useLatestRef(clearCellRange);
     const pasteIntoCellsRef = useLatestRef(pasteIntoCells);
+    const latestDragRef = React.useRef<InternalState | null>(null);
     const cellDragRef = React.useRef<{
       nodeId: string;
       anchor: TableCellAddress;
@@ -2645,6 +2648,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
           }
           rootRef.current?.setPointerCapture(event.pointerId);
           rootRef.current?.focus({ preventScroll: true });
+          latestDragRef.current = null;
           setState({
             mode: "move",
             nodeIds: [hitNodeId],
@@ -2705,10 +2709,18 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
           return;
         }
 
-        // Between a re-render and the repair frame, the cell is gone and focus is on the body.
+        // Between a re-render and the repair's render, the cell is gone and focus
+        // is on the body, or already on the replacement cell.
+        const target = event.target as HTMLElement;
+        const wrapper = rootRef.current?.parentElement?.parentElement;
+        const isInEditedNode =
+          wrapper?.contains(target) === true &&
+          target
+            .closest(`[${PPTX_ATTRS.nodeId}]`)
+            ?.getAttribute(PPTX_ATTRS.nodeId) === currentState.nodeId;
         const isDetached =
           !currentState.editingElement.isConnected &&
-          event.target === document.body;
+          (target === document.body || isInEditedNode);
         if (
           !isDetached &&
           !currentState.editingElement.contains(event.target as Node)
@@ -3023,6 +3035,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     ]);
 
     function onPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+      latestDragRef.current = null;
       if (drawTool && !isTextMode) {
         if (event.button !== 0) {
           setDrawTool(null);
@@ -3160,6 +3173,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       clearDocumentSelection();
       rootRef.current?.setPointerCapture(event.pointerId);
       rootRef.current?.focus({ preventScroll: true });
+      latestDragRef.current = null;
       setState({
         mode: "resize",
         nodeIds: selectedIds,
@@ -3200,6 +3214,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       const rect = getNodeRect(node);
       const centerX = frame.left + (rect.x + rect.w / 2) * zoom;
       const centerY = frame.top + (rect.y + rect.h / 2) * zoom;
+      latestDragRef.current = null;
       setState({
         mode: "rotate",
         nodeIds: selectedIds,
@@ -3251,6 +3266,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
 
       rootRef.current?.setPointerCapture(event.pointerId);
       rootRef.current?.focus({ preventScroll: true });
+      latestDragRef.current = null;
       setState({
         mode: "move",
         nodeIds,
@@ -3276,63 +3292,62 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     function onPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
       // A stale closure can still see a drag mode between pointer-up and the re-render.
       if (event.buttons === 0) return;
+      const drag = getLatestDragState();
 
-      if (state.mode === "marquee") {
-        setState({ ...state, curX: event.clientX, curY: event.clientY });
+      if (drag.mode === "marquee") {
+        setDragState({ ...drag, curX: event.clientX, curY: event.clientY });
         return;
       }
 
-      if (state.mode === "draw") {
+      if (drag.mode === "draw") {
         let curX = event.clientX;
         let curY = event.clientY;
         if (event.shiftKey) {
           const side = Math.max(
-            Math.abs(curX - state.startX),
-            Math.abs(curY - state.startY),
+            Math.abs(curX - drag.startX),
+            Math.abs(curY - drag.startY),
           );
-          curX = state.startX + Math.sign(curX - state.startX || 1) * side;
-          curY = state.startY + Math.sign(curY - state.startY || 1) * side;
+          curX = drag.startX + Math.sign(curX - drag.startX || 1) * side;
+          curY = drag.startY + Math.sign(curY - drag.startY || 1) * side;
         }
-        setState({ ...state, curX, curY });
+        setDragState({ ...drag, curX, curY });
         return;
       }
 
-      if (state.mode === "rotate") {
+      if (drag.mode === "rotate") {
         const handleNode = selectedNodes.find(
-          (node) => node.id === state.handleNodeId,
+          (node) => node.id === drag.handleNodeId,
         );
         if (!handleNode) return;
         const turned =
           getPointerAngle(
-            state.centerX,
-            state.centerY,
+            drag.centerX,
+            drag.centerY,
             event.clientX,
             event.clientY,
-          ) - state.startAngle;
+          ) - drag.startAngle;
         // Shift steps the rotated shape's angle by 15°, as in PowerPoint.
         let angle = handleNode.rotation + turned;
         if (event.shiftKey)
           angle = Math.round(angle / ROTATION_STEP) * ROTATION_STEP;
         const delta = angle - handleNode.rotation;
         previewRotation(delta);
-        setState({ ...state, delta });
+        setDragState({ ...drag, delta });
         return;
       }
 
-      if (state.mode !== "move" && state.mode !== "resize") return;
-      const dx = (event.clientX - state.startX) / zoom;
-      const dy = (event.clientY - state.startY) / zoom;
+      if (drag.mode !== "move" && drag.mode !== "resize") return;
+      const dx = (event.clientX - drag.startX) / zoom;
+      const dy = (event.clientY - drag.startY) / zoom;
       // Alt places freely, as in PowerPoint. The threshold is in screen pixels.
       const isSnapping = snapping && !event.altKey;
       const threshold = snapThreshold / zoom;
 
-      if (state.mode === "move") {
+      if (drag.mode === "move") {
         const moved =
-          state.moved ||
-          Math.hypot(
-            event.clientX - state.startX,
-            event.clientY - state.startY,
-          ) > DRAG_THRESHOLD;
+          drag.moved ||
+          Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >
+            DRAG_THRESHOLD;
         // Pointer-up commits the constrained and snapped deltas without re-deriving them.
         const delta = constrainMove(dx, dy, event.shiftKey);
         const bounds = getUnionRect(selectedNodes.map(getNodeBounds));
@@ -3342,7 +3357,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
                 bounds,
                 delta.x,
                 delta.y,
-                getSnapTargets(state.nodeIds),
+                getSnapTargets(drag.nodeIds),
                 threshold,
                 {
                   // An axis Shift locked stays put rather than snapping off it.
@@ -3360,8 +3375,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
             }
           }
         }
-        setState({
-          ...state,
+        setDragState({
+          ...drag,
           dx: next.dx,
           dy: next.dy,
           moved,
@@ -3370,23 +3385,23 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       } else {
         const lockAspect = event.shiftKey;
         const handleNode = selectedNodes.find(
-          (node) => node.id === state.handleNodeId,
+          (node) => node.id === drag.handleNodeId,
         );
         const next =
           // Snapping lines up slide-axis edges, which a rotated shape doesn't have.
           isSnapping && handleNode && handleNode.rotation === 0
             ? snapResize(
                 getNodeRect(handleNode),
-                state.handle,
+                drag.handle,
                 dx,
                 dy,
-                getSnapTargets(state.nodeIds),
+                getSnapTargets(drag.nodeIds),
                 threshold,
                 lockAspect,
               )
             : { dx, dy, guides: [] };
-        setState({
-          ...state,
+        setDragState({
+          ...drag,
           dx: next.dx,
           dy: next.dy,
           lockAspect,
@@ -3395,9 +3410,22 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       }
     }
 
+    // Moves can outrun renders, so `state` may not have the last of them yet.
+    function getLatestDragState(): InternalState {
+      const latest = latestDragRef.current;
+      return latest?.mode === state.mode ? latest : state;
+    }
+
+    function setDragState(next: InternalState): void {
+      latestDragRef.current = next;
+      setState(next);
+    }
+
     function onPointerUp(): void {
-      if (state.mode === "draw") {
-        const { tool, startX, startY, curX, curY } = state;
+      const drag = getLatestDragState();
+      latestDragRef.current = null;
+      if (drag.mode === "draw") {
+        const { tool, startX, startY, curX, curY } = drag;
         setDrawTool(null);
         setState({ mode: "idle" });
         const a = clientToSlide(startX, startY);
@@ -3413,8 +3441,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
         runShortcut(() => insertDrawn(tool, rect, a));
         return;
       }
-      if (state.mode === "marquee") {
-        const { startX, startY, curX, curY, baseIds } = state;
+      if (drag.mode === "marquee") {
+        const { startX, startY, curX, curY, baseIds } = drag;
         if (!isBandDrag(startX, startY, curX, curY)) {
           // With modifiers held, a stray click keeps the selection being added to.
           setState(
@@ -3450,9 +3478,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
             ? { mode: "selected", nodeIds: nextIds }
             : { mode: "idle" },
         );
-      } else if (state.mode === "move") {
+      } else if (drag.mode === "move") {
         const { nodeIds, primaryId, dx, dy, moved, clickIds, wasSelected } =
-          state;
+          drag;
 
         if (moved && selectedNodes.length > 0) {
           const movingNodes = selectedNodes;
@@ -3517,13 +3545,13 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
                 : { mode: "idle" },
             );
           } else if (wasSelected && nodeHasText(primaryId)) {
-            enterTextMode(primaryId, state.startX, state.startY);
+            enterTextMode(primaryId, drag.startX, drag.startY);
           } else {
             setState({ mode: "selected", nodeIds: [primaryId] });
           }
         }
-      } else if (state.mode === "rotate") {
-        const { nodeIds, delta } = state;
+      } else if (drag.mode === "rotate") {
+        const { nodeIds, delta } = drag;
         const rotatingNodes = selectedNodes;
         setState({ mode: "selected", nodeIds });
         if (normalizeAngle(delta) === 0) {
@@ -3551,8 +3579,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
             for (const id of nodeIds) onNodeTransform?.(id, error);
           },
         );
-      } else if (state.mode === "resize") {
-        const { nodeIds, handleNodeId, handle, dx, dy, lockAspect } = state;
+      } else if (drag.mode === "resize") {
+        const { nodeIds, handleNodeId, handle, dx, dy, lockAspect } = drag;
         const resizingNodes = selectedNodes;
         const handleNode =
           resizingNodes.find((node) => node.id === handleNodeId) ?? null;
@@ -3638,6 +3666,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     }
 
     function onPointerCancel(): void {
+      latestDragRef.current = null;
       debugLog("pointercancel", { mode: state.mode });
       if (state.mode === "move") {
         for (const node of selectedNodes) {
