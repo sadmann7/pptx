@@ -26,7 +26,7 @@ jobs:
       publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/setup
@@ -45,7 +45,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/setup
@@ -68,7 +68,7 @@ jobs:
       pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/setup
@@ -91,7 +91,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/setup
