@@ -398,6 +398,59 @@ test.describe("rotating", () => {
   });
 });
 
+test.describe("resizing", () => {
+  test("resizes to where the pointer is released before its last moves render", async ({
+    page,
+  }) => {
+    const { overlay, shape } = await open(page);
+    await shape.click();
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    const readHeight = () =>
+      page.evaluate(
+        () => window.__editStore!.getActiveSlide()!.nodes[0].size.h,
+      );
+    const before = await readHeight();
+
+    const handle = (await page
+      .locator('[data-presentation-resize-handle="s"]')
+      .boundingBox())!;
+    const x = handle.x + handle.width / 2;
+    const y = handle.y + handle.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    // One task, so React can't render between the moves and the release.
+    await page.evaluate(
+      ({ x, y }) => {
+        const root = document.querySelector("[data-presentation-selection]")!;
+        const init = {
+          bubbles: true,
+          clientX: x,
+          altKey: true,
+          pointerId: 1,
+          pointerType: "mouse",
+          isPrimary: true,
+        };
+        for (const step of [10, 20, 30]) {
+          root.dispatchEvent(
+            new PointerEvent("pointermove", {
+              ...init,
+              clientY: y + step,
+              buttons: 1,
+            }),
+          );
+        }
+        root.dispatchEvent(
+          new PointerEvent("pointerup", { ...init, clientY: y + 30 }),
+        );
+      },
+      { x, y },
+    );
+
+    await expect.poll(readHeight).toBeCloseTo(before + 30, 0);
+    await page.mouse.up();
+  });
+});
+
 test.describe("images", () => {
   test("renders an inserted image straight away", async ({ page }) => {
     await open(page);
@@ -443,6 +496,7 @@ test.describe("text boxes", () => {
 
   test("inserts a text box ready to type in, with native undo", async ({
     page,
+    browserName,
   }) => {
     const { overlay } = await open(page);
     await page.getByTestId("text-box").click();
@@ -457,8 +511,11 @@ test.describe("text boxes", () => {
 
     await page.keyboard.type("Hi");
     await expect.poll(() => lastNodeText(page)).toBe("Hi");
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect.poll(() => lastNodeText(page)).toBe("H");
+    // WebKit coalesces consecutive typing into one undo step.
+    if (browserName !== "webkit") {
+      await page.keyboard.press("ControlOrMeta+z");
+      await expect.poll(() => lastNodeText(page)).toBe("H");
+    }
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(() => lastNodeText(page)).toBe("");
 
@@ -832,6 +889,10 @@ test.describe("tables", () => {
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });
     await page.mouse.up();
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .not.toBeNull();
+    await expect.poll(() => editingCell(page)).toBe("0,1");
     await page.keyboard.press("ControlOrMeta+a");
     await expect
       .poll(async () => (await readState(page)).cellRange)
@@ -855,6 +916,14 @@ test.describe("tables", () => {
     await page.keyboard.type("Old");
     await page.keyboard.press("Tab");
     await page.keyboard.type("Keep");
+    // Keys typed while the Tab commit re-renders the table land a frame later.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.activeElement?.textContent?.replace(/\u200B/g, ""),
+        ),
+      )
+      .toBe("Keep");
 
     const from = await cellCenter(0, 0);
     const to = await cellCenter(1, 1);
@@ -865,6 +934,7 @@ test.describe("tables", () => {
     await expect
       .poll(async () => (await readState(page)).cellRange)
       .not.toBeNull();
+    await expect.poll(() => editingCell(page)).toBe("0,0");
 
     await page.keyboard.type("ab");
     await expect.poll(async () => (await readState(page)).cellRange).toBeNull();
@@ -877,15 +947,25 @@ test.describe("tables", () => {
       .toEqual(["Oldab", "Keep", ""]);
   });
 
-  // Presses `keys` before the next frame, while the editing cell is detached.
+  // Presses `keys` before the next frame, while the editing cell is detached,
+  // or with `onceRefocused`, after focus moves to the new cell but before that renders.
   async function pressWhileRerendering(
     page: Page,
     keys: { key: string; ctrlKey?: boolean }[],
+    { onceRefocused = false } = {},
   ) {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");
     await page.keyboard.press("Tab");
     await page.keyboard.type("Keep");
+    // Keys typed while the Tab commit re-renders the table land a frame later.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.activeElement?.textContent?.replace(/\u200B/g, ""),
+        ),
+      )
+      .toBe("Keep");
 
     const from = await cellCenter(0, 0);
     const to = await cellCenter(1, 1);
@@ -899,12 +979,10 @@ test.describe("tables", () => {
     await expect.poll(() => editingCell(page)).toBe("0,0");
 
     await page.evaluate(
-      ({ id, init }) => {
+      ({ id, init, onceRefocused }) => {
         const editing = document.activeElement!;
         const store = window.__editStore!;
-        new MutationObserver((_, observer) => {
-          if (editing.isConnected) return;
-          observer.disconnect();
+        const press = () => {
           for (const options of init) {
             document.activeElement!.dispatchEvent(
               new KeyboardEvent("keydown", {
@@ -914,6 +992,17 @@ test.describe("tables", () => {
               }),
             );
           }
+        };
+        new MutationObserver((_, observer) => {
+          if (editing.isConnected) return;
+          observer.disconnect();
+          if (!onceRefocused) {
+            press();
+            return;
+          }
+          document.addEventListener("focusin", () => queueMicrotask(press), {
+            once: true,
+          });
         }).observe(document.body, { childList: true, subtree: true });
         void store.edit({
           type: "setTextBody",
@@ -923,7 +1012,7 @@ test.describe("tables", () => {
           paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "Other" }] }],
         });
       },
-      { id: nodeId, init: keys },
+      { id: nodeId, init: keys, onceRefocused },
     );
     return nodeId;
   }
@@ -973,6 +1062,80 @@ test.describe("tables", () => {
         ["", "", ""],
         ["", "", "Other"],
       ]);
+  });
+
+  test("selects the whole table with Ctrl+A pressed once the re-rendered cell has focus", async ({
+    page,
+  }) => {
+    await pressWhileRerendering(page, [{ key: "a", ctrlKey: true }], {
+      onceRefocused: true,
+    });
+
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 2 } });
+  });
+
+  test("clears selected cells with Delete pressed once the re-rendered cell has focus", async ({
+    page,
+  }) => {
+    const nodeId = await pressWhileRerendering(page, [{ key: "Delete" }], {
+      onceRefocused: true,
+    });
+
+    await expect
+      .poll(() => tableText(page, nodeId))
+      .toEqual([
+        ["", "", ""],
+        ["", "", "Other"],
+      ]);
+  });
+
+  test("keeps a range dragged while the table re-renders", async ({ page }) => {
+    const { nodeId, cellCenter } = await insertTable(page);
+    const from = await cellCenter(0, 0);
+    const to = await cellCenter(1, 1);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+
+    // Moves after the cells are replaced, in the frame before editing re-attaches to them.
+    await page.evaluate(
+      ({ id, to }) => {
+        const editing = document.activeElement!;
+        const store = window.__editStore!;
+        const moveOnceReplaced = () => {
+          if (editing.isConnected) {
+            requestAnimationFrame(moveOnceReplaced);
+            return;
+          }
+          document.dispatchEvent(
+            new PointerEvent("pointermove", {
+              bubbles: true,
+              clientX: to.x,
+              clientY: to.y,
+              buttons: 1,
+              pointerId: 1,
+              pointerType: "mouse",
+              isPrimary: true,
+            }),
+          );
+        };
+        requestAnimationFrame(moveOnceReplaced);
+        void store.edit({
+          type: "setTextBody",
+          slideId: store.getActiveSlide()!.id,
+          nodeId: id,
+          cell: { row: 1, column: 2 },
+          paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "Other" }] }],
+        });
+      },
+      { id: nodeId, to },
+    );
+
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 1 } });
+    await page.mouse.up();
   });
 
   test("pastes a spreadsheet column, copies the range, and clears it", async ({

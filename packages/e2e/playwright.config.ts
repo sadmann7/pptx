@@ -29,8 +29,6 @@ export default defineConfig({
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
     {
       name: "webkit",
-      // TODO: https://linear.app/gamepad/issue/DICE-307/run-the-editing-e2e-specs-in-webkit
-      testIgnore: /editing\.spec\.ts/,
       // Pixel specs sample screenshots in CSS pixels, and the Safari preset renders at 2x.
       use: { ...devices["Desktop Safari"], deviceScaleFactor: 1 },
     },
