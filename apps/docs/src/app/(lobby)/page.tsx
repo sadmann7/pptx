@@ -22,7 +22,7 @@ import path from "node:path";
 import { DemoDeckEditor, DemoDeckParts, DemoDeckProvider } from "@/components/landing-demo";
 import type { DeckPart } from "@/components/landing-demo";
 import { DEMO_DECK_PATH } from "@/lib/constants";
-import { siteConfig } from "@/lib/site";
+import { DICEUI_URL, X_URL } from "@/lib/site";
 
 const FEATURES = [
   {
@@ -542,7 +542,7 @@ function Footer() {
     <footer className="border-t px-5 py-6 text-center text-[13px] text-muted-foreground md:px-8">
       Built by{" "}
       <Link
-        href={siteConfig.links.x}
+        href={X_URL}
         target="_blank"
         rel="noreferrer"
         className="font-medium underline underline-offset-4 hover:text-foreground"
@@ -551,7 +551,7 @@ function Footer() {
       </Link>{" "}
       for{" "}
       <Link
-        href={siteConfig.links.diceui}
+        href={DICEUI_URL}
         target="_blank"
         rel="noreferrer"
         className="font-medium underline underline-offset-4 hover:text-foreground"
