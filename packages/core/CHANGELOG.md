@@ -1,5 +1,11 @@
 # @diceui/pptx-core
 
+## 0.4.1
+
+### Patch Changes
+
+- 4460e3b: Rename the attributes the React primitives write to `data-presentation-*`, matching the `--presentation-*` CSS variables. Toolbars and their popovers now mark themselves with `data-presentation-controls` (`CONTROLS_ATTRIBUTE`, formerly `KEEP_SELECTION_ATTRIBUTE`), and parts carry `data-presentation-selection-box`, `data-presentation-resize-handle`, `data-presentation-rotate-handle`, `data-presentation-snap-guide`, and `data-presentation-marquee`. The viewer's slide wrappers carry `data-pptx-slide-index` instead of `data-slide-index`.
+
 ## 0.4.0
 
 ### Minor Changes
