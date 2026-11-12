@@ -777,6 +777,94 @@ test.describe("tables", () => {
       .toEqual(["Oldab", "Keep", ""]);
   });
 
+  /**
+   * Fills the first two cells, drags across the top-left 2×2 cells, then edits
+   * cell 1,2 and presses `keys` before the next frame, while the editing cell is
+   * detached. Returns the table id.
+   */
+  async function pressWhileRerendering(page: Page, keys: { key: string; ctrlKey?: boolean }[]) {
+    const { nodeId, cellCenter } = await insertTable(page);
+    await page.keyboard.type("Old");
+    await page.keyboard.press("Tab");
+    await page.keyboard.type("Keep");
+
+    const from = await cellCenter(0, 0);
+    const to = await cellCenter(1, 1);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await readState(page)).cellRange).not.toBeNull();
+    await expect.poll(() => editingCell(page)).toBe("0,0");
+
+    await page.evaluate(
+      ({ id, init }) => {
+        const editing = document.activeElement!;
+        const store = window.__editStore!;
+        new MutationObserver((_, observer) => {
+          if (editing.isConnected) return;
+          observer.disconnect();
+          for (const options of init) {
+            document.activeElement!.dispatchEvent(
+              new KeyboardEvent("keydown", { ...options, bubbles: true, cancelable: true }),
+            );
+          }
+        }).observe(document.body, { childList: true, subtree: true });
+        void store.edit({
+          type: "setTextBody",
+          slideId: store.getActiveSlide()!.id,
+          nodeId: id,
+          cell: { row: 1, column: 2 },
+          paragraphs: [{ sourceParagraphIndex: 0, runs: [{ text: "Other" }] }],
+        });
+      },
+      { id: nodeId, init: keys },
+    );
+    return nodeId;
+  }
+
+  const tableText = async (page: Page, nodeId: string) =>
+    (await readTable(page, nodeId)).cells.map((row) => row.map((cell) => cell.text));
+
+  test("types over selected cells with keys pressed while the table re-renders", async ({
+    page,
+  }) => {
+    const nodeId = await pressWhileRerendering(page, [{ key: "a" }, { key: "b" }]);
+
+    await expect.poll(async () => (await readState(page)).cellRange).toBeNull();
+    await expect.poll(() => editingCell(page)).toBe("0,0");
+    await page.keyboard.press("Escape");
+    await expect
+      .poll(() => tableText(page, nodeId))
+      .toEqual([
+        ["Oldab", "Keep", ""],
+        ["", "", "Other"],
+      ]);
+  });
+
+  test("selects the whole table with Ctrl+A pressed while the table re-renders", async ({
+    page,
+  }) => {
+    await pressWhileRerendering(page, [{ key: "a", ctrlKey: true }]);
+
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .toEqual({ start: { row: 0, column: 0 }, end: { row: 1, column: 2 } });
+  });
+
+  test("clears selected cells with Backspace pressed while the table re-renders", async ({
+    page,
+  }) => {
+    const nodeId = await pressWhileRerendering(page, [{ key: "Backspace" }]);
+
+    await expect
+      .poll(() => tableText(page, nodeId))
+      .toEqual([
+        ["", "", ""],
+        ["", "", "Other"],
+      ]);
+  });
+
   test("pastes a spreadsheet column, copies the range, and clears it", async ({
     page,
     browserName,

@@ -250,6 +250,16 @@ const MIN_TABLE_TRACK = 12;
 const TABLE_BORDER_SIZE = 8;
 const TABLE_EDGE_SIZE = 5;
 
+// `stateRef` lags pending updates, such as a re-entry onto a re-rendered cell,
+// so range changes apply to the latest state instead of spreading the ref.
+function withCellRange(
+  rangeEnd: TableCellAddress | undefined,
+  rangeStart?: TableCellAddress,
+): (previous: InternalState) => InternalState {
+  return (previous) =>
+    previous.mode === "text" ? { ...previous, rangeEnd, rangeStart } : previous;
+}
+
 function previewTableGrid(
   element: HTMLElement | null,
   columns: number[],
@@ -1302,11 +1312,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
     pendingRestoreRef.current = null;
     settleTyping(current);
-    setState({
-      ...current,
-      rangeEnd: getIsSameCell(end, start) ? undefined : end,
-      rangeStart: getIsSameCell(start, current.cell) ? undefined : start,
-    });
+    setState(
+      withCellRange(
+        getIsSameCell(end, start) ? undefined : end,
+        getIsSameCell(start, current.cell) ? undefined : start,
+      ),
+    );
     await store.edit(operations.length === 1 ? operations[0] : { type: "batch", operations });
   }
 
@@ -1315,11 +1326,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!current.cell || !current.rangeEnd || table?.nodeType !== "table") return false;
     const { rows, columns } = table as TableNodeData;
     window.getSelection()?.removeAllRanges();
-    setState({
-      ...current,
-      rangeStart: { row: 0, column: 0 },
-      rangeEnd: { row: rows.length - 1, column: columns.length - 1 },
-    });
+    setState(
+      withCellRange({ row: rows.length - 1, column: columns.length - 1 }, { row: 0, column: 0 }),
+    );
     return true;
   }
 
@@ -1329,13 +1338,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     if (!getIsSameCell(range.start, current.cell)) {
       moveToCell(current, range.start);
     } else {
-      placeCaretAtEnd(current.editingElement);
+      const container = getEditingContainer(current);
+      if (container) placeCaretAtEnd(container);
     }
-    setState((previous) =>
-      previous.mode === "text"
-        ? { ...previous, rangeEnd: undefined, rangeStart: undefined }
-        : previous,
-    );
+    setState(withCellRange(undefined));
     document.execCommand("insertText", false, text);
   }
 
@@ -2085,6 +2091,19 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
   const getCellRangeRef = useLatestRef(getCellRange);
   const selectWholeTableRef = useLatestRef(selectWholeTable);
   const typeOverCellsRef = useLatestRef(typeOverCells);
+
+  // Keys pressed while editing still pointed at a replaced cell are held until
+  // the re-entered state renders, which can be after the repair frame.
+  React.useLayoutEffect(() => {
+    if (state.mode !== "text" || !state.editingElement.isConnected) return;
+    const heldKeys = heldKeysRef.current;
+    if (!heldKeys) return;
+    heldKeysRef.current = "";
+    if (!(document.activeElement as HTMLElement | null)?.isContentEditable) return;
+    if (state.rangeEnd) typeOverCellsRef.current(state, heldKeys);
+    else document.execCommand("insertText", false, heldKeys);
+  }, [state, typeOverCellsRef]);
+
   const stepCellByArrowRef = useLatestRef(stepCellByArrow);
   const getRangeGridRef = useLatestRef(getRangeGrid);
   const clearCellRangeRef = useLatestRef(clearCellRange);
@@ -2211,9 +2230,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       if (currentState.editingElement.contains(event.target as Node)) {
         if (currentState.cell && event.button === 0 && !event.shiftKey) {
           cellDragRef.current = { nodeId: currentState.nodeId, anchor: currentState.cell };
-          if (currentState.rangeEnd) {
-            setState({ ...currentState, rangeEnd: undefined, rangeStart: undefined });
-          }
+          if (currentState.rangeEnd) setState(withCellRange(undefined));
         }
         return;
       }
@@ -2251,18 +2268,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         }
         if (event.shiftKey) {
           event.preventDefault();
-          setState({
-            ...currentState,
-            rangeEnd: getIsSameCell(hitCell, currentState.cell) ? undefined : hitCell,
-            rangeStart: undefined,
-          });
+          setState(withCellRange(getIsSameCell(hitCell, currentState.cell) ? undefined : hitCell));
           return;
         }
         cellDragRef.current = { nodeId: currentState.nodeId, anchor: hitCell };
         if (!getIsSameCell(hitCell, currentState.cell)) {
           moveToCellRef.current(currentState, hitCell, event.clientX, event.clientY);
         } else if (currentState.rangeEnd) {
-          setState({ ...currentState, rangeEnd: undefined, rangeStart: undefined });
+          setState(withCellRange(undefined));
         }
       } else if (
         hitNodeId &&
@@ -2345,7 +2358,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         return;
       }
 
-      if (!currentState.editingElement.contains(event.target as Node)) return;
+      // Between a re-render and the repair frame, the cell is gone and focus is on the body.
+      const isDetached = !currentState.editingElement.isConnected && event.target === document.body;
+      if (!isDetached && !currentState.editingElement.contains(event.target as Node)) return;
       if (
         (event.metaKey || event.ctrlKey) &&
         !event.altKey &&
@@ -2373,6 +2388,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           .catch((error) => console.warn("[pptx] edit failed:", error));
       } else if (
         isPlain &&
+        !isDetached &&
         event.key.startsWith("Arrow") &&
         stepCellByArrowRef.current(currentState, event.key)
       ) {
@@ -2420,7 +2436,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       const rangeEnd = getIsSameCell(cell, drag.anchor) ? undefined : cell;
       if (rangeEnd) window.getSelection()?.removeAllRanges();
       if (getIsSameCell(rangeEnd, currentState.rangeEnd) && !currentState.rangeStart) return;
-      setState({ ...currentState, rangeEnd, rangeStart: undefined });
+      setState(withCellRange(rangeEnd));
     }
 
     function onDocPointerUp(): void {
@@ -2593,8 +2609,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
       });
       if (currentState.editingElement.isConnected) return;
       if (saveDetachedTypingRef.current(currentState)) return;
-      const heldKeys = heldKeysRef.current;
-      heldKeysRef.current = "";
       debugLog("repairing: re-entering text mode", { nodeId: currentState.nodeId });
       const pending = pendingRestoreRef.current;
       const restore =
@@ -2610,9 +2624,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
         restore,
         currentState.cell,
       );
-      if (heldKeys && (document.activeElement as HTMLElement | null)?.isContentEditable) {
-        document.execCommand("insertText", false, heldKeys);
-      }
       // Re-read the toolbar state from the fresh text, which moves no caret
       // (and fires no selectionchange) when focus stayed in the toolbar.
       publishSelectionRef.current();
