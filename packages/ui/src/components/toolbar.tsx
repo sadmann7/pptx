@@ -31,7 +31,10 @@ function ToolbarInput(props: ToolbarPrimitive.Input.Props) {
   return <ToolbarPrimitive.Input data-slot="toolbar-input" {...props} />;
 }
 
-function ToolbarSeparator({ className, ...props }: ToolbarPrimitive.Separator.Props) {
+function ToolbarSeparator({
+  className,
+  ...props
+}: ToolbarPrimitive.Separator.Props) {
   return (
     <ToolbarPrimitive.Separator
       data-slot="toolbar-separator"

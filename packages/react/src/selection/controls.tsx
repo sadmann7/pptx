@@ -10,30 +10,29 @@ function onControlsEvent(event: React.SyntheticEvent): void {
   markControlsEvent(event.nativeEvent);
 }
 
-export const Controls = React.forwardRef<HTMLDivElement, ControlsProps>(function Controls(
-  { render, ...controlsProps },
-  forwardedRef,
-) {
-  return renderElement(
-    "div",
-    { render },
-    {
-      state: {},
-      ref: forwardedRef,
-      props: [
-        {
-          [CONTROLS_ATTRIBUTE]: "",
-          onPointerDownCapture: onControlsEvent,
-          onKeyDownCapture: onControlsEvent,
-          onCopyCapture: onControlsEvent,
-          onCutCapture: onControlsEvent,
-          onPasteCapture: onControlsEvent,
-        },
-        controlsProps,
-      ],
-    },
-  );
-});
+export const Controls = React.forwardRef<HTMLDivElement, ControlsProps>(
+  function Controls({ render, ...controlsProps }, forwardedRef) {
+    return renderElement(
+      "div",
+      { render },
+      {
+        state: {},
+        ref: forwardedRef,
+        props: [
+          {
+            [CONTROLS_ATTRIBUTE]: "",
+            onPointerDownCapture: onControlsEvent,
+            onKeyDownCapture: onControlsEvent,
+            onCopyCapture: onControlsEvent,
+            onCutCapture: onControlsEvent,
+            onPasteCapture: onControlsEvent,
+          },
+          controlsProps,
+        ],
+      },
+    );
+  },
+);
 
 export namespace Controls {
   export type Props = ControlsProps;

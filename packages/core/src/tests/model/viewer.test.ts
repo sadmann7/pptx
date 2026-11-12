@@ -14,7 +14,11 @@ function textShape(id: number, text: string): string {
 
 function threeSlideDeck(): Promise<ArrayBuffer> {
   return buildCustomPptx({
-    slides: [textShape(2, "Alpha slide"), textShape(2, "Beta slide"), textShape(2, "Gamma slide")],
+    slides: [
+      textShape(2, "Alpha slide"),
+      textShape(2, "Beta slide"),
+      textShape(2, "Gamma slide"),
+    ],
   });
 }
 
@@ -39,7 +43,9 @@ function track(viewer: PptxViewer): PptxViewer {
 describe("PptxViewer.open (list mode)", () => {
   it("parses, loads, and mounts every slide into the container", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
 
     expect(viewer.slideCount).toBe(3);
     expect(viewer.slideWidth).toBeCloseTo(1280, 6);
@@ -58,11 +64,14 @@ describe("PptxViewer.open (list mode)", () => {
 
   it("scales slides to the configured width", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container, { width: 640 }));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container, { width: 640 }),
+    );
     expect(viewer.fitMode).toBe("contain");
 
-    const wrapper = container.querySelector<HTMLElement>("[data-pptx-slide-index='0']")
-      ?.firstElementChild as HTMLElement;
+    const wrapper = container.querySelector<HTMLElement>(
+      "[data-pptx-slide-index='0']",
+    )?.firstElementChild as HTMLElement;
     expect(wrapper.style.width).toBe("640px");
     expect(wrapper.style.height).toBe("360px");
 
@@ -72,19 +81,26 @@ describe("PptxViewer.open (list mode)", () => {
 
   it("re-renders at the new scale after setZoom", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container, { width: 640 }));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container, { width: 640 }),
+    );
     await viewer.setZoom(200);
     expect(viewer.zoomPercent).toBe(200);
 
-    const wrapper = container.querySelector<HTMLElement>("[data-pptx-slide-index='0']")
-      ?.firstElementChild as HTMLElement;
+    const wrapper = container.querySelector<HTMLElement>(
+      "[data-pptx-slide-index='0']",
+    )?.firstElementChild as HTMLElement;
     expect(wrapper.style.width).toBe("1280px");
-    expect((wrapper.firstElementChild as HTMLElement).style.getPropertyValue("zoom")).toBe("1");
+    expect(
+      (wrapper.firstElementChild as HTMLElement).style.getPropertyValue("zoom"),
+    ).toBe("1");
   });
 
   it("clamps zoom to the 10–400 percent range", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
     await viewer.setZoom(5000);
     expect(viewer.zoomPercent).toBe(400);
     await viewer.setZoom(1);
@@ -147,7 +163,9 @@ describe("PptxViewer slide mode and navigation", () => {
   it("renders a single slide and navigates with goToSlide", async () => {
     const container = makeContainer();
     const viewer = track(
-      await PptxViewer.open(await threeSlideDeck(), container, { renderMode: "slide" }),
+      await PptxViewer.open(await threeSlideDeck(), container, {
+        renderMode: "slide",
+      }),
     );
 
     expect(viewer.currentSlideIndex).toBe(0);
@@ -167,7 +185,9 @@ describe("PptxViewer slide mode and navigation", () => {
   it("clamps goToSlide to the valid slide range", async () => {
     const container = makeContainer();
     const viewer = track(
-      await PptxViewer.open(await threeSlideDeck(), container, { renderMode: "slide" }),
+      await PptxViewer.open(await threeSlideDeck(), container, {
+        renderMode: "slide",
+      }),
     );
     await viewer.goToSlide(99);
     expect(viewer.currentSlideIndex).toBe(2);
@@ -179,7 +199,9 @@ describe("PptxViewer slide mode and navigation", () => {
 describe("PptxViewer external rendering and search", () => {
   it("renders a slide into an external container with a disposable handle", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
 
     const external = makeContainer();
     const handle = viewer.renderSlideToContainer(1, external, 0.5);
@@ -199,10 +221,14 @@ describe("PptxViewer external rendering and search", () => {
 
   it("renders sized thumbnails preserving the aspect ratio", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
 
     const external = makeContainer();
-    const handle = viewer.renderThumbnailToContainer(0, external, { width: 320 });
+    const handle = viewer.renderThumbnailToContainer(0, external, {
+      width: 320,
+    });
     expect(handle).not.toBeNull();
     expect(handle!.element.dataset.pptxThumbnail).toBe("true");
     expect(handle!.element.style.width).toBe("320px");
@@ -214,13 +240,17 @@ describe("PptxViewer external rendering and search", () => {
 
   it("searches loaded text and highlights results", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
 
     const results = viewer.searchText("Beta");
     expect(results).toHaveLength(1);
     expect(results[0].slideIndex).toBe(1);
 
-    const highlight = await viewer.highlightSearchResult(results[0], { scrollIntoView: false });
+    const highlight = await viewer.highlightSearchResult(results[0], {
+      scrollIntoView: false,
+    });
     expect(highlight).not.toBeNull();
     expect(highlight!.element.dataset.pptxSearchHighlight).toBe("true");
     expect(container.contains(highlight!.element)).toBe(true);
@@ -231,7 +261,9 @@ describe("PptxViewer external rendering and search", () => {
 
   it("returns no results for text that is not present", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
     expect(viewer.searchText("Missing")).toHaveLength(0);
   });
 });
@@ -250,7 +282,9 @@ describe("PptxViewer destroy", () => {
 
   it("can reopen after destroy", async () => {
     const container = makeContainer();
-    const viewer = track(await PptxViewer.open(await threeSlideDeck(), container));
+    const viewer = track(
+      await PptxViewer.open(await threeSlideDeck(), container),
+    );
     viewer.destroy();
 
     await viewer.open(await buildPptxWithShapes(textShape(2, "Reopened")));

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ServerPerSlideMetrics, SlideVisualMetricFields } from "./e2e-compare";
+import type {
+  ServerPerSlideMetrics,
+  SlideVisualMetricFields,
+} from "./e2e-compare";
 import {
   mergeServerMetricsIntoSlides,
   resolveComparablePdfPages,
@@ -15,7 +18,11 @@ describe("resolveComparablePdfPages", () => {
 
   it("skips hidden slides so later slides compare against earlier pdf pages", () => {
     // PowerPoint PDF export omits hidden slides.
-    expect(resolveComparablePdfPages([{}, { hidden: true }, {}], 2)).toEqual([0, null, 1]);
+    expect(resolveComparablePdfPages([{}, { hidden: true }, {}], 2)).toEqual([
+      0,
+      null,
+      1,
+    ]);
   });
 
   it("returns null once pdf pages run out", () => {
@@ -23,7 +30,10 @@ describe("resolveComparablePdfPages", () => {
   });
 
   it("normalizes bogus page counts to zero", () => {
-    expect(resolveComparablePdfPages([{}, {}], Number.NaN)).toEqual([null, null]);
+    expect(resolveComparablePdfPages([{}, {}], Number.NaN)).toEqual([
+      null,
+      null,
+    ]);
     expect(resolveComparablePdfPages([{}], -3)).toEqual([null]);
     expect(resolveComparablePdfPages([{}], 1.9)).toEqual([0]);
   });

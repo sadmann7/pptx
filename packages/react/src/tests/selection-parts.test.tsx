@@ -19,9 +19,13 @@ async function renderOverlay(children?: React.ReactNode) {
     </Presentation.Provider>,
   );
   await waitFor(() => {
-    expect(container.querySelector("[data-presentation-selection]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-presentation-selection]"),
+    ).not.toBeNull();
   });
-  const overlay = container.querySelector<HTMLDivElement>("[data-presentation-selection]")!;
+  const overlay = container.querySelector<HTMLDivElement>(
+    "[data-presentation-selection]",
+  )!;
 
   function selectAll() {
     act(() => {
@@ -38,12 +42,16 @@ describe("default parts", () => {
     const { container, selectAll } = await renderOverlay();
     selectAll();
 
-    const boxes = container.querySelectorAll<HTMLElement>("[data-presentation-selection-box]");
+    const boxes = container.querySelectorAll<HTMLElement>(
+      "[data-presentation-selection-box]",
+    );
     expect(boxes).toHaveLength(2);
     for (const box of boxes) {
       expect(box.style.outline).toContain("--presentation-selection");
       expect(box.getAttribute("data-mode")).toBe("selected");
-      const handles = box.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
+      const handles = box.querySelectorAll<HTMLElement>(
+        "[data-presentation-resize-handle]",
+      );
       expect(handles).toHaveLength(8);
       expect(handles[0].style.width).toBe("9px");
     }
@@ -58,8 +66,18 @@ describe("handles on small and flat shapes", () => {
       await store.edit({
         type: "batch",
         operations: [
-          { type: "setNodeTransform", slideId, nodeId: "2", size: { w: 6, h: 6 } },
-          { type: "setNodeTransform", slideId, nodeId: "3", size: { w: 400, h: 0 } },
+          {
+            type: "setNodeTransform",
+            slideId,
+            nodeId: "2",
+            size: { w: 6, h: 6 },
+          },
+          {
+            type: "setNodeTransform",
+            slideId,
+            nodeId: "3",
+            size: { w: 400, h: 0 },
+          },
         ],
       });
     });
@@ -68,14 +86,20 @@ describe("handles on small and flat shapes", () => {
     const [tiny, line] = container.querySelectorAll<HTMLElement>(
       "[data-presentation-selection-box]",
     );
-    const tinyHandles = tiny.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
-    expect(tinyHandles).toHaveLength(8);
-    const nw = tiny.querySelector<HTMLElement>('[data-presentation-resize-handle="nw"]')!;
-    expect(nw.style.transform).toBe("translate(calc(-50% + -12px), calc(-50% + -12px))");
-
-    const lineHandles = Array.from(line.querySelectorAll("[data-presentation-resize-handle]")).map(
-      (handle) => handle.getAttribute("data-presentation-resize-handle"),
+    const tinyHandles = tiny.querySelectorAll<HTMLElement>(
+      "[data-presentation-resize-handle]",
     );
+    expect(tinyHandles).toHaveLength(8);
+    const nw = tiny.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="nw"]',
+    )!;
+    expect(nw.style.transform).toBe(
+      "translate(calc(-50% + -12px), calc(-50% + -12px))",
+    );
+
+    const lineHandles = Array.from(
+      line.querySelectorAll("[data-presentation-resize-handle]"),
+    ).map((handle) => handle.getAttribute("data-presentation-resize-handle"));
     expect(lineHandles.sort()).toEqual(["e", "w"]);
   });
 
@@ -92,9 +116,15 @@ describe("handles on small and flat shapes", () => {
     });
     selectAll();
 
-    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
-    const nw = box.querySelector<HTMLElement>('[data-presentation-resize-handle="nw"]')!;
-    expect(nw.style.transform).toBe("translate(calc(-50% + 0px), calc(-50% + 0px))");
+    const box = container.querySelector<HTMLElement>(
+      "[data-presentation-selection-box]",
+    )!;
+    const nw = box.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="nw"]',
+    )!;
+    expect(nw.style.transform).toBe(
+      "translate(calc(-50% + 0px), calc(-50% + 0px))",
+    );
   });
 });
 
@@ -102,18 +132,24 @@ describe("composed parts", () => {
   it("renders the app's parts unstyled, with class names from state", async () => {
     const { container, selectAll } = await renderOverlay(
       <Presentation.SelectionBox className={({ mode }) => `box box-${mode}`}>
-        <Presentation.ResizeHandle className={({ direction }) => `handle handle-${direction}`} />
+        <Presentation.ResizeHandle
+          className={({ direction }) => `handle handle-${direction}`}
+        />
       </Presentation.SelectionBox>,
     );
     selectAll();
 
-    const boxes = container.querySelectorAll<HTMLElement>("[data-presentation-selection-box]");
+    const boxes = container.querySelectorAll<HTMLElement>(
+      "[data-presentation-selection-box]",
+    );
     expect(boxes).toHaveLength(2);
     expect(boxes[0].className).toBe("box box-selected");
     expect(boxes[0].style.position).toBe("absolute");
     expect(boxes[0].style.boxShadow).toBe("");
 
-    const handles = boxes[0].querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
+    const handles = boxes[0].querySelectorAll<HTMLElement>(
+      "[data-presentation-resize-handle]",
+    );
     expect(Array.from(handles, (handle) => handle.className)).toEqual([
       "handle handle-nw",
       "handle handle-n",
@@ -128,11 +164,17 @@ describe("composed parts", () => {
   });
 
   it("drops the parts an app leaves out", async () => {
-    const { container, selectAll } = await renderOverlay(<Presentation.SelectionBox />);
+    const { container, selectAll } = await renderOverlay(
+      <Presentation.SelectionBox />,
+    );
     selectAll();
 
-    expect(container.querySelectorAll("[data-presentation-selection-box]")).toHaveLength(2);
-    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(0);
+    expect(
+      container.querySelectorAll("[data-presentation-selection-box]"),
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll("[data-presentation-resize-handle]"),
+    ).toHaveLength(0);
   });
 
   it("keeps resizing working from a wrapped handle", async () => {
@@ -149,16 +191,28 @@ describe("composed parts", () => {
     const before = store.getActiveSlide()!.nodes[0].size.w;
     selectAll();
 
-    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="se"]')!;
+    const handle = container.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="se"]',
+    )!;
     expect(handle.dataset.testid).toBe("app-handle");
     act(() => {
-      fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+      });
     });
     expect(onPointerDown).toHaveBeenCalled();
     expect(overlay.getAttribute("data-mode")).toBe("resize");
 
     act(() => {
-      fireEvent.pointerMove(overlay, { clientX: 40, clientY: 40, buttons: 1, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        clientX: 40,
+        clientY: 40,
+        buttons: 1,
+        pointerId: 1,
+      });
     });
     await act(async () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
@@ -169,13 +223,20 @@ describe("composed parts", () => {
   it("renders a part through `render` with its state", async () => {
     const { container, selectAll } = await renderOverlay(
       <Presentation.SelectionBox
-        render={(props, state) => <section {...props} data-node={state.node.id} />}
+        render={(props, state) => (
+          <section {...props} data-node={state.node.id} />
+        )}
       />,
     );
     selectAll();
 
-    const boxes = container.querySelectorAll("section[data-presentation-selection-box]");
-    expect(Array.from(boxes, (box) => box.getAttribute("data-node"))).toEqual(["2", "3"]);
+    const boxes = container.querySelectorAll(
+      "section[data-presentation-selection-box]",
+    );
+    expect(Array.from(boxes, (box) => box.getAttribute("data-node"))).toEqual([
+      "2",
+      "3",
+    ]);
   });
 
   it("styles a part with a style function", async () => {
@@ -186,7 +247,9 @@ describe("composed parts", () => {
     );
     selectAll();
 
-    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
+    const box = container.querySelector<HTMLElement>(
+      "[data-presentation-selection-box]",
+    )!;
     expect(box.style.outlineColor).toBe("blue");
     expect(box.style.position).toBe("absolute");
   });
@@ -203,7 +266,9 @@ describe("part placement", () => {
           <Presentation.SelectionBox />
         </Presentation.Provider>,
       ),
-    ).toThrow("`Presentation.SelectionBox` must be used within `Presentation.Selection`.");
+    ).toThrow(
+      "`Presentation.SelectionBox` must be used within `Presentation.Selection`.",
+    );
 
     vi.restoreAllMocks();
   });
@@ -242,7 +307,12 @@ describe("rotating", () => {
     function drag(degrees: number, init: { shiftKey?: boolean } = {}) {
       const radians = ((degrees - 90) * Math.PI) / 180;
       act(() => {
-        fireEvent.pointerDown(handle, { button: 0, clientX: cx, clientY: cy - 100, pointerId: 1 });
+        fireEvent.pointerDown(handle, {
+          button: 0,
+          clientX: cx,
+          clientY: cy - 100,
+          pointerId: 1,
+        });
       });
       act(() => {
         fireEvent.pointerMove(rendered.overlay, {
@@ -260,10 +330,14 @@ describe("rotating", () => {
 
   it("shows a rotate handle on each selected outline", async () => {
     const { container } = await renderRotatable();
-    const boxes = container.querySelectorAll("[data-presentation-selection-box]");
+    const boxes = container.querySelectorAll(
+      "[data-presentation-selection-box]",
+    );
     expect(boxes).toHaveLength(2);
     for (const box of boxes) {
-      expect(box.querySelectorAll("[data-presentation-rotate-handle]")).toHaveLength(1);
+      expect(
+        box.querySelectorAll("[data-presentation-rotate-handle]"),
+      ).toHaveLength(1);
     }
   });
 
@@ -272,21 +346,29 @@ describe("rotating", () => {
     drag(90);
     expect(overlay.getAttribute("data-mode")).toBe("rotate");
 
-    const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
+    const box = container.querySelector<HTMLElement>(
+      "[data-presentation-selection-box]",
+    )!;
     expect(box.style.transform).toBe("rotate(90deg)");
     expect(box.hasAttribute("data-rotating")).toBe(true);
-    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(0);
+    expect(
+      container.querySelectorAll("[data-presentation-resize-handle]"),
+    ).toHaveLength(0);
 
     await act(async () => {
       fireEvent.pointerUp(overlay, { pointerId: 1 });
     });
-    const rotations = store.getActiveSlide()!.nodes.map((node) => Math.round(node.rotation));
+    const rotations = store
+      .getActiveSlide()!
+      .nodes.map((node) => Math.round(node.rotation));
     expect(rotations).toEqual([90, 90]);
 
     await act(async () => {
       await store.undo();
     });
-    expect(store.getActiveSlide()!.nodes.map((node) => node.rotation)).toEqual([0, 0]);
+    expect(store.getActiveSlide()!.nodes.map((node) => node.rotation)).toEqual([
+      0, 0,
+    ]);
   });
 
   it("shows the rotate cursor on the handle and keeps it through the drag", async () => {
@@ -315,7 +397,9 @@ describe("rotating", () => {
 
   it("puts the shape back when the drag is cancelled", async () => {
     const { store, overlay, container, drag } = await renderRotatable();
-    const shape = container.querySelector<HTMLElement>('[data-pptx-node-id="2"]')!;
+    const shape = container.querySelector<HTMLElement>(
+      '[data-pptx-node-id="2"]',
+    )!;
     const before = shape.style.transform;
 
     drag(90);
@@ -337,9 +421,13 @@ describe("rotating", () => {
     });
 
     await waitFor(() => {
-      expect(container.querySelectorAll("[data-presentation-rotate-handle]")).toHaveLength(2);
+      expect(
+        container.querySelectorAll("[data-presentation-rotate-handle]"),
+      ).toHaveLength(2);
     });
-    expect(container.querySelectorAll("[data-presentation-resize-handle]")).toHaveLength(16);
+    expect(
+      container.querySelectorAll("[data-presentation-resize-handle]"),
+    ).toHaveLength(16);
   });
 });
 
@@ -360,13 +448,22 @@ describe("resizing a rotated shape", () => {
     );
     const slideId = store.getActiveSlide()!.id;
     await act(async () => {
-      await store.edit({ type: "setNodeTransform", slideId, nodeId: "2", rotation: 90 });
+      await store.edit({
+        type: "setNodeTransform",
+        slideId,
+        nodeId: "2",
+        rotation: 90,
+      });
     });
     act(() => selection.current!.select(["2"]));
 
-    const handles = container.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
+    const handles = container.querySelectorAll<HTMLElement>(
+      "[data-presentation-resize-handle]",
+    );
     expect(handles).toHaveLength(8);
-    const east = container.querySelector<HTMLElement>('[data-presentation-resize-handle="e"]')!;
+    const east = container.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="e"]',
+    )!;
     expect(east.style.cursor).toBe("ns-resize");
 
     const before = store.getActiveSlide()!.nodes[0];
@@ -374,10 +471,20 @@ describe("resizing a rotated shape", () => {
     const centerY = before.position.y + h / 2;
     const { zoom } = store.getState();
     act(() => {
-      fireEvent.pointerDown(east, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(east, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+      });
     });
     act(() => {
-      fireEvent.pointerMove(overlay, { clientX: 0, clientY: 40 * zoom, buttons: 1, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        clientX: 0,
+        clientY: 40 * zoom,
+        buttons: 1,
+        pointerId: 1,
+      });
     });
     expect(overlay.style.cursor).toBe("ns-resize");
     await act(async () => {
@@ -389,7 +496,9 @@ describe("resizing a rotated shape", () => {
     expect(after.size.h).toBeCloseTo(h);
     expect(after.rotation).toBe(90);
     // The west edge, now the top of the turned shape, stays put.
-    expect(after.position.y + after.size.h / 2 - after.size.w / 2).toBeCloseTo(centerY - w / 2);
+    expect(after.position.y + after.size.h / 2 - after.size.w / 2).toBeCloseTo(
+      centerY - w / 2,
+    );
   });
 });
 
@@ -406,12 +515,14 @@ describe("arrange shortcuts", () => {
         <Presentation.SelectionBox />
       </>,
     );
-    const ids = () => rendered.store.getActiveSlide()!.nodes.map((node) => node.id);
+    const ids = () =>
+      rendered.store.getActiveSlide()!.nodes.map((node) => node.id);
     return { ...rendered, selection, ids };
   }
 
   it("duplicates the selection with Ctrl/Cmd+D and selects the copies", async () => {
-    const { store, overlay, selectAll, selection, ids } = await renderWithSelection();
+    const { store, overlay, selectAll, selection, ids } =
+      await renderWithSelection();
     selectAll();
 
     await act(async () => {
@@ -447,14 +558,23 @@ describe("arrange shortcuts", () => {
     act(() => selection.current!.select(["3"]));
 
     await act(async () => {
-      fireEvent.keyDown(overlay, { key: "{", code: "BracketLeft", ctrlKey: true, shiftKey: true });
+      fireEvent.keyDown(overlay, {
+        key: "{",
+        code: "BracketLeft",
+        ctrlKey: true,
+        shiftKey: true,
+      });
     });
     await waitFor(() => expect(ids()).toEqual(["3", "2"]));
   });
 });
 
 describe("clipboard", () => {
-  function clipboardEvent(type: string, data: Map<string, string>, files: File[] = []): Event {
+  function clipboardEvent(
+    type: string,
+    data: Map<string, string>,
+    files: File[] = [],
+  ): Event {
     const event = new Event(type, { bubbles: true, cancelable: true });
     Object.defineProperty(event, "clipboardData", {
       value: {
@@ -497,15 +617,23 @@ describe("clipboard", () => {
     await act(async () => {
       overlay.dispatchEvent(clipboardEvent("paste", data));
     });
-    await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(["2", "3", "4"]));
-    expect(nodes()[2].position).toEqual({ x: original.x + 10, y: original.y + 10 });
+    await waitFor(() =>
+      expect(nodes().map((node) => node.id)).toEqual(["2", "3", "4"]),
+    );
+    expect(nodes()[2].position).toEqual({
+      x: original.x + 10,
+      y: original.y + 10,
+    });
     await waitFor(() => expect(selection.current!.nodeIds).toEqual(["4"]));
 
     await act(async () => {
       overlay.dispatchEvent(clipboardEvent("paste", data));
     });
     await waitFor(() => expect(nodes()).toHaveLength(4));
-    expect(nodes()[3].position).toEqual({ x: original.x + 20, y: original.y + 20 });
+    expect(nodes()[3].position).toEqual({
+      x: original.x + 20,
+      y: original.y + 20,
+    });
   });
 
   it("cuts shapes", async () => {
@@ -557,7 +685,9 @@ describe("clipboard", () => {
     await waitFor(() => expect(nodes()).toHaveLength(3));
     expect(nodes()[2].nodeType).toBe("picture");
     expect(nodes()[2].size).toEqual({ w: 30, h: 20 });
-    await waitFor(() => expect(selection.current!.nodeIds).toEqual([nodes()[2].id]));
+    await waitFor(() =>
+      expect(selection.current!.nodeIds).toEqual([nodes()[2].id]),
+    );
   });
 
   it("leaves clipboard events in text fields alone", async () => {
@@ -612,7 +742,9 @@ describe("keyboard and screen readers", () => {
   it("announces multi-selections", async () => {
     const { overlay, selectAll } = await renderOverlay();
     selectAll();
-    expect(overlay.querySelector('[role="status"]')!.textContent).toBe("2 shapes selected");
+    expect(overlay.querySelector('[role="status"]')!.textContent).toBe(
+      "2 shapes selected",
+    );
     expect(overlay.getAttribute("aria-label")).toBe("Slide editor");
   });
 });
@@ -649,17 +781,31 @@ describe("snap guides", () => {
 
     // Shape 2's right edge sits at 416px and shape 3's left edge at 500px:
     // dragging the east handle 81px lands 3px short, inside the threshold.
-    const handle = container.querySelector<HTMLElement>('[data-presentation-resize-handle="e"]')!;
+    const handle = container.querySelector<HTMLElement>(
+      '[data-presentation-resize-handle="e"]',
+    )!;
     act(() => {
-      fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 0,
+        clientY: 0,
+        pointerId: 1,
+      });
     });
     act(() => {
-      fireEvent.pointerMove(overlay, { clientX: 81 * zoom, clientY: 0, buttons: 1, pointerId: 1 });
+      fireEvent.pointerMove(overlay, {
+        clientX: 81 * zoom,
+        clientY: 0,
+        buttons: 1,
+        pointerId: 1,
+      });
     });
 
     expect(overlay.style.cursor).toBe("ew-resize");
 
-    const guide = container.querySelector<HTMLElement>('[data-presentation-snap-guide="x"]')!;
+    const guide = container.querySelector<HTMLElement>(
+      '[data-presentation-snap-guide="x"]',
+    )!;
     expect(guide.style.left).toBe(`${500 * zoom}px`);
     expect(guide.style.top).toBe("0px");
     expect(guide.style.height).toBe(`${presentation!.height * zoom}px`);

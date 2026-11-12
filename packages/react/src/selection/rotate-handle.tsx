@@ -2,7 +2,11 @@ import * as React from "react";
 
 import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
-import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
+import {
+  SELECTION_BOX_NAME,
+  SelectionBoxContext,
+  useSelectionParts,
+} from "./context";
 
 // A crosshair, like Google Slides; apps can swap it with `--presentation-rotate-cursor`.
 export const ROTATE_CURSOR = "var(--presentation-rotate-cursor, crosshair)";
@@ -17,14 +21,23 @@ export interface RotateHandleState {
   rotating: boolean;
 }
 
-export interface RotateHandleProps extends StatefulPrimitiveProps<"div", RotateHandleState> {}
+export interface RotateHandleProps extends StatefulPrimitiveProps<
+  "div",
+  RotateHandleState
+> {}
 
 export const RotateHandle = React.forwardRef<HTMLDivElement, RotateHandleProps>(
-  function RotateHandle({ render, className, style, ...rotateHandleProps }, forwardedRef) {
-    const { state, onRotatePointerDown } = useSelectionParts(ROTATE_HANDLE_NAME);
+  function RotateHandle(
+    { render, className, style, ...rotateHandleProps },
+    forwardedRef,
+  ) {
+    const { state, onRotatePointerDown } =
+      useSelectionParts(ROTATE_HANDLE_NAME);
     const box = React.useContext(SelectionBoxContext);
     if (!box) {
-      throw new Error(`\`${ROTATE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`);
+      throw new Error(
+        `\`${ROTATE_HANDLE_NAME}\` must be used within \`${SELECTION_BOX_NAME}\`.`,
+      );
     }
     if (!box.showRotateHandle) return null;
     const isRotating = state.mode === "rotate";

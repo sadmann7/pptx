@@ -161,11 +161,16 @@ export function CompositionScene({ isHandoff = false }: CompositionSceneProps) {
   const time = useCurrentFrame();
   const reveal = progress(time, 8, 28);
   const exitStart = COMPOSITION_DURATION - HANDOFF_FRAMES;
-  const exit = isHandoff ? progress(time, exitStart, exitStart + HANDOFF_FADE_FRAMES) : 0;
+  const exit = isHandoff
+    ? progress(time, exitStart, exitStart + HANDOFF_FADE_FRAMES)
+    : 0;
   const shift = progress(time, MOVE_START, MOVE_START + MOVE_FRAMES);
   const railLanded = MOVE_START + MOVE_FRAMES;
   const railIn = progress(time, railLanded, railLanded + RAIL_IN_FRAMES);
-  const railReveal = Math.max(0, (time - (railLanded + RAIL_POP_CADENCE)) / RAIL_POP_CADENCE);
+  const railReveal = Math.max(
+    0,
+    (time - (railLanded + RAIL_POP_CADENCE)) / RAIL_POP_CADENCE,
+  );
 
   return (
     <AbsoluteFill>

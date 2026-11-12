@@ -4,7 +4,11 @@ import { resolveColorToCss } from "../style";
 import { parseOoxmlBoolElement } from "./boolean";
 import { formatValue } from "./format";
 import { extractChartLineStyle } from "./style";
-import { extractTitleText, extractTitleTextStyle, extractTxPrStyle } from "./text";
+import {
+  extractTitleText,
+  extractTitleTextStyle,
+  extractTxPrStyle,
+} from "./text";
 import {
   type AxisInfo,
   type ChartLineStyle,
@@ -29,13 +33,19 @@ function themeHex(ctx: RenderContext, key: string): string | undefined {
 function legacyOfficeImplicitAxisColor(ctx: RenderContext): string | undefined {
   // Office 2007/2010 default chart themes use black implicit axis/grid lines,
   // while newer Office themes use the lighter gray default.
-  if (themeHex(ctx, "accent1") === "4F81BD" && themeHex(ctx, "accent2") === "C0504D") {
+  if (
+    themeHex(ctx, "accent1") === "4F81BD" &&
+    themeHex(ctx, "accent2") === "C0504D"
+  ) {
     return "#000000";
   }
   return undefined;
 }
 
-function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | undefined {
+function extractAxisLabelColor(
+  ax: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   const txPr = ax.child("txPr");
   if (!txPr.exists()) return undefined;
 
@@ -52,7 +62,10 @@ function extractAxisLabelColor(ax: SafeXmlNode, ctx: RenderContext): string | un
   return undefined;
 }
 
-function extractAxisLineColor(ax: SafeXmlNode, ctx: RenderContext): string | undefined {
+function extractAxisLineColor(
+  ax: SafeXmlNode,
+  ctx: RenderContext,
+): string | undefined {
   const ln = ax.child("spPr").child("ln");
   if (!ln.exists()) return undefined;
   const fill = ln.child("solidFill");
@@ -105,12 +118,18 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
   const tickLblPos = ax.child("tickLblPos").attr("val") || "nextTo";
   const crosses = ax.child("crosses").attr("val");
   const numFmtNode = ax.child("numFmt");
-  const numFmt = numFmtNode.exists() ? numFmtNode.attr("formatCode") || undefined : undefined;
+  const numFmt = numFmtNode.exists()
+    ? numFmtNode.attr("formatCode") || undefined
+    : undefined;
   const scaling = ax.child("scaling");
   const minNode = scaling.child("min");
   const maxNode = scaling.child("max");
-  const min = minNode.exists() ? parseFloat(minNode.attr("val") || "") : undefined;
-  const max = maxNode.exists() ? parseFloat(maxNode.attr("val") || "") : undefined;
+  const min = minNode.exists()
+    ? parseFloat(minNode.attr("val") || "")
+    : undefined;
+  const max = maxNode.exists()
+    ? parseFloat(maxNode.attr("val") || "")
+    : undefined;
   const hasMajorGridlines = ax.child("majorGridlines").exists();
   const majorTickMark = ax.child("majorTickMark").attr("val");
   const orientation = scaling.child("orientation").attr("val") || "minMax";
@@ -119,7 +138,9 @@ function parseAxisNode(ax: SafeXmlNode, ctx: RenderContext): AxisInfo {
   const labelFontSize = txStyle?.fontSize;
   const implicitAxisColor = legacyOfficeImplicitAxisColor(ctx);
   const lineHidden = isAxisLineHidden(ax);
-  const lineColor = lineHidden ? undefined : (extractAxisLineColor(ax, ctx) ?? implicitAxisColor);
+  const lineColor = lineHidden
+    ? undefined
+    : (extractAxisLineColor(ax, ctx) ?? implicitAxisColor);
   const majorGridlineStyle = hasMajorGridlines
     ? (extractMajorGridlineStyle(ax, ctx) ??
       (implicitAxisColor
@@ -162,7 +183,9 @@ function findAxisById(
   if (axisId) {
     for (const axisName of axisNames) {
       const axes = plotArea.children(axisName);
-      const matched = axes.find((axis) => axis.child("axId").attr("val") === axisId);
+      const matched = axes.find(
+        (axis) => axis.child("axId").attr("val") === axisId,
+      );
       if (matched) return matched;
     }
     return new SafeXmlNode(null);
@@ -256,8 +279,10 @@ export function applyAxisInfo(
 
     const nameTextStyle: Record<string, unknown> = {};
     if (info.titleStyle?.color) nameTextStyle.color = info.titleStyle.color;
-    if (info.titleStyle?.fontSize !== undefined) nameTextStyle.fontSize = info.titleStyle.fontSize;
-    if (info.titleStyle?.fontFamily) nameTextStyle.fontFamily = info.titleStyle.fontFamily;
+    if (info.titleStyle?.fontSize !== undefined)
+      nameTextStyle.fontSize = info.titleStyle.fontSize;
+    if (info.titleStyle?.fontFamily)
+      nameTextStyle.fontFamily = info.titleStyle.fontFamily;
     if (info.titleStyle?.bold !== undefined) {
       nameTextStyle.fontWeight = info.titleStyle.bold ? "bold" : "normal";
     }
@@ -275,11 +300,15 @@ export function applyAxisInfo(
     axisDef.axisTick = { ...existingTick, show: false };
   } else if (!info.deleted) {
     const existingTick = (axisDef.axisTick as Record<string, unknown>) || {};
-    const existingLineStyle = (existingTick.lineStyle as Record<string, unknown>) || {};
+    const existingLineStyle =
+      (existingTick.lineStyle as Record<string, unknown>) || {};
     if (existingLineStyle.color === undefined) {
       axisDef.axisTick = {
         ...existingTick,
-        lineStyle: { ...existingLineStyle, color: info.lineColor ?? DEFAULT_CHART_AXIS_LINE_COLOR },
+        lineStyle: {
+          ...existingLineStyle,
+          color: info.lineColor ?? DEFAULT_CHART_AXIS_LINE_COLOR,
+        },
       };
     }
   }
@@ -314,16 +343,20 @@ export function applyAxisInfo(
     if (!info.hasMajorGridlines) {
       axisDef.splitLine = { show: false };
     } else if (info.majorGridlineStyle) {
-      const existingSplitLine = (axisDef.splitLine as Record<string, unknown>) || {};
-      const existingLineStyle = (existingSplitLine.lineStyle as Record<string, unknown>) || {};
+      const existingSplitLine =
+        (axisDef.splitLine as Record<string, unknown>) || {};
+      const existingLineStyle =
+        (existingSplitLine.lineStyle as Record<string, unknown>) || {};
       axisDef.splitLine = {
         ...existingSplitLine,
         show: true,
         lineStyle: { ...existingLineStyle, ...info.majorGridlineStyle },
       };
     } else {
-      const existingSplitLine = (axisDef.splitLine as Record<string, unknown>) || {};
-      const existingLineStyle = (existingSplitLine.lineStyle as Record<string, unknown>) || {};
+      const existingSplitLine =
+        (axisDef.splitLine as Record<string, unknown>) || {};
+      const existingLineStyle =
+        (existingSplitLine.lineStyle as Record<string, unknown>) || {};
       axisDef.splitLine = {
         ...existingSplitLine,
         show: true,
@@ -336,7 +369,9 @@ export function applyAxisInfo(
     const existingLabel = (axisDef.axisLabel as Record<string, unknown>) || {};
     const color =
       info.labelColor ??
-      (existingLabel.color === undefined ? DEFAULT_CHART_FOREGROUND_COLOR : undefined);
+      (existingLabel.color === undefined
+        ? DEFAULT_CHART_FOREGROUND_COLOR
+        : undefined);
     if (color) {
       axisDef.axisLabel = { ...existingLabel, color };
     }
@@ -351,10 +386,13 @@ export function applyAxisInfo(
     axisDef.axisLine = { ...existingLine, show: false };
   } else if (info.lineColor || !info.deleted) {
     const existingLine = (axisDef.axisLine as Record<string, unknown>) || {};
-    const existingLineStyle = (existingLine.lineStyle as Record<string, unknown>) || {};
+    const existingLineStyle =
+      (existingLine.lineStyle as Record<string, unknown>) || {};
     const color =
       info.lineColor ??
-      (existingLineStyle.color === undefined ? DEFAULT_CHART_AXIS_LINE_COLOR : undefined);
+      (existingLineStyle.color === undefined
+        ? DEFAULT_CHART_AXIS_LINE_COLOR
+        : undefined);
     if (color) {
       axisDef.axisLine = {
         ...existingLine,

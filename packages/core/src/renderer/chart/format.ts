@@ -8,7 +8,12 @@ function getCachePointLimit(cache: SafeXmlNode): number {
 
   for (const pt of cache.children("pt")) {
     const idx = pt.numAttr("idx");
-    if (idx !== undefined && Number.isInteger(idx) && idx >= 0 && idx < MAX_CHART_CACHE_POINTS) {
+    if (
+      idx !== undefined &&
+      Number.isInteger(idx) &&
+      idx >= 0 &&
+      idx < MAX_CHART_CACHE_POINTS
+    ) {
       maxPresentIndex = Math.max(maxPresentIndex, idx);
     }
   }
@@ -23,10 +28,16 @@ function getCachePointLimit(cache: SafeXmlNode): number {
     return presentCount;
   }
 
-  return Math.min(Math.max(declaredCount, presentCount), MAX_CHART_CACHE_POINTS);
+  return Math.min(
+    Math.max(declaredCount, presentCount),
+    MAX_CHART_CACHE_POINTS,
+  );
 }
 
-function isCachePointInRange(idx: number | undefined, pointLimit: number): idx is number {
+function isCachePointInRange(
+  idx: number | undefined,
+  pointLimit: number,
+): idx is number {
   return (
     idx !== undefined &&
     Number.isInteger(idx) &&
@@ -39,13 +50,15 @@ function isCachePointInRange(idx: number | undefined, pointLimit: number): idx i
 // Literal forms (`strLit`, `numLit`) appear when the chart has no backing
 // spreadsheet and share the cached forms' ptCount/pt structure.
 function findStringCache(refNode: SafeXmlNode): SafeXmlNode {
-  if (refNode.child("strRef").exists()) return refNode.child("strRef").child("strCache");
+  if (refNode.child("strRef").exists())
+    return refNode.child("strRef").child("strCache");
   if (refNode.child("strCache").exists()) return refNode.child("strCache");
   return refNode.child("strLit");
 }
 
 function findNumericCache(refNode: SafeXmlNode): SafeXmlNode {
-  if (refNode.child("numRef").exists()) return refNode.child("numRef").child("numCache");
+  if (refNode.child("numRef").exists())
+    return refNode.child("numRef").child("numCache");
   if (refNode.child("numCache").exists()) return refNode.child("numCache");
   return refNode.child("numLit");
 }
@@ -125,7 +138,8 @@ function normalizeNumericFormatSection(section: string): string {
     }
 
     if (ch === "\\") {
-      if (i + 1 < withoutDirectives.length) normalized += withoutDirectives[++i];
+      if (i + 1 < withoutDirectives.length)
+        normalized += withoutDirectives[++i];
       continue;
     }
 
@@ -140,13 +154,19 @@ function normalizeNumericFormatSection(section: string): string {
   return normalized.trim();
 }
 
-function formatOfficeNumber(value: number, formatCode: string): string | undefined {
+function formatOfficeNumber(
+  value: number,
+  formatCode: string,
+): string | undefined {
   const sections = splitFormatSections(formatCode);
   const useNegativeSection = value < 0 && sections.length > 1;
   const section = useNegativeSection ? sections[1] : sections[0];
   const normalized = normalizeNumericFormatSection(section);
 
-  if (!/[#0]/.test(normalized) || (!normalized.includes(",") && sections.length === 1)) {
+  if (
+    !/[#0]/.test(normalized) ||
+    (!normalized.includes(",") && sections.length === 1)
+  ) {
     return undefined;
   }
 
@@ -161,12 +181,16 @@ function formatOfficeNumber(value: number, formatCode: string): string | undefin
   });
 
   if (!useNegativeSection) return formatted;
-  if (normalized.includes("(") && normalized.includes(")")) return `(${formatted})`;
+  if (normalized.includes("(") && normalized.includes(")"))
+    return `(${formatted})`;
   if (normalized.includes("-")) return `-${formatted}`;
   return formatted;
 }
 
-export function formatValue(value: number, formatCode: string | undefined): string {
+export function formatValue(
+  value: number,
+  formatCode: string | undefined,
+): string {
   if (!formatCode || formatCode === "General") {
     if (Number.isInteger(value)) return String(value);
     return parseFloat(value.toFixed(2)).toString();
@@ -205,7 +229,9 @@ interface NumericValuesWithBlanks {
   blankIndices: Set<number>;
 }
 
-export function extractNumericValuesWithBlanks(refNode: SafeXmlNode): NumericValuesWithBlanks {
+export function extractNumericValuesWithBlanks(
+  refNode: SafeXmlNode,
+): NumericValuesWithBlanks {
   const cache = findNumericCache(refNode);
 
   if (!cache.exists()) return { values: [], blankIndices: new Set() };

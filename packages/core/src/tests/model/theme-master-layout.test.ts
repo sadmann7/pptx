@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { parseLayout } from "../../model/layout";
 import { parseMaster } from "../../model/master";
 import type { BaseNodeData } from "../../model/nodes/base";
-import { buildPresentation, resolveNodePlaceholderInheritance } from "../../model/presentation";
+import {
+  buildPresentation,
+  resolveNodePlaceholderInheritance,
+} from "../../model/presentation";
 import { parseTheme } from "../../model/theme";
 import { parseXml } from "../../ooxml/xml";
 import { readPptx } from "../../ooxml/zip";
@@ -22,7 +25,9 @@ function textShape(rPrChildrenXml: string, text: string): string {
 </p:sp>`;
 }
 
-async function renderCustomSlide(options: CustomPptxOptions): Promise<HTMLElement> {
+async function renderCustomSlide(
+  options: CustomPptxOptions,
+): Promise<HTMLElement> {
   const buffer = await buildCustomPptx(options);
   const files = await readPptx(buffer);
   const presentation = buildPresentation(files);
@@ -30,7 +35,9 @@ async function renderCustomSlide(options: CustomPptxOptions): Promise<HTMLElemen
 }
 
 function markerSpan(element: HTMLElement, marker: string): HTMLElement {
-  const span = [...element.querySelectorAll("span")].find((s) => s.textContent?.includes(marker));
+  const span = [...element.querySelectorAll("span")].find((s) =>
+    s.textContent?.includes(marker),
+  );
   if (!span) throw new Error(`span with "${marker}" not found`);
   return span;
 }
@@ -56,7 +63,10 @@ describe("master clrMap remapping through the pipeline", () => {
 });
 
 describe("layout clrMapOvr through the pipeline", () => {
-  const shape = textShape(`<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`, "OVERRIDE MARKER");
+  const shape = textShape(
+    `<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`,
+    "OVERRIDE MARKER",
+  );
 
   it("overrideClrMapping in the layout swaps text scheme colors", async () => {
     const element = await renderCustomSlide({
@@ -64,12 +74,16 @@ describe("layout clrMapOvr through the pipeline", () => {
       layoutClrMapOvrXml: `<p:clrMapOvr><a:overrideClrMapping bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/></p:clrMapOvr>`,
     });
     // tx1 → lt1 → window/FFFFFF instead of the usual dk1/000000.
-    expect(markerSpan(element, "OVERRIDE MARKER").style.color.toUpperCase()).toBe("#FFFFFF");
+    expect(
+      markerSpan(element, "OVERRIDE MARKER").style.color.toUpperCase(),
+    ).toBe("#FFFFFF");
   });
 
   it("masterClrMapping keeps the master's tx1→dk1 mapping", async () => {
     const element = await renderCustomSlide({ slides: [shape] });
-    expect(markerSpan(element, "OVERRIDE MARKER").style.color.toUpperCase()).toBe("#000000");
+    expect(
+      markerSpan(element, "OVERRIDE MARKER").style.color.toUpperCase(),
+    ).toBe("#000000");
   });
 });
 
@@ -79,7 +93,9 @@ describe("theme font references through the pipeline", () => {
       slides: [textShape(`<a:latin typeface="+mj-lt"/>`, "MAJOR MARKER")],
       majorLatin: "Major Test Font",
     });
-    expect(markerSpan(element, "MAJOR MARKER").style.fontFamily).toContain("Major Test Font");
+    expect(markerSpan(element, "MAJOR MARKER").style.fontFamily).toContain(
+      "Major Test Font",
+    );
   });
 
   it("resolves +mn-lt to the theme minorFont latin typeface", async () => {
@@ -87,7 +103,9 @@ describe("theme font references through the pipeline", () => {
       slides: [textShape(`<a:latin typeface="+mn-lt"/>`, "MINOR MARKER")],
       minorLatin: "Minor Test Font",
     });
-    expect(markerSpan(element, "MINOR MARKER").style.fontFamily).toContain("Minor Test Font");
+    expect(markerSpan(element, "MINOR MARKER").style.fontFamily).toContain(
+      "Minor Test Font",
+    );
   });
 });
 
@@ -150,12 +168,16 @@ describe("parseLayout", () => {
 
   it("parses showMasterSp with a default of true", () => {
     const hidden = parseLayout(
-      parseXml(`<p:sldLayout ${P_NS} showMasterSp="0"><p:cSld><p:spTree/></p:cSld></p:sldLayout>`),
+      parseXml(
+        `<p:sldLayout ${P_NS} showMasterSp="0"><p:cSld><p:spTree/></p:cSld></p:sldLayout>`,
+      ),
     );
     expect(hidden.showMasterSp).toBe(false);
 
     const shown = parseLayout(
-      parseXml(`<p:sldLayout ${P_NS}><p:cSld><p:spTree/></p:cSld></p:sldLayout>`),
+      parseXml(
+        `<p:sldLayout ${P_NS}><p:cSld><p:spTree/></p:cSld></p:sldLayout>`,
+      ),
     );
     expect(shown.showMasterSp).toBe(true);
   });

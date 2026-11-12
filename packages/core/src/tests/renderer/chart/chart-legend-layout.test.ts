@@ -13,7 +13,10 @@ import {
   pickSeriesStringColor,
 } from "../../../renderer/chart/legend";
 import type { RenderContext } from "../../../renderer/context";
-import { parseChartFragment, createChartTestContext } from "../../fixtures/chart-pptx";
+import {
+  parseChartFragment,
+  createChartTestContext,
+} from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 
@@ -41,23 +44,46 @@ describe("extractLegendInfo", () => {
   });
 
   it("maps each legendPos to the matching ECharts anchor", () => {
-    const bottom = legendInfoFor(`<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`);
+    const bottom = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`,
+    );
     expect(bottom?.position).toBe("b");
-    expect(bottom?.option).toMatchObject({ bottom: "5%", orient: "horizontal" });
+    expect(bottom?.option).toMatchObject({
+      bottom: "5%",
+      orient: "horizontal",
+    });
 
-    const top = legendInfoFor(`<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`);
+    const top = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`,
+    );
     expect(top?.option).toMatchObject({ top: "14%", orient: "horizontal" });
 
-    const left = legendInfoFor(`<c:chart><c:legend><c:legendPos val="l"/></c:legend></c:chart>`);
-    expect(left?.option).toMatchObject({ left: "2%", top: "middle", orient: "vertical" });
+    const left = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="l"/></c:legend></c:chart>`,
+    );
+    expect(left?.option).toMatchObject({
+      left: "2%",
+      top: "middle",
+      orient: "vertical",
+    });
 
-    const right = legendInfoFor(`<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`);
-    expect(right?.option).toMatchObject({ right: "2%", top: "middle", orient: "vertical" });
+    const right = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`,
+    );
+    expect(right?.option).toMatchObject({
+      right: "2%",
+      top: "middle",
+      orient: "vertical",
+    });
 
     const topRight = legendInfoFor(
       `<c:chart><c:legend><c:legendPos val="tr"/></c:legend></c:chart>`,
     );
-    expect(topRight?.option).toMatchObject({ top: "14%", right: "2%", orient: "vertical" });
+    expect(topRight?.option).toMatchObject({
+      top: "14%",
+      right: "2%",
+      orient: "vertical",
+    });
   });
 
   it("defaults to right placement for missing or unknown positions", () => {
@@ -105,28 +131,38 @@ describe("legend placement helpers", () => {
   it("computes placement from the option anchors", () => {
     expect(
       getLegendPlacement(
-        legendInfoFor(`<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`),
+        legendInfoFor(
+          `<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`,
+        ),
       ),
     ).toBe("bottom");
     expect(
       getLegendPlacement(
-        legendInfoFor(`<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`),
+        legendInfoFor(
+          `<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`,
+        ),
       ),
     ).toBe("top");
     expect(
       getLegendPlacement(
-        legendInfoFor(`<c:chart><c:legend><c:legendPos val="l"/></c:legend></c:chart>`),
+        legendInfoFor(
+          `<c:chart><c:legend><c:legendPos val="l"/></c:legend></c:chart>`,
+        ),
       ),
     ).toBe("left");
     expect(getLegendPlacement(undefined)).toBe("none");
   });
 
   it("treats t and tr as top for grid sizing", () => {
-    const top = legendInfoFor(`<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`);
+    const top = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="t"/></c:legend></c:chart>`,
+    );
     const topRight = legendInfoFor(
       `<c:chart><c:legend><c:legendPos val="tr"/></c:legend></c:chart>`,
     );
-    const right = legendInfoFor(`<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`);
+    const right = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`,
+    );
     expect(legendIsAtTop(top)).toBe(true);
     expect(legendIsAtTop(topRight)).toBe(true);
     expect(legendIsAtTop(right)).toBe(false);
@@ -135,8 +171,12 @@ describe("legend placement helpers", () => {
   });
 
   it("reserves bottom grid space only for bottom legends", () => {
-    const bottom = legendInfoFor(`<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`);
-    const right = legendInfoFor(`<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`);
+    const bottom = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`,
+    );
+    const right = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="r"/></c:legend></c:chart>`,
+    );
     expect(getGridBottomPx(bottom)).toBe(35);
     expect(getGridBottomPx(right)).toBe(20);
     expect(getGridBottomPx(undefined)).toBe(20);
@@ -145,15 +185,23 @@ describe("legend placement helpers", () => {
 
 describe("buildLegendOption", () => {
   it("hides the legend when no legend option exists", () => {
-    expect(buildLegendOption(undefined, undefined, undefined, ["A"], { fontSize: 10 })).toEqual({
+    expect(
+      buildLegendOption(undefined, undefined, undefined, ["A"], {
+        fontSize: 10,
+      }),
+    ).toEqual({
       show: false,
     });
   });
 
   it("uses rect icons and font-sized items for plain string entries", () => {
-    const info = legendInfoFor(`<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`)!;
+    const info = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`,
+    )!;
     const legend = getLegendOptionObject(
-      buildLegendOption(info.option, info, undefined, ["A", "B"], { fontSize: 10 }),
+      buildLegendOption(info.option, info, undefined, ["A", "B"], {
+        fontSize: 10,
+      }),
     )!;
     expect(legend.icon).toBe("rect");
     expect(legend.itemWidth).toBe(10);
@@ -162,11 +210,19 @@ describe("buildLegendOption", () => {
   });
 
   it("widens items when entries use line path icons", () => {
-    const info = legendInfoFor(`<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`)!;
+    const info = legendInfoFor(
+      `<c:chart><c:legend><c:legendPos val="b"/></c:legend></c:chart>`,
+    )!;
     const legend = getLegendOptionObject(
-      buildLegendOption(info.option, info, undefined, [{ name: "A", icon: lineLegendIconPath() }], {
-        fontSize: 10,
-      }),
+      buildLegendOption(
+        info.option,
+        info,
+        undefined,
+        [{ name: "A", icon: lineLegendIconPath() }],
+        {
+          fontSize: 10,
+        },
+      ),
     )!;
     expect(legend.icon).toBeUndefined();
     expect(legend.itemWidth).toBe(24);
@@ -188,7 +244,9 @@ describe("buildLegendOption", () => {
 describe("pickSeriesStringColor", () => {
   it("passes through strings and falls back for gradients", () => {
     expect(pickSeriesStringColor("#123456", "#000000")).toBe("#123456");
-    expect(pickSeriesStringColor({ type: "linear" }, "#000000")).toBe("#000000");
+    expect(pickSeriesStringColor({ type: "linear" }, "#000000")).toBe(
+      "#000000",
+    );
     expect(pickSeriesStringColor(undefined, "#00B050")).toBe("#00B050");
   });
 });

@@ -57,7 +57,10 @@ function restingCamera(index: number, t: number): Camera {
 }
 
 function focusAt(frame: number): number {
-  const index = Math.min(SPOTLIGHTS.length - 1, Math.floor(frame / SPOTLIGHT_DURATION));
+  const index = Math.min(
+    SPOTLIGHTS.length - 1,
+    Math.floor(frame / SPOTLIGHT_DURATION),
+  );
   const local = frame - index * SPOTLIGHT_DURATION;
   if (index === SPOTLIGHTS.length - 1 || local < CAMERA_HOLD) return index;
   return index + cameraEase((local - CAMERA_HOLD) / CAMERA_MOVE);
@@ -65,7 +68,11 @@ function focusAt(frame: number): number {
 
 function cameraAt(frame: number): Camera {
   if (frame >= SHOWCASE_FRAMES) {
-    const t = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + HANDOFF_FRAMES);
+    const t = progress(
+      frame,
+      SHOWCASE_FRAMES,
+      SHOWCASE_FRAMES + HANDOFF_FRAMES,
+    );
     const from = restingCamera(SPOTLIGHTS.length - 1, 1);
     const to = landingCamera();
     return {
@@ -80,7 +87,8 @@ function cameraAt(frame: number): Camera {
   const travel = focus - index;
   if (travel === 0) {
     const local = frame - index * SPOTLIGHT_DURATION;
-    const span = index === SPOTLIGHTS.length - 1 ? SPOTLIGHT_DURATION : CAMERA_HOLD;
+    const span =
+      index === SPOTLIGHTS.length - 1 ? SPOTLIGHT_DURATION : CAMERA_HOLD;
     return restingCamera(index, Math.min(1, local / span));
   }
 
@@ -97,7 +105,11 @@ function Board({ frame }: { frame: number }) {
   const camera = cameraAt(frame);
   const focus = focusAt(frame);
   const swing = Math.sin((focus % 1) * Math.PI) * 1.6;
-  const flush = progress(frame, SHOWCASE_FRAMES, SHOWCASE_FRAMES + FLUSH_FRAMES);
+  const flush = progress(
+    frame,
+    SHOWCASE_FRAMES,
+    SHOWCASE_FRAMES + FLUSH_FRAMES,
+  );
   const othersOut = progress(frame, SHOWCASE_FRAMES - 18, SHOWCASE_FRAMES + 6);
 
   return (
@@ -117,7 +129,8 @@ function Board({ frame }: { frame: number }) {
           const isLast = index === SPOTLIGHTS.length - 1;
           const emphasis = (1 - Math.min(1, Math.abs(index - focus))) ** 1.4;
           const blur = (1 - emphasis) * 4;
-          const opacity = (0.26 + 0.74 * emphasis) * (isLast ? 1 : 1 - othersOut);
+          const opacity =
+            (0.26 + 0.74 * emphasis) * (isLast ? 1 : 1 - othersOut);
 
           return (
             <div
@@ -157,9 +170,18 @@ interface StaggeredWordsProps extends React.ComponentProps<"span"> {
   delay?: number;
 }
 
-function StaggeredWords({ text, frame, delay = 0, style, ...props }: StaggeredWordsProps) {
+function StaggeredWords({
+  text,
+  frame,
+  delay = 0,
+  style,
+  ...props
+}: StaggeredWordsProps) {
   return (
-    <span style={{ display: "inline-flex", flexWrap: "wrap", ...style }} {...props}>
+    <span
+      style={{ display: "inline-flex", flexWrap: "wrap", ...style }}
+      {...props}
+    >
       {text.split(" ").map((word, index) => {
         const start = delay + index * 1.6;
         const reveal = progress(frame, start, start + 17);
@@ -200,8 +222,18 @@ function Captions({ frame }: { frame: number }) {
         const local = frame - start;
         const isLast = index === SPOTLIGHTS.length - 1;
         const exit = isLast
-          ? interpolate(frame, [SHOWCASE_FRAMES - 22, SHOWCASE_FRAMES - 4], [1, 0], clamp)
-          : interpolate(local, [CAMERA_HOLD - 2, CAMERA_HOLD + 8], [1, 0], clamp);
+          ? interpolate(
+              frame,
+              [SHOWCASE_FRAMES - 22, SHOWCASE_FRAMES - 4],
+              [1, 0],
+              clamp,
+            )
+          : interpolate(
+              local,
+              [CAMERA_HOLD - 2, CAMERA_HOLD + 8],
+              [1, 0],
+              clamp,
+            );
         const reveal = local + CAPTION_LEAD;
         if (reveal < 0 || exit === 0) return null;
 
@@ -216,7 +248,11 @@ function Captions({ frame }: { frame: number }) {
               opacity: exit,
             }}
           >
-            <StaggeredWords text={spotlight.caption} frame={reveal} style={captionStyle} />
+            <StaggeredWords
+              text={spotlight.caption}
+              frame={reveal}
+              style={captionStyle}
+            />
           </div>
         );
       })}
@@ -230,7 +266,9 @@ function ShowcaseBoard() {
 
   return (
     <AbsoluteFill style={{ opacity: entrance }}>
-      <AbsoluteFill style={{ scale: interpolate(entrance, [0, 1], [0.985, 1]) }}>
+      <AbsoluteFill
+        style={{ scale: interpolate(entrance, [0, 1], [0.985, 1]) }}
+      >
         <Board frame={frame} />
       </AbsoluteFill>
       <div

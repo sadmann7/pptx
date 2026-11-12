@@ -27,7 +27,9 @@ import { openSlide, slideContainer } from "./utils";
 for (const { name: deck, slides } of ALL_DECKS) {
   test.describe(`oracle: ${deck}`, () => {
     for (let slide = 0; slide < slides; slide++) {
-      test(`slide ${slide + 1} matches PowerPoint output`, async ({ page }, testInfo) => {
+      test(`slide ${slide + 1} matches PowerPoint output`, async ({
+        page,
+      }, testInfo) => {
         const project = testInfo.project.name;
         const baseline = readScoreBaseline(deck, slide, project);
 

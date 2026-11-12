@@ -3,7 +3,11 @@
 import * as React from "react";
 
 import type { PresentationStore } from "@diceui/pptx";
-import { useCreatePresentationStore, usePresentation, useSlide } from "@diceui/pptx";
+import {
+  useCreatePresentationStore,
+  usePresentation,
+  useSlide,
+} from "@diceui/pptx";
 import { cn } from "@pptx/ui/lib/utils";
 
 import { PresentationEditor } from "@/components/presentation-editor";
@@ -11,7 +15,9 @@ import type { SearchParams } from "@/types";
 
 type PlaygroundLayout = "default" | "editing" | "compact";
 
-function getPlaygroundLayout(value: Awaited<SearchParams>[number]): PlaygroundLayout {
+function getPlaygroundLayout(
+  value: Awaited<SearchParams>[number],
+): PlaygroundLayout {
   return value === "editing" || value === "compact" ? value : "default";
 }
 
@@ -21,7 +27,9 @@ interface PresentationPlaygroundProps {
 
 // `?layout=editing` drops the debug bar, `?layout=compact` the toolbar as well,
 // and `?floatingToolbar` floats the toolbar above the selection.
-export function PresentationPlayground({ searchParams }: PresentationPlaygroundProps) {
+export function PresentationPlayground({
+  searchParams,
+}: PresentationPlaygroundProps) {
   const store = useCreatePresentationStore();
   const params = React.use(searchParams);
   const layout = getPlaygroundLayout(params.layout);
@@ -30,7 +38,9 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
     <div className="mx-auto flex w-full max-w-(--fd-layout-width) flex-col p-4">
       <PresentationEditor
         store={store}
-        className={cn("h-[calc(100dvh-(--spacing(22)))] md:h-[calc(100dvh-(--spacing(24)))]")}
+        className={cn(
+          "h-[calc(100dvh-(--spacing(22)))] md:h-[calc(100dvh-(--spacing(24)))]",
+        )}
         header={layout === "default" ? <PresentationDebugToolbar /> : undefined}
         toolbar={layout !== "compact"}
         floatingToolbar={params.floatingToolbar !== undefined}
@@ -43,7 +53,11 @@ export function PresentationPlayground({ searchParams }: PresentationPlaygroundP
 }
 
 const DATASETS = [
-  { value: "demo", label: "Demo data", src: "/assets/after-the-needle-drops-mat.pptx" },
+  {
+    value: "demo",
+    label: "Demo data",
+    src: "/assets/after-the-needle-drops-mat.pptx",
+  },
   { value: "worst", label: "Worst case", src: "/assets/worst-case/worst.pptx" },
   { value: "one", label: "One slide", src: "/assets/worst-case/one.pptx" },
   { value: "many", label: "300 slides", src: "/assets/worst-case/many.pptx" },
@@ -76,7 +90,8 @@ function DataToggle({
     fetch(src)
       .then((response) => response.blob())
       .then((blob) => {
-        if (!cancelled) return store.load(blob, { defaultSlideIndex: 0, readOnly: false });
+        if (!cancelled)
+          return store.load(blob, { defaultSlideIndex: 0, readOnly: false });
       })
       .catch(() => {});
     return () => {
@@ -147,8 +162,8 @@ function ThumbnailPerfReadout() {
     <span>
       thumbs:{" "}
       <strong className="text-foreground">
-        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg · {perf.maxFrameMs.toFixed(1)}ms max
-        · {perf.backlog} queued
+        {perf.renders} rendered · {avgFrameMs.toFixed(1)}ms avg ·{" "}
+        {perf.maxFrameMs.toFixed(1)}ms max · {perf.backlog} queued
       </strong>
     </span>
   );
@@ -167,7 +182,10 @@ function PresentationDebugToolbar() {
       {status === "ready" && presentation && (
         <>
           <span>
-            slides: <strong className="text-foreground">{presentation.slides.length}</strong>
+            slides:{" "}
+            <strong className="text-foreground">
+              {presentation.slides.length}
+            </strong>
           </span>
           <span>
             size:{" "}
@@ -178,7 +196,9 @@ function PresentationDebugToolbar() {
           {slide && (
             <span>
               slide {index + 1}:{" "}
-              <strong className="text-foreground">{slide.nodes.length} nodes</strong>
+              <strong className="text-foreground">
+                {slide.nodes.length} nodes
+              </strong>
             </span>
           )}
           <ThumbnailPerfReadout />

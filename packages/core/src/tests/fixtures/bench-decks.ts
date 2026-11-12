@@ -9,7 +9,14 @@ export interface DeckSpec {
   withTable?: boolean;
 }
 
-const PRESETS = ["roundRect", "ellipse", "hexagon", "rightArrow", "star5", "pie"];
+const PRESETS = [
+  "roundRect",
+  "ellipse",
+  "hexagon",
+  "rightArrow",
+  "star5",
+  "pie",
+];
 
 function textBoxXml(id: number, slot: number): string {
   const x = 457200 + (slot % 3) * 3048000;
@@ -83,8 +90,10 @@ ${rows}
 function slideXml(index: number, spec: DeckSpec): string {
   const parts: string[] = [];
   let id = 2;
-  for (let i = 0; i < (spec.textBoxes ?? 0); i++) parts.push(textBoxXml(id++, i));
-  for (let i = 0; i < (spec.shapes ?? 0); i++) parts.push(shapeXml(id++, i + index));
+  for (let i = 0; i < (spec.textBoxes ?? 0); i++)
+    parts.push(textBoxXml(id++, i));
+  for (let i = 0; i < (spec.shapes ?? 0); i++)
+    parts.push(shapeXml(id++, i + index));
   if (spec.withTable) parts.push(tableXml(id++));
 
   return (

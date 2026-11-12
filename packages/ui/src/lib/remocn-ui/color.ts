@@ -30,7 +30,9 @@ export function parseColor(c: string): Rgb {
   const rgb = toRgb(parse(s));
   if (!rgb) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(`[remocn-ui] parseColor could not parse "${s}"; using black.`);
+      console.warn(
+        `[remocn-ui] parseColor could not parse "${s}"; using black.`,
+      );
     }
     return { ...BLACK };
   }
@@ -62,7 +64,9 @@ function resolveColorString(s: string): string {
   }
   if (!parse(trimmed)) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(`[remocn-ui] mixOklch could not parse "${trimmed}"; using black.`);
+      console.warn(
+        `[remocn-ui] mixOklch could not parse "${trimmed}"; using black.`,
+      );
     }
     return "#000";
   }

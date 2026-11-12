@@ -46,7 +46,9 @@ describe("load", () => {
 
   it("honors a defaultSlideIndex resolver and clamps out-of-range values", async () => {
     const store = createStore();
-    await store.load(fixture, { defaultSlideIndex: (slides) => slides.length - 1 });
+    await store.load(fixture, {
+      defaultSlideIndex: (slides) => slides.length - 1,
+    });
     expect(store.getActiveSlideIndex()).toBe(FIXTURE_SLIDE_COUNT - 1);
 
     await store.load(fixture, { defaultSlideIndex: 99 });
@@ -345,7 +347,10 @@ describe("statusChange and zoomChange events", () => {
 
   it("opens at defaultZoom", async () => {
     const store = createStore();
-    await store.load(await loadFixture(), { defaultZoom: 0.5, embedFonts: false });
+    await store.load(await loadFixture(), {
+      defaultZoom: 0.5,
+      embedFonts: false,
+    });
 
     expect(store.getState().zoom).toBe(0.5);
   });
@@ -422,7 +427,10 @@ describe("slideChange events", () => {
     const store = await loadedStore();
     let seen: { active: string | null; index: number } | null = null;
     store.on("slideChange", (event) => {
-      seen = { active: store.getState().activeSlideId, index: store.getActiveSlideIndex() };
+      seen = {
+        active: store.getState().activeSlideId,
+        index: store.getActiveSlideIndex(),
+      };
       expect(event.slideId).toBe(store.getState().activeSlideId);
     });
 

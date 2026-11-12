@@ -1,4 +1,8 @@
-import { isExternalTargetMode, type RelEntry, resolveRelTarget } from "../ooxml/rel";
+import {
+  isExternalTargetMode,
+  type RelEntry,
+  resolveRelTarget,
+} from "../ooxml/rel";
 import type { RenderContext } from "./context";
 
 function dirname(path: string): string {
@@ -17,18 +21,25 @@ function normalizePackagePath(path: string): string {
 }
 
 // Display order comes from presentation.xml and can differ from slideN.xml numbering.
-export function resolveSlideJumpIndex(ctx: RenderContext, rel: RelEntry): number | undefined {
+export function resolveSlideJumpIndex(
+  ctx: RenderContext,
+  rel: RelEntry,
+): number | undefined {
   if (isExternalTargetMode(rel.targetMode)) return undefined;
 
   const basePath = dirname(ctx.slide.id || "ppt/slides/slide1.xml");
-  const targetPath = normalizePackagePath(resolveRelTarget(basePath, rel.target));
+  const targetPath = normalizePackagePath(
+    resolveRelTarget(basePath, rel.target),
+  );
 
   const slideIndex = ctx.presentation.slides.findIndex(
     (slide) => normalizePackagePath(slide.id || "") === targetPath,
   );
   if (slideIndex >= 0) return slideIndex;
 
-  const fallback = stripUriSuffix(rel.target).match(/(?:^|[\\/])slide(\d+)\.xml$/i);
+  const fallback = stripUriSuffix(rel.target).match(
+    /(?:^|[\\/])slide(\d+)\.xml$/i,
+  );
   if (!fallback) return undefined;
 
   return parseInt(fallback[1], 10) - 1;
@@ -53,7 +64,10 @@ function decodeQueryComponent(value: string): string {
   }
 }
 
-function queryParamCaseInsensitive(query: string, name: string): string | undefined {
+function queryParamCaseInsensitive(
+  query: string,
+  name: string,
+): string | undefined {
   const expectedName = name.toLowerCase();
   for (const part of query.split("&")) {
     const [rawKey, ...rawValue] = part.split("=");
@@ -63,7 +77,10 @@ function queryParamCaseInsensitive(query: string, name: string): string | undefi
   return undefined;
 }
 
-function resolveShowJumpIndex(ctx: RenderContext, action: string): number | undefined {
+function resolveShowJumpIndex(
+  ctx: RenderContext,
+  action: string,
+): number | undefined {
   const match = action.match(/^ppaction:\/\/hlinkshowjump\?(.+)$/i);
   if (!match) return undefined;
 

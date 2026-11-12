@@ -35,34 +35,52 @@ describe("getMimeType", () => {
 
 describe("resolveMediaPath", () => {
   it("resolves relative rels targets to canonical ppt/media paths", () => {
-    expect(resolveMediaPath("../media/image1.png")).toBe("ppt/media/image1.png");
+    expect(resolveMediaPath("../media/image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
     expect(resolveMediaPath("media/image1.png")).toBe("ppt/media/image1.png");
-    expect(resolveMediaPath("/ppt/media/image1.png")).toBe("ppt/media/image1.png");
+    expect(resolveMediaPath("/ppt/media/image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
   });
 
   it("normalizes backslashes and dot segments", () => {
-    expect(resolveMediaPath("..\\media\\image1.png")).toBe("ppt/media/image1.png");
-    expect(resolveMediaPath("./media/./image1.png")).toBe("ppt/media/image1.png");
+    expect(resolveMediaPath("..\\media\\image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
+    expect(resolveMediaPath("./media/./image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
   });
 
   it("strips query strings and fragments", () => {
-    expect(resolveMediaPath("../media/image1.png?rev=2")).toBe("ppt/media/image1.png");
-    expect(resolveMediaPath("../media/image1.png#frag")).toBe("ppt/media/image1.png");
+    expect(resolveMediaPath("../media/image1.png?rev=2")).toBe(
+      "ppt/media/image1.png",
+    );
+    expect(resolveMediaPath("../media/image1.png#frag")).toBe(
+      "ppt/media/image1.png",
+    );
   });
 
   it("decodes percent-encoded segments", () => {
-    expect(resolveMediaPath("../media/my%20image.png")).toBe("ppt/media/my image.png");
+    expect(resolveMediaPath("../media/my%20image.png")).toBe(
+      "ppt/media/my image.png",
+    );
   });
 
   it("falls back to the basename when no media directory is present", () => {
     expect(resolveMediaPath("image1.png")).toBe("ppt/media/image1.png");
-    expect(resolveMediaPath("some/dir/image1.png")).toBe("ppt/media/image1.png");
+    expect(resolveMediaPath("some/dir/image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
   });
 });
 
 describe("resolveMediaPathCandidates", () => {
   it("returns a single candidate for plain targets", () => {
-    expect(resolveMediaPathCandidates("../media/image1.png")).toEqual(["ppt/media/image1.png"]);
+    expect(resolveMediaPathCandidates("../media/image1.png")).toEqual([
+      "ppt/media/image1.png",
+    ]);
   });
 
   it("prefers the decoded form but keeps the raw name as fallback", () => {
@@ -93,7 +111,9 @@ describe("findMediaByTarget", () => {
   });
 
   it("returns undefined when nothing matches", () => {
-    expect(findMediaByTarget("../media/missing.png", new Map())).toBeUndefined();
+    expect(
+      findMediaByTarget("../media/missing.png", new Map()),
+    ).toBeUndefined();
   });
 });
 
@@ -107,7 +127,9 @@ describe("findMediaByTargetAsync", () => {
         throw new Error("resolver must not be called for eager hits");
       },
     };
-    await expect(findMediaByTargetAsync("../media/image1.png", media, resolver)).resolves.toEqual({
+    await expect(
+      findMediaByTargetAsync("../media/image1.png", media, resolver),
+    ).resolves.toEqual({
       mediaPath: "ppt/media/image1.png",
       data,
     });
@@ -115,15 +137,20 @@ describe("findMediaByTargetAsync", () => {
 
   it("delegates to the resolver on a miss", async () => {
     const resolver: MediaResolver = {
-      resolve: async (target) => ({ mediaPath: resolveMediaPath(target), data }),
+      resolve: async (target) => ({
+        mediaPath: resolveMediaPath(target),
+        data,
+      }),
     };
-    await expect(findMediaByTargetAsync("../media/lazy.png", new Map(), resolver)).resolves.toEqual(
-      { mediaPath: "ppt/media/lazy.png", data },
-    );
+    await expect(
+      findMediaByTargetAsync("../media/lazy.png", new Map(), resolver),
+    ).resolves.toEqual({ mediaPath: "ppt/media/lazy.png", data });
   });
 
   it("resolves undefined with no resolver", async () => {
-    await expect(findMediaByTargetAsync("../media/lazy.png", new Map())).resolves.toBeUndefined();
+    await expect(
+      findMediaByTargetAsync("../media/lazy.png", new Map()),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -133,16 +160,28 @@ describe("getOrCreateBlobUrl", () => {
     expect(typeof URL.createObjectURL).toBe("function");
 
     const cache = new Map<string, string>();
-    const url = getOrCreateBlobUrl("ppt/media/image1.png", new Uint8Array([1, 2, 3]), cache);
+    const url = getOrCreateBlobUrl(
+      "ppt/media/image1.png",
+      new Uint8Array([1, 2, 3]),
+      cache,
+    );
     expect(typeof url).toBe("string");
     expect(url.length).toBeGreaterThan(0);
     expect(cache.get("ppt/media/image1.png")).toBe(url);
 
     // Second call with the same path hits the cache even with different data.
-    const again = getOrCreateBlobUrl("ppt/media/image1.png", new Uint8Array([4, 5]), cache);
+    const again = getOrCreateBlobUrl(
+      "ppt/media/image1.png",
+      new Uint8Array([4, 5]),
+      cache,
+    );
     expect(again).toBe(url);
 
-    const other = getOrCreateBlobUrl("ppt/media/image2.png", new Uint8Array([6]), cache);
+    const other = getOrCreateBlobUrl(
+      "ppt/media/image2.png",
+      new Uint8Array([6]),
+      cache,
+    );
     expect(other).not.toBe(url);
     expect(cache.size).toBe(2);
   });

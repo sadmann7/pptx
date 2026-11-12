@@ -3,11 +3,16 @@ export function readCellGrid(text: string, html: string): string[][] | null {
   return grid && (grid.length > 1 || grid[0].length > 1) ? grid : null;
 }
 
-export function writeCellGrid(rows: string[][]): { text: string; html: string } {
+export function writeCellGrid(rows: string[][]): {
+  text: string;
+  html: string;
+} {
   const text = rows
     .map((row) =>
       row
-        .map((value) => (/[\t\n"]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value))
+        .map((value) =>
+          /[\t\n"]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value,
+        )
         .join("\t"),
     )
     .join("\n");
@@ -21,19 +26,22 @@ export function writeCellGrid(rows: string[][]): { text: string; html: string } 
 }
 
 function readHtmlGrid(html: string): string[][] | null {
-  const table = new DOMParser().parseFromString(html, "text/html").querySelector("table");
+  const table = new DOMParser()
+    .parseFromString(html, "text/html")
+    .querySelector("table");
   if (!table) return null;
   const ownRows = table.querySelectorAll<HTMLTableRowElement>(
     ":scope > tr, :scope > thead > tr, :scope > tbody > tr, :scope > tfoot > tr",
   );
   const rows = Array.from(ownRows).map((tr) =>
-    Array.from(tr.querySelectorAll<HTMLTableCellElement>(":scope > td, :scope > th")).flatMap(
-      (cell) => {
-        for (const br of Array.from(cell.querySelectorAll("br"))) br.replaceWith("\n");
-        const value = (cell.textContent ?? "").replace(/\r/g, "").trim();
-        return [value, ...Array.from({ length: cell.colSpan - 1 }, () => "")];
-      },
-    ),
+    Array.from(
+      tr.querySelectorAll<HTMLTableCellElement>(":scope > td, :scope > th"),
+    ).flatMap((cell) => {
+      for (const br of Array.from(cell.querySelectorAll("br")))
+        br.replaceWith("\n");
+      const value = (cell.textContent ?? "").replace(/\r/g, "").trim();
+      return [value, ...Array.from({ length: cell.colSpan - 1 }, () => "")];
+    }),
   );
   return rows.length > 0 && rows[0].length > 0 ? rows : null;
 }
@@ -70,10 +78,14 @@ function readTsvGrid(text: string): string[][] | null {
     }
   }
   rows[rows.length - 1].push(value);
-  if (rows.length > 1 && rows[rows.length - 1].every((cell) => cell === "")) rows.pop();
+  if (rows.length > 1 && rows[rows.length - 1].every((cell) => cell === ""))
+    rows.pop();
   return rows;
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

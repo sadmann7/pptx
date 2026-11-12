@@ -12,7 +12,11 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
-import { Presentation, useCreatePresentationStore, useSelection } from "@diceui/pptx";
+import {
+  Presentation,
+  useCreatePresentationStore,
+  useSelection,
+} from "@diceui/pptx";
 import { createRoot } from "react-dom/client";
 
 const file = new URLSearchParams(location.search).get("file") ?? "basic.pptx";
@@ -56,7 +60,11 @@ function Toolbar() {
       >
         Left
       </button>
-      <button type="button" data-testid="text-box" onClick={() => void insertTextBox()}>
+      <button
+        type="button"
+        data-testid="text-box"
+        onClick={() => void insertTextBox()}
+      >
         Text box
       </button>
       <button
@@ -73,7 +81,11 @@ function Toolbar() {
       >
         Draw ellipse
       </button>
-      <button type="button" data-testid="insert-table" onClick={() => void insertTable(2, 3)}>
+      <button
+        type="button"
+        data-testid="insert-table"
+        onClick={() => void insertTable(2, 3)}
+      >
         Table
       </button>
       <button
@@ -91,7 +103,13 @@ function Toolbar() {
         Fill
       </button>
       <output data-testid="state">
-        {JSON.stringify({ mode, nodeIds, cell, cellRange, bold: textStyle?.bold ?? null })}
+        {JSON.stringify({
+          mode,
+          nodeIds,
+          cell,
+          cellRange,
+          bold: textStyle?.bold ?? null,
+        })}
       </output>
       {createPortal(
         <div style={{ position: "fixed", right: 8, bottom: 8 }}>
@@ -133,7 +151,9 @@ function App() {
     window.__editStore = store;
     fetch(`/${file}`)
       .then((response) => response.arrayBuffer())
-      .then((buffer) => store.load(buffer, { readOnly: false, embedFonts: false }))
+      .then((buffer) =>
+        store.load(buffer, { readOnly: false, embedFonts: false }),
+      )
       .then(() => {
         window.__editingReady = true;
       })

@@ -18,7 +18,9 @@ export interface DeckPart {
 type PartStatus = "unchanged" | "rewritten" | "added" | "removed";
 
 type SourcePackage = NonNullable<
-  NonNullable<ReturnType<PresentationStore["getState"]>["presentation"]>["sourcePackage"]
+  NonNullable<
+    ReturnType<PresentationStore["getState"]>["presentation"]
+  >["sourcePackage"]
 >;
 
 const CONTENT_TYPES_PATH = "[Content_Types].xml";
@@ -42,14 +44,19 @@ const DemoDeckContext = React.createContext<PresentationStore | null>(null);
 
 function useDemoDeck() {
   const store = React.useContext(DemoDeckContext);
-  if (!store) throw new Error("`useDemoDeck` must be used within `DemoDeckProvider`.");
+  if (!store)
+    throw new Error("`useDemoDeck` must be used within `DemoDeckProvider`.");
   return store;
 }
 
 export function DemoDeckProvider({ children }: { children: React.ReactNode }) {
   const store = useDemoDeckStore();
 
-  return <DemoDeckContext.Provider value={store}>{children}</DemoDeckContext.Provider>;
+  return (
+    <DemoDeckContext.Provider value={store}>
+      {children}
+    </DemoDeckContext.Provider>
+  );
 }
 
 export function DemoDeckEditor({
@@ -63,7 +70,9 @@ export function DemoDeckEditor({
 
   return (
     <PresentationEditor store={store} className={className}>
-      {defaultSelectedNodeName && <DefaultSelection nodeName={defaultSelectedNodeName} />}
+      {defaultSelectedNodeName && (
+        <DefaultSelection nodeName={defaultSelectedNodeName} />
+      )}
     </PresentationEditor>
   );
 }
@@ -86,7 +95,13 @@ function DefaultSelection({ nodeName }: { nodeName: string }) {
   return null;
 }
 
-export function DemoDeckParts({ fileName, parts }: { fileName: string; parts: DeckPart[] }) {
+export function DemoDeckParts({
+  fileName,
+  parts,
+}: {
+  fileName: string;
+  parts: DeckPart[];
+}) {
   const store = useDemoDeck();
   const changes = usePartChanges(store, parts);
   const sourceRows = parts.filter(
@@ -151,7 +166,9 @@ export function DemoDeckParts({ fileName, parts }: { fileName: string; parts: De
               <span
                 className={cn(
                   "text-xs",
-                  isChanged ? "text-green-600 dark:text-green-400" : "text-muted-foreground",
+                  isChanged
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-muted-foreground",
                 )}
               >
                 {status === "unchanged" ? (
@@ -164,14 +181,18 @@ export function DemoDeckParts({ fileName, parts }: { fileName: string; parts: De
                 )}
               </span>
               <span className="w-16 text-right text-xs text-muted-foreground max-sm:hidden">
-                {formatSize(change && status !== "removed" ? change.size : row.size)}
+                {formatSize(
+                  change && status !== "removed" ? change.size : row.size,
+                )}
               </span>
             </li>
           );
         })}
         <li className="px-3.5 py-2 text-xs text-muted-foreground sm:px-5">
           <span className="sm:hidden">+ {hiddenCount} more, unchanged</span>
-          <span className="max-sm:hidden">+ {hiddenCount} more parts, unchanged</span>
+          <span className="max-sm:hidden">
+            + {hiddenCount} more parts, unchanged
+          </span>
         </li>
       </ul>
       <div className="flex items-center justify-between gap-4 border-t bg-background px-3.5 py-3.5 text-xs sm:px-5">
@@ -220,7 +241,12 @@ function usePartChanges(store: PresentationStore, parts: DeckPart[]) {
   }, [sourcePackage]);
 
   React.useEffect(() => {
-    if (!sourcePackage || baseline?.sourcePackage !== sourcePackage || revision === 0) return;
+    if (
+      !sourcePackage ||
+      baseline?.sourcePackage !== sourcePackage ||
+      revision === 0
+    )
+      return;
     let cancelled = false;
 
     void diffParts(sourcePackage, parts, baseline.bytes).then((changes) => {
@@ -232,7 +258,8 @@ function usePartChanges(store: PresentationStore, parts: DeckPart[]) {
     };
   }, [sourcePackage, parts, baseline, revision]);
 
-  if (revision === 0 || !result || result.sourcePackage !== sourcePackage) return NO_CHANGES;
+  if (revision === 0 || !result || result.sourcePackage !== sourcePackage)
+    return NO_CHANGES;
   return result.changes;
 }
 

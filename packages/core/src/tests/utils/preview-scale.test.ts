@@ -41,7 +41,9 @@ describe("computePanelScale", () => {
     expect(computePanelScale({ panelWidth: 0, ...base })).toBeNull();
     expect(computePanelScale({ panelWidth: -10, ...base })).toBeNull();
     expect(computePanelScale({ panelWidth: Number.NaN, ...base })).toBeNull();
-    expect(computePanelScale({ panelWidth: Number.POSITIVE_INFINITY, ...base })).toBeNull();
+    expect(
+      computePanelScale({ panelWidth: Number.POSITIVE_INFINITY, ...base }),
+    ).toBeNull();
   });
 
   it("returns null when no usable base dimensions exist", () => {

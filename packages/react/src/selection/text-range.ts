@@ -51,7 +51,9 @@ export function getParagraphElements(container: HTMLElement): HTMLElement[] {
 
 // The `<br>` a browser adds to keep an empty line open has nothing after it, unlike an `a:br` one.
 function isRenderedBreak(element: HTMLBRElement): boolean {
-  return element.nextSibling !== null && !element.hasAttribute(PPTX_ATTRS.emptyLine);
+  return (
+    element.nextSibling !== null && !element.hasAttribute(PPTX_ATTRS.emptyLine)
+  );
 }
 
 function getTextLeaves(paragraph: HTMLElement): (Text | HTMLBRElement)[] {
@@ -61,7 +63,8 @@ function getTextLeaves(paragraph: HTMLElement): (Text | HTMLBRElement)[] {
     NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
     {
       acceptNode: (node) =>
-        node instanceof HTMLElement && node.dataset[PPTX_DATASET.bullet] !== undefined
+        node instanceof HTMLElement &&
+        node.dataset[PPTX_DATASET.bullet] !== undefined
           ? NodeFilter.FILTER_REJECT
           : NodeFilter.FILTER_ACCEPT,
     },
@@ -82,7 +85,9 @@ function getLeafLength(leaf: Text | HTMLBRElement): number {
 
 export function getParagraphText(paragraph: HTMLElement): string {
   return getTextLeaves(paragraph)
-    .map((leaf) => (leaf instanceof HTMLBRElement ? "\n" : cleanText(leaf.data)))
+    .map((leaf) =>
+      leaf instanceof HTMLBRElement ? "\n" : cleanText(leaf.data),
+    )
     .join("");
 }
 
@@ -96,7 +101,8 @@ export function getTextPosition(
   // A point between paragraphs (on the container itself) snaps to the start
   // of the paragraph after it, or the end of the last one.
   if (node === container && paragraphs[0] !== container) {
-    if (offset < paragraphs.length) return { paragraphIndex: offset, offset: 0 };
+    if (offset < paragraphs.length)
+      return { paragraphIndex: offset, offset: 0 };
     const last = paragraphs.length - 1;
     return {
       paragraphIndex: last,
@@ -104,7 +110,9 @@ export function getTextPosition(
     };
   }
 
-  const paragraphIndex = paragraphs.findIndex((paragraph) => paragraph.contains(node));
+  const paragraphIndex = paragraphs.findIndex((paragraph) =>
+    paragraph.contains(node),
+  );
   if (paragraphIndex < 0) return null;
   const paragraph = paragraphs[paragraphIndex];
 
@@ -123,8 +131,15 @@ export function getTextPosition(
   return { paragraphIndex, offset: count };
 }
 
-export function getTextRange(container: HTMLElement, range: AbstractRange): TextRange | null {
-  const start = getTextPosition(container, range.startContainer, range.startOffset);
+export function getTextRange(
+  container: HTMLElement,
+  range: AbstractRange,
+): TextRange | null {
+  const start = getTextPosition(
+    container,
+    range.startContainer,
+    range.startOffset,
+  );
   const end = getTextPosition(container, range.endContainer, range.endOffset);
   return start && end ? { start, end } : null;
 }
@@ -141,7 +156,10 @@ export function getDomPoint(
     const length = getLeafLength(leaf);
     if (remaining <= length && leaf instanceof Text) return [leaf, remaining];
     if (remaining === 0) {
-      return [leaf.parentNode!, Array.prototype.indexOf.call(leaf.parentNode!.childNodes, leaf)];
+      return [
+        leaf.parentNode!,
+        Array.prototype.indexOf.call(leaf.parentNode!.childNodes, leaf),
+      ];
     }
     remaining -= length;
   }
@@ -151,7 +169,10 @@ export function getDomPoint(
 const WORD_CHARACTER = /[\p{L}\p{N}_'’-]/u;
 
 // PowerPoint formats the word under a collapsed caret.
-export function expandToWord(text: string, offset: number): [start: number, end: number] | null {
+export function expandToWord(
+  text: string,
+  offset: number,
+): [start: number, end: number] | null {
   let start = offset;
   let end = offset;
   while (start > 0 && WORD_CHARACTER.test(text[start - 1])) start--;
@@ -172,11 +193,18 @@ function toHexColor(cssColor: string): string | null {
 // The inline `pt` size, which CSS `zoom` leaves alone, divided by the container's `normAutofit` scale.
 function getFontSize(element: HTMLElement): number | null {
   const scale = Number(
-    element.closest<HTMLElement>(`[${PPTX_ATTRS.fontScale}]`)?.dataset[PPTX_DATASET.fontScale] ?? 1,
+    element.closest<HTMLElement>(`[${PPTX_ATTRS.fontScale}]`)?.dataset[
+      PPTX_DATASET.fontScale
+    ] ?? 1,
   );
-  for (let current: HTMLElement | null = element; current; current = current.parentElement) {
+  for (
+    let current: HTMLElement | null = element;
+    current;
+    current = current.parentElement
+  ) {
     const size = current.style.fontSize;
-    if (size.endsWith("pt")) return Math.round((Number.parseFloat(size) / scale) * 10) / 10;
+    if (size.endsWith("pt"))
+      return Math.round((Number.parseFloat(size) / scale) * 10) / 10;
     if (current.dataset[PPTX_DATASET.nodeId] !== undefined) break;
   }
   return null;
@@ -190,7 +218,9 @@ function toAlign(textAlign: string): ParagraphAlign {
 }
 
 function getShared<T>(values: T[]): T | null {
-  return values.every((value) => value === values[0]) ? (values[0] ?? null) : null;
+  return values.every((value) => value === values[0])
+    ? (values[0] ?? null)
+    : null;
 }
 
 export function getActiveTextStyle(
@@ -202,8 +232,11 @@ export function getActiveTextStyle(
     const computed = getComputedStyle(run);
     const decoration = `${computed.textDecorationLine} ${run.style.textDecoration}`;
     return {
-      bold: Number.parseInt(computed.fontWeight, 10) >= 600 || computed.fontWeight === "bold",
-      italic: computed.fontStyle === "italic" || computed.fontStyle === "oblique",
+      bold:
+        Number.parseInt(computed.fontWeight, 10) >= 600 ||
+        computed.fontWeight === "bold",
+      italic:
+        computed.fontStyle === "italic" || computed.fontStyle === "oblique",
       underline: decoration.includes("underline"),
       strikethrough: decoration.includes("line-through"),
       color: toHexColor(computed.color),
@@ -224,7 +257,11 @@ export function getActiveTextStyle(
     color: getShared(styles.map((style) => style.color)),
     fontFamily: getShared(styles.map((style) => style.fontFamily)),
     fontSize: getShared(styles.map((style) => style.fontSize)),
-    align: getShared(paragraphs.map((paragraph) => toAlign(getComputedStyle(paragraph).textAlign))),
+    align: getShared(
+      paragraphs.map((paragraph) =>
+        toAlign(getComputedStyle(paragraph).textAlign),
+      ),
+    ),
   };
 }
 
@@ -252,17 +289,21 @@ export function getRangeRuns(
   const paragraphs = getParagraphElements(container).filter((paragraph) =>
     live.intersectsNode(paragraph),
   );
-  const allRuns = Array.from(container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`));
+  const allRuns = Array.from(
+    container.querySelectorAll<HTMLElement>(`[${PPTX_ATTRS.run}]`),
+  );
 
   if (!live.collapsed) {
     const runs = allRuns.filter(
-      (run) => live.intersectsNode(run) && getSelectedText(live, run).length > 0,
+      (run) =>
+        live.intersectsNode(run) && getSelectedText(live, run).length > 0,
     );
     if (runs.length > 0) return { runs, paragraphs };
   }
 
   const start = range.startContainer;
-  const startElement = start instanceof HTMLElement ? start : start.parentElement;
+  const startElement =
+    start instanceof HTMLElement ? start : start.parentElement;
   const run = startElement?.closest<HTMLElement>(`[${PPTX_ATTRS.run}]`);
   if (run && container.contains(run)) return { runs: [run], paragraphs };
   const paragraph = paragraphs[0] ?? getParagraphElements(container)[0];
@@ -282,21 +323,32 @@ export function textContainerOf(shapeElement: HTMLElement): HTMLElement | null {
   return null;
 }
 
-export function placeholderPromptOf(shapeElement: HTMLElement): HTMLElement | null {
-  return shapeElement.querySelector<HTMLElement>(`[${PPTX_ATTRS.placeholderPrompt}]`);
+export function placeholderPromptOf(
+  shapeElement: HTMLElement,
+): HTMLElement | null {
+  return shapeElement.querySelector<HTMLElement>(
+    `[${PPTX_ATTRS.placeholderPrompt}]`,
+  );
 }
 
-export function readBackTextBody(container: HTMLElement): SetTextBodyParagraph[] {
+export function readBackTextBody(
+  container: HTMLElement,
+): SetTextBodyParagraph[] {
   const paragraphs: SetTextBodyParagraph[] = [];
   let lastSourceParagraph = 0;
 
   for (const paragraphDiv of getParagraphElements(container)) {
     const paragraphIndexAttr = paragraphDiv.dataset?.[PPTX_DATASET.paragraph];
     const sourceParagraphIndex =
-      paragraphIndexAttr !== undefined ? Number(paragraphIndexAttr) : lastSourceParagraph;
+      paragraphIndexAttr !== undefined
+        ? Number(paragraphIndexAttr)
+        : lastSourceParagraph;
     lastSourceParagraph = sourceParagraphIndex;
 
-    const runs = readRunsFromParagraphElement(paragraphDiv, sourceParagraphIndex);
+    const runs = readRunsFromParagraphElement(
+      paragraphDiv,
+      sourceParagraphIndex,
+    );
     paragraphs.push({ sourceParagraphIndex, runs });
   }
 
@@ -311,11 +363,17 @@ function readRunsFromParagraphElement(
   let lastSourceRun: [number, number] | undefined;
 
   for (const child of Array.from(paragraphDiv.childNodes)) {
-    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.bullet] !== undefined) {
+    if (
+      child instanceof HTMLElement &&
+      child.dataset[PPTX_DATASET.bullet] !== undefined
+    ) {
       continue;
     }
 
-    if (child instanceof HTMLElement && child.dataset[PPTX_DATASET.run] !== undefined) {
+    if (
+      child instanceof HTMLElement &&
+      child.dataset[PPTX_DATASET.run] !== undefined
+    ) {
       const runIndex = Number(child.dataset[PPTX_DATASET.run]);
       const sourceRun: [number, number] = [defaultSourceParagraph, runIndex];
       const text = cleanText(child.textContent);
@@ -324,7 +382,8 @@ function readRunsFromParagraphElement(
         lastSourceRun = sourceRun;
       }
     } else if (child instanceof HTMLBRElement) {
-      if (isRenderedBreak(child)) runs.push({ text: "\n", sourceRun: lastSourceRun });
+      if (isRenderedBreak(child))
+        runs.push({ text: "\n", sourceRun: lastSourceRun });
     } else if (child.nodeType === Node.TEXT_NODE) {
       const text = cleanText(child.textContent);
       if (text.length > 0) {
@@ -348,34 +407,51 @@ function readRunsFromParagraphElement(
 export function getTableCells(node: SlideNode): TableCellAddress[] {
   if (node.nodeType !== "table") return [];
   const cells: TableCellAddress[] = [];
-  for (const [row, { cells: rowCells }] of (node as TableNodeData).rows.entries()) {
+  for (const [row, { cells: rowCells }] of (
+    node as TableNodeData
+  ).rows.entries()) {
     for (const [column, cell] of rowCells.entries()) {
-      if (!cell.hMerge && !cell.vMerge && cell.textBody) cells.push({ row, column });
+      if (!cell.hMerge && !cell.vMerge && cell.textBody)
+        cells.push({ row, column });
     }
   }
   return cells;
 }
 
-export function getTextBody(node: SlideNode, cell?: TableCellAddress): TextBody | undefined {
+export function getTextBody(
+  node: SlideNode,
+  cell?: TableCellAddress,
+): TextBody | undefined {
   if (node.nodeType === "table") {
-    return cell ? (node as TableNodeData).rows[cell.row]?.cells[cell.column]?.textBody : undefined;
+    return cell
+      ? (node as TableNodeData).rows[cell.row]?.cells[cell.column]?.textBody
+      : undefined;
   }
-  return node.nodeType === "shape" ? (node as ShapeNodeData).textBody : undefined;
+  return node.nodeType === "shape"
+    ? (node as ShapeNodeData).textBody
+    : undefined;
 }
 
 export function getCellAddress(element: Element): TableCellAddress | undefined {
-  const value = element.closest(`[${PPTX_ATTRS.cell}]`)?.getAttribute(PPTX_ATTRS.cell);
+  const value = element
+    .closest(`[${PPTX_ATTRS.cell}]`)
+    ?.getAttribute(PPTX_ATTRS.cell);
   if (!value) return undefined;
   const [row, column] = value.split(",").map(Number);
   return { row, column };
 }
 
-export function getIsSameCell(a?: TableCellAddress, b?: TableCellAddress): boolean {
+export function getIsSameCell(
+  a?: TableCellAddress,
+  b?: TableCellAddress,
+): boolean {
   return a?.row === b?.row && a?.column === b?.column;
 }
 
 export function getPlainText(paragraphs: SetTextBodyParagraph[]): string {
-  return paragraphs.map((paragraph) => paragraph.runs.map((run) => run.text).join("")).join("\n");
+  return paragraphs
+    .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
+    .join("\n");
 }
 
 export function textBodyChanged(

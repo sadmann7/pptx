@@ -45,7 +45,12 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
     const b = srcRect.numAttr("b");
     const l = srcRect.numAttr("l");
     const r = srcRect.numAttr("r");
-    if (t !== undefined || b !== undefined || l !== undefined || r !== undefined) {
+    if (
+      t !== undefined ||
+      b !== undefined ||
+      l !== undefined ||
+      r !== undefined
+    ) {
       crop = {
         top: (t ?? 0) / CROP_DIVISOR,
         bottom: (b ?? 0) / CROP_DIVISOR,
@@ -58,7 +63,11 @@ export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const spPr = picNode.child("spPr");
   const solidFill = spPr.child("solidFill");
   const gradFill = spPr.child("gradFill");
-  const fill = solidFill.exists() ? solidFill : gradFill.exists() ? gradFill : undefined;
+  const fill = solidFill.exists()
+    ? solidFill
+    : gradFill.exists()
+      ? gradFill
+      : undefined;
 
   const ln = spPr.child("ln");
   const line = ln.exists() ? ln : undefined;

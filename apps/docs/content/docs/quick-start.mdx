@@ -74,7 +74,9 @@ export function Editor({ file }: { file: File }) {
         <Presentation.Slide>
           <Presentation.Selection
             undoRedoShortcuts
-            onUndo={(status) => status === "empty" && console.warn("Nothing to undo")}
+            onUndo={(status) =>
+              status === "empty" && console.warn("Nothing to undo")
+            }
             onRedo={(status, error) => {
               if (error) console.error(error);
               else if (status === "empty") console.warn("Nothing to redo");

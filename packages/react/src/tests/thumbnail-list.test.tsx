@@ -111,7 +111,10 @@ describe("Presentation.ThumbnailList", () => {
     const outside = document.createElement("button");
     document.body.appendChild(outside);
 
-    withStore(store, <Presentation.ThumbnailList initialFocus={{ current: outside }} />);
+    withStore(
+      store,
+      <Presentation.ThumbnailList initialFocus={{ current: outside }} />,
+    );
     expect(document.activeElement).toBe(outside);
 
     outside.remove();
@@ -121,7 +124,10 @@ describe("Presentation.ThumbnailList", () => {
     // A ref that has not attached, or a resolver returning null, is a focus
     // request that cannot name its target, not a request to stay put.
     const store = await loadedStore();
-    withStore(store, <Presentation.ThumbnailList initialFocus={{ current: null }} />);
+    withStore(
+      store,
+      <Presentation.ThumbnailList initialFocus={{ current: null }} />,
+    );
 
     expect(document.activeElement).toBe(screen.getAllByRole("option")[0]);
   });

@@ -30,19 +30,29 @@ const TITLE_PLACEHOLDER = `<p:sp>
 <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></p:txBody>
 </p:sp>`;
 
-async function openEditable(slides: string[], layoutShapesXml?: string): Promise<PresentationData> {
+async function openEditable(
+  slides: string[],
+  layoutShapesXml?: string,
+): Promise<PresentationData> {
   const buffer = await buildCustomPptx({ slides, layoutShapesXml });
   return buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 }
 
-async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
+async function saveAndReopen(
+  pres: PresentationData,
+): Promise<PresentationData> {
   const saved = await writePptx(pres);
   return buildPresentation(await readPptx(saved.slice().buffer));
 }
 
-function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): ShapeNodeData {
+function shapeOn(
+  pres: PresentationData,
+  slideIndex: number,
+  nodeId: string,
+): ShapeNodeData {
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
-  if (!node || node.nodeType !== "shape") throw new Error(`shape ${nodeId} not found.`);
+  if (!node || node.nodeType !== "shape")
+    throw new Error(`shape ${nodeId} not found.`);
   return node as ShapeNodeData;
 }
 
@@ -59,7 +69,9 @@ function runSummary(shape: ShapeNodeData, paragraphIndex = 0) {
 
 describe("setTextStyle", () => {
   it("rejects font sizes outside 1–4000pt", async () => {
-    const pres = await openEditable([textShape(2, `<a:p>${run("Hello")}</a:p>`)]);
+    const pres = await openEditable([
+      textShape(2, `<a:p>${run("Hello")}</a:p>`),
+    ]);
     const edit = (fontSize: number) =>
       applyEdit(pres, {
         type: "setTextStyle",
@@ -75,7 +87,10 @@ describe("setTextStyle", () => {
 
   it("formats the whole text body when no range is given", async () => {
     const pres = await openEditable([
-      textShape(2, `<a:p>${run("Hello")}${run(" world")}</a:p><a:p><a:endParaRPr/></a:p>`),
+      textShape(
+        2,
+        `<a:p>${run("Hello")}${run(" world")}</a:p><a:p><a:endParaRPr/></a:p>`,
+      ),
     ]);
     const slideId = pres.slides[0].id;
 
@@ -83,7 +98,12 @@ describe("setTextStyle", () => {
       type: "setTextStyle",
       slideId,
       nodeId: "2",
-      style: { bold: true, fontSize: 24, color: "#ff0000", fontFamily: "Arial" },
+      style: {
+        bold: true,
+        fontSize: 24,
+        color: "#ff0000",
+        fontFamily: "Arial",
+      },
     });
 
     const shape = shapeOn(pres, 0, "2");
@@ -95,7 +115,14 @@ describe("setTextStyle", () => {
     expect(shape.textBody!.paragraphs[1].endParaRPr?.attr("b")).toBe("1");
 
     const reopened = shapeOn(await saveAndReopen(pres), 0, "2");
-    expect(runSummary(reopened)[0]).toEqual(["Hello", "1", undefined, "2400", "FF0000", "Arial"]);
+    expect(runSummary(reopened)[0]).toEqual([
+      "Hello",
+      "1",
+      undefined,
+      "2400",
+      "FF0000",
+      "Arial",
+    ]);
 
     result.undo();
     expect(runSummary(shapeOn(pres, 0, "2"))).toEqual([
@@ -103,12 +130,17 @@ describe("setTextStyle", () => {
       [" world", undefined, undefined, undefined, undefined, undefined],
     ]);
     const undone = shapeOn(await saveAndReopen(pres), 0, "2");
-    expect(undone.textBody!.paragraphs[0].runs[0].properties?.attr("b")).toBeUndefined();
+    expect(
+      undone.textBody!.paragraphs[0].runs[0].properties?.attr("b"),
+    ).toBeUndefined();
   });
 
   it("splits runs at the range edges and keeps their existing formatting", async () => {
     const pres = await openEditable([
-      textShape(2, `<a:p>${run("Hello world", '<a:rPr lang="en-US" i="1"/>')}</a:p>`),
+      textShape(
+        2,
+        `<a:p>${run("Hello world", '<a:rPr lang="en-US" i="1"/>')}</a:p>`,
+      ),
     ]);
 
     await applyEdit(pres, {
@@ -116,7 +148,10 @@ describe("setTextStyle", () => {
       slideId: pres.slides[0].id,
       nodeId: "2",
       style: { bold: true },
-      range: { start: { paragraphIndex: 0, offset: 2 }, end: { paragraphIndex: 0, offset: 7 } },
+      range: {
+        start: { paragraphIndex: 0, offset: 2 },
+        end: { paragraphIndex: 0, offset: 7 },
+      },
     });
 
     expect(runSummary(shapeOn(pres, 0, "2"))).toEqual([
@@ -134,7 +169,10 @@ describe("setTextStyle", () => {
 
   it("formats a range across paragraphs, and accepts a backwards range", async () => {
     const pres = await openEditable([
-      textShape(2, `<a:p>${run("One")}</a:p><a:p>${run("Two")}</a:p><a:p>${run("Three")}</a:p>`),
+      textShape(
+        2,
+        `<a:p>${run("One")}</a:p><a:p>${run("Two")}</a:p><a:p>${run("Three")}</a:p>`,
+      ),
     ]);
 
     await applyEdit(pres, {
@@ -142,7 +180,10 @@ describe("setTextStyle", () => {
       slideId: pres.slides[0].id,
       nodeId: "2",
       style: { italic: true },
-      range: { start: { paragraphIndex: 2, offset: 2 }, end: { paragraphIndex: 0, offset: 1 } },
+      range: {
+        start: { paragraphIndex: 2, offset: 2 },
+        end: { paragraphIndex: 0, offset: 1 },
+      },
     });
 
     const shape = shapeOn(pres, 0, "2");
@@ -150,7 +191,9 @@ describe("setTextStyle", () => {
       ["O", undefined],
       ["ne", "1"],
     ]);
-    expect(runSummary(shape, 1).map((r) => [r[0], r[2]])).toEqual([["Two", "1"]]);
+    expect(runSummary(shape, 1).map((r) => [r[0], r[2]])).toEqual([
+      ["Two", "1"],
+    ]);
     expect(runSummary(shape, 2).map((r) => [r[0], r[2]])).toEqual([
       ["Th", "1"],
       ["ree", undefined],
@@ -178,7 +221,8 @@ describe("setTextStyle", () => {
       },
     });
 
-    const rPr = shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0].properties!;
+    const rPr = shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0]
+      .properties!;
     expect(rPr.attr("sz")).toBeUndefined();
     expect(rPr.child("solidFill").exists()).toBe(false);
     expect(rPr.child("latin").exists()).toBe(false);
@@ -201,7 +245,8 @@ describe("setTextStyle", () => {
       style: { color: "00FF00", fontFamily: "Arial" },
     });
 
-    const rPr = shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0].properties!;
+    const rPr = shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0]
+      .properties!;
     expect(rPr.allChildren().map((c) => c.localName)).toEqual([
       "ln",
       "solidFill",
@@ -215,7 +260,12 @@ describe("setTextStyle", () => {
     const slideId = pres.slides[0].id;
 
     await expect(
-      applyEdit(pres, { type: "setTextStyle", slideId, nodeId: "2", style: { color: "red" } }),
+      applyEdit(pres, {
+        type: "setTextStyle",
+        slideId,
+        nodeId: "2",
+        style: { color: "red" },
+      }),
     ).rejects.toThrow(/invalid color/);
     await expect(
       applyEdit(pres, {
@@ -223,10 +273,15 @@ describe("setTextStyle", () => {
         slideId,
         nodeId: "2",
         style: { bold: true },
-        range: { start: { paragraphIndex: 0, offset: 0 }, end: { paragraphIndex: 4, offset: 0 } },
+        range: {
+          start: { paragraphIndex: 0, offset: 0 },
+          end: { paragraphIndex: 4, offset: 0 },
+        },
       }),
     ).rejects.toThrow(/out of bounds/);
-    expect(shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0].properties).toBeUndefined();
+    expect(
+      shapeOn(pres, 0, "2").textBody!.paragraphs[0].runs[0].properties,
+    ).toBeUndefined();
   });
 });
 
@@ -244,17 +299,28 @@ describe("setParagraphStyle", () => {
       slideId: pres.slides[0].id,
       nodeId: "2",
       style: { align: "center" },
-      range: { start: { paragraphIndex: 0, offset: 1 }, end: { paragraphIndex: 1, offset: 0 } },
+      range: {
+        start: { paragraphIndex: 0, offset: 1 },
+        end: { paragraphIndex: 1, offset: 0 },
+      },
     });
 
     const aligns = (shape: ShapeNodeData) =>
       shape.textBody!.paragraphs.map((p) => p.properties?.attr("algn"));
     expect(aligns(shapeOn(pres, 0, "2"))).toEqual(["ctr", "ctr", undefined]);
     expect(shapeOn(pres, 0, "2").textBody!.paragraphs[0].level).toBe(1);
-    expect(aligns(shapeOn(await saveAndReopen(pres), 0, "2"))).toEqual(["ctr", "ctr", undefined]);
+    expect(aligns(shapeOn(await saveAndReopen(pres), 0, "2"))).toEqual([
+      "ctr",
+      "ctr",
+      undefined,
+    ]);
 
     result.undo();
-    expect(aligns(shapeOn(pres, 0, "2"))).toEqual([undefined, undefined, undefined]);
+    expect(aligns(shapeOn(pres, 0, "2"))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 
   it("aligns every paragraph without a range", async () => {
@@ -270,7 +336,9 @@ describe("setParagraphStyle", () => {
     });
 
     expect(
-      shapeOn(pres, 0, "2").textBody!.paragraphs.map((p) => p.properties?.attr("algn")),
+      shapeOn(pres, 0, "2").textBody!.paragraphs.map((p) =>
+        p.properties?.attr("algn"),
+      ),
     ).toEqual(["just", "just"]);
   });
 });
@@ -278,15 +346,25 @@ describe("setParagraphStyle", () => {
 describe("addSlide", () => {
   it("adds a slide with the layout's content placeholders after the anchor", async () => {
     const pres = await openEditable(
-      [textShape(2, `<a:p>${run("A")}</a:p>`), textShape(2, `<a:p>${run("B")}</a:p>`)],
+      [
+        textShape(2, `<a:p>${run("A")}</a:p>`),
+        textShape(2, `<a:p>${run("B")}</a:p>`),
+      ],
       TITLE_PLACEHOLDER,
     );
     const [first, second] = pres.slides.map((s) => s.id);
 
-    const result = await applyEdit(pres, { type: "addSlide", afterSlideId: first });
+    const result = await applyEdit(pres, {
+      type: "addSlide",
+      afterSlideId: first,
+    });
 
     expect(result.createdSlideId).toBe("ppt/slides/slide3.xml");
-    expect(pres.slides.map((s) => s.id)).toEqual([first, "ppt/slides/slide3.xml", second]);
+    expect(pres.slides.map((s) => s.id)).toEqual([
+      first,
+      "ppt/slides/slide3.xml",
+      second,
+    ]);
     const added = pres.slides[1];
     expect(added.layoutIndex).toBe("ppt/slideLayouts/slideLayout1.xml");
     // The title placeholder is copied empty; the footer is left off.
@@ -306,10 +384,16 @@ describe("addSlide", () => {
   });
 
   it("appends to the end by default and stays editable", async () => {
-    const pres = await openEditable([textShape(2, `<a:p>${run("A")}</a:p>`)], TITLE_PLACEHOLDER);
+    const pres = await openEditable(
+      [textShape(2, `<a:p>${run("A")}</a:p>`)],
+      TITLE_PLACEHOLDER,
+    );
 
     const result = await applyEdit(pres, { type: "addSlide" });
-    expect(pres.slides.map((s) => s.id)).toEqual([pres.slides[0].id, result.createdSlideId]);
+    expect(pres.slides.map((s) => s.id)).toEqual([
+      pres.slides[0].id,
+      result.createdSlideId,
+    ]);
 
     await applyEdit(pres, {
       type: "setTextStyle",
@@ -325,7 +409,10 @@ describe("addSlide", () => {
   it("rejects an unknown layout", async () => {
     const pres = await openEditable([""]);
     await expect(
-      applyEdit(pres, { type: "addSlide", layoutId: "ppt/slideLayouts/nope.xml" }),
+      applyEdit(pres, {
+        type: "addSlide",
+        layoutId: "ppt/slideLayouts/nope.xml",
+      }),
     ).rejects.toThrow(/unknown slide layout/);
     expect(pres.slides).toHaveLength(1);
   });
@@ -336,16 +423,32 @@ describe("setSlideBackground", () => {
     const pres = await openEditable([textShape(2, `<a:p>${run("A")}</a:p>`)]);
     const slideId = pres.slides[0].id;
 
-    const set = await applyEdit(pres, { type: "setSlideBackground", slideId, color: "#112233" });
+    const set = await applyEdit(pres, {
+      type: "setSlideBackground",
+      slideId,
+      color: "#112233",
+    });
     const bgColor = (p: PresentationData) =>
-      p.slides[0].background?.child("bgPr").child("solidFill").child("srgbClr").attr("val");
+      p.slides[0].background
+        ?.child("bgPr")
+        .child("solidFill")
+        .child("srgbClr")
+        .attr("val");
     expect(bgColor(pres)).toBe("112233");
     expect(bgColor(await saveAndReopen(pres))).toBe("112233");
 
-    const replace = await applyEdit(pres, { type: "setSlideBackground", slideId, color: "445566" });
+    const replace = await applyEdit(pres, {
+      type: "setSlideBackground",
+      slideId,
+      color: "445566",
+    });
     expect(bgColor(pres)).toBe("445566");
 
-    const clear = await applyEdit(pres, { type: "setSlideBackground", slideId, color: null });
+    const clear = await applyEdit(pres, {
+      type: "setSlideBackground",
+      slideId,
+      color: null,
+    });
     expect(pres.slides[0].background).toBeUndefined();
     expect((await saveAndReopen(pres)).slides[0].background).toBeUndefined();
 

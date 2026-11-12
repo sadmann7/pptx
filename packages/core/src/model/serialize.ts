@@ -69,7 +69,9 @@ export interface SerializedPresentation {
   slides: SerializedSlide[];
 }
 
-function serializeTextBody(tb: TextBody | undefined): SerializedTextBody | undefined {
+function serializeTextBody(
+  tb: TextBody | undefined,
+): SerializedTextBody | undefined {
   if (!tb) return undefined;
   const paragraphs: SerializedParagraph[] = tb.paragraphs.map((p) => ({
     level: p.level,
@@ -82,7 +84,9 @@ function serializeTextBody(tb: TextBody | undefined): SerializedTextBody | undef
 
 function serializeCell(cell: TableCell): SerializedCell {
   const text = cell.textBody
-    ? cell.textBody.paragraphs.map((p) => p.runs.map((r) => r.text).join("")).join("\n")
+    ? cell.textBody.paragraphs
+        .map((p) => p.runs.map((r) => r.text).join(""))
+        .join("\n")
     : "";
   return { text, gridSpan: cell.gridSpan, rowSpan: cell.rowSpan };
 }
@@ -103,7 +107,11 @@ function parseGroupChild(
   master?: MasterData,
   parentGroup?: GroupNodeData,
 ): BaseNodeData | undefined {
-  const child = parseRenderableChild(childXml, { rels, partPath, diagramDrawings });
+  const child = parseRenderableChild(childXml, {
+    rels,
+    partPath,
+    diagramDrawings,
+  });
   if (child) {
     resolveNodePlaceholderInheritance(child, layout, master, { parentGroup });
   }
@@ -168,7 +176,16 @@ function serializeNode(
             g,
           );
           if (parsed) {
-            children.push(serializeNode(parsed, rels, partPath, diagramDrawings, layout, master));
+            children.push(
+              serializeNode(
+                parsed,
+                rels,
+                partPath,
+                diagramDrawings,
+                layout,
+                master,
+              ),
+            );
           }
         } catch {
           // Unparseable group children are skipped.
@@ -183,7 +200,9 @@ function serializeNode(
 }
 
 /** Converts a presentation into JSON-safe data with no raw XML references. */
-export function serializePresentation(pres: PresentationData): SerializedPresentation {
+export function serializePresentation(
+  pres: PresentationData,
+): SerializedPresentation {
   return {
     width: pres.width,
     height: pres.height,
@@ -191,7 +210,8 @@ export function serializePresentation(pres: PresentationData): SerializedPresent
     slides: pres.slides.map((slide, i) => {
       materializeSlide(pres, slide);
 
-      const layoutPath = pres.slideToLayout.get(slide.index) || slide.layoutIndex;
+      const layoutPath =
+        pres.slideToLayout.get(slide.index) || slide.layoutIndex;
       const layout = pres.layouts.get(layoutPath);
       const masterPath = layoutPath ? pres.layoutToMaster.get(layoutPath) : "";
       const master = masterPath ? pres.masters.get(masterPath) : undefined;
@@ -200,7 +220,14 @@ export function serializePresentation(pres: PresentationData): SerializedPresent
         index: i,
         hidden: slide.hidden,
         nodes: slide.nodes.map((node) =>
-          serializeNode(node, slide.rels, slide.id, pres.diagramDrawings, layout, master),
+          serializeNode(
+            node,
+            slide.rels,
+            slide.id,
+            pres.diagramDrawings,
+            layout,
+            master,
+          ),
         ),
       };
     }),

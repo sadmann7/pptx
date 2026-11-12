@@ -22,7 +22,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3003";
 const PAGE_PATH = process.env.PAGE_PATH ?? "/pg?layout=editing";
 const DECK =
-  process.env.DECK ?? path.join(HERE, "..", "recordings", "perf", "decks", "bench-300.pptx");
+  process.env.DECK ??
+  path.join(HERE, "..", "recordings", "perf", "decks", "bench-300.pptx");
 const EDITOR = "[data-slot=presentation-editor]";
 const LIST = `${EDITOR} [role=listbox]`;
 const SHAPE = `${EDITOR} [data-slot=presentation-slide] [data-pptx-node-id]`;
@@ -70,7 +71,9 @@ const scenarios: Scenario[] = [
       page.evaluate(
         ({ list, durationMs }) =>
           new Promise<void>((resolve) => {
-            const scroller = getScroller(document.querySelector<HTMLElement>(list));
+            const scroller = getScroller(
+              document.querySelector<HTMLElement>(list),
+            );
             if (!scroller) return resolve();
             const max = scroller.scrollHeight - scroller.clientHeight;
             const start = performance.now();
@@ -114,7 +117,10 @@ const scenarios: Scenario[] = [
       await page.mouse.down();
       for (let i = 0; i < 240; i++) {
         const angle = (i / 60) * Math.PI * 2;
-        await page.mouse.move(cx + Math.cos(angle) * 120, cy + Math.sin(angle) * 80);
+        await page.mouse.move(
+          cx + Math.cos(angle) * 120,
+          cy + Math.sin(angle) * 80,
+        );
         await page.waitForTimeout(8);
       }
       await page.mouse.up();
@@ -130,7 +136,11 @@ async function hoverList(page: Page) {
 
 async function wheel(
   page: Page,
-  { deltaY, events, intervalMs }: { deltaY: number; events: number; intervalMs: number },
+  {
+    deltaY,
+    events,
+    intervalMs,
+  }: { deltaY: number; events: number; intervalMs: number },
 ) {
   for (let i = 0; i < events; i++) {
     await page.mouse.wheel(0, deltaY);
@@ -167,14 +177,18 @@ main().catch((error) => {
 });
 
 async function main() {
-  const label = process.argv[2] ?? new Date().toISOString().replace(/[:.]/g, "-");
+  const label =
+    process.argv[2] ?? new Date().toISOString().replace(/[:.]/g, "-");
   const only = process.argv[3];
   const outDir = path.join(HERE, "..", "recordings", "perf", label);
   await mkdir(outDir, { recursive: true });
-  if (!existsSync(DECK)) throw new Error(`No deck at ${DECK}; run \`pnpm bench-deck\` first.`);
+  if (!existsSync(DECK))
+    throw new Error(`No deck at ${DECK}; run \`pnpm bench-deck\` first.`);
 
   const browser = await chromium.launch({ headless: false });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  const page = await browser.newPage({
+    viewport: { width: 1600, height: 1000 },
+  });
   const cdp = await page.context().newCDPSession(page);
   const cpuThrottle = Number(process.env.CPU_THROTTLE ?? 1);
   if (cpuThrottle > 1) {
@@ -188,10 +202,16 @@ async function main() {
   await page
     .locator(`${EDITOR} [data-presentation-selection]`)
     .waitFor({ state: "attached", timeout: 120_000 });
-  if (process.env.EXTRA_CSS) await page.addStyleTag({ content: process.env.EXTRA_CSS });
+  if (process.env.EXTRA_CSS)
+    await page.addStyleTag({ content: process.env.EXTRA_CSS });
   if (process.env.STRIP_CSS) {
-    const stripped = await page.evaluate(stripStyleRules, process.env.STRIP_CSS);
-    console.log(`Stripped ${stripped} style rules matching ${process.env.STRIP_CSS}`);
+    const stripped = await page.evaluate(
+      stripStyleRules,
+      process.env.STRIP_CSS,
+    );
+    console.log(
+      `Stripped ${stripped} style rules matching ${process.env.STRIP_CSS}`,
+    );
   }
   // Parsing, fonts, and the first thumbnails settle first.
   await page.waitForTimeout(3000);
@@ -231,11 +251,16 @@ async function main() {
     Object.fromEntries(
       Object.entries(results).map(([name, stats]) => [
         name,
-        Object.fromEntries(Object.entries(stats).map(([key, value]) => [key, round(value)])),
+        Object.fromEntries(
+          Object.entries(stats).map(([key, value]) => [key, round(value)]),
+        ),
       ]),
     ),
   );
-  await writeFile(path.join(outDir, "summary.json"), JSON.stringify(results, null, 2));
+  await writeFile(
+    path.join(outDir, "summary.json"),
+    JSON.stringify(results, null, 2),
+  );
   console.log(`Traces and summary written to ${outDir}`);
 }
 
@@ -256,7 +281,10 @@ async function reset(page: Page) {
 function stripStyleRules(pattern: string) {
   const regex = new RegExp(pattern);
   let count = 0;
-  const strip = (rules: CSSRuleList, owner: CSSStyleSheet | CSSGroupingRule) => {
+  const strip = (
+    rules: CSSRuleList,
+    owner: CSSStyleSheet | CSSGroupingRule,
+  ) => {
     for (let index = rules.length - 1; index >= 0; index--) {
       const rule = rules[index];
       if (rule instanceof CSSStyleRule && regex.test(rule.selectorText)) {
@@ -321,7 +349,8 @@ function startFrameRecorder(list: string | null) {
   const observer = new PerformanceObserver((entries) => {
     for (const entry of entries.getEntries()) {
       const scripts =
-        (entry as PerformanceEntry & { scripts?: { duration: number }[] }).scripts ?? [];
+        (entry as PerformanceEntry & { scripts?: { duration: number }[] })
+          .scripts ?? [];
       recorder.loafs.push({
         duration: entry.duration,
         scriptMs: scripts.reduce((sum, script) => sum + script.duration, 0),
@@ -333,19 +362,23 @@ function startFrameRecorder(list: string | null) {
   } catch {
     // Long animation frames are Chromium only.
   }
-  Object.assign(window, { __frameRecorder: recorder, __frameObserver: observer });
+  Object.assign(window, {
+    __frameRecorder: recorder,
+    __frameObserver: observer,
+  });
 }
 
 function stopFrameRecorder() {
-  const { __frameRecorder: recorder, __frameObserver: observer } = window as unknown as {
-    __frameRecorder: {
-      deltas: number[];
-      blankFrames: number;
-      loafs: { duration: number; scriptMs: number }[];
-      running: boolean;
+  const { __frameRecorder: recorder, __frameObserver: observer } =
+    window as unknown as {
+      __frameRecorder: {
+        deltas: number[];
+        blankFrames: number;
+        loafs: { duration: number; scriptMs: number }[];
+        running: boolean;
+      };
+      __frameObserver: PerformanceObserver;
     };
-    __frameObserver: PerformanceObserver;
-  };
   recorder.running = false;
   observer.disconnect();
   // The first delta spans the gap before recording started.
@@ -361,7 +394,11 @@ function summarize(
     deltas,
     blankFrames,
     loafs,
-  }: { deltas: number[]; blankFrames: number; loafs: { duration: number; scriptMs: number }[] },
+  }: {
+    deltas: number[];
+    blankFrames: number;
+    loafs: { duration: number; scriptMs: number }[];
+  },
   vsync: number,
 ): FrameStats {
   const at = (q: number) => percentile(deltas, q);
@@ -379,7 +416,8 @@ function summarize(
     ),
     longAnimationFrames: loafs.length,
     loafScriptMs: loafs.reduce((sum, loaf) => sum + loaf.scriptMs, 0),
-    blankFramesPct: deltas.length > 0 ? (blankFrames / (deltas.length + 1)) * 100 : 0,
+    blankFramesPct:
+      deltas.length > 0 ? (blankFrames / (deltas.length + 1)) * 100 : 0,
     // Filled in from the traced run.
     mainThreadMs: 0,
   };
@@ -387,10 +425,17 @@ function summarize(
 
 function percentile(values: number[], q: number) {
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
+  return (
+    sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0
+  );
 }
 
-async function recordTrace(page: Page, cdp: CDPSession, outFile: string, run: () => Promise<void>) {
+async function recordTrace(
+  page: Page,
+  cdp: CDPSession,
+  outFile: string,
+  run: () => Promise<void>,
+) {
   const events: unknown[] = [];
   const onData = ({ value }: { value: unknown[] }) => events.push(...value);
   cdp.on("Tracing.dataCollected", onData);
@@ -417,7 +462,9 @@ function getMainThreadBusyMs(events: TraceEvent[]) {
     events
       .filter(
         (event) =>
-          event.ph === "M" && event.name === "thread_name" && event.args?.name === "CrRendererMain",
+          event.ph === "M" &&
+          event.name === "thread_name" &&
+          event.args?.name === "CrRendererMain",
       )
       .map((event) => `${event.pid}:${event.tid}`),
   );
@@ -426,7 +473,10 @@ function getMainThreadBusyMs(events: TraceEvent[]) {
     if (event.ph !== "X" || event.name !== "RunTask" || !event.dur) continue;
     const thread = `${event.pid}:${event.tid}`;
     if (!mainThreads.has(thread)) continue;
-    busyByThread.set(thread, (busyByThread.get(thread) ?? 0) + event.dur / 1000);
+    busyByThread.set(
+      thread,
+      (busyByThread.get(thread) ?? 0) + event.dur / 1000,
+    );
   }
   // Other renderers (extensions, about:blank) barely run, so the busiest one is the page.
   return Math.max(0, ...busyByThread.values());

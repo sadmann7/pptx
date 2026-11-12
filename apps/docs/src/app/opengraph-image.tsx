@@ -11,8 +11,11 @@ export const contentType = "image/png";
 export default async function Image() {
   const fonts = await loadFonts();
 
-  return new ImageResponse(<OgImage title={SITE_TAGLINE} description={SITE_DESCRIPTION} />, {
-    ...size,
-    fonts,
-  });
+  return new ImageResponse(
+    <OgImage title={SITE_TAGLINE} description={SITE_DESCRIPTION} />,
+    {
+      ...size,
+      fonts,
+    },
+  );
 }

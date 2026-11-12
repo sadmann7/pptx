@@ -86,8 +86,14 @@ describe("evaluateGuideFormula", () => {
 
   it("evaluates at2/cat2/sat2 with OOXML argument order", () => {
     expect(evaluateGuideFormula("at2 1 1", ctx)).toBeCloseTo(2700000, 3); // atan2 → 45°.
-    expect(evaluateGuideFormula("cat2 100 1 1", ctx)).toBeCloseTo(100 * Math.cos(Math.PI / 4), 9);
-    expect(evaluateGuideFormula("sat2 100 1 1", ctx)).toBeCloseTo(100 * Math.sin(Math.PI / 4), 9);
+    expect(evaluateGuideFormula("cat2 100 1 1", ctx)).toBeCloseTo(
+      100 * Math.cos(Math.PI / 4),
+      9,
+    );
+    expect(evaluateGuideFormula("sat2 100 1 1", ctx)).toBeCloseTo(
+      100 * Math.sin(Math.PI / 4),
+      9,
+    );
   });
 
   it("returns 0 for division by zero and unknown operators", () => {

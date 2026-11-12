@@ -76,7 +76,9 @@ export function encodeLzcompOps(
     // The decoder adds one to the length of any far copy before using it.
     const encodedLength = op.length - 2 - (op.distance >= 512 ? 1 : 0);
     if (encodedLength < 0)
-      throw new Error(`Copy length ${op.length} is too short for distance ${op.distance}`);
+      throw new Error(
+        `Copy length ${op.length} is too short for distance ${op.distance}`,
+      );
 
     // Length travels as base-4 digits, most significant first: the top digit
     // rides in the symbol's low bits, the rest come from the length tree.
@@ -90,23 +92,32 @@ export function encodeLzcompOps(
     let used = 1;
     while (op.distance - 1 >= 8 ** used) used++;
     if (used > ranges)
-      throw new Error(`Distance ${op.distance} needs more ranges than the stream declares`);
+      throw new Error(
+        `Distance ${op.distance} needs more ranges than the stream declares`,
+      );
 
     const head = (digits.length > 1 ? 4 : 0) | digits[0]!;
     bits.codes(symbolTree.encode(256 + (used - 1) * 8 + head));
     for (let i = 1; i < digits.length; i++) {
-      bits.codes(lengthTree.encode((i < digits.length - 1 ? 4 : 0) | digits[i]!));
+      bits.codes(
+        lengthTree.encode((i < digits.length - 1 ? 4 : 0) | digits[i]!),
+      );
     }
 
     for (let i = used - 1; i >= 0; i--) {
-      bits.codes(distanceTree.encode(Math.floor((op.distance - 1) / 8 ** i) % 8));
+      bits.codes(
+        distanceTree.encode(Math.floor((op.distance - 1) / 8 ** i) % 8),
+      );
     }
   }
 
   return bits.finish();
 }
 
-export function encodeLzcompLiterals(data: Uint8Array, options: LzcompOptions = {}): Uint8Array {
+export function encodeLzcompLiterals(
+  data: Uint8Array,
+  options: LzcompOptions = {},
+): Uint8Array {
   return encodeLzcompOps(
     Array.from(data, (literal) => ({ literal })),
     data.length,
@@ -118,7 +129,10 @@ export function encodeLzcompLiterals(data: Uint8Array, options: LzcompOptions = 
 const SEARCH_WINDOW = 512;
 
 // Greedy LZ77 over the decoder's own history, so the copy path sees real back-references.
-export function encodeLzcompGreedy(data: Uint8Array, options: LzcompOptions = {}): Uint8Array {
+export function encodeLzcompGreedy(
+  data: Uint8Array,
+  options: LzcompOptions = {},
+): Uint8Array {
   const ranges = distanceRangesFor(data.length);
   const maxDistance = Math.min(8 ** ranges, SEARCH_WINDOW);
   const ops: LzcompOp[] = [];
@@ -207,7 +221,9 @@ export const TTEMBED_XORENCRYPTDATA = 0x10000000;
 export function buildEot(fontData: Uint8Array, flags: number): Uint8Array {
   const headerSize = 96;
   const payload =
-    flags & TTEMBED_XORENCRYPTDATA ? Uint8Array.from(fontData, (byte) => byte ^ 0x50) : fontData;
+    flags & TTEMBED_XORENCRYPTDATA
+      ? Uint8Array.from(fontData, (byte) => byte ^ 0x50)
+      : fontData;
   const out = new Uint8Array(headerSize + payload.length);
   const view = new DataView(out.buffer);
   view.setUint32(0, out.length, true);
@@ -272,7 +288,11 @@ export function encodeCvt(values: readonly number[]): Uint8Array {
   return Uint8Array.from(out);
 }
 
-export function encodeTriplet(dx: number, dy: number, onCurve: boolean): number[] {
+export function encodeTriplet(
+  dx: number,
+  dy: number,
+  onCurve: boolean,
+): number[] {
   for (let index = 0; index < 128; index++) {
     const encoding = tripletEncoding(index);
     const rawX = (encoding.xNegative ? -dx : dx) - encoding.deltaX;
@@ -343,7 +363,12 @@ function pushInt16(out: number[], value: number): void {
   out.push((value >> 8) & 0xff, value & 0xff);
 }
 
-function encodeHints(glyph: GlyphHints, rest: number[], push: number[], code: number[]): void {
+function encodeHints(
+  glyph: GlyphHints,
+  rest: number[],
+  push: number[],
+  code: number[],
+): void {
   const values = glyph.pushes ?? [];
   const bytecode = glyph.code ?? [];
   write255UShort(rest, values.length);
@@ -352,7 +377,8 @@ function encodeHints(glyph: GlyphHints, rest: number[], push: number[], code: nu
   for (let i = 0; i < values.length;) {
     // Hop codes replay the value two slots back, so they need that history and
     // enough room left in the declared count.
-    const canHop = glyph.useHopCodes === true && i >= 2 && values[i] === values[i - 2];
+    const canHop =
+      glyph.useHopCodes === true && i >= 2 && values[i] === values[i - 2];
     if (
       canHop &&
       i + 5 <= values.length &&
@@ -363,7 +389,11 @@ function encodeHints(glyph: GlyphHints, rest: number[], push: number[], code: nu
       write255Short(push, values[i + 1]!);
       write255Short(push, values[i + 3]!);
       i += 5;
-    } else if (canHop && i + 3 <= values.length && values[i + 2] === values[i]) {
+    } else if (
+      canHop &&
+      i + 3 <= values.length &&
+      values[i + 2] === values[i]
+    ) {
       push.push(251);
       write255Short(push, values[i + 1]!);
       i += 3;
@@ -375,7 +405,12 @@ function encodeHints(glyph: GlyphHints, rest: number[], push: number[], code: nu
   code.push(...bytecode);
 }
 
-function encodeGlyph(glyph: CtfGlyph, rest: number[], push: number[], code: number[]): void {
+function encodeGlyph(
+  glyph: CtfGlyph,
+  rest: number[],
+  push: number[],
+  code: number[],
+): void {
   if (glyph.kind === "composite") {
     pushInt16(rest, -1);
     for (const value of glyph.bbox) pushInt16(rest, value);
@@ -405,7 +440,8 @@ function encodeGlyph(glyph: CtfGlyph, rest: number[], push: number[], code: numb
   }
 
   glyph.contours.forEach((contour, index) => {
-    if (contour.length === 0) throw new Error("A CTF contour must contain at least one point");
+    if (contour.length === 0)
+      throw new Error("A CTF contour must contain at least one point");
     write255UShort(rest, index === 0 ? contour.length - 1 : contour.length);
   });
 
@@ -414,7 +450,11 @@ function encodeGlyph(glyph: CtfGlyph, rest: number[], push: number[], code: numb
   let priorX = 0;
   let priorY = 0;
   for (const point of points) {
-    const triplet = encodeTriplet(point.x - priorX, point.y - priorY, point.onCurve);
+    const triplet = encodeTriplet(
+      point.x - priorX,
+      point.y - priorY,
+      point.onCurve,
+    );
     priorX = point.x;
     priorY = point.y;
     rest.push(triplet[0]!);
@@ -445,7 +485,9 @@ function makeMaxp(numGlyphs: number): Uint8Array {
   return maxp;
 }
 
-export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uint8Array] {
+export function buildCtfStreams(
+  spec: CtfFontSpec,
+): [Uint8Array, Uint8Array, Uint8Array] {
   const glyphs = spec.glyphs ?? [];
   const glyphBytes: number[] = [];
   const push: number[] = [];
@@ -460,7 +502,10 @@ export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uin
       ];
 
   const tables: { tag: string; data: Uint8Array }[] = [
-    { tag: "head", data: makeHead(spec.indexToLocFormat ?? 0, spec.unitsPerEm ?? 1000) },
+    {
+      tag: "head",
+      data: makeHead(spec.indexToLocFormat ?? 0, spec.unitsPerEm ?? 1000),
+    },
     { tag: "maxp", data: makeMaxp(spec.numGlyphs ?? glyphs.length) },
     ...(spec.cvt ? [{ tag: "cvt ", data: encodeCvt(spec.cvt) }] : []),
     ...(spec.extraTables ?? []),
@@ -496,10 +541,18 @@ export interface BuildEotOptions extends LzcompOptions {
   literalOnly?: boolean;
 }
 
-export function buildCompressedEot(spec: CtfFontSpec, options: BuildEotOptions = {}): Uint8Array {
-  const encode = options.literalOnly ? encodeLzcompLiterals : encodeLzcompGreedy;
-  const streams = buildCtfStreams(spec).map((stream) => encode(stream, options));
-  const flags = TTEMBED_TTCOMPRESSED | (options.encrypted ? TTEMBED_XORENCRYPTDATA : 0);
+export function buildCompressedEot(
+  spec: CtfFontSpec,
+  options: BuildEotOptions = {},
+): Uint8Array {
+  const encode = options.literalOnly
+    ? encodeLzcompLiterals
+    : encodeLzcompGreedy;
+  const streams = buildCtfStreams(spec).map((stream) =>
+    encode(stream, options),
+  );
+  const flags =
+    TTEMBED_TTCOMPRESSED | (options.encrypted ? TTEMBED_XORENCRYPTDATA : 0);
   return buildEot(
     buildMtx(streams as [Uint8Array, Uint8Array, Uint8Array], options.version),
     flags,

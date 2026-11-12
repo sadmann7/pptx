@@ -12,7 +12,12 @@ import {
 import { fail, MtxError, type MtxErrorCode } from "./error";
 import { resolveLimits, type DecoderLimits } from "./limits";
 import { decompressLzcomp } from "./lzcomp";
-import { buildSfnt, validateSfnt, type SfntContainer, type SfntTable } from "./sfnt";
+import {
+  buildSfnt,
+  validateSfnt,
+  type SfntContainer,
+  type SfntTable,
+} from "./sfnt";
 
 export interface DecodeOptions {
   // EOT XOR obfuscation, undone before unpacking.
@@ -27,14 +32,18 @@ export interface UnpackedMtx {
   sizes: [number, number, number];
 }
 
-export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): UnpackedMtx {
+export function unpackMtx(
+  data: Uint8Array,
+  limits?: Partial<DecoderLimits>,
+): UnpackedMtx {
   const size = data.length;
   if (size < 10) fail("INVALID_MTX", "Invalid MTX size");
   const reader = new Reader(data, 0, size);
   const version = reader.u8();
   // Version 3 is MTX 1.0. Version 1 predates the run-length flag bit and is
   // still produced by older embedders; decompressLzcomp branches on it.
-  if (version !== 1 && version !== 3) fail("UNSUPPORTED", `Unsupported MTX version ${version}`);
+  if (version !== 1 && version !== 3)
+    fail("UNSUPPORTED", `Unsupported MTX version ${version}`);
   reader.u24be();
   const offset2 = reader.u24be();
   const offset3 = reader.u24be();
@@ -48,17 +57,24 @@ export function unpackMtx(data: Uint8Array, limits?: Partial<DecoderLimits>): Un
     unpack(offset2, offset3),
     unpack(offset3, size),
   ];
-  return { streams, sizes: [streams[0].length, streams[1].length, streams[2].length] };
+  return {
+    streams,
+    sizes: [streams[0].length, streams[1].length, streams[2].length],
+  };
 }
 
 // An uncompressed block is already an sfnt, so it is only deobfuscated.
-export function decodeMtx(data: Uint8Array, options: DecodeOptions = {}): Uint8Array {
+export function decodeMtx(
+  data: Uint8Array,
+  options: DecodeOptions = {},
+): Uint8Array {
   const encrypted = options.encrypted ?? false;
   const compressed = options.compressed ?? true;
   let decrypted = data;
   if (encrypted) {
     decrypted = data.slice();
-    for (let i = 0; i < decrypted.length; i++) decrypted[i] = decrypted[i]! ^ 0x50;
+    for (let i = 0; i < decrypted.length; i++)
+      decrypted[i] = decrypted[i]! ^ 0x50;
   }
   if (!compressed) return decrypted;
   const limits = resolveLimits(options.limits);
@@ -92,4 +108,11 @@ export {
   TTEMBED_XORENCRYPTDATA,
   validateSfnt,
 };
-export type { DecoderLimits, EotMetadata, EotVersion, MtxErrorCode, SfntContainer, SfntTable };
+export type {
+  DecoderLimits,
+  EotMetadata,
+  EotVersion,
+  MtxErrorCode,
+  SfntContainer,
+  SfntTable,
+};

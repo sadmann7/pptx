@@ -10,7 +10,9 @@ export function TitleScene() {
     <AbsoluteFill>
       <Backdrop />
       <SceneContent durationInFrames={TITLE_DURATION}>
-        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+        <AbsoluteFill
+          style={{ alignItems: "center", justifyContent: "center" }}
+        >
           <SoftBlurIn
             text="PowerPoint in the browser."
             fontSize={104}

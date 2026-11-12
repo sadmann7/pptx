@@ -90,7 +90,10 @@ export function createLegendIcon(
     const circle = document.createElementNS(ns, "circle");
     circle.setAttribute("cx", String(width / 2));
     circle.setAttribute("cy", String(height / 2));
-    circle.setAttribute("r", String(Math.max(2, Math.min(width, height) / 2 - 1)));
+    circle.setAttribute(
+      "r",
+      String(Math.max(2, Math.min(width, height) / 2 - 1)),
+    );
     circle.setAttribute("fill", color);
     svg.appendChild(circle);
     return svg;
@@ -124,13 +127,15 @@ export function buildCustomLegendOverlay(
   if (!legend || legend.show === false) return null;
 
   const isVertical = legend.orient === "vertical";
-  const isHorizontal = legend.orient === "horizontal" || legend.orient === undefined;
+  const isHorizontal =
+    legend.orient === "horizontal" || legend.orient === undefined;
   const hasHorizontalAnchor =
     legend.top !== undefined ||
     legend.bottom !== undefined ||
     legend.left !== undefined ||
     legend.right !== undefined;
-  if (isVertical && legend.left === undefined && legend.right === undefined) return null;
+  if (isVertical && legend.left === undefined && legend.right === undefined)
+    return null;
   if (isHorizontal && !hasHorizontalAnchor) return null;
 
   const palette = Array.isArray(option.color)
@@ -164,20 +169,29 @@ export function buildCustomLegendOverlay(
       const name = typeof item === "string" ? item : item.name;
       const itemIcon = typeof item === "string" ? undefined : item.icon;
       const itemMarker = typeof item === "string" ? undefined : item.marker;
-      const itemVisual = typeof item === "string" ? undefined : (item as Record<string, unknown>);
+      const itemVisual =
+        typeof item === "string"
+          ? undefined
+          : (item as Record<string, unknown>);
       if (!name) return null;
       const seriesIndex = seriesList.findIndex(
-        (candidate) => (candidate as Record<string, unknown> | undefined)?.name === name,
+        (candidate) =>
+          (candidate as Record<string, unknown> | undefined)?.name === name,
       );
       const radarIndex =
-        radarData?.findIndex((candidate) => (candidate as Record<string, unknown>).name === name) ??
-        -1;
-      const series = (seriesIndex >= 0 ? seriesList[seriesIndex] : seriesList[index]) as
-        | Record<string, unknown>
-        | undefined;
+        radarData?.findIndex(
+          (candidate) => (candidate as Record<string, unknown>).name === name,
+        ) ?? -1;
+      const series = (
+        seriesIndex >= 0 ? seriesList[seriesIndex] : seriesList[index]
+      ) as Record<string, unknown> | undefined;
       const radarVisual =
-        radarData && radarIndex >= 0 ? radarData[radarIndex] : (radarData?.[index] ?? undefined);
-      const visual = radarData ? (radarVisual ?? itemVisual ?? series) : (itemVisual ?? series);
+        radarData && radarIndex >= 0
+          ? radarData[radarIndex]
+          : (radarData?.[index] ?? undefined);
+      const visual = radarData
+        ? (radarVisual ?? itemVisual ?? series)
+        : (itemVisual ?? series);
       const lineSource = radarVisual ?? series;
       const markerSource = radarVisual ?? series ?? itemVisual;
       const lineStyle = {
@@ -185,7 +199,10 @@ export function buildCustomLegendOverlay(
         ...(itemVisual?.lineStyle as Record<string, unknown> | undefined),
       };
       const paletteIndex = seriesIndex >= 0 ? seriesIndex : index;
-      const color = pickVisualStringColor(visual, palette[paletteIndex] ?? "#2f6f8f");
+      const color = pickVisualStringColor(
+        visual,
+        palette[paletteIndex] ?? "#2f6f8f",
+      );
       const lineWidth =
         typeof lineStyle.width === "number" && Number.isFinite(lineStyle.width)
           ? Math.max(1, lineStyle.width)
@@ -216,10 +233,14 @@ export function buildCustomLegendOverlay(
   overlay.style.pointerEvents = "none";
   overlay.style.zIndex = "1";
   overlay.style.whiteSpace = "nowrap";
-  if (legend.left !== undefined) overlay.style.left = resolveInsetToPx(legend.left, size.w);
-  if (legend.right !== undefined) overlay.style.right = resolveInsetToPx(legend.right, size.w);
-  if (legend.width !== undefined) overlay.style.width = resolveInsetToPx(legend.width, size.w);
-  if (legend.height !== undefined) overlay.style.height = resolveInsetToPx(legend.height, size.h);
+  if (legend.left !== undefined)
+    overlay.style.left = resolveInsetToPx(legend.left, size.w);
+  if (legend.right !== undefined)
+    overlay.style.right = resolveInsetToPx(legend.right, size.w);
+  if (legend.width !== undefined)
+    overlay.style.width = resolveInsetToPx(legend.width, size.w);
+  if (legend.height !== undefined)
+    overlay.style.height = resolveInsetToPx(legend.height, size.h);
   if (legend.width !== undefined || legend.height !== undefined) {
     overlay.style.boxSizing = "border-box";
     if (isHorizontal) {
@@ -231,7 +252,8 @@ export function buildCustomLegendOverlay(
     }
   }
   const sideLegend =
-    legend.orient === "vertical" && (legend.left !== undefined || legend.right !== undefined);
+    legend.orient === "vertical" &&
+    (legend.left !== undefined || legend.right !== undefined);
   if (sideLegend) {
     if (legend.top === "middle") {
       overlay.style.top = `${size.h / 2}px`;
@@ -245,7 +267,8 @@ export function buildCustomLegendOverlay(
   } else if (legend.top !== undefined) {
     overlay.style.top = resolveInsetToPx(legend.top, size.h);
   }
-  if (legend.bottom !== undefined) overlay.style.bottom = resolveInsetToPx(legend.bottom, size.h);
+  if (legend.bottom !== undefined)
+    overlay.style.bottom = resolveInsetToPx(legend.bottom, size.h);
   if (isHorizontal && legend.left === undefined && legend.right === undefined) {
     overlay.style.left = "50%";
     overlay.style.transform = "translateX(-50%)";
@@ -261,11 +284,16 @@ export function buildCustomLegendOverlay(
     row.style.alignItems = "center";
     row.style.gap = "6px";
 
-    const iconMarkerSize = entry.marker && entry.marker !== "none" ? entry.markerSize : undefined;
+    const iconMarkerSize =
+      entry.marker && entry.marker !== "none" ? entry.markerSize : undefined;
     const iconWidth =
-      iconMarkerSize !== undefined ? Math.max(itemWidth, Math.ceil(iconMarkerSize)) : itemWidth;
+      iconMarkerSize !== undefined
+        ? Math.max(itemWidth, Math.ceil(iconMarkerSize))
+        : itemWidth;
     const iconHeight =
-      iconMarkerSize !== undefined ? Math.max(itemHeight, Math.ceil(iconMarkerSize)) : itemHeight;
+      iconMarkerSize !== undefined
+        ? Math.max(itemHeight, Math.ceil(iconMarkerSize))
+        : itemHeight;
 
     const icon = createLegendIcon(
       entry.icon,

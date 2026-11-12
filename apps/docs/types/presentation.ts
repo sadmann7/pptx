@@ -13,7 +13,8 @@ type OverriddenHtmlKeys<T, Html> = {
   [K in keyof T & keyof Html]-?: [T[K]] extends [Html[K]] ? never : K;
 }[keyof T & keyof Html];
 
-type IndieProps<T, Html> = Omit<T, keyof Html> & Pick<T, OverriddenHtmlKeys<T, Html>>;
+type IndieProps<T, Html> = Omit<T, keyof Html> &
+  Pick<T, OverriddenHtmlKeys<T, Html>>;
 
 type DivProps = React.ComponentProps<"div">;
 type ButtonProps = React.ComponentProps<"button">;
@@ -23,26 +24,59 @@ export type ProviderProps = PresentationPrimitive.Provider.Props;
 
 export type RootProps = IndieProps<PresentationPrimitive.Root.Props, DivProps>;
 
-export type ViewportProps = IndieProps<PresentationPrimitive.Viewport.Props, DivProps>;
+export type ViewportProps = IndieProps<
+  PresentationPrimitive.Viewport.Props,
+  DivProps
+>;
 
-export type SlideProps = IndieProps<PresentationPrimitive.Slide.Props, DivProps>;
+export type SlideProps = IndieProps<
+  PresentationPrimitive.Slide.Props,
+  DivProps
+>;
 
-export type SelectionProps = IndieProps<PresentationPrimitive.Selection.Props, DivProps>;
+export type SelectionProps = IndieProps<
+  PresentationPrimitive.Selection.Props,
+  DivProps
+>;
 
-export type SelectionBoxProps = IndieProps<PresentationPrimitive.SelectionBox.Props, DivProps>;
+export type SelectionBoxProps = IndieProps<
+  PresentationPrimitive.SelectionBox.Props,
+  DivProps
+>;
 
-export type ResizeHandleProps = IndieProps<PresentationPrimitive.ResizeHandle.Props, DivProps>;
+export type ResizeHandleProps = IndieProps<
+  PresentationPrimitive.ResizeHandle.Props,
+  DivProps
+>;
 
-export type RotateHandleProps = IndieProps<PresentationPrimitive.RotateHandle.Props, DivProps>;
+export type RotateHandleProps = IndieProps<
+  PresentationPrimitive.RotateHandle.Props,
+  DivProps
+>;
 
-export type SnapGuideProps = IndieProps<PresentationPrimitive.SnapGuide.Props, DivProps>;
+export type SnapGuideProps = IndieProps<
+  PresentationPrimitive.SnapGuide.Props,
+  DivProps
+>;
 
-export type MarqueeProps = IndieProps<PresentationPrimitive.Marquee.Props, DivProps>;
-export type ControlsProps = IndieProps<PresentationPrimitive.Controls.Props, DivProps>;
+export type MarqueeProps = IndieProps<
+  PresentationPrimitive.Marquee.Props,
+  DivProps
+>;
+export type ControlsProps = IndieProps<
+  PresentationPrimitive.Controls.Props,
+  DivProps
+>;
 
-export type ThumbnailListProps = IndieProps<PresentationPrimitive.ThumbnailList.Props, DivProps>;
+export type ThumbnailListProps = IndieProps<
+  PresentationPrimitive.ThumbnailList.Props,
+  DivProps
+>;
 
-export type ThumbnailItemProps = IndieProps<PresentationPrimitive.ThumbnailItem.Props, ButtonProps>;
+export type ThumbnailItemProps = IndieProps<
+  PresentationPrimitive.ThumbnailItem.Props,
+  ButtonProps
+>;
 
 export type ThumbnailItemPreviewProps = IndieProps<
   PresentationPrimitive.ThumbnailItemPreview.Props,
@@ -54,6 +88,12 @@ export type ThumbnailItemNumberProps = IndieProps<
   SpanProps
 >;
 
-export type LoadingProps = IndieProps<PresentationPrimitive.Loading.Props, DivProps>;
+export type LoadingProps = IndieProps<
+  PresentationPrimitive.Loading.Props,
+  DivProps
+>;
 
-export type ErrorProps = IndieProps<PresentationPrimitive.Error.Props, DivProps>;
+export type ErrorProps = IndieProps<
+  PresentationPrimitive.Error.Props,
+  DivProps
+>;

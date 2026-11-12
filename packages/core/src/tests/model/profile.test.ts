@@ -9,7 +9,10 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildPresentation, materializeAllSlides } from "../../model/presentation";
+import {
+  buildPresentation,
+  materializeAllSlides,
+} from "../../model/presentation";
 import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
@@ -21,12 +24,16 @@ interface ProfileRow {
   totalMs: number;
 }
 
-async function captureProfile(workload: () => void | Promise<void>): Promise<ProfileRow[]> {
+async function captureProfile(
+  workload: () => void | Promise<void>,
+): Promise<ProfileRow[]> {
   const session = new Session();
   session.connect();
   const post = (method: string, params?: object): Promise<unknown> =>
     new Promise((resolve, reject) => {
-      session.post(method, params, (err, result) => (err ? reject(err) : resolve(result)));
+      session.post(method, params, (err, result) =>
+        err ? reject(err) : resolve(result),
+      );
     });
 
   await post("Profiler.enable");
@@ -47,8 +54,13 @@ async function captureProfile(workload: () => void | Promise<void>): Promise<Pro
   };
   session.disconnect();
 
-  const totalSamples = profile.nodes.reduce((sum, n) => sum + (n.hitCount ?? 0), 0);
-  const totalMs = (profile.timeDeltas?.reduce((a, b) => a + b, 0) ?? totalSamples * 100) / 1000;
+  const totalSamples = profile.nodes.reduce(
+    (sum, n) => sum + (n.hitCount ?? 0),
+    0,
+  );
+  const totalMs =
+    (profile.timeDeltas?.reduce((a, b) => a + b, 0) ?? totalSamples * 100) /
+    1000;
   const msPerSample = totalSamples > 0 ? totalMs / totalSamples : 0;
 
   const byFunction = new Map<string, ProfileRow>();
@@ -73,10 +85,14 @@ async function captureProfile(workload: () => void | Promise<void>): Promise<Pro
 
 function printTop(label: string, rows: ProfileRow[], limit = 30): void {
   const total = rows.reduce((sum, r) => sum + r.selfMs, 0);
-  const lines = [`\n===== ${label}: total self time ${total.toFixed(1)}ms =====`];
+  const lines = [
+    `\n===== ${label}: total self time ${total.toFixed(1)}ms =====`,
+  ];
   for (const row of rows.slice(0, limit)) {
     const pct = ((row.selfMs / total) * 100).toFixed(1).padStart(5);
-    lines.push(`${pct}%  ${row.selfMs.toFixed(1).padStart(8)}ms  ${row.name}  [${row.file}]`);
+    lines.push(
+      `${pct}%  ${row.selfMs.toFixed(1).padStart(8)}ms  ${row.name}  [${row.file}]`,
+    );
   }
   const report = lines.join("\n");
   console.log(report);

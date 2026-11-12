@@ -1,4 +1,8 @@
-﻿import { findMediaByTarget, findMediaByTargetAsync, getOrCreateBlobUrl } from "../media/resolve";
+﻿import {
+  findMediaByTarget,
+  findMediaByTargetAsync,
+  getOrCreateBlobUrl,
+} from "../media/resolve";
 import { isExternalTargetMode, RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import { hexToRgb } from "../utils/color";
@@ -25,9 +29,13 @@ function compositeOnWhite(r: number, g: number, b: number, a: number): string {
 
 function applyBackgroundFillCss(container: HTMLElement, fillCss: string): void {
   if (fillCss.includes("gradient") && fillCss.includes(" 0 0 / ")) {
-    const bgMatch = fillCss.match(/,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/);
+    const bgMatch = fillCss.match(
+      /,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/,
+    );
     if (bgMatch && bgMatch.index !== undefined) {
-      const imageLayers = fillCss.slice(0, bgMatch.index).replace(/\s+0 0\s*\/\s*8px 8px/g, "");
+      const imageLayers = fillCss
+        .slice(0, bgMatch.index)
+        .replace(/\s+0 0\s*\/\s*8px 8px/g, "");
       container.style.backgroundImage = imageLayers;
       container.style.backgroundSize = "8px 8px";
       container.style.backgroundRepeat = "repeat";
@@ -62,7 +70,10 @@ function angleToSvgGradientCoords(angleDeg: number): {
   };
 }
 
-function appendGradientStops(gradient: SVGGradientElement, stops: GradientFillData["stops"]): void {
+function appendGradientStops(
+  gradient: SVGGradientElement,
+  stops: GradientFillData["stops"],
+): void {
   const svgNs = "http://www.w3.org/2000/svg";
   for (const stop of stops) {
     const svgStop = document.createElementNS(svgNs, "stop");
@@ -96,7 +107,10 @@ function renderSvgGradientBackground(
   svg.appendChild(defs);
   const gradId = `bg-grad-${++backgroundGradientIdCounter}`;
 
-  if (gradientFillData.type === "radial" && gradientFillData.pathType === "rect") {
+  if (
+    gradientFillData.type === "radial" &&
+    gradientFillData.pathType === "rect"
+  ) {
     const gcx = gradientFillData.cx ?? 0.5;
     const gcy = gradientFillData.cy ?? 0.5;
     const mirrorStops = (centerFrac: number, axis: "x" | "y") => {
@@ -104,8 +118,14 @@ function renderSvgGradientBackground(
       const mirrored: Array<{ offset: number; color: string }> = [];
       for (const stop of focusedStops) {
         const t = stop.position / 100;
-        mirrored.push({ offset: centerFrac - t * centerFrac, color: stop.color });
-        mirrored.push({ offset: centerFrac + t * (1 - centerFrac), color: stop.color });
+        mirrored.push({
+          offset: centerFrac - t * centerFrac,
+          color: stop.color,
+        });
+        mirrored.push({
+          offset: centerFrac + t * (1 - centerFrac),
+          color: stop.color,
+        });
       }
       return mirrored.sort((a, b) => a.offset - b.offset);
     };
@@ -113,7 +133,10 @@ function renderSvgGradientBackground(
     const hGradId = `${gradId}-h`;
     const hGrad = document.createElementNS(svgNs, "linearGradient");
     hGrad.setAttribute("id", hGradId);
-    hGrad.setAttribute("color-interpolation", gradientFillData.colorInterpolation ?? "linearRGB");
+    hGrad.setAttribute(
+      "color-interpolation",
+      gradientFillData.colorInterpolation ?? "linearRGB",
+    );
     hGrad.setAttribute("x1", "0%");
     hGrad.setAttribute("y1", "0%");
     hGrad.setAttribute("x2", "100%");
@@ -129,7 +152,10 @@ function renderSvgGradientBackground(
     const vGradId = `${gradId}-v`;
     const vGrad = document.createElementNS(svgNs, "linearGradient");
     vGrad.setAttribute("id", vGradId);
-    vGrad.setAttribute("color-interpolation", gradientFillData.colorInterpolation ?? "linearRGB");
+    vGrad.setAttribute(
+      "color-interpolation",
+      gradientFillData.colorInterpolation ?? "linearRGB",
+    );
     vGrad.setAttribute("x1", "0%");
     vGrad.setAttribute("y1", "0%");
     vGrad.setAttribute("x2", "0%");
@@ -174,8 +200,14 @@ function renderSvgGradientBackground(
     radialGrad.setAttribute("cy", String(gcy * height));
     const maxDx = Math.max(gcx, 1 - gcx);
     const maxDy = Math.max(gcy, 1 - gcy);
-    radialGrad.setAttribute("r", String(Math.hypot(maxDx * width, maxDy * height)));
-    appendGradientStops(radialGrad, getFocusedGradientStops(gradientFillData, { width, height }));
+    radialGrad.setAttribute(
+      "r",
+      String(Math.hypot(maxDx * width, maxDy * height)),
+    );
+    appendGradientStops(
+      radialGrad,
+      getFocusedGradientStops(gradientFillData, { width, height }),
+    );
     defs.appendChild(radialGrad);
 
     const rect = document.createElementNS(svgNs, "rect");
@@ -210,9 +242,11 @@ function renderSvgGradientBackground(
     container.style.position = "relative";
   }
   container.style.background = "";
-  container.querySelectorAll('svg[data-pptx-background-gradient="true"]').forEach((el) => {
-    el.remove();
-  });
+  container
+    .querySelectorAll('svg[data-pptx-background-gradient="true"]')
+    .forEach((el) => {
+      el.remove();
+    });
   container.insertBefore(svg, container.firstChild);
 }
 
@@ -221,7 +255,11 @@ function tryRenderSvgGradientBackground(
   ctx: RenderContext,
   container: HTMLElement,
 ): boolean {
-  return tryRenderSvgGradientBackgroundData(resolveGradientFill(bgPr, ctx), ctx, container);
+  return tryRenderSvgGradientBackgroundData(
+    resolveGradientFill(bgPr, ctx),
+    ctx,
+    container,
+  );
 }
 
 function tryRenderSvgGradientBackgroundData(
@@ -240,7 +278,10 @@ function tryRenderSvgGradientBackgroundData(
   return true;
 }
 
-export function renderBackground(ctx: RenderContext, container: HTMLElement): void {
+export function renderBackground(
+  ctx: RenderContext,
+  container: HTMLElement,
+): void {
   // Image references resolve against the rels of whichever level supplied the background.
   let bgNode: SafeXmlNode | undefined;
   let bgRels: Map<string, RelEntry> = ctx.slide.rels;
@@ -333,13 +374,20 @@ function renderBgPr(
 
 // idx 1001+ references the theme's bgFillStyleLst; lower values fall back to
 // fillStyleLst for non-standard producers.
-function renderBgRef(bgRef: SafeXmlNode, ctx: RenderContext, container: HTMLElement): void {
+function renderBgRef(
+  bgRef: SafeXmlNode,
+  ctx: RenderContext,
+  container: HTMLElement,
+): void {
   const idx = bgRef.numAttr("idx") ?? 0;
   const hasThemeFill =
     (idx >= 1001 && idx - 1000 <= (ctx.theme.bgFillStyles?.length ?? 0)) ||
     (idx > 0 && idx <= (ctx.theme.fillStyles?.length ?? 0));
   if (hasThemeFill) {
-    const { fillCss, gradientFillData } = resolveThemeBackgroundFillReference(bgRef, ctx);
+    const { fillCss, gradientFillData } = resolveThemeBackgroundFillReference(
+      bgRef,
+      ctx,
+    );
     if (tryRenderSvgGradientBackgroundData(gradientFillData, ctx, container)) {
       return;
     }
@@ -415,7 +463,11 @@ function renderBlipBackground(
   applyBlipBackground(blipFill, container, url);
 }
 
-function applyBlipBackground(blipFill: SafeXmlNode, container: HTMLElement, url: string): void {
+function applyBlipBackground(
+  blipFill: SafeXmlNode,
+  container: HTMLElement,
+  url: string,
+): void {
   const blipOpacity = resolveBlipOpacity(blipFill.child("blip"));
   if (blipOpacity < 1 || blipFill.child("srcRect").exists()) {
     applyBlipBackgroundLayer(blipFill, container, url, blipOpacity);
@@ -449,9 +501,11 @@ function applyBlipBackgroundLayer(
     container.style.position = "relative";
   }
   container.style.backgroundImage = "";
-  container.querySelectorAll('[data-pptx-background-image="true"]').forEach((el) => {
-    el.remove();
-  });
+  container
+    .querySelectorAll('[data-pptx-background-image="true"]')
+    .forEach((el) => {
+      el.remove();
+    });
 
   const layer = document.createElement("div");
   layer.setAttribute("data-pptx-background-image", "true");
@@ -460,7 +514,9 @@ function applyBlipBackgroundLayer(
   layer.style.opacity = `${Number(opacity.toFixed(4))}`;
 
   const stretch = blipFill.child("stretch");
-  const fillRect = stretch.exists() ? stretch.child("fillRect") : new SafeXmlNode(null);
+  const fillRect = stretch.exists()
+    ? stretch.child("fillRect")
+    : new SafeXmlNode(null);
   applyBackgroundLayerDestination(layer, fillRect);
 
   const srcRect = blipFill.child("srcRect");
@@ -517,7 +573,10 @@ function getStretchFillRectBox(fillRect: SafeXmlNode): PercentRect {
   };
 }
 
-function applyBackgroundLayerDestination(layer: HTMLElement, fillRect: SafeXmlNode): void {
+function applyBackgroundLayerDestination(
+  layer: HTMLElement,
+  fillRect: SafeXmlNode,
+): void {
   const box = getStretchFillRectBox(fillRect);
   layer.style.left = `${box.left}%`;
   layer.style.top = `${box.top}%`;
@@ -525,7 +584,10 @@ function applyBackgroundLayerDestination(layer: HTMLElement, fillRect: SafeXmlNo
   layer.style.height = `${box.height}%`;
 }
 
-function applySourceCropLayer(cropLayer: HTMLElement, srcRect: SafeXmlNode): void {
+function applySourceCropLayer(
+  cropLayer: HTMLElement,
+  srcRect: SafeXmlNode,
+): void {
   const left = pctAttr(srcRect, "l") / 100;
   const top = pctAttr(srcRect, "t") / 100;
   const right = pctAttr(srcRect, "r") / 100;
@@ -580,7 +642,10 @@ function positionForInset(startPct: number, endPct: number): number {
   return (startPct / denominator) * 100;
 }
 
-function applyStretchFillRect(container: HTMLElement, fillRect: SafeXmlNode): void {
+function applyStretchFillRect(
+  container: HTMLElement,
+  fillRect: SafeXmlNode,
+): void {
   if (!fillRect.exists()) {
     container.style.backgroundSize = "100% 100%";
     container.style.backgroundPosition = "";

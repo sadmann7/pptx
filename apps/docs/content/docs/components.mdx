@@ -104,7 +104,9 @@ The viewport keeps measuring itself while fitting is off, so re-arming picks up 
 Renders the active slide as a scaled DOM tree. Mounts an empty wrapper immediately so sibling layout is stable. Children are placed in an `absolute inset-0` overlay.
 
 ```tsx
-<Presentation.Slide onNodeError={(nodeId, error) => reportError(error, { nodeId })}>
+<Presentation.Slide
+  onNodeError={(nodeId, error) => reportError(error, { nodeId })}
+>
   <Presentation.Selection />
 </Presentation.Slide>
 ```
@@ -132,14 +134,17 @@ Must be placed inside `Presentation.Slide`.
   <Presentation.Selection
     onUndo={(status) => status === "empty" && toast.error("Nothing to undo")}
     onRedo={(status, error) => {
-      if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+      if (error)
+        toast.error(error instanceof Error ? error.message : "Redo failed");
       else if (status === "empty") toast.error("Nothing to redo");
     }}
     onNodeDelete={(id, error) => error && toast.error("Could not delete")}
     onNodeTransform={(id, error) => error && toast.error("Could not move")}
     onTextChange={(id, error) => error && toast.error("Text edit failed")}
     onSelectionChange={({ nodes }) => setInspectedShape(nodes[0] ?? null)}
-    onModeChange={(mode) => setToolbarDisabled(mode === "move" || mode === "resize")}
+    onModeChange={(mode) =>
+      setToolbarDisabled(mode === "move" || mode === "resize")
+    }
   />
 </Presentation.Slide>
 ```
@@ -301,7 +306,9 @@ The list navigates on focus, so this triggers for keyboard roving as well as cli
 Renders its children only while the presentation is in the `"loading"` state.
 
 ```tsx
-<Presentation.Loading>{(progress) => <span>Loading {progress}%</span>}</Presentation.Loading>
+<Presentation.Loading>
+  {(progress) => <span>Loading {progress}%</span>}
+</Presentation.Loading>
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="LoadingProps" />
@@ -311,7 +318,9 @@ Renders its children only while the presentation is in the `"loading"` state.
 Renders its children only when the presentation fails to parse.
 
 ```tsx
-<Presentation.Error>{(error) => <span>{error.message}</span>}</Presentation.Error>
+<Presentation.Error>
+  {(error) => <span>{error.message}</span>}
+</Presentation.Error>
 ```
 
 <AutoTypeTable path="types/presentation.ts" name="ErrorProps" />

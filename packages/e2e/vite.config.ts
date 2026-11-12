@@ -46,7 +46,14 @@ function serveLocalDecks(): Plugin {
 // source, which is much slower to start. Requires `pnpm -F @diceui/pptx-core
 // build`, or the request 404s.
 function serveBuiltFontEntry(): Plugin {
-  const file = resolve(import.meta.dirname, "..", "core", "dist", "fonts", "index.mjs");
+  const file = resolve(
+    import.meta.dirname,
+    "..",
+    "core",
+    "dist",
+    "fonts",
+    "index.mjs",
+  );
   return {
     name: "e2e-serve-built-font-entry",
     apply: "serve",

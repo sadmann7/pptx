@@ -179,7 +179,9 @@ function getSlideXml(index: number): string {
   );
 }
 
-export async function buildMinimalPptx(slideCount = SLIDE_COUNT): Promise<ArrayBuffer> {
+export async function buildMinimalPptx(
+  slideCount = SLIDE_COUNT,
+): Promise<ArrayBuffer> {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", getContentTypes(slideCount));
   zip.file("_rels/.rels", rootRels);

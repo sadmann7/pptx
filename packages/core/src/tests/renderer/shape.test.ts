@@ -32,7 +32,9 @@ describe("shape fills", () => {
       `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
        <a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`,
     );
-    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe("#4472c4");
+    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe(
+      "#4472c4",
+    );
   });
 
   it("resolves schemeClr through the theme color scheme", async () => {
@@ -41,7 +43,9 @@ describe("shape fills", () => {
        <a:solidFill><a:schemeClr val="accent2"/></a:solidFill>`,
     );
     // Theme accent2 = ED7D31 in the fixture.
-    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe("#ed7d31");
+    expect(mainPath(element).getAttribute("fill")?.toLowerCase()).toBe(
+      "#ed7d31",
+    );
   });
 
   it("applies alpha as rgba fill", async () => {
@@ -54,7 +58,9 @@ describe("shape fills", () => {
   });
 
   it("renders noFill as fill=none", async () => {
-    const element = await renderShape(`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/>`);
+    const element = await renderShape(
+      `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/>`,
+    );
     expect(mainPath(element).getAttribute("fill")).toBe("none");
   });
 

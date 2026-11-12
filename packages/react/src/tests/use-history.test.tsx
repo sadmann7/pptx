@@ -19,7 +19,10 @@ beforeAll(async () => {
   fixture = await buildMinimalPptx();
 });
 
-async function renderHistory(): Promise<{ store: Store; history: () => UseHistoryResult }> {
+async function renderHistory(): Promise<{
+  store: Store;
+  history: () => UseHistoryResult;
+}> {
   const store = createStore();
   // embedFonts off: the fixture has none, and the font pipeline needs workers.
   await store.load(fixture, { readOnly: false, embedFonts: false });

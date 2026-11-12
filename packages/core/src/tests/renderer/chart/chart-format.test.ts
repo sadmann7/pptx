@@ -62,7 +62,8 @@ describe("excelSerialToDateString", () => {
 
 describe("extractStringValues", () => {
   it("reads strRef caches preserving pt idx ordering and gaps", () => {
-    const cat = parseChartFragment(`<c:cat><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache>
+    const cat =
+      parseChartFragment(`<c:cat><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache>
 <c:ptCount val="3"/>
 <c:pt idx="2"><c:v>C</c:v></c:pt>
 <c:pt idx="0"><c:v>A</c:v></c:pt>
@@ -71,7 +72,8 @@ describe("extractStringValues", () => {
   });
 
   it("falls back to numeric caches, converting date format codes", () => {
-    const cat = parseChartFragment(`<c:cat><c:numRef><c:f>Sheet1!$A$1</c:f><c:numCache>
+    const cat =
+      parseChartFragment(`<c:cat><c:numRef><c:f>Sheet1!$A$1</c:f><c:numCache>
 <c:formatCode>m/d/yyyy</c:formatCode>
 <c:ptCount val="2"/>
 <c:pt idx="0"><c:v>45292</c:v></c:pt>
@@ -147,7 +149,9 @@ describe("extractFormatCode", () => {
   });
 
   it("returns undefined when the cache or code is missing", () => {
-    expect(extractFormatCode(parseChartFragment("<c:val/>").child("val"))).toBeUndefined();
+    expect(
+      extractFormatCode(parseChartFragment("<c:val/>").child("val")),
+    ).toBeUndefined();
     const noCode = parseChartFragment(
       `<c:val><c:numRef><c:numCache><c:ptCount val="0"/></c:numCache></c:numRef></c:val>`,
     ).child("val");

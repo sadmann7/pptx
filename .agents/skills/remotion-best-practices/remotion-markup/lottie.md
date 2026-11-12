@@ -37,7 +37,8 @@ import { cancelRender, continueRender, delayRender } from "remotion";
 export const MyAnimation = () => {
   const [handle] = useState(() => delayRender("Loading Lottie animation"));
 
-  const [animationData, setAnimationData] = useState<LottieAnimationData | null>(null);
+  const [animationData, setAnimationData] =
+    useState<LottieAnimationData | null>(null);
 
   useEffect(() => {
     fetch("https://assets4.lottiefiles.com/packages/lf20_zyquagfl.json")
@@ -64,5 +65,7 @@ export const MyAnimation = () => {
 Lottie supports the `style` prop to allow styles and animations:
 
 ```tsx
-return <Lottie animationData={animationData} style={{ width: 400, height: 400 }} />;
+return (
+  <Lottie animationData={animationData} style={{ width: 400, height: 400 }} />
+);
 ```

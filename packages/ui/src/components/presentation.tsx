@@ -8,11 +8,21 @@ import { useIsMobile } from "@pptx/ui/hooks/use-mobile";
 import { cn } from "cn";
 import { PanelLeftIcon } from "lucide-react";
 
-function PresentationProvider({ ...props }: PresentationPrimitive.Provider.Props) {
-  return <PresentationPrimitive.Provider data-slot="presentation-provider" {...props} />;
+function PresentationProvider({
+  ...props
+}: PresentationPrimitive.Provider.Props) {
+  return (
+    <PresentationPrimitive.Provider
+      data-slot="presentation-provider"
+      {...props}
+    />
+  );
 }
 
-function Presentation({ className, ...props }: PresentationPrimitive.Root.Props) {
+function Presentation({
+  className,
+  ...props
+}: PresentationPrimitive.Root.Props) {
   return (
     <PresentationPrimitive.Root
       data-slot="presentation"
@@ -22,11 +32,17 @@ function Presentation({ className, ...props }: PresentationPrimitive.Root.Props)
   );
 }
 
-function PresentationContent({ className, ...props }: React.ComponentProps<"div">) {
+function PresentationContent({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="presentation-content"
-      className={cn("relative isolate flex flex-1 flex-col overflow-hidden", className)}
+      className={cn(
+        "relative isolate flex flex-1 flex-col overflow-hidden",
+        className,
+      )}
       {...props}
     />
   );
@@ -52,7 +68,10 @@ function PresentationViewport({
   );
 }
 
-function PresentationSlide({ className, ...props }: PresentationPrimitive.Slide.Props) {
+function PresentationSlide({
+  className,
+  ...props
+}: PresentationPrimitive.Slide.Props) {
   return (
     <PresentationPrimitive.Slide
       data-slot="presentation-slide"
@@ -139,17 +158,26 @@ function PresentationRotateHandle({
   );
 }
 
-function PresentationSnapGuide({ className, ...props }: PresentationPrimitive.SnapGuide.Props) {
+function PresentationSnapGuide({
+  className,
+  ...props
+}: PresentationPrimitive.SnapGuide.Props) {
   return (
     <PresentationPrimitive.SnapGuide
       data-slot="presentation-snap-guide"
-      className={withClassName(cn("bg-(--presentation-snap-guide,#f43f5e)"), className)}
+      className={withClassName(
+        cn("bg-(--presentation-snap-guide,#f43f5e)"),
+        className,
+      )}
       {...props}
     />
   );
 }
 
-function PresentationMarquee({ className, ...props }: PresentationPrimitive.Marquee.Props) {
+function PresentationMarquee({
+  className,
+  ...props
+}: PresentationPrimitive.Marquee.Props) {
   return (
     <PresentationPrimitive.Marquee
       data-slot="presentation-marquee"
@@ -183,7 +211,11 @@ function PresentationLoading({
   );
 }
 
-function PresentationError({ className, children, ...props }: PresentationPrimitive.Error.Props) {
+function PresentationError({
+  className,
+  children,
+  ...props
+}: PresentationPrimitive.Error.Props) {
   return (
     <PresentationPrimitive.Error
       data-slot="presentation-error"
@@ -205,7 +237,10 @@ function PresentationThumbnailItemPreview({
   return (
     <PresentationPrimitive.ThumbnailItemPreview
       data-slot="presentation-thumbnail-item-preview"
-      className={cn("w-full overflow-hidden rounded-md data-pending:bg-muted", className)}
+      className={cn(
+        "w-full overflow-hidden rounded-md data-pending:bg-muted",
+        className,
+      )}
       {...props}
     />
   );
@@ -276,15 +311,22 @@ function PresentationThumbnailList({
     const pendingPointerIds = new Set<number>();
 
     function isInside(target: Node) {
-      return !!listRef.current?.contains(target) || !!triggerRef.current?.contains(target);
+      return (
+        !!listRef.current?.contains(target) ||
+        !!triggerRef.current?.contains(target)
+      );
     }
 
     function onPointerDown(event: PointerEvent) {
-      if (!isInside(event.target as Node)) pendingPointerIds.add(event.pointerId);
+      if (!isInside(event.target as Node))
+        pendingPointerIds.add(event.pointerId);
     }
 
     function onPointerUp(event: PointerEvent) {
-      if (pendingPointerIds.delete(event.pointerId) && !isInside(event.target as Node)) {
+      if (
+        pendingPointerIds.delete(event.pointerId) &&
+        !isInside(event.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -344,7 +386,9 @@ function PresentationThumbnailList({
       >
         {children ??
           (({ slides }) =>
-            slides.map((slide) => <PresentationThumbnailItem key={slide.id} slideId={slide.id} />))}
+            slides.map((slide) => (
+              <PresentationThumbnailItem key={slide.id} slideId={slide.id} />
+            )))}
       </PresentationPrimitive.ThumbnailList>
     </>
   );
@@ -354,7 +398,8 @@ function withClassName<State>(
   base: string,
   className: string | ((state: State) => string | undefined) | undefined,
 ) {
-  return (state: State) => cn(base, typeof className === "function" ? className(state) : className);
+  return (state: State) =>
+    cn(base, typeof className === "function" ? className(state) : className);
 }
 
 export {

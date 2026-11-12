@@ -26,12 +26,17 @@ const slide = args.numbers.slide ?? 0;
 const scale = args.numbers.scale ?? 1;
 const mode = args.strings.mode ?? "zoom";
 const port = args.numbers.port ?? HARNESS_PORT;
-const out = resolve(args.strings.out ?? `out/${file.replace(/[/\\]/g, "-")}-${slide}.png`);
+const out = resolve(
+  args.strings.out ?? `out/${file.replace(/[/\\]/g, "-")}-${slide}.png`,
+);
 const url = `http://localhost:${port}/?file=${encodeURIComponent(file)}&slide=${slide}&scale=${scale}&mode=${mode}`;
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
-  viewport: { width: args.numbers.width ?? 1400, height: args.numbers.height ?? 900 },
+  viewport: {
+    width: args.numbers.width ?? 1400,
+    height: args.numbers.height ?? 900,
+  },
   deviceScaleFactor: args.numbers.dpr ?? 1,
 });
 page.on("pageerror", (error) => console.error("[pageerror]", error.message));
@@ -64,7 +69,12 @@ for (const selector of args.lists.select) {
           zoom: style.zoom,
           transform: style.transform,
           background: style.backgroundColor,
-          borders: [style.borderTop, style.borderRight, style.borderBottom, style.borderLeft],
+          borders: [
+            style.borderTop,
+            style.borderRight,
+            style.borderBottom,
+            style.borderLeft,
+          ],
         };
       }),
     selector,

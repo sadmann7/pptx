@@ -12,7 +12,11 @@ function readRuns(page: Page) {
   return page.evaluate(() => {
     const slide = window.__editStore!.getActiveSlide()!;
     const shape = slide.nodes[0] as unknown as {
-      textBody: { paragraphs: { runs: { text: string; properties?: { element?: Element } }[] }[] };
+      textBody: {
+        paragraphs: {
+          runs: { text: string; properties?: { element?: Element } }[];
+        }[];
+      };
     };
     return shape.textBody.paragraphs[0].runs.map((run) => {
       const element = run.properties?.element;
@@ -20,7 +24,10 @@ function readRuns(page: Page) {
         text: run.text,
         i: element?.getAttribute("i") ?? null,
         u: element?.getAttribute("u") ?? null,
-        color: element?.getElementsByTagNameNS("*", "srgbClr")[0]?.getAttribute("val") ?? null,
+        color:
+          element
+            ?.getElementsByTagNameNS("*", "srgbClr")[0]
+            ?.getAttribute("val") ?? null,
       };
     });
   });
@@ -36,13 +43,16 @@ async function open(page: Page) {
   // pointer, so press where the shape is rather than on its element.
   const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
   const shape = {
-    click: () => page.mouse.click(box.x + box.width / 2, box.y + box.height / 2),
+    click: () =>
+      page.mouse.click(box.x + box.width / 2, box.y + box.height / 2),
   };
   return { overlay, shape };
 }
 
 test.describe("editing toolbar", () => {
-  test("keeps the selection through toolbar and portalled popover presses", async ({ page }) => {
+  test("keeps the selection through toolbar and portalled popover presses", async ({
+    page,
+  }) => {
     const { overlay, shape } = await open(page);
 
     await shape.click();
@@ -56,10 +66,14 @@ test.describe("editing toolbar", () => {
 
     await page.getByTestId("swatch").click();
     await expect(overlay).toHaveAttribute("data-mode", "selected");
-    await expect.poll(async () => (await readRuns(page))[0].color).toBe("00FF00");
+    await expect
+      .poll(async () => (await readRuns(page))[0].color)
+      .toBe("00FF00");
 
     await page.keyboard.press("ControlOrMeta+z");
-    await expect.poll(async () => (await readRuns(page))[0].color).toBe("FFFFFF");
+    await expect
+      .poll(async () => (await readRuns(page))[0].color)
+      .toBe("FFFFFF");
 
     await page.getByTestId("outside").click();
     await expect(overlay).toHaveAttribute("data-mode", "idle");
@@ -86,7 +100,9 @@ test.describe("editing toolbar", () => {
     await expect(overlay).toHaveAttribute("data-mode", "idle");
   });
 
-  test("ends text editing on a press outside that stops propagation", async ({ page }) => {
+  test("ends text editing on a press outside that stops propagation", async ({
+    page,
+  }) => {
     const { overlay, shape } = await open(page);
 
     await shape.click();
@@ -140,7 +156,9 @@ test.describe("editing toolbar", () => {
     await expect
       .poll(() =>
         page.evaluate(() => ({
-          editing: (document.activeElement as HTMLElement | null)?.isContentEditable ?? false,
+          editing:
+            (document.activeElement as HTMLElement | null)?.isContentEditable ??
+            false,
           selected: window.getSelection()?.toString(),
         })),
       )
@@ -199,7 +217,11 @@ test.describe("snapping", () => {
     });
   }
 
-  async function dragNearCenter(page: Page, offset: number, modifiers: "Alt"[] = []) {
+  async function dragNearCenter(
+    page: Page,
+    offset: number,
+    modifiers: "Alt"[] = [],
+  ) {
     const { x, centeredX } = await readGeometry(page);
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
     const startX = box.x + box.width / 2;
@@ -220,11 +242,15 @@ test.describe("snapping", () => {
     };
   }
 
-  test("snaps a dragged shape onto the slide's center with a guide", async ({ page }) => {
+  test("snaps a dragged shape onto the slide's center with a guide", async ({
+    page,
+  }) => {
     await open(page);
     const drag = await dragNearCenter(page, 3);
 
-    await expect(page.locator('[data-presentation-snap-guide="x"]')).toBeVisible();
+    await expect(
+      page.locator('[data-presentation-snap-guide="x"]'),
+    ).toBeVisible();
     await drag.release();
     await expect(page.locator("[data-presentation-snap-guide]")).toHaveCount(0);
 
@@ -244,7 +270,9 @@ test.describe("snapping", () => {
     await expect(page.locator("[data-presentation-snap-guide]")).toHaveCount(0);
     await drag.release();
 
-    await expect.poll(async () => (await readGeometry(page)).x).not.toBe(before);
+    await expect
+      .poll(async () => (await readGeometry(page)).x)
+      .not.toBe(before);
     const { x, centeredX } = await readGeometry(page);
     expect(Math.abs(x - centeredX - 3)).toBeLessThan(1);
   });
@@ -253,7 +281,9 @@ test.describe("snapping", () => {
 test.describe("scrolling", () => {
   async function openCutOff(page: Page) {
     const opened = await open(page);
-    const shape = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
+    const shape = (await page
+      .locator('[data-pptx-node-id="2"]')
+      .boundingBox())!;
     const overlay = (await opened.overlay.boundingBox())!;
     const height = Math.ceil(shape.y + shape.height + 20);
     expect(height).toBeLessThan(overlay.y + overlay.height);
@@ -297,7 +327,9 @@ test.describe("rotating", () => {
     await expect(overlay).toHaveAttribute("data-mode", "selected");
 
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
-    const knob = (await page.locator("[data-presentation-rotate-handle]").boundingBox())!;
+    const knob = (await page
+      .locator("[data-presentation-rotate-handle]")
+      .boundingBox())!;
     const centerX = box.x + box.width / 2;
     const centerY = box.y + box.height / 2;
 
@@ -309,7 +341,11 @@ test.describe("rotating", () => {
     await page.mouse.up();
 
     await expect
-      .poll(() => page.evaluate(() => window.__editStore!.getActiveSlide()!.nodes[0].rotation))
+      .poll(() =>
+        page.evaluate(
+          () => window.__editStore!.getActiveSlide()!.nodes[0].rotation,
+        ),
+      )
       .toBeCloseTo(90, 0);
     await expect(overlay).toHaveAttribute("data-mode", "selected");
   });
@@ -319,7 +355,12 @@ test.describe("rotating", () => {
     await page.evaluate(async () => {
       const store = window.__editStore!;
       const slideId = store.getActiveSlide()!.id;
-      await store.edit({ type: "setNodeTransform", slideId, nodeId: "2", rotation: 90 });
+      await store.edit({
+        type: "setNodeTransform",
+        slideId,
+        nodeId: "2",
+        rotation: 90,
+      });
     });
     await shape.click();
     await expect(overlay).toHaveAttribute("data-mode", "selected");
@@ -329,12 +370,18 @@ test.describe("rotating", () => {
         const node = window.__editStore!.getActiveSlide()!.nodes[0];
         const centerX = node.position.x + node.size.w / 2;
         // Turned 90°, the shape's height runs across the slide.
-        return { w: node.size.w, h: node.size.h, left: centerX - node.size.h / 2 };
+        return {
+          w: node.size.w,
+          h: node.size.h,
+          left: centerX - node.size.h / 2,
+        };
       });
     const before = await readGeometry();
 
     // The north handle now sits on the right side: drag it further right.
-    const handle = (await page.locator('[data-presentation-resize-handle="n"]').boundingBox())!;
+    const handle = (await page
+      .locator('[data-presentation-resize-handle="n"]')
+      .boundingBox())!;
     const x = handle.x + handle.width / 2;
     const y = handle.y + handle.height / 2;
     await page.mouse.move(x, y);
@@ -342,7 +389,9 @@ test.describe("rotating", () => {
     await page.mouse.move(x + 30, y, { steps: 5 });
     await page.mouse.up();
 
-    await expect.poll(async () => (await readGeometry()).h).toBeCloseTo(before.h + 30, 0);
+    await expect
+      .poll(async () => (await readGeometry()).h)
+      .toBeCloseTo(before.h + 30, 0);
     const after = await readGeometry();
     expect(after.w).toBeCloseTo(before.w, 1);
     expect(after.left).toBeCloseTo(before.left, 1);
@@ -374,7 +423,9 @@ test.describe("images", () => {
 
     const image = page.locator(`[data-pptx-node-id="${nodeId}"] img`);
     await expect(image).toBeVisible();
-    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(120);
+    await expect
+      .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBe(120);
     const box = (await image.boundingBox())!;
     expect(box.width).toBeCloseTo(120, 0);
   });
@@ -390,12 +441,18 @@ test.describe("text boxes", () => {
     });
   }
 
-  test("inserts a text box ready to type in, with native undo", async ({ page }) => {
+  test("inserts a text box ready to type in, with native undo", async ({
+    page,
+  }) => {
     const { overlay } = await open(page);
     await page.getByTestId("text-box").click();
     await expect(overlay).toHaveAttribute("data-mode", "text");
     await expect
-      .poll(() => page.evaluate(() => (document.activeElement as HTMLElement)?.isContentEditable))
+      .poll(() =>
+        page.evaluate(
+          () => (document.activeElement as HTMLElement)?.isContentEditable,
+        ),
+      )
       .toBe(true);
 
     await page.keyboard.type("Hi");
@@ -412,12 +469,16 @@ test.describe("text boxes", () => {
       const nodes = window.__editStore!.getActiveSlide()!.nodes as unknown as {
         textBody: { paragraphs: { runs: { text: string }[] }[] };
       }[];
-      return nodes[nodes.length - 1].textBody.paragraphs[0].runs.map((run) => run.text).join("");
+      return nodes[nodes.length - 1].textBody.paragraphs[0].runs
+        .map((run) => run.text)
+        .join("");
     });
     expect(text).toContain("Hello");
   });
 
-  test("undoes the first keystroke typed into an empty selected box", async ({ page }) => {
+  test("undoes the first keystroke typed into an empty selected box", async ({
+    page,
+  }) => {
     const { overlay } = await open(page);
     await page.getByTestId("text-box").click();
     await expect(overlay).toHaveAttribute("data-mode", "text");
@@ -444,7 +505,9 @@ test.describe("drawing", () => {
       return { count: nodes.length, ...node };
     });
 
-  test("places a text box where the slide is clicked, ready to type in", async ({ page }) => {
+  test("places a text box where the slide is clicked, ready to type in", async ({
+    page,
+  }) => {
     const { overlay } = await open(page);
     await page.getByTestId("draw-text-box").click();
     await expect(overlay).toHaveCSS("cursor", "crosshair");
@@ -457,17 +520,23 @@ test.describe("drawing", () => {
     await page.mouse.click(slide.x + 40, slide.y + 400);
     await expect(overlay).toHaveAttribute("data-mode", "text");
     // Resize handles stay while typing, as in Google Slides.
-    await expect(page.locator("[data-presentation-resize-handle]")).toHaveCount(8);
+    await expect(page.locator("[data-presentation-resize-handle]")).toHaveCount(
+      8,
+    );
     const node = await lastNode(page);
     expect(node.count).toBe(before.count + 1);
     expect(node.position.x * (slide.width / 1280)).toBeCloseTo(40, -1);
     await expect(overlay).not.toHaveCSS("cursor", "crosshair");
 
     await page.mouse.click(slide.x + slide.width - 40, slide.y + 400);
-    await expect.poll(async () => (await lastNode(page)).count).toBe(before.count);
+    await expect
+      .poll(async () => (await lastNode(page)).count)
+      .toBe(before.count);
   });
 
-  test("draws a shape the size of the drag and selects it", async ({ page }) => {
+  test("draws a shape the size of the drag and selects it", async ({
+    page,
+  }) => {
     const { overlay } = await open(page);
     await page.getByTestId("draw-ellipse").click();
     const slide = (await page
@@ -477,8 +546,12 @@ test.describe("drawing", () => {
     const scale = slide.width / 1280;
     await page.mouse.move(slide.x + 600 * scale, slide.y + 300 * scale);
     await page.mouse.down();
-    await page.mouse.move(slide.x + 800 * scale, slide.y + 400 * scale, { steps: 5 });
-    await expect(page.locator("[data-presentation-marquee][data-draw]")).toBeVisible();
+    await page.mouse.move(slide.x + 800 * scale, slide.y + 400 * scale, {
+      steps: 5,
+    });
+    await expect(
+      page.locator("[data-presentation-marquee][data-draw]"),
+    ).toBeVisible();
     await page.mouse.up();
 
     await expect(overlay).toHaveAttribute("data-mode", "selected");
@@ -503,20 +576,28 @@ test.describe("drawing", () => {
     await page.mouse.click(slide.x + slide.width - 40, slide.y + 400);
     await expect(overlay).toHaveAttribute("data-mode", "idle");
 
-    const box = (await page.locator("[data-pptx-node-id]").last().boundingBox())!;
+    const box = (await page
+      .locator("[data-pptx-node-id]")
+      .last()
+      .boundingBox())!;
     const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     await page.mouse.click(center.x, center.y);
     await expect(overlay).toHaveAttribute("data-mode", "selected");
     await page.mouse.click(center.x, center.y);
     await expect(overlay).toHaveAttribute("data-mode", "text");
 
-    const frame = (await page.locator("[data-presentation-selection-box]").first().boundingBox())!;
+    const frame = (await page
+      .locator("[data-presentation-selection-box]")
+      .first()
+      .boundingBox())!;
     await page.mouse.click(frame.x + frame.width / 2, frame.y + 1);
     await expect(overlay).toHaveAttribute("data-mode", "selected");
 
     const before = await lastNode(page);
     await page.keyboard.press("Delete");
-    await expect.poll(async () => (await lastNode(page)).count).toBe(before.count - 1);
+    await expect
+      .poll(async () => (await lastNode(page)).count)
+      .toBe(before.count - 1);
   });
 
   test("disarms with Escape", async ({ page }) => {
@@ -543,7 +624,10 @@ test.describe("outlines", () => {
     });
 
     const stroke = page.locator('[data-pptx-node-id="2"] [stroke]').first();
-    await expect(stroke).toHaveAttribute("stroke", /#00ff00|rgb\(0, ?255, ?0\)/i);
+    await expect(stroke).toHaveAttribute(
+      "stroke",
+      /#00ff00|rgb\(0, ?255, ?0\)/i,
+    );
   });
 });
 
@@ -556,7 +640,8 @@ test.describe("clipboard", () => {
     await page.keyboard.press("ControlOrMeta+c");
     await page.keyboard.press("ControlOrMeta+v");
 
-    const count = () => page.evaluate(() => window.__editStore!.getActiveSlide()!.nodes.length);
+    const count = () =>
+      page.evaluate(() => window.__editStore!.getActiveSlide()!.nodes.length);
     await expect.poll(count).toBe(2);
     const positions = await page.evaluate(() =>
       window.__editStore!.getActiveSlide()!.nodes.map((node) => node.position),
@@ -609,7 +694,9 @@ test.describe("tables", () => {
   }
 
   const editingCell = (page: Page) =>
-    page.evaluate(() => document.activeElement?.getAttribute("data-pptx-cell") ?? null);
+    page.evaluate(
+      () => document.activeElement?.getAttribute("data-pptx-cell") ?? null,
+    );
 
   const readState = async (page: Page) =>
     JSON.parse((await page.getByTestId("state").textContent()) ?? "{}");
@@ -625,7 +712,9 @@ test.describe("tables", () => {
     });
     const cellCenter = async (row: number, column: number) => {
       const box = (await page
-        .locator(`[data-pptx-node-id="${nodeId}"] [data-pptx-cell="${row},${column}"]`)
+        .locator(
+          `[data-pptx-node-id="${nodeId}"] [data-pptx-cell="${row},${column}"]`,
+        )
         .boundingBox())!;
       return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     };
@@ -641,7 +730,9 @@ test.describe("tables", () => {
     await page.keyboard.press("Tab");
     await expect.poll(() => editingCell(page)).toBe("0,1");
     await page.keyboard.type("B");
-    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].text).toBe("A");
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0][0].text)
+      .toBe("A");
 
     for (const [key, cell] of [
       ["ArrowRight", "0,2"],
@@ -650,17 +741,23 @@ test.describe("tables", () => {
       ["ArrowUp", "0,1"],
     ] as const) {
       // The caret has to sit at the text's edge before an arrow leaves the cell.
-      await page.keyboard.press(key === "ArrowLeft" || key === "ArrowUp" ? LINE_START : LINE_END);
+      await page.keyboard.press(
+        key === "ArrowLeft" || key === "ArrowUp" ? LINE_START : LINE_END,
+      );
       await page.keyboard.press(key);
       await expect.poll(() => editingCell(page)).toBe(cell);
     }
-    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][1].text).toBe("B");
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0][1].text)
+      .toBe("B");
 
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowRight");
     await expect.poll(() => editingCell(page)).toBe("1,2");
     await page.keyboard.press("Tab");
-    await expect.poll(async () => (await readTable(page, nodeId)).cells.length).toBe(3);
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells.length)
+      .toBe(3);
     await expect.poll(() => editingCell(page)).toBe("2,0");
   });
 
@@ -684,22 +781,34 @@ test.describe("tables", () => {
 
     await page.getByTestId("cell-fill").click();
     await expect
-      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row.map((c) => c.fill)))
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells.map((row) =>
+          row.map((c) => c.fill),
+        ),
+      )
       .toEqual([
         ["FF0000", "FF0000", null],
         ["FF0000", "FF0000", null],
       ]);
 
     await page.getByTestId("merge-cells").click();
-    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0][0].span)
+      .toEqual([2, 2]);
     await expect.poll(() => editingCell(page)).toBe("0,0");
     await page.keyboard.press("ControlOrMeta+z");
-    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([1, 1]);
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0][0].span)
+      .toEqual([1, 1]);
     await page.keyboard.press("ControlOrMeta+Shift+z");
-    await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
+    await expect
+      .poll(async () => (await readTable(page, nodeId)).cells[0][0].span)
+      .toEqual([2, 2]);
   });
 
-  test("selects the whole table with Cmd/Ctrl+A only once cells are selected", async ({ page }) => {
+  test("selects the whole table with Cmd/Ctrl+A only once cells are selected", async ({
+    page,
+  }) => {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Hi");
 
@@ -731,13 +840,17 @@ test.describe("tables", () => {
     await page.getByTestId("cell-fill").click();
     await expect
       .poll(async () =>
-        (await readTable(page, nodeId)).cells.flat().every((cell) => cell.fill === "FF0000"),
+        (await readTable(page, nodeId)).cells
+          .flat()
+          .every((cell) => cell.fill === "FF0000"),
       )
       .toBe(true);
     expect((await readTable(page, nodeId)).cells[0][0].text).toBe("Hi");
   });
 
-  test("types over selected cells at the end of the first one", async ({ page }) => {
+  test("types over selected cells at the end of the first one", async ({
+    page,
+  }) => {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");
     await page.keyboard.press("Tab");
@@ -749,19 +862,26 @@ test.describe("tables", () => {
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });
     await page.mouse.up();
-    await expect.poll(async () => (await readState(page)).cellRange).not.toBeNull();
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .not.toBeNull();
 
     await page.keyboard.type("ab");
     await expect.poll(async () => (await readState(page)).cellRange).toBeNull();
     await expect.poll(() => editingCell(page)).toBe("0,0");
     await page.keyboard.press("Escape");
     await expect
-      .poll(async () => (await readTable(page, nodeId)).cells[0].map((cell) => cell.text))
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells[0].map((cell) => cell.text),
+      )
       .toEqual(["Oldab", "Keep", ""]);
   });
 
   // Presses `keys` before the next frame, while the editing cell is detached.
-  async function pressWhileRerendering(page: Page, keys: { key: string; ctrlKey?: boolean }[]) {
+  async function pressWhileRerendering(
+    page: Page,
+    keys: { key: string; ctrlKey?: boolean }[],
+  ) {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");
     await page.keyboard.press("Tab");
@@ -773,7 +893,9 @@ test.describe("tables", () => {
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });
     await page.mouse.up();
-    await expect.poll(async () => (await readState(page)).cellRange).not.toBeNull();
+    await expect
+      .poll(async () => (await readState(page)).cellRange)
+      .not.toBeNull();
     await expect.poll(() => editingCell(page)).toBe("0,0");
 
     await page.evaluate(
@@ -785,7 +907,11 @@ test.describe("tables", () => {
           observer.disconnect();
           for (const options of init) {
             document.activeElement!.dispatchEvent(
-              new KeyboardEvent("keydown", { ...options, bubbles: true, cancelable: true }),
+              new KeyboardEvent("keydown", {
+                ...options,
+                bubbles: true,
+                cancelable: true,
+              }),
             );
           }
         }).observe(document.body, { childList: true, subtree: true });
@@ -803,12 +929,17 @@ test.describe("tables", () => {
   }
 
   const tableText = async (page: Page, nodeId: string) =>
-    (await readTable(page, nodeId)).cells.map((row) => row.map((cell) => cell.text));
+    (await readTable(page, nodeId)).cells.map((row) =>
+      row.map((cell) => cell.text),
+    );
 
   test("types over selected cells with keys pressed while the table re-renders", async ({
     page,
   }) => {
-    const nodeId = await pressWhileRerendering(page, [{ key: "a" }, { key: "b" }]);
+    const nodeId = await pressWhileRerendering(page, [
+      { key: "a" },
+      { key: "b" },
+    ]);
 
     await expect.poll(async () => (await readState(page)).cellRange).toBeNull();
     await expect.poll(() => editingCell(page)).toBe("0,0");
@@ -857,13 +988,22 @@ test.describe("tables", () => {
     await page.evaluate(() => {
       const data = new DataTransfer();
       data.setData("text/plain", "North\nSouth");
-      data.setData("text/html", "<table><tr><td>North</td></tr><tr><td>South</td></tr></table>");
+      data.setData(
+        "text/html",
+        "<table><tr><td>North</td></tr><tr><td>South</td></tr></table>",
+      );
       document.activeElement!.dispatchEvent(
-        new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+        new ClipboardEvent("paste", {
+          clipboardData: data,
+          bubbles: true,
+          cancelable: true,
+        }),
       );
     });
     await expect
-      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row[0].text))
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells.map((row) => row[0].text),
+      )
       .toEqual(["North", "South"]);
     await expect
       .poll(async () => (await readState(page)).cellRange)
@@ -872,18 +1012,29 @@ test.describe("tables", () => {
     const copied = await page.evaluate(() => {
       const data = new DataTransfer();
       document.activeElement!.dispatchEvent(
-        new ClipboardEvent("copy", { clipboardData: data, bubbles: true, cancelable: true }),
+        new ClipboardEvent("copy", {
+          clipboardData: data,
+          bubbles: true,
+          cancelable: true,
+        }),
       );
-      return { text: data.getData("text/plain"), html: data.getData("text/html") };
+      return {
+        text: data.getData("text/plain"),
+        html: data.getData("text/html"),
+      };
     });
     expect(copied.text).toBe("North\nSouth");
     expect(copied.html).toContain("<td>North</td>");
 
     // The paste re-renders the slide; the caret is back in the new cell a frame later.
-    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("North");
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.textContent))
+      .toBe("North");
     await page.keyboard.press("Delete");
     await expect
-      .poll(async () => (await readTable(page, nodeId)).cells.map((row) => row[0].text))
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells.map((row) => row[0].text),
+      )
       .toEqual(["", ""]);
   });
 
@@ -901,7 +1052,9 @@ test.describe("tables", () => {
       .boundingBox())!;
     await page.mouse.move(border.x + border.width / 2, border.y + 10);
     await page.mouse.down();
-    await page.mouse.move(border.x + border.width / 2 + 40, border.y + 10, { steps: 5 });
+    await page.mouse.move(border.x + border.width / 2 + 40, border.y + 10, {
+      steps: 5,
+    });
     await page.mouse.up();
     await expect
       .poll(async () => (await readTable(page, nodeId)).columns[0])
@@ -920,7 +1073,9 @@ test.describe("tables", () => {
     const right = resized.position.x + resized.size.w;
     await page.mouse.move(edge.x + edge.width / 2, edge.y + 10);
     await page.mouse.down();
-    await page.mouse.move(edge.x + edge.width / 2 + 30, edge.y + 10, { steps: 5 });
+    await page.mouse.move(edge.x + edge.width / 2 + 30, edge.y + 10, {
+      steps: 5,
+    });
     await page.mouse.up();
     await expect
       .poll(async () => (await readTable(page, nodeId)).columns[0])
@@ -928,7 +1083,9 @@ test.describe("tables", () => {
     const trimmed = await readTable(page, nodeId);
     expect(trimmed.position.x + trimmed.size.w).toBeCloseTo(right, 0);
 
-    const table = (await page.locator(`[data-pptx-node-id="${nodeId}"]`).boundingBox())!;
+    const table = (await page
+      .locator(`[data-pptx-node-id="${nodeId}"]`)
+      .boundingBox())!;
     const grab = { x: table.x + table.width + 5, y: table.y + 10 };
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
@@ -937,6 +1094,9 @@ test.describe("tables", () => {
     await expect
       .poll(async () => (await readTable(page, nodeId)).position.y)
       .toBeGreaterThan(trimmed.position.y + 20);
-    expect((await readTable(page, nodeId)).size.w).toBeCloseTo(trimmed.size.w, 0);
+    expect((await readTable(page, nodeId)).size.w).toBeCloseTo(
+      trimmed.size.w,
+      0,
+    );
   });
 });

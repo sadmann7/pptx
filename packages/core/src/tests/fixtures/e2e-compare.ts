@@ -68,7 +68,10 @@ export function resolveCompareSlideCounts(
   pdfPageCount: number,
 ): CompareSlideCounts {
   const displaySlideCount = normalizeNonNegativeInt(pptxSlideCount);
-  const comparableSlideCount = Math.min(displaySlideCount, normalizeNonNegativeInt(pdfPageCount));
+  const comparableSlideCount = Math.min(
+    displaySlideCount,
+    normalizeNonNegativeInt(pdfPageCount),
+  );
   return { displaySlideCount, comparableSlideCount };
 }
 
@@ -126,7 +129,9 @@ export function mergeServerMetricsIntoSlides<T extends MergeableSlide>(
   slideResults: readonly T[],
   perSlideMetrics: readonly ServerPerSlideMetrics[] | null | undefined,
 ): T[] {
-  const metricMap = new Map((perSlideMetrics || []).map((slide) => [slide.slideIdx, slide]));
+  const metricMap = new Map(
+    (perSlideMetrics || []).map((slide) => [slide.slideIdx, slide]),
+  );
 
   return slideResults.map((slide) => {
     const metrics = metricMap.get(slide.index);
@@ -144,7 +149,11 @@ export function mergeServerMetricsIntoSlides<T extends MergeableSlide>(
         hasDiff: false,
       };
     }
-    if (!slide.hasComparablePdf || !metrics || typeof metrics.ssim !== "number") {
+    if (
+      !slide.hasComparablePdf ||
+      !metrics ||
+      typeof metrics.ssim !== "number"
+    ) {
       return {
         ...slide,
         ssim: null,
@@ -162,10 +171,18 @@ export function mergeServerMetricsIntoSlides<T extends MergeableSlide>(
       ssim: metrics.ssim,
       mae: typeof metrics.mae === "number" ? metrics.mae : null,
       fgIou: typeof metrics.fgIou === "number" ? metrics.fgIou : null,
-      fgIouTolerant: typeof metrics.fgIouTolerant === "number" ? metrics.fgIouTolerant : null,
-      chamferScore: typeof metrics.chamferScore === "number" ? metrics.chamferScore : null,
-      colorHistCorr: typeof metrics.colorHistCorr === "number" ? metrics.colorHistCorr : null,
-      needsReview: typeof metrics.needsReview === "boolean" ? metrics.needsReview : null,
+      fgIouTolerant:
+        typeof metrics.fgIouTolerant === "number"
+          ? metrics.fgIouTolerant
+          : null,
+      chamferScore:
+        typeof metrics.chamferScore === "number" ? metrics.chamferScore : null,
+      colorHistCorr:
+        typeof metrics.colorHistCorr === "number"
+          ? metrics.colorHistCorr
+          : null,
+      needsReview:
+        typeof metrics.needsReview === "boolean" ? metrics.needsReview : null,
       hasDiff: true,
     };
   });

@@ -131,7 +131,8 @@ Undo and redo callbacks receive `(status, error?)`, and node callbacks receive `
     if (status === "empty") toast.error("Nothing to undo");
   }}
   onRedo={(status, error) => {
-    if (error) toast.error(error instanceof Error ? error.message : "Redo failed");
+    if (error)
+      toast.error(error instanceof Error ? error.message : "Redo failed");
     else if (status === "empty") toast.error("Nothing to redo");
   }}
   onNodeTransform={(nodeId, error) => {
@@ -191,20 +192,35 @@ await store.edit({
   slideId,
   nodeId,
   style: { bold: true, color: "#2563eb", fontFamily: "Arial", fontSize: 24 },
-  range: { start: { paragraphIndex: 0, offset: 0 }, end: { paragraphIndex: 0, offset: 5 } },
+  range: {
+    start: { paragraphIndex: 0, offset: 0 },
+    end: { paragraphIndex: 0, offset: 5 },
+  },
 });
 
 // Align paragraphs
-await store.edit({ type: "setParagraphStyle", slideId, nodeId, style: { align: "center" } });
+await store.edit({
+  type: "setParagraphStyle",
+  slideId,
+  nodeId,
+  style: { align: "center" },
+});
 
 // Add a slide from a layout (defaults to the layout of `afterSlideId`)
-const { createdSlideId } = await store.edit({ type: "addSlide", afterSlideId: slideId });
+const { createdSlideId } = await store.edit({
+  type: "addSlide",
+  afterSlideId: slideId,
+});
 
 // Set or clear (`null`) a slide's own background
 await store.edit({ type: "setSlideBackground", slideId, color: "#f8fafc" });
 
 // Duplicate a shape (offset 10px by default) and change the stacking order
-const { createdNodeIds } = await store.edit({ type: "duplicateNode", slideId, nodeId });
+const { createdNodeIds } = await store.edit({
+  type: "duplicateNode",
+  slideId,
+  nodeId,
+});
 await store.edit({ type: "reorderNode", slideId, nodeId, order: "front" }); // or "back", "forward", "backward"
 
 // Insert an image: its own size scaled to fit, centered, unless you pass `size` and `position`
@@ -223,7 +239,12 @@ await store.edit({ type: "addTextBox", slideId, text: "Hello" });
 await store.edit({ type: "addShape", slideId, geometry: "roundRect" });
 
 // Add a table, then fill in a cell
-const { createdNodeIds } = await store.edit({ type: "addTable", slideId, rows: 3, columns: 4 });
+const { createdNodeIds } = await store.edit({
+  type: "addTable",
+  slideId,
+  rows: 3,
+  columns: 4,
+});
 await store.edit({
   type: "setTextBody",
   slideId,
@@ -233,11 +254,21 @@ await store.edit({
 });
 
 // Set a shape's or picture's outline (width in points); `color: null` removes it
-await store.edit({ type: "setOutline", slideId, nodeId, color: "#0f172a", width: 1.5 });
+await store.edit({
+  type: "setOutline",
+  slideId,
+  nodeId,
+  color: "#0f172a",
+  width: 1.5,
+});
 
 // Copy shapes out of one deck and paste them into another (or the same one)
 const clipboard = await copyNodes(sourceDeck, sourceSlideId, nodeIds);
-await targetStore.edit({ type: "pasteNodes", slideId: targetSlideId, clipboard });
+await targetStore.edit({
+  type: "pasteNodes",
+  slideId: targetSlideId,
+  clipboard,
+});
 ```
 
 `copyNodes` skips shapes that refer to other parts, such as charts and video, and lists them in `clipboard.omittedNodeIds`.
@@ -267,7 +298,10 @@ function FormattingToolbar() {
       >
         Bold
       </button>
-      <button disabled={!textStyle} onClick={() => void setParagraphStyle({ align: "center" })}>
+      <button
+        disabled={!textStyle}
+        onClick={() => void setParagraphStyle({ align: "center" })}
+      >
         Center
       </button>
     </Presentation.Controls>
@@ -302,7 +336,9 @@ function FloatingToolbar() {
   const { anchor, mode } = useSelection();
 
   return (
-    <Popover.Root open={anchor !== null && (mode === "selected" || mode === "text")}>
+    <Popover.Root
+      open={anchor !== null && (mode === "selected" || mode === "text")}
+    >
       <Popover.Portal>
         <Popover.Positioner anchor={anchor} side="top" sideOffset={8}>
           <Popover.Popup initialFocus={false} finalFocus={false}>
@@ -419,7 +455,9 @@ function Toolbar() {
       <button disabled={!canRedo} onClick={() => void redo()}>
         Redo
       </button>
-      <button onClick={() => void store.save()}>{isDirty ? "Save" : "Saved"}</button>
+      <button onClick={() => void store.save()}>
+        {isDirty ? "Save" : "Saved"}
+      </button>
     </>
   );
 }

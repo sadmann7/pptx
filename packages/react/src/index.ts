@@ -4,11 +4,24 @@ export type { ErrorProps, ErrorState } from "./error";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
 export type { ControlsProps } from "./selection/controls";
-export type { SelectionChangeEvent, SelectionProps, SelectionState } from "./selection/selection";
+export type {
+  SelectionChangeEvent,
+  SelectionProps,
+  SelectionState,
+} from "./selection/selection";
 export type { MarqueeProps } from "./selection/marquee";
-export type { ResizeHandleProps, ResizeHandleState } from "./selection/resize-handle";
-export type { RotateHandleProps, RotateHandleState } from "./selection/rotate-handle";
-export type { SelectionBoxProps, SelectionBoxState } from "./selection/selection-box";
+export type {
+  ResizeHandleProps,
+  ResizeHandleState,
+} from "./selection/resize-handle";
+export type {
+  RotateHandleProps,
+  RotateHandleState,
+} from "./selection/rotate-handle";
+export type {
+  SelectionBoxProps,
+  SelectionBoxState,
+} from "./selection/selection-box";
 export type { SnapGuideProps, SnapGuideState } from "./selection/snap-guide";
 export type { SlideProps, SlideState } from "./slide";
 export type {

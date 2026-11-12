@@ -21,7 +21,9 @@ let _pdfWorkerUrl: string | null = null;
 
 function resolveModuleUrl(specifier: string): string | null {
   try {
-    const resolver = (import.meta as ImportMeta & { resolve?: (id: string) => string }).resolve;
+    const resolver = (
+      import.meta as ImportMeta & { resolve?: (id: string) => string }
+    ).resolve;
     if (typeof resolver === "function") {
       return resolver(specifier);
     }
@@ -31,7 +33,10 @@ function resolveModuleUrl(specifier: string): string | null {
   return null;
 }
 
-function explicitUrl(config: PdfjsConfig | undefined, key: keyof PdfjsOptions): string | null {
+function explicitUrl(
+  config: PdfjsConfig | undefined,
+  key: keyof PdfjsOptions,
+): string | null {
   if (!config || typeof config !== "object") return null;
   const url = config[key];
   if (typeof url !== "string") return null;
@@ -105,7 +110,10 @@ interface WorkerState {
   worker: Worker | null;
   failed: boolean;
   msgId: number;
-  pending: Map<number, { resolve: (b: Blob | null) => void; reject: (e: Error) => void }>;
+  pending: Map<
+    number,
+    { resolve: (b: Blob | null) => void; reject: (e: Error) => void }
+  >;
 }
 
 const _workers = new Map<string, WorkerState>();
@@ -191,7 +199,10 @@ function renderInWorker(
 
     // Transfer a copy so the caller's buffer stays attached.
     const copy = pdfData.slice();
-    worker.postMessage({ id, pdfData: copy, width, height, pdfjsUrl, pdfWorkerUrl }, [copy.buffer]);
+    worker.postMessage(
+      { id, pdfData: copy, width, height, pdfjsUrl, pdfWorkerUrl },
+      [copy.buffer],
+    );
 
     setTimeout(() => {
       if (state.pending.has(id)) {
@@ -221,7 +232,13 @@ export async function renderPdfToImage(
   }
 
   try {
-    const blob = await renderInWorker(pdfData, width, height, pdfjsUrl, pdfWorkerUrl);
+    const blob = await renderInWorker(
+      pdfData,
+      width,
+      height,
+      pdfjsUrl,
+      pdfWorkerUrl,
+    );
     if (blob) return URL.createObjectURL(blob);
   } catch {
     // A failed render leaves the picture blank, not the slide broken.

@@ -2,7 +2,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { parseExplosion, parseSeries } from "../../../renderer/chart/series";
 import type { RenderContext } from "../../../renderer/context";
-import { parseChartFragment, createChartTestContext, seriesXml } from "../../fixtures/chart-pptx";
+import {
+  parseChartFragment,
+  createChartTestContext,
+  seriesXml,
+} from "../../fixtures/chart-pptx";
 
 let ctx: RenderContext;
 
@@ -126,12 +130,16 @@ describe("parseSeries", () => {
 
 describe("parseExplosion", () => {
   it("returns undefined when nothing is exploded", () => {
-    const ser = parseChartFragment(`<c:ser><c:idx val="0"/></c:ser>`).child("ser");
+    const ser = parseChartFragment(`<c:ser><c:idx val="0"/></c:ser>`).child(
+      "ser",
+    );
     expect(parseExplosion(ser, 3)).toBeUndefined();
   });
 
   it("applies a series-level explosion to every point", () => {
-    const ser = parseChartFragment(`<c:ser><c:explosion val="10"/></c:ser>`).child("ser");
+    const ser = parseChartFragment(
+      `<c:ser><c:explosion val="10"/></c:ser>`,
+    ).child("ser");
     expect(parseExplosion(ser, 3)).toEqual([10, 10, 10]);
   });
 

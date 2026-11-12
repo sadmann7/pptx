@@ -51,27 +51,42 @@ async function openEditable(slides: string[]): Promise<PresentationData> {
   return buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 }
 
-async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
+async function saveAndReopen(
+  pres: PresentationData,
+): Promise<PresentationData> {
   const saved = await writePptx(pres);
   return buildPresentation(await readPptx(saved.slice().buffer));
 }
 
-async function savedPartText(pres: PresentationData, path: string): Promise<string> {
+async function savedPartText(
+  pres: PresentationData,
+  path: string,
+): Promise<string> {
   const zip = await JSZip.loadAsync(await writePptx(pres));
   const file = zip.file(path);
   if (!file) throw new Error(`part not in saved output: ${path}.`);
   return file.async("string");
 }
 
-function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): ShapeNodeData {
+function shapeOn(
+  pres: PresentationData,
+  slideIndex: number,
+  nodeId: string,
+): ShapeNodeData {
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
-  if (!node || node.nodeType !== "shape") throw new Error(`shape ${nodeId} not found.`);
+  if (!node || node.nodeType !== "shape")
+    throw new Error(`shape ${nodeId} not found.`);
   return node as ShapeNodeData;
 }
 
-function tableOn(pres: PresentationData, slideIndex: number, nodeId: string): TableNodeData {
+function tableOn(
+  pres: PresentationData,
+  slideIndex: number,
+  nodeId: string,
+): TableNodeData {
   const node = pres.slides[slideIndex].nodes.find((n) => n.id === nodeId);
-  if (!node || node.nodeType !== "table") throw new Error(`table ${nodeId} not found.`);
+  if (!node || node.nodeType !== "table")
+    throw new Error(`table ${nodeId} not found.`);
   return node;
 }
 
@@ -94,10 +109,18 @@ describe("applyEdit guards", () => {
   it("rejects unknown slide and node ids", async () => {
     const pres = await openEditable([textShape(2, "x")]);
     await expect(
-      applyEdit(pres, { type: "deleteNode", slideId: "ppt/slides/nope.xml", nodeId: "2" }),
+      applyEdit(pres, {
+        type: "deleteNode",
+        slideId: "ppt/slides/nope.xml",
+        nodeId: "2",
+      }),
     ).rejects.toThrow(/unknown slide/);
     await expect(
-      applyEdit(pres, { type: "deleteNode", slideId: pres.slides[0].id, nodeId: "99" }),
+      applyEdit(pres, {
+        type: "deleteNode",
+        slideId: pres.slides[0].id,
+        nodeId: "99",
+      }),
     ).rejects.toThrow(/no top-level node/);
   });
 });
@@ -117,17 +140,23 @@ describe("setTextRun", () => {
     });
 
     expect(result.affectedSlideIds).toEqual([slideId]);
-    expect(shapeOn(pres, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe("Edited");
+    expect(shapeOn(pres, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe(
+      "Edited",
+    );
 
     const reopened = await saveAndReopen(pres);
-    expect(shapeOn(reopened, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe("Edited");
+    expect(shapeOn(reopened, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe(
+      "Edited",
+    );
 
     result.undo();
-    expect(shapeOn(pres, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe("Original");
-    const reopenedAfterUndo = await saveAndReopen(pres);
-    expect(shapeOn(reopenedAfterUndo, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe(
+    expect(shapeOn(pres, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe(
       "Original",
     );
+    const reopenedAfterUndo = await saveAndReopen(pres);
+    expect(
+      shapeOn(reopenedAfterUndo, 0, "2").textBody?.paragraphs[0].runs[0].text,
+    ).toBe("Original");
   });
 });
 
@@ -174,7 +203,9 @@ describe("setNodeTransform", () => {
 
     const slideXml = await savedPartText(pres, "ppt/slides/slide1.xml");
     // xfrm must be the first child of spPr, before prstGeom.
-    expect(slideXml).toMatch(/<p:spPr><a:xfrm><a:off [^>]+\/><a:ext [^>]+\/><\/a:xfrm><a:prstGeom/);
+    expect(slideXml).toMatch(
+      /<p:spPr><a:xfrm><a:off [^>]+\/><a:ext [^>]+\/><\/a:xfrm><a:prstGeom/,
+    );
 
     const reopened = await saveAndReopen(pres);
     expect(shapeOn(reopened, 0, "2").position).toEqual({ x: 48, y: 48 });
@@ -204,18 +235,26 @@ describe("setNodeTransform", () => {
     expect(table.rows.map((row) => row.height)).toEqual([24, 24]);
 
     const slideXml = await savedPartText(pres, "ppt/slides/slide1.xml");
-    expect(slideXml).toContain('<a:gridCol w="571500"/><a:gridCol w="1714500"/>');
+    expect(slideXml).toContain(
+      '<a:gridCol w="571500"/><a:gridCol w="1714500"/>',
+    );
     expect(slideXml).toContain('<a:tr h="228600">');
 
     const reopened = await saveAndReopen(pres);
     expect(tableOn(reopened, 0, "2").columns).toEqual([60, 180]);
-    expect(tableOn(reopened, 0, "2").rows.map((row) => row.height)).toEqual([24, 24]);
+    expect(tableOn(reopened, 0, "2").rows.map((row) => row.height)).toEqual([
+      24, 24,
+    ]);
 
     result.undo();
     expect(tableOn(pres, 0, "2").columns).toEqual([120, 360]);
-    expect(tableOn(pres, 0, "2").rows.map((row) => row.height)).toEqual([48, 48]);
+    expect(tableOn(pres, 0, "2").rows.map((row) => row.height)).toEqual([
+      48, 48,
+    ]);
     const undoneXml = await savedPartText(pres, "ppt/slides/slide1.xml");
-    expect(undoneXml).toContain('<a:gridCol w="1143000"/><a:gridCol w="3429000"/>');
+    expect(undoneXml).toContain(
+      '<a:gridCol w="1143000"/><a:gridCol w="3429000"/>',
+    );
     expect(undoneXml).toContain('<a:tr h="457200">');
   });
 
@@ -239,11 +278,25 @@ describe("setNodeTransform", () => {
     const pres = await openEditable([textShape(2, "Flip")]);
     const slideId = pres.slides[0].id;
 
-    await applyEdit(pres, { type: "setNodeTransform", slideId, nodeId: "2", flipH: true });
-    expect(await savedPartText(pres, "ppt/slides/slide1.xml")).toContain('flipH="1"');
+    await applyEdit(pres, {
+      type: "setNodeTransform",
+      slideId,
+      nodeId: "2",
+      flipH: true,
+    });
+    expect(await savedPartText(pres, "ppt/slides/slide1.xml")).toContain(
+      'flipH="1"',
+    );
 
-    await applyEdit(pres, { type: "setNodeTransform", slideId, nodeId: "2", flipH: false });
-    expect(await savedPartText(pres, "ppt/slides/slide1.xml")).not.toContain("flipH");
+    await applyEdit(pres, {
+      type: "setNodeTransform",
+      slideId,
+      nodeId: "2",
+      flipH: false,
+    });
+    expect(await savedPartText(pres, "ppt/slides/slide1.xml")).not.toContain(
+      "flipH",
+    );
     expect(shapeOn(pres, 0, "2").flipH).toBe(false);
   });
 });
@@ -267,14 +320,20 @@ describe("setSolidFill", () => {
     });
 
     const slideXml = await savedPartText(pres, "ppt/slides/slide1.xml");
-    expect(slideXml).toContain('<a:solidFill><a:srgbClr val="FF8800"/></a:solidFill><a:ln');
+    expect(slideXml).toContain(
+      '<a:solidFill><a:srgbClr val="FF8800"/></a:solidFill><a:ln',
+    );
     expect(slideXml).not.toContain('val="112233"');
-    expect(shapeOn(pres, 0, "2").fill?.child("srgbClr").attr("val")).toBe("FF8800");
+    expect(shapeOn(pres, 0, "2").fill?.child("srgbClr").attr("val")).toBe(
+      "FF8800",
+    );
 
     result.undo();
     const undoneXml = await savedPartText(pres, "ppt/slides/slide1.xml");
     expect(undoneXml).toContain('val="112233"');
-    expect(shapeOn(pres, 0, "2").fill?.child("srgbClr").attr("val")).toBe("112233");
+    expect(shapeOn(pres, 0, "2").fill?.child("srgbClr").attr("val")).toBe(
+      "112233",
+    );
   });
 
   it("adds a fill to shapes without one and validates colors", async () => {
@@ -282,21 +341,39 @@ describe("setSolidFill", () => {
     const slideId = pres.slides[0].id;
 
     await expect(
-      applyEdit(pres, { type: "setSolidFill", slideId, nodeId: "2", color: "red" }),
+      applyEdit(pres, {
+        type: "setSolidFill",
+        slideId,
+        nodeId: "2",
+        color: "red",
+      }),
     ).rejects.toThrow(/invalid color/);
 
-    await applyEdit(pres, { type: "setSolidFill", slideId, nodeId: "2", color: "00FF00" });
+    await applyEdit(pres, {
+      type: "setSolidFill",
+      slideId,
+      nodeId: "2",
+      color: "00FF00",
+    });
     const reopened = await saveAndReopen(pres);
-    expect(shapeOn(reopened, 0, "2").fill?.child("srgbClr").attr("val")).toBe("00FF00");
+    expect(shapeOn(reopened, 0, "2").fill?.child("srgbClr").attr("val")).toBe(
+      "00FF00",
+    );
   });
 });
 
 describe("deleteNode", () => {
   it("removes the node from model and XML; undo restores order", async () => {
-    const pres = await openEditable([textShape(2, "First") + textShape(3, "Second")]);
+    const pres = await openEditable([
+      textShape(2, "First") + textShape(3, "Second"),
+    ]);
     const slideId = pres.slides[0].id;
 
-    const result = await applyEdit(pres, { type: "deleteNode", slideId, nodeId: "2" });
+    const result = await applyEdit(pres, {
+      type: "deleteNode",
+      slideId,
+      nodeId: "2",
+    });
 
     expect(pres.slides[0].nodes.map((n) => n.id)).toEqual(["3"]);
     const reopened = await saveAndReopen(pres);
@@ -305,17 +382,30 @@ describe("deleteNode", () => {
     result.undo();
     expect(pres.slides[0].nodes.map((n) => n.id)).toEqual(["2", "3"]);
     const reopenedAfterUndo = await saveAndReopen(pres);
-    expect(reopenedAfterUndo.slides[0].nodes.map((n) => n.id)).toEqual(["2", "3"]);
-    expect(shapeOn(reopenedAfterUndo, 0, "2").textBody?.paragraphs[0].runs[0].text).toBe("First");
+    expect(reopenedAfterUndo.slides[0].nodes.map((n) => n.id)).toEqual([
+      "2",
+      "3",
+    ]);
+    expect(
+      shapeOn(reopenedAfterUndo, 0, "2").textBody?.paragraphs[0].runs[0].text,
+    ).toBe("First");
   });
 });
 
 describe("moveSlide", () => {
   it("reorders slides in model and saved sldIdLst; undo restores", async () => {
-    const pres = await openEditable([textShape(2, "A"), textShape(2, "B"), textShape(2, "C")]);
+    const pres = await openEditable([
+      textShape(2, "A"),
+      textShape(2, "B"),
+      textShape(2, "C"),
+    ]);
     const ids = pres.slides.map((s) => s.id);
 
-    const result = await applyEdit(pres, { type: "moveSlide", slideId: ids[0], toIndex: 2 });
+    const result = await applyEdit(pres, {
+      type: "moveSlide",
+      slideId: ids[0],
+      toIndex: 2,
+    });
 
     expect(pres.slides.map((s) => s.id)).toEqual([ids[1], ids[2], ids[0]]);
     expect(pres.slides.map((s) => s.index)).toEqual([0, 1, 2]);
@@ -353,7 +443,10 @@ describe("duplicateSlide", () => {
     const pres = await openEditable([textShape(2, "One"), textShape(2, "Two")]);
     const sourceId = pres.slides[0].id;
 
-    const result = await applyEdit(pres, { type: "duplicateSlide", slideId: sourceId });
+    const result = await applyEdit(pres, {
+      type: "duplicateSlide",
+      slideId: sourceId,
+    });
 
     expect(result.createdSlideId).toBe("ppt/slides/slide3.xml");
     expect(pres.slides).toHaveLength(3);
@@ -376,13 +469,19 @@ describe("duplicateSlide", () => {
 
     const ctXml = await savedPartText(pres, "[Content_Types].xml");
     expect(ctXml).toContain('PartName="/ppt/slides/slide3.xml"');
-    const relsXml = await savedPartText(pres, "ppt/_rels/presentation.xml.rels");
+    const relsXml = await savedPartText(
+      pres,
+      "ppt/_rels/presentation.xml.rels",
+    );
     expect(relsXml).toContain('Target="slides/slide3.xml"');
   });
 
   it("undo removes the copy and its package entries", async () => {
     const pres = await openEditable([textShape(2, "Solo")]);
-    const result = await applyEdit(pres, { type: "duplicateSlide", slideId: pres.slides[0].id });
+    const result = await applyEdit(pres, {
+      type: "duplicateSlide",
+      slideId: pres.slides[0].id,
+    });
 
     result.undo();
 
@@ -391,13 +490,19 @@ describe("duplicateSlide", () => {
     expect(reopened.slides).toHaveLength(1);
     const zip = await JSZip.loadAsync(await writePptx(pres));
     expect(zip.file("ppt/slides/slide2.xml")).toBeNull();
-    expect(await savedPartText(pres, "[Content_Types].xml")).not.toContain("slide2.xml");
+    expect(await savedPartText(pres, "[Content_Types].xml")).not.toContain(
+      "slide2.xml",
+    );
   });
 });
 
 describe("deleteSlide", () => {
   it("removes the slide, its parts, rel, and content-type override", async () => {
-    const pres = await openEditable([textShape(2, "A"), textShape(2, "B"), textShape(2, "C")]);
+    const pres = await openEditable([
+      textShape(2, "A"),
+      textShape(2, "B"),
+      textShape(2, "C"),
+    ]);
     const deletedId = pres.slides[1].id;
 
     await applyEdit(pres, { type: "deleteSlide", slideId: deletedId });
@@ -415,16 +520,22 @@ describe("deleteSlide", () => {
     expect(await savedPartText(pres, "[Content_Types].xml")).not.toContain(
       "/ppt/slides/slide2.xml",
     );
-    expect(await savedPartText(pres, "ppt/_rels/presentation.xml.rels")).not.toContain(
-      'Target="slides/slide2.xml"',
-    );
+    expect(
+      await savedPartText(pres, "ppt/_rels/presentation.xml.rels"),
+    ).not.toContain('Target="slides/slide2.xml"');
   });
 
   it("undo fully restores the deck, and the restored slide stays editable", async () => {
-    const pres = await openEditable([textShape(2, "Keep"), textShape(2, "Gone")]);
+    const pres = await openEditable([
+      textShape(2, "Keep"),
+      textShape(2, "Gone"),
+    ]);
     const deletedId = pres.slides[1].id;
 
-    const result = await applyEdit(pres, { type: "deleteSlide", slideId: deletedId });
+    const result = await applyEdit(pres, {
+      type: "deleteSlide",
+      slideId: deletedId,
+    });
     result.undo();
 
     expect(pres.slides).toHaveLength(2);
@@ -444,7 +555,8 @@ describe("deleteSlide", () => {
     });
     const reopened2 = await saveAndReopen(pres);
     expect(
-      (reopened2.slides[1].nodes[0] as ShapeNodeData).textBody?.paragraphs[0].runs[0].text,
+      (reopened2.slides[1].nodes[0] as ShapeNodeData).textBody?.paragraphs[0]
+        .runs[0].text,
     ).toBe("Back again");
   });
 
@@ -627,8 +739,18 @@ describe("batch", () => {
     const result = await applyEdit(pres, {
       type: "batch",
       operations: [
-        { type: "setNodeTransform", slideId, nodeId: "2", position: { x: 10, y: 20 } },
-        { type: "setNodeTransform", slideId, nodeId: "3", position: { x: 30, y: 40 } },
+        {
+          type: "setNodeTransform",
+          slideId,
+          nodeId: "2",
+          position: { x: 10, y: 20 },
+        },
+        {
+          type: "setNodeTransform",
+          slideId,
+          nodeId: "3",
+          position: { x: 30, y: 40 },
+        },
       ],
     });
 
@@ -650,7 +772,12 @@ describe("batch", () => {
       applyEdit(pres, {
         type: "batch",
         operations: [
-          { type: "setNodeTransform", slideId, nodeId: "2", position: { x: 99, y: 99 } },
+          {
+            type: "setNodeTransform",
+            slideId,
+            nodeId: "2",
+            position: { x: 99, y: 99 },
+          },
           { type: "deleteNode", slideId, nodeId: "does-not-exist" },
         ],
       }),

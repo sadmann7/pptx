@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { buildPresentation, materializeAllSlides } from "../../model/presentation";
+import {
+  buildPresentation,
+  materializeAllSlides,
+} from "../../model/presentation";
 import type { PptxFiles } from "../../ooxml/zip";
 import { readPptx, RECOMMENDED_PPTX_READ_LIMITS } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
@@ -36,12 +39,18 @@ describe("readPptx", () => {
   });
 
   it("enforces entry-count limits", async () => {
-    await expect(readPptx(buffer, { limits: { maxEntries: 2 } })).rejects.toThrow(/entries|limit/i);
+    await expect(
+      readPptx(buffer, { limits: { maxEntries: 2 } }),
+    ).rejects.toThrow(/entries|limit/i);
   });
 
   it("enforces uncompressed-size limits", async () => {
-    await expect(readPptx(buffer, { limits: { maxEntryUncompressedBytes: 16 } })).rejects.toThrow();
-    await expect(readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS })).resolves.toBeDefined();
+    await expect(
+      readPptx(buffer, { limits: { maxEntryUncompressedBytes: 16 } }),
+    ).rejects.toThrow();
+    await expect(
+      readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS }),
+    ).resolves.toBeDefined();
   });
 });
 
@@ -61,7 +70,9 @@ describe("buildPresentation", () => {
     expect(masterPath).toBe("ppt/slideMasters/slideMaster1.xml");
     const themePath = pres.masterToTheme.get(masterPath!);
     expect(themePath).toBe("ppt/theme/theme1.xml");
-    expect(pres.themes.get(themePath!)?.colorScheme.get("accent1")).toBe("4472C4");
+    expect(pres.themes.get(themePath!)?.colorScheme.get("accent1")).toBe(
+      "4472C4",
+    );
   });
 
   it("materializes slide nodes with parsed geometry and adjustments", () => {

@@ -43,7 +43,8 @@ export function SoftBlurIn({
           justifyContent: "center",
           fontSize,
           fontWeight,
-          fontFamily: "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
+          fontFamily:
+            "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
           lineHeight: 1.1,
         }}
       >
@@ -60,11 +61,16 @@ export function SoftBlurIn({
             extrapolateRight: "clamp",
             easing,
           });
-          const blurAmount = interpolate(local, [0, charDurationFrames], [blur, 0], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing,
-          });
+          const blurAmount = interpolate(
+            local,
+            [0, charDurationFrames],
+            [blur, 0],
+            {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+              easing,
+            },
+          );
           return (
             <span
               key={i}

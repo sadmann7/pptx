@@ -29,7 +29,9 @@ async function openEditable(shapes: string[]): Promise<PresentationData> {
   return buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 }
 
-async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
+async function saveAndReopen(
+  pres: PresentationData,
+): Promise<PresentationData> {
   const saved = await writePptx(pres);
   return buildPresentation(await readPptx(saved.slice().buffer));
 }
@@ -44,7 +46,12 @@ describe("addTable", () => {
     const pres = await openEditable([""]);
     const slideId = pres.slides[0].id;
 
-    const result = await applyEdit(pres, { type: "addTable", slideId, rows: 3, columns: 4 });
+    const result = await applyEdit(pres, {
+      type: "addTable",
+      slideId,
+      rows: 3,
+      columns: 4,
+    });
 
     expect(result.createdNodeIds).toHaveLength(1);
     const node = pres.slides[0].nodes[0] as TableNodeData;
@@ -57,7 +64,8 @@ describe("addTable", () => {
     expect(node.tableStyleId).toBe("{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}");
     expect(cellText(node, 2, 3)).toEqual([""]);
 
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(reopened.rows).toHaveLength(3);
     expect(reopened.columns).toHaveLength(4);
 
@@ -112,7 +120,8 @@ describe("table cell text", () => {
     expect(cellText(node, 1, 1)).toEqual(["D"]);
     expect(cellText(node, 0, 0)).toEqual(["A"]);
 
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(cellText(reopened, 1, 1)).toEqual(["D"]);
 
     result.undo();
@@ -127,7 +136,13 @@ describe("table cell text", () => {
     await applyEdit(pres, {
       type: "batch",
       operations: [
-        { type: "setTextStyle", slideId, nodeId: "2", cell: address, style: { bold: true } },
+        {
+          type: "setTextStyle",
+          slideId,
+          nodeId: "2",
+          cell: address,
+          style: { bold: true },
+        },
         {
           type: "setParagraphStyle",
           slideId,
@@ -143,7 +158,9 @@ describe("table cell text", () => {
     expect(paragraph.runs[0].properties?.attr("b")).toBe("1");
     expect(paragraph.properties?.attr("algn")).toBe("ctr");
     expect(
-      node.rows[0].cells[1].textBody!.paragraphs[0].runs[0].properties?.attr("b"),
+      node.rows[0].cells[1].textBody!.paragraphs[0].runs[0].properties?.attr(
+        "b",
+      ),
     ).toBeUndefined();
   });
 
@@ -175,10 +192,13 @@ describe("table cell text", () => {
 
 const texts = (node: TableNodeData) =>
   node.rows.map((row) =>
-    row.cells.map((_, column) => cellText(node, node.rows.indexOf(row), column).join("\n")),
+    row.cells.map((_, column) =>
+      cellText(node, node.rows.indexOf(row), column).join("\n"),
+    ),
   );
 
-const tableOf = (pres: PresentationData) => pres.slides[0].nodes[0] as TableNodeData;
+const tableOf = (pres: PresentationData) =>
+  pres.slides[0].nodes[0] as TableNodeData;
 
 describe("table rows and columns", () => {
   it("inserts an empty row, saves, and undoes", async () => {
@@ -206,7 +226,8 @@ describe("table rows and columns", () => {
     const paragraph = tableOf(pres).rows[1].cells[0].textBody!.paragraphs[0];
     expect(paragraph.endParaRPr?.attr("lang")).toBe("en-US");
 
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(texts(reopened)).toEqual([
       ["A", "B"],
       ["", ""],
@@ -229,21 +250,36 @@ describe("table rows and columns", () => {
     ]);
     const slideId = pres.slides[0].id;
 
-    await applyEdit(pres, { type: "insertTableColumn", slideId, nodeId: "2", index: 2 });
+    await applyEdit(pres, {
+      type: "insertTableColumn",
+      slideId,
+      nodeId: "2",
+      index: 2,
+    });
     expect(texts(tableOf(pres))).toEqual([
       ["A", "B", ""],
       ["C", "D", ""],
     ]);
     expect(tableOf(pres).columns).toHaveLength(3);
 
-    await applyEdit(pres, { type: "deleteTableColumn", slideId, nodeId: "2", index: 0 });
+    await applyEdit(pres, {
+      type: "deleteTableColumn",
+      slideId,
+      nodeId: "2",
+      index: 0,
+    });
     expect(texts(tableOf(pres))).toEqual([
       ["B", ""],
       ["D", ""],
     ]);
     expect(tableOf(pres).columns).toHaveLength(2);
 
-    await applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 });
+    await applyEdit(pres, {
+      type: "deleteTableRow",
+      slideId,
+      nodeId: "2",
+      index: 0,
+    });
     expect(texts(tableOf(pres))).toEqual([["D", ""]]);
   });
 
@@ -256,13 +292,23 @@ describe("table rows and columns", () => {
     ]);
     const slideId = pres.slides[0].id;
 
-    await applyEdit(pres, { type: "insertTableRow", slideId, nodeId: "2", index: 1 });
+    await applyEdit(pres, {
+      type: "insertTableRow",
+      slideId,
+      nodeId: "2",
+      index: 1,
+    });
     let node = tableOf(pres);
     expect(node.rows[0].cells[0].rowSpan).toBe(3);
     expect(node.rows[1].cells[0].vMerge).toBe(true);
     expect(node.rows[1].cells[1].vMerge).toBe(false);
 
-    await applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 });
+    await applyEdit(pres, {
+      type: "deleteTableRow",
+      slideId,
+      nodeId: "2",
+      index: 0,
+    });
     node = tableOf(pres);
     expect(node.rows[0].cells[0].rowSpan).toBe(2);
     expect(node.rows[0].cells[0].vMerge).toBe(false);
@@ -278,7 +324,12 @@ describe("table rows and columns", () => {
     ]);
     const slideId = pres.slides[0].id;
 
-    await applyEdit(pres, { type: "insertTableColumn", slideId, nodeId: "2", index: 1 });
+    await applyEdit(pres, {
+      type: "insertTableColumn",
+      slideId,
+      nodeId: "2",
+      index: 1,
+    });
     const node = tableOf(pres);
     expect(node.rows[0].cells[0].gridSpan).toBe(3);
     expect(node.rows[0].cells[1].hMerge).toBe(true);
@@ -290,13 +341,28 @@ describe("table rows and columns", () => {
     const slideId = pres.slides[0].id;
 
     await expect(
-      applyEdit(pres, { type: "insertTableRow", slideId, nodeId: "2", index: 5 }),
+      applyEdit(pres, {
+        type: "insertTableRow",
+        slideId,
+        nodeId: "2",
+        index: 5,
+      }),
     ).rejects.toThrow("out of bounds");
     await expect(
-      applyEdit(pres, { type: "deleteTableRow", slideId, nodeId: "2", index: 0 }),
+      applyEdit(pres, {
+        type: "deleteTableRow",
+        slideId,
+        nodeId: "2",
+        index: 0,
+      }),
     ).rejects.toThrow("last row");
     await expect(
-      applyEdit(pres, { type: "deleteTableColumn", slideId, nodeId: "2", index: 0 }),
+      applyEdit(pres, {
+        type: "deleteTableColumn",
+        slideId,
+        nodeId: "2",
+        index: 0,
+      }),
     ).rejects.toThrow("last column");
   });
 });
@@ -310,7 +376,10 @@ describe("setTableGrid", () => {
       ]),
     ]);
     const slideId = pres.slides[0].id;
-    const before = { columns: [...tableOf(pres).columns], size: { ...tableOf(pres).size } };
+    const before = {
+      columns: [...tableOf(pres).columns],
+      size: { ...tableOf(pres).size },
+    };
 
     const result = await applyEdit(pres, {
       type: "setTableGrid",
@@ -321,9 +390,12 @@ describe("setTableGrid", () => {
     });
 
     expect(tableOf(pres).columns.map(Math.round)).toEqual([60, 132]);
-    expect(tableOf(pres).rows.map((row) => Math.round(row.height))).toEqual([50, 39]);
+    expect(tableOf(pres).rows.map((row) => Math.round(row.height))).toEqual([
+      50, 39,
+    ]);
     expect(Math.round(tableOf(pres).size.h)).toBe(89);
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(reopened.columns.map(Math.round)).toEqual([60, 132]);
 
     result.undo();
@@ -369,9 +441,12 @@ describe("merging table cells", () => {
     expect(node.rows[0].cells[0].rowSpan).toBe(2);
     expect(node.rows[0].cells[1].hMerge).toBe(true);
     expect(node.rows[1].cells[0].vMerge).toBe(true);
-    expect(node.rows[1].cells[1].hMerge && node.rows[1].cells[1].vMerge).toBe(true);
+    expect(node.rows[1].cells[1].hMerge && node.rows[1].cells[1].vMerge).toBe(
+      true,
+    );
     expect(cellText(node, 0, 0)).toEqual(["A", "B", "D"]);
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(reopened.rows[0].cells[0].gridSpan).toBe(2);
 
     const split = await applyEdit(pres, {
@@ -382,7 +457,9 @@ describe("merging table cells", () => {
     });
     node = tableOf(pres);
     expect(
-      node.rows.flatMap((row) => row.cells.map((c) => [c.gridSpan, c.rowSpan, c.hMerge, c.vMerge])),
+      node.rows.flatMap((row) =>
+        row.cells.map((c) => [c.gridSpan, c.rowSpan, c.hMerge, c.vMerge]),
+      ),
     ).toEqual(Array.from({ length: 9 }, () => [1, 1, false, false]));
     expect(cellText(node, 0, 0)).toEqual(["A", "B", "D"]);
     expect(cellText(node, 0, 1)).toEqual([""]);
@@ -407,7 +484,13 @@ describe("merging table cells", () => {
       to: { row: 1, column: 1 },
     });
 
-    expect(getTableCellRange(tableOf(pres), { row: 1, column: 0 }, { row: 1, column: 1 })).toEqual({
+    expect(
+      getTableCellRange(
+        tableOf(pres),
+        { row: 1, column: 0 },
+        { row: 1, column: 1 },
+      ),
+    ).toEqual({
       start: { row: 0, column: 0 },
       end: { row: 1, column: 1 },
     });
@@ -453,11 +536,18 @@ describe("table cell style", () => {
       nodeId: "2",
       from: { row: 0, column: 0 },
       to: { row: 0, column: 0 },
-      style: { fill: "#ff0000", verticalAlign: "middle", borders: { color: "00ff00", width: 2 } },
+      style: {
+        fill: "#ff0000",
+        verticalAlign: "middle",
+        borders: { color: "00ff00", width: 2 },
+      },
     });
 
-    const tcPr = (row: number, column: number) => tableOf(pres).rows[row].cells[column].properties;
-    expect(tcPr(0, 0)?.child("solidFill").child("srgbClr").attr("val")).toBe("FF0000");
+    const tcPr = (row: number, column: number) =>
+      tableOf(pres).rows[row].cells[column].properties;
+    expect(tcPr(0, 0)?.child("solidFill").child("srgbClr").attr("val")).toBe(
+      "FF0000",
+    );
     expect(tcPr(0, 0)?.attr("anchor")).toBe("ctr");
     expect(tcPr(0, 0)?.child("lnR").attr("w")).toBe("25400");
     expect(
@@ -469,7 +559,8 @@ describe("table cell style", () => {
     expect(tcPr(1, 0)?.child("lnT").child("solidFill").exists()).toBe(true);
     expect(tcPr(1, 1)?.child("lnL").exists()).toBe(false);
 
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[0] as TableNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[0] as TableNodeData;
     expect(reopened.rows[0].cells[0].properties?.attr("anchor")).toBe("ctr");
 
     result.undo();
@@ -488,7 +579,9 @@ describe("table cell style", () => {
     for (const row of tableOf(pres).rows) {
       for (const tableCell of row.cells) {
         expect(tableCell.properties?.child("noFill").exists()).toBe(true);
-        expect(tableCell.properties?.child("lnB").child("noFill").exists()).toBe(true);
+        expect(
+          tableCell.properties?.child("lnB").child("noFill").exists(),
+        ).toBe(true);
       }
     }
   });

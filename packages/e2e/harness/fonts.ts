@@ -21,8 +21,12 @@ import type { EmbeddedFontError } from "@diceui/pptx-core/fonts";
 const params = new URLSearchParams(location.search);
 const file = params.get("file");
 const modeParam = params.get("mode");
-const mode: BenchMode = modeParam === "main" || modeParam === "sliced" ? modeParam : "worker";
-const partsFactor = Math.max(1, Number.parseInt(params.get("parts") ?? "1", 10));
+const mode: BenchMode =
+  modeParam === "main" || modeParam === "sliced" ? modeParam : "worker";
+const partsFactor = Math.max(
+  1,
+  Number.parseInt(params.get("parts") ?? "1", 10),
+);
 const useMtx = params.get("mtx") === "1";
 const useBuild = params.get("build") === "dist";
 
@@ -37,7 +41,9 @@ async function loadFontsModule(): Promise<FontsModule> {
   const url = "/core-dist/fonts.mjs";
   const module = (await import(/* @vite-ignore */ url)) as Partial<FontsModule>;
   if (!module.loadEmbeddedFonts) {
-    throw new Error("/core-dist/fonts.mjs is missing; run pnpm -F @diceui/pptx-core build");
+    throw new Error(
+      "/core-dist/fonts.mjs is missing; run pnpm -F @diceui/pptx-core build",
+    );
   }
   return module as FontsModule;
 }
@@ -63,14 +69,20 @@ const FRAME_BUDGET_MS = 1000 / 60;
 
 // Real decks embed only 3 to 7 parts, so multiplying reaches the deck sizes the
 // loader was written for. The bytes are shared, so only the decode work repeats.
-function multiplyFontParts(presentation: PresentationData, factor: number): void {
+function multiplyFontParts(
+  presentation: PresentationData,
+  factor: number,
+): void {
   const base = presentation.embeddedFonts;
   if (!base || factor <= 1) return;
 
   const added: EmbeddedFontEntry[] = [];
   for (let copy = 1; copy < factor; copy++) {
     for (const entry of base) {
-      const clone: EmbeddedFontEntry = { ...entry, typeface: `${entry.typeface} Copy${copy}` };
+      const clone: EmbeddedFontEntry = {
+        ...entry,
+        typeface: `${entry.typeface} Copy${copy}`,
+      };
       for (const key of VARIANT_KEYS) {
         const variant = entry[key];
         if (!variant) continue;
@@ -88,7 +100,9 @@ function multiplyFontParts(presentation: PresentationData, factor: number): void
 
 // The MTX bytes carry their own EOT header, so the deck's fontKey no longer
 // applies and is dropped.
-async function applyMtxFontParts(presentation: PresentationData): Promise<void> {
+async function applyMtxFontParts(
+  presentation: PresentationData,
+): Promise<void> {
   const payloads: Uint8Array[] = [];
   for (const url of MTX_PARTS) {
     const response = await fetch(url);
@@ -120,7 +134,10 @@ function fontPartPaths(presentation: PresentationData): string[] {
   return [...paths];
 }
 
-function typefacesForPath(presentation: PresentationData, path: string): string[] {
+function typefacesForPath(
+  presentation: PresentationData,
+  path: string,
+): string[] {
   const typefaces = new Set<string>();
   for (const entry of presentation.embeddedFonts ?? []) {
     for (const key of VARIANT_KEYS) {
@@ -130,7 +147,11 @@ function typefacesForPath(presentation: PresentationData, path: string): string[
   return [...typefaces];
 }
 
-function repointVariants(presentation: PresentationData, from: string, to: string): void {
+function repointVariants(
+  presentation: PresentationData,
+  from: string,
+  to: string,
+): void {
   for (const entry of presentation.embeddedFonts ?? []) {
     for (const key of VARIANT_KEYS) {
       const variant = entry[key];
@@ -145,8 +166,17 @@ function repointVariants(presentation: PresentationData, from: string, to: strin
 function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
   const paths = fontPartPaths(presentation);
   const broken: BrokenFontPart[] = [];
-  const record = (path: string, kind: BrokenFontPart["kind"], stage: BrokenFontPart["stage"]) => {
-    broken.push({ path, kind, stage, typefaces: typefacesForPath(presentation, path) });
+  const record = (
+    path: string,
+    kind: BrokenFontPart["kind"],
+    stage: BrokenFontPart["stage"],
+  ) => {
+    broken.push({
+      path,
+      kind,
+      stage,
+      typefaces: typefacesForPath(presentation, path),
+    });
   };
 
   const missing = paths[0];
@@ -188,7 +218,10 @@ function breakFontParts(presentation: PresentationData): BrokenFontPart[] {
   return broken;
 }
 
-function fontPartStats(presentation: PresentationData): { parts: number; bytes: number } {
+function fontPartStats(presentation: PresentationData): {
+  parts: number;
+  bytes: number;
+} {
   const paths = new Set<string>();
   for (const entry of presentation.embeddedFonts ?? []) {
     for (const key of VARIANT_KEYS) {
@@ -247,7 +280,14 @@ function startMainThreadMonitor(): () => MainThreadStats {
   return () => {
     running = false;
     observer?.disconnect();
-    return { frames, worstFrameMs, blockedMs, longTasks, worstTaskMs, totalTaskMs };
+    return {
+      frames,
+      worstFrameMs,
+      blockedMs,
+      longTasks,
+      worstTaskMs,
+      totalTaskMs,
+    };
   };
 }
 
@@ -272,7 +312,12 @@ async function decodeSliced(
       const face = { typeface: entry.typeface, weight, style };
       const part = parts.get(variant.path);
       if (part) part.faces.push(face);
-      else parts.set(variant.path, { bytes, fontKey: variant.fontKey, faces: [face] });
+      else
+        parts.set(variant.path, {
+          bytes,
+          fontKey: variant.fontKey,
+          faces: [face],
+        });
     }
   }
 
@@ -333,7 +378,9 @@ async function main(): Promise<void> {
   try {
     const response = await fetch(`/${file}`);
     if (!response.ok) throw new Error(`fetch ${file}: HTTP ${response.status}`);
-    const presentation = buildPresentation(await readPptx(await response.arrayBuffer()));
+    const presentation = buildPresentation(
+      await readPptx(await response.arrayBuffer()),
+    );
     const { decodeEmbeddedFont, findPriorityTypefaces, loadEmbeddedFonts } =
       await loadFontsModule();
 
@@ -370,11 +417,16 @@ async function main(): Promise<void> {
       const facesBefore = document.fonts.size;
 
       if (mode === "main") {
-        Object.defineProperty(window, "Worker", { value: undefined, configurable: true });
+        Object.defineProperty(window, "Worker", {
+          value: undefined,
+          configurable: true,
+        });
       }
 
       const errors: EmbeddedFontError[] = [];
-      const handle = loadEmbeddedFonts(presentation, { onError: (error) => errors.push(error) });
+      const handle = loadEmbeddedFonts(presentation, {
+        onError: (error) => errors.push(error),
+      });
       await handle.complete;
 
       return { broken, errors, faces: document.fonts.size - facesBefore };
@@ -403,7 +455,10 @@ async function main(): Promise<void> {
 
       // The loader picks its path from `typeof Worker`.
       if (mode === "main") {
-        Object.defineProperty(window, "Worker", { value: undefined, configurable: true });
+        Object.defineProperty(window, "Worker", {
+          value: undefined,
+          configurable: true,
+        });
       }
 
       const priorityTypefaces = findPriorityTypefaces(
@@ -432,7 +487,8 @@ async function main(): Promise<void> {
 
     window.__fontsReady = true;
   } catch (error) {
-    window.__renderError = error instanceof Error ? error.message : String(error);
+    window.__renderError =
+      error instanceof Error ? error.message : String(error);
   }
 }
 

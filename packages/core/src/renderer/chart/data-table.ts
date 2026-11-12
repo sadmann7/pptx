@@ -3,10 +3,15 @@ import { parseOoxmlBoolValue } from "./boolean";
 import { formatValue } from "./format";
 import type { DataTableInfo } from "./type";
 
-export function parseDataTable(plotArea: SafeXmlNode): { showKeys: boolean } | undefined {
+export function parseDataTable(
+  plotArea: SafeXmlNode,
+): { showKeys: boolean } | undefined {
   const dTable = plotArea.child("dTable");
   if (!dTable.exists()) return undefined;
-  const showKeys = parseOoxmlBoolValue(dTable.child("showKeys").attr("val"), true);
+  const showKeys = parseOoxmlBoolValue(
+    dTable.child("showKeys").attr("val"),
+    true,
+  );
   return { showKeys };
 }
 
@@ -21,7 +26,8 @@ export function buildDataTableElement(
   table.style.marginTop = "8px";
 
   const { seriesArr, showKeys, formatCode } = info;
-  const categories = seriesArr.find((s) => s.categories.length > 0)?.categories || [];
+  const categories =
+    seriesArr.find((s) => s.categories.length > 0)?.categories || [];
   const fc = formatCode;
 
   const thead = document.createElement("thead");
@@ -72,7 +78,9 @@ export function buildDataTableElement(
       td.style.textAlign = "right";
       const val = s.values[ci];
       td.textContent =
-        val !== undefined && !s.blankIndices?.has(ci) ? formatValue(val, fc ?? s.formatCode) : "";
+        val !== undefined && !s.blankIndices?.has(ci)
+          ? formatValue(val, fc ?? s.formatCode)
+          : "";
       tr.appendChild(td);
     }
     tbody.appendChild(tr);

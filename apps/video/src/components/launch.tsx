@@ -27,10 +27,14 @@ import { FADE_DURATION } from "@/lib/timing";
 const fadeTiming = linearTiming({ durationInFrames: FADE_DURATION });
 const handoffTiming = linearTiming({ durationInFrames: HANDOFF_FRAMES });
 
-export const calculateLaunchMetadata: CalculateMetadataFunction<LaunchProps> = async () => {
+export const calculateLaunchMetadata: CalculateMetadataFunction<
+  LaunchProps
+> = async () => {
   let hasEditorDemo = false;
   try {
-    const response = await fetch(staticFile(EDITOR_DEMO_FILE), { method: "HEAD" });
+    const response = await fetch(staticFile(EDITOR_DEMO_FILE), {
+      method: "HEAD",
+    });
     hasEditorDemo = response.ok;
   } catch {
     hasEditorDemo = false;
@@ -42,8 +46,14 @@ export const calculateLaunchMetadata: CalculateMetadataFunction<LaunchProps> = a
   };
 };
 
-function getIsHandoff(from: React.Key | null | undefined, to: React.Key | null) {
-  return (from === "showcase" && to === "composition") || (from === "composition" && to === "demo");
+function getIsHandoff(
+  from: React.Key | null | undefined,
+  to: React.Key | null,
+) {
+  return (
+    (from === "showcase" && to === "composition") ||
+    (from === "composition" && to === "demo")
+  );
 }
 
 interface LaunchProps extends Record<string, unknown> {
@@ -59,20 +69,32 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
     <TransitionSeries.Sequence key="title" durationInFrames={TITLE_DURATION}>
       <TitleScene />
     </TransitionSeries.Sequence>,
-    <TransitionSeries.Sequence key="showcase" durationInFrames={SPOTLIGHTS_TOTAL}>
+    <TransitionSeries.Sequence
+      key="showcase"
+      durationInFrames={SPOTLIGHTS_TOTAL}
+    >
       <ShowcaseScene />
     </TransitionSeries.Sequence>,
-    <TransitionSeries.Sequence key="composition" durationInFrames={COMPOSITION_DURATION}>
+    <TransitionSeries.Sequence
+      key="composition"
+      durationInFrames={COMPOSITION_DURATION}
+    >
       <CompositionScene isHandoff={hasEditorDemo} />
     </TransitionSeries.Sequence>,
     ...(hasEditorDemo
       ? [
-          <TransitionSeries.Sequence key="demo" durationInFrames={DEMO_DURATION}>
+          <TransitionSeries.Sequence
+            key="demo"
+            durationInFrames={DEMO_DURATION}
+          >
             <DemoScene />
           </TransitionSeries.Sequence>,
         ]
       : []),
-    <TransitionSeries.Sequence key="features" durationInFrames={FEATURES_DURATION}>
+    <TransitionSeries.Sequence
+      key="features"
+      durationInFrames={FEATURES_DURATION}
+    >
       <FeaturesScene />
     </TransitionSeries.Sequence>,
     <TransitionSeries.Sequence key="cta" durationInFrames={CTA_DURATION}>
@@ -92,10 +114,17 @@ export function Launch({ hasEditorDemo = false }: LaunchProps) {
               <TransitionSeries.Transition
                 key={`cut-${index}`}
                 presentation={{
-                  component: ({ presentationDirection, passedProps, ...props }) => (
+                  component: ({
+                    presentationDirection,
+                    passedProps,
+                    ...props
+                  }) => (
                     <AbsoluteFill
                       style={{
-                        zIndex: presentationDirection === "exiting" ? passedProps.layer : 0,
+                        zIndex:
+                          presentationDirection === "exiting"
+                            ? passedProps.layer
+                            : 0,
                       }}
                       {...props}
                     />

@@ -26,7 +26,9 @@ const ORIGIN: Rect = { x: 100, y: 100, w: 200, h: 100 };
 
 describe("resizeRotatedRect", () => {
   it("matches resizeRect when not rotated", () => {
-    expect(resizeRotatedRect(ORIGIN, 0, "se", 30, 20)).toEqual(resizeRect(ORIGIN, "se", 30, 20));
+    expect(resizeRotatedRect(ORIGIN, 0, "se", 30, 20)).toEqual(
+      resizeRect(ORIGIN, "se", 30, 20),
+    );
   });
 
   it("measures the drag along the shape's own axes", () => {
@@ -48,7 +50,12 @@ describe("resizeRotatedRect", () => {
     "keeps the edge opposite the %s handle in place",
     (handle, u, v, rotation, dx, dy) => {
       const before = toSlide(ORIGIN, rotation, u, v);
-      const after = toSlide(resizeRotatedRect(ORIGIN, rotation, handle, dx, dy), rotation, u, v);
+      const after = toSlide(
+        resizeRotatedRect(ORIGIN, rotation, handle, dx, dy),
+        rotation,
+        u,
+        v,
+      );
       expect(after.x).toBeCloseTo(before.x);
       expect(after.y).toBeCloseTo(before.y);
     },
@@ -73,7 +80,11 @@ describe("getHandleCursor", () => {
 
 describe("getNodeBounds", () => {
   const node = (rotation: number) =>
-    ({ position: { x: 100, y: 100 }, size: { w: 200, h: 100 }, rotation }) as never;
+    ({
+      position: { x: 100, y: 100 },
+      size: { w: 200, h: 100 },
+      rotation,
+    }) as never;
 
   it("is the node's box when not rotated", () => {
     expect(getNodeBounds(node(0))).toEqual(ORIGIN);
@@ -90,12 +101,24 @@ describe("getNodeBounds", () => {
 
 describe("getResizedRects", () => {
   const node = (id: string, x: number, rotation: number) =>
-    ({ id, position: { x, y: 100 }, size: { w: 200, h: 100 }, rotation }) as never;
+    ({
+      id,
+      position: { x, y: 100 },
+      size: { w: 200, h: 100 },
+      rotation,
+    }) as never;
 
   it("scales every shape by the dragged one's factors, along each shape's own axes", () => {
     const resized = node("a", 100, 0);
     const turned = node("b", 400, 90);
-    const rects = getResizedRects([resized, turned], resized, "e", 100, 0, false);
+    const rects = getResizedRects(
+      [resized, turned],
+      resized,
+      "e",
+      100,
+      0,
+      false,
+    );
 
     // The dragged shape grew 1.5× wide; the turned one grows 1.5× along its own width.
     expect(rects.get("a")).toEqual({ x: 100, y: 100, w: 300, h: 100 });

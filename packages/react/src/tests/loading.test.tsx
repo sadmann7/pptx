@@ -18,7 +18,12 @@ describe("Presentation.Loading", () => {
     const store = createStore();
     const pending = store.load(fixture);
 
-    withStore(store, <Presentation.Loading>{(p) => <span>at {p}%</span>}</Presentation.Loading>);
+    withStore(
+      store,
+      <Presentation.Loading>
+        {(p) => <span>at {p}%</span>}
+      </Presentation.Loading>,
+    );
     expect(screen.getByText(/at \d+%/)).toBeDefined();
 
     await act(async () => {
@@ -29,7 +34,10 @@ describe("Presentation.Loading", () => {
 
   it("renders nothing when idle", () => {
     const store = createStore();
-    const { container } = withStore(store, <Presentation.Loading>busy</Presentation.Loading>);
+    const { container } = withStore(
+      store,
+      <Presentation.Loading>busy</Presentation.Loading>,
+    );
     expect(container.textContent).toBe("");
   });
 });

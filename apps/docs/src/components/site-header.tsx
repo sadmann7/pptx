@@ -16,7 +16,10 @@ import { GITHUB_URL } from "@/lib/site";
 
 const LINKS = [{ text: "Docs", href: "/docs" }];
 
-export function SiteHeader({ className, ...props }: React.ComponentProps<"header">) {
+export function SiteHeader({
+  className,
+  ...props
+}: React.ComponentProps<"header">) {
   const { enabled, hotKey, setOpenSearch } = useSearchContext();
   const { resolvedTheme, setTheme } = useTheme();
 

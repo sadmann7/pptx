@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { readClipboardToken, writeClipboardToken } from "../selection/clipboard";
+import {
+  readClipboardToken,
+  writeClipboardToken,
+} from "../selection/clipboard";
 
 function fakeDataTransfer(keep?: Set<string>) {
   const data = new Map<string, string>();

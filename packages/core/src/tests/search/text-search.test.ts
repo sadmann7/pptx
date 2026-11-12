@@ -2,7 +2,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import type { PresentationData } from "../../model/presentation";
 import { buildPresentation } from "../../model/presentation";
-import { buildTextIndex, searchPresentation, searchText } from "../../model/text-search";
+import {
+  buildTextIndex,
+  searchPresentation,
+  searchText,
+} from "../../model/text-search";
 import { readPptx } from "../../ooxml/zip";
 import { buildPptxWithShapes } from "../fixtures/minimal-pptx";
 
@@ -21,7 +25,8 @@ let presentation: PresentationData;
 
 beforeAll(async () => {
   const buffer = await buildPptxWithShapes(
-    textShape(2, "Revenue grew 40 percent") + textShape(3, "revenue outlook for Q3"),
+    textShape(2, "Revenue grew 40 percent") +
+      textShape(3, "revenue outlook for Q3"),
   );
   presentation = buildPresentation(await readPptx(buffer));
 });
@@ -37,7 +42,9 @@ describe("buildTextIndex", () => {
   });
 
   it("can exclude shapes", () => {
-    expect(buildTextIndex(presentation, { includeShapes: false })).toHaveLength(0);
+    expect(buildTextIndex(presentation, { includeShapes: false })).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -48,18 +55,26 @@ describe("searchText / searchPresentation", () => {
   });
 
   it("respects matchCase", () => {
-    const results = searchPresentation(presentation, "revenue", { matchCase: true });
+    const results = searchPresentation(presentation, "revenue", {
+      matchCase: true,
+    });
     expect(results).toHaveLength(1);
     expect(results[0].text).toContain("outlook");
   });
 
   it("respects wholeWord", () => {
-    expect(searchPresentation(presentation, "grew", { wholeWord: true })).toHaveLength(1);
-    expect(searchPresentation(presentation, "gre", { wholeWord: true })).toHaveLength(0);
+    expect(
+      searchPresentation(presentation, "grew", { wholeWord: true }),
+    ).toHaveLength(1);
+    expect(
+      searchPresentation(presentation, "gre", { wholeWord: true }),
+    ).toHaveLength(0);
   });
 
   it("supports regex queries with match offsets and snippets", () => {
-    const results = searchPresentation(presentation, String.raw`\d+ percent`, { useRegex: true });
+    const results = searchPresentation(presentation, String.raw`\d+ percent`, {
+      useRegex: true,
+    });
     expect(results).toHaveLength(1);
     const r = results[0];
     expect(r.text.slice(r.matchStart, r.matchEnd)).toBe("40 percent");

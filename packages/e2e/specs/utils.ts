@@ -32,8 +32,11 @@ export function slideContainer(page: Page) {
   return page.locator("#slide-container");
 }
 
-export async function getStructure(page: Page): Promise<SerializedPresentation> {
+export async function getStructure(
+  page: Page,
+): Promise<SerializedPresentation> {
   const structure = await page.evaluate(() => window.__getStructure?.());
-  if (!structure) throw new Error("harness did not expose a presentation structure");
+  if (!structure)
+    throw new Error("harness did not expose a presentation structure");
   return structure;
 }

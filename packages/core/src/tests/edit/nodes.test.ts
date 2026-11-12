@@ -33,7 +33,9 @@ async function openEditable(shapes: string[]): Promise<PresentationData> {
   return buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
 }
 
-async function saveAndReopen(pres: PresentationData): Promise<PresentationData> {
+async function saveAndReopen(
+  pres: PresentationData,
+): Promise<PresentationData> {
   const saved = await writePptx(pres);
   return buildPresentation(await readPptx(saved.slice().buffer));
 }
@@ -42,12 +44,16 @@ async function savedZip(pres: PresentationData): Promise<JSZip> {
   return JSZip.loadAsync(await writePptx(pres));
 }
 
-const ids = (pres: PresentationData) => pres.slides[0].nodes.map((node) => node.id);
+const ids = (pres: PresentationData) =>
+  pres.slides[0].nodes.map((node) => node.id);
 
 // A PNG header is enough for the size reader.
 function pngBytes(width: number, height: number): Uint8Array {
   const bytes = new Uint8Array(33);
-  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+  bytes.set([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48,
+    0x44, 0x52,
+  ]);
   const view = new DataView(bytes.buffer);
   view.setUint32(16, width);
   view.setUint32(20, height);
@@ -56,22 +62,34 @@ function pngBytes(width: number, height: number): Uint8Array {
 
 describe("duplicateNode", () => {
   it("copies a shape above the original with a fresh id and an offset", async () => {
-    const pres = await openEditable([textShape(2, "A"), textShape(3, "B", 3657600)]);
+    const pres = await openEditable([
+      textShape(2, "A"),
+      textShape(3, "B", 3657600),
+    ]);
     const slideId = pres.slides[0].id;
     const source = pres.slides[0].nodes[0];
 
-    const result = await applyEdit(pres, { type: "duplicateNode", slideId, nodeId: "2" });
+    const result = await applyEdit(pres, {
+      type: "duplicateNode",
+      slideId,
+      nodeId: "2",
+    });
 
     expect(result.createdNodeIds).toEqual(["4"]);
     expect(ids(pres)).toEqual(["2", "4", "3"]);
     const copy = pres.slides[0].nodes[1] as ShapeNodeData;
-    expect(copy.position).toEqual({ x: source.position.x + 10, y: source.position.y + 10 });
+    expect(copy.position).toEqual({
+      x: source.position.x + 10,
+      y: source.position.y + 10,
+    });
     expect(copy.size).toEqual(source.size);
     expect(copy.textBody!.paragraphs[0].runs[0].text).toBe("A");
 
     const reopened = await saveAndReopen(pres);
     expect(ids(reopened)).toEqual(["2", "4", "3"]);
-    expect(reopened.slides[0].nodes[1].position.x).toBeCloseTo(source.position.x + 10);
+    expect(reopened.slides[0].nodes[1].position.x).toBeCloseTo(
+      source.position.x + 10,
+    );
 
     result.undo();
     expect(ids(pres)).toEqual(["2", "3"]);
@@ -79,7 +97,9 @@ describe("duplicateNode", () => {
   });
 
   it("gives a group's children fresh ids too", async () => {
-    const pres = await openEditable([group(2, textShape(3, "A"), textShape(4, "B", 1828800))]);
+    const pres = await openEditable([
+      group(2, textShape(3, "A"), textShape(4, "B", 1828800)),
+    ]);
     const slideId = pres.slides[0].id;
 
     await applyEdit(pres, {
@@ -91,12 +111,17 @@ describe("duplicateNode", () => {
 
     const zip = await savedZip(pres);
     const xml = await zip.file(slideId)!.async("string");
-    const allIds = [...xml.matchAll(/cNvPr id="(\d+)"/g)].map((match) => match[1]);
+    const allIds = [...xml.matchAll(/cNvPr id="(\d+)"/g)].map(
+      (match) => match[1],
+    );
     expect(allIds).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
   });
 
   it("is one undo step for a whole selection in a batch", async () => {
-    const pres = await openEditable([textShape(2, "A"), textShape(3, "B", 3657600)]);
+    const pres = await openEditable([
+      textShape(2, "A"),
+      textShape(3, "B", 3657600),
+    ]);
     const slideId = pres.slides[0].id;
 
     const result = await applyEdit(pres, {
@@ -126,7 +151,12 @@ describe("reorderNode", () => {
     const pres = await openEditable(shapes);
     const slideId = pres.slides[0].id;
 
-    const result = await applyEdit(pres, { type: "reorderNode", slideId, nodeId, order });
+    const result = await applyEdit(pres, {
+      type: "reorderNode",
+      slideId,
+      nodeId,
+      order,
+    });
 
     expect(ids(pres)).toEqual(expected);
     expect(ids(await saveAndReopen(pres))).toEqual(expected);
@@ -193,7 +223,9 @@ describe("addImage", () => {
 
   it("declares a new image type, and takes it back on undo", async () => {
     const pres = await openEditable([""]);
-    const gif = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x10, 0x00, 0x10, 0x00]);
+    const gif = new Uint8Array([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x10, 0x00, 0x10, 0x00,
+    ]);
 
     const result = await applyEdit(pres, {
       type: "addImage",
@@ -203,7 +235,9 @@ describe("addImage", () => {
     });
     const contentTypes = async () =>
       (await savedZip(pres)).file("[Content_Types].xml")!.async("string");
-    expect(await contentTypes()).toContain('Extension="gif" ContentType="image/gif"');
+    expect(await contentTypes()).toContain(
+      'Extension="gif" ContentType="image/gif"',
+    );
 
     result.undo();
     expect(await contentTypes()).not.toContain('Extension="gif"');
@@ -240,7 +274,9 @@ describe("addImage", () => {
     const [first, second] = pres.slides[0].nodes as PictureNodeData[];
     expect(first.size).toEqual({ w: 50, h: 40 });
     expect(first.position).toEqual({ x: 5, y: 6 });
-    expect(pres.slides[0].rels.get(second.blipEmbed!)?.target).toBe("../media/image2.png");
+    expect(pres.slides[0].rels.get(second.blipEmbed!)?.target).toBe(
+      "../media/image2.png",
+    );
   });
 
   it("rejects unsupported image types", async () => {
@@ -261,13 +297,15 @@ describe("readImageSize", () => {
   it("reads PNG, GIF, and JPEG headers", () => {
     expect(readImageSize(pngBytes(640, 480))).toEqual({ w: 640, h: 480 });
 
-    const gif = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x20, 0x03, 0x58, 0x02]);
+    const gif = new Uint8Array([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x20, 0x03, 0x58, 0x02,
+    ]);
     expect(readImageSize(gif)).toEqual({ w: 800, h: 600 });
 
     // SOI, an APP0 segment, then SOF0 with height 300 and width 400.
     const jpeg = new Uint8Array([
-      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0x2c,
-      0x01, 0x90, 0x03,
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11,
+      0x08, 0x01, 0x2c, 0x01, 0x90, 0x03,
     ]);
     expect(readImageSize(jpeg)).toEqual({ w: 400, h: 300 });
 
@@ -288,12 +326,19 @@ describe("copyNodes and pasteNodes", () => {
 </p:sp>`;
 
   it("pastes shapes on top of a slide with fresh ids, one undo step", async () => {
-    const pres = await openEditable([textShape(2, "A"), textShape(3, "B", 3657600)]);
+    const pres = await openEditable([
+      textShape(2, "A"),
+      textShape(3, "B", 3657600),
+    ]);
     const slideId = pres.slides[0].id;
     const clipboard = await copyNodes(pres, slideId, ["3", "2"]);
     expect(clipboard.nodes).toHaveLength(2);
 
-    const result = await applyEdit(pres, { type: "pasteNodes", slideId, clipboard });
+    const result = await applyEdit(pres, {
+      type: "pasteNodes",
+      slideId,
+      clipboard,
+    });
 
     expect(result.createdNodeIds).toEqual(["4", "5"]);
     expect(ids(pres)).toEqual(["2", "3", "4", "5"]);
@@ -301,7 +346,9 @@ describe("copyNodes and pasteNodes", () => {
       (node) => (node as ShapeNodeData).textBody!.paragraphs[0].runs[0].text,
     );
     expect(texts).toEqual(["A", "B", "A", "B"]);
-    expect(pres.slides[0].nodes[2].position).toEqual(pres.slides[0].nodes[0].position);
+    expect(pres.slides[0].nodes[2].position).toEqual(
+      pres.slides[0].nodes[0].position,
+    );
     expect(ids(await saveAndReopen(pres))).toEqual(["2", "3", "4", "5"]);
 
     result.undo();
@@ -314,18 +361,35 @@ describe("copyNodes and pasteNodes", () => {
     const clipboard = await copyNodes(pres, slideId, ["2"]);
     const original = pres.slides[0].nodes[0].position;
 
-    await applyEdit(pres, { type: "pasteNodes", slideId, clipboard, offset: { x: 10, y: 20 } });
-    expect(pres.slides[0].nodes[1].position).toEqual({ x: original.x + 10, y: original.y + 20 });
+    await applyEdit(pres, {
+      type: "pasteNodes",
+      slideId,
+      clipboard,
+      offset: { x: 10, y: 20 },
+    });
+    expect(pres.slides[0].nodes[1].position).toEqual({
+      x: original.x + 10,
+      y: original.y + 20,
+    });
   });
 
   it("writes out an inherited position so it survives another deck", async () => {
-    const buffer = await buildCustomPptx({ slides: [placeholder], layoutShapesXml: layoutTitle });
-    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+    const buffer = await buildCustomPptx({
+      slides: [placeholder],
+      layoutShapesXml: layoutTitle,
+    });
+    const pres = buildPresentation(
+      await readPptx(buffer, { keepSourcePackage: true }),
+    );
     const clipboard = await copyNodes(pres, pres.slides[0].id, ["2"]);
 
     expect(clipboard.nodes[0]).toContain('<a:off x="457200" y="274638"/>');
     expect(clipboard.nodes[0]).toContain('<a:ext cx="8229600" cy="1143000"/>');
-    const sourceXml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");
+    const sourceXml = await (
+      await savedZip(pres)
+    )
+      .file(pres.slides[0].id)!
+      .async("string");
     expect(sourceXml).not.toContain('<a:off x="457200"');
   });
 
@@ -339,9 +403,15 @@ describe("copyNodes and pasteNodes", () => {
       contentType: "image/png",
     });
     const clipboard = await copyNodes(source, sourceSlide, ["2"]);
-    expect(Object.values(clipboard.relationships)[0].media?.extension).toBe("png");
+    expect(Object.values(clipboard.relationships)[0].media?.extension).toBe(
+      "png",
+    );
 
-    await applyEdit(source, { type: "pasteNodes", slideId: sourceSlide, clipboard });
+    await applyEdit(source, {
+      type: "pasteNodes",
+      slideId: sourceSlide,
+      clipboard,
+    });
     const [first, second] = source.slides[0].nodes as PictureNodeData[];
     expect(source.slides[0].rels.get(second.blipEmbed!)?.target).toBe(
       source.slides[0].rels.get(first.blipEmbed!)?.target,
@@ -384,7 +454,9 @@ describe("copyNodes and pasteNodes", () => {
 </Relationships>`,
       },
     });
-    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+    const pres = buildPresentation(
+      await readPptx(buffer, { keepSourcePackage: true }),
+    );
 
     const clipboard = await copyNodes(pres, pres.slides[0].id, ["2", "3"]);
     expect(clipboard.nodes).toHaveLength(1);
@@ -407,7 +479,8 @@ describe("addTextBox", () => {
     expect(box.textBody!.paragraphs).toHaveLength(1);
     expect(box.textBody!.paragraphs[0].runs).toEqual([]);
 
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[1] as ShapeNodeData;
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[1] as ShapeNodeData;
     expect(reopened.isTextBox).toBe(true);
 
     result.undo();
@@ -425,7 +498,9 @@ describe("addTextBox", () => {
     });
 
     const box = pres.slides[0].nodes[0] as ShapeNodeData;
-    expect(box.textBody!.paragraphs[0].runs.map((run) => run.text)).toEqual(["Hello"]);
+    expect(box.textBody!.paragraphs[0].runs.map((run) => run.text)).toEqual([
+      "Hello",
+    ]);
     expect(box.size).toEqual({ w: 200, h: 50 });
     expect(box.position).toEqual({ x: 10, y: 20 });
   });
@@ -436,7 +511,11 @@ describe("addShape", () => {
     const pres = await openEditable([textShape(2, "A")]);
     const slideId = pres.slides[0].id;
 
-    const result = await applyEdit(pres, { type: "addShape", slideId, geometry: "ellipse" });
+    const result = await applyEdit(pres, {
+      type: "addShape",
+      slideId,
+      geometry: "ellipse",
+    });
 
     expect(result.createdNodeIds).toEqual(["3"]);
     const shape = pres.slides[0].nodes[1] as ShapeNodeData;
@@ -447,8 +526,11 @@ describe("addShape", () => {
 
     const xml = await (await savedZip(pres)).file(slideId)!.async("string");
     expect(xml).toContain('name="Ellipse 2"');
-    expect(xml).toMatch(/<a:fillRef idx="1"><a:schemeClr val="accent1"\/><\/a:fillRef>/);
-    const reopened = (await saveAndReopen(pres)).slides[0].nodes[1] as ShapeNodeData;
+    expect(xml).toMatch(
+      /<a:fillRef idx="1"><a:schemeClr val="accent1"\/><\/a:fillRef>/,
+    );
+    const reopened = (await saveAndReopen(pres)).slides[0]
+      .nodes[1] as ShapeNodeData;
     expect(reopened.presetGeometry).toBe("ellipse");
 
     result.undo();
@@ -477,7 +559,11 @@ describe("addShape", () => {
 
 describe("setOutline", () => {
   const lineOf = async (pres: PresentationData) => {
-    const xml = await (await savedZip(pres)).file(pres.slides[0].id)!.async("string");
+    const xml = await (
+      await savedZip(pres)
+    )
+      .file(pres.slides[0].id)!
+      .async("string");
     return /<a:ln[ >].*?<\/a:ln>|<a:ln[^>]*\/>/s.exec(xml)?.[0];
   };
 
@@ -512,14 +598,30 @@ describe("setOutline", () => {
   it("changes one field at a time, and removes the outline with null", async () => {
     const pres = await openEditable([textShape(2, "A")]);
     const slideId = pres.slides[0].id;
-    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: "FF0000", width: 1 });
+    await applyEdit(pres, {
+      type: "setOutline",
+      slideId,
+      nodeId: "2",
+      color: "FF0000",
+      width: 1,
+    });
 
-    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", width: 3 });
+    await applyEdit(pres, {
+      type: "setOutline",
+      slideId,
+      nodeId: "2",
+      width: 3,
+    });
     expect(await lineOf(pres)).toBe(
       '<a:ln w="38100"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln>',
     );
 
-    await applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: null });
+    await applyEdit(pres, {
+      type: "setOutline",
+      slideId,
+      nodeId: "2",
+      color: null,
+    });
     expect(await lineOf(pres)).toBe('<a:ln w="38100"><a:noFill/></a:ln>');
   });
 
@@ -527,7 +629,12 @@ describe("setOutline", () => {
     const pres = await openEditable([group(2, textShape(3, "A"))]);
     const slideId = pres.slides[0].id;
     await expect(
-      applyEdit(pres, { type: "setOutline", slideId, nodeId: "2", color: "000000" }),
+      applyEdit(pres, {
+        type: "setOutline",
+        slideId,
+        nodeId: "2",
+        color: "000000",
+      }),
     ).rejects.toThrow(/only supports shapes and pictures/);
   });
 });
@@ -545,7 +652,9 @@ describe("getPresentationFonts", () => {
       majorLatin: "Calibri Light",
       minorLatin: "Calibri",
     });
-    const pres = buildPresentation(await readPptx(buffer, { keepSourcePackage: true }));
+    const pres = buildPresentation(
+      await readPptx(buffer, { keepSourcePackage: true }),
+    );
 
     expect(getPresentationFonts(pres)).toEqual({
       theme: { heading: "Calibri Light", body: "Calibri" },
@@ -565,9 +674,13 @@ describe("review fixes", () => {
       slideId: pres.slides[0].id,
       nodeId: "2",
       style: { bold: true },
-      range: { start: { paragraphIndex: 0, offset: 0 }, end: { paragraphIndex: 0, offset: 0 } },
+      range: {
+        start: { paragraphIndex: 0, offset: 0 },
+        end: { paragraphIndex: 0, offset: 0 },
+      },
     });
-    const paragraph = (pres.slides[0].nodes[0] as ShapeNodeData).textBody!.paragraphs[0];
+    const paragraph = (pres.slides[0].nodes[0] as ShapeNodeData).textBody!
+      .paragraphs[0];
     expect(paragraph.endParaRPr?.attr("b")).toBe("1");
   });
 
@@ -576,7 +689,12 @@ describe("review fixes", () => {
       `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="Connector ${id}"/><p:cNvCxnSpPr><a:stCxn id="${start}" idx="0"/><a:endCxn id="${end}" idx="0"/></p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="0"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom></p:spPr></p:cxnSp>`;
     const pres = await openEditable([
       textShape(9, "Outside", 5486400),
-      group(2, textShape(3, "A"), textShape(4, "B", 1828800), connector(5, 3, 9)),
+      group(
+        2,
+        textShape(3, "A"),
+        textShape(4, "B", 1828800),
+        connector(5, 3, 9),
+      ),
     ]);
     const slideId = pres.slides[0].id;
 
@@ -598,7 +716,12 @@ describe("review fixes", () => {
     const slideId = pres.slides[0].id;
     expect(ids(pres)).toEqual(["2", "3"]);
 
-    await applyEdit(pres, { type: "reorderNode", slideId, nodeId: "3", order: "back" });
+    await applyEdit(pres, {
+      type: "reorderNode",
+      slideId,
+      nodeId: "3",
+      order: "back",
+    });
     expect(ids(pres)).toEqual(["3", "2"]);
     await applyEdit(pres, { type: "duplicateNode", slideId, nodeId: "3" });
 
@@ -628,6 +751,8 @@ describe("review fixes", () => {
     });
 
     const picture = pres.slides[0].nodes[0] as PictureNodeData;
-    expect(pres.slides[0].rels.get(picture.blipEmbed!)?.target).toBe("../media/image2.png");
+    expect(pres.slides[0].rels.get(picture.blipEmbed!)?.target).toBe(
+      "../media/image2.png",
+    );
   });
 });

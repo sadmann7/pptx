@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { isExternalTargetMode, parseRels, resolveRelTarget } from "../../ooxml/rel";
+import {
+  isExternalTargetMode,
+  parseRels,
+  resolveRelTarget,
+} from "../../ooxml/rel";
 
 const RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -43,23 +47,33 @@ describe("isExternalTargetMode", () => {
 
 describe("resolveRelTarget", () => {
   it("resolves parent-relative targets", () => {
-    expect(resolveRelTarget("ppt/slides", "../slideLayouts/slideLayout1.xml")).toBe(
-      "ppt/slideLayouts/slideLayout1.xml",
-    );
+    expect(
+      resolveRelTarget("ppt/slides", "../slideLayouts/slideLayout1.xml"),
+    ).toBe("ppt/slideLayouts/slideLayout1.xml");
   });
 
   it("resolves child-relative targets", () => {
-    expect(resolveRelTarget("ppt/slides", "media/image1.png")).toBe("ppt/slides/media/image1.png");
-    expect(resolveRelTarget("ppt", "slides/slide1.xml")).toBe("ppt/slides/slide1.xml");
+    expect(resolveRelTarget("ppt/slides", "media/image1.png")).toBe(
+      "ppt/slides/media/image1.png",
+    );
+    expect(resolveRelTarget("ppt", "slides/slide1.xml")).toBe(
+      "ppt/slides/slide1.xml",
+    );
   });
 
   it("handles absolute targets by stripping the leading slash", () => {
-    expect(resolveRelTarget("ppt/slides", "/ppt/media/image1.png")).toBe("ppt/media/image1.png");
+    expect(resolveRelTarget("ppt/slides", "/ppt/media/image1.png")).toBe(
+      "ppt/media/image1.png",
+    );
   });
 
   it("ignores '.' segments and strips query/fragment suffixes", () => {
-    expect(resolveRelTarget("ppt", "./slides/slide1.xml")).toBe("ppt/slides/slide1.xml");
-    expect(resolveRelTarget("ppt", "slides/slide1.xml?rev=2#frag")).toBe("ppt/slides/slide1.xml");
+    expect(resolveRelTarget("ppt", "./slides/slide1.xml")).toBe(
+      "ppt/slides/slide1.xml",
+    );
+    expect(resolveRelTarget("ppt", "slides/slide1.xml?rev=2#frag")).toBe(
+      "ppt/slides/slide1.xml",
+    );
   });
 
   it("decodes URI-encoded path segments", () => {

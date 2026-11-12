@@ -17,7 +17,9 @@ test.describe("basic deck structure", () => {
     expect(structure.height).toBe(720);
     expect(structure.slideCount).toBe(3);
 
-    const texts = structure.slides.map((slide) => slide.nodes[0]?.textBody?.totalText);
+    const texts = structure.slides.map(
+      (slide) => slide.nodes[0]?.textBody?.totalText,
+    );
     expect(texts).toEqual(["Slide one", "Slide two", "Slide three"]);
 
     for (const slide of structure.slides) {
@@ -46,7 +48,9 @@ test.describe("BOM deck structure", () => {
 
     expect(structure.slideCount).toBe(1);
     expect(structure.slides[0].nodes).toHaveLength(1);
-    expect(structure.slides[0].nodes[0].textBody?.totalText).toBe("BOM deck renders");
+    expect(structure.slides[0].nodes[0].textBody?.totalText).toBe(
+      "BOM deck renders",
+    );
   });
 });
 
@@ -62,11 +66,21 @@ test.describe("tables and groups deck structure", () => {
     expect(table.columns).toEqual([480, 320, 160]);
 
     expect(table.rows).toHaveLength(2);
-    expect(table.rows?.[0].cells.map((cell) => cell.text)).toEqual(["Stage", "Matches", "Days"]);
-    expect(table.rows?.[1].cells.map((cell) => cell.text)).toEqual(["Group", "72", "16"]);
+    expect(table.rows?.[0].cells.map((cell) => cell.text)).toEqual([
+      "Stage",
+      "Matches",
+      "Days",
+    ]);
+    expect(table.rows?.[1].cells.map((cell) => cell.text)).toEqual([
+      "Group",
+      "72",
+      "16",
+    ]);
   });
 
-  test("parses group children through chOff/chExt coordinate space", async ({ page }) => {
+  test("parses group children through chOff/chExt coordinate space", async ({
+    page,
+  }) => {
     await openSlide(page, "tables-groups.pptx", 1);
     const structure = await getStructure(page);
 
@@ -105,6 +119,9 @@ test.describe("nested charts deck structure", () => {
       return chart.chartPath;
     });
 
-    expect(chartPaths).toEqual(["ppt/slides/charts/chart1.xml", "ppt/slides/charts/chart2.xml"]);
+    expect(chartPaths).toEqual([
+      "ppt/slides/charts/chart1.xml",
+      "ppt/slides/charts/chart2.xml",
+    ]);
   });
 });

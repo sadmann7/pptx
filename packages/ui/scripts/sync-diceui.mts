@@ -8,7 +8,10 @@ import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const ITEMS = ["@diceui/presentation", "@diceui/presentation-zoom-select"];
-const FILES = ["src/components/presentation.tsx", "src/components/presentation-zoom-select.tsx"];
+const FILES = [
+  "src/components/presentation.tsx",
+  "src/components/presentation-zoom-select.tsx",
+];
 
 const isCheck = process.argv.includes("--check");
 const snapshot = await readTree("src");
@@ -16,18 +19,30 @@ const snapshot = await readTree("src");
 // The items' own dependencies (button, select, use-mobile) are pptx's to keep,
 // so everything the add touches besides FILES is put back afterwards.
 const ok =
-  run("pnpm", ["dlx", "shadcn@latest", "add", ...ITEMS, "--yes", "--overwrite"]) &&
-  run("pnpm", ["exec", "oxfmt", ...FILES]);
+  run("pnpm", [
+    "dlx",
+    "shadcn@latest",
+    "add",
+    ...ITEMS,
+    "--yes",
+    "--overwrite",
+  ]) && run("pnpm", ["exec", "oxfmt", ...FILES]);
 const synced = await readTree("src");
 await restore((file) => !FILES.includes(file) || !ok || isCheck);
 if (!ok) process.exit(1);
 
 const changed = FILES.filter((file) => snapshot.get(file) !== synced.get(file));
 if (isCheck && changed.length > 0) {
-  console.error(`Out of sync with the diceui registry: ${changed.join(", ")}. Run pnpm ui:sync.`);
+  console.error(
+    `Out of sync with the diceui registry: ${changed.join(", ")}. Run pnpm ui:sync.`,
+  );
   process.exit(1);
 }
-console.log(changed.length > 0 && !isCheck ? `Updated ${changed.join(", ")}.` : "In sync.");
+console.log(
+  changed.length > 0 && !isCheck
+    ? `Updated ${changed.join(", ")}.`
+    : "In sync.",
+);
 
 function run(command: string, args: string[]) {
   const result = spawnSync(command, args, { cwd: ROOT, encoding: "utf8" });
@@ -37,7 +52,10 @@ function run(command: string, args: string[]) {
 }
 
 async function readTree(dir: string) {
-  const entries = await readdir(path.join(ROOT, dir), { recursive: true, withFileTypes: true });
+  const entries = await readdir(path.join(ROOT, dir), {
+    recursive: true,
+    withFileTypes: true,
+  });
   const files = new Map<string, string>();
   for (const entry of entries) {
     if (!entry.isFile()) continue;
@@ -50,7 +68,8 @@ async function readTree(dir: string) {
 async function restore(shouldRestore: (file: string) => boolean) {
   const current = await readTree("src");
   for (const file of new Set([...snapshot.keys(), ...current.keys()])) {
-    if (!shouldRestore(file) || snapshot.get(file) === current.get(file)) continue;
+    if (!shouldRestore(file) || snapshot.get(file) === current.get(file))
+      continue;
     const source = snapshot.get(file);
     const target = path.join(ROOT, file);
     if (source === undefined) await rm(target, { force: true });

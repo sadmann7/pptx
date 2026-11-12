@@ -5,7 +5,10 @@ import { staticFile, useDelayRender } from "remotion";
 const SLIDE_WAIT_FRAMES = 240;
 const THUMBNAIL_SETTLE_FRAMES = 45;
 
-function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: () => void) {
+function waitForSlide(
+  hostRef: React.RefObject<HTMLDivElement | null>,
+  onReady: () => void,
+) {
   let framesLeft = SLIDE_WAIT_FRAMES;
   let raf = 0;
   let stopped = false;
@@ -17,12 +20,14 @@ function waitForSlide(hostRef: React.RefObject<HTMLDivElement | null>, onReady: 
     const host = hostRef.current;
     const slide = host?.querySelector('[data-status="ready"]');
     const nextPending =
-      host?.querySelectorAll("[data-pending], [data-pptx-chart-pending]").length ?? 0;
+      host?.querySelectorAll("[data-pending], [data-pptx-chart-pending]")
+        .length ?? 0;
     if (nextPending === pendingCount) steadyFrames++;
     else steadyFrames = 0;
     pendingCount = nextPending;
 
-    const settled = slide?.firstElementChild && steadyFrames >= THUMBNAIL_SETTLE_FRAMES;
+    const settled =
+      slide?.firstElementChild && steadyFrames >= THUMBNAIL_SETTLE_FRAMES;
     if (settled || framesLeft <= 0) {
       raf = requestAnimationFrame(() => {
         if (!stopped) onReady();

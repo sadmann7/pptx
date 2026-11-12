@@ -118,7 +118,13 @@ export function materializeSlideData(
 
   const resolvedLayoutIndex = slide.layoutIndex;
   const root = parseXml(slide.sourceXml);
-  const parsed = parseSlide(root, slide.index, slide.rels, slide.id, diagramDrawings);
+  const parsed = parseSlide(
+    root,
+    slide.index,
+    slide.rels,
+    slide.id,
+    diagramDrawings,
+  );
 
   slide.hidden = parsed.hidden;
   slide.nodes = parsed.nodes;

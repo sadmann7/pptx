@@ -75,7 +75,8 @@ export function renderCustomGeometry(
     // Without a shape extent, assume guides live in the path's local space.
     const guideW = guideSpace.w || pathW;
     const guideH = guideSpace.h || pathH;
-    const guides = guideDefs.length > 0 ? evaluateGuides(guideDefs, guideW, guideH) : null;
+    const guides =
+      guideDefs.length > 0 ? evaluateGuides(guideDefs, guideW, guideH) : null;
 
     const guideToPathX = guideW > 0 ? pathW / guideW : 1;
     const guideToPathY = guideH > 0 ? pathH / guideH : 1;
@@ -174,10 +175,16 @@ export function renderCustomGeometry(
           // OOXML arcTo angles are visual (geometric ray) angles in path coordinate space.
           // Convert to parametric using UNSCALED radii before computing positions.
           const stVisRad = (stAng * Math.PI) / 180;
-          const stAngRad = Math.atan2(wRRaw * Math.sin(stVisRad), hRRaw * Math.cos(stVisRad));
+          const stAngRad = Math.atan2(
+            wRRaw * Math.sin(stVisRad),
+            hRRaw * Math.cos(stVisRad),
+          );
 
           const endVisRad = ((stAng + swAng) * Math.PI) / 180;
-          const endAngRad = Math.atan2(wRRaw * Math.sin(endVisRad), hRRaw * Math.cos(endVisRad));
+          const endAngRad = Math.atan2(
+            wRRaw * Math.sin(endVisRad),
+            hRRaw * Math.cos(endVisRad),
+          );
 
           const curXU = curX / scaleX;
           const curYU = curY / scaleY;

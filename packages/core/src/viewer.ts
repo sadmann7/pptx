@@ -166,7 +166,8 @@ export class PptxViewer extends EventTarget {
   private mountedSlides = new Set<number>();
   private slideHandles = new Map<number, SlideHandle>();
   private searchHighlightHandles = new Set<SearchHighlightHandle>();
-  private textIndexCache: { key: string; entries: TextIndexEntry[] } | null = null;
+  private textIndexCache: { key: string; entries: TextIndexEntry[] } | null =
+    null;
   private activeRenderMode: "list" | "slide" | null = null;
   private listOptions: Required<ListRenderOptions> = {
     windowed: false,
@@ -234,19 +235,27 @@ export class PptxViewer extends EventTarget {
   }
 
   private emitSlideRendered(index: number, element: HTMLElement): void {
-    this.dispatchEvent(new CustomEvent("sliderendered", { detail: { index, element } }));
+    this.dispatchEvent(
+      new CustomEvent("sliderendered", { detail: { index, element } }),
+    );
   }
 
   private emitSlideError(index: number, error: unknown): void {
-    this.dispatchEvent(new CustomEvent("slideerror", { detail: { index, error } }));
+    this.dispatchEvent(
+      new CustomEvent("slideerror", { detail: { index, error } }),
+    );
   }
 
   private emitSlideUnmounted(index: number): void {
-    this.dispatchEvent(new CustomEvent("slideunmounted", { detail: { index } }));
+    this.dispatchEvent(
+      new CustomEvent("slideunmounted", { detail: { index } }),
+    );
   }
 
   private emitNodeError(nodeId: string, error: unknown): void {
-    this.dispatchEvent(new CustomEvent("nodeerror", { detail: { nodeId, error } }));
+    this.dispatchEvent(
+      new CustomEvent("nodeerror", { detail: { nodeId, error } }),
+    );
   }
 
   /**
@@ -270,7 +279,10 @@ export class PptxViewer extends EventTarget {
       windowed: options?.windowed ?? false,
       batchSize: this.normalizeBatchSize(options?.batchSize ?? 12),
       initialSlides: this.normalizePositiveInt(options?.initialSlides ?? 4, 4),
-      overscanViewport: this.normalizePositiveFloat(options?.overscanViewport ?? 1.5, 1.5),
+      overscanViewport: this.normalizePositiveFloat(
+        options?.overscanViewport ?? 1.5,
+        1.5,
+      ),
       showSlideLabels: options?.showSlideLabels ?? false,
     };
     await this.queueRender();
@@ -280,7 +292,10 @@ export class PptxViewer extends EventTarget {
   async renderSlide(index?: number): Promise<void> {
     this.activeRenderMode = "slide";
     if (index !== undefined && this.presentation) {
-      this.currentSlide = Math.max(0, Math.min(index, this.presentation.slides.length - 1));
+      this.currentSlide = Math.max(
+        0,
+        Math.min(index, this.presentation.slides.length - 1),
+      );
     }
     await this.queueRender();
   }
@@ -309,7 +324,8 @@ export class PptxViewer extends EventTarget {
     const buffer = await normalizePptxSource(input);
     checkAborted();
 
-    const enableLazyMedia = options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
+    const enableLazyMedia =
+      options?.lazyMedia ?? this.viewerOptions.lazyMedia ?? false;
     const files = await readPptx(buffer, {
       limits: this.viewerOptions.readLimits,
       keepSourcePackage: this.viewerOptions.keepSourcePackage,
@@ -317,7 +333,8 @@ export class PptxViewer extends EventTarget {
     });
     checkAborted();
 
-    const enableLazySlides = options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
+    const enableLazySlides =
+      options?.lazySlides ?? this.viewerOptions.lazySlides ?? false;
     const presentation = enableLazySlides
       ? buildPresentation(files, { lazySlides: true })
       : buildPresentation(files);
@@ -357,10 +374,16 @@ export class PptxViewer extends EventTarget {
     return viewer;
   }
 
-  async goToSlide(index: number, scrollOptions?: ScrollIntoViewOptions): Promise<void> {
+  async goToSlide(
+    index: number,
+    scrollOptions?: ScrollIntoViewOptions,
+  ): Promise<void> {
     if (!this.presentation) return;
     const prev = this.currentSlide;
-    this.currentSlide = Math.max(0, Math.min(index, this.presentation.slides.length - 1));
+    this.currentSlide = Math.max(
+      0,
+      Math.min(index, this.presentation.slides.length - 1),
+    );
     if (this.currentSlide !== prev) {
       this.emitSlideChange(this.currentSlide);
     }
@@ -380,7 +403,9 @@ export class PptxViewer extends EventTarget {
         `[data-pptx-slide-index="${this.currentSlide}"]`,
       );
       if (targetChild && typeof targetChild.scrollIntoView === "function") {
-        targetChild.scrollIntoView(scrollOptions ?? { behavior: "smooth", block: "center" });
+        targetChild.scrollIntoView(
+          scrollOptions ?? { behavior: "smooth", block: "center" },
+        );
       }
     }
   }
@@ -664,7 +689,10 @@ export class PptxViewer extends EventTarget {
     return Number.isFinite(val) && val > 0 ? val : fallback;
   }
 
-  private toCssLength(value: number | string | undefined, fallback: string): string {
+  private toCssLength(
+    value: number | string | undefined,
+    fallback: string,
+  ): string {
     if (value === undefined) return fallback;
     return typeof value === "number" ? `${value}px` : value;
   }
@@ -677,7 +705,9 @@ export class PptxViewer extends EventTarget {
     if (scrollOption !== false) {
       await this.goToSlide(
         slideIndex,
-        typeof scrollOption === "object" ? scrollOption : { behavior: "smooth", block: "center" },
+        typeof scrollOption === "object"
+          ? scrollOption
+          : { behavior: "smooth", block: "center" },
       );
       return;
     }
@@ -712,7 +742,9 @@ export class PptxViewer extends EventTarget {
     result: TextSearchResult,
     options?: SearchHighlightOptions,
   ): void {
-    const padding = Number.isFinite(options?.padding) ? Math.max(0, options!.padding!) : 0;
+    const padding = Number.isFinite(options?.padding)
+      ? Math.max(0, options!.padding!)
+      : 0;
     element.style.position = "absolute";
     element.style.pointerEvents = "none";
     element.style.boxSizing = "border-box";
@@ -723,10 +755,13 @@ export class PptxViewer extends EventTarget {
     element.style.zIndex = String(options?.zIndex ?? 10000);
     element.style.borderStyle = "solid";
     element.style.borderWidth = this.toCssLength(options?.borderWidth, "3px");
-    element.style.borderColor = options?.borderColor ?? "rgba(255, 214, 102, 0.95)";
+    element.style.borderColor =
+      options?.borderColor ?? "rgba(255, 214, 102, 0.95)";
     element.style.borderRadius = this.toCssLength(options?.borderRadius, "6px");
-    element.style.background = options?.backgroundColor ?? "rgba(255, 214, 102, 0.16)";
-    element.style.boxShadow = options?.boxShadow ?? "0 0 0 2px rgba(17, 17, 34, 0.45)";
+    element.style.background =
+      options?.backgroundColor ?? "rgba(255, 214, 102, 0.16)";
+    element.style.boxShadow =
+      options?.boxShadow ?? "0 0 0 2px rgba(17, 17, 34, 0.45)";
 
     if (options?.style) {
       for (const [property, value] of Object.entries(options.style)) {
@@ -745,23 +780,33 @@ export class PptxViewer extends EventTarget {
     if (this.textIndexCache?.key === key) {
       return this.textIndexCache.entries;
     }
-    const entries = this.presentation ? buildTextIndex(this.presentation, options) : [];
+    const entries = this.presentation
+      ? buildTextIndex(this.presentation, options)
+      : [];
     this.textIndexCache = { key, entries };
     return entries;
   }
 
   private getThumbnailScale(options?: ThumbnailRenderOptions): number {
     if (!this.presentation) return 1;
-    if (options?.scale !== undefined && Number.isFinite(options.scale) && options.scale > 0) {
+    if (
+      options?.scale !== undefined &&
+      Number.isFinite(options.scale) &&
+      options.scale > 0
+    ) {
       return options.scale;
     }
 
     const widthScale =
-      options?.width !== undefined && Number.isFinite(options.width) && options.width > 0
+      options?.width !== undefined &&
+      Number.isFinite(options.width) &&
+      options.width > 0
         ? options.width / this.presentation.width
         : undefined;
     const heightScale =
-      options?.height !== undefined && Number.isFinite(options.height) && options.height > 0
+      options?.height !== undefined &&
+      Number.isFinite(options.height) &&
+      options.height > 0
         ? options.height / this.presentation.height
         : undefined;
 
@@ -773,15 +818,21 @@ export class PptxViewer extends EventTarget {
     return 180 / this.presentation.width;
   }
 
-  private getDisplayMetrics(): { scale: number; displayWidth: number; displayHeight: number } {
+  private getDisplayMetrics(): {
+    scale: number;
+    displayWidth: number;
+    displayHeight: number;
+  } {
     if (!this.presentation) {
       return { scale: 1, displayWidth: 0, displayHeight: 0 };
     }
-    const fitWidth = this.viewerOptions.width ?? (this.container.clientWidth || 960);
+    const fitWidth =
+      this.viewerOptions.width ?? (this.container.clientWidth || 960);
     if (this._fitMode === "contain" && this.viewerOptions.width === undefined) {
       this.lastMeasuredContainerWidth = fitWidth;
     }
-    const fitScale = this._fitMode === "contain" ? fitWidth / this.presentation.width : 1;
+    const fitScale =
+      this._fitMode === "contain" ? fitWidth / this.presentation.width : 1;
     const scale = fitScale * this.zoomFactor;
     return {
       scale,
@@ -799,7 +850,8 @@ export class PptxViewer extends EventTarget {
         this.emitRenderStart();
         try {
           if (this.isRenderStale(renderGeneration)) return;
-          const { scale, displayWidth, displayHeight } = this.getDisplayMetrics();
+          const { scale, displayWidth, displayHeight } =
+            this.getDisplayMetrics();
 
           this.cleanupScrollObserver?.();
           this.cleanupScrollObserver = undefined;
@@ -826,7 +878,12 @@ export class PptxViewer extends EventTarget {
               renderGeneration,
             );
           } else {
-            await this.renderAllSlidesFull(scale, displayWidth, displayHeight, renderGeneration);
+            await this.renderAllSlidesFull(
+              scale,
+              displayWidth,
+              displayHeight,
+              renderGeneration,
+            );
           }
 
           if (this.isRenderStale(renderGeneration)) return;
@@ -924,7 +981,8 @@ export class PptxViewer extends EventTarget {
 
     if (this.listOptions.showSlideLabels) {
       const label = document.createElement("div");
-      label.style.cssText = "text-align: center; padding: 4px; font-size: 12px; color: #666;";
+      label.style.cssText =
+        "text-align: center; padding: 4px; font-size: 12px; color: #666;";
       label.textContent = `Slide ${index + 1}`;
       item.appendChild(label);
     }
@@ -971,7 +1029,11 @@ export class PptxViewer extends EventTarget {
     }
   }
 
-  private unmountListSlide(index: number, wrapper: HTMLDivElement, displayHeight: number): void {
+  private unmountListSlide(
+    index: number,
+    wrapper: HTMLDivElement,
+    displayHeight: number,
+  ): void {
     if (wrapper.dataset.mounted !== "1") return;
     wrapper.dataset.mounted = "0";
     this.mountedSlides.delete(index);
@@ -1004,14 +1066,20 @@ export class PptxViewer extends EventTarget {
 
     for (let i = 0; i < this.presentation.slides.length; i++) {
       if (this.isRenderStale(renderGeneration)) return;
-      const { item, wrapper } = this.createListSlideItem(i, displayWidth, displayHeight);
+      const { item, wrapper } = this.createListSlideItem(
+        i,
+        displayWidth,
+        displayHeight,
+      );
       this.mountListSlide(i, wrapper, scale, displayWidth, displayHeight);
       batchFragment.appendChild(item);
 
       if ((i + 1) % batchSize === 0) {
         this.container.appendChild(batchFragment);
         batchFragment = document.createDocumentFragment();
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
         if (this.isRenderStale(renderGeneration)) return;
       }
     }
@@ -1037,14 +1105,20 @@ export class PptxViewer extends EventTarget {
 
     for (let i = 0; i < this.presentation.slides.length; i++) {
       if (this.isRenderStale(renderGeneration)) return;
-      const { item, wrapper } = this.createListSlideItem(i, displayWidth, displayHeight);
+      const { item, wrapper } = this.createListSlideItem(
+        i,
+        displayWidth,
+        displayHeight,
+      );
       wrappers.push(wrapper);
       batchFragment.appendChild(item);
 
       if ((i + 1) % batchSize === 0) {
         this.container.appendChild(batchFragment);
         batchFragment = document.createDocumentFragment();
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
         if (this.isRenderStale(renderGeneration)) return;
       }
     }
@@ -1056,7 +1130,13 @@ export class PptxViewer extends EventTarget {
 
     const mount = (idx: number): void => {
       if (idx < 0 || idx >= wrappers.length) return;
-      this.mountListSlide(idx, wrappers[idx], scale, displayWidth, displayHeight);
+      this.mountListSlide(
+        idx,
+        wrappers[idx],
+        scale,
+        displayWidth,
+        displayHeight,
+      );
     };
     const unmount = (idx: number): void => {
       if (idx < 0 || idx >= wrappers.length) return;
@@ -1112,7 +1192,9 @@ export class PptxViewer extends EventTarget {
     const IO = window.IntersectionObserver;
     if (!IO) return;
 
-    const items = this.container.querySelectorAll<HTMLElement>("[data-pptx-slide-index]");
+    const items = this.container.querySelectorAll<HTMLElement>(
+      "[data-pptx-slide-index]",
+    );
     if (!items.length) return;
 
     const ratios = new Map<number, number>();
@@ -1121,7 +1203,9 @@ export class PptxViewer extends EventTarget {
     const observer = new IO(
       (entries) => {
         for (const entry of entries) {
-          const idx = Number((entry.target as HTMLElement).dataset.pptxSlideIndex ?? "-1");
+          const idx = Number(
+            (entry.target as HTMLElement).dataset.pptxSlideIndex ?? "-1",
+          );
           if (Number.isNaN(idx) || idx < 0) continue;
           ratios.set(idx, entry.intersectionRatio);
         }
@@ -1152,7 +1236,11 @@ export class PptxViewer extends EventTarget {
     };
   }
 
-  private renderSingleSlide(scale: number, displayWidth: number, displayHeight: number): void {
+  private renderSingleSlide(
+    scale: number,
+    displayWidth: number,
+    displayHeight: number,
+  ): void {
     if (!this.presentation) return;
 
     const slide = this.presentation.slides[this.currentSlide];
@@ -1210,7 +1298,8 @@ export class PptxViewer extends EventTarget {
     if (this.viewerOptions.width !== undefined) return;
 
     const currentWidth = this.container.clientWidth || 0;
-    if (!currentWidth || currentWidth === this.lastMeasuredContainerWidth) return;
+    if (!currentWidth || currentWidth === this.lastMeasuredContainerWidth)
+      return;
 
     this.lastMeasuredContainerWidth = currentWidth;
     const fitScale = currentWidth / this.presentation.width;
@@ -1218,7 +1307,9 @@ export class PptxViewer extends EventTarget {
     const newDisplayW = this.presentation.width * newScale;
     const newDisplayH = this.presentation.height * newScale;
 
-    const items = this.container.querySelectorAll<HTMLElement>("[data-pptx-slide-index]");
+    const items = this.container.querySelectorAll<HTMLElement>(
+      "[data-pptx-slide-index]",
+    );
     for (const item of items) {
       const wrapper = item.firstElementChild as HTMLElement | null;
       if (!wrapper) continue;
@@ -1240,7 +1331,9 @@ export class PptxViewer extends EventTarget {
   }
 }
 
-export async function normalizePptxSource(input: PptxSource): Promise<ArrayBuffer> {
+export async function normalizePptxSource(
+  input: PptxSource,
+): Promise<ArrayBuffer> {
   if (input instanceof ArrayBuffer) return input;
   if (input instanceof Uint8Array) {
     const bytes = new Uint8Array(input.byteLength);
@@ -1257,7 +1350,8 @@ export async function normalizePptxSource(input: PptxSource): Promise<ArrayBuffe
     return new Promise<ArrayBuffer>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as ArrayBuffer);
-      reader.onerror = () => reject(reader.error ?? new Error("Failed to read Blob input"));
+      reader.onerror = () =>
+        reject(reader.error ?? new Error("Failed to read Blob input"));
       reader.readAsArrayBuffer(blobLike);
     });
   }

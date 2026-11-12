@@ -68,7 +68,11 @@ export function DemoScene() {
         <Sequence durationInFrames={HANDOFF_FRAMES} layout="none">
           <DemoPushIn />
         </Sequence>
-        <Sequence from={HANDOFF_FRAMES} durationInFrames={DEMO_CONTENT_FRAMES} layout="none">
+        <Sequence
+          from={HANDOFF_FRAMES}
+          durationInFrames={DEMO_CONTENT_FRAMES}
+          layout="none"
+        >
           <DemoVideo />
         </Sequence>
       </SceneContent>

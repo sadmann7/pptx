@@ -126,7 +126,14 @@ export function parseTextBody(txBody: SafeXmlNode): TextBody | undefined {
   };
 }
 
-const FILL_TYPES = ["solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "noFill"] as const;
+const FILL_TYPES = [
+  "solidFill",
+  "gradFill",
+  "blipFill",
+  "pattFill",
+  "grpFill",
+  "noFill",
+] as const;
 
 function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
   for (const fillType of FILL_TYPES) {
@@ -181,14 +188,22 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
     if (headEndNode.exists()) {
       const t = headEndNode.attr("type");
       if (t && t !== "none") {
-        headEnd = { type: t, w: headEndNode.attr("w"), len: headEndNode.attr("len") };
+        headEnd = {
+          type: t,
+          w: headEndNode.attr("w"),
+          len: headEndNode.attr("len"),
+        };
       }
     }
     const tailEndNode = ln.child("tailEnd");
     if (tailEndNode.exists()) {
       const t = tailEndNode.attr("type");
       if (t && t !== "none") {
-        tailEnd = { type: t, w: tailEndNode.attr("w"), len: tailEndNode.attr("len") };
+        tailEnd = {
+          type: t,
+          w: tailEndNode.attr("w"),
+          len: tailEndNode.attr("len"),
+        };
       }
     }
   }
@@ -197,7 +212,8 @@ export function parseShapeNode(spNode: SafeXmlNode): ShapeNodeData {
   const textBody = parseTextBody(txBody);
 
   // PowerPoint edits a text box on a single click; regular shapes need a double click.
-  const isTextBox = spNode.child("nvSpPr").child("cNvSpPr").attr("txBox") === "1";
+  const isTextBox =
+    spNode.child("nvSpPr").child("cNvSpPr").attr("txBox") === "1";
 
   // Diagram shapes: dsp:txXfrm places the text box in the same space as xfrm.
   let textBoxBounds: TextBoxBounds | undefined;

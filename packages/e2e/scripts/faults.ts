@@ -51,11 +51,15 @@ const args = parseArgs(process.argv.slice(2), {
 });
 
 const port = args.numbers.port ?? HARNESS_PORT;
-const requestedFaults = args.lists.fault?.length ? args.lists.fault : [...FAULTS];
+const requestedFaults = args.lists.fault?.length
+  ? args.lists.fault
+  : [...FAULTS];
 const faults = FAULTS.filter(
   (fault) => fault.startsWith("control") || requestedFaults.includes(fault),
 );
-const slides = (args.lists.slide?.length ? args.lists.slide : DEFAULT_SLIDES).map((entry) => {
+const slides = (
+  args.lists.slide?.length ? args.lists.slide : DEFAULT_SLIDES
+).map((entry) => {
   const [deck, index] = entry.split(":");
   if (!deck) throw new Error(`--slide expects "deck:index", got "${entry}"`);
   return { deck, slide: Number(index ?? 0) };
@@ -63,7 +67,8 @@ const slides = (args.lists.slide?.length ? args.lists.slide : DEFAULT_SLIDES).ma
 
 function worstRegionMoved(score: OracleScore, control: OracleScore): number {
   return score.ink.reduce(
-    (worst, drift, region) => Math.max(worst, drift - (control.ink[region] ?? 0)),
+    (worst, drift, region) =>
+      Math.max(worst, drift - (control.ink[region] ?? 0)),
     0,
   );
 }
@@ -78,16 +83,23 @@ function caughtBy(score: OracleScore, control: OracleScore): string {
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
-  viewport: { width: args.numbers.width ?? 1400, height: args.numbers.height ?? 900 },
+  viewport: {
+    width: args.numbers.width ?? 1400,
+    height: args.numbers.height ?? 900,
+  },
 });
 page.on("pageerror", (error) => console.error("[pageerror]", error.message));
 
 for (const { deck, slide } of slides) {
   const powerPointPath = join(POWERPOINT_DIR, deck, `slide-${slide}.png`);
   if (!existsSync(powerPointPath)) {
-    throw new Error(`Missing PowerPoint export ${powerPointPath}. Run "pnpm oracle:export".`);
+    throw new Error(
+      `Missing PowerPoint export ${powerPointPath}. Run "pnpm oracle:export".`,
+    );
   }
-  const { width = 0, height = 0 } = await sharp(readFileSync(powerPointPath)).metadata();
+  const { width = 0, height = 0 } = await sharp(
+    readFileSync(powerPointPath),
+  ).metadata();
   let control: OracleScore | undefined;
   let controlShot: Buffer | undefined;
 
@@ -103,7 +115,9 @@ for (const { deck, slide } of slides) {
     const renderError = await page.evaluate(() => window.__renderError);
     if (renderError) throw new Error(renderError);
     // Fonts land after first paint and move every measure, so let them settle.
-    await page.waitForFunction(() => document.fonts.status === "loaded", null, { timeout: 30_000 });
+    await page.waitForFunction(() => document.fonts.status === "loaded", null, {
+      timeout: 30_000,
+    });
 
     const applied = await page.evaluate((kind) => {
       // Everything stays inline: named functions do not survive the
@@ -121,7 +135,8 @@ for (const { deck, slide } of slides) {
       const text = all
         .filter((element) =>
           [...element.childNodes].some(
-            (node) => node.nodeType === 3 && (node.textContent ?? "").trim().length > 8,
+            (node) =>
+              node.nodeType === 3 && (node.textContent ?? "").trim().length > 8,
           ),
         )
         .sort((a, b) => (areas.get(b) ?? 0) - (areas.get(a) ?? 0))[0];
@@ -167,7 +182,8 @@ for (const { deck, slide } of slides) {
       const filled = all
         .filter((element) => {
           const background = getComputedStyle(element).backgroundColor;
-          const opaque = background !== "rgba(0, 0, 0, 0)" && background !== "transparent";
+          const opaque =
+            background !== "rgba(0, 0, 0, 0)" && background !== "transparent";
           return opaque && (areas.get(element) ?? 0) > 20_000;
         })
         .sort((a, b) => (areas.get(b) ?? 0) - (areas.get(a) ?? 0))[0];
@@ -177,7 +193,9 @@ for (const { deck, slide } of slides) {
     }, fault);
 
     if (!applied) {
-      console.log(`  ${fault.padEnd(13)} skipped: this slide has nothing to break that way`);
+      console.log(
+        `  ${fault.padEnd(13)} skipped: this slide has nothing to break that way`,
+      );
       continue;
     }
 
@@ -189,7 +207,9 @@ for (const { deck, slide } of slides) {
     // A fault that changed no pixels says nothing about the gate, so keep it
     // out of the "missed" column it would otherwise land in.
     if (!fault.startsWith("control") && screenshot.equals(controlShot)) {
-      console.log(`  ${fault.padEnd(13)} no pixel change: the fault did not land on this slide`);
+      console.log(
+        `  ${fault.padEnd(13)} no pixel change: the fault did not land on this slide`,
+      );
       continue;
     }
 

@@ -32,7 +32,12 @@ describe("renderCustomGeometry with numeric coordinates", () => {
 
     // 2x path width, 3x path height.
     const d = renderCustomGeometry(geom, 400, 300);
-    expect(pathCommands(d)).toEqual([["M", 0, 0], ["L", 400, 0], ["L", 200, 300], ["Z"]]);
+    expect(pathCommands(d)).toEqual([
+      ["M", 0, 0],
+      ["L", 400, 0],
+      ["L", 200, 300],
+      ["Z"],
+    ]);
   });
 
   it("returns empty string when pathLst is missing", () => {

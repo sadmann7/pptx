@@ -80,7 +80,13 @@ export const Blur = () => {
 
   return (
     <HtmlInCanvas width={width} height={height} onPaint={onPaint}>
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", fontSize: 120 }}>
+      <AbsoluteFill
+        style={{
+          justifyContent: "center",
+          alignItems: "center",
+          fontSize: 120,
+        }}
+      >
         <h1>Hello</h1>
       </AbsoluteFill>
     </HtmlInCanvas>
@@ -94,7 +100,10 @@ For WebGL, set up the context, program, and texture in `onInit` and return a cle
 
 ```tsx
 const onInit: HtmlInCanvasOnInit = useCallback(({ canvas }) => {
-  const gl = canvas.getContext("webgl2", { alpha: true, premultipliedAlpha: true });
+  const gl = canvas.getContext("webgl2", {
+    alpha: true,
+    premultipliedAlpha: true,
+  });
   if (!gl) {
     throw new Error(
       "WebGL2 unavailable. Try rendering with the --gl=angle option. See https://remotion.dev/docs/gl-options.",
@@ -108,7 +117,14 @@ const onInit: HtmlInCanvasOnInit = useCallback(({ canvas }) => {
 }, []);
 
 const onPaint: HtmlInCanvasOnPaint = useCallback(({ elementImage }) => {
-  gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, elementImage);
+  gl.texElementImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    elementImage,
+  );
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }, []);
 ```

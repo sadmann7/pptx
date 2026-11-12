@@ -23,17 +23,30 @@ function escapeHtml(text: string): string {
 }
 
 // The token also rides in the HTML, since some clipboards (headless Firefox) keep only text and HTML.
-export function writeClipboardToken(data: DataTransfer, token: string, text: string): void {
+export function writeClipboardToken(
+  data: DataTransfer,
+  token: string,
+  text: string,
+): void {
   data.setData(CLIPBOARD_TYPE, token);
-  const paragraphs = text ? text.split("\n").map((line) => `<p>${escapeHtml(line)}</p>`) : [];
-  data.setData("text/html", `<span ${TOKEN_ATTRIBUTE}="${token}"></span>${paragraphs.join("")}`);
+  const paragraphs = text
+    ? text.split("\n").map((line) => `<p>${escapeHtml(line)}</p>`)
+    : [];
+  data.setData(
+    "text/html",
+    `<span ${TOKEN_ATTRIBUTE}="${token}"></span>${paragraphs.join("")}`,
+  );
   if (text) data.setData("text/plain", text);
 }
 
 export function readClipboardToken(data: DataTransfer): string | null {
   const token = data.getData(CLIPBOARD_TYPE);
   if (token) return token;
-  return new RegExp(`${TOKEN_ATTRIBUTE}="([\\w-]+)"`).exec(data.getData("text/html"))?.[1] ?? null;
+  return (
+    new RegExp(`${TOKEN_ATTRIBUTE}="([\\w-]+)"`).exec(
+      data.getData("text/html"),
+    )?.[1] ?? null
+  );
 }
 
 export function stashNodes(
@@ -52,7 +65,11 @@ export function takeStash(
   slideId: string,
 ): { clipboard: Promise<NodeClipboard>; offset: number } | null {
   if (!stash || stash.token !== token) return null;
-  const isSourceSlide = stash.presentation === presentation && stash.slideId === slideId;
+  const isSourceSlide =
+    stash.presentation === presentation && stash.slideId === slideId;
   if (isSourceSlide) stash.pastes++;
-  return { clipboard: stash.clipboard, offset: isSourceSlide ? stash.pastes * PASTE_OFFSET : 0 };
+  return {
+    clipboard: stash.clipboard,
+    offset: isSourceSlide ? stash.pastes * PASTE_OFFSET : 0,
+  };
 }

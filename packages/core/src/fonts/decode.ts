@@ -27,7 +27,10 @@ export type FontDecodeResult =
  * Decode one embedded font part into a raw TrueType/OpenType binary, keeping
  * the reason on failure.
  */
-export function decodeEmbeddedFontPart(part: Uint8Array, fontKey?: string): FontDecodeResult {
+export function decodeEmbeddedFontPart(
+  part: Uint8Array,
+  fontKey?: string,
+): FontDecodeResult {
   if (part.length === 0) return { ok: false, message: "Font part is empty" };
 
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
@@ -39,10 +42,17 @@ export function decodeEmbeddedFontPart(part: Uint8Array, fontKey?: string): Font
     // An uncompressed EOT payload is passed through untouched, so the sfnt
     // signature is the only evidence that the header offsets were right.
     if (getIsRawFont(decoded)) return { ok: true, bytes: decoded };
-    return { ok: false, message: "Decoded payload does not start with an sfnt signature" };
+    return {
+      ok: false,
+      message: "Decoded payload does not start with an sfnt signature",
+    };
   } catch (error) {
-    if (error instanceof MtxError) return { ok: false, message: error.message, code: error.code };
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    if (error instanceof MtxError)
+      return { ok: false, message: error.message, code: error.code };
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -50,14 +60,20 @@ export function decodeEmbeddedFontPart(part: Uint8Array, fontKey?: string): Font
  * Decode one embedded font part into a raw TrueType/OpenType binary, or `undefined`
  * when it can't be decoded.
  */
-export function decodeEmbeddedFont(part: Uint8Array, fontKey?: string): Uint8Array | undefined {
+export function decodeEmbeddedFont(
+  part: Uint8Array,
+  fontKey?: string,
+): Uint8Array | undefined {
   const result = decodeEmbeddedFontPart(part, fontKey);
   return result.ok ? result.bytes : undefined;
 }
 
 // Only MTX decompression is expensive, a few ms per part versus microseconds for
 // uncompressed EOT. Undoing obfuscation is a cheap copy.
-export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean {
+export function getIsCompressedFont(
+  part: Uint8Array,
+  fontKey?: string,
+): boolean {
   if (part.length === 0) return false;
   const data = fontKey ? deobfuscateFont(part, fontKey) : part;
   if (getIsRawFont(data)) return false;
@@ -71,5 +87,8 @@ export function getIsCompressedFont(part: Uint8Array, fontKey?: string): boolean
 
 // A detached copy, so the buffer can be transferred to a worker.
 export function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
 }

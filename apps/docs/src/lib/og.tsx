@@ -18,8 +18,12 @@ export function OgImage({ title, description }: OgImageProps) {
       }}
     >
       <p tw="m-0 text-[82px] font-semibold">{title}</p>
-      <p tw="m-0 mt-4 text-[44px] text-[rgba(240,240,240,0.8)]">{description}</p>
-      <p tw="mt-auto mb-0 self-end text-[36px] text-[rgba(240,240,240,0.8)]">pptx</p>
+      <p tw="m-0 mt-4 text-[44px] text-[rgba(240,240,240,0.8)]">
+        {description}
+      </p>
+      <p tw="mt-auto mb-0 self-end text-[36px] text-[rgba(240,240,240,0.8)]">
+        pptx
+      </p>
     </div>
   );
 }

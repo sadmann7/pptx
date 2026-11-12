@@ -1,7 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { parseXml } from "../../../ooxml/xml";
-import { extractBackgroundColors, extractChartFrameStyle } from "../../../renderer/chart/frame";
+import {
+  extractBackgroundColors,
+  extractChartFrameStyle,
+} from "../../../renderer/chart/frame";
 import {
   buildChartPalette,
   createChartRenderContext,
@@ -21,7 +24,14 @@ beforeAll(async () => {
   ctx = await createChartTestContext();
 });
 
-const OFFICE_ACCENTS = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
+const OFFICE_ACCENTS = [
+  "#4472C4",
+  "#ED7D31",
+  "#A5A5A5",
+  "#FFC000",
+  "#5B9BD5",
+  "#70AD47",
+];
 
 describe("buildChartPalette", () => {
   it("falls back to the theme accent colors", () => {
@@ -41,30 +51,35 @@ describe("buildChartPalette", () => {
         chartColorStyles: new Map([["ppt/charts/chart1.xml", colorStyle]]),
       },
     };
-    expect(buildChartPalette(chartXml, ctxWithColors, "ppt/charts/chart1.xml")).toEqual([
-      "#111111",
-      "#222222",
-    ]);
-    expect(buildChartPalette(chartXml, ctxWithColors, "ppt/charts/other.xml")).toEqual(
-      OFFICE_ACCENTS,
-    );
+    expect(
+      buildChartPalette(chartXml, ctxWithColors, "ppt/charts/chart1.xml"),
+    ).toEqual(["#111111", "#222222"]);
+    expect(
+      buildChartPalette(chartXml, ctxWithColors, "ppt/charts/other.xml"),
+    ).toEqual(OFFICE_ACCENTS);
   });
 });
 
 describe("parseChartStyleId", () => {
   it("reads the c:style val", () => {
-    const chartXml = parseXml(chartSpaceXml("<c:plotArea/>", `<c:style val="201"/>`));
+    const chartXml = parseXml(
+      chartSpaceXml("<c:plotArea/>", `<c:style val="201"/>`),
+    );
     expect(parseChartStyleId(chartXml)).toBe(201);
   });
 
   it("returns undefined when absent", () => {
-    expect(parseChartStyleId(parseXml(chartSpaceXml("<c:plotArea/>")))).toBeUndefined();
+    expect(
+      parseChartStyleId(parseXml(chartSpaceXml("<c:plotArea/>"))),
+    ).toBeUndefined();
   });
 });
 
 describe("getVaryColorPointPalette", () => {
   it("returns the raw accents when darkening is disabled", () => {
-    expect(getVaryColorPointPalette(ctx, { darken: false })).toEqual(OFFICE_ACCENTS);
+    expect(getVaryColorPointPalette(ctx, { darken: false })).toEqual(
+      OFFICE_ACCENTS,
+    );
   });
 
   it("darkens each accent by 12% by default", () => {
@@ -98,7 +113,10 @@ describe("createChartRenderContext", () => {
 describe("extractBackgroundColors", () => {
   function backgrounds(chartSpaceExtras: string, plotAreaExtras = "") {
     const chartXml = parseXml(
-      chartSpaceXml(`<c:plotArea><c:layout/>${plotAreaExtras}</c:plotArea>`, chartSpaceExtras),
+      chartSpaceXml(
+        `<c:plotArea><c:layout/>${plotAreaExtras}</c:plotArea>`,
+        chartSpaceExtras,
+      ),
     );
     return extractBackgroundColors(chartXml, chartXml.child("chart"), ctx);
   }
@@ -144,7 +162,10 @@ describe("extractChartFrameStyle", () => {
     const noLine = parseXml(chartSpaceXml("<c:plotArea/>"));
     expect(extractChartFrameStyle(noLine, ctx)).toBeUndefined();
     const noFill = parseXml(
-      chartSpaceXml("<c:plotArea/>", `<c:spPr><a:ln w="12700"><a:noFill/></a:ln></c:spPr>`),
+      chartSpaceXml(
+        "<c:plotArea/>",
+        `<c:spPr><a:ln w="12700"><a:noFill/></a:ln></c:spPr>`,
+      ),
     );
     expect(extractChartFrameStyle(noFill, ctx)).toBeUndefined();
   });

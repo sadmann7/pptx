@@ -10,7 +10,8 @@ const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 const CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
-const RELS_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const RELS_NS =
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 // Placed at 914400,914400 EMU (96,96 px), sized 6096000x4572000 EMU (640x480 px).
 export const CHART_GRAPHIC_FRAME = `<p:graphicFrame>
@@ -50,7 +51,10 @@ export async function buildPptxWithChart(
   return zip.generateAsync({ type: "arraybuffer" });
 }
 
-export function chartSpaceXml(chartChildren: string, chartSpaceExtras = ""): string {
+export function chartSpaceXml(
+  chartChildren: string,
+  chartSpaceExtras = "",
+): string {
   return (
     XML_DECL +
     `<c:chartSpace xmlns:c="${CHART_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${RELS_NS}">
@@ -69,9 +73,13 @@ export function seriesXml(
   values: (number | null)[],
   extras = "",
 ): string {
-  const catPts = categories.map((c, i) => `<c:pt idx="${i}"><c:v>${c}</c:v></c:pt>`).join("");
+  const catPts = categories
+    .map((c, i) => `<c:pt idx="${i}"><c:v>${c}</c:v></c:pt>`)
+    .join("");
   const valPts = values
-    .map((v, i) => (v === null ? "" : `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`))
+    .map((v, i) =>
+      v === null ? "" : `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`,
+    )
     .join("");
   return `<c:ser>
 <c:idx val="${idx}"/><c:order val="${idx}"/>
@@ -82,7 +90,11 @@ ${extras}
 </c:ser>`;
 }
 
-export function axesXml(catAxId = "111111111", valAxId = "222222222", valAxExtras = ""): string {
+export function axesXml(
+  catAxId = "111111111",
+  valAxId = "222222222",
+  valAxExtras = "",
+): string {
   return `<c:catAx>
 <c:axId val="${catAxId}"/>
 <c:scaling><c:orientation val="minMax"/></c:scaling>

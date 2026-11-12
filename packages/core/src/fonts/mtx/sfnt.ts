@@ -15,7 +15,8 @@ export interface SfntContainer {
 }
 
 export function tagAt(data: Uint8Array, offset: number): string {
-  if (offset < 0 || offset + 4 > data.length) fail("BOUNDS", "Tag outside input", offset);
+  if (offset < 0 || offset + 4 > data.length)
+    fail("BOUNDS", "Tag outside input", offset);
   return String.fromCharCode(
     data[offset]!,
     data[offset + 1]!,
@@ -25,7 +26,8 @@ export function tagAt(data: Uint8Array, offset: number): string {
 }
 
 export function tagBytes(tag: string): Uint8Array {
-  if (tag.length !== 4) throw new TypeError("SFNT tags must contain four characters");
+  if (tag.length !== 4)
+    throw new TypeError("SFNT tags must contain four characters");
   return Uint8Array.from([
     tag.charCodeAt(0),
     tag.charCodeAt(1),
@@ -42,11 +44,18 @@ export function checksum(data: Uint8Array): number {
   // stays free of the undefined-element handling the ragged tail needs.
   const aligned = data.length & ~3;
   for (; i < aligned; i += 4) {
-    const word = data[i]! * 0x1000000 + (data[i + 1]! << 16) + (data[i + 2]! << 8) + data[i + 3]!;
+    const word =
+      data[i]! * 0x1000000 +
+      (data[i + 1]! << 16) +
+      (data[i + 2]! << 8) +
+      data[i + 3]!;
     sum = (sum + word) >>> 0;
   }
   if (i < data.length) {
-    const word = data[i]! * 0x1000000 + ((data[i + 1] ?? 0) << 16) + ((data[i + 2] ?? 0) << 8);
+    const word =
+      data[i]! * 0x1000000 +
+      ((data[i + 1] ?? 0) << 16) +
+      ((data[i + 2] ?? 0) << 8);
     sum = (sum + word) >>> 0;
   }
   return sum;
@@ -58,17 +67,23 @@ function highestPowerOfTwo(value: number): number {
   return result;
 }
 
-export function buildSfnt(container: SfntContainer, maxBytes: number): Uint8Array {
+export function buildSfnt(
+  container: SfntContainer,
+  maxBytes: number,
+): Uint8Array {
   // OpenType requires directory entries in ascending order by raw tag bytes.
   // Locale-aware collation groups by letter regardless of case and would place
   // "cvt " before "OS/2".
-  const tables = [...container.tables].sort((a, b) => (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0));
+  const tables = [...container.tables].sort((a, b) =>
+    a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0,
+  );
   const count = tables.length;
   if (count === 0) fail("INVALID_SFNT", "Cannot build an SFNT without tables");
   const directorySize = 12 + count * 16;
   let totalSize = directorySize;
   for (const table of tables) totalSize += (table.data.length + 3) & ~3;
-  if (totalSize > maxBytes) fail("LIMIT_EXCEEDED", `SFNT output requires ${totalSize} bytes`);
+  if (totalSize > maxBytes)
+    fail("LIMIT_EXCEEDED", `SFNT output requires ${totalSize} bytes`);
 
   const writer = new Writer(totalSize);
   writer.u32be(container.sfntVersion);
@@ -110,7 +125,8 @@ export function validateSfnt(font: Uint8Array): void {
   if (font.length < 12) fail("INVALID_SFNT", "SFNT is truncated");
   const view = new DataView(font.buffer, font.byteOffset, font.byteLength);
   const count = view.getUint16(4, false);
-  if (12 + count * 16 > font.length) fail("INVALID_SFNT", "SFNT directory is truncated");
+  if (12 + count * 16 > font.length)
+    fail("INVALID_SFNT", "SFNT directory is truncated");
   let hasHead = false;
   for (let i = 0; i < count; i++) {
     const record = 12 + i * 16;
@@ -122,9 +138,11 @@ export function validateSfnt(font: Uint8Array): void {
     );
     const offset = view.getUint32(record + 8, false);
     const length = view.getUint32(record + 12, false);
-    if (offset + length > font.length) fail("INVALID_SFNT", `Table ${tag} lies outside the font`);
+    if (offset + length > font.length)
+      fail("INVALID_SFNT", `Table ${tag} lies outside the font`);
     if (tag === "head") hasHead = true;
   }
   if (!hasHead) fail("INVALID_SFNT", "SFNT has no head table");
-  if (checksum(font) !== 0xb1b0afba) fail("INVALID_SFNT", "Invalid whole-font checksum");
+  if (checksum(font) !== 0xb1b0afba)
+    fail("INVALID_SFNT", "Invalid whole-font checksum");
 }

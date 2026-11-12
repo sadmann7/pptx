@@ -2,7 +2,12 @@ import path from "node:path";
 import { rolldown } from "rolldown";
 import { defineConfig } from "tsdown";
 
-const workerHost = path.join(import.meta.dirname, "src", "fonts", "worker-host.ts");
+const workerHost = path.join(
+  import.meta.dirname,
+  "src",
+  "fonts",
+  "worker-host.ts",
+);
 const workerEntry = path.join(import.meta.dirname, "src", "fonts", "worker.ts");
 
 async function bundleWorker(): Promise<string> {

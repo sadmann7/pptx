@@ -10,7 +10,9 @@ import {
 function bulletOf(paragraph: HTMLElement): HTMLElement | undefined {
   const first = paragraph.firstElementChild as HTMLElement | null;
   if (!first || first.tagName.toLowerCase() !== "span") return undefined;
-  return first.textContent?.endsWith(" ") && first.textContent !== "MARKER " ? first : undefined;
+  return first.textContent?.endsWith(" ") && first.textContent !== "MARKER "
+    ? first
+    : undefined;
 }
 
 describe("buChar bullets", () => {
@@ -65,7 +67,9 @@ describe("buAutoNum bullets", () => {
     const p = (text: string) =>
       `<a:p><a:pPr><a:buAutoNum type="arabicPeriod"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p>`;
     const element = await renderTextBox(p("one") + p("two") + p("three"));
-    const bullets = paragraphsOf(element).map((para) => bulletOf(para)?.textContent);
+    const bullets = paragraphsOf(element).map(
+      (para) => bulletOf(para)?.textContent,
+    );
     expect(bullets).toEqual(["1. ", "2. ", "3. "]);
   });
 
@@ -75,7 +79,9 @@ describe("buAutoNum bullets", () => {
        <a:p><a:pPr><a:buAutoNum type="arabicPeriod"/></a:pPr><a:r><a:t>two</a:t></a:r></a:p>
        <a:p><a:pPr><a:buAutoNum type="arabicPeriod"/></a:pPr><a:r><a:t>three</a:t></a:r></a:p>`,
     );
-    const bullets = paragraphsOf(element).map((para) => bulletOf(para)?.textContent);
+    const bullets = paragraphsOf(element).map(
+      (para) => bulletOf(para)?.textContent,
+    );
     expect(bullets).toEqual(["5. ", "6. ", "7. "]);
   });
 
@@ -86,7 +92,9 @@ describe("buAutoNum bullets", () => {
     const p = (text: string) =>
       `<a:p><a:pPr><a:buAutoNum type="arabicPeriod" startAt="5"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p>`;
     const element = await renderTextBox(p("one") + p("two"));
-    const bullets = paragraphsOf(element).map((para) => bulletOf(para)?.textContent);
+    const bullets = paragraphsOf(element).map(
+      (para) => bulletOf(para)?.textContent,
+    );
     expect(bullets).toEqual(["5. ", "5. "]);
   });
 
@@ -111,7 +119,9 @@ describe("buAutoNum bullets", () => {
     const p = (text: string) =>
       `<a:p><a:pPr><a:buAutoNum type="romanUcPeriod"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p>`;
     const element = await renderTextBox(p("a") + p("b") + p("c") + p("d"));
-    const bullets = paragraphsOf(element).map((para) => bulletOf(para)?.textContent);
+    const bullets = paragraphsOf(element).map(
+      (para) => bulletOf(para)?.textContent,
+    );
     expect(bullets).toEqual(["I. ", "II. ", "III. ", "IV. "]);
   });
 
@@ -119,7 +129,9 @@ describe("buAutoNum bullets", () => {
     const p = (lvl: number, text: string) =>
       `<a:p><a:pPr${lvl > 0 ? ` lvl="${lvl}"` : ""}><a:buAutoNum type="arabicPeriod"/></a:pPr><a:r><a:t>${text}</a:t></a:r></a:p>`;
     const element = await renderTextBox(p(0, "a") + p(1, "b") + p(0, "c"));
-    const bullets = paragraphsOf(element).map((para) => bulletOf(para)?.textContent);
+    const bullets = paragraphsOf(element).map(
+      (para) => bulletOf(para)?.textContent,
+    );
     expect(bullets).toEqual(["1. ", "1. ", "2. "]);
   });
 });
@@ -184,7 +196,9 @@ describe("bullet color", () => {
       `<a:p><a:pPr><a:buClr><a:schemeClr val="accent2"/></a:buClr><a:buChar char="•"/></a:pPr><a:r><a:t>MARKER</a:t></a:r></a:p>`,
     );
     // Fixture theme accent2 = ED7D31.
-    expect(normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color)).toBe("237,125,49,1");
+    expect(
+      normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color),
+    ).toBe("237,125,49,1");
   });
 
   it("follows the first visible run's color when no buClr is given", async () => {
@@ -192,14 +206,18 @@ describe("bullet color", () => {
       `<a:p><a:pPr><a:buChar char="•"/></a:pPr>
         <a:r><a:rPr><a:solidFill><a:srgbClr val="00FF00"/></a:solidFill></a:rPr><a:t>MARKER</a:t></a:r></a:p>`,
     );
-    expect(normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color)).toBe("0,255,0,1");
+    expect(
+      normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color),
+    ).toBe("0,255,0,1");
   });
 
   it("falls back to black when nothing specifies a color", async () => {
     const element = await renderTextBox(
       `<a:p><a:pPr><a:buChar char="•"/></a:pPr><a:r><a:t>MARKER</a:t></a:r></a:p>`,
     );
-    expect(normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color)).toBe("0,0,0,1");
+    expect(
+      normalizeColor(bulletOf(paragraphsOf(element)[0])!.style.color),
+    ).toBe("0,0,0,1");
   });
 });
 

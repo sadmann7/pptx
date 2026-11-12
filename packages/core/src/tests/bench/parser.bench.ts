@@ -22,7 +22,9 @@ interface Workload {
   presentation: PresentationData;
 }
 
-async function prepare(spec: (typeof DECK_SPECS)[keyof typeof DECK_SPECS]): Promise<Workload> {
+async function prepare(
+  spec: (typeof DECK_SPECS)[keyof typeof DECK_SPECS],
+): Promise<Workload> {
   const buffer = await generateDeck(spec);
   const files = await readPptx(buffer);
   const presentation = buildPresentation(files);

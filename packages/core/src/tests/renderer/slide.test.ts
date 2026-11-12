@@ -6,7 +6,9 @@ import type { SlideRendererOptions } from "../../renderer/slide";
 import { renderSlide } from "../../renderer/slide";
 import { buildRichPptx } from "../fixtures/rich-pptx";
 
-async function renderContainer(options?: SlideRendererOptions): Promise<HTMLElement> {
+async function renderContainer(
+  options?: SlideRendererOptions,
+): Promise<HTMLElement> {
   const buffer = await buildRichPptx({});
   const files = await readPptx(buffer);
   const presentation = buildPresentation(files);

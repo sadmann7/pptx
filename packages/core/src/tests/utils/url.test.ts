@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from "../../utils/url";
+import {
+  isAllowedExternalMediaUrl,
+  isAllowedExternalUrl,
+} from "../../utils/url";
 
 describe("isAllowedExternalUrl", () => {
   it("allows http, https, and mailto", () => {
@@ -13,7 +16,9 @@ describe("isAllowedExternalUrl", () => {
     expect(isAllowedExternalUrl("javascript:alert(1)")).toBe(false);
     // eslint-disable-next-line oxlint/no-script-url
     expect(isAllowedExternalUrl("JAVASCRIPT:alert(1)")).toBe(false);
-    expect(isAllowedExternalUrl("data:text/html,<script>alert(1)</script>")).toBe(false);
+    expect(
+      isAllowedExternalUrl("data:text/html,<script>alert(1)</script>"),
+    ).toBe(false);
     expect(isAllowedExternalUrl("vbscript:msgbox")).toBe(false);
     expect(isAllowedExternalUrl("file:///etc/passwd")).toBe(false);
   });
@@ -27,8 +32,12 @@ describe("isAllowedExternalUrl", () => {
 
 describe("isAllowedExternalMediaUrl", () => {
   it("allows only http/https, not mailto", () => {
-    expect(isAllowedExternalMediaUrl("https://cdn.example.com/img.png")).toBe(true);
-    expect(isAllowedExternalMediaUrl("http://cdn.example.com/img.png")).toBe(true);
+    expect(isAllowedExternalMediaUrl("https://cdn.example.com/img.png")).toBe(
+      true,
+    );
+    expect(isAllowedExternalMediaUrl("http://cdn.example.com/img.png")).toBe(
+      true,
+    );
     expect(isAllowedExternalMediaUrl("mailto:user@example.com")).toBe(false);
     expect(isAllowedExternalMediaUrl("javascript:alert(1)")).toBe(false);
   });

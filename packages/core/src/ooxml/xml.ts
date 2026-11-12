@@ -54,13 +54,19 @@ export class SafeXmlNode {
     const colonIndex = name.indexOf(":");
     const localName = colonIndex >= 0 ? name.slice(colonIndex + 1) : name;
     const namespaceUri =
-      colonIndex >= 0 ? this.resolveAttributeNamespace(name.slice(0, colonIndex)) : undefined;
+      colonIndex >= 0
+        ? this.resolveAttributeNamespace(name.slice(0, colonIndex))
+        : undefined;
 
     for (let i = 0; i < this.el.attributes.length; i++) {
       const attr = this.el.attributes[i];
       if (attr.localName !== localName) continue;
       if (colonIndex < 0) return attr.value;
-      if (namespaceUri ? attr.namespaceURI === namespaceUri : attr.namespaceURI !== null) {
+      if (
+        namespaceUri
+          ? attr.namespaceURI === namespaceUri
+          : attr.namespaceURI !== null
+      ) {
         return attr.value;
       }
     }
@@ -92,7 +98,9 @@ export class SafeXmlNode {
     const index = getChildIndex(this.el);
     if (index !== undefined) {
       const match = index.get(localName);
-      return match === undefined ? SafeXmlNode.EMPTY : new SafeXmlNode(match[0]);
+      return match === undefined
+        ? SafeXmlNode.EMPTY
+        : new SafeXmlNode(match[0]);
     }
     const children = this.el.children;
     for (let i = 0; i < children.length; i++) {
@@ -109,7 +117,9 @@ export class SafeXmlNode {
       const index = getChildIndex(this.el);
       if (index !== undefined) {
         const match = index.get(localName);
-        return match === undefined ? [] : match.map((el) => new SafeXmlNode(el));
+        return match === undefined
+          ? []
+          : match.map((el) => new SafeXmlNode(el));
       }
     }
     const children = this.el.children;
@@ -162,7 +172,9 @@ export function parseXml(xmlString: string): SafeXmlNode {
   // at the root or as its child; checking both is cheaper than a querySelector.
   const root = doc.documentElement;
   const errorNode =
-    root?.localName === "parsererror" ? root : doc.getElementsByTagName("parsererror")[0];
+    root?.localName === "parsererror"
+      ? root
+      : doc.getElementsByTagName("parsererror")[0];
   if (errorNode) {
     console.warn("XML parse error:", errorNode.textContent);
     return SafeXmlNode.EMPTY;

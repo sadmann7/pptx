@@ -36,7 +36,9 @@ Config.setProResProfile("4444");
 ```tsx
 import { CalculateMetadataFunction } from "remotion";
 
-const calculateMetadata: CalculateMetadataFunction<Props> = async ({ props }) => {
+const calculateMetadata: CalculateMetadataFunction<Props> = async ({
+  props,
+}) => {
   return {
     defaultCodec: "prores",
     defaultVideoImageFormat: "png",
@@ -82,7 +84,9 @@ Config.setCodec("vp9");
 ```tsx
 import { CalculateMetadataFunction } from "remotion";
 
-const calculateMetadata: CalculateMetadataFunction<Props> = async ({ props }) => {
+const calculateMetadata: CalculateMetadataFunction<Props> = async ({
+  props,
+}) => {
   return {
     defaultCodec: "vp8",
     defaultVideoImageFormat: "png",

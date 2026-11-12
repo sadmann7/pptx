@@ -67,7 +67,9 @@ describe("linear gradient fills", () => {
        </a:gradFill>`,
     );
     const stops = [...element.querySelectorAll("svg defs linearGradient stop")];
-    const tinted = hexChannels(stops[0].getAttribute("stop-color") ?? "#000000");
+    const tinted = hexChannels(
+      stops[0].getAttribute("stop-color") ?? "#000000",
+    );
     const base = hexChannels("#4472C4");
     // Tint mixes toward white: every channel must strictly increase.
     for (let i = 0; i < 3; i++) {
@@ -88,12 +90,14 @@ describe("linear gradient fills", () => {
        </a:gradFill>`,
     );
     const stops = [...element.querySelectorAll("svg defs linearGradient stop")];
-    expect(stops.map((s) => s.getAttribute("offset"))).toEqual(["0%", "50%", "100%"]);
-    expect(stops.map((s) => s.getAttribute("stop-color")?.toLowerCase())).toEqual([
-      "#ff0000",
-      "#00ff00",
-      "#0000ff",
+    expect(stops.map((s) => s.getAttribute("offset"))).toEqual([
+      "0%",
+      "50%",
+      "100%",
     ]);
+    expect(
+      stops.map((s) => s.getAttribute("stop-color")?.toLowerCase()),
+    ).toEqual(["#ff0000", "#00ff00", "#0000ff"]);
   });
 
   it("maps a:lin ang=0 to a left-to-right SVG gradient axis", async () => {
@@ -153,7 +157,10 @@ describe("radial (path) gradient fills", () => {
     // Center of the 192x96 shape; radius reaches the farthest corner.
     expect(Number(gradient.getAttribute("cx"))).toBeCloseTo(96, 5);
     expect(Number(gradient.getAttribute("cy"))).toBeCloseTo(48, 5);
-    expect(Number(gradient.getAttribute("r"))).toBeCloseTo(Math.hypot(96, 48), 3);
+    expect(Number(gradient.getAttribute("r"))).toBeCloseTo(
+      Math.hypot(96, 48),
+      3,
+    );
 
     const stops = [...gradient.querySelectorAll("stop")];
     expect(stops).toHaveLength(2);
@@ -228,7 +235,11 @@ describe("pattern fills (a:pattFill)", () => {
        </a:pattFill>`,
     );
     const pattern = element.querySelector("svg defs pattern")!;
-    expect(pattern.querySelector("rect")!.getAttribute("fill")?.toLowerCase()).toBe("#ed7d31");
-    expect(pattern.querySelector("circle")!.getAttribute("fill")?.toLowerCase()).toBe("#4472c4");
+    expect(
+      pattern.querySelector("rect")!.getAttribute("fill")?.toLowerCase(),
+    ).toBe("#ed7d31");
+    expect(
+      pattern.querySelector("circle")!.getAttribute("fill")?.toLowerCase(),
+    ).toBe("#4472c4");
   });
 });

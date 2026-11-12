@@ -14,14 +14,19 @@ describe("Presentation.Error", () => {
 
     withStore(
       store,
-      <Presentation.Error>{(err: Error) => <span>failed: {err.message}</span>}</Presentation.Error>,
+      <Presentation.Error>
+        {(err: Error) => <span>failed: {err.message}</span>}
+      </Presentation.Error>,
     );
     expect(screen.getByText(/^failed: /).textContent).toContain("failed:");
   });
 
   it("renders nothing when there is no error", async () => {
     const store = await loadedStore();
-    const { container } = withStore(store, <Presentation.Error>boom</Presentation.Error>);
+    const { container } = withStore(
+      store,
+      <Presentation.Error>boom</Presentation.Error>,
+    );
     expect(container.textContent).toBe("");
   });
 });

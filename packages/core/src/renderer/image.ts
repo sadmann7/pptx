@@ -30,7 +30,10 @@ function isEmfFormat(path: string): boolean {
 
 let pictureClipPathIdCounter = 0;
 
-function resolveImageRelUrl(rel: RelEntry, ctx: RenderContext): string | undefined {
+function resolveImageRelUrl(
+  rel: RelEntry,
+  ctx: RenderContext,
+): string | undefined {
   if (isExternalTargetMode(rel.targetMode)) {
     return isAllowedExternalMediaUrl(rel.target) ? rel.target : undefined;
   }
@@ -43,7 +46,10 @@ function resolveImageRelUrl(rel: RelEntry, ctx: RenderContext): string | undefin
   return getOrCreateBlobUrl(mediaPath, data, ctx.mediaUrlCache);
 }
 
-export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElement {
+export function renderImage(
+  node: PictureNodeData,
+  ctx: RenderContext,
+): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.style.position = "absolute";
   wrapper.style.left = `${node.position.x}px`;
@@ -116,7 +122,13 @@ export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElem
                 return;
               }
 
-              renderResolvedImage(node, ctx, wrapper, lazyResolved.mediaPath, lazyResolved.data);
+              renderResolvedImage(
+                node,
+                ctx,
+                wrapper,
+                lazyResolved.mediaPath,
+                lazyResolved.data,
+              );
             })
             .catch(() => {
               renderPlaceholder(wrapper, "Image not found");
@@ -129,7 +141,13 @@ export function renderImage(node: PictureNodeData, ctx: RenderContext): HTMLElem
         renderPlaceholder(wrapper, "Image not found");
         return wrapper;
       }
-      renderResolvedImage(node, ctx, wrapper, resolved.mediaPath, resolved.data);
+      renderResolvedImage(
+        node,
+        ctx,
+        wrapper,
+        resolved.mediaPath,
+        resolved.data,
+      );
       return wrapper;
     }
   } else if (node.blipLink) {
@@ -195,7 +213,10 @@ function renderImageUrl(
   img.style.display = "block";
   img.draggable = false;
 
-  const fillRect = node.source.child("blipFill").child("stretch").child("fillRect");
+  const fillRect = node.source
+    .child("blipFill")
+    .child("stretch")
+    .child("fillRect");
   const fillRectBox = fillRect.exists() ? getFillRectBox(fillRect) : undefined;
   const geometryClipPath = getPictureGeometryClipPath(node);
   if (geometryClipPath) {
@@ -280,7 +301,10 @@ function getFillRectBox(fillRect: SafeXmlNode): FillRectBox {
   };
 }
 
-function applyImageFillRect(img: HTMLImageElement, fillRect: FillRectBox): void {
+function applyImageFillRect(
+  img: HTMLImageElement,
+  fillRect: FillRectBox,
+): void {
   img.style.position = "absolute";
   img.style.left = `${fillRect.left}%`;
   img.style.top = `${fillRect.top}%`;
@@ -291,14 +315,20 @@ function applyImageFillRect(img: HTMLImageElement, fillRect: FillRectBox): void 
 function getPictureGeometryClipPath(node: PictureNodeData): string | undefined {
   const sourceCustomGeometry = node.source.child("spPr").child("custGeom");
   const customGeometry =
-    node.customGeometry ?? (sourceCustomGeometry.exists() ? sourceCustomGeometry : undefined);
+    node.customGeometry ??
+    (sourceCustomGeometry.exists() ? sourceCustomGeometry : undefined);
   if (customGeometry?.exists()) {
     const extNode = node.source.child("spPr").child("xfrm").child("ext");
     const sourceExtentEmu = {
       w: extNode.numAttr("cx") ?? 0,
       h: extNode.numAttr("cy") ?? 0,
     };
-    const d = renderCustomGeometry(customGeometry, node.size.w, node.size.h, sourceExtentEmu);
+    const d = renderCustomGeometry(
+      customGeometry,
+      node.size.w,
+      node.size.h,
+      sourceExtentEmu,
+    );
     return d || undefined;
   }
 
@@ -310,7 +340,8 @@ function getPictureGeometryClipPath(node: PictureNodeData): string | undefined {
 }
 
 function getClipTransform(node: PictureNodeData): string | undefined {
-  if (node.flipH && node.flipV) return `translate(${node.size.w} ${node.size.h}) scale(-1 -1)`;
+  if (node.flipH && node.flipV)
+    return `translate(${node.size.w} ${node.size.h}) scale(-1 -1)`;
   if (node.flipH) return `translate(${node.size.w} 0) scale(-1 1)`;
   if (node.flipV) return `translate(0 ${node.size.h}) scale(1 -1)`;
   return undefined;
@@ -394,7 +425,11 @@ function applyPictureShapeProperties(
   applyPictureHyperlink(wrapper, node, ctx);
 }
 
-function applyPictureFill(wrapper: HTMLElement, node: PictureNodeData, ctx: RenderContext): void {
+function applyPictureFill(
+  wrapper: HTMLElement,
+  node: PictureNodeData,
+  ctx: RenderContext,
+): void {
   const spPr = node.source.child("spPr");
   const fillCss = resolveFill(spPr, ctx);
   if (!fillCss) return;
@@ -405,9 +440,13 @@ function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
   clearCssFillBackground(el);
 
   if (fillCss.includes("gradient") && fillCss.includes(" 0 0 / ")) {
-    const bgMatch = fillCss.match(/,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/);
+    const bgMatch = fillCss.match(
+      /,\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\s*$/,
+    );
     if (bgMatch && bgMatch.index !== undefined) {
-      const imageLayers = fillCss.slice(0, bgMatch.index).replace(/\s+0 0\s*\/\s*8px 8px/g, "");
+      const imageLayers = fillCss
+        .slice(0, bgMatch.index)
+        .replace(/\s+0 0\s*\/\s*8px 8px/g, "");
       el.style.backgroundImage = imageLayers;
       el.style.backgroundSize = "8px 8px";
       el.style.backgroundRepeat = "repeat";
@@ -523,7 +562,11 @@ function applyPictureOuterShadow(
   );
 }
 
-function resolveEffectColor(node: SafeXmlNode, ctx: RenderContext, fallback: string): string {
+function resolveEffectColor(
+  node: SafeXmlNode,
+  ctx: RenderContext,
+  fallback: string,
+): string {
   const { color, alpha } = resolveColor(node, ctx);
   if (!color) return fallback;
   const hex = color.startsWith("#") ? color : `#${color}`;
@@ -536,7 +579,11 @@ function appendCssFilter(el: HTMLElement, filter: string): void {
   el.style.filter = current ? `${current} ${filter}` : filter;
 }
 
-function applyPictureGlow(wrapper: HTMLElement, glow: SafeXmlNode, ctx: RenderContext): void {
+function applyPictureGlow(
+  wrapper: HTMLElement,
+  glow: SafeXmlNode,
+  ctx: RenderContext,
+): void {
   const radiusPx = emuToPx(glow.numAttr("rad") ?? 0);
   if (!(radiusPx > 0)) return;
 
@@ -560,7 +607,8 @@ function applyPictureSoftEdge(
   if (!(radiusPx > 0)) return;
 
   const maxRadius = Math.max(0, Math.min(node.size.w, node.size.h) / 2);
-  const clampedRadiusPx = maxRadius > 0 ? Math.min(radiusPx, maxRadius) : radiusPx;
+  const clampedRadiusPx =
+    maxRadius > 0 ? Math.min(radiusPx, maxRadius) : radiusPx;
   const radiusCss = `${Number(clampedRadiusPx.toFixed(4))}px`;
   const radiusVar = "var(--pptx-soft-edge-radius)";
   const maskImage = [
@@ -589,12 +637,21 @@ function applyPictureSoftEdge(
   style.maskComposite = "intersect";
 }
 
-function applyPictureReflection(wrapper: HTMLElement, reflection: SafeXmlNode): void {
+function applyPictureReflection(
+  wrapper: HTMLElement,
+  reflection: SafeXmlNode,
+): void {
   const dist = emuToPx(reflection.numAttr("dist") ?? 0);
   const stA = (reflection.numAttr("stA") ?? 50000) / 100000;
   const endA = (reflection.numAttr("endA") ?? 0) / 100000;
-  const stPos = Math.max(0, Math.min(100, (reflection.numAttr("stPos") ?? 0) / 1000));
-  const endPos = Math.max(0, Math.min(100, (reflection.numAttr("endPos") ?? 100000) / 1000));
+  const stPos = Math.max(
+    0,
+    Math.min(100, (reflection.numAttr("stPos") ?? 0) / 1000),
+  );
+  const endPos = Math.max(
+    0,
+    Math.min(100, (reflection.numAttr("endPos") ?? 100000) / 1000),
+  );
   const mask = `linear-gradient(to bottom, rgba(255,255,255,${stA.toFixed(3)}) ${stPos.toFixed(1)}%, rgba(255,255,255,${endA.toFixed(3)}) ${endPos.toFixed(1)}%)`;
   const reflectValue = `below ${dist.toFixed(1)}px ${mask}`;
   wrapper.style.setProperty("-webkit-box-reflect", reflectValue);
@@ -623,7 +680,12 @@ function applyPictureHyperlink(
   }
 
   if (!rId) return;
-  if (!rel || !isExternalTargetMode(rel.targetMode) || !isAllowedExternalUrl(rel.target)) return;
+  if (
+    !rel ||
+    !isExternalTargetMode(rel.targetMode) ||
+    !isAllowedExternalUrl(rel.target)
+  )
+    return;
 
   wrapper.style.cursor = "pointer";
   wrapper.title = node.hlinkClick.tooltip || rel.target;
@@ -654,7 +716,11 @@ function resolveBlipOpacity(blip: SafeXmlNode): number {
   return Math.max(0, Math.min(1, alpha));
 }
 
-function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
+function renderVideo(
+  node: PictureNodeData,
+  ctx: RenderContext,
+  wrapper: HTMLElement,
+): void {
   const videoUrl = resolveMediaUrl(node.mediaRId, ctx);
 
   let posterUrl: string | undefined;
@@ -702,7 +768,11 @@ function renderVideo(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
   }
 }
 
-function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLElement): void {
+function renderAudio(
+  node: PictureNodeData,
+  ctx: RenderContext,
+  wrapper: HTMLElement,
+): void {
   const audioUrl = resolveMediaUrl(node.mediaRId, ctx);
 
   if (audioUrl) {
@@ -735,7 +805,10 @@ function renderAudio(node: PictureNodeData, ctx: RenderContext, wrapper: HTMLEle
   }
 }
 
-function resolveMediaUrl(rId: string | undefined, ctx: RenderContext): string | undefined {
+function resolveMediaUrl(
+  rId: string | undefined,
+  ctx: RenderContext,
+): string | undefined {
   if (!rId) return undefined;
 
   const rel = ctx.slide.rels.get(rId);
@@ -767,7 +840,10 @@ function renderPlaceholder(wrapper: HTMLElement, message: string): void {
   wrapper.appendChild(placeholder);
 }
 
-function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void {
+function renderUnsupportedPlaceholder(
+  wrapper: HTMLElement,
+  path: string,
+): void {
   const ext = path.split(".").pop()?.toUpperCase() || "Unknown";
   const placeholder = document.createElement("div");
   placeholder.style.width = "100%";
@@ -924,7 +1000,8 @@ function applyDuotoneFilter(
     const data = imageData.data;
 
     for (let i = 0; i < data.length; i += 4) {
-      const gray = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+      const gray =
+        (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
       data[i] = Math.round(rgb1.r + (rgb2.r - rgb1.r) * gray);
       data[i + 1] = Math.round(rgb1.g + (rgb2.g - rgb1.g) * gray);
       data[i + 2] = Math.round(rgb1.b + (rgb2.b - rgb1.b) * gray);
@@ -1004,7 +1081,8 @@ function applyBiLevelEffect(biLevel: SafeXmlNode, img: HTMLImageElement): void {
     const data = imageData.data;
 
     for (let i = 0; i < data.length; i += 4) {
-      const gray = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+      const gray =
+        (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
       const val = gray >= thresh ? 255 : 0;
       data[i] = val;
       data[i + 1] = val;

@@ -30,7 +30,10 @@ function extractSeriesName(txNode: SafeXmlNode): string {
   return "";
 }
 
-export function parseExplosion(ser: SafeXmlNode, pointCount: number): number[] | undefined {
+export function parseExplosion(
+  ser: SafeXmlNode,
+  pointCount: number,
+): number[] | undefined {
   const explosions: number[] = Array.from({ length: pointCount }, () => 0);
   let hasAny = false;
 
@@ -54,7 +57,10 @@ export function parseExplosion(ser: SafeXmlNode, pointCount: number): number[] |
   return hasAny ? explosions : undefined;
 }
 
-export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): SeriesData[] {
+export function parseSeries(
+  chartTypeNode: SafeXmlNode,
+  ctx: RenderContext,
+): SeriesData[] {
   const seriesArr: SeriesData[] = [];
 
   for (const ser of chartTypeNode.children("ser")) {
@@ -91,7 +97,9 @@ export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): Ser
     }
 
     const bubbleSizeNode = ser.child("bubbleSize");
-    const bubbleSizes = bubbleSizeNode.exists() ? extractNumericValues(bubbleSizeNode) : undefined;
+    const bubbleSizes = bubbleSizeNode.exists()
+      ? extractNumericValues(bubbleSizeNode)
+      : undefined;
 
     const colorHex = extractSeriesColor(ser, ctx);
     const lineWidth = extractSeriesLineWidth(ser);
@@ -106,9 +114,12 @@ export function parseSeries(chartTypeNode: SafeXmlNode, ctx: RenderContext): Ser
     const marker = ser.child("marker");
     const markerSymbol = marker.child("symbol").attr("val");
     const markerSizePt = marker.child("size").numAttr("val");
-    const markerSize = markerSizePt !== undefined ? markerSizeToPx(markerSizePt) : undefined;
+    const markerSize =
+      markerSizePt !== undefined ? markerSizeToPx(markerSizePt) : undefined;
     const smoothNode = ser.child("smooth");
-    const smooth = smoothNode.exists() ? parseOoxmlBoolElement(smoothNode) : undefined;
+    const smooth = smoothNode.exists()
+      ? parseOoxmlBoolElement(smoothNode)
+      : undefined;
 
     seriesArr.push({
       name,

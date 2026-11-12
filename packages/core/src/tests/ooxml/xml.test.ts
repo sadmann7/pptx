@@ -75,7 +75,11 @@ describe("SafeXmlNode", () => {
   });
 
   it("resolves namespace-prefixed attributes like r:embed", () => {
-    const blip = spTree.child("sp").child("spPr").child("blipFill").child("blip");
+    const blip = spTree
+      .child("sp")
+      .child("spPr")
+      .child("blipFill")
+      .child("blip");
     expect(blip.attr("r:embed")).toBe("rId7");
   });
 

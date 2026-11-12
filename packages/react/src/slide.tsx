@@ -1,6 +1,10 @@
 import * as React from "react";
 
-import type { PresentationData, SlideData, SlideHandle } from "@diceui/pptx-core";
+import type {
+  PresentationData,
+  SlideData,
+  SlideHandle,
+} from "@diceui/pptx-core";
 import { materializeSlide, PPTX_ATTRS, renderSlide } from "@diceui/pptx-core";
 
 import {
@@ -20,7 +24,10 @@ import type { PresentationStatus } from "./store";
 const SLIDE_NAME = "Presentation.Slide";
 
 function buildNodeSnapshot(slide: SlideData) {
-  const map = new Map<string, { x: number; y: number; w: number; h: number; rotation: number }>();
+  const map = new Map<
+    string,
+    { x: number; y: number; w: number; h: number; rotation: number }
+  >();
   for (const node of slide.nodes) {
     map.set(node.id, {
       x: node.position.x,
@@ -53,61 +60,63 @@ export interface SlideProps extends PrimitiveProps<"div", SlideState> {
   onNodeError?: (nodeId: string, error: unknown) => void;
 }
 
-export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide(
-  { children, render, onNodeError, ...slideProps },
-  forwardedRef,
-) {
-  const { presentation, status } = usePresentation();
-  const { slide, index } = useSlide();
-  const { zoom } = useZoom();
-  const store = useStoreContext(SLIDE_NAME);
+export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(
+  function Slide(
+    { children, render, onNodeError, ...slideProps },
+    forwardedRef,
+  ) {
+    const { presentation, status } = usePresentation();
+    const { slide, index } = useSlide();
+    const { zoom } = useZoom();
+    const store = useStoreContext(SLIDE_NAME);
 
-  const slideId = slide?.id;
-  const revision = useSlideRevision(store, slideId);
-  const contentRevision = useSlideContentRevision(store, slideId);
+    const slideId = slide?.id;
+    const revision = useSlideRevision(store, slideId);
+    const contentRevision = useSlideContentRevision(store, slideId);
 
-  const slideContent =
-    presentation && slide ? (
-      <SlideImpl
-        presentation={presentation}
-        slide={slide}
-        zoom={zoom}
-        revision={revision}
-        contentRevision={contentRevision}
-        onNodeError={onNodeError}
-      >
-        {children}
-      </SlideImpl>
-    ) : null;
+    const slideContent =
+      presentation && slide ? (
+        <SlideImpl
+          presentation={presentation}
+          slide={slide}
+          zoom={zoom}
+          revision={revision}
+          contentRevision={contentRevision}
+          onNodeError={onNodeError}
+        >
+          {children}
+        </SlideImpl>
+      ) : null;
 
-  return renderElement(
-    "div",
-    { render },
-    // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
-    {
-      state: { status, index },
-      ref: forwardedRef,
-      props: [
-        {
-          "aria-busy": status === "loading",
-          "data-presentation-slide": "",
-          "data-status": status,
-          style: {
-            display: "flex",
-            // No flex centering, which makes start-side overflow unreachable; the slide uses `margin: auto`.
-            overflow: "auto",
-            // Otherwise the scroll container grows with its content at high zoom and pushes its
-            // scrollbars off screen. It resolves to `none` when the parent's size is indefinite.
-            maxWidth: "100%",
-            maxHeight: "100%",
+    return renderElement(
+      "div",
+      { render },
+      // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
+      {
+        state: { status, index },
+        ref: forwardedRef,
+        props: [
+          {
+            "aria-busy": status === "loading",
+            "data-presentation-slide": "",
+            "data-status": status,
+            style: {
+              display: "flex",
+              // No flex centering, which makes start-side overflow unreachable; the slide uses `margin: auto`.
+              overflow: "auto",
+              // Otherwise the scroll container grows with its content at high zoom and pushes its
+              // scrollbars off screen. It resolves to `none` when the parent's size is indefinite.
+              maxWidth: "100%",
+              maxHeight: "100%",
+            },
+            children: slideContent,
           },
-          children: slideContent,
-        },
-        slideProps,
-      ],
-    },
-  );
-});
+          slideProps,
+        ],
+      },
+    );
+  },
+);
 
 interface SlideImplProps extends React.ComponentProps<"div"> {
   presentation: PresentationData;
@@ -135,9 +144,12 @@ function SlideImpl({
   const slideHandleRef = React.useRef<SlideHandle | null>(null);
   const mediaUrlCacheRef = useLazyRef(() => new Map<string, string>());
   const nodeSnapshotRef =
-    React.useRef<Map<string, { x: number; y: number; w: number; h: number; rotation: number }>>(
-      null,
-    );
+    React.useRef<
+      Map<
+        string,
+        { x: number; y: number; w: number; h: number; rotation: number }
+      >
+    >(null);
   const contentRevisionRef = React.useRef<number>(null);
   const renderedSlideIdRef = React.useRef<string>(null);
   // In a ref so an inline handler doesn't rebuild the slide DOM.
@@ -164,7 +176,9 @@ function SlideImpl({
           const prev = prevSnapshot.get(node.id);
           if (!prev) return false;
           return (
-            prev.w === node.size.w && prev.h === node.size.h && prev.rotation === node.rotation
+            prev.w === node.size.w &&
+            prev.h === node.size.h &&
+            prev.rotation === node.rotation
           );
         });
 
@@ -209,7 +223,14 @@ function SlideImpl({
     nodeSnapshotRef.current = buildNodeSnapshot(slide);
     contentRevisionRef.current = contentRevision;
     renderedSlideIdRef.current = slide.id;
-  }, [presentation, slide, revision, contentRevision, mediaUrlCacheRef, onNodeErrorRef]);
+  }, [
+    presentation,
+    slide,
+    revision,
+    contentRevision,
+    mediaUrlCacheRef,
+    onNodeErrorRef,
+  ]);
 
   React.useEffect(() => {
     const mediaUrlCache = mediaUrlCacheRef.current;
@@ -268,7 +289,11 @@ function SlideImpl({
           }}
         />
         {children && (
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{children}</div>
+          <div
+            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+          >
+            {children}
+          </div>
         )}
       </div>
     </div>

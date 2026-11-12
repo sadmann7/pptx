@@ -93,7 +93,8 @@ export function FocusBlurResolve({
           fontWeight,
           color,
           letterSpacing: "-0.03em",
-          fontFamily: "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
+          fontFamily:
+            "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
           display: "inline-block",
           transformOrigin: "50% 50%",
           opacity,

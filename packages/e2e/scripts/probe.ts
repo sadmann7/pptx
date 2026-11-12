@@ -19,7 +19,9 @@ const args = parseArgs(process.argv.slice(2), {
 
 const source = args.positional[0];
 if (!source) {
-  throw new Error("usage: pnpm probe <screenshot.png> [--row N | --col N | --crop x,y,w,h]");
+  throw new Error(
+    "usage: pnpm probe <screenshot.png> [--row N | --col N | --crop x,y,w,h]",
+  );
 }
 const png = await readFile(resolve(source));
 const pixels = await readPixels(png);
@@ -32,12 +34,16 @@ if (row !== undefined || col !== undefined) {
   const [from, to] = alongX
     ? parseRange(args.strings.x, 0, pixels.width - 1)
     : parseRange(args.strings.y, 0, pixels.height - 1);
-  const samples = alongX ? pixels.row(row, from, to) : pixels.column(col as number, from, to);
+  const samples = alongX
+    ? pixels.row(row, from, to)
+    : pixels.column(col as number, from, to);
 
   console.log(alongX ? `row ${row}` : `col ${col}`);
   samples.forEach((pixel, index) => {
     const at = String(from + index).padStart(5);
-    const channels = [pixel.r, pixel.g, pixel.b].map((v) => String(v).padStart(3)).join(",");
+    const channels = [pixel.r, pixel.g, pixel.b]
+      .map((v) => String(v).padStart(3))
+      .join(",");
     console.log(`  ${alongX ? "x" : "y"}=${at} : ${channels}`);
   });
 }

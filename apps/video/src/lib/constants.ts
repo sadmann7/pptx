@@ -16,7 +16,8 @@ export const SLIDE_W = 960;
 export const SLIDE_H = 540;
 export const FOCUS_X = 1290;
 export const FOCUS_Y = 540;
-export const TEXT_ON_BOARD = "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
+export const TEXT_ON_BOARD =
+  "0 2px 14px rgba(14,17,23,.85), 0 0 44px rgba(14,17,23,.75)";
 export const VIDEO_W = 1920;
 export const VIDEO_H = 1080;
 export const HANDOFF_FRAMES = 36;
@@ -26,7 +27,8 @@ export const COMPOSITION_GAP = 72;
 export const PREVIEW_RAIL_W = 130;
 export const PREVIEW_PAD = 26;
 export const PREVIEW_W = 980;
-export const PREVIEW_CANVAS_W = PREVIEW_W - PANEL_BORDER_WIDTH * 2 - PREVIEW_RAIL_W;
+export const PREVIEW_CANVAS_W =
+  PREVIEW_W - PANEL_BORDER_WIDTH * 2 - PREVIEW_RAIL_W;
 export const PREVIEW_H =
   Math.round(((PREVIEW_CANVAS_W - PREVIEW_PAD * 2) * SLIDE_H) / SLIDE_W) +
   PREVIEW_PAD * 2 +
@@ -100,7 +102,8 @@ export const SNAPS = [
 export const FEATURES_DURATION = sectionDuration(SNAPS.length * SNAP_BEAT);
 export const COMPOSITION_DURATION = sectionDuration(COMPOSITION_CONTENT_FRAMES);
 export const CTA_DURATION = CONTENT_LEAD + 90;
-export const DEMO_DURATION = HANDOFF_FRAMES + DEMO_CONTENT_FRAMES + FADE_DURATION;
+export const DEMO_DURATION =
+  HANDOFF_FRAMES + DEMO_CONTENT_FRAMES + FADE_DURATION;
 
 export const RAIL_LINE_ID = "rail";
 
@@ -136,7 +139,9 @@ export const WITH_RAIL = [
   "root-close",
 ];
 
-export const COMPOSITION_SOURCE = WITH_RAIL.map((id) => COMPOSITION_LINES[id]).join("\n");
+export const COMPOSITION_SOURCE = WITH_RAIL.map(
+  (id) => COMPOSITION_LINES[id],
+).join("\n");
 
 export const CODE_FONT_SIZE = 34;
 export const CODE_LINE_H = Math.round(CODE_FONT_SIZE * 1.6);
@@ -144,7 +149,8 @@ export const CODE_COLUMNS = Math.max(
   ...Object.values(COMPOSITION_LINES).map((line) => line.length),
 );
 export const CODE_PANEL_PAD_X = 40;
-export const CODE_PANEL_W = CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * CODE_FONT_SIZE * 0.6);
+export const CODE_PANEL_W =
+  CODE_PANEL_PAD_X * 2 + Math.round(CODE_COLUMNS * CODE_FONT_SIZE * 0.6);
 
 export const PREVIEW_FILE = "after-the-needle-drops-mat.pptx";
 export const PREVIEW_SLIDE = 0;

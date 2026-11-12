@@ -52,7 +52,10 @@ test.describe("embedded font decode performance", () => {
       page,
       browserName,
     }) => {
-      test.skip(browserName !== "chromium", "CPU throttling and long tasks need CDP");
+      test.skip(
+        browserName !== "chromium",
+        "CPU throttling and long tasks need CDP",
+      );
 
       const cdp = await page.context().newCDPSession(page);
 
@@ -69,7 +72,9 @@ test.describe("embedded font decode performance", () => {
             });
             await page.goto(`/fonts.html?${query}`);
             await page.waitForFunction(
-              () => window.__fontsReady === true || window.__renderError !== undefined,
+              () =>
+                window.__fontsReady === true ||
+                window.__renderError !== undefined,
               undefined,
               { timeout: 120_000 },
             );
@@ -83,17 +88,25 @@ test.describe("embedded font decode performance", () => {
             if (!result) throw new Error("harness did not expose __benchFonts");
 
             // Decoding the parts before the run would pollute its frame monitor.
-            const parts = (await page.evaluate(() => window.__benchDecodeParts?.())) ?? [];
-            runs.push({ ...result, payload: payload.label, partMs: parts.map((part) => part.ms) });
+            const parts =
+              (await page.evaluate(() => window.__benchDecodeParts?.())) ?? [];
+            runs.push({
+              ...result,
+              payload: payload.label,
+              partMs: parts.map((part) => part.ms),
+            });
           }
         }
       }
 
       const kb = (bytes: number) => `${(bytes / 1024).toFixed(0)} KB`;
       const ms = (value: number) => `${value.toFixed(0)}ms`;
-      const worst = (values: number[]) => (values.length > 0 ? Math.max(...values) : 0);
+      const worst = (values: number[]) =>
+        values.length > 0 ? Math.max(...values) : 0;
       const mean = (values: number[]) =>
-        values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+        values.length > 0
+          ? values.reduce((sum, value) => sum + value, 0) / values.length
+          : 0;
 
       const lines = [
         "",

@@ -16,52 +16,60 @@ export interface SnapGuideState {
   position: number;
 }
 
-export interface SnapGuideProps extends StatefulPrimitiveProps<"div", SnapGuideState> {}
+export interface SnapGuideProps extends StatefulPrimitiveProps<
+  "div",
+  SnapGuideState
+> {}
 
-export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(function SnapGuide(
-  { render, className, style, ...snapGuideProps },
-  forwardedRef,
-) {
-  const { state, zoom, slideWidth, slideHeight } = useSelectionParts(SNAP_GUIDE_NAME);
-  if (state.mode !== "move" && state.mode !== "resize") return null;
+export const SnapGuide = React.forwardRef<HTMLDivElement, SnapGuideProps>(
+  function SnapGuide(
+    { render, className, style, ...snapGuideProps },
+    forwardedRef,
+  ) {
+    const { state, zoom, slideWidth, slideHeight } =
+      useSelectionParts(SNAP_GUIDE_NAME);
+    if (state.mode !== "move" && state.mode !== "resize") return null;
 
-  return (state.guides ?? []).map((guide) => {
-    const isVertical = guide.axis === "x";
-    // A guide spanning only what lined up sits on the shape's edge and reads as a recolored outline.
-    const start = Math.min(0, guide.start);
-    const end = Math.max(isVertical ? slideHeight : slideWidth, guide.end);
-    const length = (end - start) * zoom;
-    const thickness = "var(--presentation-snap-guide-width, 1px)";
-    return (
-      <React.Fragment key={`${guide.axis}:${guide.position}`}>
-        {renderElement(
-          "div",
-          { render, className, style },
-          {
-            state: { axis: guide.axis, position: guide.position },
-            ref: forwardedRef,
-            props: [
-              {
-                "aria-hidden": true,
-                "data-presentation-snap-guide": guide.axis,
-                style: {
-                  position: "absolute",
-                  left: isVertical ? guide.position * zoom : start * zoom,
-                  top: isVertical ? start * zoom : guide.position * zoom,
-                  width: isVertical ? thickness : length,
-                  height: isVertical ? length : thickness,
-                  transform: isVertical ? "translateX(-50%)" : "translateY(-50%)",
-                  pointerEvents: "none",
+    return (state.guides ?? []).map((guide) => {
+      const isVertical = guide.axis === "x";
+      // A guide spanning only what lined up sits on the shape's edge and reads as a recolored outline.
+      const start = Math.min(0, guide.start);
+      const end = Math.max(isVertical ? slideHeight : slideWidth, guide.end);
+      const length = (end - start) * zoom;
+      const thickness = "var(--presentation-snap-guide-width, 1px)";
+      return (
+        <React.Fragment key={`${guide.axis}:${guide.position}`}>
+          {renderElement(
+            "div",
+            { render, className, style },
+            {
+              state: { axis: guide.axis, position: guide.position },
+              ref: forwardedRef,
+              props: [
+                {
+                  "aria-hidden": true,
+                  "data-presentation-snap-guide": guide.axis,
+                  style: {
+                    position: "absolute",
+                    left: isVertical ? guide.position * zoom : start * zoom,
+                    top: isVertical ? start * zoom : guide.position * zoom,
+                    width: isVertical ? thickness : length,
+                    height: isVertical ? length : thickness,
+                    transform: isVertical
+                      ? "translateX(-50%)"
+                      : "translateY(-50%)",
+                    pointerEvents: "none",
+                  },
                 },
-              },
-              snapGuideProps,
-            ],
-          },
-        )}
-      </React.Fragment>
-    );
-  });
-});
+                snapGuideProps,
+              ],
+            },
+          )}
+        </React.Fragment>
+      );
+    });
+  },
+);
 
 export namespace SnapGuide {
   export type State = SnapGuideState;

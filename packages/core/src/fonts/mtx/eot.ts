@@ -38,7 +38,8 @@ const VERSION_MAGIC: Record<number, EotVersion | undefined> = {
 };
 
 function decodeUtf16(bytes: Uint8Array): string {
-  if (bytes.length & 1) fail("INVALID_EOT", "UTF-16 EOT string has an odd byte length");
+  if (bytes.length & 1)
+    fail("INVALID_EOT", "UTF-16 EOT string has an odd byte length");
   const text = new TextDecoder("utf-16le", { fatal: false }).decode(bytes);
   let end = text.length;
   while (end > 0 && text.charCodeAt(end - 1) === 0) end--;
@@ -50,7 +51,12 @@ function readString(reader: Reader): string {
   return decodeUtf16(reader.bytes(size));
 }
 
-function parseTail(data: Uint8Array, start: number, end: number, version: EotVersion): string {
+function parseTail(
+  data: Uint8Array,
+  start: number,
+  end: number,
+  version: EotVersion,
+): string {
   const reader = new Reader(data, start, end);
   let rootString = "";
   if (version >= 2) {
@@ -67,7 +73,8 @@ function parseTail(data: Uint8Array, start: number, end: number, version: EotVer
     const eudcSize = reader.u32le();
     reader.skip(eudcSize);
   }
-  if (reader.pos !== end) fail("INVALID_EOT", `Version ${version} header does not end at FontData`);
+  if (reader.pos !== end)
+    fail("INVALID_EOT", `Version ${version} header does not end at FontData`);
   return rootString;
 }
 
@@ -79,14 +86,18 @@ export function parseEotMetadata(data: Uint8Array): EotMetadata {
   const rawVersion = reader.u32le();
   const declaredVersion = VERSION_MAGIC[rawVersion];
   if (!declaredVersion)
-    fail("INVALID_EOT", `Unsupported EOT version 0x${rawVersion.toString(16).padStart(8, "0")}`);
+    fail(
+      "INVALID_EOT",
+      `Unsupported EOT version 0x${rawVersion.toString(16).padStart(8, "0")}`,
+    );
   const flags = reader.u32le();
   const panose = reader.bytes(10).slice();
   const charset = reader.u8();
   const italic = reader.u8() !== 0;
   const weight = reader.u32le();
   const permissions = reader.u16le();
-  if (reader.u16le() !== 0x504c) fail("INVALID_EOT", "Invalid EOT magic number");
+  if (reader.u16le() !== 0x504c)
+    fail("INVALID_EOT", "Invalid EOT magic number");
   const unicodeRange: [number, number, number, number] = [
     reader.u32le(),
     reader.u32le(),
@@ -105,11 +116,16 @@ export function parseEotMetadata(data: Uint8Array): EotMetadata {
   reader.u16le();
   const fullName = readString(reader);
 
-  if (totalSize > data.length || totalSize < fontDataSize || fontDataSize === 0) {
+  if (
+    totalSize > data.length ||
+    totalSize < fontDataSize ||
+    fontDataSize === 0
+  ) {
     fail("INVALID_EOT", "Inconsistent EOT or FontData size");
   }
   const fontDataOffset = totalSize - fontDataSize;
-  if (fontDataOffset < reader.pos) fail("INVALID_EOT", "EOT strings overlap FontData");
+  if (fontDataOffset < reader.pos)
+    fail("INVALID_EOT", "EOT strings overlap FontData");
 
   // Historical embedders sometimes stamped a version that disagrees with the
   // tail they actually wrote. parseTail only accepts a layout that lands
@@ -126,7 +142,10 @@ export function parseEotMetadata(data: Uint8Array): EotMetadata {
     }
   }
   if (!parsedVersion)
-    fail("INVALID_EOT", "No EOT header layout matches the declared FontData offset");
+    fail(
+      "INVALID_EOT",
+      "No EOT header layout matches the declared FontData offset",
+    );
 
   return {
     version: parsedVersion,
@@ -153,6 +172,8 @@ export function parseEotMetadata(data: Uint8Array): EotMetadata {
   };
 }
 
-export function canLegallyEdit(metadata: Pick<EotMetadata, "permissions">): boolean {
+export function canLegallyEdit(
+  metadata: Pick<EotMetadata, "permissions">,
+): boolean {
   return metadata.permissions === 0 || (metadata.permissions & 0x0008) !== 0;
 }

@@ -19,8 +19,13 @@ export function read255Short(reader: Reader): number {
     code = reader.u8();
   }
   if (code === 251 || code === 252 || code === 250 || code === 253) {
-    fail("INVALID_CTF", "Reserved code inside a 255SHORT value", reader.pos - 1);
+    fail(
+      "INVALID_CTF",
+      "Reserved code inside a 255SHORT value",
+      reader.pos - 1,
+    );
   }
-  const magnitude = code === 255 ? 250 + reader.u8() : code === 254 ? 500 + reader.u8() : code;
+  const magnitude =
+    code === 255 ? 250 + reader.u8() : code === 254 ? 500 + reader.u8() : code;
   return magnitude * sign;
 }

@@ -2,7 +2,12 @@ import type { RelEntry } from "../ooxml/rel";
 import type { SafeXmlNode } from "../ooxml/xml";
 import type { LayoutData } from "./layout";
 import type { MasterData } from "./master";
-import type { BaseNodeData, NodeType, NodePosition, NodeSize } from "./nodes/base";
+import type {
+  BaseNodeData,
+  NodeType,
+  NodePosition,
+  NodeSize,
+} from "./nodes/base";
 import type { GroupNodeData } from "./nodes/group";
 import { isPlaceholderNode, parseRenderableChild } from "./nodes/parser";
 import type { ShapeNodeData, TextBody } from "./nodes/shape";
@@ -78,11 +83,14 @@ const IDENTITY_TRANSFORM: CoordinateTransform = {
   scaleY: 1,
 };
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getTextBodyText = (textBody: TextBody | undefined): string => {
   if (!textBody) return "";
-  return textBody.paragraphs.map((p) => p.runs.map((r) => r.text).join("")).join("\n");
+  return textBody.paragraphs
+    .map((p) => p.runs.map((r) => r.text).join(""))
+    .join("\n");
 };
 
 const getCellText = (cell: TableCell): string => getTextBodyText(cell.textBody);
@@ -107,10 +115,17 @@ const isWholeWordMatch = (text: string, start: number, end: number): boolean =>
 
 const rotationSwapsAxes = (rotation: number): boolean => {
   const normalized = ((rotation % 360) + 360) % 360;
-  return Math.abs(normalized - 90) < 0.0001 || Math.abs(normalized - 270) < 0.0001;
+  return (
+    Math.abs(normalized - 90) < 0.0001 || Math.abs(normalized - 270) < 0.0001
+  );
 };
 
-const createSnippet = (text: string, start: number, end: number, radius: number): string => {
+const createSnippet = (
+  text: string,
+  start: number,
+  end: number,
+  radius: number,
+): string => {
   const from = Math.max(0, start - radius);
   const to = Math.min(text.length, end + radius);
   const prefix = from > 0 ? "..." : "";
@@ -129,7 +144,9 @@ const parseGroupChild = (
     skipPlaceholders,
   });
   if (child) {
-    resolveNodePlaceholderInheritance(child, ctx.layout, ctx.master, { parentGroup });
+    resolveNodePlaceholderInheritance(child, ctx.layout, ctx.master, {
+      parentGroup,
+    });
   }
   return child;
 };
@@ -141,15 +158,19 @@ const getGroupChildTransform = (
 ): CoordinateTransform => {
   if (group.childExtent.w <= 0 || group.childExtent.h <= 0) {
     return {
-      offsetX: parentTransform.offsetX + group.position.x * parentTransform.scaleX,
-      offsetY: parentTransform.offsetY + group.position.y * parentTransform.scaleY,
+      offsetX:
+        parentTransform.offsetX + group.position.x * parentTransform.scaleX,
+      offsetY:
+        parentTransform.offsetY + group.position.y * parentTransform.scaleY,
       scaleX: parentTransform.scaleX,
       scaleY: parentTransform.scaleY,
     };
   }
 
-  const scaleX = group.childExtent.w > 0 ? group.size.w / group.childExtent.w : 1;
-  const scaleY = group.childExtent.h > 0 ? group.size.h / group.childExtent.h : 1;
+  const scaleX =
+    group.childExtent.w > 0 ? group.size.w / group.childExtent.w : 1;
+  const scaleY =
+    group.childExtent.h > 0 ? group.size.h / group.childExtent.h : 1;
   if (rotationSwapsAxes(child.rotation)) {
     const rotatedBBoxX = child.position.x + (child.size.w - child.size.h) / 2;
     const rotatedBBoxY = child.position.y + (child.size.h - child.size.w) / 2;
@@ -158,8 +179,12 @@ const getGroupChildTransform = (
       h: child.size.h * scaleX,
     };
     const nextNodePosition = {
-      x: (rotatedBBoxX - group.childOffset.x) * scaleX - (nextNodeSize.w - nextNodeSize.h) / 2,
-      y: (rotatedBBoxY - group.childOffset.y) * scaleY - (nextNodeSize.h - nextNodeSize.w) / 2,
+      x:
+        (rotatedBBoxX - group.childOffset.x) * scaleX -
+        (nextNodeSize.w - nextNodeSize.h) / 2,
+      y:
+        (rotatedBBoxY - group.childOffset.y) * scaleY -
+        (nextNodeSize.h - nextNodeSize.w) / 2,
     };
     const childScaleX = parentTransform.scaleX * scaleY;
     const childScaleY = parentTransform.scaleY * scaleX;
@@ -180,10 +205,12 @@ const getGroupChildTransform = (
   return {
     offsetX:
       parentTransform.offsetX +
-      (group.position.x - group.childOffset.x * scaleX) * parentTransform.scaleX,
+      (group.position.x - group.childOffset.x * scaleX) *
+        parentTransform.scaleX,
     offsetY:
       parentTransform.offsetY +
-      (group.position.y - group.childOffset.y * scaleY) * parentTransform.scaleY,
+      (group.position.y - group.childOffset.y * scaleY) *
+        parentTransform.scaleY,
     scaleX: parentTransform.scaleX * scaleX,
     scaleY: parentTransform.scaleY * scaleY,
   };
@@ -250,12 +277,24 @@ const addNodeText = (
   switch (node.nodeType) {
     case "shape":
       if (options.includeShapes) {
-        addShapeText(entries, slideIndex, node as ShapeNodeData, nodePath, transform);
+        addShapeText(
+          entries,
+          slideIndex,
+          node as ShapeNodeData,
+          nodePath,
+          transform,
+        );
       }
       break;
     case "table":
       if (options.includeTables) {
-        addTableText(entries, slideIndex, node as TableNodeData, nodePath, transform);
+        addTableText(
+          entries,
+          slideIndex,
+          node as TableNodeData,
+          nodePath,
+          transform,
+        );
       }
       break;
     case "group":
@@ -264,9 +303,18 @@ const addNodeText = (
         const group = node as GroupNodeData;
         (node as GroupNodeData).children.forEach((childXml, childIndex) => {
           try {
-            const child = parseGroupChild(childXml, parseCtx, skipPlaceholders, group);
+            const child = parseGroupChild(
+              childXml,
+              parseCtx,
+              skipPlaceholders,
+              group,
+            );
             if (!child) return;
-            const childTransform = getGroupChildTransform(group, child, transform);
+            const childTransform = getGroupChildTransform(
+              group,
+              child,
+              transform,
+            );
             const childId = child.id || child.name || String(childIndex);
             addNodeText(
               entries,
@@ -329,29 +377,48 @@ export const buildTextIndex = (
   presentation.slides.forEach((slide, slideIndex) => {
     materializeSlide(presentation, slide);
 
-    const layoutPath = presentation.slideToLayout.get(slide.index) || slide.layoutIndex;
+    const layoutPath =
+      presentation.slideToLayout.get(slide.index) || slide.layoutIndex;
     const layout = presentation.layouts.get(layoutPath);
-    const masterPath = layoutPath ? presentation.layoutToMaster.get(layoutPath) : "";
-    const master = masterPath ? presentation.masters.get(masterPath) : undefined;
+    const masterPath = layoutPath
+      ? presentation.layoutToMaster.get(layoutPath)
+      : "";
+    const master = masterPath
+      ? presentation.masters.get(masterPath)
+      : undefined;
 
     if (slide.showMasterSp) {
       if (layout?.showMasterSp && master) {
-        addTemplateText(entries, slideIndex, master.spTree, "master", mergedOptions, {
-          rels: master.rels,
-          partPath: masterPath,
-          diagramDrawings: presentation.diagramDrawings,
-          layout,
-          master,
-        });
+        addTemplateText(
+          entries,
+          slideIndex,
+          master.spTree,
+          "master",
+          mergedOptions,
+          {
+            rels: master.rels,
+            partPath: masterPath,
+            diagramDrawings: presentation.diagramDrawings,
+            layout,
+            master,
+          },
+        );
       }
       if (layout) {
-        addTemplateText(entries, slideIndex, layout.spTree, "layout", mergedOptions, {
-          rels: layout.rels,
-          partPath: layoutPath,
-          diagramDrawings: presentation.diagramDrawings,
-          layout,
-          master,
-        });
+        addTemplateText(
+          entries,
+          slideIndex,
+          layout.spTree,
+          "layout",
+          mergedOptions,
+          {
+            rels: layout.rels,
+            partPath: layoutPath,
+            diagramDrawings: presentation.diagramDrawings,
+            layout,
+            master,
+          },
+        );
       }
     }
 
@@ -377,7 +444,10 @@ export const buildTextIndex = (
   return entries;
 };
 
-const createMatcher = (query: string | RegExp, options: TextSearchOptions): RegExp | null => {
+const createMatcher = (
+  query: string | RegExp,
+  options: TextSearchOptions,
+): RegExp | null => {
   if (query instanceof RegExp) {
     const flags = new Set(query.flags.split(""));
     flags.add("g");
@@ -413,7 +483,11 @@ export const searchText = (
 
       const matchStart = match.index;
       const matchEnd = matchStart + matchText.length;
-      if (options.wholeWord && !isWholeWordMatch(entry.text, matchStart, matchEnd)) continue;
+      if (
+        options.wholeWord &&
+        !isWholeWordMatch(entry.text, matchStart, matchEnd)
+      )
+        continue;
 
       results.push({
         ...entry,

@@ -48,7 +48,13 @@ describe("mergeRefs", () => {
 
 describe("renderElement", () => {
   it("renders the default tag with composed props", () => {
-    render(renderElement("div", {}, { state: {}, props: { role: "status", children: "idle" } }));
+    render(
+      renderElement(
+        "div",
+        {},
+        { state: {}, props: { role: "status", children: "idle" } },
+      ),
+    );
     expect(screen.getByRole("status").textContent).toBe("idle");
   });
 
@@ -88,7 +94,11 @@ describe("renderElement", () => {
         { className: "user", style: { color: "blue" } },
         {
           state: {},
-          props: { className: "internal", style: { color: "red", margin: 4 }, children: "x" },
+          props: {
+            className: "internal",
+            style: { color: "red", margin: 4 },
+            children: "x",
+          },
         },
       ),
     );
@@ -116,15 +126,31 @@ describe("renderElement", () => {
     const { rerender, container } = render(
       renderElement("button", {}, { state: {}, props: { children: "Go" } }),
     );
-    expect((screen.getByRole("button") as HTMLButtonElement).type).toBe("button");
+    expect((screen.getByRole("button") as HTMLButtonElement).type).toBe(
+      "button",
+    );
 
-    rerender(renderElement("button", {}, { state: {}, props: { type: "submit", children: "Go" } }));
-    expect((screen.getByRole("button") as HTMLButtonElement).type).toBe("submit");
+    rerender(
+      renderElement(
+        "button",
+        {},
+        { state: {}, props: { type: "submit", children: "Go" } },
+      ),
+    );
+    expect((screen.getByRole("button") as HTMLButtonElement).type).toBe(
+      "submit",
+    );
 
     rerender(renderElement("img", {}, { state: {}, props: { src: "x.png" } }));
     expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
 
-    rerender(renderElement("img", {}, { state: {}, props: { src: "x.png", alt: "chart" } }));
+    rerender(
+      renderElement(
+        "img",
+        {},
+        { state: {}, props: { src: "x.png", alt: "chart" } },
+      ),
+    );
     expect(container.querySelector("img")?.getAttribute("alt")).toBe("chart");
   });
 
@@ -153,7 +179,11 @@ describe("renderElement", () => {
     }
 
     render(
-      renderElement("div", { render: LooksLikeComponent }, { state: {}, props: { children: "x" } }),
+      renderElement(
+        "div",
+        { render: LooksLikeComponent },
+        { state: {}, props: { children: "x" } },
+      ),
     );
     expect(warn).toHaveBeenCalledOnce();
     expect(String(warn.mock.calls[0]?.[0])).toContain("LooksLikeComponent");
@@ -163,7 +193,9 @@ describe("renderElement", () => {
       renderElement(
         "div",
         {
-          render: function renderSpan(props: React.HTMLAttributes<HTMLSpanElement>) {
+          render: function renderSpan(
+            props: React.HTMLAttributes<HTMLSpanElement>,
+          ) {
             return <span {...props} />;
           },
         },
