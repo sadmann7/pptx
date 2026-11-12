@@ -36,12 +36,8 @@ function isCachePointInRange(idx: number | undefined, pointLimit: number): idx i
   );
 }
 
-/**
- * Locate the point-list container for a data reference. Handles both the
- * cached-reference forms (`strRef/strCache`, `numRef/numCache`) and the
- * literal forms (`strLit`, `numLit`) used when the chart has no backing
- * spreadsheet; both share the same ptCount/pt structure.
- */
+// Literal forms (`strLit`, `numLit`) appear when the chart has no backing
+// spreadsheet and share the cached forms' ptCount/pt structure.
 function findStringCache(refNode: SafeXmlNode): SafeXmlNode {
   if (refNode.child("strRef").exists()) return refNode.child("strRef").child("strCache");
   if (refNode.child("strCache").exists()) return refNode.child("strCache");

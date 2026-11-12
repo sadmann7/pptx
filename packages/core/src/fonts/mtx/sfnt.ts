@@ -34,7 +34,7 @@ export function tagBytes(tag: string): Uint8Array {
   ]);
 }
 
-/** Sum of the data as big-endian uint32 words, zero-padded to a word boundary. */
+// Big-endian uint32 words, zero-padded to a word boundary.
 export function checksum(data: Uint8Array): number {
   let sum = 0;
   let i = 0;

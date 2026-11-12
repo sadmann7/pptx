@@ -9,19 +9,19 @@ export interface PlaceholderXfrm {
 
 export interface PlaceholderEntry {
   node: SafeXmlNode;
-  /** When placeholder is inside a group, position/size in slide space (px). */
+  // Slide-space position and size, in px, for a placeholder nested in a group.
   absoluteXfrm?: PlaceholderXfrm;
 }
 
 export interface LayoutData {
-  /** Display name from `p:cSld/@name` (e.g. "Title and Content"). */
+  /** The layout's display name, like "Title and Content". */
   name?: string;
   colorMapOverride?: Map<string, string>;
   background?: SafeXmlNode;
   placeholders: PlaceholderEntry[];
   spTree: SafeXmlNode;
   rels: Map<string, import("../ooxml/rel").RelEntry>;
-  /** When false, shapes from the slide master should NOT be rendered on this layout. */
+  /** Whether the slide master's shapes render on this layout. */
   showMasterSp: boolean;
 }
 
@@ -95,9 +95,6 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
   };
 }
 
-/**
- * Recursively collect placeholders; when inside a group, compute position/size in slide space.
- */
 function extractPlaceholdersRecursive(
   spTree: SafeXmlNode,
   groupTransform: { offX: number; offY: number; scaleX: number; scaleY: number } | null,
@@ -169,9 +166,6 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   return result;
 }
 
-/**
- * Parses a slide layout XML root (`p:sldLayout`) into LayoutData.
- */
 export function parseLayout(root: SafeXmlNode): LayoutData {
   const cSld = root.child("cSld");
 
@@ -199,7 +193,7 @@ export function parseLayout(root: SafeXmlNode): LayoutData {
     background,
     placeholders,
     spTree,
-    rels: new Map(), // populated later by buildPresentation.
+    rels: new Map(), // Populated by buildPresentation.
     showMasterSp,
   };
 }

@@ -73,17 +73,13 @@ function mediaRelativePath(target: string): string {
   return mediaParts.join("/");
 }
 
-/** Maps a rels target like "../media/image1.png" to "ppt/media/image1.png". */
 export function resolveMediaPath(target: string): string {
   const decodedPath = mediaRelativePath(target).split("/").map(decodeUriPathSegment).join("/");
   return `ppt/media/${decodedPath}`;
 }
 
-/**
- * Rels targets are URI references, so `%20` normally means a space in the part
- * name, but some producers keep the encoded bytes in the zip entry name. Try the
- * decoded path first, then the raw one.
- */
+// Rels targets are URI references, so `%20` normally means a space, but some
+// producers keep the encoded bytes in the zip entry name.
 export function resolveMediaPathCandidates(target: string): string[] {
   const rawRelativePath = mediaRelativePath(target);
   const decodedPath = resolveMediaPath(target);
@@ -112,7 +108,6 @@ export async function findMediaByTargetAsync(
   return resolver?.resolve(target);
 }
 
-/** Returns the cached blob URL for a media path, creating it on first use. */
 export function getOrCreateBlobUrl(
   mediaPath: string,
   data: Uint8Array | ArrayBuffer,

@@ -12,7 +12,6 @@ export interface MasterData {
   };
   defaultTextStyle?: SafeXmlNode;
   placeholders: SafeXmlNode[];
-  /** Placeholders with slide-space absolute transforms when nested in groups. */
   placeholderEntries?: PlaceholderEntry[];
   spTree: SafeXmlNode;
   rels: Map<string, import("../ooxml/rel").RelEntry>;
@@ -83,9 +82,6 @@ function getGroupXfrmInEmu(grpSp: SafeXmlNode): {
   };
 }
 
-/**
- * Recursively collect placeholders; when inside a group, compute position/size in slide space.
- */
 function extractPlaceholderEntriesRecursive(
   spTree: SafeXmlNode,
   groupTransform: { offX: number; offY: number; scaleX: number; scaleY: number } | null,
@@ -158,9 +154,6 @@ function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   return result;
 }
 
-/**
- * Parses a slide master XML root (`p:sldMaster`) into MasterData.
- */
 export function parseMaster(root: SafeXmlNode): MasterData {
   const cSld = root.child("cSld");
 
@@ -194,6 +187,6 @@ export function parseMaster(root: SafeXmlNode): MasterData {
     placeholders,
     placeholderEntries,
     spTree,
-    rels: new Map(), // populated later by buildPresentation.
+    rels: new Map(), // Populated by buildPresentation.
   };
 }

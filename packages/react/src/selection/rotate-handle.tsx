@@ -4,10 +4,7 @@ import type { StatefulPrimitiveProps } from "../render";
 import { renderElement } from "../render";
 import { SELECTION_BOX_NAME, SelectionBoxContext, useSelectionParts } from "./context";
 
-/**
- * The cursor over a rotate handle and while rotating: a crosshair, like Google
- * Slides. Apps can swap it with `--presentation-rotate-cursor`.
- */
+// A crosshair, like Google Slides; apps can swap it with `--presentation-rotate-cursor`.
 export const ROTATE_CURSOR = "var(--presentation-rotate-cursor, crosshair)";
 
 const ROTATE_HANDLE_NAME = "Presentation.RotateHandle";

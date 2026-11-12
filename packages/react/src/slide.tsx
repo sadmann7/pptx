@@ -34,10 +34,7 @@ function buildNodeSnapshot(slide: SlideData) {
 }
 
 export interface SlideState {
-  /**
-   * Current parse/load status. Reflected as `data-status` on the wrapper
-   * element so CSS can target states directly (e.g. `[data-status="loading"]`).
-   */
+  /** Current load status, also set as `data-status` on the element. */
   status: PresentationStatus;
 
   /** 0-based index of the active slide in the loaded presentation. */
@@ -46,11 +43,8 @@ export interface SlideState {
 
 export interface SlideProps extends PrimitiveProps<"div", SlideState> {
   /**
-   * Event handler called when an individual shape fails to render. The rest
-   * of the slide still renders; the failing node is skipped.
-   *
-   * Providing a handler replaces the default `console.warn`, so log the
-   * error yourself if you still want it visible.
+   * Event handler called when a shape fails to render and is skipped. It replaces the default
+   * `console.warn`.
    *
    * ```tsx
    * onNodeError={(nodeId, error) => reportError(error, { nodeId })}
@@ -100,14 +94,10 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(function Slide
           "data-status": status,
           style: {
             display: "flex",
-            // No align/justify centering: with a centered flex container the
-            // start-side overflow becomes unreachable when content is bigger
-            // than the viewport. The slide wrapper centers itself with
-            // `margin: auto`, which degrades correctly to scrollable.
+            // No flex centering, which makes start-side overflow unreachable; the slide uses `margin: auto`.
             overflow: "auto",
-            // As the scroll container this has to stay within the viewport, or it would
-            // grow with its content at high zoom and push its scrollbars off screen. It
-            // resolves to `none` when the parent's size is indefinite.
+            // Otherwise the scroll container grows with its content at high zoom and pushes its
+            // scrollbars off screen. It resolves to `none` when the parent's size is indefinite.
             maxWidth: "100%",
             maxHeight: "100%",
           },
@@ -123,9 +113,9 @@ interface SlideImplProps extends React.ComponentProps<"div"> {
   presentation: PresentationData;
   slide: SlideData;
   zoom: number;
-  /** Edit revision of this slide; a change forces a fresh render. */
+  // A change forces a fresh render.
   revision: number;
-  /** Content revision that stays unchanged when only node transforms were edited. */
+  // Unchanged by edits that only move or resize nodes.
   contentRevision: number;
   onNodeError?: (nodeId: string, error: unknown) => void;
 }
@@ -150,7 +140,7 @@ function SlideImpl({
     );
   const contentRevisionRef = React.useRef<number>(null);
   const renderedSlideIdRef = React.useRef<string>(null);
-  // Kept in a ref so passing an inline handler doesn't rebuild the slide DOM.
+  // In a ref so an inline handler doesn't rebuild the slide DOM.
   const onNodeErrorRef = useLatestRef(onNodeError);
 
   React.useLayoutEffect(() => {
@@ -159,10 +149,8 @@ function SlideImpl({
 
     if (!slide.nodesMaterialized) materializeSlide(presentation, slide);
 
-    // Positions are patched in place instead of rebuilt when the slide, node content
-    // (contentRevision) and node sizes and rotations are unchanged, since a resize
-    // needs re-layout. The slide id matters: different slides can have identical
-    // node snapshots, like one full-bleed picture each.
+    // Only position changes are patched in place, since a resize needs re-layout. Different
+    // slides can have identical node snapshots, like one full-bleed picture each.
     if (
       slideHandleRef.current &&
       nodeSnapshotRef.current &&
@@ -207,8 +195,7 @@ function SlideImpl({
     const slideHandle = renderSlide(presentation, slide, {
       mediaUrlCache: mediaUrlCacheRef.current,
       placeholderPrompts: isEditable,
-      // Editing surface: keep shapes dragged past the slide edge visible
-      // (PowerPoint pasteboard behavior) instead of clipping at the bounds.
+      // Shapes dragged past the slide edge stay visible, like PowerPoint's pasteboard.
       clipContent: !isEditable,
       onNodeError: (nodeId, error) => {
         const handler = onNodeErrorRef.current;
@@ -239,9 +226,8 @@ function SlideImpl({
   const { width, height } = presentation;
   const isEditable = presentation.sourcePackage != null;
 
-  // Scroll containers only extend their scrollable area right and down, so shapes
-  // overhanging the slide's top or left would be unreachable. The pasteboard
-  // reserves room on every overhanging side and offsets the slide within it.
+  // Scroll containers only extend right and down, so the pasteboard reserves room on every
+  // overhanging side to keep shapes past the top or left edge reachable.
   const overhang = isEditable
     ? getPasteboardOverhang(slide.nodes, width, height)
     : { left: 0, top: 0, right: 0, bottom: 0 };
@@ -253,20 +239,13 @@ function SlideImpl({
         height: (height + overhang.top + overhang.bottom) * zoom,
         flexShrink: 0,
         position: "relative",
-        // Center within the flex viewport; unlike align/justify centering,
-        // auto margins collapse to 0 when the content overflows, keeping the
-        // start edges scrollable.
+        // Unlike flex centering, auto margins collapse to 0 on overflow, keeping start edges scrollable.
         margin: "auto",
         ...style,
       }}
       {...slideImplProps}
     >
-      {/*
-       * Slide frame: sized and positioned to the slide itself. The selection
-       * overlay resolves the slide's client rect from this element (its
-       * grandparent from the selection root), so it must match the slide
-       * bounds exactly.
-       */}
+      {/* The selection overlay reads the slide's client rect from this frame, so it must match the slide bounds exactly. */}
       <div
         style={{
           position: "absolute",
@@ -281,12 +260,10 @@ function SlideImpl({
           style={{
             width,
             height,
-            // Layout-time scaling (see applySlideScale): keeps hairlines on
-            // whole device pixels instead of smearing them at fractional zoom.
+            // Layout-time scaling keeps hairlines on whole device pixels at fractional zoom.
             zoom,
             position: "relative",
-            // In edit mode the inner slide container unclips (pasteboard
-            // behavior), so this wrapper must not reintroduce the clip.
+            // The inner container unclips in edit mode, so this wrapper must not clip either.
             overflow: isEditable ? "visible" : "hidden",
           }}
         />

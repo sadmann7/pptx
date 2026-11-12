@@ -86,7 +86,7 @@ function shape(options: ShapeOptions): string {
   return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Shape ${id}"/><p:cNvSpPr${options.textBox ? ' txBox="1"' : ""}/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm${rot}><a:off x="${Math.round(options.x * PX)}" y="${Math.round(options.y * PX)}"/><a:ext cx="${Math.round(options.w * PX)}" cy="${Math.round(options.h * PX)}"/></a:xfrm><a:prstGeom prst="${options.geometry ?? "rect"}"><a:avLst/></a:prstGeom>${fill}<a:ln w="12700"><a:solidFill><a:srgbClr val="1F2937"/></a:solidFill></a:ln></p:spPr>${txBody}</p:sp>`;
 }
 
-/** Real family names as decks carry them, long static instances included. */
+// Real family names as decks carry them, long static instances included.
 const FONTS = [
   "Bricolage Grotesque 96pt Condensed ExtraBold",
   "Noto Sans Devanagari UI SemiCondensed",
@@ -108,7 +108,7 @@ const FONTS = [
   "Calibri",
 ];
 
-/** A4 portrait, the size a deck exported from Word or a print workflow has. */
+// A4 portrait, the size a deck exported from Word or a print workflow has.
 const PORTRAIT = { cx: 7560310, cy: 10692130 };
 const PORTRAIT_PX = { w: PORTRAIT.cx / PX, h: PORTRAIT.cy / PX };
 

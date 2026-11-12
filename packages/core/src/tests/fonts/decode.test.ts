@@ -1,7 +1,3 @@
-/**
- * End-to-end decode of the real `.fntdata` parts PowerPoint produces.
- */
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

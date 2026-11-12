@@ -51,9 +51,6 @@ function resolveScriptFont(
   return undefined;
 }
 
-/**
- * Resolves theme font placeholder references like "+mj-lt" or "+mn-ea".
- */
 export function resolveThemeFont(
   typeface: string,
   ctx: RenderContext,
@@ -130,7 +127,7 @@ const CJK_FONT_FAMILY_ALIAS_KEYS = new Set([
 ]);
 
 const FONT_FAMILY_ALIASES: Record<string, string[]> = {
-  // Microsoft Office default fonts (not installed on most web browsers).
+  // Office default fonts, missing on most browsers.
   calibri: ["Calibri", "Aptos", "Carlito", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "calibri light": [
     "Calibri Light",
@@ -144,7 +141,6 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   ],
   aptos: ["Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
   "aptos display": ["Aptos Display", "Aptos", "system-ui", "Arial", "Helvetica", "sans-serif"],
-  // Common Windows fonts not universally available on web.
   "franklin gothic medium": [
     "Franklin Gothic Medium",
     "Franklin Gothic",
@@ -166,7 +162,6 @@ const FONT_FAMILY_ALIASES: Record<string, string[]> = {
   candara: ["Candara", "Corbel", "Arial", "sans-serif"],
   consolas: ["Consolas", "Cascadia Code", "Fira Code", "monospace"],
   "courier new": ["Courier New", "Courier", "monospace"],
-  // CJK.
   "microsoft yahei": ["Microsoft YaHei", "微软雅黑"],
   "microsoft yahei ui": ["Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑"],
   微软雅黑: ["微软雅黑", "Microsoft YaHei"],
@@ -192,7 +187,6 @@ function cssFontFamilyToken(fontFamily: string): string {
   return `"${fontFamily.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-// Fonts that are serif by nature: fall back to serif generic, not sans-serif.
 const KNOWN_SERIF_FONTS = new Set([
   "times new roman",
   "times",
@@ -217,9 +211,8 @@ function expandFontFamilyAliases(fontFamily: string): string[] {
   if (FONT_FAMILY_ALIASES[normalized]) {
     return FONT_FAMILY_ALIASES[normalized];
   }
-  // For unknown fonts, always append a generic fallback so the browser never
-  // falls back to the default serif. PPTX presentations are overwhelmingly
-  // sans-serif; use sans-serif unless the font name is recognisably serif.
+  // A generic fallback keeps the browser off its default serif; decks are
+  // overwhelmingly sans-serif.
   const genericFallback = KNOWN_SERIF_FONTS.has(normalized) ? "serif" : "sans-serif";
   return [fontFamily.trim(), genericFallback];
 }

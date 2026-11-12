@@ -1,8 +1,3 @@
-/**
- * An editor toolbar outside the slide: `data-presentation-controls` keeps the
- * selection and text editing alive while it is pressed, and `useSelection`
- * reads and formats what is selected.
- */
 import * as React from "react";
 import { act } from "react";
 
@@ -73,7 +68,6 @@ async function renderEditor() {
     });
   }
 
-  /** Selects shape `nodeId` and enters text mode on it, the way Enter does. */
   async function editText(nodeId: string) {
     act(() => selection.current!.select([nodeId]));
     act(() => {

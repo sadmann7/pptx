@@ -1,9 +1,6 @@
 /**
- * Lifecycle harness: mounts and unmounts a viewer so lifecycle.spec.ts can
- * check what it leaves behind in the page once it is gone. The viewer either
- * owns its store (`Presentation.Root` with `file`) or gets one from
- * `useCreatePresentationStore`. The spec drives it through `__mountViewer`
- * and `__unmountViewer`.
+ * Mounts and unmounts a viewer that either owns its store (`Presentation.Root`
+ * with `file`) or gets one from `useCreatePresentationStore`.
  */
 import * as React from "react";
 import { flushSync } from "react-dom";

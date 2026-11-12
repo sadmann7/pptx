@@ -10,9 +10,6 @@ import {
 import type { ColorModifier } from "../utils/color";
 import { RenderContext } from "./context";
 
-/**
- * Builds a cache key for a color node based on its tag, value, and modifiers.
- */
 function buildColorCacheKey(colorNode: SafeXmlNode): string {
   const parts: string[] = [colorNode.localName, colorNode.attr("val") ?? ""];
   for (const child of colorNode.allChildren()) {
@@ -29,10 +26,6 @@ function buildColorCacheKey(colorNode: SafeXmlNode): string {
   return parts.join("|");
 }
 
-/**
- * Collect OOXML color modifier children from a color node.
- * Modifiers are child elements like alpha, lumMod, lumOff, tint, shade, satMod, hueMod.
- */
 function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
   const modifiers: ColorModifier[] = [];
   for (const child of colorNode.allChildren()) {
@@ -53,15 +46,8 @@ function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
   return modifiers;
 }
 
-/**
- * Resolves a scheme color name through the master colorMap then theme colorScheme.
- *
- * OOXML scheme colors use logical names (e.g., "tx1", "bg1", "accent1").
- * The master's colorMap remaps some of these (e.g., "tx1" -> "dk1").
- * The theme's colorScheme holds the actual hex values keyed by the mapped name.
- */
+// The master's colorMap remaps logical names like "tx1" to theme slots like "dk1".
 function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
-  // A layout colorMap override takes priority.
   let mappedName = schemeName;
   if (ctx.layout.colorMapOverride) {
     const override = ctx.layout.colorMapOverride.get(schemeName);
@@ -75,15 +61,10 @@ function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
   const hex = ctx.theme.colorScheme.get(mappedName);
   if (hex) return hex;
 
-  // Fallback: try the original name directly in theme.
   const fallback = ctx.theme.colorScheme.get(schemeName);
   return fallback || "000000";
 }
 
-/**
- * Resolves an OOXML color node (srgbClr, schemeClr, sysClr, prstClr, hslClr, scrgbClr)
- * into a CSS-ready hex color and alpha value.
- */
 export function resolveColor(
   colorNode: SafeXmlNode,
   ctx: RenderContext,
@@ -136,8 +117,8 @@ function resolveColorUncached(
       }
 
       case "hslClr": {
-        const hue = (child.numAttr("hue") ?? 0) / 60000; // 60000ths of degree -> degrees.
-        const sat = (child.numAttr("sat") ?? 0) / 100000; // percentage.
+        const hue = (child.numAttr("hue") ?? 0) / 60000; // 60000ths of a degree.
+        const sat = (child.numAttr("sat") ?? 0) / 100000;
         const lum = (child.numAttr("lum") ?? 0) / 100000;
         const rgb = hslToRgb(hue, sat, lum);
         const hex = rgbToHex(rgb.r, rgb.g, rgb.b).replace("#", "");
@@ -145,7 +126,7 @@ function resolveColorUncached(
       }
 
       case "scrgbClr": {
-        // r, g, b are percentages (0-100000).
+        // scrgbClr channels run 0 to 100000.
         const r = Math.round(((child.numAttr("r") ?? 0) / 100000) * 255);
         const g = Math.round(((child.numAttr("g") ?? 0) / 100000) * 255);
         const b = Math.round(((child.numAttr("b") ?? 0) / 100000) * 255);
@@ -154,12 +135,10 @@ function resolveColorUncached(
       }
 
       default:
-        // Not a recognized color child; continue looking.
         break;
     }
   }
 
-  // If the node itself is a color type (no wrapper).
   const selfTag = colorNode.localName;
   if (selfTag === "srgbClr") {
     const hex = colorNode.attr("val") || "000000";
@@ -227,14 +206,7 @@ function resolveColorWithPlaceholder(
   return resolveColorUncached(colorNode, ctx, placeholderColorNode);
 }
 
-/**
- * Resolves a fill from shape properties (spPr) into a CSS background value.
- *
- * Returns:
- *   - CSS color/gradient string for solidFill/gradFill
- *   - 'transparent' for noFill
- *   - '' for blipFill (painted by the image renderer) or no fill found (inherit)
- */
+// Returns 'transparent' for noFill and '' when the fill is inherited or a blipFill the image renderer paints.
 export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
   const solidFill = spPr.child("solidFill");
   if (solidFill.exists()) {
@@ -247,25 +219,21 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return resolveGradient(gradFill, ctx);
   }
 
-  // blipFill is painted by the image renderer.
   const blipFill = spPr.child("blipFill");
   if (blipFill.exists()) {
     return "";
   }
 
-  // pattFill: pattern fill rendered as CSS repeating gradient.
   const pattFill = spPr.child("pattFill");
   if (pattFill.exists()) {
     return resolvePatternFill(pattFill, ctx);
   }
 
-  // grpFill: inherit fill from parent group.
   const grpFill = spPr.child("grpFill");
   if (grpFill.exists()) {
     if (ctx.groupFillNode) {
       return resolveFill(ctx.groupFillNode, ctx);
     }
-    // No group fill context available; fall through to no fill.
     return "";
   }
 
@@ -274,16 +242,9 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
     return "transparent";
   }
 
-  // No fill found; inherit.
   return "";
 }
 
-/**
- * Resolves `<a:pattFill>` into a CSS background value using repeating gradients.
- *
- * OOXML defines 40+ pattern presets. We support the most common ones and
- * fall back to a simple foreground/background 50% mix for unknown patterns.
- */
 function resolvePatternFill(
   pattFill: SafeXmlNode,
   ctx: RenderContext,
@@ -306,21 +267,17 @@ function resolvePatternFill(
     bg = colorToCss(color, alpha);
   }
 
-  // Pattern tile size in px.
   const s = 8;
 
-  // Multi-layer `background` shorthand: the pattern tile over the bg color.
   const pat = (gradient: string): string => `${gradient} 0 0 / ${s}px ${s}px, ${bg}`;
   const pat2 = (g1: string, g2: string): string =>
     `${g1} 0 0 / ${s}px ${s}px, ${g2} 0 0 / ${s}px ${s}px, ${bg}`;
 
   switch (preset) {
-    // Solid fills.
     case "solid":
     case "solidDmnd":
       return fg;
 
-    // Percentage fills (dots on background).
     case "pct5":
     case "pct10":
     case "pct20":
@@ -337,7 +294,6 @@ function resolvePatternFill(
     case "pct90":
       return pat(`radial-gradient(${fg} 2.5px, transparent 2.5px)`);
 
-    // Horizontal lines.
     case "horz":
     case "ltHorz":
     case "narHorz":
@@ -346,7 +302,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(0deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Vertical lines.
     case "vert":
     case "ltVert":
     case "narVert":
@@ -355,7 +310,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (down-right).
     case "dnDiag":
     case "ltDnDiag":
     case "narDnDiag":
@@ -365,7 +319,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (up-right).
     case "upDiag":
     case "ltUpDiag":
     case "narUpDiag":
@@ -375,7 +328,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Grid (horizontal + vertical).
     case "smGrid":
     case "lgGrid":
     case "cross":
@@ -384,7 +336,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal cross.
     case "smCheck":
     case "lgCheck":
     case "diagCross":
@@ -394,12 +345,10 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Dot patterns.
     case "dotGrid":
     case "dotDmnd":
       return pat(`radial-gradient(${fg} 1px, transparent 1px)`);
 
-    // Trellis / weave.
     case "trellis":
     case "weave":
       return pat2(
@@ -407,7 +356,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 2px, transparent 2px, transparent ${s}px)`,
       );
 
-    // Dash variants.
     case "dashDnDiag":
     case "dashUpDiag":
     case "dashHorz":
@@ -424,7 +372,6 @@ function resolvePatternFill(
       );
     }
 
-    // Sphere / shingle: radial gradient approximation.
     case "sphere":
     case "shingle":
     case "plaid":
@@ -437,9 +384,6 @@ function resolvePatternFill(
   }
 }
 
-/**
- * Parses a gradient fill into a CSS gradient string.
- */
 function resolveGradient(
   gradFill: SafeXmlNode,
   ctx: RenderContext,
@@ -466,8 +410,7 @@ function resolveGradient(
   const lin = gradFill.child("lin");
   if (lin.exists()) {
     const angle = angleToDeg(lin.numAttr("ang") ?? 0);
-    // OOXML angle 0 = top-to-bottom in the gradient coordinate system
-    // CSS angle 0 = bottom-to-top.
+    // OOXML angle 0 runs left to right; CSS 0deg runs bottom to top.
     const cssAngle = (angle + 90) % 360;
     return `linear-gradient(${cssAngle.toFixed(1)}deg, ${stopsStr})`;
   }
@@ -476,10 +419,7 @@ function resolveGradient(
   if (path.exists()) {
     const pathType = path.attr("path");
     if (pathType === "circle" || pathType === "shape" || pathType === "rect") {
-      // OOXML path gradients: stop pos=0 = fillToRect center, pos=100000 = shape edge.
-      // CSS radial-gradient: 0% = center, 100% = edge.
-      // Conventions match; no reversal needed.
-
+      // OOXML path stops run from the fillToRect center to the edge, like CSS radial stops.
       const fillToRect = parseFillToRect(path);
       const { cx, cy } = getFillToRectCenter(fillToRect);
       const pathStopsStr = formatGradientStops(
@@ -502,24 +442,18 @@ function resolveGradient(
     }
   }
 
-  // Default to linear top-to-bottom.
   return `linear-gradient(180deg, ${stopsStr})`;
 }
 
-/**
- * Resolves an `<a:ln>` outline into CSS-compatible properties. `lnRef` (from
- * `<p:style>`) supplies the color when `<a:ln>` has no solidFill, common for connectors.
- */
+// `lnRef` from `<p:style>` supplies the color when `<a:ln>` has no solidFill, common for connectors.
 export function resolveLineStyle(
   ln: SafeXmlNode,
   ctx: RenderContext,
   lnRef?: SafeXmlNode,
 ): { width: number; color: string; dash: string; dashKind: string } {
-  // Width: a:ln@w is in EMU, convert to px.
   const widthEmu = ln.numAttr("w") ?? 0;
   let width = emuToPx(widthEmu);
 
-  // Color from solidFill child.
   let color = "transparent";
   const solidFill = ln.child("solidFill");
   if (solidFill.exists()) {
@@ -537,7 +471,6 @@ export function resolveLineStyle(
     }
   } else if (lnRef && lnRef.exists() && (lnRef.numAttr("idx") ?? 0) > 0) {
     const idx = lnRef.numAttr("idx") ?? 0;
-    // Look up theme line style for width, color, and dash.
     if (idx > 0 && ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
       const themeLn = ctx.theme.lineStyles[idx - 1];
       if (width === 0) {
@@ -547,11 +480,10 @@ export function resolveLineStyle(
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
     } else {
-      // Fallback: use lnRef color directly, approximate width from idx.
       const resolved = resolveColor(lnRef, ctx);
       color = colorToCss(resolved.color, resolved.alpha);
       if (width === 0 && idx > 0) {
-        width = idx * 0.75; // approximate: idx 1 = ~0.75px, idx 2 = ~1.5px.
+        width = idx * 0.75; // Approximation without a theme line style.
       }
     }
   }
@@ -581,7 +513,6 @@ export function resolveLineStyle(
     dash = ooxmlDashToCss(val);
   }
 
-  // If no dash from explicit ln, check theme line style.
   if (dash === "solid" && lnRef && lnRef.exists()) {
     const idx = lnRef.numAttr("idx") ?? 0;
     if (idx > 0 && ctx.theme.lineStyles && ctx.theme.lineStyles.length >= idx) {
@@ -622,17 +553,12 @@ function ooxmlDashToCss(val: string): string {
 export interface GradientFillData {
   type: "linear" | "radial";
   stops: Array<{ position: number; color: string }>;
-  /** SVG gradient interpolation space; OOXML gradients visually match linearRGB more closely. */
+  // OOXML gradients visually match linearRGB more closely than sRGB.
   colorInterpolation?: "linearRGB" | "sRGB";
-  /** OOXML angle in degrees (0 = top-to-bottom). Only relevant for linear gradients. */
   angle: number;
-  /** Radial gradient center X as fraction 0–1. Default 0.5. */
   cx?: number;
-  /** Radial gradient center Y as fraction 0–1. Default 0.5. */
   cy?: number;
-  /** OOXML path type for radial gradients: 'rect', 'circle', or 'shape'. */
   pathType?: string;
-  /** OOXML fillToRect focus rectangle, expressed as relative offsets from the tile edge. */
   fillToRect?: GradientFocusRect;
 }
 
@@ -762,17 +688,12 @@ function resolveGradientFillNode(
   return { type: "linear", stops, angle: 0, colorInterpolation: "linearRGB" };
 }
 
-/**
- * Resolves a gradient fill from `spPr` into structured data suitable for
- * creating SVG gradient elements. Returns null if no gradient fill is present.
- */
 export function resolveGradientFill(
   spPr: SafeXmlNode,
   ctx: RenderContext,
 ): GradientFillData | null {
   let gradFill = spPr.child("gradFill");
 
-  // grpFill: inherit gradient from parent group's grpSpPr.
   if (!gradFill.exists() && spPr.child("grpFill").exists() && ctx.groupFillNode) {
     gradFill = ctx.groupFillNode.child("gradFill");
   }
@@ -847,10 +768,6 @@ export interface GradientStrokeData {
   colorInterpolation?: "linearRGB" | "sRGB";
 }
 
-/**
- * Resolves a gradient stroke from an `<a:ln>` node that contains `<a:gradFill>`.
- * Returns gradient stop data, angle, and line width. Returns null if no gradient fill is present.
- */
 export function resolveGradientStroke(
   ln: SafeXmlNode,
   ctx: RenderContext,
@@ -880,7 +797,7 @@ export function resolveGradientStroke(
 
   const widthEmu = ln.numAttr("w") ?? 0;
   let width = emuToPx(widthEmu);
-  // OOXML default when w is omitted is typically 1 pt; avoid invisible gradient stroke.
+  // Keeps a gradient stroke without `w` visible.
   if (width <= 0) width = 1;
 
   return { stops, angle, width, colorInterpolation: "linearRGB" };

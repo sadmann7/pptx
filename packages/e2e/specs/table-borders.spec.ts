@@ -1,19 +1,8 @@
 /**
- * The border model has three parts, each of which shipped broken at some point:
- *
- * 1. A table with no a:tableStyleId got no grid at all; PowerPoint paints the
- *    built-in "No Style, Table Grid" hairlines.
- * 2. Each shared edge is painted exactly once, by the cell above or to the left
- *    of it. Two cells painting the same edge composite their anti-aliased
- *    halves against each other, so the line washes out or picks up the
- *    neighbouring fill.
- * 3. An outline every cell agrees on is hoisted onto the table element, so it
- *    is one rectangle rather than a segment per cell.
- *
- * The scaled spec is the reason this file exists rather than more unit tests:
- * the viewer scales slides with CSS zoom instead of a transform precisely so
- * hairlines keep landing on whole device pixels, and only a real rasterizer can
- * tell the difference.
+ * A table with no a:tableStyleId gets PowerPoint's "No Style, Table Grid"
+ * hairlines, each shared edge is painted once by the cell above or left of it,
+ * and an outline every cell agrees on moves to the table. Only a real
+ * rasterizer shows whether CSS zoom keeps hairlines on whole device pixels.
  */
 import { expect, type Page, test } from "@playwright/test";
 
@@ -27,7 +16,7 @@ const EXPLICIT_SLIDE = 1;
 const BORDER = "#000000";
 const BLANK_CELL_FILL = "#ffffff";
 
-/** A scale that lands the grid lines between device pixels. */
+// Lands the grid lines between device pixels.
 const FRACTIONAL_SCALE = 0.86;
 
 interface CellBox {
@@ -37,7 +26,6 @@ interface CellBox {
   height: number;
 }
 
-/** Client rects of every rendered cell, in document order. */
 async function cellBoxes(page: Page): Promise<CellBox[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll("table td")].map((td) => {
@@ -47,7 +35,6 @@ async function cellBoxes(page: Page): Promise<CellBox[]> {
   );
 }
 
-/** The computed border widths and colours of one element, per side. */
 async function borderStyles(page: Page, selector: string, index = 0) {
   return page.evaluate(
     ({ sel, at }) => {
@@ -63,7 +50,6 @@ async function borderStyles(page: Page, selector: string, index = 0) {
   );
 }
 
-/** The darkest pixel within `radius` of `x` along row `y`, and its position. */
 function darkestNear(
   samples: Pixel[],
   from: number,
@@ -87,16 +73,12 @@ test.describe("table with no style id", () => {
       expect(color).toBe("rgb(0, 0, 0)");
     }
 
-    // Boundary cells give their outline edge up to the table...
     const topLeft = await borderStyles(page, "table td", 0);
     expect(topLeft.top[0]).toBe("0px");
     expect(topLeft.left[0]).toBe("0px");
-    // ...but still own the interior edges to their right and below.
     expect(topLeft.right[0]).toBe("1px");
     expect(topLeft.bottom[0]).toBe("1px");
 
-    // The neighbours drop the edges the previous cell already paints, so no
-    // interior line is drawn twice.
     const topMiddle = await borderStyles(page, "table td", 1);
     expect(topMiddle.left[0]).toBe("0px");
     const middleLeft = await borderStyles(page, "table td", 3);
@@ -130,10 +112,8 @@ test.describe("table with no style id", () => {
   });
 
   test("would smear the same grid line under transform scaling", async ({ page }) => {
-    // Control for the spec above: the sampled line really falls between device
-    // pixels at this scale, so the crisp result there comes from zoom, not luck.
-    // If this starts failing, transform scaling became viable and applySlideScale
-    // can be revisited instead of relaxing this spec.
+    // Proves the crisp result above comes from zoom. If this fails, transform
+    // scaling became viable and applySlideScale can be revisited.
     await openSlide(page, DECK, GRID_SLIDE, { scale: FRACTIONAL_SCALE, mode: "transform" });
 
     const cells = await cellBoxes(page);
@@ -176,7 +156,6 @@ test.describe("table with per-cell borders", () => {
     ]);
     expect(first.top).toEqual(["1px", "rgb(192, 0, 0)"]);
     expect(second.top).toEqual(["1px", "rgb(0, 176, 80)"]);
-    // The shared vertical edge belongs to the cell on its left.
     expect(first.right[0]).toBe("1px");
     expect(second.left[0]).toBe("0px");
   });

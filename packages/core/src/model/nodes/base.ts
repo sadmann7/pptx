@@ -19,13 +19,13 @@ export interface PlaceholderInfo {
   idx?: number;
 }
 
-/** Shape-level hyperlink click action (from cNvPr > a:hlinkClick). */
+/** A shape's click action, from its `a:hlinkClick`. */
 export interface HyperlinkAction {
   /** Action URI, e.g. "ppaction://hlinksldjump", "ppaction://hlinkpres", or empty for URL links. */
   action?: string;
-  /** Relationship ID for the target (slide, URL, etc.). */
+  /** The relationship id of the target slide or URL. */
   rId?: string;
-  /** Optional tooltip text. */
+  /** The tooltip text. */
   tooltip?: string;
 }
 
@@ -39,17 +39,14 @@ export interface BaseNodeData {
   flipH: boolean;
   flipV: boolean;
   placeholder?: PlaceholderInfo;
-  /** Shape-level hyperlink/click action (action buttons, clickable shapes). */
+  /** The click action of an action button or clickable shape. */
   hlinkClick?: HyperlinkAction;
   /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   source: SafeXmlNode;
 }
 
-/**
- * The non-visual properties wrapper is named per shape kind: p:nvSpPr (shapes),
- * p:nvPicPr (pictures), p:nvGrpSpPr (groups), p:nvGraphicFramePr (tables and
- * charts), p:nvCxnSpPr (connectors).
- */
+// The non-visual properties wrapper is named per shape kind: p:nvSpPr, p:nvPicPr,
+// p:nvGrpSpPr, p:nvGraphicFramePr (tables and charts), or p:nvCxnSpPr.
 function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode } {
   const wrappers = ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"];
   for (const name of wrappers) {
@@ -67,10 +64,6 @@ function findNvProps(node: SafeXmlNode): { cNvPr: SafeXmlNode; nvPr: SafeXmlNode
   };
 }
 
-/**
- * Finds the transform (xfrm) node. Shapes use `p:spPr > a:xfrm`,
- * groups use `p:grpSpPr > a:xfrm`, graphic frames use `p:xfrm`.
- */
 function findXfrm(node: SafeXmlNode): SafeXmlNode {
   const spPr = node.child("spPr");
   if (spPr.exists()) {
@@ -101,10 +94,6 @@ function parsePlaceholder(nvPr: SafeXmlNode): PlaceholderInfo | undefined {
   return { type, idx };
 }
 
-/**
- * Parses the base properties common to all node types from a shape-like XML node.
- * Returns everything except `nodeType`, which the caller must set.
- */
 export function parseBaseProps(spNode: SafeXmlNode): Omit<BaseNodeData, "nodeType"> {
   const { cNvPr, nvPr } = findNvProps(spNode);
 

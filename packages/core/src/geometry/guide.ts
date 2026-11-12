@@ -3,20 +3,15 @@ export interface GuideDefinition {
   fmla: string;
 }
 
-/** 60000ths-of-a-degree angle to radians. */
 function guideAngleToRad(ang: number): number {
   return ((ang / 60000) * Math.PI) / 180;
 }
 
-/** Radians to 60000ths of a degree. */
 function radToGuideAngle(rad: number): number {
   return ((rad * 180) / Math.PI) * 60000;
 }
 
-/**
- * Built-in guide variables (ECMA-376 §20.1.10.56 ST_GeomGuideFormula).
- * `w`/`h` are the shape extents in the geometry coordinate space.
- */
+// Built-in guide variables from ECMA-376 §20.1.10.56 ST_GeomGuideFormula.
 export function createGuideContext(w: number, h: number): Map<string, number> {
   const ss = Math.min(w, h);
   return new Map<string, number>([
@@ -63,7 +58,6 @@ export function createGuideContext(w: number, h: number): Map<string, number> {
   ]);
 }
 
-/** Resolve a formula argument: a literal number or a reference to a guide. */
 export function resolveGuideOperand(
   token: string | undefined,
   guides: Map<string, number>,
@@ -74,10 +68,7 @@ export function resolveGuideOperand(
   return guides.get(token) ?? 0;
 }
 
-/**
- * Evaluates one `fmla="op arg1 arg2 arg3"` guide (ECMA-376 §20.1.9.11) against
- * already-known guides. Unknown operators evaluate to 0.
- */
+// One `fmla` guide (ECMA-376 §20.1.9.11); unknown operators evaluate to 0.
 export function evaluateGuideFormula(fmla: string, guides: Map<string, number>): number {
   const parts = fmla.trim().split(/\s+/);
   const op = parts[0];
@@ -126,17 +117,8 @@ export function evaluateGuideFormula(fmla: string, guides: Map<string, number>):
   }
 }
 
-/**
- * Evaluate an ordered list of guide definitions (avLst first, then gdLst)
- * into a lookup of guide name → value. Guides may reference built-ins and
- * any guide defined before them.
- *
- * @param definitions - Guides in document order.
- * @param w - Shape width in the geometry coordinate space.
- * @param h - Shape height in the geometry coordinate space.
- * @param overrides - External adjustment values that take precedence over
- *   `avLst` defaults (e.g. a preset's instance `avLst`).
- */
+// Guides evaluate in order, avLst then gdLst, each seeing the built-ins and earlier
+// guides. `overrides` win over the avLst defaults.
 export function evaluateGuides(
   definitions: GuideDefinition[],
   w: number,
@@ -150,7 +132,6 @@ export function evaluateGuides(
     }
   }
   for (const def of definitions) {
-    // An externally supplied adjustment wins over the avLst default formula.
     if (overrides?.has(def.name)) continue;
     guides.set(def.name, evaluateGuideFormula(def.fmla, guides));
   }

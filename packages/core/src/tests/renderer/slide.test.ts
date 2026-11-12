@@ -1,8 +1,3 @@
-/**
- * Slide-level rendering behavior (the container `renderSlide` produces).
- * Currently covers the `clipContent` option: edit-mode pasteboard behavior
- * keeps off-slide shapes visible; viewing clips them.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";

@@ -7,7 +7,6 @@ import { useCreatePresentationStore } from "@diceui/pptx";
 import { PresentationEditor } from "@/components/presentation-editor";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 
-/** An editable store loaded with the sample deck. */
 export function useDemoDeckStore() {
   const store = useCreatePresentationStore();
 
@@ -29,7 +28,6 @@ export function useDemoDeckStore() {
   return store;
 }
 
-/** The playground's editor, on the sample deck. */
 export function PresentationEditingDemo() {
   const store = useDemoDeckStore();
 

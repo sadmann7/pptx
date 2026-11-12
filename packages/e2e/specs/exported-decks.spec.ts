@@ -1,24 +1,19 @@
 /**
- * The oracle scores these decks against PowerPoint, but SSIM is a blunt
- * instrument: a dropped image on a busy slide, or a shape that renders as an
- * empty box, can cost less score than a font substitution and hide under the
- * baseline tolerance. These walk every slide and assert the things a score
- * cannot see: no thrown errors, no empty slide, no unresolved media.
+ * A dropped image or an empty shape can cost less SSIM than a font substitution,
+ * so these assert what the oracle's score can't: no thrown errors, no empty
+ * slide, no unresolved media.
  */
 import { expect, type Page, test } from "@playwright/test";
 
 import { EXPORTED_DECKS } from "./decks";
 import { getStructure, openSlide, slideContainer } from "./utils";
 
-// One test covers a whole deck, so it pays for nine harness loads of a full
-// presentation and runs past the default 30s once the rest of the suite is
-// competing for the CPU.
+// One test loads a whole deck nine times, which passes the default 30s once
+// the rest of the suite competes for the CPU.
 test.describe.configure({ timeout: 120_000 });
 
-/**
- * Sources that failed to decode. Covers both <img> elements and the blob URLs
- * the renderer hands to background-image for fills and crops.
- */
+// Covers both <img> elements and the blob URLs the renderer hands to
+// background-image for fills and crops.
 async function brokenMedia(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
     const container = document.querySelector("#slide-container");

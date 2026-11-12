@@ -9,19 +9,18 @@ export type SlideNode = RenderableNode;
 
 export interface SlideData {
   /**
-   * Stable unique id from the slide's path in the PPTX zip, like
-   * `"ppt/slides/slide3.xml"`. It survives reorders, insertions and deletions,
-   * so it's safe as a React key or navigation target.
+   * A stable id from the slide's zip path, like `"ppt/slides/slide3.xml"`,
+   * that survives reorders, insertions, and deletions.
    */
   id: string;
   index: number;
-  /** True when p:sld@show is false/0; hidden slides stay addressable but are skipped by PDF exports. */
+  /** Whether the slide is hidden, which keeps it addressable but out of PDF exports. */
   hidden?: boolean;
   nodes: SlideNode[];
   background?: SafeXmlNode;
   layoutIndex: string;
   rels: Map<string, RelEntry>;
-  /** When false, shapes from the layout and master should NOT be rendered on this slide. */
+  /** Whether the layout and master shapes render on this slide. */
   showMasterSp: boolean;
   /** @internal Raw slide XML used when slide node parsing is deferred. */
   sourceXml?: string;
@@ -44,7 +43,6 @@ function findLayoutRel(rels: Map<string, RelEntry>): string {
   return "";
 }
 
-/** Parses a slide XML root (`p:sld`) into SlideData. */
 export function parseSlide(
   root: SafeXmlNode,
   index: number,
@@ -107,11 +105,7 @@ export function createLazySlide(
   };
 }
 
-/**
- * Parses a lazy slide's deferred XML into nodes.
- * Returns the parsed slide XML root (for package registration), or undefined
- * when the slide was already materialized.
- */
+// Returns undefined when the slide was already materialized.
 export function materializeSlideData(
   slide: SlideData,
   diagramDrawings?: Map<string, string>,

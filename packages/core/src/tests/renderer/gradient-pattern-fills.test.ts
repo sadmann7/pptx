@@ -1,7 +1,3 @@
-/**
- * Gradient fills (linear angle mapping, modifier stops, radial paths) and
- * pattern fills rendered as SVG by the shape renderer.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -191,12 +187,10 @@ describe("radial (path) gradient fills", () => {
          <a:path path="rect"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>
        </a:gradFill>`,
     );
-    // The main path defers filling to a blend group of two linear gradients.
     const gradients = element.querySelectorAll("svg defs linearGradient");
     expect(gradients.length).toBe(2);
     const blended = element.querySelectorAll('svg g[style*="isolation"] path');
     expect(blended.length).toBe(2);
-    // The top-level shape path itself carries no fill of its own.
     const topLevelPath = element.querySelector("svg > path");
     expect(topLevelPath).not.toBeNull();
     expect(topLevelPath!.getAttribute("fill")).toBe("none");

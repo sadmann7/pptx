@@ -98,7 +98,7 @@ describe("evaluateGuideFormula", () => {
 });
 
 describe("evaluateGuides", () => {
-  // The arrow geometry from the gdlst-test.pptx regression file: 3in x 2in.
+  // The arrow geometry from gdlst-test.pptx: 3in x 2in.
   const W = 2743200;
   const H = 1828800;
   const defs = [

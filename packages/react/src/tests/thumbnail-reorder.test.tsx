@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 /**
- * The thumbnail strip leaves drag-and-drop to the consumer's sortable library, so
- * these tests lock the seams that integration relies on. Runs under jsdom because
- * `moveSlide` rewrites `sldIdLst`, and happy-dom's XML parser drops its `r:id`.
+ * Runs under jsdom because `moveSlide` rewrites `sldIdLst`, and happy-dom's XML
+ * parser drops its `r:id`.
  */
 
 import { act, render, screen } from "@testing-library/react";
@@ -11,7 +10,6 @@ import { describe, expect, it } from "vitest";
 import { Presentation } from "../index";
 import { editableStore } from "./test-utils";
 
-/** Slide ids in the order their buttons appear in the DOM. */
 function renderedOrder(): (string | null)[] {
   return screen.getAllByRole("option").map((option) => option.getAttribute("data-slide-id"));
 }
@@ -52,11 +50,10 @@ describe("consumer-driven reordering", () => {
     // A sortable library needs the element to attach its sensors to.
     expect(captured.filter(Boolean).length).toBe(slides.length);
 
-    // Its own props survive alongside the internals the list sets.
     expect(options[0].getAttribute("data-draggable")).toBe("true");
     expect(options[0].getAttribute("role")).toBe("option");
 
-    // Transform styles are how sortables animate; internals must not clobber them.
+    // Sortables animate through the transform style.
     expect(options[0].style.transform).toBe("translateY(8px)");
     expect(options[0].style.width).toBe("100%");
 
@@ -79,7 +76,6 @@ describe("consumer-driven reordering", () => {
 
     expect(renderedOrder()).toEqual([first, second, third]);
 
-    // What a consumer's drop handler would commit.
     await act(async () => {
       await store.edit({ type: "moveSlide", slideId: first, toIndex: 2 });
     });
@@ -115,7 +111,6 @@ describe("consumer-driven reordering", () => {
 
     const options = screen.getAllByRole("option");
     expect(options.map((option) => option.textContent)).toEqual(["1", "2", "3"]);
-    // The slide that moved to the end now reads as number 3.
     expect(options[2].getAttribute("data-slide-id")).toBe(movedId);
   });
 
@@ -130,11 +125,9 @@ describe("consumer-driven reordering", () => {
       </Presentation.Provider>,
     );
 
-    // Pressing a thumbnail pins the tab stop, which is what used to strand it.
     act(() => screen.getAllByRole("option")[2].focus());
     expect(store.getState().activeSlideId).toBe(third);
 
-    // A reorder of other slides leaves the active slide, and the pin, alone.
     await act(async () => {
       await store.edit({ type: "moveSlide", slideId: first, toIndex: 1 });
     });

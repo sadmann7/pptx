@@ -142,7 +142,6 @@ describe("applyColorModifiers", () => {
     const { r, g, b } = hexToRgb(gray);
     expect(r).toBe(g);
     expect(g).toBe(b);
-    // Complement of pure red is pure cyan.
     expect(applyColorModifiers("#FF0000", [{ name: "comp", val: 0 }]).color).toBe("#00ffff");
   });
 });

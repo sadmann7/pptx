@@ -1,13 +1,7 @@
-﻿/**
- * Paragraph-level formatting (a:pPr) through the real render pipeline:
- * alignment, line spacing, space before/after, indentation, line breaks,
- * tabs and the trailing endParaRPr spacer.
- */
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import { paragraphsOf, renderTextBox, spansOf } from "../fixtures/text-rendering-helpers";
 
-/** Renders a single paragraph with the given pPr and returns its div. */
 async function renderParagraph(pPrXml: string, runsXml?: string): Promise<HTMLElement> {
   const element = await renderTextBox(
     `<a:p>${pPrXml}${runsXml ?? "<a:r><a:t>MARKER</a:t></a:r>"}</a:p>`,
@@ -125,7 +119,6 @@ describe("line breaks (a:br)", () => {
     const spans = spansOf(paragraph);
     expect(spans.map((s) => s.textContent)).toEqual(["first", "second"]);
     expect(paragraph.querySelectorAll("br")).toHaveLength(1);
-    // The <br> sits between the two run spans.
     const childTags = [...paragraph.children].map((child) => child.tagName.toLowerCase());
     expect(childTags).toEqual(["span", "br", "span"]);
   });
@@ -138,7 +131,6 @@ describe("line breaks (a:br)", () => {
       </a:p>`,
     );
     const [paragraph] = paragraphsOf(element);
-    // No <br>: each line lives in its own block wrapper with the exact height.
     expect(paragraph.querySelectorAll("br")).toHaveLength(0);
     const lines = [...paragraph.children].filter((c) => c.tagName.toLowerCase() === "div");
     expect(lines).toHaveLength(2);

@@ -1,11 +1,3 @@
-/**
- * Test-only TrueType reader.
- *
- * Just enough of the sfnt/glyf format to assert that a decoded font carries
- * the outlines and hints the fixture encoder put in, without asserting on the
- * exact byte encoding the decoder chose.
- */
-
 export interface ReadPoint {
   x: number;
   y: number;
@@ -205,7 +197,6 @@ function readComposite(
   return { kind: "composite", bbox, components, instructions };
 }
 
-/** Expand a TrueType PUSH burst back into the values it pushes. */
 export function decodePushBurst(instructions: readonly number[]): {
   values: number[];
   rest: number[];

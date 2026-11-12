@@ -16,12 +16,7 @@ function normalizePackagePath(path: string): string {
   return stripUriSuffix(path).replace(/\\/g, "/").replace(/^\/+/, "");
 }
 
-/**
- * Resolves a slide relationship to the zero-based presentation order.
- *
- * Slide relationship targets point to slide part paths, but the displayed slide
- * order comes from presentation.xml and can differ from slideN.xml numbering.
- */
+// Display order comes from presentation.xml and can differ from slideN.xml numbering.
 export function resolveSlideJumpIndex(ctx: RenderContext, rel: RelEntry): number | undefined {
   if (isExternalTargetMode(rel.targetMode)) return undefined;
 

@@ -1,19 +1,7 @@
-/**
- * Test-only MTX/EOT encoder.
- *
- * The decoder in `src/fonts/mtx` has no fixtures to work against: every
- * embedded font in the decks is an uncompressed EOT, so LZCOMP and CTF are
- * otherwise dead code. This module builds compressed fixtures from the
- * W3C MicroType Express specification so those layers can be round-tripped.
- *
- * It is deliberately naive — it optimizes nothing and only needs to emit
- * streams a conforming decoder must accept.
- */
+// Naive MTX/EOT encoder built from the W3C MicroType Express spec, for decoder fixtures.
 
 import { AdaptiveHuffman } from "../../fonts/mtx/lzcomp";
 import { tripletEncoding } from "../../fonts/mtx/triplet";
-
-// ── Bit output ──────────────────────────────────────────────────────.
 
 export class BitWriter {
   private readonly bits: number[] = [];
@@ -39,11 +27,8 @@ export class BitWriter {
   }
 }
 
-// ── LZCOMP ──────────────────────────────────────────────────────────.
-
-/** A back-reference, expressed the way the decoder reconstructs it. */
 export interface CopyOp {
-  /** Distance from the tail of the copied phrase, as encoded (>= 1). */
+  // Measured from the tail of the copied phrase, as encoded (>= 1).
   distance: number;
   length: number;
 }
@@ -56,14 +41,10 @@ function distanceRangesFor(length: number): number {
   return ranges;
 }
 
-/**
- * Encode an explicit op list. `outputLength` is what the decoder will be told
- * to produce, which determines the symbol alphabet, so callers must pass the
- * length the ops actually expand to.
- */
+// `outputLength` decides the symbol alphabet, so it must be the length the ops expand to.
 export interface LzcompOptions {
   runLength?: boolean;
-  /** Version 1 streams omit the leading run-length flag bit. */
+  // Version 1 streams omit the leading run-length flag bit.
   version?: 1 | 3;
 }
 
@@ -125,7 +106,6 @@ export function encodeLzcompOps(
   return bits.finish();
 }
 
-/** Literal-only encoding: the simplest stream a decoder must accept. */
 export function encodeLzcompLiterals(data: Uint8Array, options: LzcompOptions = {}): Uint8Array {
   return encodeLzcompOps(
     Array.from(data, (literal) => ({ literal })),
@@ -134,13 +114,10 @@ export function encodeLzcompLiterals(data: Uint8Array, options: LzcompOptions = 
   );
 }
 
-/** Bound on the greedy match search, which is otherwise quadratic. */
+// The greedy match search is otherwise quadratic.
 const SEARCH_WINDOW = 512;
 
-/**
- * Greedy LZ77 over the same history the decoder maintains, so the copy path
- * gets exercised with real back-references rather than hand-written ops.
- */
+// Greedy LZ77 over the decoder's own history, so the copy path sees real back-references.
 export function encodeLzcompGreedy(data: Uint8Array, options: LzcompOptions = {}): Uint8Array {
   const ranges = distanceRangesFor(data.length);
   const maxDistance = Math.min(8 ** ranges, SEARCH_WINDOW);
@@ -181,7 +158,6 @@ export function encodeLzcompGreedy(data: Uint8Array, options: LzcompOptions = {}
   return encodeLzcompOps(ops, data.length, options);
 }
 
-/** Pack bytes with the optional run-length layer the decoder can expand. */
 export function packRunLength(data: Uint8Array, escape: number): Uint8Array {
   const out: number[] = [escape];
   for (let i = 0; i < data.length;) {
@@ -200,8 +176,6 @@ export function packRunLength(data: Uint8Array, escape: number): Uint8Array {
   }
   return Uint8Array.from(out);
 }
-
-// ── MTX container ───────────────────────────────────────────────────.
 
 export function buildMtx(
   streams: readonly [Uint8Array, Uint8Array, Uint8Array],
@@ -226,12 +200,10 @@ export function buildMtx(
   return out;
 }
 
-// ── EOT container ───────────────────────────────────────────────────.
-
 export const TTEMBED_TTCOMPRESSED = 0x00000004;
 export const TTEMBED_XORENCRYPTDATA = 0x10000000;
 
-/** Wrap font data in a version-1 EOT with four empty name strings. */
+// Version-1 EOT with four empty name strings.
 export function buildEot(fontData: Uint8Array, flags: number): Uint8Array {
   const headerSize = 96;
   const payload =
@@ -248,8 +220,6 @@ export function buildEot(fontData: Uint8Array, flags: number): Uint8Array {
   out.set(payload, headerSize);
   return out;
 }
-
-// ── CTF value encodings ─────────────────────────────────────────────.
 
 export function write255UShort(out: number[], value: number): void {
   if (value < 253) out.push(value);
@@ -302,7 +272,6 @@ export function encodeCvt(values: readonly number[]): Uint8Array {
   return Uint8Array.from(out);
 }
 
-/** Pick the most compact triplet index that represents (dx, dy) exactly. */
 export function encodeTriplet(dx: number, dy: number, onCurve: boolean): number[] {
   for (let index = 0; index < 128; index++) {
     const encoding = tripletEncoding(index);
@@ -321,8 +290,6 @@ export function encodeTriplet(dx: number, dy: number, onCurve: boolean): number[
   throw new Error(`No triplet encoding represents (${dx}, ${dy})`);
 }
 
-// ── CTF font model ──────────────────────────────────────────────────.
-
 export interface GlyphPoint {
   x: number;
   y: number;
@@ -332,23 +299,21 @@ export interface GlyphPoint {
 export interface GlyphComponent {
   flags: number;
   glyphIndex: number;
-  /** Raw argument bytes, matching the width implied by `flags`. */
+  // Width matches `flags`.
   args: number[];
 }
 
 export interface GlyphHints {
-  /** Values reconstructed into a PUSH burst ahead of the code stream. */
+  // Reconstructed into a PUSH burst ahead of the code stream.
   pushes?: number[];
-  /** Raw bytecode appended after the pushes. */
   code?: number[];
-  /** Emit hop codes instead of plain values where the pattern allows. */
   useHopCodes?: boolean;
 }
 
 export interface SimpleGlyph extends GlyphHints {
   kind: "simple";
   contours: GlyphPoint[][];
-  /** Forces the explicit-bounding-box form (numContours == 0x7FFF). */
+  // Forces the explicit-bounding-box form (numContours == 0x7FFF).
   bbox?: [number, number, number, number];
 }
 
@@ -361,14 +326,14 @@ export interface CompositeGlyph extends GlyphHints {
 export type CtfGlyph = SimpleGlyph | CompositeGlyph;
 
 export interface CtfFontSpec {
-  /** TrueType outlines. Omit for a CFF font, which has no glyf table. */
+  // Omitted for a CFF font, which has no glyf table.
   glyphs?: CtfGlyph[];
-  /** A CFF table's bytes. When given, the font is emitted OTTO-flavoured. */
+  // When given, the font is emitted OTTO-flavoured.
   cff?: Uint8Array;
-  /** The glyph count maxp declares. Defaults to the number of glyphs encoded. */
+  // Defaults to the number of glyphs encoded.
   numGlyphs?: number;
   cvt?: number[];
-  /** Extra tables copied through stream 0 untouched. */
+  // Copied through stream 0 untouched.
   extraTables?: { tag: string; data: Uint8Array }[];
   indexToLocFormat?: 0 | 1;
   unitsPerEm?: number;
@@ -480,7 +445,6 @@ function makeMaxp(numGlyphs: number): Uint8Array {
   return maxp;
 }
 
-/** Build the three CTF streams for a font description. */
 export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uint8Array] {
   const glyphs = spec.glyphs ?? [];
   const glyphBytes: number[] = [];
@@ -528,11 +492,10 @@ export function buildCtfStreams(spec: CtfFontSpec): [Uint8Array, Uint8Array, Uin
 
 export interface BuildEotOptions extends LzcompOptions {
   encrypted?: boolean;
-  /** Skip match finding; useful for large fixtures where the search dominates. */
+  // Match finding dominates on large fixtures.
   literalOnly?: boolean;
 }
 
-/** Full pipeline: font description to a compressed, EOT-wrapped fixture. */
 export function buildCompressedEot(spec: CtfFontSpec, options: BuildEotOptions = {}): Uint8Array {
   const encode = options.literalOnly ? encodeLzcompLiterals : encodeLzcompGreedy;
   const streams = buildCtfStreams(spec).map((stream) => encode(stream, options));

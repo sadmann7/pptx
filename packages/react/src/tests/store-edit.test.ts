@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Store-level editing tests for `edit()`, `undo()`, `redo()`, `save()` and
- * per-slide revisions. Runs under jsdom because happy-dom's XML parser drops
- * namespaced attributes like `r:id` on `p:sldId`, which slide-level edits need.
+ * Runs under jsdom because happy-dom's XML parser drops namespaced attributes
+ * like `r:id` on `p:sldId`, which slide-level edits need.
  */
 import type { EditOperation, PictureNodeData, ShapeNodeData } from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";
@@ -72,7 +71,6 @@ describe("store.edit", () => {
     expect(store.getSlideRevision(slideId)).toBe(1);
     expect(store.getState().revision).toBe(1);
     expect(notified).toBeGreaterThan(0);
-    // Other slides' revisions are untouched.
     expect(store.getSlideRevision(store.getState().presentation!.slides[1].id)).toBe(0);
   });
 
@@ -107,7 +105,6 @@ describe("store.edit", () => {
     });
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(0);
 
-    // A single undo restores the whole selection.
     expect(await store.undo()).toBe(true);
     expect(store.getState().presentation!.slides[0].nodes).toHaveLength(nodeIds.length);
   });
@@ -140,7 +137,7 @@ describe("undo / redo", () => {
     expect(store.canRedo()).toBe(true);
 
     expect(await store.undo()).toBe(true);
-    expect(slideText(store, 0)).toBe("Slide 1"); // fixture original.
+    expect(slideText(store, 0)).toBe("Slide 1");
     expect(await store.undo()).toBe(false);
 
     await expect(store.redo()).resolves.toBe(true);
@@ -224,12 +221,10 @@ describe("undo / redo", () => {
     store.goTo(slide1Id);
     expect(store.getState().activeSlideId).toBe(slide1Id);
 
-    // Undo should navigate back to slide 0 (where the edit was).
     await store.undo();
     expect(store.getState().activeSlideId).toBe(slide0Id);
     expect(slideText(store, 0)).toBe("Slide 1");
 
-    // Redo should navigate to slide 0 again.
     await store.redo();
     expect(store.getState().activeSlideId).toBe(slide0Id);
     expect(slideText(store, 0)).toBe("edited");
@@ -258,9 +253,7 @@ describe("structural edits and navigation", () => {
 
     const state = store.getState();
     expect(state.presentation!.slides).toHaveLength(FIXTURE_SLIDE_COUNT - 1);
-    // Falls back to the slide now occupying the old index.
     expect(state.activeSlideId).toBe(state.presentation!.slides[1].id);
-    // The replacement slide is materialized and renderable.
     expect(store.getActiveSlide()?.nodesMaterialized).toBe(true);
   });
 

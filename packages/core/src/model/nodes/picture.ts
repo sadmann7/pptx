@@ -17,7 +17,7 @@ export interface PictureNodeData extends BaseNodeData {
   fill?: SafeXmlNode;
   /** @internal Raw XML node, opaque to consumers. Use serializePresentation() for JSON-safe data. */
   line?: SafeXmlNode;
-  /** Picture preset geometry, when the picture is clipped to a non-rectangular preset. */
+  /** The preset geometry a picture is clipped to, when not a rectangle. */
   presetGeometry?: string;
   /** @internal Raw custom geometry used to clip the picture fill. */
   customGeometry?: SafeXmlNode;
@@ -26,12 +26,9 @@ export interface PictureNodeData extends BaseNodeData {
   mediaRId?: string;
 }
 
-/** OOXML encodes srcRect percentages as 1/100000 of full extent. */
+// OOXML encodes srcRect percentages in thousandths of a percent.
 const CROP_DIVISOR = 100000;
 
-/**
- * Parses a picture XML node (`p:pic`) into PictureNodeData.
- */
 export function parsePicNode(picNode: SafeXmlNode): PictureNodeData {
   const base = parseBaseProps(picNode);
 

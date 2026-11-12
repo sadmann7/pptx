@@ -26,32 +26,34 @@ export interface PptxFiles {
   chartColors: Map<string, string>; // ppt/charts/colors*.xml.
   diagramDrawings: Map<string, string>; // ppt/diagrams/drawing*.xml (SmartArt fallback).
   fonts: Map<string, Uint8Array>; // ppt/fonts/* (embedded fonts).
-  /** Retained source PPTX package for round-trip save. Present when parsed with `keepSourcePackage: true`. */
+  /**
+   * The source package kept for round-trip saves, present when parsed with
+   * `keepSourcePackage: true`.
+   */
   sourcePackage?: PptxPackage;
 }
 
 export interface PptxReadOptions {
   /**
-   * Resource limits enforced while reading the archive
-   * (entry counts, uncompressed sizes, concurrency).
-   * See {@link RECOMMENDED_PPTX_READ_LIMITS} for sensible defaults
-   * when parsing untrusted input. @default no limits
+   * Resource limits enforced while reading, with {@link RECOMMENDED_PPTX_READ_LIMITS} as
+   * sensible defaults for untrusted input.
+   *
+   * @default no limits
    */
   limits?: PptxReadLimits;
-  /**
-   * Called after each zip entry has been read and categorized.
-   * `done` counts processed entries, `total` is the number of entries.
-   */
+  /** Called after each zip entry is read, with the processed and total entry counts. */
   onProgress?: (done: number, total: number) => void;
   /**
-   * Retain the source archive as a {@link PptxPackage} on `PptxFiles.sourcePackage`
-   * so the presentation can be written back to a .pptx after editing.
-   * Uncategorized parts stay compressed in memory. @default false
+   * Whether to keep the source archive on `PptxFiles.sourcePackage` so edits can be written
+   * back to a .pptx.
+   *
+   * @default false
    */
   keepSourcePackage?: boolean;
   /**
-   * Index media entries for on-demand decoding instead of inflating them during read.
-   * When true, `PptxFiles.media` stays empty until `mediaResolver.resolve()` is called.
+   * Whether to decode media on demand, leaving `PptxFiles.media` empty until
+   * `mediaResolver.resolve()` is called.
+   *
    * @default false
    */
   lazyMedia?: boolean;
@@ -495,7 +497,6 @@ async function readPptxInternal(
       return;
     }
 
-    // Theme overrides are referenced by chart parts.
     if (/^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
       if (result.themeOverrides) {
         setPathMapEntry(
@@ -552,7 +553,6 @@ async function readPptxInternal(
       return;
     }
 
-    // SmartArt fallback drawings.
     if (/^ppt\/diagrams\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.diagramDrawings,

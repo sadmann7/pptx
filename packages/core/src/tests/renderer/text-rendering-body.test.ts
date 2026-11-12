@@ -1,7 +1,3 @@
-/**
- * Text body properties (a:bodyPr), field runs (a:fld) and hyperlink runs
- * (a:hlinkClick ppaction) through the real render pipeline.
- */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -73,7 +69,6 @@ describe("bodyPr vertical text (vert)", () => {
     const container = await renderBody(`<a:bodyPr vert="eaVert"><a:noAutofit/></a:bodyPr>`);
     expect(container.style.writingMode).toBe("vertical-rl");
     expect(container.style.justifyContent).toBe("center");
-    // Paragraphs avoid mid-word breaks in vertical flow.
     const [paragraph] = paragraphsOf(container);
     expect(paragraph.style.wordBreak).toBe("keep-all");
   });
@@ -157,13 +152,12 @@ describe("empty paragraphs", () => {
 });
 
 describe("deferred autofit measurement", () => {
-  /** Autofit modes that measure the rendered text, so they schedule a second pass. */
   const DYNAMIC_AUTOFIT_BODY_PR = [
     ["normAutofit", `<a:bodyPr><a:normAutofit/></a:bodyPr>`],
     ["spAutoFit", `<a:bodyPr wrap="square"><a:spAutoFit/></a:bodyPr>`],
   ] as const;
 
-  /** Enough frames for the double-rAF pass that follows the synchronous one. */
+  // Enough frames for the double-rAF pass that follows the synchronous one.
   async function settleDeferredPasses(): Promise<void> {
     for (let frame = 0; frame < 4; frame++) {
       await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
@@ -173,25 +167,20 @@ describe("deferred autofit measurement", () => {
   for (const [mode, bodyPrXml] of DYNAMIC_AUTOFIT_BODY_PR) {
     it(`keeps a ${mode} shape in a detached slide`, async () => {
       const element = await renderTextBox(MARKER_PARAGRAPH, { bodyPrXml });
-      // `renderSlide` hands back a detached container, and a thumbnail parked
-      // off-DOM while scrolled out of view looks the same for minutes at a time.
       expect(element.isConnected).toBe(false);
       const shape = element.querySelector("[data-pptx-node-id='2']");
       expect(shape?.textContent).toBe("MARKER");
 
       await settleDeferredPasses();
 
-      // Measuring by moving the shape into the measurement root and taking it
-      // out again used to delete it from a slide it was already part of, so the
-      // text was gone for good once the thumbnail scrolled back into view.
+      // Measuring moves the shape into the measurement root and back, which must not
+      // remove it from a slide it already belongs to.
       expect(element.querySelector("[data-pptx-node-id='2']")).toBe(shape);
       expect(shape?.parentElement).toBe(element);
     });
   }
 
   it("still measures a shape that has not been added to its slide yet", async () => {
-    // The synchronous pass runs before the caller appends the shape, which is
-    // the case the relocate-to-measure path exists for. It has to keep working.
     const container = await renderBody(`<a:bodyPr><a:normAutofit/></a:bodyPr>`);
     expect(container.textContent).toBe("MARKER");
     await settleDeferredPasses();
@@ -199,10 +188,8 @@ describe("deferred autofit measurement", () => {
   });
 
   describe("picking the pass back up on re-attach", () => {
-    /**
-     * happy-dom has no ResizeObserver, and would report a 0x0 box for the
-     * re-attached shape even if it did. This reports one resize on demand.
-     */
+    // happy-dom has no ResizeObserver, and would report a 0x0 box for the re-attached
+    // shape even if it did. This one reports a resize on demand.
     class FakeResizeObserver {
       static instances: FakeResizeObserver[] = [];
       targets: Element[] = [];
@@ -218,7 +205,6 @@ describe("deferred autofit measurement", () => {
       disconnect() {
         this.isDisconnected = true;
       }
-      /** What the browser reports once the shape is laid out again. */
       report() {
         this.callback([], this as unknown as ResizeObserver);
       }
@@ -233,7 +219,7 @@ describe("deferred autofit measurement", () => {
       vi.unstubAllGlobals();
     });
 
-    /** Makes the shape look laid out, which is the signal the observer waits for. */
+    // The observer waits for the shape to look laid out.
     function attachAndSize(slide: HTMLElement, shape: Element): void {
       document.body.appendChild(slide);
       Object.defineProperty(shape, "offsetWidth", { value: 400, configurable: true });
@@ -296,7 +282,6 @@ describe("field runs (a:fld)", () => {
     );
     const [paragraph] = paragraphsOf(element);
     expect(paragraph.textContent).toBe("Slide 7");
-    // Field run properties are applied like regular run properties.
     const fieldSpan = spansOf(paragraph).find((s) => s.textContent === "7");
     expect(fieldSpan?.style.fontWeight).toBe("bold");
   });
@@ -322,9 +307,8 @@ describe("hyperlink runs (ppaction, no rels required)", () => {
     expect(link.tabIndex).toBe(0);
     expect(link.title).toBe("Go to slide 1");
     expect(link.style.cursor).toBe("pointer");
-    // Hyperlink runs default to underlined….
     expect(link.style.textDecoration).toContain("underline");
-    // …in the theme hlink color (fixture hlink = 0563C1).
+    // Fixture hlink = 0563C1.
     expect(normalizeColor(link.style.color)).toBe("5,99,193,1");
   });
 

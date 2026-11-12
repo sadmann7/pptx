@@ -32,7 +32,6 @@ function inferPathExtent(pathNode: SafeXmlNode): { w: number; h: number } {
   };
 }
 
-/** Collect `<a:gd>` definitions from an avLst/gdLst node in document order. */
 function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
   if (!listNode.exists()) return [];
   const defs: GuideDefinition[] = [];
@@ -44,16 +43,9 @@ function collectGuideDefinitions(listNode: SafeXmlNode): GuideDefinition[] {
   return defs;
 }
 
-/**
- * Renders a custom geometry element to an SVG path d-attribute string.
- * `a:pt` coordinates and arcTo radii and angles may be numbers or `a:avLst`/`a:gdLst`
- * guides (ECMA-376 ST_AdjCoordinate). Guides evaluate in the shape's EMU space
- * (`sourceExtent`), while numeric points use the path's `w`/`h` space.
- *
- * @param width - Target width in pixels.
- * @param height - Target height in pixels.
- * @param sourceExtent - Shape extent in EMU, from `a:xfrm > a:ext`.
- */
+// `a:pt` coordinates and arcTo radii and angles may be numbers or guides (ECMA-376
+// ST_AdjCoordinate). Guides evaluate in the shape's EMU space (`sourceExtent`), while
+// numeric points use the path's `w`/`h` space.
 export function renderCustomGeometry(
   custGeom: SafeXmlNode,
   width: number,
@@ -66,7 +58,6 @@ export function renderCustomGeometry(
   const paths = pathLst.children("path");
   const segments: string[] = [];
 
-  // Guides are defined once per custGeom and evaluated in shape EMU space.
   const guideDefs = [
     ...collectGuideDefinitions(custGeom.child("avLst")),
     ...collectGuideDefinitions(custGeom.child("gdLst")),
@@ -86,11 +77,9 @@ export function renderCustomGeometry(
     const guideH = guideSpace.h || pathH;
     const guides = guideDefs.length > 0 ? evaluateGuides(guideDefs, guideW, guideH) : null;
 
-    // Guide values (shape EMU space) → path local space conversion factors.
     const guideToPathX = guideW > 0 ? pathW / guideW : 1;
     const guideToPathY = guideH > 0 ? pathH / guideH : 1;
 
-    /** Resolve an ST_AdjCoordinate attribute into path local space. */
     const coord = (raw: string | undefined, axis: "x" | "y"): number => {
       if (raw === undefined) return 0;
       const n = Number(raw);
@@ -99,7 +88,6 @@ export function renderCustomGeometry(
       return value * (axis === "x" ? guideToPathX : guideToPathY);
     };
 
-    /** Resolve an ST_AdjAngle attribute (no spatial scaling). */
     const angle = (raw: string | undefined): number => {
       if (raw === undefined) return 0;
       const n = Number(raw);
@@ -180,7 +168,6 @@ export function renderCustomGeometry(
           const swAng = swAngRaw / 60000;
 
           if (wR === 0 || hR === 0 || swAng === 0) {
-            // Degenerate arc, skip.
             break;
           }
 
@@ -192,7 +179,6 @@ export function renderCustomGeometry(
           const endVisRad = ((stAng + swAng) * Math.PI) / 180;
           const endAngRad = Math.atan2(wRRaw * Math.sin(endVisRad), hRRaw * Math.cos(endVisRad));
 
-          // Center and end point are computed in unscaled path space, then scaled.
           const curXU = curX / scaleX;
           const curYU = curY / scaleY;
           const cx = curXU - wRRaw * Math.cos(stAngRad);
@@ -200,7 +186,6 @@ export function renderCustomGeometry(
           const endX = (cx + wRRaw * Math.cos(endAngRad)) * scaleX;
           const endY = (cy + hRRaw * Math.sin(endAngRad)) * scaleY;
 
-          // SVG arc flags.
           const largeArc = Math.abs(swAng) > 180 ? 1 : 0;
           const sweep = swAng > 0 ? 1 : 0;
 
@@ -216,7 +201,6 @@ export function renderCustomGeometry(
         }
 
         default:
-          // Unknown command, skip.
           break;
       }
     }

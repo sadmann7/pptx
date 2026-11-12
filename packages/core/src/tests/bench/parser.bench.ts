@@ -1,17 +1,5 @@
 /**
- * Stage-level benchmarks for the parse/render pipeline.
- *
- * Run with: pnpm -F "@diceui/pptx-core" bench
- *
- * Each stage is measured in isolation against pre-built inputs so the numbers
- * attribute time to the right phase:
- *   readPptx          : unzip + part extraction
- *   buildPresentation : XML parsing + model construction
- *   materialize       : node materialization + placeholder inheritance
- *   renderSlide       : DOM/SVG generation for one slide
- *   renderAllSlides   : full-deck rendering
- *   search            : text index + query
- *   serialize         : JSON export
+ * Run with `pnpm -F "@diceui/pptx-core" bench`.
  */
 import { bench, describe } from "vitest";
 
@@ -31,7 +19,6 @@ import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 interface Workload {
   buffer: ArrayBuffer;
   files: PptxFiles;
-  /** Fully built + materialized, for render/search benches. */
   presentation: PresentationData;
 }
 
@@ -72,8 +59,8 @@ describe("buildPresentation", () => {
 });
 
 describe("materializeAllSlides", () => {
-  // Materialization caches per slide object, so rebuild the model each round;
-  // the rebuild cost is reported separately above and subtracted mentally.
+  // Materialization caches per slide object, so each round rebuilds the model;
+  // subtract the rebuild bench above.
   bench("medium (incl. rebuild)", () => {
     const pres = buildPresentation(medium.files);
     materializeAllSlides(pres);

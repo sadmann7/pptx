@@ -1,8 +1,3 @@
-/**
- * The overlay's parts: `SelectionBox`, `ResizeHandle`, `RotateHandle`,
- * `SnapGuide`, and `Marquee` compose inside `Presentation.Selection` to restyle or replace its
- * look, and render the defaults when it has no children.
- */
 import * as React from "react";
 import { act } from "react";
 
@@ -115,7 +110,6 @@ describe("composed parts", () => {
     const boxes = container.querySelectorAll<HTMLElement>("[data-presentation-selection-box]");
     expect(boxes).toHaveLength(2);
     expect(boxes[0].className).toBe("box box-selected");
-    // Geometry stays inline; the look is the app's.
     expect(boxes[0].style.position).toBe("absolute");
     expect(boxes[0].style.boxShadow).toBe("");
 
@@ -229,10 +223,7 @@ describe("part placement", () => {
 });
 
 describe("rotating", () => {
-  /**
-   * Selects shape 2 alone and returns a pointer helper around its center. With
-   * layout zeroed in happy-dom, client coordinates are slide pixels times zoom.
-   */
+  // With layout zeroed in happy-dom, client coordinates are slide pixels times zoom.
   async function renderRotatable() {
     const rendered = await renderOverlay();
     const node = rendered.store.getActiveSlide()!.nodes[0];
@@ -248,7 +239,6 @@ describe("rotating", () => {
       "[data-presentation-rotate-handle]",
     )!;
 
-    /** Presses above the center, then drags to `degrees` clockwise from there. */
     function drag(degrees: number, init: { shiftKey?: boolean } = {}) {
       const radians = ((degrees - 90) * Math.PI) / 180;
       act(() => {
@@ -282,7 +272,6 @@ describe("rotating", () => {
     drag(90);
     expect(overlay.getAttribute("data-mode")).toBe("rotate");
 
-    // The outline follows the drag; resize handles step aside.
     const box = container.querySelector<HTMLElement>("[data-presentation-selection-box]")!;
     expect(box.style.transform).toBe("rotate(90deg)");
     expect(box.hasAttribute("data-rotating")).toBe(true);
@@ -377,7 +366,6 @@ describe("resizing a rotated shape", () => {
 
     const handles = container.querySelectorAll<HTMLElement>("[data-presentation-resize-handle]");
     expect(handles).toHaveLength(8);
-    // The east handle points down the slide now, and its cursor says so.
     const east = container.querySelector<HTMLElement>('[data-presentation-resize-handle="e"]')!;
     expect(east.style.cursor).toBe("ns-resize");
 
@@ -669,7 +657,6 @@ describe("snap guides", () => {
       fireEvent.pointerMove(overlay, { clientX: 81 * zoom, clientY: 0, buttons: 1, pointerId: 1 });
     });
 
-    // The resize cursor follows the captured pointer onto the overlay.
     expect(overlay.style.cursor).toBe("ew-resize");
 
     const guide = container.querySelector<HTMLElement>('[data-presentation-snap-guide="x"]')!;

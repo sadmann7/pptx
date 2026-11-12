@@ -1,10 +1,6 @@
 /**
- * A formatting toolbar outside the slide, pressed with a real mouse.
- *
- * Unit tests fire synthetic events at happy-dom, which has no focus model to
- * speak of; what these check only shows up in a browser: a toolbar press moves
- * focus and the document selection out of the text, and editing still has to
- * survive it and format the text that was selected.
+ * A toolbar press with a real mouse moves focus and the document selection out
+ * of the text, which happy-dom can't model, and editing has to survive it.
  */
 import { expect, test, type Page } from "@playwright/test";
 
@@ -12,7 +8,6 @@ import { expect, test, type Page } from "@playwright/test";
 const LINE_START = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
 const LINE_END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
 
-/** `[text, rPr attributes]` for each run of the first shape's first paragraph. */
 function readRuns(page: Page) {
   return page.evaluate(() => {
     const slide = window.__editStore!.getActiveSlide()!;
@@ -63,7 +58,6 @@ test.describe("editing toolbar", () => {
     await expect(overlay).toHaveAttribute("data-mode", "selected");
     await expect.poll(async () => (await readRuns(page))[0].color).toBe("00FF00");
 
-    // Undo from the toolbar's focus applies to the deck.
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(async () => (await readRuns(page))[0].color).toBe("FFFFFF");
 
@@ -129,7 +123,6 @@ test.describe("editing toolbar", () => {
     await page.keyboard.press("Enter");
     await expect(overlay).toHaveAttribute("data-mode", "text");
 
-    // Select "one".
     await page.keyboard.press(LINE_END);
     for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowLeft");
 
@@ -142,8 +135,8 @@ test.describe("editing toolbar", () => {
       ]);
     await expect(overlay).toHaveAttribute("data-mode", "text");
 
-    // Focus and the selection come back to the text once the slide has
-    // re-rendered, a frame or two after the edit lands; typing goes on from it.
+    // Focus returns to the text a frame or two after the edit, once the slide
+    // has re-rendered.
     await expect
       .poll(() =>
         page.evaluate(() => ({
@@ -184,7 +177,6 @@ test.describe("editing toolbar", () => {
     const { overlay, shape } = await open(page);
     const text = page.locator('[data-pptx-node-id="2"] [data-pptx-p]').first();
 
-    // Typing on a selected shape starts editing with that keystroke.
     await shape.click();
     await expect(overlay).toHaveAttribute("data-mode", "selected");
     await page.keyboard.type("X");
@@ -198,7 +190,6 @@ test.describe("editing toolbar", () => {
 });
 
 test.describe("snapping", () => {
-  /** The shape's committed x, and where its center would sit on the slide's center. */
   function readGeometry(page: Page) {
     return page.evaluate(() => {
       const store = window.__editStore!;
@@ -208,7 +199,6 @@ test.describe("snapping", () => {
     });
   }
 
-  /** Drags shape 2 so its center ends `offset` px right of the slide's center. */
   async function dragNearCenter(page: Page, offset: number, modifiers: "Alt"[] = []) {
     const { x, centeredX } = await readGeometry(page);
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
@@ -311,7 +301,6 @@ test.describe("rotating", () => {
     const centerX = box.x + box.width / 2;
     const centerY = box.y + box.height / 2;
 
-    // A quarter turn clockwise: from above the center to its right.
     await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
     await page.mouse.down();
     await page.mouse.move(centerX + 60, centerY - 60, { steps: 4 });
@@ -392,7 +381,6 @@ test.describe("images", () => {
 });
 
 test.describe("text boxes", () => {
-  /** The text of the most recently added node, as the overlay currently shows it. */
   function lastNodeText(page: Page) {
     return page.evaluate(() => {
       const nodes = window.__editStore!.getActiveSlide()!.nodes;
@@ -412,7 +400,6 @@ test.describe("text boxes", () => {
 
     await page.keyboard.type("Hi");
     await expect.poll(() => lastNodeText(page)).toBe("Hi");
-    // Each keystroke undoes in turn, the first one included.
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(() => lastNodeText(page)).toBe("H");
     await page.keyboard.press("ControlOrMeta+z");
@@ -476,7 +463,6 @@ test.describe("drawing", () => {
     expect(node.position.x * (slide.width / 1280)).toBeCloseTo(40, -1);
     await expect(overlay).not.toHaveCSS("cursor", "crosshair");
 
-    // Left empty, it goes away once editing moves elsewhere.
     await page.mouse.click(slide.x + slide.width - 40, slide.y + 400);
     await expect.poll(async () => (await lastNode(page)).count).toBe(before.count);
   });
@@ -628,7 +614,6 @@ test.describe("tables", () => {
   const readState = async (page: Page) =>
     JSON.parse((await page.getByTestId("state").textContent()) ?? "{}");
 
-  /** Inserts a 2×3 table, which starts editing its first cell. Returns its id. */
   async function insertTable(page: Page) {
     const { overlay } = await open(page);
     await page.getByTestId("insert-table").click();
@@ -707,7 +692,6 @@ test.describe("tables", () => {
 
     await page.getByTestId("merge-cells").click();
     await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([2, 2]);
-    // Undo and redo land without leaving the cell first.
     await expect.poll(() => editingCell(page)).toBe("0,0");
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(async () => (await readTable(page, nodeId)).cells[0][0].span).toEqual([1, 1]);
@@ -719,7 +703,6 @@ test.describe("tables", () => {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Hi");
 
-    // In a cell, it selects the cell's text, however often it's pressed.
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.press("ControlOrMeta+a");
     await expect
@@ -777,11 +760,7 @@ test.describe("tables", () => {
       .toEqual(["Oldab", "Keep", ""]);
   });
 
-  /**
-   * Fills the first two cells, drags across the top-left 2×2 cells, then edits
-   * cell 1,2 and presses `keys` before the next frame, while the editing cell is
-   * detached. Returns the table id.
-   */
+  // Presses `keys` before the next frame, while the editing cell is detached.
   async function pressWhileRerendering(page: Page, keys: { key: string; ctrlKey?: boolean }[]) {
     const { nodeId, cellCenter } = await insertTable(page);
     await page.keyboard.type("Old");
@@ -912,7 +891,6 @@ test.describe("tables", () => {
     page,
   }) => {
     const { overlay, nodeId } = await insertTable(page);
-    // Borders resize a table that isn't selected yet.
     await page.getByTestId("outside").click();
     await expect(overlay).toHaveAttribute("data-mode", "idle");
     const before = await readTable(page, nodeId);
@@ -935,7 +913,6 @@ test.describe("tables", () => {
       0,
     );
 
-    // The left edge resizes the first column and keeps the right edge in place.
     const edge = (await page
       .locator('[data-presentation-table-border="column"]')
       .first()

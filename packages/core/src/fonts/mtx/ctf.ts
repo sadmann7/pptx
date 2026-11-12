@@ -31,13 +31,8 @@ function tableView(data: Uint8Array, entry: DirectoryEntry): Uint8Array {
   return data.subarray(entry.offset, entry.offset + entry.length);
 }
 
-/**
- * Append a glyph's instruction block to the glyf writer.
- *
- * The length prefix is reserved and patched once the PUSH burst has been
- * emitted, so the burst is measured by writing it rather than by scanning the
- * push values twice.
- */
+// The length prefix is reserved and patched after the PUSH burst is written, so the
+// burst is measured by writing it rather than by scanning the push values twice.
 function writeInstructions(
   rest: Reader,
   push: Reader,

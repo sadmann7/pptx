@@ -9,7 +9,7 @@ import {
   resizeRotatedRect,
 } from "../selection/geometry";
 
-/** Where a point given in a rect's own axes (0-1 across it) sits on the slide once rotated. */
+// `u` and `v` are in the rect's own axes, 0 to 1 across it.
 function toSlide(rect: Rect, rotation: number, u: number, v: number) {
   const radians = (rotation * Math.PI) / 180;
   const cx = rect.x + rect.w / 2;

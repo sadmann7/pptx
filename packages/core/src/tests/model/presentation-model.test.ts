@@ -41,7 +41,6 @@ describe("readPptx", () => {
 
   it("enforces uncompressed-size limits", async () => {
     await expect(readPptx(buffer, { limits: { maxEntryUncompressedBytes: 16 } })).rejects.toThrow();
-    // Recommended limits comfortably admit the fixture.
     await expect(readPptx(buffer, { limits: RECOMMENDED_PPTX_READ_LIMITS })).resolves.toBeDefined();
   });
 });

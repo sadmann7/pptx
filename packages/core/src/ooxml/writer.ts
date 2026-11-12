@@ -2,8 +2,8 @@
 import type { PptxSaveOptions } from "./package";
 
 /**
- * Serializes a presentation back to a .pptx archive. Untouched parts round-trip
- * byte-for-byte. Requires parsing with `keepSourcePackage: true`.
+ * Serializes a presentation parsed with `keepSourcePackage: true` back to a
+ * .pptx archive, copying untouched parts byte for byte.
  */
 export async function writePptx(
   presentation: PresentationData,

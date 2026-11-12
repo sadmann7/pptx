@@ -14,50 +14,25 @@ export interface RenderContext {
   theme: ThemeData;
   master: MasterData;
   layout: LayoutData;
-  /** Current OOXML part path used for resolving relationships while rendering this context. */
   partPath?: string;
-  /** Resolved slide layout part path for the current slide. */
   layoutPath?: string;
-  /** Resolved slide master part path for the current slide. */
   masterPath?: string;
-  mediaUrlCache: Map<string, string>; // path -> blob URL.
+  mediaUrlCache: Map<string, string>;
   colorCache: Map<string, { color: string; alpha: number }>;
-  /** Async media/rendering work that callers may await before screenshot/export. */
   asyncTasks?: Promise<void>[];
-  /**
-   * Teardown callbacks run by `SlideHandle.dispose()`. Renderers that attach
-   * long-lived observers register them here so the slide handle stays the
-   * single owner of everything the render created.
-   */
+  // Run by `SlideHandle.dispose()`, which owns everything the render created.
   cleanups?: (() => void)[];
-  /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. */
   pdfjs?: PdfjsConfig;
-  /** Shared set of live ECharts instances for explicit disposal. */
   chartInstances?: Set<ECharts>;
-  /** Fill node from parent group's grpSpPr, used to resolve `a:grpFill` in children. */
+  // Parent group's fill, for children using `a:grpFill`.
   groupFillNode?: SafeXmlNode;
-  /** Connected root used for hidden text measurement while slide nodes are still detached. */
+  // Connected root for text measurement while slide nodes are still detached.
   measurementRoot?: HTMLElement;
-  /** Template rendering skips placeholder descendants inside groups as well as top-level shapes. */
   skipPlaceholderChildren?: boolean;
-  /**
-   * Edit-mode affordance: render empty slide placeholders with a dashed
-   * outline and the layout/master prompt text (PowerPoint editing-view style).
-   * Off by default; presentation output never shows prompts.
-   */
   placeholderPrompts?: boolean;
-  /**
-   * Navigation callback for shape-level hyperlink actions (action buttons, clickable shapes).
-   * Called with target slide index (0-based) for supported internal slide actions,
-   * or with a URL string for external links.
-   */
   onNavigate?: (target: { slideIndex?: number; url?: string }) => void;
-  /**
-   * When `true`, the context is being used for thumbnail rendering.
-   * Renderers should skip expensive operations that are imperceptible at
-   * thumbnail scale: DOM measurement for text autofit, ECharts initialisation,
-   * and async EMF/PDF fallback rendering.
-   */
+  // Skips work imperceptible at thumbnail scale: autofit measurement, ECharts
+  // initialisation, and async EMF/PDF fallback rendering.
   thumbnail?: boolean;
 }
 
@@ -68,7 +43,6 @@ export function createRenderContext(
   chartInstances?: Set<ECharts>,
   pdfjs?: PdfjsConfig,
 ): RenderContext {
-  // Inheritance runs slide -> layout -> master -> theme.
   const layoutPath = presentation.slideToLayout.get(slide.index) || "";
   const masterPath = presentation.layoutToMaster.get(layoutPath) || "";
   const themePath = presentation.masterToTheme.get(masterPath) || "";

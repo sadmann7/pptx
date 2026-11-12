@@ -23,16 +23,6 @@ function decodeUriPathSegment(segment: string): string {
   }
 }
 
-/**
- * Parses a .rels XML string into a Map of relationship ID -> RelEntry.
- *
- * Example input:
- * ```xml
- * <Relationships xmlns="...">
- *   <Relationship Id="rId1" Type="http://...slide" Target="slides/slide1.xml"/>
- * </Relationships>
- * ```
- */
 export function parseRels(xmlString: string): Map<string, RelEntry> {
   const result = new Map<string, RelEntry>();
 
@@ -56,15 +46,6 @@ export function parseRels(xmlString: string): Map<string, RelEntry> {
   return result;
 }
 
-/**
- * Resolves a relative target path against a base path.
- *
- * ```ts
- * resolveRelTarget("ppt/slides", "../slideLayouts/slideLayout1.xml"); // "ppt/slideLayouts/slideLayout1.xml"
- * resolveRelTarget("ppt/slides", "media/image1.png"); // "ppt/slides/media/image1.png"
- * resolveRelTarget("ppt", "slides/slide1.xml"); // "ppt/slides/slide1.xml"
- * ```
- */
 export function resolveRelTarget(basePath: string, target: string): string {
   const targetPath = stripUriSuffix(target);
 

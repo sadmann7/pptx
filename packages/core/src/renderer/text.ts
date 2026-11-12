@@ -13,10 +13,6 @@ import { resolveSlideNavigationIndex, slideJumpTitle } from "./navigation";
 import { resolveColor, resolveColorToCss, resolveFill } from "./style";
 import { getEffectiveBodyPrChild } from "./text-body-props";
 
-/**
- * Finds paragraph properties at a specific indent level from a list style node.
- * Tries lvl{n}pPr (where n = level + 1), then falls back to defPPr.
- */
 function findStyleAtLevel(styleNode: SafeXmlNode | undefined, level: number): SafeXmlNode {
   if (!styleNode || !styleNode.exists()) {
     return new SafeXmlNode(null);
@@ -26,10 +22,6 @@ function findStyleAtLevel(styleNode: SafeXmlNode | undefined, level: number): Sa
   return styleNode.child("defPPr");
 }
 
-/**
- * Determine the placeholder category for style inheritance.
- * Returns 'title', 'body', or 'other'.
- */
 function getPlaceholderCategory(
   placeholder: PlaceholderInfo | undefined,
 ): "title" | "body" | "other" {
@@ -54,7 +46,6 @@ function findPlaceholderNode(
   info: PlaceholderInfo,
 ): SafeXmlNode | undefined {
   for (const ph of placeholders) {
-    // Navigate to the ph element to read its attributes.
     let phEl: SafeXmlNode | undefined;
     const nvSpPr = ph.child("nvSpPr");
     if (nvSpPr.exists()) {
@@ -71,8 +62,7 @@ function findPlaceholderNode(
     const phType = phEl.attr("type");
     const phIdx = phEl.numAttr("idx");
 
-    // Match by idx first (most specific), then by exact type, then by
-    // equivalent type (title≡ctrTitle, body≡subTitle≡obj).
+    // Matches by idx, then exact type, then equivalent type (title≡ctrTitle, body≡subTitle≡obj).
     if (info.idx !== undefined && phIdx === info.idx) return ph;
     if (info.type && phType === info.type) return ph;
     if (info.type && normalizePlaceholderType(phType) === normalizePlaceholderType(info.type)) {
@@ -96,16 +86,12 @@ interface MergedParagraphStyle {
   textIndent?: number;
   defaultTabSize?: number;
   lineHeight?: string;
-  /**
-   * Whether lineHeight comes from spcPts, an absolute pt value. A CJK font's
-   * content area can exceed an absolute CSS line-height, so lines then break with
-   * block-level wrappers instead of `<br>`.
-   */
+  // Set for spcPts line spacing, which needs per-line wrappers for CJK fonts.
   lineHeightAbsolute?: boolean;
   spaceBefore?: number;
-  spaceBeforePct?: number; // percentage of font size (0-1 range).
+  spaceBeforePct?: number; // Fraction of the font size.
   spaceAfter?: number;
-  spaceAfterPct?: number; // percentage of font size (0-1 range).
+  spaceAfterPct?: number; // Fraction of the font size.
   bulletChar?: string;
   bulletFont?: string;
   bulletAutoNum?: string;
@@ -114,13 +100,11 @@ interface MergedParagraphStyle {
   bulletSizePt?: number;
   bulletColorFollowsText?: boolean;
   bulletNone?: boolean;
-  /** When set, bullet color is taken from this OOXML buClr node (a:buClr with srgbClr/schemeClr child). */
   bulletColorNode?: SafeXmlNode;
   defRPr?: SafeXmlNode;
   defRPrs?: SafeXmlNode[];
 }
 
-/** Later calls override earlier values (higher priority wins). */
 function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): void {
   if (!pPr.exists()) return;
 
@@ -148,7 +132,6 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
       if (val !== undefined) {
-        // OOXML 100000 → CSS unitless 1.0; OOXML 120000 → CSS 1.2.
         target.lineHeight = `${(val / 100000).toFixed(3)}`;
       }
     }
@@ -172,7 +155,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     const spcPct = spcBef.child("spcPct");
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
-      if (val !== undefined) target.spaceBeforePct = val / 100000; // store as ratio.
+      if (val !== undefined) target.spaceBeforePct = val / 100000;
     }
   }
 
@@ -186,7 +169,7 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     const spcPct = spcAft.child("spcPct");
     if (spcPct.exists()) {
       const val = spcPct.numAttr("val");
-      if (val !== undefined) target.spaceAfterPct = val / 100000; // store as ratio.
+      if (val !== undefined) target.spaceAfterPct = val / 100000;
     }
   }
 
@@ -233,20 +216,18 @@ function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): vo
     target.bulletSizePct = undefined;
     target.bulletSizePt = undefined;
   }
-  // Bullet color follows text color (a:buClrTx). This must override inherited bullet colors.
+  // `a:buClrTx` must override inherited bullet colors.
   const buClrTx = pPr.child("buClrTx");
   if (buClrTx.exists()) {
     target.bulletColorFollowsText = true;
     target.bulletColorNode = undefined;
   }
-  // Explicit bullet color (a:buClr); when present overrides buClrTx/defRPr for bullet color.
   const buClr = pPr.child("buClr");
   if (buClr.exists()) {
     target.bulletColorNode = buClr;
     target.bulletColorFollowsText = false;
   }
 
-  // Default run properties (used as fallback for runs without rPr).
   const defRPr = pPr.child("defRPr");
   if (defRPr.exists()) {
     target.defRPr = defRPr;
@@ -267,33 +248,22 @@ interface MergedRunStyle {
   hlinkClick?: string;
   hlinkSlideIndex?: number;
   hlinkTooltip?: string;
-  /** Character spacing (tracking) in points, from a:spc @val (hundredths of pt). */
   letterSpacingPt?: number;
-  /** Kerning: minimum font size (pt) for kerning; 0 = always kern. */
+  // Minimum font size in points to kern at; 0 always kerns.
   kern?: number;
-  /** Text capitalization: "all" = ALL CAPS, "small" = SMALL CAPS, "none" = normal. */
   cap?: string;
-  /** Baseline shift in percentage (positive = superscript, negative = subscript). */
+  // In 1/1000 of a percent; positive is superscript.
   baseline?: number;
-  /** CSS gradient string for text fill (from rPr > gradFill). */
   textGradientCss?: string;
-  /** CSS background for text fill (from rPr > pattFill). */
   textPatternCss?: string;
-  /** CSS background color for a:highlight. */
   highlightColor?: string;
-  /** Explicit underline CSS color from a:uFill. */
   underlineColor?: string;
-  /** True when underline color should follow the effective text color. */
   underlineFollowsText?: boolean;
-  /** When true, text fill is transparent (a:noFill on rPr). */
   textNoFill?: boolean;
-  /** Text outline width in px (from a:ln on rPr). */
   textOutlineWidth?: number;
-  /** Text outline CSS color (solid fill on ln). */
   textOutlineColor?: string;
-  /** Text outline CSS gradient (gradient fill on ln): used as mask-image for fade effect. */
+  // Applied as a mask-image, which fades the whole run.
   textOutlineGradientCss?: string;
-  /** CSS text-shadow fragments from a:rPr/a:effectLst effects. */
   textShadow?: string;
 }
 
@@ -310,7 +280,7 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
   if (!rPr.exists()) return;
 
   const sz = rPr.numAttr("sz");
-  if (sz !== undefined) target.fontSize = sz / 100; // hundredths of point -> pt.
+  if (sz !== undefined) target.fontSize = sz / 100; // Hundredths of a point.
 
   const b = rPr.attr("b");
   if (b !== undefined) target.bold = parseOoxmlBool(b);
@@ -345,7 +315,6 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     target.underlineColor = undefined;
   }
 
-  // Color from solidFill or gradFill child.
   const solidFill = rPr.child("solidFill");
   if (solidFill.exists()) {
     delete target.textGradientCss;
@@ -395,7 +364,6 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
 
   const hlinkClick = rPr.child("hlinkClick");
   if (hlinkClick.exists()) {
-    // The actual target is in the slide rels, referenced by r:id.
     const rId = hlinkClick.attr("id") ?? hlinkClick.attr("r:id");
     const rel = rId ? ctx.slide.rels.get(rId) : undefined;
     const action = hlinkClick.attr("action");
@@ -410,19 +378,16 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     }
   }
 
-  // Character spacing (compact/tracking): rPr@spc in hundredths of a point.
+  // `spc` and `kern` are in hundredths of a point.
   const spc = rPr.numAttr("spc");
   if (spc !== undefined) target.letterSpacingPt = spc / 100;
 
-  // Kerning: rPr@kern = minimum font size (hundredths of pt) to apply kerning; 0 = always.
   const kern = rPr.numAttr("kern");
   if (kern !== undefined) target.kern = kern / 100;
 
-  // Text capitalization: cap="all" (ALL CAPS) or cap="small" (SMALL CAPS).
   const cap = rPr.attr("cap");
   if (cap !== undefined) target.cap = cap;
 
-  // Baseline shift: positive = superscript, negative = subscript (in 1000ths of percent).
   const baseline = rPr.numAttr("baseline");
   if (baseline !== undefined) target.baseline = baseline;
 
@@ -439,7 +404,6 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     if (textGlowShadow) appendTextShadow(target, textGlowShadow);
   }
 
-  // Text noFill: a:noFill on rPr makes text interior transparent.
   if (rPr.child("noFill").exists()) {
     delete target.color;
     delete target.textGradientCss;
@@ -447,17 +411,15 @@ function mergeRunProps(target: MergedRunStyle, rPr: SafeXmlNode, ctx: RenderCont
     target.textNoFill = true;
   }
 
-  // Text outline: a:ln on rPr defines text stroke/outline.
   const ln = rPr.child("ln");
   if (ln.exists() && !ln.child("noFill").exists()) {
     const lnW = ln.numAttr("w");
-    target.textOutlineWidth = lnW ? emuToPx(lnW) : 0.75; // default ~0.75px.
+    target.textOutlineWidth = lnW ? emuToPx(lnW) : 0.75;
     const lnSolid = ln.child("solidFill");
     if (lnSolid.exists()) {
       const { color: c, alpha: a } = resolveColor(lnSolid, ctx);
       target.textOutlineColor = colorToCssLocal(c, a);
     }
-    // Gradient fill on outline: build CSS gradient for mask effect.
     const lnGrad = ln.child("gradFill");
     if (lnGrad.exists()) {
       target.textOutlineGradientCss = resolveGradientForText(lnGrad, ctx);
@@ -600,10 +562,6 @@ function shouldUseHyperlinkThemeColor(
   return hasMatchingNonHyperlinkTextColor(run, paragraph, runStyle.color, ctx);
 }
 
-/**
- * Resolves a gradient fill node into a CSS linear-gradient string.
- * Used for text outline gradient effects.
- */
 function resolveGradientForText(gradFill: SafeXmlNode, ctx: RenderContext): string {
   const gsLst = gradFill.child("gsLst");
   const stops: { position: number; color: string }[] = [];
@@ -627,8 +585,7 @@ function resolveGradientForText(gradFill: SafeXmlNode, ctx: RenderContext): stri
 
 function applyClippedTextBackground(element: HTMLElement, css: string): void {
   element.style.background = css;
-  // jsdom currently drops valid multi-layer background shorthand with
-  // background-size. Preserve the generated pattern as longhand declarations too.
+  // jsdom drops a valid multi-layer background shorthand with background-size.
   if (!element.style.background && css.includes(" 0 0 / 8px 8px, ")) {
     const layers = css.split(" 0 0 / 8px 8px, ");
     const backgroundColor = layers[layers.length - 1]?.trim();
@@ -689,39 +646,21 @@ function toRoman(num: number): string {
   return result;
 }
 
-/** Optional overrides when rendering text (e.g. table cell style text properties from tcTxStyle). */
 interface RenderTextBodyOptions {
-  /** When set, used as text color when the run has no explicit color (e.g. table style tcTxStyle). */
   cellTextColor?: string;
-  /** When set, applies bold from table style tcTxStyle (overrides inherited, yields to explicit run rPr). */
+  // The cellText* values override inherited styles but yield to explicit run rPr.
   cellTextBold?: boolean;
-  /** When set, applies italic from table style tcTxStyle (overrides inherited, yields to explicit run rPr). */
   cellTextItalic?: boolean;
-  /** When set, applies font family from table style tcTxStyle (overrides inherited, yields to explicit run rPr). */
   cellTextFontFamily?: string | string[];
-  /** fontRef color from shape style (e.g. SmartArt). Overrides inherited styles but yields to explicit run rPr color. */
+  // A shape style's fontRef color, yielding only to an explicit run color.
   fontRefColor?: string;
-  /** True when the text container uses vertical writing mode. */
   isVerticalText?: boolean;
-  /** Fallback CSS line-height when OOXML inheritance does not specify one. */
   defaultLineHeight?: string;
-  /** Collapse paragraph spacing outside the first/last visible paragraph. */
   trimOuterParagraphSpacing?: boolean;
-  /** Treat absolute line spacing as inter-line spacing for a single-line paragraph. */
   compactSingleLineSpacing?: boolean;
 }
 
-/**
- * Style inheritance, lowest priority first:
- * 1. presentation.defaultTextStyle
- * 2. master.defaultTextStyle
- * 3. master.textStyles[category] (titleStyle / bodyStyle / otherStyle)
- * 4. master placeholder lstStyle
- * 5. layout placeholder lstStyle
- * 6. shape lstStyle
- * 7. paragraph pPr
- * 8. run rPr
- */
+// Styles merge from presentation defaults through master, layout, and shape lstStyle to paragraph pPr and run rPr.
 export function renderTextBody(
   textBody: TextBody,
   placeholder: PlaceholderInfo | undefined,
@@ -736,9 +675,9 @@ export function renderTextBody(
   const normAutofit = getEffectiveBodyPrChild(textBody, "normAutofit");
   if (normAutofit?.exists()) {
     const fs = normAutofit.numAttr("fontScale");
-    if (fs !== undefined) fontScale = fs / 100000; // 100000 = 100%.
+    if (fs !== undefined) fontScale = fs / 100000;
     const lsr = normAutofit.numAttr("lnSpcReduction");
-    if (lsr !== undefined) lnSpcReduction = lsr / 100000; // e.g., 20000 = 20%.
+    if (lsr !== undefined) lnSpcReduction = lsr / 100000;
   }
   if (fontScale !== 1) container.dataset[PPTX_DATASET.fontScale] = String(fontScale);
 
@@ -776,13 +715,10 @@ export function renderTextBody(
 
     const merged: MergedParagraphStyle = {};
 
-    // Level 1: presentation defaultTextStyle.
     mergeParagraphProps(merged, findStyleAtLevel(ctx.presentation.defaultTextStyle, level));
 
-    // Level 2: master defaultTextStyle.
     mergeParagraphProps(merged, findStyleAtLevel(ctx.master.defaultTextStyle, level));
 
-    // Level 3: master text styles by category.
     const masterTextStyle =
       category === "title"
         ? ctx.master.textStyles.titleStyle
@@ -791,7 +727,6 @@ export function renderTextBody(
           : ctx.master.textStyles.otherStyle;
     mergeParagraphProps(merged, findStyleAtLevel(masterTextStyle, level));
 
-    // Level 4: master placeholder lstStyle.
     if (placeholder) {
       const masterPh = findPlaceholderNode(ctx.master.placeholders, placeholder);
       if (masterPh) {
@@ -800,7 +735,6 @@ export function renderTextBody(
       }
     }
 
-    // Level 5: layout placeholder lstStyle.
     if (placeholder) {
       const layoutPh = findPlaceholderNode(
         ctx.layout.placeholders.map((e) => e.node),
@@ -812,10 +746,8 @@ export function renderTextBody(
       }
     }
 
-    // Level 6: shape lstStyle.
     mergeParagraphProps(merged, findStyleAtLevel(textBody.listStyle, level));
 
-    // Level 7: paragraph pPr.
     if (paragraph.properties) {
       mergeParagraphProps(merged, paragraph.properties);
     }
@@ -861,7 +793,7 @@ export function renderTextBody(
       paraDiv.style.lineHeight = effectiveLineHeight!;
     }
     // Percentage-based spacing is relative to defRPr or the first run's size.
-    let effectiveFontSize = 12; // default 12pt.
+    let effectiveFontSize = 12;
     const defaultRunStyle = getParagraphDefaultRunStyle(merged, ctx);
     if (defaultRunStyle.fontSize !== undefined) effectiveFontSize = defaultRunStyle.fontSize;
     const firstRunSize =
@@ -874,15 +806,11 @@ export function renderTextBody(
       const sz = paragraph.endParaRPr.numAttr("sz");
       if (sz !== undefined) effectiveFontSize = sz / 100;
     }
-    // Browser line boxes include a "strut" based on the block element's own font size.
-    // Keep the paragraph block in sync with Office's effective run size so tiny
-    // multi-paragraph labels do not inherit a 13px page font and overflow their boxes.
+    // Line boxes include a strut from the block's own font size, so an inherited page font would overflow small labels.
     paraDiv.style.fontSize = `${effectiveFontSize * fontScale}pt`;
 
-    // The paragraph's default text color lets content outside a run span, like text
-    // typed into an empty paragraph, inherit PowerPoint's color instead of the page's.
-    // Empty paragraphs take it from endParaRPr, as in PowerPoint. Runs always set
-    // their own color, so existing runs render the same.
+    // Content outside a run span, like text typed into an empty paragraph, inherits
+    // this color instead of the page's. Empty paragraphs take it from endParaRPr.
     const paraDefaultStyle: MergedRunStyle = { ...defaultRunStyle };
     if (!hasVisibleRuns && paragraph.endParaRPr) {
       mergeRunProps(paraDefaultStyle, paragraph.endParaRPr, ctx);
@@ -997,7 +925,6 @@ export function renderTextBody(
       }
       const bulletFontSize = merged.bulletSizePt ?? effectiveFontSize * (merged.bulletSizePct ?? 1);
       bulletSpan.style.fontSize = `${bulletFontSize * fontScale}pt`;
-      // Bullet color: explicit buClr > first visible run text color > inherited defaults > fallback.
       let bulletColor: string | undefined;
       const firstVisibleRunTextColor = (): string | undefined => {
         const firstVisibleRun = paragraph.runs.find(
@@ -1021,7 +948,6 @@ export function renderTextBody(
       if (bulletColor === undefined) {
         bulletColor = firstVisibleRunTextColor();
       }
-      // Fallback: check shape's lstStyle defRPr for color (same as run fallback).
       if (bulletColor === undefined && textBody.listStyle) {
         const lstStyleLevel = findStyleAtLevel(textBody.listStyle, level);
         if (lstStyleLevel.exists()) {
@@ -1040,24 +966,19 @@ export function renderTextBody(
       paraDiv.appendChild(bulletSpan);
     }
 
-    // Paragraphs without visible text still occupy one line in PowerPoint.
-    // This includes runs with empty <a:t/> (Google Slides exports use stacks of
-    // those as vertical spacing). Skip when the paragraph has explicit <a:br/>
-    // runs, which produce their own line boxes below.
+    // Paragraphs without visible text still occupy one line in PowerPoint; Google
+    // Slides exports stack runs with empty <a:t/> as vertical spacing.
     if (!hasVisibleRuns && !hasLineBreaks) {
       const emptyLine = document.createElement("br");
       emptyLine.setAttribute(PPTX_ATTRS.emptyLine, "");
       paraDiv.appendChild(emptyLine);
     }
 
-    // Default OOXML tab spacing is 914400 EMU = 96px.
     if (paragraph.runs.some((r) => r.text?.includes("\t"))) {
-      const defaultTabPx = merged.defaultTabSize ?? 96; // 914400 EMU at 96 dpi.
+      const defaultTabPx = merged.defaultTabSize ?? 96; // OOXML's default 914400 EMU at 96 dpi.
       paraDiv.style.tabSize = `${defaultTabPx}px`;
     }
-    // Absolute (spcPts) spacing with line breaks: wrap each line in a fixed-height
-    // block, since CJK fonts (e.g. Microsoft YaHei) have content areas taller than
-    // the font size that would override CSS line-height.
+    // CJK fonts have content areas taller than an absolute line-height, so each line gets a fixed-height block.
     const useLineWrappers = merged.lineHeightAbsolute && hasLineBreaks && effectiveLineHeight;
     let currentLineDiv: HTMLElement | null = null;
     if (useLineWrappers) {
@@ -1067,9 +988,7 @@ export function renderTextBody(
       paraDiv.appendChild(currentLineDiv);
     }
 
-    // Tracks whether the next run starts a visual line: CSS collapses leading
-    // spaces at line start but PowerPoint renders them (e.g. code indented
-    // with spaces), so those runs get white-space:pre-wrap to preserve them.
+    // CSS collapses spaces at the start of a line but PowerPoint renders them.
     let atLineStart = true;
     for (let runIndex = 0; runIndex < paragraph.runs.length; runIndex++) {
       const run = paragraph.runs[runIndex];
@@ -1090,14 +1009,11 @@ export function renderTextBody(
 
       mergeParagraphDefaultRunProps(runStyle, merged, ctx);
 
-      // Level 8: run rPr.
       if (run.properties) {
         mergeRunProps(runStyle, run.properties, ctx);
       }
 
-      // Fallback: if no color resolved yet, check the shape's lstStyle defRPr.
-      // This handles the case where paragraph pPr has an empty <a:defRPr/> that
-      // overwrites the lstStyle's defRPr (which may carry solidFill color).
+      // An empty <a:defRPr/> in pPr can overwrite the lstStyle defRPr that carries the color.
       if (runStyle.color === undefined && textBody.listStyle) {
         const lstStyleLevel = findStyleAtLevel(textBody.listStyle, level);
         if (lstStyleLevel.exists()) {
@@ -1143,16 +1059,10 @@ export function renderTextBody(
 
       element.dataset[PPTX_DATASET.run] = String(runIndex);
 
-      // Preserve consecutive spaces by alternating with &nbsp; so they survive
-      // HTML whitespace collapse without being stretched by text-align:justify.
-      // Tabs still need white-space:pre for tab-stop rendering.
       if (run.text && run.text.includes("\t")) {
         element.textContent = run.text;
         element.style.whiteSpace = "pre";
       } else if (atLineStart && run.text?.startsWith(" ")) {
-        // CSS drops spaces at the start of a line, but PowerPoint renders them
-        // (e.g. code indented with spaces). pre-wrap keeps the real space
-        // characters so the layout matches PowerPoint without altering the text.
         element.textContent = run.text;
         element.style.whiteSpace = "pre-wrap";
       } else if (run.text && / {2}/.test(run.text)) {
@@ -1171,15 +1081,12 @@ export function renderTextBody(
         atLineStart = false;
       }
 
-      // Default to 12pt if no font size specified at any inheritance level.
       const fontSize = runStyle.fontSize || 12;
       element.style.fontSize = `${fontSize * fontScale}pt`;
-      // Bold: explicit run rPr > cellTextBold (table style tcTxStyle) > inherited styles.
       const hasExplicitRunBold = run.properties?.attr("b") !== undefined;
       if (hasExplicitRunBold ? runStyle.bold : (options?.cellTextBold ?? runStyle.bold)) {
         element.style.fontWeight = "bold";
       }
-      // Italic: explicit run rPr > cellTextItalic (table style tcTxStyle) > inherited styles.
       const hasExplicitRunItalic = run.properties?.attr("i") !== undefined;
       if (hasExplicitRunItalic ? runStyle.italic : (options?.cellTextItalic ?? runStyle.italic)) {
         element.style.fontStyle = "italic";
@@ -1195,9 +1102,6 @@ export function renderTextBody(
         element.style.backgroundColor = runStyle.highlightColor;
       }
 
-      // Color priority: explicit run rPr > hlink theme color > cellTextColor (table style tcTxStyle) > fontRef (shape style) > inherited styles > black default
-      // cellTextColor from table style overrides inherited cascade colors but yields to explicit run/paragraph solidFill/gradFill.
-      // fontRefColor overrides inherited styles but yields to explicit run solidFill/gradFill.
       const runColorKind = getRunColorKind(run.properties);
       const hasExplicitRunColor = runColorKind !== "none";
       let effectiveColor: string | undefined;
@@ -1209,9 +1113,8 @@ export function renderTextBody(
         effectiveColor = runStyle.color;
       }
 
-      // Hyperlink default color: Office often writes default text fills on hyperlink
-      // runs (tx1/tx2, or the same srgb color as surrounding text) but displays
-      // those runs with the theme hlink color.
+      // Office writes default text fills on hyperlink runs (tx1/tx2, or the
+      // surrounding text's color) but displays them in the theme hlink color.
       if (
         shouldUseHyperlinkThemeColor(
           run,
@@ -1231,7 +1134,7 @@ export function renderTextBody(
       if (effectiveColor) {
         element.style.color = effectiveColor;
       } else {
-        // No explicit color from run/paragraph/style: use black so text does not inherit page CSS (e.g. body { color: #e0e0e0 }).
+        // Keeps text from inheriting the page's color.
         element.style.color = "#000000";
       }
       if (runStyle.underlineFollowsText && effectiveColor) {
@@ -1244,7 +1147,6 @@ export function renderTextBody(
         element.style.textShadow = runStyle.textShadow;
       }
 
-      // Gradient text fill: use background-clip to paint text with gradient.
       if (runStyle.textGradientCss) {
         applyClippedTextBackground(element, runStyle.textGradientCss);
       }
@@ -1252,12 +1154,10 @@ export function renderTextBody(
         applyClippedTextBackground(element, runStyle.textPatternCss);
       }
 
-      // Text outline (a:ln on rPr) and noFill handling.
       if (runStyle.textNoFill || runStyle.textOutlineWidth) {
         const strokeW = runStyle.textOutlineWidth ?? 0.75;
         if (runStyle.textNoFill && runStyle.textOutlineGradientCss) {
-          // Ghost text: no fill + gradient outline → show outline fading via mask.
-          const outlineColor = "#ffffff"; // base stroke color (gradient applied via mask).
+          const outlineColor = "#ffffff"; // The mask applies the gradient.
           element.style.color = "transparent";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
@@ -1265,13 +1165,11 @@ export function renderTextBody(
           (element.style as any).webkitTextStrokeColor = outlineColor;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
-          // mask-image fades the whole text element, outline included.
           const maskGrad = runStyle.textOutlineGradientCss;
           element.style.maskImage = maskGrad;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitMaskImage = maskGrad;
         } else if (runStyle.textNoFill && runStyle.textOutlineColor) {
-          // Ghost text with solid outline.
           element.style.color = "transparent";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
@@ -1280,11 +1178,9 @@ export function renderTextBody(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).paintOrder = "stroke fill";
         } else if (runStyle.textNoFill) {
-          // noFill with no outline: invisible text (but keep space).
           element.style.color = "transparent";
         } else if (runStyle.textOutlineColor) {
-          // Outline with normal fill
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeWidth = `${strokeW}px`;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (element.style as any).webkitTextStrokeColor = runStyle.textOutlineColor;
@@ -1293,7 +1189,6 @@ export function renderTextBody(
         }
       }
 
-      // Font family: explicit run rPr > cellTextFontFamily (table style) > inherited > theme fallback.
       const hasExplicitRunFont =
         run.properties?.child("latin").exists() ||
         run.properties?.child("ea").exists() ||
@@ -1313,11 +1208,9 @@ export function renderTextBody(
         }
       }
 
-      // Character spacing (a:spc): compact/tracking in points.
       if (runStyle.letterSpacingPt !== undefined) {
         element.style.letterSpacing = `${runStyle.letterSpacingPt}pt`;
       }
-      // Kerning (a:kern): val = min font size (pt) to kern; 0 = always kern.
       if (runStyle.kern !== undefined) {
         const effectivePt = (runStyle.fontSize || 12) * fontScale;
         element.style.fontKerning = effectivePt >= runStyle.kern ? "normal" : "none";
@@ -1329,9 +1222,7 @@ export function renderTextBody(
         element.style.fontVariant = "small-caps";
       }
 
-      // Baseline shift (superscript/subscript).
       if (runStyle.baseline !== undefined && runStyle.baseline !== 0) {
-        // OOXML baseline is in 1000ths of percent; positive = superscript, negative = subscript.
         const shiftPct = runStyle.baseline / 1000;
         element.style.verticalAlign = `${shiftPct}%`;
         if (Math.abs(shiftPct) >= 20) {
@@ -1343,17 +1234,14 @@ export function renderTextBody(
       appendTarget.appendChild(element);
     }
 
-    // endParaRPr: when the paragraph ends with a line break (trailing \n),
-    // the end-of-paragraph mark (endParaRPr) defines the font size for the
-    // trailing blank line. Without this, bottom-anchored text boxes render
-    // content too low because the trailing space is too small.
+    // After a trailing line break, endParaRPr sizes the blank last line; bottom-anchored text depends on it.
     if (paragraph.endParaRPr) {
       const lastRun = paragraph.runs[paragraph.runs.length - 1];
       if (lastRun?.text === "\n") {
         const epSz = paragraph.endParaRPr.numAttr("sz");
         if (epSz !== undefined) {
           const spacer = document.createElement("span");
-          spacer.textContent = "\u200B"; // zero-width space to maintain line height.
+          spacer.textContent = "\u200B";
           spacer.style.fontSize = `${(epSz / 100) * fontScale}pt`;
           const target = currentLineDiv ?? paraDiv;
           target.appendChild(spacer);

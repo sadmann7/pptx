@@ -1,44 +1,21 @@
 /**
- * Skips unless PERF=1 (`pnpm test:perf`): it decodes real embedded fonts both
- * ways and reports numbers rather than asserting a baseline, because timings
- * are machine-dependent.
+ * Skips unless PERF=1 (`pnpm test:perf`), and reports rather than asserts
+ * because timings are machine-dependent.
  *
- * The question it answers is whether the Worker pool earns its place. The pool
- * costs a second, inlined copy of the decode pipeline in the published bundle
- * (tsdown has no worker support, so `tsdown.config.ts` bundles the worker into
- * a string), and the decoder is the bulk of that chunk. So the comparison is
- * per deck:
- *
- *   worker  the shipped path: parts decoded across a pool, registered here
- *   main    the shipped fallback (SSR, worker load failure): decoded here,
- *           handing the event loop a turn between parts
- *   sliced  the fallback without a worker to fall back from: decoded here,
- *           yielding only once a slice has run long, which is what dropping
- *           the worker would actually mean
- *
- * Wall clock is the weaker half of the answer. The pool exists to keep the main
- * thread free, so what matters is `blocked` (time frames arrived late, summed)
- * and `worst frame`: with a worker those stay near idle, on the main thread they
- * track decode cost directly.
- *
- * Both are run under CPU throttling too, since the decision is about low-end
- * devices; a desktop decodes a 30 KB part fast enough that neither path shows.
+ * It weighs the Worker pool against its cost, a second inlined copy of the
+ * decoder in the bundle, by decoding each deck in the harness's worker, main
+ * and sliced modes. `blocked` and `worst frame` matter more than wall clock,
+ * since the pool exists to keep the main thread free. Runs repeat under CPU
+ * throttling, where a 30 KB part stops decoding too fast to show either path.
  */
 import { test } from "@playwright/test";
 
-/**
- * The deck under test: a committed fixture, or any deck in `decks/` through
- * `FONT_PERF_DECK` (e.g. `FONT_PERF_DECK=decks/real.pptx`), which is how a
- * PowerPoint-authored deck gets measured without committing one.
- */
+// `FONT_PERF_DECK=decks/real.pptx` measures a PowerPoint-authored deck without
+// committing it.
 const DECK = process.env.FONT_PERF_DECK ?? "the-good-room-soft-editorial.pptx";
 
-/**
- * Both payload kinds, since they decide the answer. Fixtures embed plain EOT,
- * which decodes in microseconds, while PowerPoint writes MTX (LZCOMP over three
- * streams), so the harness substitutes those. A deck named explicitly is
- * measured as it is.
- */
+// Fixtures embed plain EOT, which decodes in microseconds, while PowerPoint
+// writes MTX, so the harness substitutes those. A named deck is measured as is.
 const PAYLOADS = process.env.FONT_PERF_DECK
   ? ([{ label: "as embedded", mtx: false }] as const)
   : ([
@@ -46,29 +23,23 @@ const PAYLOADS = process.env.FONT_PERF_DECK
       { label: "MTX", mtx: true },
     ] as const);
 
-/** 1 is this machine; 4 stands in for a mid-range phone. */
+// 4 stands in for a mid-range phone.
 const THROTTLE_RATES = [1, 4] as const;
 
-/**
- * Font parts per deck, as a multiple of what it embeds (3 to 7 today). The
- * multiples cover the "dozens of parts" deck the loader was written for.
- */
+// Real decks embed 3 to 7 parts; the multiples reach the "dozens of parts" deck
+// the loader was written for.
 const PART_FACTORS = [1, 4, 8] as const;
 
 const MODES: readonly BenchMode[] = ["worker", "main", "sliced"];
 
-/**
- * The published entry, so worker startup is the blob spawn consumers pay and
- * not Vite fetching the worker module graph from source. Requires
- * `pnpm -F @diceui/pptx-core build`; the harness fails loudly without it.
- */
+// Worker startup should be the blob spawn consumers pay, not Vite fetching the
+// worker from source. Requires `pnpm -F @diceui/pptx-core build`.
 const BUILD = "dist";
 
 type FontBench = Awaited<ReturnType<NonNullable<Window["__benchFonts"]>>>;
 
 interface Run extends FontBench {
   payload: string;
-  /** Per-part main-thread decode cost, measured after the run under test. */
   partMs: number[];
 }
 
@@ -105,17 +76,13 @@ test.describe("embedded font decode performance", () => {
             const error = await page.evaluate(() => window.__renderError);
             if (error) throw new Error(`harness failed: ${error}`);
 
-            // Throttling starts after the deck is parsed and ends before the
-            // next navigation, so it applies to the decode under test and not
-            // to loading the deck, which is not what is being compared.
+            // Throttles only the decode under test, not loading the deck.
             await cdp.send("Emulation.setCPUThrottlingRate", { rate });
             const result = await page.evaluate(() => window.__benchFonts?.());
             await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
             if (!result) throw new Error("harness did not expose __benchFonts");
 
-            // After the run, never before: decoding the parts up front would
-            // warm nothing the loader reuses but would pollute the frame
-            // monitor of the run being measured.
+            // Decoding the parts before the run would pollute its frame monitor.
             const parts = (await page.evaluate(() => window.__benchDecodeParts?.())) ?? [];
             runs.push({ ...result, payload: payload.label, partMs: parts.map((part) => part.ms) });
           }
@@ -146,8 +113,7 @@ test.describe("embedded font decode performance", () => {
             ms(run.readyMs).padEnd(8),
             ms(run.blockedMs).padEnd(9),
             ms(run.worstFrameMs).padEnd(13),
-            // Fewer faces than parts means parts the decoder or the browser
-            // rejected, which no timing here would reveal.
+            // Fewer faces than parts means the decoder or the browser rejected some.
             `${run.faces}`,
           ].join(""),
         );

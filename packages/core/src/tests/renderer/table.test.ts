@@ -9,7 +9,6 @@ function tableCell(text: string, tcPrXml = "<a:tcPr/>"): string {
   return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p></a:txBody>${tcPrXml}</a:tc>`;
 }
 
-/** A cell with a solid fill and a 1pt border on all four sides. */
 function borderedCell(text: string, fillHex: string, lineHex = "112233"): string {
   const ln = (name: string) =>
     `<a:${name} w="12700"><a:solidFill><a:srgbClr val="${lineHex}"/></a:solidFill></a:${name}>`;
@@ -19,7 +18,6 @@ function borderedCell(text: string, fillHex: string, lineHex = "112233"): string
   );
 }
 
-/** Renders a slide with one graphicFrame table and returns the table's wrapper div. */
 async function renderTableFrame(
   extXml: string,
   gridColsXml: string,
@@ -47,9 +45,8 @@ ${rowsXml}
 
 describe("table sizing", () => {
   it("sizes the table from the grid, ignoring a stale graphicFrame extent", async () => {
-    // Regression: Google Slides exports write a dummy 3000000x3000000 extent
-    // on table graphicFrames; sizing from it crushed tables into a small
-    // square. The grid says 2x4572000 EMU wide (960px), 2x457200 EMU tall (96px).
+    // Google Slides exports write a dummy 3000000x3000000 extent on table graphicFrames.
+    // The grid says 2x4572000 EMU wide (960px), 2x457200 EMU tall (96px).
     const wrapper = await renderTableFrame(
       `<a:ext cx="3000000" cy="3000000"/>`,
       `<a:gridCol w="4572000"/><a:gridCol w="4572000"/>`,

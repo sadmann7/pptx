@@ -155,10 +155,8 @@ export const RAIL_POP_CADENCE = 3;
 
 export const EDITOR_DEMO_FILE = "editor-demo.mp4";
 
-/**
- * Slide bounds in the editor demo recording, measured off its first frame.
- * Re-measure when the demo is re-recorded, otherwise the handoff drifts.
- */
+// Measured off the demo recording's first frame; re-measure when it is
+// re-recorded, otherwise the handoff drifts.
 export const DEMO_SLIDE = { left: 305.5, top: 138.5, width: 1553 } as const;
 export const DEMO_PUSH_START = 10;
 

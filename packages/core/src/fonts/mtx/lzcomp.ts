@@ -3,16 +3,13 @@ import type { DecoderLimits } from "./limits";
 
 const PRELOAD_SIZE = 2 * 32 * 96 + 4 * 256;
 
-/**
- * MSB-first bit reader with a byte-at-a-time prefetch buffer. `buffer` and
- * `available` are public so the Huffman descent can keep them in locals for a
- * whole symbol. Prefetching is safe, since it only fails once a bit is
- * requested past the end of the input.
- */
+// MSB-first bit reader with a byte-at-a-time prefetch. `buffer` and `available` are
+// public so the Huffman descent can keep them in locals for a whole symbol. Prefetching
+// only fails once a bit is requested past the end of the input.
 export class BitReader {
   private readonly data: Uint8Array;
   private index = 0;
-  /** Low `available` bits are valid, MSB-first (the next bit is the highest). */
+  // The low `available` bits are valid, MSB-first.
   buffer = 0;
   available = 0;
 
@@ -20,7 +17,6 @@ export class BitReader {
     this.data = data;
   }
 
-  /** Load bytes until at least one bit is available. */
   refill(): void {
     if (this.index >= this.data.length) fail("BOUNDS", "Unexpected end of LZCOMP bitstream");
     do {
@@ -41,12 +37,12 @@ export class BitReader {
   }
 }
 
-/** Array-backed adaptive Huffman tree from the MTX format specification. */
+// Array-backed adaptive Huffman tree from the MTX format specification.
 export class AdaptiveHuffman {
   private readonly range: number;
   private readonly up: Int32Array;
-  /** Children interleaved as `child[node * 2 + bit]`, so a descent step indexes
-   * instead of branching on a bit that is inherently unpredictable. */
+  // Children interleaved as `child[node * 2 + bit]`, so a descent step indexes instead
+  // of branching on an unpredictable bit.
   private readonly child: Int32Array;
   private readonly code: Int32Array;
   private readonly weight: Int32Array;
@@ -119,7 +115,6 @@ export class AdaptiveHuffman {
     return symbol;
   }
 
-  /** Returns the current code bits, then updates the model. Used by tests. */
   encode(symbol: number): number[] {
     if (symbol < 0 || symbol >= this.range) fail("INVALID_MTX", `Symbol ${symbol} outside tree`);
     let node = this.symbolIndex[symbol]!;
@@ -135,7 +130,7 @@ export class AdaptiveHuffman {
     return reverse;
   }
 
-  /** Exchange two nodes' contents; `up` pointers stay with the positions. */
+  // `up` pointers stay with the positions.
   private swap(a: number, b: number): void {
     const { child, code, weight } = this;
     let tmp = child[a * 2]!;

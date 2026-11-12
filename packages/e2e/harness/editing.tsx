@@ -1,7 +1,6 @@
 /**
- * Editing harness: one editable slide with a formatting toolbar outside it,
- * the way an app wires `useSelection`, so editing.spec.ts can press real
- * toolbar buttons and check the selection and text editing survive.
+ * One editable slide with a formatting toolbar outside it, wired the way an app
+ * uses `useSelection`.
  *
  * The toolbar sits in `Presentation.Controls` with an unmarked "popover" it portals;
  * a separate strip carries only `data-presentation-controls`, and the "outside"

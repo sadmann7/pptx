@@ -1,35 +1,21 @@
-/**
- * Extended in-memory .pptx fixture builder for plumbing/utility tests.
- *
- * Complements ./minimal-pptx.ts (which stays untouched) with knobs the
- * package-plumbing tests need: multiple slides, custom master clrMap,
- * layout clrMapOvr, theme font typefaces, and arbitrary extra zip entries
- * (media, embedded fonts, tableStyles.xml, ...).
- */
 import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 export interface CustomPptxOptions {
-  /** Shapes XML (`p:sp`/`p:graphicFrame`/...) per slide; one entry per slide. */
   slides?: string[];
-  /** Attribute string for the master's `p:clrMap` element. */
   masterClrMapAttrs?: string;
-  /** Full `<p:bg>...</p:bg>` element for the slide master. */
   masterBgXml?: string;
-  /** Full `<p:clrMapOvr>...</p:clrMapOvr>` element for the slide layout. */
   layoutClrMapOvrXml?: string;
-  /** Shapes XML (`p:sp`/...) injected into the slide layout's spTree. */
   layoutShapesXml?: string;
-  /** Latin typeface for the theme's majorFont (default "Calibri Light"). */
+  // Defaults to "Calibri Light".
   majorLatin?: string;
-  /** Latin typeface for the theme's minorFont (default "Calibri"). */
+  // Defaults to "Calibri".
   minorLatin?: string;
-  /** Extra XML injected into the theme's majorFont (e.g. script fonts). */
+  // Extra XML for the theme's majorFont, such as script fonts.
   majorFontExtraXml?: string;
-  /** Extra zip entries: path → content (added verbatim). */
   extraFiles?: Record<string, string | Uint8Array>;
-  /** Replace [Content_Types].xml wholesale (e.g. with malformed text). */
+  // Replaces [Content_Types].xml wholesale, such as with malformed text.
   contentTypesXml?: string;
 }
 
@@ -223,7 +209,7 @@ ${shapesXml}
   );
 }
 
-/** Build a .pptx with the given customizations; defaults match minimal-pptx. */
+// Defaults match minimal-pptx.
 export async function buildCustomPptx(options: CustomPptxOptions = {}): Promise<ArrayBuffer> {
   const slides = options.slides ?? [""];
 
@@ -250,7 +236,7 @@ export async function buildCustomPptx(options: CustomPptxOptions = {}): Promise<
   return zip.generateAsync({ type: "arraybuffer" });
 }
 
-/** A tiny (but magic-byte-valid) PNG payload for media tests. */
+// A tiny but magic-byte-valid PNG.
 export function fakePngBytes(length = 64): Uint8Array {
   const bytes = new Uint8Array(length);
   bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

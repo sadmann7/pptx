@@ -279,7 +279,7 @@ async function diffParts(
   return changes;
 }
 
-/** Parts that edits replace wholesale rather than mark dirty. */
+// Edits replace these parts wholesale rather than mark them dirty.
 function isReplaceable(path: string) {
   return path === CONTENT_TYPES_PATH || path.endsWith(".rels");
 }

@@ -1,11 +1,7 @@
 /**
- * Builds a minimal, spec-valid .pptx in memory for store/component tests.
- * Three blank-layout slides, each containing two rect shapes, 12192000x6858000
- * EMU slide size (16:9, 1280x720 px at 96 DPI).
- *
- * Two shapes rather than one so multi-selection has something to select: at
- * 9525 EMU per px they land at (128,128,288x192) and (500,300,200x100), which
- * are disjoint, so a band can enclose either one or both.
+ * Three blank-layout slides at 12192000x6858000 EMU (1280x720 px at 96 DPI),
+ * each with two disjoint rects at (128,128,288x192) and (500,300,200x100) px,
+ * so a band can enclose either one or both.
  */
 import JSZip from "jszip";
 
@@ -183,12 +179,6 @@ function getSlideXml(index: number): string {
   );
 }
 
-/**
- * Builds the fixture and returns it as an ArrayBuffer (like a fetched file).
- *
- * `slideCount` is only worth passing to cover degenerate decks, such as the
- * slide-less one the store has to survive.
- */
 export async function buildMinimalPptx(slideCount = SLIDE_COUNT): Promise<ArrayBuffer> {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", getContentTypes(slideCount));

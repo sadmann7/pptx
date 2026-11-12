@@ -12,9 +12,9 @@ import { createLazySlide, materializeSlideData, parseSlide, SlideData, SlideNode
 import { parseTheme, ThemeData } from "./theme";
 
 export interface EmbeddedFontVariant {
-  /** Resolved path inside the zip (e.g. "ppt/fonts/font1.fntdata"). */
+  /** The font part's path inside the zip, like "ppt/fonts/font1.fntdata". */
   path: string;
-  /** GUID used to XOR-deobfuscate the first 32 bytes (ODTTF). Absent for plain EOT. */
+  /** The GUID that XOR-deobfuscates an ODTTF font's first 32 bytes, absent for plain EOT. */
   fontKey?: string;
 }
 
@@ -55,48 +55,36 @@ export interface PresentationData {
   isWps: boolean;
   /** Embedded font binary data keyed by zip path (ppt/fonts/*). */
   fonts: Map<string, Uint8Array>;
-  /** Parsed embedded font list from presentation.xml. */
+  /** The embedded font list from presentation.xml. */
   embeddedFonts?: EmbeddedFontEntry[];
   /**
-   * Retained source PPTX package for round-trip save. Present when parsed with
-   * `keepSourcePackage: true`. Use `writePptx()` to produce a .pptx.
+   * The source package kept for round-trip saves with `writePptx()`, present
+   * when parsed with `keepSourcePackage: true`.
    */
   sourcePackage?: PptxPackage;
 }
 
 export interface BuildPresentationOptions {
   /**
-   * When `true`, defers per-slide shape/table/chart node parsing until a
-   * slide is rendered, searched, serialized, or explicitly materialized.
+   * Whether to defer parsing a slide's nodes until it's rendered, searched, serialized, or
+   * materialized.
    *
    * @default false
    */
   lazySlides?: boolean;
 }
 
-/**
- * Derive the base directory from a file path.
- * E.g., "ppt/slides/slide1.xml" → "ppt/slides".
- */
 function basePath(filePath: string): string {
   const idx = filePath.lastIndexOf("/");
   return idx >= 0 ? filePath.substring(0, idx) : "";
 }
 
-/**
- * For a given XML file path, find its corresponding .rels file path.
- * E.g., "ppt/slides/slide1.xml" → "ppt/slides/_rels/slide1.xml.rels".
- */
 function relsPathFor(filePath: string): string {
   const dir = basePath(filePath);
   const fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
   return `${dir}/_rels/${fileName}.rels`;
 }
 
-/**
- * Detect WPS (Kingsoft Office / WPS Office) by checking for known markers
- * in the presentation XML string.
- */
 function detectWps(presentationXml: string): boolean {
   // WPS adds its own namespace or processing instructions.
   return (
@@ -126,10 +114,7 @@ function findRelsByType(rels: Map<string, RelEntry>, typeSubstring: string): [st
   return results;
 }
 
-/**
- * Builds PresentationData from extracted PPTX files, resolving the
- * slide → layout → master → theme relationship chain.
- */
+/** Builds presentation data from extracted PPTX files, resolving each slide's layout, master, and theme. */
 export function buildPresentation(
   files: PptxFiles,
   options: BuildPresentationOptions = {},
@@ -141,8 +126,8 @@ export function buildPresentation(
   const presRels = parseRels(files.presentationRels);
 
   const sldSz = presRoot.child("sldSz");
-  const width = emuToPx(sldSz.numAttr("cx") ?? 9144000); // default 10 inches.
-  const height = emuToPx(sldSz.numAttr("cy") ?? 6858000); // default 7.5 inches.
+  const width = emuToPx(sldSz.numAttr("cx") ?? 9144000); // 10 inches.
+  const height = emuToPx(sldSz.numAttr("cy") ?? 6858000); // 7.5 inches.
 
   const isWps = detectWps(files.presentation);
 
@@ -266,7 +251,7 @@ export function buildPresentation(
     }
   }
 
-  // Fallback: if sldIdLst parsing didn't yield results, use presRels directly.
+  // Without a usable sldIdLst, slides come straight from presentation.xml.rels.
   if (orderedSlideTargets.length === 0) {
     const slideRels = findRelsByType(presRels, "slide");
     // rId number stands in for slide order.
@@ -276,7 +261,7 @@ export function buildPresentation(
       return numA - numB;
     });
     for (const [, entry] of slideRels) {
-      // Only include direct slide relationships, not slideLayout or slideMaster.
+      // `/slide` also matches the slideLayout and slideMaster types.
       if (
         entry.type.includes("/slide") &&
         !entry.type.includes("slideLayout") &&
@@ -401,10 +386,6 @@ function parseEmbeddedFontList(
   return entries;
 }
 
-/**
- * Extracts placeholder info (type, idx) from a raw placeholder XML node
- * stored in layout/master.
- */
 function getPhInfo(phNode: SafeXmlNode): { type?: string; idx?: number } {
   for (const wrapper of ["nvSpPr", "nvPicPr", "nvGrpSpPr", "nvGraphicFramePr", "nvCxnSpPr"]) {
     const nvWrapper = phNode.child(wrapper);
@@ -441,11 +422,8 @@ function getPhXfrm(phNode: SafeXmlNode): { position: NodePosition; size: NodeSiz
   return undefined;
 }
 
-/**
- * Placeholder types that PowerPoint treats as equivalent when matching a slide
- * placeholder against layout/master placeholders. E.g. a slide `ctrTitle` can
- * inherit from a layout `title`, and a slide `subTitle` from a layout `body`.
- */
+// PowerPoint matches a slide placeholder to a layout or master one of an
+// equivalent type, like `ctrTitle` to `title` or `subTitle` to `body`.
 const PLACEHOLDER_TYPE_EQUIVALENCE: Record<string, string> = {
   title: "title",
   ctrTitle: "title",
@@ -454,25 +432,14 @@ const PLACEHOLDER_TYPE_EQUIVALENCE: Record<string, string> = {
   obj: "body",
 };
 
-/** Normalize a placeholder type to its equivalence-class key. */
 export function normalizePlaceholderType(type: string | undefined): string | undefined {
   if (type === undefined) return undefined;
   return PLACEHOLDER_TYPE_EQUIVALENCE[type] ?? type;
 }
 
-/**
- * Finds a matching layout placeholder (PlaceholderEntry); uses entry.absoluteXfrm when present.
- *
- * Match priority (best score wins):
- *   6. exact type + same idx
- *   5. equivalent type (title≡ctrTitle, body≡subTitle≡obj) + same idx
- *   4. exact type, any idx
- *   3. equivalent type, any idx
- *   2. same idx, both without type
- *   1. same idx with mismatched types (last-resort fallback; only when both
- *      placeholders explicitly specify idx, so defaulted idx 0 never triggers it)
- * A missing idx attribute is treated as idx 0 per OOXML defaults.
- */
+// Best match first: exact type and idx, equivalent type and idx, exact type,
+// equivalent type, idx with neither typed, then idx alone when both set it
+// explicitly. A missing idx is 0, the OOXML default.
 function findMatchingLayoutPlaceholder(
   placeholders: PlaceholderEntry[],
   type?: string,
@@ -512,11 +479,7 @@ function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {
   return master.placeholderEntries ?? master.placeholders.map((node) => ({ node }));
 }
 
-/**
- * Finds the layout (or master, as fallback) placeholder shape node that a slide
- * placeholder inherits from. Used for edit-mode prompt text: the template
- * node's txBody carries the "Click to add title"-style prompt runs.
- */
+// The template node's txBody carries the "Click to add title" prompt runs edit mode shows.
 export function findPlaceholderTemplateNode(
   placeholder: PlaceholderInfo,
   layout: LayoutData | undefined,
@@ -536,10 +499,6 @@ export function findPlaceholderTemplateNode(
   return masterMatch?.node;
 }
 
-/**
- * Walk through all slide nodes (including group children recursively)
- * and fill in missing position/size from layout/master placeholders.
- */
 function resolvePlaceholderInheritance(pres: PresentationData): void {
   for (let i = 0; i < pres.slides.length; i++) {
     resolveSlidePlaceholderInheritance(pres, pres.slides[i]);
@@ -552,7 +511,6 @@ function resolveSlidePlaceholderInheritance(pres: PresentationData, slide: Slide
   slide.placeholderInheritanceResolved = true;
 }
 
-/** Resolves placeholder inheritance for nodes on `slide`, such as ones an edit added. */
 export function resolveSlideNodePlaceholders(
   pres: PresentationData,
   slide: SlideData,
@@ -579,7 +537,6 @@ export function materializeAllSlides(pres: PresentationData): void {
   }
 }
 
-/** Extract bodyPr from a placeholder shape node (layout or master). */
 function getPhBodyPr(phNode: SafeXmlNode): SafeXmlNode | undefined {
   const txBody = phNode.child("txBody");
   if (!txBody.exists()) return undefined;
@@ -597,11 +554,8 @@ function inheritPlaceholderType(target: PlaceholderInfo, sourceNode: SafeXmlNode
 }
 
 interface PlaceholderInheritanceOptions {
-  /**
-   * Parent group for lazy-parsed group children. Layout/master placeholders are
-   * stored in slide coordinates, while group children render in the group's
-   * child coordinate space, so inherited xfrm must be inverted before remap.
-   */
+  // Placeholders are in slide space but group children render in the group's
+  // child space, so an inherited xfrm is inverted through this group first.
   parentGroup?: GroupNodeData;
 }
 
@@ -650,7 +604,7 @@ export function resolveNodePlaceholderInheritance(
         )
       : undefined;
   const sizeIsEmpty = node.size.w === 0 && node.size.h === 0;
-  const positionLooksDefault = node.position.y < 5; // y=0 or near top → use layout position.
+  const positionLooksDefault = node.position.y < 5; // Near the top counts as unset.
 
   if (layout) {
     const layoutMatch = findMatchingLayoutPlaceholder(layout.placeholders, type, idx);
@@ -707,7 +661,6 @@ export function resolveNodePlaceholderInheritance(
       }
     }
 
-    // Then from the master placeholder.
     if ("textBody" in node && node.textBody && !node.textBody.layoutBodyProperties) {
       const masterBodyPr = getPhBodyPr(masterMatch.node);
       if (masterBodyPr) {

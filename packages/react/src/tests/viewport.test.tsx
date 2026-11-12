@@ -45,11 +45,8 @@ describe("Presentation.Viewport", () => {
   });
 
   describe("autoFit", () => {
-    /**
-     * The test DOM reports a zero-sized element and never lays anything out,
-     * so the container size and the resize notification both have to be
-     * supplied by hand to exercise the fit path at all.
-     */
+    // The test DOM reports a zero-sized element and never lays anything out, so
+    // the container size and the resize notification are supplied by hand.
     function stubResizeObserver(): () => void {
       const callbacks = new Set<ResizeObserverCallback>();
       vi.stubGlobal(
@@ -171,7 +168,6 @@ describe("Presentation.Viewport", () => {
       wheel(viewport, 100, 1100);
       expect(store.getActiveSlideIndex()).toBe(1);
 
-      // Past the cooldown, the next tick navigates again.
       wheel(viewport, 100, 2000);
       expect(store.getActiveSlideIndex()).toBe(2);
     });
@@ -231,11 +227,8 @@ describe("Presentation.Viewport", () => {
       vi.unstubAllGlobals();
     });
 
-    /**
-     * Ctrl/Cmd+wheel, sending Ctrl for both since the handler treats them
-     * alike. Assigned rather than passed: happy-dom's WheelEvent constructor
-     * drops modifier keys from the init.
-     */
+    // Ctrl stands in for Cmd, which the handler treats alike. Assigned rather than
+    // passed, since happy-dom's WheelEvent constructor drops modifier keys.
     function zoomWheel(
       element: HTMLElement,
       deltaY: number,

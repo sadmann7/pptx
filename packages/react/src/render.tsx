@@ -29,16 +29,7 @@ export type PrimitiveProps<
   render?: RenderProp<State, RenderFnProps>;
 };
 
-/**
- * Merges two prop objects with smart composition:
- *
- * - `className`: joined with a space (both preserved)
- * - `style`: shallowly merged, `b` wins per-key
- * - `on*` event handlers: chained (`a` runs first, then `b`)
- * - Everything else: `b` overwrites `a`
- *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/merge-props/mergeProps.ts
- */
+// Follows Base UI's `mergeProps`: `b` wins, except class names join, styles merge and handlers chain.
 export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
   const result: AnyProps = { ...a };
   for (const key of Object.keys(b)) {
@@ -69,11 +60,6 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
   return result;
 }
 
-/**
- * Merges multiple refs into a single callback ref.
- *
- * @see https://github.com/mui/base-ui/blob/master/packages/utils/src/useMergedRefs.ts
- */
 export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): React.RefCallback<T> {
   return (value) => {
     for (const ref of refs) {
@@ -86,10 +72,6 @@ export function mergeRefs<T>(...refs: (React.Ref<T> | null | undefined)[]): Reac
   };
 }
 
-/**
- * `PrimitiveProps` whose `className` and `style` may also be functions of the
- * component's state, as in Base UI, for parts whose look follows their state.
- */
 export type StatefulPrimitiveProps<Tag extends React.ElementType, State> = Omit<
   PrimitiveProps<Tag, State>,
   "className" | "style"
@@ -108,38 +90,15 @@ export interface RenderElementComponentProps<S, P = AnyProps> {
 }
 
 export interface RenderElementParams<S, E extends Element, Tag extends IntrinsicTag> {
-  /** Component state forwarded as the second argument to a function `render` prop. */
   state: S;
-
-  /**
-   * Ref(s) to attach to the rendered element.
-   * Pass an array to merge multiple refs (e.g. `[internalRef, forwardedRef]`).
-   */
   ref?: React.Ref<E> | (React.Ref<E> | null | undefined)[];
-
-  /**
-   * Internal default props for the element.
-   * May be a single object or an ordered array: merged left-to-right.
-   * User-supplied `className` and `style` from `componentProps` are always
-   * composed on top (user wins per-key for `style`; appended for `className`).
-   */
+  // Merged left to right; the user's `className` and `style` always compose on top.
   props?:
     | (RenderFunctionProps<Tag> & AnyProps)
     | Array<(RenderFunctionProps<Tag> & AnyProps) | undefined>;
 }
 
-/**
- * Renders a component element using the Base UI render-prop pattern.
- *
- * - **No `render` prop** → renders `defaultTag` with the composed props.
- * - **`render` is a function** → calls `render(composedProps, state)`.
- * - **`render` is a `ReactElement`** → clones it, merging composed props
- *   (`className`/`style`/events composed; everything else external wins).
- *
- * A plain function rather than a hook so it can run after a conditional return.
- *
- * @see https://github.com/mui/base-ui/blob/master/packages/react/src/internals/useRenderElement.tsx
- */
+// A plain function rather than a hook so it can run after a conditional return.
 export function renderElement<Tag extends IntrinsicTag, S, E extends Element = Element>(
   defaultTag: Tag,
   componentProps: RenderElementComponentProps<S, RenderFunctionProps<Tag>>,

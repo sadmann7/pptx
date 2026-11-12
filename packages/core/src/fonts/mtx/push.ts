@@ -48,7 +48,6 @@ function writePushRun(
   }
 }
 
-/** Emit a compact, semantically equivalent TrueType PUSH instruction burst. */
 export function writePushInstructions(writer: Writer, values: Int16Array, count: number): void {
   let start = 0;
   while (start < count) {

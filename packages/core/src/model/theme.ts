@@ -11,13 +11,12 @@ export interface ThemeData {
   colorScheme: Map<string, string>;
   majorFont: ThemeFontInfo;
   minorFont: ThemeFontInfo;
-  fillStyles: SafeXmlNode[]; // from a:fillStyleLst children (indexed 1-based).
-  bgFillStyles?: SafeXmlNode[]; // from a:bgFillStyleLst children (indexed 1001-based for bgRef).
-  lineStyles: SafeXmlNode[]; // from a:lnStyleLst children (indexed 1-based).
-  effectStyles: SafeXmlNode[]; // from a:effectStyleLst children (indexed 1-based).
+  fillStyles: SafeXmlNode[]; // OOXML style refs index these from 1.
+  bgFillStyles?: SafeXmlNode[]; // A bgRef indexes these from 1001.
+  lineStyles: SafeXmlNode[]; // OOXML style refs index these from 1.
+  effectStyles: SafeXmlNode[]; // OOXML style refs index these from 1.
 }
 
-/** Known color scheme slot names in a:clrScheme. */
 const COLOR_SLOTS = [
   "dk1",
   "dk2",
@@ -33,10 +32,6 @@ const COLOR_SLOTS = [
   "folHlink",
 ] as const;
 
-/**
- * Extracts a hex color value from a color definition node.
- * Handles both `a:srgbClr@val` and `a:sysClr@lastClr`.
- */
 function extractColor(node: SafeXmlNode): string | undefined {
   const srgb = node.child("srgbClr");
   if (srgb.exists()) {
@@ -49,10 +44,8 @@ function extractColor(node: SafeXmlNode): string | undefined {
   return undefined;
 }
 
-/**
- * Office themes often leave <ea> empty and provide script-specific
- * <font script="Hans" .../> entries instead, so those are kept too.
- */
+// Office themes often leave `<ea>` empty and list script-specific
+// `<font script="Hans" />` entries instead, so those are kept too.
 function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
   const scripts: Record<string, string> = {};
   for (const font of fontNode.children("font")) {
@@ -74,9 +67,6 @@ function parseFontInfo(fontNode: SafeXmlNode): ThemeFontInfo {
   return result;
 }
 
-/**
- * Parses a theme XML root (`a:theme`) into ThemeData.
- */
 export function parseTheme(root: SafeXmlNode): ThemeData {
   const themeElements = root.child("themeElements");
   const themeScope = themeElements.exists() ? themeElements : root;

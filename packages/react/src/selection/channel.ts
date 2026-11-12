@@ -30,7 +30,6 @@ export function markControlsEvent(event: Event): void {
   controlsEvents.add(event);
 }
 
-/** Whether an event target sits inside UI marked with `CONTROLS_ATTRIBUTE`. */
 export function getIsControlsTarget(target: EventTarget | null): boolean {
   const element =
     target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
@@ -54,7 +53,6 @@ export type TableChange =
 export type DrawTool = { type: "textBox" } | { type: "shape"; geometry: string };
 
 export interface SelectionSnapshot {
-  /** Slide the selection belongs to. */
   slideId: string | null;
   mode: SelectionState["mode"];
   nodeIds: string[];
@@ -64,9 +62,8 @@ export interface SelectionSnapshot {
   drawTool: DrawTool | null;
 }
 
-/** Commands the mounted `Presentation.Selection` serves. */
 export interface SelectionController {
-  /** `focus` moves focus to the overlay, so typing starts the shapes' text. */
+  // `focus` moves focus to the overlay, so typing starts the shapes' text.
   select: (nodeIds: string[], focus?: boolean) => void;
   editText: (nodeId: string, cell?: TableCellAddress) => void;
   startDrawing: (tool: DrawTool | null) => void;
@@ -82,10 +79,7 @@ export interface SelectionController {
   getOverlayElement: () => HTMLElement | null;
 }
 
-/**
- * A virtual element in the shape Floating UI, Base UI, and Radix accept as an
- * anchor: the selection's on-screen bounds.
- */
+/** The selection's on-screen bounds, as a virtual element Floating UI, Base UI and Radix accept as an anchor. */
 export interface SelectionAnchor {
   getBoundingClientRect: () => DOMRect;
   /** The overlay, so the anchor follows when an ancestor scrolls or resizes. */
@@ -127,10 +121,6 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
   );
 }
 
-/**
- * Carries the selection from `Presentation.Selection`, which lives inside the
- * slide, to toolbars anywhere under the same store. One per store.
- */
 export class SelectionChannel {
   private snapshot: SelectionSnapshot = IDLE_SNAPSHOT;
   private controller: SelectionController | null = null;
@@ -149,7 +139,6 @@ export class SelectionChannel {
     for (const listener of this.listeners) listener();
   }
 
-  /** Registers the mounted overlay. Returns the unregister function. */
   register(controller: SelectionController): () => void {
     this.controller = controller;
     return () => {
@@ -188,22 +177,15 @@ export interface UseSelectionResult {
   /** The table cell being edited, or `null` outside a table. */
   cell: TableCellAddress | null;
 
-  /**
-   * Cells selected by dragging across them or Shift+clicking, as their
-   * top-left and bottom-right corners. Formatting applies to all of them.
-   */
+  /** Cells selected by dragging or Shift+clicking, as their top-left and bottom-right corners. */
   cellRange: TableCellRange | null;
 
-  /**
-   * Formatting of the text being edited (in text mode), or of every selected
-   * shape's text (otherwise). `null` when the selection has no text.
-   */
+  /** Formatting of the edited text in text mode, or of every selected shape's text, or `null` without text. */
   textStyle: ActiveTextStyle | null;
 
   /**
-   * The selection's on-screen bounds, for anchoring a floating toolbar or
-   * popover to it. `null` when nothing is selected. A new object whenever the
-   * selection, its mode, or the slide changes, so a positioner re-measures.
+   * The selection's on-screen bounds for anchoring a floating toolbar, or `null` when
+   * nothing is selected. A new object whenever the bounds may change, so a positioner re-measures.
    *
    * ```tsx
    * <Popover.Positioner anchor={anchor} side="top" sideOffset={8} />
@@ -218,9 +200,8 @@ export interface UseSelectionResult {
   clear: () => void;
 
   /**
-   * Starts editing a shape's text, caret at the end. For a table, edits `cell`,
-   * or the first cell. Waits for a slide re-render, so it works right after an
-   * edit that created the shape.
+   * Starts editing a shape's text with the caret at the end, or a table's `cell` or first cell.
+   * Works right after the edit that created the shape.
    */
   editText: (nodeId: string, cell?: TableCellAddress) => void;
 
@@ -228,10 +209,8 @@ export interface UseSelectionResult {
   drawTool: DrawTool | null;
 
   /**
-   * Arms a draw tool, like Google Slides' text box and shape tools: the slide
-   * shows a crosshair, and a click places the text box or shape at its default
-   * size there, or a drag draws it (Shift keeps it square). A text box then
-   * starts editing and a shape is selected. Escape or `null` disarms it.
+   * Arms a draw tool, so a click on the slide places a text box or shape at its default
+   * size, or a drag draws it with Shift keeping it square. Escape or `null` disarms it.
    */
   startDrawing: (tool: DrawTool | null) => void;
 
@@ -253,9 +232,8 @@ export interface UseSelectionResult {
   ) => Promise<string | undefined>;
 
   /**
-   * Adds a preset shape (e.g. "rect", "ellipse") to the active slide,
-   * centered unless `position` is given, and selects it: typing then starts
-   * its text. Resolves with the new node's id.
+   * Adds a preset shape such as `"rect"` to the active slide, centered unless `position`
+   * is given, and selects it. Resolves with the new node's id.
    */
   insertShape: (
     geometry: string,
@@ -273,10 +251,8 @@ export interface UseSelectionResult {
   ) => Promise<string | undefined>;
 
   /**
-   * Inserts or deletes a row or column at the table cell being edited, keeping
-   * the caret in that cell, merges the selected `cellRange`, or splits a merged
-   * cell. Deleting a table's last row or column deletes the table. Does nothing
-   * outside a table cell.
+   * Inserts or deletes a row or column at the edited cell, merges `cellRange`, or splits a
+   * merged cell. Deleting a table's last row or column deletes the table.
    *
    * ```tsx
    * <button onClick={() => void changeTable({ type: "insertRow", side: "below" })}>
@@ -293,16 +269,12 @@ export interface UseSelectionResult {
   setTableCellStyle: (style: TableCellStyle) => Promise<void>;
 
   /**
-   * Formats text. In text mode this applies to the selected text, or to the
-   * word at the caret; otherwise to all text in the selected shapes. One undo
-   * step. Resolves once the edit is applied.
+   * Formats the selected text or the word at the caret in text mode, otherwise all text
+   * in the selected shapes, as one undo step.
    */
   setTextStyle: (style: TextStyle) => Promise<void>;
 
-  /**
-   * Formats paragraphs. In text mode this applies to the paragraphs the
-   * selection touches; otherwise to every paragraph in the selected shapes.
-   */
+  /** Formats the paragraphs the text selection touches, or every paragraph in the selected shapes. */
   setParagraphStyle: (style: ParagraphStyle) => Promise<void>;
 }
 
@@ -315,11 +287,8 @@ function requireController(channel: SelectionChannel): SelectionController {
 }
 
 /**
- * The selection of the editing overlay, and formatting commands for it.
- *
- * Works anywhere under `Presentation.Root` or `Presentation.Provider`, so a
- * toolbar outside the slide can follow the selection. Wrap that toolbar in
- * `Presentation.Controls` so pressing it doesn't clear the selection.
+ * Returns the editing overlay's selection and commands for it, anywhere under
+ * `Presentation.Root`; wrap toolbars in `Presentation.Controls` to keep the selection.
  *
  * ```tsx
  * function BoldButton() {

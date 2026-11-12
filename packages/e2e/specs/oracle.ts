@@ -1,49 +1,16 @@
 /**
- * Node-side image comparison for the oracle specs.
+ * Node-side image comparison for the oracle specs, scored with SSIM because
+ * fonts and antialiasing legitimately differ between PowerPoint and the browser.
  *
- * Screenshots and PowerPoint-exported PNGs are decoded with sharp, resized to
- * common dimensions, and scored with SSIM (structural similarity; 1 = pixel
- * identical). Fuzzy scoring is deliberate: fonts, antialiasing, and text
- * metrics legitimately differ between PowerPoint and the browser, so a
- * pixel-counting comparison would never pass. SSIM's local windows tolerate a
- * glyph landing a pixel off while still catching structural breakage.
+ * Each slide records `overall` SSIM, `worstTile` (the lowest SSIM over an 8x6
+ * grid), and `ink` (per 4x3 region, the gap between the painted share and
+ * PowerPoint's, as a proportion of PowerPoint's). Ink exists because SSIM scores
+ * blank higher than misplaced, so text collapsing to 8px can raise both SSIM
+ * numbers.
  *
- * Three numbers are recorded per slide, because SSIM alone cannot gate this.
- *
- * - `overall`: SSIM over the whole image. Sensitive to systematic drift, blunt
- *   about local damage, since most of a slide is background that matches
- *   perfectly and dilutes the mean.
- * - `worstTile`: the lowest SSIM over an 8x6 grid. Localises damage the mean
- *   absorbs, e.g. a table drawn a few pixels off.
- * - `ink`: per region of a 4x3 grid, how far the painted share of that region
- *   is from PowerPoint's, as a proportion of PowerPoint's.
- *
- * The ink measure exists because SSIM scores *blank* higher than *misplaced*:
- * two images with text half a line apart are locally anti-correlated (near
- * zero), while text against blank background merely lacks correlation (~0.5).
- * A renderer change that collapsed a paragraph into unreadable 8px text
- * therefore *improved* both SSIM numbers while destroying the slide.
- *
- * Its shape was settled by fault injection across six exported slides (hide a
- * text block, shrink one to half, hide the largest graphic, shift the slide
- * 8px, recolour the largest shape), which `pnpm faults` re-runs, and which any
- * change to these tolerances or the grid should be re-checked against:
- *
- * - Proportional, not absolute. Text paints only a few percent of a region, so
- *   an absolute coverage gap sized to one slide missed a whole text block
- *   vanishing on a sparser one.
- * - Per region against that region's own baseline, not the worst region. A max
- *   is masked by whichever region permanently sits worst, which swallowed two
- *   of the injected faults.
- * - 4x3, not 8x6. Text drifting a few pixels across a tile edge moves a small
- *   tile's ink as much as content vanishing does; at 4x3 the faults stood
- *   0.47-0.92 above control while re-runs moved 0.000.
- *
- * Known blind spots, from that same run: on an ink-dense slide, losing a
- * *small* element barely moves any region (0.003 on one of the six) and SSIM
- * does not catch it either; hiding a large background graphic can also slip
- * under every tolerance. Positional faults are the SSIM pair's job, not this
- * one's.
+ * The ink shape and tolerances were set by fault injection, so re-run
+ * `pnpm faults` after changing them. On an ink-dense slide, losing a small
+ * element or a large background graphic can still slip under every tolerance.
  */
 
 import ssim from "@blazediff/ssim/ssim";
@@ -56,34 +23,21 @@ const SPECS_DIR = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z
 export const POWERPOINT_DIR = join(SPECS_DIR, "..", "fixtures", "powerpoint");
 const BASELINES_DIR = join(SPECS_DIR, "oracle-baselines");
 
-/** Whole-image score drops beyond this tolerance fail the oracle spec. */
 export const SCORE_TOLERANCE = 0.01;
 
-/**
- * Worst-tile drops beyond this tolerance fail. Looser than the whole-image
- * tolerance because a single tile is a twentieth of the pixels, so the same
- * antialiasing difference moves it further; still far tighter than what the
- * mean can detect, since a tile is mostly the thing that broke.
- */
+// Looser than SCORE_TOLERANCE because a tile is a twentieth of the pixels, so the
+// same antialiasing difference moves it further.
 export const TILE_TOLERANCE = 0.03;
 
-/**
- * How far one region's ink may drift from PowerPoint's beyond its baseline. Reruns
- * move it 0.000 and injected content-loss faults 0.47 and up, so this sits an order
- * of magnitude below what it must catch, with room for Linux's font substitution
- * (~0.015 SSIM).
- */
+// Reruns move ink 0.000 and injected content-loss faults 0.47 and up, so this
+// sits well below what it must catch with room for Linux's font substitution.
 export const INK_TOLERANCE = 0.15;
 
-/**
- * Absolute floor, independent of baselines, for catastrophic breakage like a blank
- * slide or missing chart. The exported decks' worst slides score ~0.74 on Windows
- * (line-spacing drift, chart ticks) and bottom out at 0.705 on Linux without the
- * fonts, so 0.65 is as high as it can sit without runner variance failing it.
- */
+// Catches a blank slide or missing chart regardless of baselines. The exported
+// decks' worst slides score ~0.74 on Windows and 0.705 on Linux without the
+// fonts, so 0.65 is as high as it can sit without runner variance failing it.
 export const SCORE_FLOOR = 0.65;
 
-/** Decodes to the RGBA bytes the SSIM implementation expects. */
 async function decodeTo(buffer: Buffer, width: number, height: number): Promise<Uint8ClampedArray> {
   const data = await sharp(buffer)
     .resize(width, height, { fit: "fill" })
@@ -93,40 +47,26 @@ async function decodeTo(buffer: Buffer, width: number, height: number): Promise<
   return new Uint8ClampedArray(data);
 }
 
-/**
- * Tile grid the worst-tile score is computed over. 8x6 puts a tile at roughly
- * a sixth of the slide's height, which is large enough that text antialiasing
- * averages out and small enough that one broken region cannot hide behind the
- * background around it.
- */
+// A tile a sixth of the slide high is large enough for text antialiasing to
+// average out and small enough that a broken region cannot hide in background.
 const TILE_COLUMNS = 8;
 const TILE_ROWS = 6;
 
 export interface OracleScore {
-  /** SSIM over the whole image. */
   overall: number;
-  /** The lowest per-tile SSIM, which localises damage the mean absorbs. */
   worstTile: number;
-  /** Per 4x3 region, its painted share's proportional gap from PowerPoint's. */
   ink: number[];
 }
 
-/** A pixel this far from the slide's background tone counts as painted. */
 const INK_THRESHOLD = 24;
 
-/** Grid the ink regions are cut on. Coarse on purpose; see the file header. */
 const INK_COLUMNS = 4;
 const INK_ROWS = 3;
 
-/**
- * Share of a region PowerPoint must paint before its ink is compared. Below
- * this the region is background holding a stray glyph edge, where a
- * proportional comparison reads antialiasing as total loss. Content appearing
- * in a region PowerPoint leaves empty is the SSIM pair's to catch.
- */
+// Below this share a region is background holding a stray glyph edge, where a
+// proportional comparison reads antialiasing as total loss.
 const MIN_REGION_INK = 0.02;
 
-/** Share of painted pixels per region, against the image's own background tone. */
 async function inkPerRegion(buffer: Buffer, width: number, height: number): Promise<number[]> {
   const pixels = await sharp(buffer)
     .resize(width, height, { fit: "fill" })
@@ -156,7 +96,6 @@ async function inkPerRegion(buffer: Buffer, width: number, height: number): Prom
   return regions;
 }
 
-/** Copies one tile's RGBA bytes out of a full-image buffer. */
 function cropTile(
   source: Uint8ClampedArray,
   imageWidth: number,
@@ -173,7 +112,6 @@ function cropTile(
   return tile;
 }
 
-/** Scores a Playwright screenshot against PowerPoint's own PNG (0..1 each). */
 export async function scoreAgainstPowerPoint(
   screenshot: Buffer,
   powerPointPath: string,
@@ -217,10 +155,9 @@ export async function scoreAgainstPowerPoint(
   return { overall: ssim(actual, expected, undefined, width, height), worstTile, ink };
 }
 
-// Score baselines: one JSON file per deck, slide, browser and OS, so parallel
-// workers never write the same file. OS is in the key because text renders
-// differently per OS (Linux lacks Calibri), moving SSIM by ~0.01-0.03.
-
+// One file per deck, slide, browser and OS, so parallel workers never write the
+// same file. Text renders differently per OS (Linux lacks Calibri), moving SSIM
+// by ~0.01-0.03.
 function baselinePath(deck: string, slide: number, project: string): string {
   return join(BASELINES_DIR, process.platform, `${deck}-${slide}-${project}.json`);
 }
@@ -238,7 +175,7 @@ export function readScoreBaseline(
     recorded.worstTile === undefined ||
     recorded.ink?.length !== INK_COLUMNS * INK_ROWS
   ) {
-    // Recorded before the current metrics existed; re-record to assert again.
+    // A baseline missing a current metric asserts nothing until re-recorded.
     return null;
   }
   return { overall: recorded.overall, worstTile: recorded.worstTile, ink: recorded.ink };
@@ -259,5 +196,4 @@ export function writeScoreBaseline(
   writeFileSync(baselinePath(deck, slide, project), `${JSON.stringify(rounded, null, 2)}\n`);
 }
 
-/** True when ORACLE_UPDATE=1, so baselines are (re)recorded instead of asserted. */
 export const isUpdateMode = process.env.ORACLE_UPDATE === "1";

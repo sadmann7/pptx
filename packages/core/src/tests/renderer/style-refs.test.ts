@@ -1,7 +1,3 @@
-/**
- * Theme style references (`p:style` > fillRef/lnRef/effectRef) resolution
- * through the real parse/render pipeline.
- */
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -129,7 +125,6 @@ describe("theme line references (a:lnRef)", () => {
 
 describe("theme effect references (a:effectRef)", () => {
   it("applies an outer shadow from the theme effectStyleLst", async () => {
-    // Custom theme whose 3rd effect style carries an outer shadow.
     const fmtScheme = `<a:fmtScheme name="Office">
 <a:fillStyleLst>
 <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>

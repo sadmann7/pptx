@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 /**
- * A drag overlay mounts a second copy of a thumbnail while the original is still
- * in the list. These tests lock that the copy stays out of the list's semantics
- * and that the two never fight over one slide element. Runs under jsdom, since
+ * A drag overlay's copy of a thumbnail stays out of the list's semantics and
+ * never shares a slide element with the original. Runs under jsdom, since
  * happy-dom's XML parser drops namespaced attributes the renderer needs.
  */
 
@@ -13,11 +12,8 @@ import { Presentation } from "../index";
 import type { Store } from "../store";
 import { editableStore } from "./test-utils";
 
-/**
- * jsdom ships no IntersectionObserver, and the preview only renders once it
- * reports the element as visible. This stub reports everything as visible
- * immediately, which is what the strip sees in a normal viewport.
- */
+// jsdom ships no IntersectionObserver, and the preview only renders once it
+// reports the element as visible.
 function stubIntersectionObserver(): void {
   vi.stubGlobal(
     "IntersectionObserver",
@@ -39,11 +35,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/**
- * Lets the list's rAF-batched render queue drain. It usually clears in one tick
- * within its 8ms frame budget, but a loaded CI runner can push the rest to a
- * second frame, so a few extra ticks remove that flake.
- */
+// A loaded CI runner can push the rAF-batched render queue past one frame, so a
+// few extra ticks remove that flake.
 async function flushPreviews(): Promise<void> {
   for (let tick = 0; tick < 5; tick++) {
     await act(async () => {
@@ -58,7 +51,6 @@ function previewOf(item: Element): Element | null {
 
 interface StripProps {
   store: Store;
-  /** Slide currently "being dragged", mirrored into an overlay copy. */
   overlaySlideId?: string;
 }
 
@@ -94,7 +86,6 @@ describe("decorative thumbnail items", () => {
 
     render(<Strip store={store} overlaySlideId={slides[0].id} />);
 
-    // The copy renders, but the deck is still announced as N slides.
     expect(screen.getByTestId("overlay")).toBeTruthy();
     expect(screen.getAllByRole("option")).toHaveLength(slides.length);
 
@@ -144,11 +135,8 @@ describe("decorative thumbnail items", () => {
 });
 
 describe("previews of the same slide in two places", () => {
-  /**
-   * Mirrors a real drag: the list renders and caches its miniatures first, and
-   * only then does the overlay mount. That order matters, because the copy
-   * hits a warm cache and the shared element is the one already on screen.
-   */
+  // As in a real drag, the list caches its miniatures before the overlay mounts,
+  // so the copy hits a warm cache holding the element already on screen.
   it("renders its own element rather than taking the one already on screen", async () => {
     stubIntersectionObserver();
     const store = await editableStore();
@@ -167,7 +155,6 @@ describe("previews of the same slide in two places", () => {
     const overlay = previewOf(screen.getByTestId("overlay"));
     expect(overlay?.firstElementChild).toBeTruthy();
     expect(overlay?.firstElementChild).not.toBe(cachedElement);
-    // The list item keeps the element it was already showing.
     expect(original?.firstElementChild).toBe(cachedElement);
   });
 

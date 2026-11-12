@@ -204,7 +204,6 @@ describe("applyAxisInfo", () => {
       "category",
     );
     expect(def.axisLabel).toMatchObject({ show: false });
-    // axis line itself remains visible.
     expect(def.axisLine).toMatchObject({ show: true });
   });
 

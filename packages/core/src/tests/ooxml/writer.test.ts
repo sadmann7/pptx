@@ -1,10 +1,3 @@
-/**
- * Round-trip tests for package retention (`keepSourcePackage`) and `writePptx()`.
- *
- * The core guarantee under test: opening a deck and saving it without edits
- * reproduces every part byte-for-byte, and editing one part re-serializes
- * only that part while everything else still passes through untouched.
- */
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
@@ -92,7 +85,6 @@ describe("writePptx", () => {
 
     expect(slideXml).toContain("After edit");
     expect(slideXml).not.toContain("Before edit");
-    // Original XML declaration is preserved on the re-serialized part.
     expect(slideXml.startsWith('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')).toBe(
       true,
     );
@@ -102,7 +94,6 @@ describe("writePptx", () => {
       expect(roundTripped.get(path), path).toEqual(originalBytes);
     }
 
-    // The edit is visible when the saved file is opened again.
     const reopened = buildPresentation(await readPptx(saved.slice().buffer));
     const serialized = serializePresentation(reopened);
     expect(JSON.stringify(serialized)).toContain("After edit");

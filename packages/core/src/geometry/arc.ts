@@ -1,4 +1,4 @@
-/** Converts an OOXML arc (angles in degrees) to an SVG path. Based on PPTXjs shapeArc(). */
+// Angles are in degrees. Based on PPTXjs shapeArc().
 export function shapeArc(
   cx: number,
   cy: number,
@@ -17,12 +17,11 @@ export function shapeArc(
   const y2 = cy + ry * Math.sin(endRad);
 
   // OOXML convention: always sweep clockwise from startAngle to endAngle.
-  // Compute the clockwise sweep in degrees, handling angle wrapping.
   let sweepDeg = (((endAngle - startAngle) % 360) + 360) % 360;
   if (sweepDeg === 0 && startAngle !== endAngle) sweepDeg = 360;
 
   const largeArc = sweepDeg > 180 ? 1 : 0;
-  const sweep = 1; // always clockwise.
+  const sweep = 1;
 
   let d = `M${x1},${y1} A${rx},${ry} 0 ${largeArc},${sweep} ${x2},${y2}`;
   if (isClose) {

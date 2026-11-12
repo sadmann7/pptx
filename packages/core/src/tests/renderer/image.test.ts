@@ -1,10 +1,4 @@
-/**
- * Picture rendering (image-renderer) with a real embedded PNG resolved
- * through slide rels and zip media parts.
- *
- * happy-dom performs no image decoding, so assertions target the synchronous
- * DOM output: <img> elements, blob URLs, crop scaling, and SVG clip structure.
- */
+// happy-dom decodes no images, so assertions target the synchronous DOM output.
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
@@ -111,7 +105,6 @@ describe("picture geometry clipping", () => {
       pic(SIMPLE_BLIP, `<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>`),
     );
 
-    // No plain <img>: the picture becomes an SVG <image> clipped by the preset path.
     expect(element.querySelector("img")).toBeNull();
     const svg = element.querySelector("svg")!;
     expect(svg).not.toBeNull();

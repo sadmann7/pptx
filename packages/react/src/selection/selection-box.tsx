@@ -17,7 +17,6 @@ const FRAME_GRAB_SIZE = 10;
 
 const FRAME_GRAB_INSET = FRAME_GRAB_SIZE / 2;
 
-/** Top, bottom, left, and right frame grab hitboxes straddling the selection border. */
 const FRAME_GRAB_HITBOXES: React.CSSProperties[] = [
   {
     left: -FRAME_GRAB_INSET,
@@ -91,9 +90,7 @@ export const SelectionBox = React.forwardRef<HTMLDivElement, SelectionBoxProps>(
       useSelectionParts(SELECTION_BOX_NAME);
 
     const isTextMode = state.mode === "text";
-    // Handles hide once a drag is actually under way, not merely on pointer-down:
-    // a press that only toggles the selection (Shift+click) would otherwise blink
-    // them off and back on.
+    // Not on pointer-down, or a Shift+click that only toggles the selection blinks the handles.
     const isDragging = state.mode === "move" && state.moved;
     const isRotating = state.mode === "rotate";
 
@@ -186,11 +183,7 @@ interface FrameGrabHitboxesProps {
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
-/**
- * Invisible grab hitboxes straddling the selection frame while editing text.
- * Dragging them moves the shape (PowerPoint: grab the frame to move).
- * Each hitbox extends both inward and outward from the border line.
- */
+// While editing text, dragging the frame moves the shape, as in PowerPoint.
 function FrameGrabHitboxes({ hitboxes, onPointerDown }: FrameGrabHitboxesProps) {
   return (
     <>

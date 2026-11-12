@@ -1,14 +1,7 @@
 /**
- * Head-to-head benchmark: this parser vs @aiden0z/pptx-renderer.
+ * Run with `pnpm -F "@diceui/pptx-core" bench`.
  *
- * Run with: pnpm -F "@diceui/pptx-core" bench
- *
- * Both sides receive the identical ArrayBuffer produced by generateDeck(),
- * so the comparison is purely parser throughput, not fixture differences.
- *
- * jsdom is used instead of happy-dom because the upstream package calls
- * Element.lookupNamespaceURI() unconditionally: a method happy-dom doesn't
- * implement. This package guards it with optional chaining; upstream doesn't.
+ * jsdom, because the upstream package calls `Element.lookupNamespaceURI()`, which happy-dom lacks.
  *
  * @vitest-environment jsdom
  */
@@ -30,13 +23,10 @@ import { DECK_SPECS, generateDeck } from "../fixtures/bench-decks";
 const mediumBuffer = await generateDeck(DECK_SPECS.medium);
 const largeBuffer = await generateDeck(DECK_SPECS.large);
 
-// Pre-parse files for stages that only benchmark a single step.
 const mediumFilesOurs = await readPptx(mediumBuffer);
 const largeFilesOurs = await readPptx(largeBuffer);
 const mediumFilesUpstream = await upstreamParseZip(mediumBuffer);
 const largeFilesUpstream = await upstreamParseZip(largeBuffer);
-
-// ─── readPptx ────────────────────────────────────────────────────────────────.
 
 describe("readPptx: medium (20 slides)", () => {
   bench("ours", async () => {
@@ -65,8 +55,6 @@ describe("readPptx lazyMedia: large (100 slides)", () => {
   });
 });
 
-// ─── buildPresentation ───────────────────────────────────────────────────────.
-
 describe("buildPresentation: medium", () => {
   bench("ours", () => {
     ourBuild(mediumFilesOurs);
@@ -84,8 +72,6 @@ describe("buildPresentation: large", () => {
     upstreamBuild(largeFilesUpstream);
   });
 });
-
-// ─── end-to-end load (buffer → first slide ready) ────────────────────────────.
 
 describe("time-to-first-slide: medium", () => {
   bench("ours", async () => {
@@ -113,7 +99,6 @@ describe("time-to-first-slide: large", () => {
   });
 });
 
-// ─── full-deck materialization ────────────────────────────────────────────────
 // Skipped for upstream: jsdom's DOM node allocations for 100 slides × repeated
 // rounds exhaust the default Node heap (~4 GB). The per-slide cost can be
 // inferred from time-to-first-slide above times slide count.

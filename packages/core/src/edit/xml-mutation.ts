@@ -10,13 +10,11 @@ const DEFAULT_XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone
 
 let sharedSerializer: XMLSerializer | undefined;
 
-/** Insert `el` into `parent` before `ref` (append when `ref` is null). */
 export function insertChild(parent: Element, el: Element, ref: Element | null): void {
   parent.insertBefore(el, ref);
   invalidateChildIndex(parent);
 }
 
-/** Remove `el` from its parent. Returns the parent for later re-insertion. */
 export function removeChild(el: Element): Element | null {
   const parent = el.parentElement;
   el.remove();
@@ -24,7 +22,6 @@ export function removeChild(el: Element): Element | null {
   return parent;
 }
 
-/** Set an attribute, or remove it when `value` is undefined. */
 export function setOrRemoveAttr(el: Element, name: string, value: string | undefined): void {
   if (value === undefined) {
     el.removeAttribute(name);
@@ -33,10 +30,7 @@ export function setOrRemoveAttr(el: Element, name: string, value: string | undef
   }
 }
 
-/**
- * Serializes a mutated XML document root back to part text, preserving the
- * original part's `<?xml ...?>` declaration.
- */
+// XMLSerializer drops the `<?xml ...?>` declaration, so the original one is kept.
 export function serializePartText(root: Element, originalText: string): string {
   sharedSerializer ??= new XMLSerializer();
   const declaration = /^<\?xml.*?\?>\r?\n?/.exec(originalText)?.[0] ?? DEFAULT_XML_DECLARATION;

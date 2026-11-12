@@ -8,7 +8,6 @@ const EMR_EOF = 14;
 const EMR_COMMENT = 70;
 const EMR_STRETCHDIBITS = 81;
 
-// GDI comment identifiers (MS-EMF spec).
 const GDIC_COMMENT_ID = 0x43494447; // "GDIC".
 const GDIC_BEGINGROUP = 0x00000002;
 const GDIC_MULTIFORMATS = 0x40000004;
@@ -22,11 +21,8 @@ const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46]; // "%%EOF".
 const BI_RGB = 0;
 const MAX_EMF_BITMAP_PIXELS = 16_777_216;
 
-/**
- * Extracts the content embedded in an EMF, without interpreting its drawing
- * records. PPTX OLE previews are usually EMFs wrapping a PDF in a GDI comment
- * or a bitmap in a STRETCHDIBITS record.
- */
+// PPTX OLE previews are usually EMFs wrapping a PDF in a GDI comment or a
+// bitmap in a STRETCHDIBITS record, so drawing records aren't interpreted.
 export function parseEmfContent(data: Uint8Array): EmfContent {
   if (data.length < 44) return { type: "unsupported" };
 
@@ -62,7 +58,7 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
     offset += recordSize;
   }
 
-  // Only HEADER + EOF → empty.
+  // The header and EOF records alone make an empty EMF.
   if (recordCount <= 2) {
     return { type: "empty" };
   }
@@ -96,7 +92,6 @@ function parseGdiComment(
     }
   }
 
-  // Also search non-GDIC comments for raw PDF data.
   if (recordSize > 100) {
     const recordData = data.subarray(offset + 8, offset + recordSize);
     const pdf = extractPdfFromBuffer(recordData);
@@ -153,7 +148,6 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   }
 
   if (pdfEnd === -1) {
-    // No %%EOF found: take everything from %PDF to end of buffer.
     pdfEnd = buf.length;
   }
 
@@ -182,7 +176,6 @@ function parseStretchDibits(
   const bmiStart = offset + offBmiSrc;
   if (bmiStart + 40 > data.length) return null;
 
-  // Parse BITMAPINFOHEADER.
   const biWidth = view.getInt32(bmiStart + 4, true);
   const biHeight = view.getInt32(bmiStart + 8, true);
   const biBitCount = view.getUint16(bmiStart + 14, true);
@@ -222,9 +215,9 @@ function parseStretchDibits(
       if (srcIdx + bytesPerPixel > bitsData.length) break;
 
       // DIB stores BGR(A).
-      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2]; // R.
-      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1]; // G.
-      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0]; // B.
+      imageData.data[dstOffset + x * 4 + 0] = bitsData[srcIdx + 2];
+      imageData.data[dstOffset + x * 4 + 1] = bitsData[srcIdx + 1];
+      imageData.data[dstOffset + x * 4 + 2] = bitsData[srcIdx + 0];
       imageData.data[dstOffset + x * 4 + 3] = biBitCount === 32 ? bitsData[srcIdx + 3] : 255;
     }
   }

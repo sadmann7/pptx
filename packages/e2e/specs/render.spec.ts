@@ -12,8 +12,7 @@ test.describe("basic deck", () => {
 });
 
 test.describe("BOM-prefixed relationship parts (Open XML SDK output)", () => {
-  // Regression: a UTF-8 BOM in .rels parts made Chromium's DOMParser reject
-  // the XML, so every slide rendered blank (Firefox was tolerant).
+  // Chromium's DOMParser rejects XML behind a UTF-8 BOM, which Firefox tolerates.
   test("renders instead of producing an empty deck", async ({ page }) => {
     await openSlide(page, "bom-rels.pptx", 0);
 
@@ -38,10 +37,8 @@ test.describe("tables and groups deck", () => {
 });
 
 test.describe("charts nested under ppt/slides/charts/ with literal data", () => {
-  // Regressions covered:
-  // - chart parts at non-standard depths were not categorized ("Chart not found")
-  // - c:strLit/c:numLit literal data produced empty series (all-white charts)
-  // - noFill axis/plot-area lines fell back to ECharts' default gray lines.
+  // The deck holds chart parts at a non-standard depth, c:strLit/c:numLit literal
+  // data, and noFill axis lines that must not fall back to ECharts' gray.
   test("renders the doughnut chart", async ({ page }) => {
     await openSlide(page, "nested-charts.pptx", 0);
 

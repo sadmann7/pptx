@@ -2,26 +2,20 @@ import { Config } from "@remotion/cli/config";
 import { enableTailwind } from "@remotion/tailwind-v4";
 import path from "node:path";
 
-// Slide backgrounds are long, low-contrast gradients that PowerPoint dithers,
-// and so does Chromium, by alternating between two adjacent levels per pixel.
-// The default quality of 80 quantizes that dither away and leaves the ramp
-// visibly banded; 100 keeps it, and stays far cheaper to write than png frames.
+// PowerPoint and Chromium dither long gradient backgrounds, and the default
+// JPEG quality of 80 quantizes that dither into visible bands.
 Config.setVideoImageFormat("jpeg");
 Config.setJpegQuality(100);
 Config.setOverwriteOutput(true);
-// The showcase board sits under a 3D transform, which hands its slides to
-// Chromium's compositor. The default software backend draws gradients there
-// without dithering, so those same ramps quantize into 4px bands; ANGLE dithers.
+// The showcase's 3D transform hands slides to Chromium's compositor, whose
+// default software backend draws gradients without dithering; ANGLE dithers.
 Config.setChromiumOpenGlRenderer("angle");
-// h264 spends its bits on the moving foreground and flattens the near-static
-// dark ramps into bands. Buying the ramps a finer quantizer costs twice the file
-// for the same result as simply letting x264 search harder at the default crf.
+// At the default preset, h264 flattens the near-static dark ramps into bands,
+// and a finer quantizer costs twice the file for the same result.
 Config.setX264Preset("slower");
-// Remotion muxes a silent AAC track into the mp4 even though nothing here plays
-// audio, and it defaults to ~317 kbps of silence. This keeps that track cheap.
+// Remotion muxes a silent AAC track into the mp4 at ~317 kbps by default.
 Config.setAudioBitrate("32K");
-// Defaults to 8 of the 24 threads this renders on; frame capture is the bulk of
-// the wall clock and scales with it.
+// The default uses 8 of 24 threads, and frame capture scales with more.
 Config.setConcurrency("75%");
 Config.overrideWebpackConfig((config) => {
   const withTailwind = enableTailwind(config);
