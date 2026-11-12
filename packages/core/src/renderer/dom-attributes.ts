@@ -17,7 +17,7 @@ export const PPTX_ATTRS = {
   placeholderEmpty: "data-pptx-placeholder-empty",
   /** Text container shrunk by `normAutofit`; the value is the font scale (0–1). */
   fontScale: "data-pptx-font-scale",
-  /** Table cell; the value is its row and column, e.g. "0,2". */
+  /** Table cell; the value is "row,column". */
   cell: "data-pptx-cell",
   /** Line break that only holds an empty paragraph open, not a line break in the text. */
   emptyLine: "data-pptx-empty-line",

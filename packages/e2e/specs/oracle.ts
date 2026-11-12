@@ -1,49 +1,16 @@
 /**
- * Node-side image comparison for the oracle specs.
+ * Node-side image comparison for the oracle specs, scored with SSIM because
+ * fonts and antialiasing legitimately differ between PowerPoint and the browser.
  *
- * Screenshots and PowerPoint-exported PNGs are decoded with sharp, resized to
- * common dimensions, and scored with SSIM (structural similarity; 1 = pixel
- * identical). Fuzzy scoring is deliberate: fonts, antialiasing, and text
- * metrics legitimately differ between PowerPoint and the browser, so a
- * pixel-counting comparison would never pass. SSIM's local windows tolerate a
- * glyph landing a pixel off while still catching structural breakage.
+ * Each slide records `overall` SSIM, `worstTile` (the lowest SSIM over an 8x6
+ * grid), and `ink` (per 4x3 region, the gap between the painted share and
+ * PowerPoint's, as a proportion of PowerPoint's). Ink exists because SSIM scores
+ * blank higher than misplaced, so text collapsing to 8px can raise both SSIM
+ * numbers.
  *
- * Three numbers are recorded per slide, because SSIM alone cannot gate this.
- *
- * - `overall`: SSIM over the whole image. Sensitive to systematic drift, blunt
- *   about local damage, since most of a slide is background that matches
- *   perfectly and dilutes the mean.
- * - `worstTile`: the lowest SSIM over an 8x6 grid. Localises damage the mean
- *   absorbs, e.g. a table drawn a few pixels off.
- * - `ink`: per region of a 4x3 grid, how far the painted share of that region
- *   is from PowerPoint's, as a proportion of PowerPoint's.
- *
- * The ink measure exists because SSIM scores *blank* higher than *misplaced*:
- * two images with text half a line apart are locally anti-correlated (near
- * zero), while text against blank background merely lacks correlation (~0.5).
- * A renderer change that collapsed a paragraph into unreadable 8px text
- * therefore *improved* both SSIM numbers while destroying the slide.
- *
- * Its shape was settled by fault injection across six exported slides (hide a
- * text block, shrink one to half, hide the largest graphic, shift the slide
- * 8px, recolour the largest shape), which `pnpm faults` re-runs, and which any
- * change to these tolerances or the grid should be re-checked against:
- *
- * - Proportional, not absolute. Text paints only a few percent of a region, so
- *   an absolute coverage gap sized to one slide missed a whole text block
- *   vanishing on a sparser one.
- * - Per region against that region's own baseline, not the worst region. A max
- *   is masked by whichever region permanently sits worst, which swallowed two
- *   of the injected faults.
- * - 4x3, not 8x6. Text drifting a few pixels across a tile edge moves a small
- *   tile's ink as much as content vanishing does; at 4x3 the faults stood
- *   0.47-0.92 above control while re-runs moved 0.000.
- *
- * Known blind spots, from that same run: on an ink-dense slide, losing a
- * *small* element barely moves any region (0.003 on one of the six) and SSIM
- * does not catch it either; hiding a large background graphic can also slip
- * under every tolerance. Positional faults are the SSIM pair's job, not this
- * one's.
+ * The ink shape and tolerances were set by fault injection, so re-run
+ * `pnpm faults` after changing them. On an ink-dense slide, losing a small
+ * element or a large background graphic can still slip under every tolerance.
  */
 
 import ssim from "@blazediff/ssim/ssim";

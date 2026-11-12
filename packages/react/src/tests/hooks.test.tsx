@@ -96,9 +96,8 @@ describe("usePresentationStore", () => {
       return null;
     }
 
-    // No provider and no `useCreatePresentationStore`: this hook is the only
-    // way to drive the deck imperatively in this arrangement. No `file` here,
-    // so nothing loads; reaching the store is the whole point.
+    // Without a provider or `useCreatePresentationStore`, this hook is the only
+    // way to reach the store.
     render(
       <Presentation.Root>
         <Probe />

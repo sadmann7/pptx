@@ -31,10 +31,8 @@ for (const { name: deck, slides } of ALL_DECKS) {
         const project = testInfo.project.name;
         const baseline = readScoreBaseline(deck, slide, project);
 
-        // Baselines are per platform (fonts and antialiasing move SSIM by 0.01-0.03), so
-        // without recorded ones this skips before rendering, which is the spec's whole
-        // cost; record with "pnpm test:oracle-update". Blank or broken slides are still
-        // caught by exported-decks.spec.ts and the screenshot specs.
+        // Baselines are per platform, since fonts and antialiasing move SSIM by
+        // 0.01-0.03. Without one this skips before rendering, the spec's whole cost.
         test.skip(
           !isUpdateMode && baseline === null,
           `No oracle baseline for ${deck} slide ${slide} (${project}, ${process.platform})`,

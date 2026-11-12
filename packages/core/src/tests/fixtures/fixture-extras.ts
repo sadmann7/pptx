@@ -1,17 +1,8 @@
-/**
- * Extended in-memory .pptx fixture builder for plumbing/utility tests.
- *
- * Complements ./minimal-pptx.ts (which stays untouched) with knobs the
- * package-plumbing tests need: multiple slides, custom master clrMap,
- * layout clrMapOvr, theme font typefaces, and arbitrary extra zip entries
- * (media, embedded fonts, tableStyles.xml, ...).
- */
 import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 export interface CustomPptxOptions {
-  // One entry per slide.
   slides?: string[];
   masterClrMapAttrs?: string;
   masterBgXml?: string;
@@ -23,7 +14,6 @@ export interface CustomPptxOptions {
   minorLatin?: string;
   // Extra XML for the theme's majorFont, such as script fonts.
   majorFontExtraXml?: string;
-  // Added verbatim.
   extraFiles?: Record<string, string | Uint8Array>;
   // Replaces [Content_Types].xml wholesale, such as with malformed text.
   contentTypesXml?: string;

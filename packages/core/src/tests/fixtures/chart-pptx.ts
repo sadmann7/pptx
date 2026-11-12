@@ -1,11 +1,3 @@
-/**
- * In-memory .pptx fixture builders for chart tests.
- *
- * Extends the minimal single-slide package from `minimal-pptx.ts` with a chart
- * part (ppt/charts/chart1.xml), the slide relationship pointing at it, and the
- * [Content_Types].xml override so chart graphicFrames flow through the real
- * parse pipeline (`readPptx` → `buildPresentation` → `renderSlide`).
- */
 import JSZip from "jszip";
 
 import { buildPresentation } from "../../model/presentation";

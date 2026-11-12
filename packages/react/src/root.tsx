@@ -175,7 +175,6 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
   }, [store]);
 
   React.useEffect(() => {
-    // `undefined` leaves the store to an owner such as `Presentation.Provider`.
     if (file === undefined) return;
     if (file === null) {
       store.reset();
@@ -190,7 +189,6 @@ export const Root = React.forwardRef<HTMLDivElement, RootProps>(function Root(
       })
       .then(() => onLoadRef.current?.(store))
       .catch((err: unknown) => {
-        // A newer `load()` superseded this one.
         if (err instanceof DOMException && err.name === "AbortError") return;
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });

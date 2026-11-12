@@ -298,7 +298,7 @@ export function renderThumbnail(
       try {
         container.appendChild(renderNode(node, ctx));
       } catch {
-        // Non-fatal; skip failed nodes silently in thumbnail mode.
+        // Non-fatal.
       }
     }
   } catch {

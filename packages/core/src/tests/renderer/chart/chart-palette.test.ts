@@ -45,7 +45,6 @@ describe("buildChartPalette", () => {
       "#111111",
       "#222222",
     ]);
-    // Without a matching path the theme accents win.
     expect(buildChartPalette(chartXml, ctxWithColors, "ppt/charts/other.xml")).toEqual(
       OFFICE_ACCENTS,
     );

@@ -268,7 +268,6 @@ export function renderGroup(
         }
       }
 
-      // Overlap the 3 pie sectors at the same center so they form one circle.
       if (pieCommon && index < 3 && childNode.nodeType === "shape") {
         const origW = childNode.size.w;
         const origH = childNode.size.h;

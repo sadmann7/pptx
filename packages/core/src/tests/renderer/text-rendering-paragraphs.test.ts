@@ -119,7 +119,6 @@ describe("line breaks (a:br)", () => {
     const spans = spansOf(paragraph);
     expect(spans.map((s) => s.textContent)).toEqual(["first", "second"]);
     expect(paragraph.querySelectorAll("br")).toHaveLength(1);
-    // The <br> sits between the two run spans.
     const childTags = [...paragraph.children].map((child) => child.tagName.toLowerCase());
     expect(childTags).toEqual(["span", "br", "span"]);
   });
@@ -132,7 +131,6 @@ describe("line breaks (a:br)", () => {
       </a:p>`,
     );
     const [paragraph] = paragraphsOf(element);
-    // No <br>: each line lives in its own block wrapper with the exact height.
     expect(paragraph.querySelectorAll("br")).toHaveLength(0);
     const lines = [...paragraph.children].filter((c) => c.tagName.toLowerCase() === "div");
     expect(lines).toHaveLength(2);

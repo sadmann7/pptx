@@ -113,7 +113,6 @@ describe("group flips and rotation", () => {
 
     const shapeWrapper = shapeWrapperByFill(element, "#ed7d31");
     expect(shapeWrapper.style.left).toBe("96px");
-    // The flip is propagated to the child instead of mirroring the group DOM.
     expect(shapeWrapper.style.transform).toContain("scaleX(-1)");
     const groupWrapper = shapeWrapper.parentElement as HTMLElement;
     expect(groupWrapper.style.transform).not.toContain("scaleX");

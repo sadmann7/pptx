@@ -115,7 +115,6 @@ export class AdaptiveHuffman {
     return symbol;
   }
 
-  // Used by tests.
   encode(symbol: number): number[] {
     if (symbol < 0 || symbol >= this.range) fail("INVALID_MTX", `Symbol ${symbol} outside tree`);
     let node = this.symbolIndex[symbol]!;

@@ -1,11 +1,6 @@
 /**
- * Reads a screenshot at the pixel level.
- *
- * A hairline that looks wrong is usually a coverage problem rather than a
- * colour one: it lands between device pixels and is spread across two of them
- * at partial alpha, which reads as a washed-out line tinted by whatever it sits
- * on. Only the actual channel values across the line tell that apart from a
- * genuinely wrong colour, so the border specs assert on them directly.
+ * A hairline between device pixels spreads across two at partial alpha, and
+ * only the channel values across it tell that apart from a wrong colour.
  */
 import sharp from "sharp";
 

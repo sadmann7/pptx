@@ -1,10 +1,6 @@
 /**
- * Thumbnail-list perf harness.
- *
- * Mounts the real `Presentation.ThumbnailList` in a fixed-height scroller so
- * thumbnail-perf.spec.ts can scroll it like a user does and count how many
- * previews are still skeletons (`[data-pending]`) while it moves. The specs
- * drive it through the window globals in globals.d.ts.
+ * Mounts the real `Presentation.ThumbnailList` in a fixed-height scroller for
+ * thumbnail-perf.spec.ts to scroll.
  *
  * Query params:
  *   file   deck to load, served from fixtures/ (or decks/ for local decks)

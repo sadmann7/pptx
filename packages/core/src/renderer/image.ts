@@ -943,8 +943,8 @@ function applyDuotoneFilter(
 
 // `bright` is an additive offset and `contrast` a multiplier, both in 1/100000 units.
 function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
-  const bright = (lum.numAttr("bright") ?? 0) / 100000; // 0–1.
-  const contrast = (lum.numAttr("contrast") ?? 0) / 100000; // -1 to 1.
+  const bright = (lum.numAttr("bright") ?? 0) / 100000;
+  const contrast = (lum.numAttr("contrast") ?? 0) / 100000;
 
   if (bright === 0 && contrast === 0) return;
 
@@ -986,7 +986,7 @@ function applyLumEffect(lum: SafeXmlNode, img: HTMLImageElement): void {
 }
 
 function applyBiLevelEffect(biLevel: SafeXmlNode, img: HTMLImageElement): void {
-  const thresh = (biLevel.numAttr("thresh") ?? 50000) / 100000; // 0–1.
+  const thresh = (biLevel.numAttr("thresh") ?? 50000) / 100000;
 
   const apply = () => {
     const w = img.naturalWidth;

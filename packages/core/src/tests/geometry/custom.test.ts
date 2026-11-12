@@ -114,7 +114,6 @@ describe("renderCustomGeometry with gdLst guides", () => {
   });
 
   it("resolves guide-referencing arcTo radii and angles", () => {
-    // Half-circle: start at (0, vc), sweep 180° with radii wd2/hd2.
     const geom = custGeom(`
       <a:gdLst>
         <a:gd name="stAngG" fmla="val 10800000"/>

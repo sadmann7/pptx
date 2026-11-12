@@ -55,8 +55,7 @@ describe("load", () => {
 
   it("becomes ready with no active slide when the deck has no slides", async () => {
     const store = createStore();
-    // The index clamps against `slides.length - 1`, so an empty deck crosses
-    // the bounds: it has to end up with no active slide, not a bogus index.
+    // The index clamps against `slides.length - 1`, which is -1 for an empty deck.
     await store.load(await buildMinimalPptx(0), { defaultSlideIndex: 2 });
     const state = store.getState();
     expect(state.status).toBe("ready");
@@ -146,7 +145,7 @@ describe("navigation", () => {
     expect(store.getActiveSlideIndex()).toBe(2);
     expect(store.canGoNext()).toBe(false);
 
-    store.next(); // no-op on last slide.
+    store.next();
     expect(store.getActiveSlideIndex()).toBe(2);
 
     store.prev();
@@ -276,7 +275,6 @@ describe("reset and subscriptions", () => {
     store.next();
     expect(notifications).toBe(1);
 
-    // No state change → no notification.
     store.setZoom(store.getState().zoom);
     expect(notifications).toBe(1);
 
@@ -316,7 +314,7 @@ describe("statusChange and zoomChange events", () => {
     store.on("zoomChange", ({ zoom }) => zooms.push(zoom));
 
     store.zoomIn();
-    store.setZoom(1.25); // No-op: already there.
+    store.setZoom(1.25);
     store.fitTo(640, 360);
     expect(zooms).toEqual([1.25, 0.5]);
   });

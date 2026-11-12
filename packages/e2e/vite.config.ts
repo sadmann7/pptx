@@ -15,9 +15,8 @@ function resolveDeck(url: string): string | undefined {
     return undefined;
   }
 
-  // Leading slashes would make an absolute path of their own; anything that
-  // still resolves outside decks/ (traversal, a drive letter) fails the check
-  // below rather than being pattern-matched here.
+  // Anything still resolving outside decks/, such as traversal or a drive
+  // letter, fails the containment check below.
   const path = resolve(DECKS_DIR, requested.replace(/^[/\\]+/, ""));
   if (!path.startsWith(DECKS_DIR + sep)) return undefined;
   return existsSync(path) ? path : undefined;

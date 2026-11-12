@@ -46,7 +46,6 @@ function shapeOn(pres: PresentationData, slideIndex: number, nodeId: string): Sh
   return node as ShapeNodeData;
 }
 
-/** `[text, b, i, sz, color, typeface]` per run of one paragraph. */
 function runSummary(shape: ShapeNodeData, paragraphIndex = 0) {
   return shape.textBody!.paragraphs[paragraphIndex].runs.map((r) => [
     r.text,

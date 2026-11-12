@@ -234,7 +234,7 @@ ${seriesXml(0, "Solo", ["A", "B"], [1, 2])}
 </c:barChart>
 </c:plotArea>`);
     const { option } = parseOption(xml) as AnyRecord;
-    // darkened accent palette cycles per point.
+    // Darkened accent palette cycles per point.
     expect(option.series[0].data[0]).toMatchObject({ itemStyle: { color: "#3c64ac" } });
   });
 
@@ -659,7 +659,6 @@ describe("renderChart via renderSlide (happy-dom)", () => {
     expect(wrapper.style.width).toBe("640px");
     expect(wrapper.style.height).toBe("480px");
 
-    // No ECharts instance is created in the detached happy-dom container.
     expect(handle.element.querySelector("canvas")).toBeNull();
     handle.dispose();
   });

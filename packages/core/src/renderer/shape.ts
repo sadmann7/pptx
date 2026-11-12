@@ -2077,7 +2077,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
               extraPath.setAttribute("mask", `url(#${maskId})`);
             }
           } else if (sp.stroke && !lineIsNoFill) {
-            // A detail line in the fill color would vanish, e.g. chartX diagonals.
+            // A detail line in the fill color would vanish.
             const detailStroke = baseRgb ? mixRgb(baseRgb, { r: 0, g: 0, b: 0 }, 0.55) : "#666666";
             extraPath.setAttribute("stroke", detailStroke);
             extraPath.setAttribute("stroke-width", "1");
@@ -2235,7 +2235,6 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         !!hasSpAutoFit && !hasNormAutofit && isSingleLineTextBody(node.textBody);
       const hasCenteredParagraphs = hasExplicitCenteredParagraph(node.textBody);
 
-      // Layout/master bodyPr fills in missing attributes.
       {
         if (bodyPr) {
           if (textWrap === "none") {
@@ -2318,7 +2317,7 @@ export function renderShape(node: ShapeNodeData, ctx: RenderContext): HTMLElemen
         }
       }
 
-      // Diagram text can carry its own txXfrm rotation; apply it inside the shape wrapper.
+      // Diagram text can carry its own txXfrm rotation.
       if (node.textBoxBounds?.rotation && node.textBoxBounds.rotation !== 0) {
         appendTransform(textContainer, `rotate(${node.textBoxBounds.rotation}deg)`);
         textContainer.style.transformOrigin = "center center";

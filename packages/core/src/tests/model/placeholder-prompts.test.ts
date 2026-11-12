@@ -5,7 +5,6 @@ import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
 
-// Layout title placeholder with prompt text, plus a promptless sldNum placeholder.
 const LAYOUT_SHAPES = `<p:sp>
 <p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr><p:ph type="title" hasCustomPrompt="1"/></p:nvPr></p:nvSpPr>
 <p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="4572000" cy="914400"/></a:xfrm></p:spPr>
@@ -17,8 +16,6 @@ const LAYOUT_SHAPES = `<p:sp>
 <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:fld id="{00000000-0000-0000-0000-000000000000}" type="slidenum"/></a:p></p:txBody>
 </p:sp>`;
 
-// Slide placeholders with empty text bodies (ctrTitle inherits from layout title,
-// sldNum from the layout sldNum).
 const EMPTY_CTR_TITLE = `<p:sp>
 <p:nvSpPr><p:cNvPr id="10" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr><p:ph type="ctrTitle"/></p:nvPr></p:nvSpPr>
 <p:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>

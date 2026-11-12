@@ -1,8 +1,3 @@
-/**
- * An editor toolbar outside the slide: `data-presentation-controls` keeps the
- * selection and text editing alive while it is pressed, and `useSelection`
- * reads and formats what is selected.
- */
 import * as React from "react";
 import { act } from "react";
 

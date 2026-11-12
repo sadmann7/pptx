@@ -144,14 +144,14 @@ function getWorker(workerKey: string): Worker | null {
       if (!entry) return;
       state.pending.delete(id);
       if (error) {
-        entry.resolve(null); // A worker-side error counts as "no result".
+        entry.resolve(null);
       } else {
         entry.resolve(blob ?? null);
       }
     };
 
     state.worker.onerror = () => {
-      // Worker failed to initialize (e.g. module import blocked by CSP).
+      // Fires when the worker fails to initialize, such as when CSP blocks the module import.
       state.failed = true;
       state.worker = null;
       for (const [, entry] of state.pending) {
@@ -202,7 +202,6 @@ function renderInWorker(
   });
 }
 
-// Returns null when rendering fails or Worker or OffscreenCanvas is unavailable.
 export async function renderPdfToImage(
   pdfData: Uint8Array,
   width: number,

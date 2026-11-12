@@ -74,7 +74,6 @@ describe("connector strokes and geometry", () => {
 <a:ln w="12700"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>`,
     );
     const path = mainPath(element);
-    // The line runs bottom-left to top-right.
     expect(path.getAttribute("d")).toBe("M0,96 L192,0");
     const wrapper = element.querySelector("svg")?.closest("div") as HTMLElement;
     expect(wrapper.style.transform).not.toContain("scale");
@@ -104,7 +103,6 @@ describe("connector arrowheads (headEnd/tailEnd)", () => {
       expect(marker.getAttribute("orient")).toBe("auto");
     }
 
-    // Head arrow points backward, tail arrow points forward; both use stroke color.
     const headId = markerStart!.slice(5, -1);
     const head = markers.find((m) => m.getAttribute("id") === headId)!;
     expect(head.querySelector("polygon")!.getAttribute("points")).toBe("0,5 10,0 10,10");

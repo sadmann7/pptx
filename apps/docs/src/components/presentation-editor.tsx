@@ -1839,9 +1839,8 @@ function SortableThumbnailItem({ slideId, actions, isMenuOpen }: SortableThumbna
       slideId={slideId}
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      // The overlay carries the thumbnail during the drag, so what stays in the
-      // list is just the slot it will land in.
-      // The menu takes focus while open; keep the ring on the slide it acts on.
+      // While dragging, the overlay carries the thumbnail and the list keeps only its slot.
+      // The menu takes focus while open, so the ring stays on the slide it acts on.
       className={cn(isDragging && "opacity-30", isMenuOpen && "ring-ring")}
       onSelect={(event) => {
         // Pressing a thumbnail focuses it, and focus navigates. Suppress that

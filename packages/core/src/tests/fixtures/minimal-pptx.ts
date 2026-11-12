@@ -1,11 +1,4 @@
-/**
- * In-memory .pptx fixture builder for renderer tests.
- *
- * Produces a minimal, spec-valid single-slide package (blank layout,
- * 12192000x6858000 EMU = 1280x720 px slide) whose `p:spTree` content is
- * supplied by the caller, so each test can exercise exactly the shapes it
- * cares about through the real parse pipeline.
- */
+// A 12192000x6858000 EMU (1280x720 px) single-slide package with a blank layout.
 import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';

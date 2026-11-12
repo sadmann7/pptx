@@ -52,8 +52,8 @@ const DATASETS = [
 
 type Dataset = (typeof DATASETS)[number]["value"];
 
-// Dev-only, and only with `?data=` (e.g. `/pg?data=worst`). Loads through
-// `store.load`, the way a user's file arrives.
+// Dev-only, and only with `?data=`. Loads through `store.load`, the way a
+// user's file arrives.
 function DataToggle({
   store,
   initial,

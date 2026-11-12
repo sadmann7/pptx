@@ -1,33 +1,18 @@
 /**
- * Embedded-font decode harness.
+ * Embedded-font decode harness, driven by font-perf.spec.ts once per mode.
  *
- * Loads a deck and decodes its embedded fonts once, while a frame monitor
- * watches the main thread. font-perf.spec.ts drives it once per mode, in a
- * fresh page each time, to see what the Worker pool is worth: it buys a main
- * thread that stays free more than it buys throughput, so the frame numbers
- * matter as much as the wall clock.
- *
- * Each mode gets its own page load because the first run leaves its faces in
- * `document.fonts`, which makes a second registration in the same document
- * cheaper than the one the user pays for.
+ * Each mode gets a fresh page, since faces left in `document.fonts` make a
+ * second registration cheaper than the one the user pays for.
  *
  * Query params:
  *   file   deck to load, served from fixtures/ (or decks/ for local decks)
- *   mode   which path decodes the parts (default "worker"):
- *            worker  the shipped pool
- *            main    the shipped fallback, which hands the event loop a turn
- *                    between parts; `Worker` is hidden to select it
- *            sliced  the fallback without a worker to fall back from: decodes
- *                    here and only yields once a slice runs long, which is what
- *                    dropping the worker would mean
- *   parts  multiplies the deck's font parts by this factor, to see how the two
- *          modes diverge on decks heavier than the fixtures (default 1)
- *   mtx    replaces the deck's font parts with MTX-compressed ones, which is
- *          what PowerPoint itself writes; every fixture deck embeds plain EOT,
- *          where decoding is a header strip and costs nothing
- *   build  "dist" to use the built font entry (inlined blob worker, minified),
- *          which is what consumers get; "src" (default) is what Vite spawns
- *          from source, where the worker is a module the browser fetches
+ *   mode   "worker" (default) for the shipped pool, "main" for the shipped
+ *          fallback with `Worker` hidden, or "sliced" to decode here and yield
+ *          only once a slice runs long
+ *   parts  multiplies the deck's font parts by this factor (default 1)
+ *   mtx    swaps in MTX-compressed parts, which PowerPoint writes; fixture
+ *          decks embed plain EOT, where decoding is a header strip
+ *   build  "dist" for the built font entry consumers get, or "src" (default)
  */
 import type { EmbeddedFontEntry, PresentationData } from "@diceui/pptx-core";
 import { buildPresentation, readPptx } from "@diceui/pptx-core";

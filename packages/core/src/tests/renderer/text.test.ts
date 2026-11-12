@@ -31,8 +31,6 @@ function paragraphDivs(element: HTMLElement): HTMLElement[] {
   const withText = [...element.querySelectorAll("div")].filter((div) =>
     div.textContent?.includes("MARKER"),
   );
-  // The innermost div containing the marker text is a paragraph div; its
-  // parent is the text container holding all paragraphs.
   const paraDiv = withText[withText.length - 1];
   if (!paraDiv?.parentElement) throw new Error("marker paragraph not found");
   return [...paraDiv.parentElement.children] as HTMLElement[];
@@ -53,9 +51,8 @@ describe("empty paragraph rendering", () => {
     expect(paragraphs).toHaveLength(5);
 
     for (const spacerDiv of paragraphs.slice(0, 4)) {
-      // Occupies a line….
       expect(spacerDiv.querySelector("br")).not.toBeNull();
-      // …at the endParaRPr-declared 20pt, not an inherited default.
+      // 20pt comes from endParaRPr, not an inherited default.
       expect(spacerDiv.style.fontSize).toBe("20pt");
     }
     expect(paragraphs[4].textContent).toContain("July 3, 2025");
@@ -107,7 +104,6 @@ describe("empty paragraph rendering", () => {
   });
 });
 
-/** Returns all run spans inside the paragraph that contains `marker`. */
 function runSpansContaining(element: HTMLElement, marker: string): HTMLElement[] {
   const divs = [...element.querySelectorAll<HTMLElement>("div")];
   const para = divs.find((d) => d.textContent?.includes(marker));
@@ -130,8 +126,6 @@ describe("leading whitespace preservation", () => {
   });
 
   it("does not apply pre-wrap to a mid-line run that starts with a space", async () => {
-    // Two runs on the same paragraph: the second begins with a space but is
-    // not at line start: default whitespace handling applies.
     const element = await renderTextBox(
       `<a:p>${EMPTY_PPR}<a:r><a:t>MARKER</a:t></a:r><a:r><a:t> continues</a:t></a:r></a:p>`,
     );
@@ -143,8 +137,6 @@ describe("leading whitespace preservation", () => {
   });
 
   it("applies pre-wrap to the first run after an explicit line break", async () => {
-    // A <a:br/> resets the line-start flag; the run after it begins a new
-    // visual line and its leading space must be preserved.
     const element = await renderTextBox(
       `<a:p>${EMPTY_PPR}<a:r><a:t>MARKER first</a:t></a:r><a:br/><a:r><a:t>  second line</a:t></a:r></a:p>`,
     );

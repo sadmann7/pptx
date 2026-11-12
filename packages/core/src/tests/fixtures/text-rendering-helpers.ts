@@ -1,9 +1,3 @@
-/**
- * Shared helpers for the text-rendering test suites.
- *
- * All helpers run the REAL pipeline (readPptx → buildPresentation → renderSlide)
- * against in-memory fixtures produced by `buildPptxWithShapes` (no mocks).
- */
 import { buildPresentation } from "../../model/presentation";
 import { readPptx } from "../../ooxml/zip";
 import { renderSlide, type SlideRendererOptions } from "../../renderer/slide";
@@ -51,7 +45,6 @@ ${paragraphsXml}
   );
 }
 
-// The flex-column div that renderTextBody fills with paragraph divs.
 export function textContainerOf(element: HTMLElement): HTMLElement {
   const isContainer = (div: HTMLElement) =>
     div.style.display === "flex" && div.style.flexDirection === "column";

@@ -195,14 +195,12 @@ describe("scaleRectFromHandle", () => {
   });
 
   it("anchors the edges opposite the handle", () => {
-    // South-east grows right and down, leaving the top-left corner put.
     expect(scaleRectFromHandle(rect, "se", { x: 2, y: 2 })).toEqual({
       x: 100,
       y: 200,
       w: 400,
       h: 200,
     });
-    // North-west grows left and up, leaving the bottom-right corner put.
     expect(scaleRectFromHandle(rect, "nw", { x: 2, y: 2 })).toEqual({
       x: -100,
       y: 100,
@@ -212,7 +210,6 @@ describe("scaleRectFromHandle", () => {
   });
 
   it("scales a shape in place rather than repositioning it in the selection", () => {
-    // A far-away shape keeps its anchored corner: gaps do not scale.
     const far: Rect = { x: 1000, y: 500, w: 100, h: 100 };
     expect(scaleRectFromHandle(far, "se", { x: 2, y: 2 })).toEqual({
       x: 1000,
@@ -592,7 +589,6 @@ describe("onSelectionChange and onModeChange", () => {
     });
     expect(calls).toBe(2);
 
-    // The same set again is not a change.
     act(() => {
       fireEvent.keyDown(overlay, { key: "a", ctrlKey: true });
     });
@@ -966,9 +962,8 @@ describe("pressing outside the overlay", () => {
   it("stops the selection outliving the focus it needs to be cleared by hand", async () => {
     const { overlay } = await withSelection();
 
-    // Escape is a React handler on the overlay, so a press that takes focus
-    // elsewhere puts the selection out of the keyboard's reach. It has to be
-    // gone by then rather than merely unreachable.
+    // Escape is handled on the overlay, so a press that takes focus elsewhere
+    // has to clear the selection rather than leave it unreachable.
     act(() => {
       fireEvent.pointerDown(document.body);
       fireEvent.pointerUp(document.body);

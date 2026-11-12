@@ -219,7 +219,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
     const isClickFocusRef = React.useRef(false);
     const autoFocusedPresentationRef = React.useRef<object | null>(null);
 
-    // A ref and listener set, not state: see `subscribeTabStop`.
     const currentTabStopIdRef = React.useRef<string | null>(null);
     const tabStopListenersRef = useLazyRef(() => new Set<() => void>());
 
@@ -362,7 +361,6 @@ export const ThumbnailList = React.forwardRef<HTMLDivElement, ThumbnailListProps
       element?.focus({ preventScroll: true });
     }, [presentation, activeSlideId, itemsRef, initialFocusRef]);
 
-    // Undo and redo move the tab stop to the slide they changed.
     React.useEffect(() => {
       return store.on("slideChange", ({ slideId, reason }) => {
         if (reason !== "edit" || !slideId) return;

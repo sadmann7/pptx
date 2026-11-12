@@ -105,7 +105,6 @@ interface MergedParagraphStyle {
   defRPrs?: SafeXmlNode[];
 }
 
-// Later calls override earlier values.
 function mergeParagraphProps(target: MergedParagraphStyle, pPr: SafeXmlNode): void {
   if (!pPr.exists()) return;
 
@@ -653,7 +652,7 @@ interface RenderTextBodyOptions {
   cellTextBold?: boolean;
   cellTextItalic?: boolean;
   cellTextFontFamily?: string | string[];
-  // A shape style's fontRef color (e.g. SmartArt), yielding only to an explicit run color.
+  // A shape style's fontRef color, yielding only to an explicit run color.
   fontRefColor?: string;
   isVerticalText?: boolean;
   defaultLineHeight?: string;
@@ -979,8 +978,7 @@ export function renderTextBody(
       const defaultTabPx = merged.defaultTabSize ?? 96; // OOXML's default 914400 EMU at 96 dpi.
       paraDiv.style.tabSize = `${defaultTabPx}px`;
     }
-    // CJK fonts (e.g. Microsoft YaHei) have content areas taller than an absolute
-    // line-height, so each line gets a fixed-height block.
+    // CJK fonts have content areas taller than an absolute line-height, so each line gets a fixed-height block.
     const useLineWrappers = merged.lineHeightAbsolute && hasLineBreaks && effectiveLineHeight;
     let currentLineDiv: HTMLElement | null = null;
     if (useLineWrappers) {

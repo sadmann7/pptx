@@ -121,7 +121,6 @@ function getIsSameSnapshot(a: SelectionSnapshot, b: SelectionSnapshot): boolean 
   );
 }
 
-// Carries the selection from inside the slide to toolbars anywhere under the same store.
 export class SelectionChannel {
   private snapshot: SelectionSnapshot = IDLE_SNAPSHOT;
   private controller: SelectionController | null = null;

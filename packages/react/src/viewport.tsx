@@ -239,8 +239,8 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(function
     function onWheel(event: WheelEvent): void {
       if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0) return;
 
-      // Claimed before the level is checked: at either end of the range the
-      // gesture is still ours, and releasing it there would zoom the page.
+      // Claimed before the level is checked: releasing the gesture at either end
+      // of the range would zoom the page.
       event.preventDefault();
 
       const { zoom } = store.getState();

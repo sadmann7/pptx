@@ -260,7 +260,6 @@ describe("placeholder inheritance type equivalence", () => {
 <a:lstStyle><a:lvl1pPr><a:defRPr sz="4400"><a:solidFill><a:srgbClr val="123456"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>
 <a:p><a:r><a:t>Title prompt</a:t></a:r></a:p></p:txBody>
 </p:sp>`;
-    // Slide uses ctrTitle with no geometry, no run properties of its own.
     const slideCtrTitle = `<p:sp>
 <p:nvSpPr><p:cNvPr id="10" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr><p:ph type="ctrTitle"/></p:nvPr></p:nvSpPr>
 <p:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>

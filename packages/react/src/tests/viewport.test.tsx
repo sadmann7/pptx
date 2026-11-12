@@ -168,7 +168,6 @@ describe("Presentation.Viewport", () => {
       wheel(viewport, 100, 1100);
       expect(store.getActiveSlideIndex()).toBe(1);
 
-      // Past the cooldown, the next tick navigates again.
       wheel(viewport, 100, 2000);
       expect(store.getActiveSlideIndex()).toBe(2);
     });

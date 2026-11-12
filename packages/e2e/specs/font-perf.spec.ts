@@ -1,28 +1,12 @@
 /**
- * Skips unless PERF=1 (`pnpm test:perf`): it decodes real embedded fonts both
- * ways and reports numbers rather than asserting a baseline, because timings
- * are machine-dependent.
+ * Skips unless PERF=1 (`pnpm test:perf`), and reports rather than asserts
+ * because timings are machine-dependent.
  *
- * The question it answers is whether the Worker pool earns its place. The pool
- * costs a second, inlined copy of the decode pipeline in the published bundle
- * (tsdown has no worker support, so `tsdown.config.ts` bundles the worker into
- * a string), and the decoder is the bulk of that chunk. So the comparison is
- * per deck:
- *
- *   worker  the shipped path: parts decoded across a pool, registered here
- *   main    the shipped fallback (SSR, worker load failure): decoded here,
- *           handing the event loop a turn between parts
- *   sliced  the fallback without a worker to fall back from: decoded here,
- *           yielding only once a slice has run long, which is what dropping
- *           the worker would actually mean
- *
- * Wall clock is the weaker half of the answer. The pool exists to keep the main
- * thread free, so what matters is `blocked` (time frames arrived late, summed)
- * and `worst frame`: with a worker those stay near idle, on the main thread they
- * track decode cost directly.
- *
- * Both are run under CPU throttling too, since the decision is about low-end
- * devices; a desktop decodes a 30 KB part fast enough that neither path shows.
+ * It weighs the Worker pool against its cost, a second inlined copy of the
+ * decoder in the bundle, by decoding each deck in the harness's worker, main
+ * and sliced modes. `blocked` and `worst frame` matter more than wall clock,
+ * since the pool exists to keep the main thread free. Runs repeat under CPU
+ * throttling, where a 30 KB part stops decoding too fast to show either path.
  */
 import { test } from "@playwright/test";
 

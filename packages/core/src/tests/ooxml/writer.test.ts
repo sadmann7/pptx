@@ -1,10 +1,3 @@
-/**
- * Round-trip tests for package retention (`keepSourcePackage`) and `writePptx()`.
- *
- * The core guarantee under test: opening a deck and saving it without edits
- * reproduces every part byte-for-byte, and editing one part re-serializes
- * only that part while everything else still passes through untouched.
- */
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 

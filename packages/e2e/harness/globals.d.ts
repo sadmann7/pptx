@@ -1,8 +1,5 @@
 /**
- * The contract between the harness page and everything that drives it.
- *
- * The harness (main.ts) assigns these; specs and the debugging scripts poll
- * them to know when a render settled and to reach into the loaded deck.
+ * Globals the harness pages assign and the specs and scripts poll.
  */
 import type { PresentationStore } from "@diceui/pptx";
 import type { SerializedPresentation } from "@diceui/pptx-core";

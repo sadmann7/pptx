@@ -1,18 +1,7 @@
 /**
- * Stage-level benchmarks for embedded-font decoding.
+ * Run with `pnpm -F "@diceui/pptx-core" bench`.
  *
- * Run with: pnpm -F "@diceui/pptx-core" bench
- *
- * The inputs are the real `.fntdata` parts PowerPoint produced, so these
- * numbers cover the MTX-compressed path end to end. Each stage is fed a
- * pre-built input to attribute time to the right phase:
- *   decodeEmbeddedFont : EOT container -> validated sfnt (everything below)
- *   unpackMtx          : LZCOMP decompression of the three CTF streams
- *   parseCtf           : glyf/loca reconstruction, cvt and head rewriting
- *   buildSfnt          : table directory assembly + checksums
- *   validateSfnt       : directory bounds + whole-font checksum
- *
- * LZCOMP dominates, so treat `unpackMtx` as the number to beat.
+ * Inputs are real PowerPoint `.fntdata` parts. LZCOMP dominates, so `unpackMtx` is the number to beat.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -27,7 +16,6 @@ import { buildSfnt, validateSfnt } from "../../fonts/mtx/sfnt";
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
 interface Workload {
-  // Shortened to the family so bench labels stay readable.
   label: string;
   raw: Uint8Array;
   // The EOT header is already stripped.

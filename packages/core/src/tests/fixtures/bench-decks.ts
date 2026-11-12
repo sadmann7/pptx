@@ -1,21 +1,11 @@
-/**
- * Parameterized deck generator for benchmarks and profiling.
- *
- * Produces realistic in-memory .pptx packages whose size and complexity are
- * controlled by the caller, so pipeline stages can be measured against
- * small/medium/large workloads reproducibly.
- */
 import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
 export interface DeckSpec {
   slides: number;
-  // Three paragraphs of two runs each.
   textBoxes?: number;
-  // A mix of geometries, with a gradient on every third.
   shapes?: number;
-  // A 4x6 table.
   withTable?: boolean;
 }
 

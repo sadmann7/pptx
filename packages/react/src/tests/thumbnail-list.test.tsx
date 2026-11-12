@@ -52,7 +52,6 @@ describe("Presentation.ThumbnailList", () => {
     expect(selected).not.toHaveLength(0);
     expect(store.getActiveSlideIndex()).toBe(0);
 
-    // Focus is the other route into navigation and must respect the veto too.
     act(() => options[1].focus());
     expect(store.getActiveSlideIndex()).toBe(0);
   });
@@ -85,15 +84,13 @@ describe("Presentation.ThumbnailList", () => {
     expect(calls).toBeGreaterThan(0);
     expect(store.getActiveSlideIndex()).toBe(2);
 
-    // Focus navigates too, which is what makes the veto test's focus case meaningful.
     act(() => options[1].focus());
     expect(store.getActiveSlideIndex()).toBe(1);
   });
 
   it("leaves focus alone when a deck loads", async () => {
-    // A deck can arrive without being asked for (fetched on mount, restored on
-    // navigation), so capturing focus by default would take the page's tab
-    // position away from wherever it belongs.
+    // A deck can arrive unasked, fetched on mount or restored on navigation,
+    // so taking focus by default would steal the page's tab position.
     const store = await loadedStore();
     withStore(store, <Presentation.ThumbnailList />);
 
@@ -130,8 +127,6 @@ describe("Presentation.ThumbnailList", () => {
   });
 
   it("lets an initialFocus function decide per load", async () => {
-    // The shape a page with both an on-mount fetch and a file input needs: the
-    // consumer knows which load the user asked for, and this one did not.
     const store = await loadedStore();
     let asked = 0;
     withStore(

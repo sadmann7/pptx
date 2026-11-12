@@ -1,8 +1,3 @@
-/**
- * Shared helpers for component tests: fixture loading and store-scoped
- * rendering. Test files mirror source files (viewport.tsx →
- * viewport.test.tsx); keep cross-file setup here instead of duplicating it.
- */
 import * as React from "react";
 
 import { render, type RenderResult } from "@testing-library/react";

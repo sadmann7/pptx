@@ -94,7 +94,6 @@ const scenarios: Scenario[] = [
       ),
   },
   {
-    // Holding ArrowDown on the thumbnails: every step renders the next slide.
     name: "slide-step",
     run: async (page) => {
       await page.locator(`${LIST} [role=option]`).first().focus();
@@ -105,7 +104,6 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    // Dragging a shape around the slide: overlay, snapping, live transform.
     name: "shape-drag",
     run: async (page) => {
       const box = await page.locator(SHAPE).nth(1).boundingBox();

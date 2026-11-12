@@ -223,13 +223,10 @@ export function loadEmbeddedFonts(
 
   if (jobByPath.size === 0) return noop;
 
-  // A part is priority when any of its typefaces is priority. Without an
-  // explicit priority set, everything is priority (ready === complete).
   const priority = options?.priorityTypefaces;
   const isPriorityPath = (path: string): boolean =>
     !priority || (tasksByPath.get(path) ?? []).some((task) => priority.has(task.typeface));
 
-  // Priority parts decode first.
   const jobs = [...jobByPath.values()].sort(
     (a, b) => Number(isPriorityPath(b.path)) - Number(isPriorityPath(a.path)),
   );
@@ -274,7 +271,6 @@ export function loadEmbeddedFonts(
           document.fonts.add(face);
           registered.push(face);
         } catch (error) {
-          // Invalid font data: skip this variant, text falls back.
           rejected.push(task.typeface);
           rejection ??= error instanceof Error ? error.message : String(error);
         }
@@ -341,7 +337,7 @@ export function loadEmbeddedFonts(
     }
 
     await Promise.all(registrations);
-    // Safety net: never leave `ready` pending (e.g. after dispose).
+    // `ready` must never stay pending, including after dispose.
     resolveReady();
   })();
 

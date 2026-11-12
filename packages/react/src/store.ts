@@ -39,7 +39,6 @@ export type AutoFitPadding = number | Partial<SidePadding>;
 interface HistoryEntry {
   op: EditOperation;
   result: EditResult;
-  // Undo returns to this slide.
   activeSlideId: string | null;
 }
 

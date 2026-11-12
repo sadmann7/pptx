@@ -113,7 +113,6 @@ describe("run typeface", () => {
   it("applies a:latin typeface as the font family", async () => {
     const span = await renderRun(`<a:rPr><a:latin typeface="Georgia"/></a:rPr>`);
     expect(span.style.fontFamily).toContain("Georgia");
-    // Serif face gets a serif generic fallback.
     expect(span.style.fontFamily).toMatch(/serif\s*$/);
   });
 
@@ -200,7 +199,6 @@ describe("multiple runs in one paragraph", () => {
     expect(spans[2].textContent).toBe("underlined");
     expect(spans[2].style.textDecoration).toContain("underline");
     expect(spans[2].style.fontWeight).toBe("");
-    // The full text is preserved in document order.
     expect(paragraph.textContent).toBe("bold green-italic underlined");
   });
 
@@ -217,10 +215,8 @@ describe("multiple runs in one paragraph", () => {
     expect(spans[0].style.fontSize).toBe("28pt");
     expect(spans[0].style.fontWeight).toBe("bold");
     expect(normalizeColor(spans[0].style.color)).toBe("0,0,255,1");
-    // Explicit run rPr wins over the paragraph default….
     expect(spans[1].style.fontSize).toBe("14pt");
     expect(spans[1].style.fontWeight).toBe("");
-    // …but properties it does not set still inherit.
     expect(normalizeColor(spans[1].style.color)).toBe("0,0,255,1");
   });
 });

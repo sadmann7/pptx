@@ -1,9 +1,6 @@
-﻿// Types for AutoTypeTable: exposes component-specific props only,
-// with inherited HTML element props stripped out.
-//
-// `Omit<Props, keyof ComponentProps<"div">>` also drops names the props override
-// (`onLoad`, `onError`, `onSelect`, render-function `children`) because
-// those keys exist on the host element. They get picked back.
+﻿// Props for AutoTypeTable without inherited HTML element props. Omitting
+// `keyof ComponentProps<"div">` also drops overridden names like `onLoad` and
+// `children`, so they're picked back.
 //
 // Usage in MDX:
 //   <AutoTypeTable path="types/presentation.ts" name="RootProps" />

@@ -1,16 +1,8 @@
 /**
- * Skips unless PERF=1 (`pnpm test:perf`): it builds a long deck, scrolls the
- * real thumbnail list, and reports numbers rather than asserting a baseline,
- * because timings are machine-dependent.
- *
- * Two things get measured:
- *
- *   1. per-slide cost, `renderSlide` against `renderThumbnail`, split into
- *      rendering the miniature and putting it in the document, which together
- *      decide whether a preview can be filled within one frame's budget;
- *   2. skeleton exposure during a fast scroll: for every animation frame of the
- *      sweep, how many previews inside the viewport are still `[data-pending]`,
- *      plus how long the list takes to settle once scrolling stops.
+ * Skips unless PERF=1 (`pnpm test:perf`), and reports rather than asserts
+ * because timings are machine-dependent. It measures per-slide render and mount
+ * cost against one frame's budget, and how many visible previews are still
+ * `[data-pending]` on each frame of a fast scroll.
  */
 import { test } from "@playwright/test";
 import { copyFileSync, mkdirSync } from "node:fs";
@@ -75,8 +67,6 @@ test.describe("thumbnail list scroll performance", () => {
 
         const visiblePending = () => {
           if (pitch <= 0) return 0;
-          // Preview i sits at firstTop + i * pitch, so the viewport spans the
-          // indices between the two ends of the scrolled window.
           const top = list.scrollTop - firstTop;
           const first = Math.max(0, Math.floor(top / pitch));
           const last = Math.min(previews.length - 1, Math.floor((top + viewportHeight) / pitch));

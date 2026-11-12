@@ -1232,7 +1232,6 @@ function runLength(run: Element): number {
   return run.localName === "br" || run.localName === "tab" ? 1 : runText(run).length;
 }
 
-// The original run keeps the left part and the right part is returned.
 function splitRun(run: Element, at: number): Element {
   const text = runText(run);
   const right = run.cloneNode(true) as Element;
@@ -1303,7 +1302,6 @@ function applyCharacterStyle(rPr: Element, style: TextStyle): void {
   }
 }
 
-// `whole` formats every run and the paragraph mark, not just `[from, to)`.
 function styleParagraph(
   paragraph: Element,
   from: number,
@@ -1927,7 +1925,6 @@ async function applyPasteNodes(
   const partChanges: PartChange[] = [];
   const transformChanges: PartChange[] = [];
 
-  // Media the deck already has (always, when pasting within it) is reused.
   const oldIds = Object.keys(op.clipboard.relationships);
   const entries: RelEntry[] = [];
   for (const id of oldIds) {

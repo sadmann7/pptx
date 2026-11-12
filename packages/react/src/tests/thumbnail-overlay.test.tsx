@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 /**
- * A drag overlay mounts a second copy of a thumbnail while the original is still
- * in the list. These tests lock that the copy stays out of the list's semantics
- * and that the two never fight over one slide element. Runs under jsdom, since
+ * A drag overlay's copy of a thumbnail stays out of the list's semantics and
+ * never shares a slide element with the original. Runs under jsdom, since
  * happy-dom's XML parser drops namespaced attributes the renderer needs.
  */
 
@@ -87,7 +86,6 @@ describe("decorative thumbnail items", () => {
 
     render(<Strip store={store} overlaySlideId={slides[0].id} />);
 
-    // The copy renders, but the deck is still announced as N slides.
     expect(screen.getByTestId("overlay")).toBeTruthy();
     expect(screen.getAllByRole("option")).toHaveLength(slides.length);
 
@@ -157,7 +155,6 @@ describe("previews of the same slide in two places", () => {
     const overlay = previewOf(screen.getByTestId("overlay"));
     expect(overlay?.firstElementChild).toBeTruthy();
     expect(overlay?.firstElementChild).not.toBe(cachedElement);
-    // The list item keeps the element it was already showing.
     expect(original?.firstElementChild).toBe(cachedElement);
   });
 

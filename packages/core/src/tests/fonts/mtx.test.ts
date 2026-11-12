@@ -1,12 +1,3 @@
-/**
- * Round-trip coverage for the MTX decode path.
- *
- * Every embedded font shipped in this repo is an *uncompressed* EOT, so the
- * LZCOMP and CTF layers would otherwise never run. These tests generate
- * compressed fixtures from the format spec (see `mtx-encoder.ts`) and assert
- * the decoder reconstructs the outlines and hints that went in.
- */
-
 import { describe, expect, it } from "vitest";
 
 import { decodeEmbeddedFont } from "../../fonts/decode";

@@ -48,7 +48,6 @@ function collectModifiers(colorNode: SafeXmlNode): ColorModifier[] {
 
 // The master's colorMap remaps logical names like "tx1" to theme slots like "dk1".
 function resolveSchemeColor(schemeName: string, ctx: RenderContext): string {
-  // A layout colorMap override takes priority.
   let mappedName = schemeName;
   if (ctx.layout.colorMapOverride) {
     const override = ctx.layout.colorMapOverride.get(schemeName);
@@ -246,7 +245,6 @@ export function resolveFill(spPr: SafeXmlNode, ctx: RenderContext): string {
   return "";
 }
 
-// Unsupported presets fall back to a 50% mix of foreground and background.
 function resolvePatternFill(
   pattFill: SafeXmlNode,
   ctx: RenderContext,
@@ -271,7 +269,6 @@ function resolvePatternFill(
 
   const s = 8;
 
-  // Multi-layer `background` shorthand: the pattern tile over the bg color.
   const pat = (gradient: string): string => `${gradient} 0 0 / ${s}px ${s}px, ${bg}`;
   const pat2 = (g1: string, g2: string): string =>
     `${g1} 0 0 / ${s}px ${s}px, ${g2} 0 0 / ${s}px ${s}px, ${bg}`;
@@ -281,7 +278,6 @@ function resolvePatternFill(
     case "solidDmnd":
       return fg;
 
-    // Percentage fills (dots on background).
     case "pct5":
     case "pct10":
     case "pct20":
@@ -298,7 +294,6 @@ function resolvePatternFill(
     case "pct90":
       return pat(`radial-gradient(${fg} 2.5px, transparent 2.5px)`);
 
-    // Horizontal lines.
     case "horz":
     case "ltHorz":
     case "narHorz":
@@ -307,7 +302,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(0deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Vertical lines.
     case "vert":
     case "ltVert":
     case "narVert":
@@ -316,7 +310,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (down-right).
     case "dnDiag":
     case "ltDnDiag":
     case "narDnDiag":
@@ -326,7 +319,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal lines (up-right).
     case "upDiag":
     case "ltUpDiag":
     case "narUpDiag":
@@ -336,7 +328,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Grid (horizontal + vertical).
     case "smGrid":
     case "lgGrid":
     case "cross":
@@ -345,7 +336,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(90deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Diagonal cross.
     case "smCheck":
     case "lgCheck":
     case "diagCross":
@@ -355,12 +345,10 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 1px, transparent 1px, transparent ${s}px)`,
       );
 
-    // Dot patterns.
     case "dotGrid":
     case "dotDmnd":
       return pat(`radial-gradient(${fg} 1px, transparent 1px)`);
 
-    // Trellis / weave.
     case "trellis":
     case "weave":
       return pat2(
@@ -368,7 +356,6 @@ function resolvePatternFill(
         `repeating-linear-gradient(-45deg, ${fg} 0px, ${fg} 2px, transparent 2px, transparent ${s}px)`,
       );
 
-    // Dash variants.
     case "dashDnDiag":
     case "dashUpDiag":
     case "dashHorz":
@@ -385,7 +372,6 @@ function resolvePatternFill(
       );
     }
 
-    // Sphere / shingle: radial gradient approximation.
     case "sphere":
     case "shingle":
     case "plaid":

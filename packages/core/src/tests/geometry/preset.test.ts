@@ -240,8 +240,8 @@ describe("preset registry", () => {
   });
 
   it("resolves spec-cased names for lowercase-keyed multi-path entries", () => {
-    // multiPathPresets stores some keys lowercase (e.g. "bordercallout1");
-    // the spec-cased prst value must still resolve via the lowercase lookup.
+    // multiPathPresets stores some keys lowercase, so the spec-cased prst value
+    // must still resolve through the lowercase lookup.
     expect(getMultiPathPreset("borderCallout1", 100, 50)).not.toBeNull();
     expect(getMultiPathPreset("curvedDownArrow", 100, 50)).not.toBeNull();
   });

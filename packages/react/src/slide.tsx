@@ -113,9 +113,9 @@ interface SlideImplProps extends React.ComponentProps<"div"> {
   presentation: PresentationData;
   slide: SlideData;
   zoom: number;
-  /** Edit revision of this slide; a change forces a fresh render. */
+  // A change forces a fresh render.
   revision: number;
-  /** Content revision that stays unchanged when only node transforms were edited. */
+  // Unchanged by edits that only move or resize nodes.
   contentRevision: number;
   onNodeError?: (nodeId: string, error: unknown) => void;
 }

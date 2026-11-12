@@ -2618,7 +2618,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     debugLog("handle pointerdown", { handle, nodeId, mode: state.mode, button: event.button });
     if (event.button !== 0 || !selectedIds.includes(nodeId)) return;
     event.stopPropagation();
-    // See onPointerDown: stop selection extension / native drag initiation.
     event.preventDefault();
     // Handles show while editing text, as in Google Slides: pressing one ends it.
     if (state.mode === "text") commitTextEdits(state);
@@ -2647,7 +2646,6 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     const frame = frameRef.current?.getBoundingClientRect();
     if (!node || !frame) return;
     event.stopPropagation();
-    // See onPointerDown: stop selection extension / native drag initiation.
     event.preventDefault();
     if (state.mode === "text") commitTextEdits(state);
     clearDocumentSelection();
@@ -3299,8 +3297,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
     }
   }
 
-  // The early return sits below every hook, never above one: returning before the
-  // effects would change the hook count between renders, which React rejects.
+  // Stays below every hook so the hook count never changes between renders.
   if (!presentation?.sourcePackage || !slide || !slideId) return null;
 
   return renderElement(
@@ -3367,13 +3364,11 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(function 
           ),
           style: {
             position: "absolute",
-            // Negative insets extend the event surface over the pasteboard
-            // wherever shapes overflow the slide (see `pasteboard` above).
+            // Negative insets extend the event surface over the pasteboard.
             left: -pasteboard.left * zoom,
             top: -pasteboard.top * zoom,
             right: -pasteboard.right * zoom,
             bottom: -pasteboard.bottom * zoom,
-            // In text mode let clicks through to the contentEditable element.
             pointerEvents: isTextMode ? "none" : "auto",
             // A drag captures the pointer onto the overlay, so the handle's
             // cursor has to come along or it reverts mid-drag.
@@ -3460,8 +3455,6 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(functi
   );
 });
 
-// Rendered without children, themed through `--presentation-selection` and
-// `--presentation-snap-guide`.
 const DEFAULT_PARTS = (
   <>
     <SelectionBox

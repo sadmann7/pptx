@@ -497,7 +497,6 @@ async function readPptxInternal(
       return;
     }
 
-    // Theme overrides are referenced by chart parts.
     if (/^ppt\/(?:[^/]+\/)*theme\/themeOverride[^/]*\.xml$/.test(normalizedPath)) {
       if (result.themeOverrides) {
         setPathMapEntry(
@@ -554,7 +553,6 @@ async function readPptxInternal(
       return;
     }
 
-    // SmartArt fallback drawings.
     if (/^ppt\/diagrams\/[^/]+\.xml$/.test(normalizedPath)) {
       setPathMapEntry(
         result.diagramDrawings,

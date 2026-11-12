@@ -1,10 +1,5 @@
 // @vitest-environment jsdom
-/**
- * Every applyEdit() operation must update the part XML and the typed model, and
- * survive a save and reopen; undo closures must restore both. Runs under jsdom
- * because happy-dom's XML parser drops namespaced attributes like `r:id` on
- * `p:sldId`, which slide-level operations need.
- */
+// jsdom, since happy-dom's XML parser drops namespaced attributes like `r:id` on `p:sldId`.
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 

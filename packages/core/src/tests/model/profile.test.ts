@@ -1,11 +1,7 @@
 /**
- * CPU profiling harness (not a real test). Skipped unless PROFILE=1.
+ * CPU profiling harness, skipped unless PROFILE=1. Run with:
  *
- * Usage:
  *   $env:PROFILE="1"; pnpm -F "@diceui/pptx-core" exec vitest run src/tests/model/profile.test.ts; $env:PROFILE=$null
- *
- * Captures a V8 CPU profile around the hot pipeline stage and prints the top
- * functions by self time, aggregated per function, filtered to package code.
  */
 import fs from "node:fs";
 import { Session } from "node:inspector";
@@ -51,12 +47,10 @@ async function captureProfile(workload: () => void | Promise<void>): Promise<Pro
   };
   session.disconnect();
 
-  // Self time per node from sample hit counts x sampling interval.
   const totalSamples = profile.nodes.reduce((sum, n) => sum + (n.hitCount ?? 0), 0);
   const totalMs = (profile.timeDeltas?.reduce((a, b) => a + b, 0) ?? totalSamples * 100) / 1000;
   const msPerSample = totalSamples > 0 ? totalMs / totalSamples : 0;
 
-  // Aggregate by function identity (name + file + line).
   const byFunction = new Map<string, ProfileRow>();
   for (const node of profile.nodes) {
     const hits = node.hitCount ?? 0;

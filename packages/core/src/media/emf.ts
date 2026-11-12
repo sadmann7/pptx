@@ -8,7 +8,6 @@ const EMR_EOF = 14;
 const EMR_COMMENT = 70;
 const EMR_STRETCHDIBITS = 81;
 
-// GDI comment identifiers (MS-EMF spec).
 const GDIC_COMMENT_ID = 0x43494447; // "GDIC".
 const GDIC_BEGINGROUP = 0x00000002;
 const GDIC_MULTIFORMATS = 0x40000004;
@@ -59,7 +58,7 @@ export function parseEmfContent(data: Uint8Array): EmfContent {
     offset += recordSize;
   }
 
-  // Only HEADER + EOF → empty.
+  // The header and EOF records alone make an empty EMF.
   if (recordCount <= 2) {
     return { type: "empty" };
   }
@@ -93,7 +92,6 @@ function parseGdiComment(
     }
   }
 
-  // Also search non-GDIC comments for raw PDF data.
   if (recordSize > 100) {
     const recordData = data.subarray(offset + 8, offset + recordSize);
     const pdf = extractPdfFromBuffer(recordData);
@@ -150,7 +148,6 @@ function extractPdfFromBuffer(buf: Uint8Array): Uint8Array | null {
   }
 
   if (pdfEnd === -1) {
-    // No %%EOF found: take everything from %PDF to end of buffer.
     pdfEnd = buf.length;
   }
 

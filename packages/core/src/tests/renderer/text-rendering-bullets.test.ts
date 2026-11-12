@@ -10,7 +10,6 @@ import {
 function bulletOf(paragraph: HTMLElement): HTMLElement | undefined {
   const first = paragraph.firstElementChild as HTMLElement | null;
   if (!first || first.tagName.toLowerCase() !== "span") return undefined;
-  // The bullet span carries the marker plus a trailing space; run spans carry the text.
   return first.textContent?.endsWith(" ") && first.textContent !== "MARKER " ? first : undefined;
 }
 
@@ -164,7 +163,6 @@ describe("bullet suppression", () => {
     );
     const [empty] = paragraphsOf(element);
     expect(empty.textContent).not.toContain("•");
-    // It still occupies a line box.
     expect(empty.querySelector("br")).not.toBeNull();
   });
 });
@@ -177,7 +175,6 @@ describe("bullet color", () => {
     );
     const paragraph = paragraphsOf(element)[0];
     expect(normalizeColor(bulletOf(paragraph)!.style.color)).toBe("255,0,0,1");
-    // The run keeps its own color.
     const run = spansOf(paragraph).find((s) => s.textContent === "MARKER");
     expect(normalizeColor(run!.style.color)).toBe("0,0,255,1");
   });
@@ -213,14 +210,12 @@ describe("hanging bullet gutter (marL + negative indent)", () => {
     );
     const paragraph = paragraphsOf(element)[0];
     const bullet = bulletOf(paragraph)!;
-    // The hanging indent is converted into an absolutely positioned marker….
     expect(paragraph.style.textIndent).toBe("0px");
     expect(paragraph.style.position).toBe("relative");
     expect(bullet.style.position).toBe("absolute");
     expect(parseFloat(bullet.style.left)).toBeCloseTo(0, 3);
-    // …whose width is the marL gutter (457200 EMU = 48px).
+    // marL 457200 EMU = 48px.
     expect(parseFloat(bullet.style.width)).toBeCloseTo(48, 3);
-    // Text stays padded by marL.
     expect(parseFloat(paragraph.style.paddingLeft)).toBeCloseTo(48, 3);
   });
 

@@ -58,7 +58,6 @@ export function renderCustomGeometry(
   const paths = pathLst.children("path");
   const segments: string[] = [];
 
-  // Guides are defined once per custGeom and evaluated in shape EMU space.
   const guideDefs = [
     ...collectGuideDefinitions(custGeom.child("avLst")),
     ...collectGuideDefinitions(custGeom.child("gdLst")),
@@ -78,7 +77,6 @@ export function renderCustomGeometry(
     const guideH = guideSpace.h || pathH;
     const guides = guideDefs.length > 0 ? evaluateGuides(guideDefs, guideW, guideH) : null;
 
-    // Guide values (shape EMU space) → path local space conversion factors.
     const guideToPathX = guideW > 0 ? pathW / guideW : 1;
     const guideToPathY = guideH > 0 ? pathH / guideH : 1;
 
@@ -181,7 +179,6 @@ export function renderCustomGeometry(
           const endVisRad = ((stAng + swAng) * Math.PI) / 180;
           const endAngRad = Math.atan2(wRRaw * Math.sin(endVisRad), hRRaw * Math.cos(endVisRad));
 
-          // Center and end point are computed in unscaled path space, then scaled.
           const curXU = curX / scaleX;
           const curYU = curY / scaleY;
           const cx = curXU - wRRaw * Math.cos(stAngRad);

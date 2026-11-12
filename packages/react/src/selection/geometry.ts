@@ -220,7 +220,6 @@ export interface PasteboardOverhang {
   bottom: number;
 }
 
-// Sizes the edit-mode pasteboard so off-slide shapes stay scrollable and clickable.
 export function getPasteboardOverhang(
   nodes: SlideNode[],
   slideWidth: number,

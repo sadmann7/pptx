@@ -1,11 +1,3 @@
-/**
- * Extended in-memory .pptx fixture builder for renderer tests.
- *
- * Modeled on `minimal-pptx.ts` (same theme, slide size, and part layout) but
- * parameterized so tests can express what the minimal builder cannot:
- * backgrounds on slide/layout/master, a custom theme format scheme, extra
- * slide relationships, and embedded binary media parts.
- */
 import JSZip from "jszip";
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';

@@ -105,7 +105,6 @@ describe("picture geometry clipping", () => {
       pic(SIMPLE_BLIP, `<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>`),
     );
 
-    // No plain <img>: the picture becomes an SVG <image> clipped by the preset path.
     expect(element.querySelector("img")).toBeNull();
     const svg = element.querySelector("svg")!;
     expect(svg).not.toBeNull();

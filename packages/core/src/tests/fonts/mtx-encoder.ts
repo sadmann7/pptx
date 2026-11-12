@@ -1,14 +1,4 @@
-/**
- * Test-only MTX/EOT encoder.
- *
- * The decoder in `src/fonts/mtx` has no fixtures to work against: every
- * embedded font in the decks is an uncompressed EOT, so LZCOMP and CTF are
- * otherwise dead code. This module builds compressed fixtures from the
- * W3C MicroType Express specification so those layers can be round-tripped.
- *
- * It is deliberately naive — it optimizes nothing and only needs to emit
- * streams a conforming decoder must accept.
- */
+// Naive MTX/EOT encoder built from the W3C MicroType Express spec, for decoder fixtures.
 
 import { AdaptiveHuffman } from "../../fonts/mtx/lzcomp";
 import { tripletEncoding } from "../../fonts/mtx/triplet";
@@ -317,7 +307,6 @@ export interface GlyphHints {
   // Reconstructed into a PUSH burst ahead of the code stream.
   pushes?: number[];
   code?: number[];
-  // Hop codes replace plain values where the pattern allows.
   useHopCodes?: boolean;
 }
 
