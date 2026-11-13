@@ -2500,7 +2500,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       publishSelectionRef,
     ]);
 
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (!isTextMode) return;
 
       function onSelectionChange(): void {
@@ -2526,8 +2526,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     }, [isTextMode, stateRef, publishSelectionRef]);
 
     // In text mode the overlay has pointerEvents: none, so clicks outside and
-    // Escape are only visible on the document.
-    React.useEffect(() => {
+    // Escape are only visible on the document. Layout effects swap these listeners
+    // with the commit, since input can arrive before passive effects run.
+    React.useLayoutEffect(() => {
       if (!isTextMode) return;
 
       // A press or Escape outside the slide waits for React's dispatch, which runs
@@ -2930,7 +2931,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     const pasteClipboardRef = useLatestRef(pasteClipboard);
 
     // Text mode keeps the browser's own clipboard for the text being edited.
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (isTextMode) return;
       const onCopy = (event: ClipboardEvent) =>
         copySelectionRef.current(event, false);
@@ -2950,7 +2951,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
 
     // A press outside deselects, as in PowerPoint. It acts on release, since a touch
     // scroll starts with a pointerdown and fires pointercancel once the browser takes over.
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (isTextMode) return;
 
       let pendingPress: PointerEvent | null = null;
