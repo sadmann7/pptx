@@ -7,13 +7,13 @@ import type {
 } from "@diceui/pptx-core";
 import { materializeSlide, PPTX_ATTRS, renderSlide } from "@diceui/pptx-core";
 
+import { DEFAULT_STORE_STATE } from "./constant";
 import {
-  usePresentation,
-  useSlide,
+  useActiveSlide,
   useSlideContentRevision,
   useSlideRevision,
   useStoreContext,
-  useZoom,
+  useStoreSelector,
 } from "./context";
 import { useLatestRef, useLazyRef } from "./hooks";
 import type { PrimitiveProps } from "./render";
@@ -65,10 +65,20 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(
     { children, render, onNodeError, ...slideProps },
     forwardedRef,
   ) {
-    const { presentation, status } = usePresentation();
-    const { slide, index } = useSlide();
-    const { zoom } = useZoom();
     const store = useStoreContext(SLIDE_NAME);
+    const presentation = useStoreSelector(store, (s) => s.presentation, null);
+    const status = useStoreSelector(
+      store,
+      (s) => s.status,
+      DEFAULT_STORE_STATE.status,
+    );
+    const zoom = useStoreSelector(store, (s) => s.zoom, 1);
+    const slide = useActiveSlide(store);
+    const index = React.useSyncExternalStore(
+      store.subscribe,
+      store.getActiveSlideIndex,
+      () => -1,
+    );
 
     const slideId = slide?.id;
     const revision = useSlideRevision(store, slideId);
@@ -183,10 +193,15 @@ function SlideImpl({
         });
 
       if (canPatch) {
+        const elements = new Map<string, HTMLElement>();
+        for (const el of container.querySelectorAll<HTMLElement>(
+          `[${PPTX_ATTRS.nodeId}]`,
+        )) {
+          const id = el.getAttribute(PPTX_ATTRS.nodeId);
+          if (id !== null && !elements.has(id)) elements.set(id, el);
+        }
         for (const node of slide.nodes) {
-          const el = container.querySelector<HTMLElement>(
-            `[${PPTX_ATTRS.nodeId}="${CSS.escape(node.id)}"]`,
-          );
+          const el = elements.get(node.id);
           if (el) {
             el.style.left = `${node.position.x}px`;
             el.style.top = `${node.position.y}px`;

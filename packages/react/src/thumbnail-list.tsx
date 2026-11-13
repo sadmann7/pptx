@@ -8,9 +8,8 @@ import * as React from "react";
 import type { SlideData, SlideHandle } from "@diceui/pptx-core";
 import { applySlideScale, renderSlide } from "@diceui/pptx-core";
 
-import { VISUALLY_HIDDEN_STYLE } from "./constant";
+import { DEFAULT_STORE_STATE, VISUALLY_HIDDEN_STYLE } from "./constant";
 import {
-  usePresentation,
   useSlideIndex,
   useSlideRevision,
   useStoreContext,
@@ -232,8 +231,15 @@ export const ThumbnailList = React.forwardRef<
   },
   forwardedRef,
 ) {
-  const { presentation, status } = usePresentation();
   const store = useStoreContext(THUMBNAIL_LIST_NAME);
+  const presentation = useStoreSelector(store, (s) => s.presentation, null);
+  const status = useStoreSelector(
+    store,
+    (s) => s.status,
+    DEFAULT_STORE_STATE.status,
+  );
+  // Slides are added, removed and moved in place, so the revision is what reports it.
+  useStoreSelector(store, (s) => s.revision, DEFAULT_STORE_STATE.revision);
 
   const itemsRef = useLazyRef(() => new Map<string, HTMLButtonElement>());
   const isClickFocusRef = React.useRef(false);
@@ -443,6 +449,25 @@ export const ThumbnailList = React.forwardRef<
     ],
   );
 
+  const hasDefaultItems = children == null;
+  const slideOrder = hasDefaultItems
+    ? presentation?.slides.map((slide) => slide.id).join("\u0000")
+    : undefined;
+  // The same elements while the order holds, so an edit elsewhere re-renders no item.
+  const defaultItems = React.useMemo(
+    () =>
+      hasDefaultItems
+        ? presentation?.slides.map((slide) => (
+            <ThumbnailItem key={slide.id} slideId={slide.id}>
+              <ThumbnailItemPreview />
+              <ThumbnailItemNumber style={VISUALLY_HIDDEN_STYLE} />
+            </ThumbnailItem>
+          ))
+        : null,
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- slides mutate in place; the joined ids are the change signal
+    [hasDefaultItems, presentation, slideOrder],
+  );
+
   if (status !== "ready" || !presentation) return null;
 
   const total = presentation.slides.length;
@@ -459,15 +484,8 @@ export const ThumbnailList = React.forwardRef<
       goTo: (id) => store.goTo(id),
       goToIndex: (i) => store.goToIndex(i),
     });
-  } else if (children != null) {
-    resolvedChildren = children;
   } else {
-    resolvedChildren = presentation.slides.map((slide) => (
-      <ThumbnailItem key={slide.id} slideId={slide.id}>
-        <ThumbnailItemPreview />
-        <ThumbnailItemNumber style={VISUALLY_HIDDEN_STYLE} />
-      </ThumbnailItem>
-    ));
+    resolvedChildren = children ?? defaultItems;
   }
 
   return (
@@ -723,252 +741,265 @@ export interface ThumbnailItemPreviewProps extends PrimitiveProps<
   ThumbnailItemPreviewState
 > {}
 
-export const ThumbnailItemPreview = React.forwardRef<
-  HTMLDivElement,
-  ThumbnailItemPreviewProps
->(function ThumbnailItemPreview(
-  { render, ...thumbnailItemPreviewProps },
-  forwardedRef,
-) {
-  const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
-  const rovingContext = useThumbnailRovingContext(THUMBNAIL_ITEM_PREVIEW_NAME);
-  const { presentation } = usePresentation();
-  const store = useStoreContext(THUMBNAIL_ITEM_PREVIEW_NAME);
+export const ThumbnailItemPreview = React.memo(
+  React.forwardRef<HTMLDivElement, ThumbnailItemPreviewProps>(
+    function ThumbnailItemPreview(
+      { render, ...thumbnailItemPreviewProps },
+      forwardedRef,
+    ) {
+      const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_PREVIEW_NAME);
+      const rovingContext = useThumbnailRovingContext(
+        THUMBNAIL_ITEM_PREVIEW_NAME,
+      );
+      const store = useStoreContext(THUMBNAIL_ITEM_PREVIEW_NAME);
+      const presentation = useStoreSelector(store, (s) => s.presentation, null);
 
-  const itemPreviewRef = React.useRef<HTMLDivElement>(null);
-  const slideHandleRef = React.useRef<SlideHandle | null>(null);
-  // False when another mount held the cache slot, so this preview owns a private copy.
-  const ownsCachedHandleRef = React.useRef(false);
-  const hasRenderedRef = React.useRef(false);
-  const attachedSlideIdRef = React.useRef<string | null>(null);
-  const attachedRevisionRef = React.useRef<number | null>(null);
-  // A teardown that sees a newer run knows it was a re-run rather than an unmount.
-  const observerRunRef = React.useRef(0);
-  const { mediaUrlCache, slideHandleCache, observeResize, scheduleRender } =
-    rovingContext;
+      const itemPreviewRef = React.useRef<HTMLDivElement>(null);
+      const slideHandleRef = React.useRef<SlideHandle | null>(null);
+      // False when another mount held the cache slot, so this preview owns a private copy.
+      const ownsCachedHandleRef = React.useRef(false);
+      const hasRenderedRef = React.useRef(false);
+      const attachedSlideIdRef = React.useRef<string | null>(null);
+      const attachedRevisionRef = React.useRef<number | null>(null);
+      // A teardown that sees a newer run knows it was a re-run rather than an unmount.
+      const observerRunRef = React.useRef(0);
+      const { mediaUrlCache, slideHandleCache, observeResize, scheduleRender } =
+        rovingContext;
 
-  const slideIndex = store.getSlideIndex(itemContext.slideId);
-  const slide = presentation?.slides[slideIndex] ?? null;
-  const presentationWidth = presentation?.width ?? 1;
-  const presentationHeight = presentation?.height ?? 1;
+      const slide = React.useSyncExternalStore(
+        store.subscribe,
+        () =>
+          store.getState().presentation?.slides[
+            store.getSlideIndex(itemContext.slideId)
+          ] ?? null,
+        () => null,
+      );
+      const presentationWidth = presentation?.width ?? 1;
+      const presentationHeight = presentation?.height ?? 1;
 
-  // In a ref so an edit does not tear down the observer effect, whose detach and re-attach flashes.
-  const revision = useSlideRevision(store, itemContext.slideId);
-  const revisionRef = useLatestRef(revision);
+      // In a ref so an edit does not tear down the observer effect, whose detach and re-attach flashes.
+      const revision = useSlideRevision(store, itemContext.slideId);
+      const revisionRef = useLatestRef(revision);
 
-  const widthRef = React.useRef(0);
-  const [containerWidth, setContainerWidth] = React.useState(0);
-  const hasRenderPropRef = useLatestRef(render != null);
-  const presentationWidthRef = useLatestRef(presentationWidth);
-  const scale = containerWidth > 0 ? containerWidth / presentationWidth : 0;
+      const widthRef = React.useRef(0);
+      const [containerWidth, setContainerWidth] = React.useState(0);
+      const hasRenderPropRef = useLatestRef(render != null);
+      const presentationWidthRef = useLatestRef(presentationWidth);
+      const scale = containerWidth > 0 ? containerWidth / presentationWidth : 0;
 
-  React.useLayoutEffect(() => {
-    const itemPreviewElement = itemPreviewRef.current;
-    if (itemPreviewElement && itemPreviewElement.offsetWidth > 0) {
-      widthRef.current = itemPreviewElement.offsetWidth;
-      if (hasRenderPropRef.current)
-        setContainerWidth(itemPreviewElement.offsetWidth);
-    }
-  }, [hasRenderPropRef]);
-
-  React.useEffect(() => {
-    const itemPreviewElement = itemPreviewRef.current;
-    if (!itemPreviewElement) return;
-    return observeResize(itemPreviewElement, (width) => {
-      widthRef.current = width;
-      const nextScale = width > 0 ? width / presentationWidthRef.current : 0;
-      if (slideHandleRef.current && nextScale > 0)
-        applySlideScale(slideHandleRef.current.element, nextScale);
-      if (hasRenderPropRef.current) setContainerWidth(width);
-    });
-  }, [observeResize, hasRenderPropRef, presentationWidthRef]);
-
-  React.useEffect(() => {
-    const itemPreviewElement = itemPreviewRef.current;
-    const run = ++observerRunRef.current;
-    if (!itemPreviewElement || !presentation || !slide) return;
-    if (typeof IntersectionObserver === "undefined") return;
-
-    const attach = (
-      element: HTMLDivElement,
-      slideHandle: SlideHandle,
-      isCached: boolean,
-    ) => {
-      if (slideHandleRef.current === slideHandle) return;
-      const currentScale =
-        widthRef.current > 0
-          ? widthRef.current / presentationWidthRef.current
-          : 0;
-      if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
-      element.appendChild(slideHandle.element);
-      slideHandleRef.current = slideHandle;
-      attachedSlideIdRef.current = slide.id;
-      attachedRevisionRef.current = revisionRef.current;
-      ownsCachedHandleRef.current = isCached;
-      hasRenderedRef.current = true;
-      delete element.dataset.pending;
-    };
-
-    const detach = (element: HTMLDivElement) => {
-      const slideHandle = slideHandleRef.current;
-      slideHandleRef.current = null;
-      attachedSlideIdRef.current = null;
-      slideHandle?.element.remove();
-      // The cached handle is kept alive for the next mount; a private copy
-      // has no other owner, so it is released here.
-      if (slideHandle && !ownsCachedHandleRef.current) slideHandle.dispose();
-      ownsCachedHandleRef.current = false;
-      hasRenderedRef.current = false;
-      element.dataset.pending = "";
-    };
-
-    // A previous run can leave a miniature attached; it stays only for the same slide.
-    if (slideHandleRef.current && attachedSlideIdRef.current !== slide.id) {
-      detach(itemPreviewElement);
-    }
-
-    let cancelRender: (() => void) | null = null;
-
-    const intersectionObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries.at(-1);
-        if (!entry) return;
-        const element = itemPreviewRef.current;
-        if (!element) return;
-
-        // A render queued by a previous cycle must not outlive re-attaching or
-        // detaching.
-        cancelRender?.();
-        cancelRender = null;
-
-        if (entry.isIntersecting) {
-          const cached = slideHandleCache.get(slide.id);
-          const isCurrent =
-            cached !== undefined && cached.revision === revisionRef.current;
-          // A cached node that is already inside another preview belongs to
-          // that mount; moving it here would blank it out.
-          const parent = cached?.slideHandle.element.parentElement ?? null;
-          const isAvailable = parent === null || parent === element;
-
-          if (isCurrent && isAvailable) {
-            markThumbnailRecent(slideHandleCache, slide.id);
-            attach(element, cached.slideHandle, true);
-          } else {
-            // Anything still attached here is stale, and it has to go before
-            // its cache entry is retired or the re-render below is skipped.
-            if (slideHandleRef.current) detach(element);
-            if (cached && !isCurrent && isAvailable) {
-              cached.slideHandle.dispose();
-              slideHandleCache.delete(slide.id);
-            }
-            cancelRender = scheduleRender(() => {
-              cancelRender = null;
-              const mountedElement = itemPreviewRef.current;
-              if (!mountedElement || slideHandleRef.current) return;
-              const slideHandle = renderSlide(presentation, slide, {
-                mediaUrlCache,
-              });
-              const isCached = getIsThumbnailCached(
-                slideHandleCache,
-                slide.id,
-                slideHandle,
-                revisionRef.current,
-              );
-              attach(mountedElement, slideHandle, isCached);
-            });
-          }
-        } else {
-          detach(element);
+      React.useLayoutEffect(() => {
+        const itemPreviewElement = itemPreviewRef.current;
+        if (itemPreviewElement && itemPreviewElement.offsetWidth > 0) {
+          widthRef.current = itemPreviewElement.offsetWidth;
+          if (hasRenderPropRef.current)
+            setContainerWidth(itemPreviewElement.offsetWidth);
         }
-      },
-      { rootMargin: INTERSECTION_OBSERVER_ROOT_MARGIN },
-    );
+      }, [hasRenderPropRef]);
 
-    intersectionObserver.observe(itemPreviewElement);
+      React.useEffect(() => {
+        const itemPreviewElement = itemPreviewRef.current;
+        if (!itemPreviewElement) return;
+        return observeResize(itemPreviewElement, (width) => {
+          widthRef.current = width;
+          const nextScale =
+            width > 0 ? width / presentationWidthRef.current : 0;
+          if (slideHandleRef.current && nextScale > 0)
+            applySlideScale(slideHandleRef.current.element, nextScale);
+          if (hasRenderPropRef.current) setContainerWidth(width);
+        });
+      }, [observeResize, hasRenderPropRef, presentationWidthRef]);
 
-    return () => {
-      intersectionObserver.disconnect();
-      cancelRender?.();
-      cancelRender = null;
-      // An unmount and a re-run look the same here, and detaching on a re-run flashes the
-      // miniature, so the decision waits until a re-run has started its next run.
-      queueMicrotask(() => {
-        // oxlint-disable-next-line react-hooks/exhaustive-deps -- reading the latest value is the point: it tells a re-run from an unmount
-        if (observerRunRef.current !== run) return;
-        detach(itemPreviewElement);
-      });
-    };
-  }, [
-    presentation,
-    slide,
-    mediaUrlCache,
-    slideHandleCache,
-    scheduleRender,
-    revisionRef,
-    presentationWidthRef,
-  ]);
+      React.useEffect(() => {
+        const itemPreviewElement = itemPreviewRef.current;
+        const run = ++observerRunRef.current;
+        if (!itemPreviewElement || !presentation || !slide) return;
+        if (typeof IntersectionObserver === "undefined") return;
 
-  // Off-screen slides re-render when the observer next reports them.
-  React.useEffect(() => {
-    const element = itemPreviewRef.current;
-    if (!element || !presentation || !slide) return;
-    if (!slideHandleRef.current) return;
-    // Effects are re-created whenever React restores this subtree, so an
-    // unchanged revision means the attached miniature is already current.
-    if (attachedRevisionRef.current === revision) return;
+        const attach = (
+          element: HTMLDivElement,
+          slideHandle: SlideHandle,
+          isCached: boolean,
+        ) => {
+          if (slideHandleRef.current === slideHandle) return;
+          const currentScale =
+            widthRef.current > 0
+              ? widthRef.current / presentationWidthRef.current
+              : 0;
+          if (currentScale > 0)
+            applySlideScale(slideHandle.element, currentScale);
+          element.appendChild(slideHandle.element);
+          slideHandleRef.current = slideHandle;
+          attachedSlideIdRef.current = slide.id;
+          attachedRevisionRef.current = revisionRef.current;
+          ownsCachedHandleRef.current = isCached;
+          hasRenderedRef.current = true;
+          delete element.dataset.pending;
+        };
 
-    const oldHandle = slideHandleRef.current;
-    oldHandle.element.remove();
-    oldHandle.dispose();
-    slideHandleRef.current = null;
-    // Only the mount that published the entry may retire it; a private copy
-    // would otherwise remove a node still attached to another preview.
-    if (ownsCachedHandleRef.current) slideHandleCache.delete(slide.id);
-    ownsCachedHandleRef.current = false;
+        const detach = (element: HTMLDivElement) => {
+          const slideHandle = slideHandleRef.current;
+          slideHandleRef.current = null;
+          attachedSlideIdRef.current = null;
+          slideHandle?.element.remove();
+          // The cached handle is kept alive for the next mount; a private copy
+          // has no other owner, so it is released here.
+          if (slideHandle && !ownsCachedHandleRef.current)
+            slideHandle.dispose();
+          ownsCachedHandleRef.current = false;
+          hasRenderedRef.current = false;
+          element.dataset.pending = "";
+        };
 
-    const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
-    const currentScale =
-      widthRef.current > 0
-        ? widthRef.current / presentationWidthRef.current
-        : 0;
-    if (currentScale > 0) applySlideScale(slideHandle.element, currentScale);
-    element.appendChild(slideHandle.element);
-    slideHandleRef.current = slideHandle;
-    attachedRevisionRef.current = revision;
-    ownsCachedHandleRef.current = getIsThumbnailCached(
-      slideHandleCache,
-      slide.id,
-      slideHandle,
-      revision,
-    );
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision-only: the IO effect above handles presentation and slide changes, and every visual edit bumps revision
-  }, [revision]);
+        // A previous run can leave a miniature attached; it stays only for the same slide.
+        if (slideHandleRef.current && attachedSlideIdRef.current !== slide.id) {
+          detach(itemPreviewElement);
+        }
 
-  return renderElement(
-    "div",
-    { render },
-    {
-      state: { slideId: itemContext.slideId, scale },
-      ref: [itemPreviewRef, forwardedRef],
-      props: [
-        {
-          "aria-hidden": "true",
-          "data-active": itemContext.isActive || undefined,
-          "data-pending": hasRenderedRef.current ? undefined : "",
-          inert: true,
-          style: {
-            width: "100%",
-            aspectRatio: `${presentationWidth} / ${presentationHeight}`,
-            overflow: "hidden",
-            pointerEvents: "none",
-            contain: "layout style paint",
+        let cancelRender: (() => void) | null = null;
+
+        const intersectionObserver = new IntersectionObserver(
+          (entries) => {
+            const entry = entries.at(-1);
+            if (!entry) return;
+            const element = itemPreviewRef.current;
+            if (!element) return;
+
+            // A render queued by a previous cycle must not outlive re-attaching or
+            // detaching.
+            cancelRender?.();
+            cancelRender = null;
+
+            if (entry.isIntersecting) {
+              const cached = slideHandleCache.get(slide.id);
+              const isCurrent =
+                cached !== undefined && cached.revision === revisionRef.current;
+              // A cached node that is already inside another preview belongs to
+              // that mount; moving it here would blank it out.
+              const parent = cached?.slideHandle.element.parentElement ?? null;
+              const isAvailable = parent === null || parent === element;
+
+              if (isCurrent && isAvailable) {
+                markThumbnailRecent(slideHandleCache, slide.id);
+                attach(element, cached.slideHandle, true);
+              } else {
+                // Anything still attached here is stale, and it has to go before
+                // its cache entry is retired or the re-render below is skipped.
+                if (slideHandleRef.current) detach(element);
+                if (cached && !isCurrent && isAvailable) {
+                  cached.slideHandle.dispose();
+                  slideHandleCache.delete(slide.id);
+                }
+                cancelRender = scheduleRender(() => {
+                  cancelRender = null;
+                  const mountedElement = itemPreviewRef.current;
+                  if (!mountedElement || slideHandleRef.current) return;
+                  const slideHandle = renderSlide(presentation, slide, {
+                    mediaUrlCache,
+                  });
+                  const isCached = getIsThumbnailCached(
+                    slideHandleCache,
+                    slide.id,
+                    slideHandle,
+                    revisionRef.current,
+                  );
+                  attach(mountedElement, slideHandle, isCached);
+                });
+              }
+            } else {
+              detach(element);
+            }
           },
+          { rootMargin: INTERSECTION_OBSERVER_ROOT_MARGIN },
+        );
+
+        intersectionObserver.observe(itemPreviewElement);
+
+        return () => {
+          intersectionObserver.disconnect();
+          cancelRender?.();
+          cancelRender = null;
+          // An unmount and a re-run look the same here, and detaching on a re-run flashes the
+          // miniature, so the decision waits until a re-run has started its next run.
+          queueMicrotask(() => {
+            // oxlint-disable-next-line react-hooks/exhaustive-deps -- reading the latest value is the point: it tells a re-run from an unmount
+            if (observerRunRef.current !== run) return;
+            detach(itemPreviewElement);
+          });
+        };
+      }, [
+        presentation,
+        slide,
+        mediaUrlCache,
+        slideHandleCache,
+        scheduleRender,
+        revisionRef,
+        presentationWidthRef,
+      ]);
+
+      // Off-screen slides re-render when the observer next reports them.
+      React.useEffect(() => {
+        const element = itemPreviewRef.current;
+        if (!element || !presentation || !slide) return;
+        if (!slideHandleRef.current) return;
+        // Effects are re-created whenever React restores this subtree, so an
+        // unchanged revision means the attached miniature is already current.
+        if (attachedRevisionRef.current === revision) return;
+
+        const oldHandle = slideHandleRef.current;
+        oldHandle.element.remove();
+        oldHandle.dispose();
+        slideHandleRef.current = null;
+        // Only the mount that published the entry may retire it; a private copy
+        // would otherwise remove a node still attached to another preview.
+        if (ownsCachedHandleRef.current) slideHandleCache.delete(slide.id);
+        ownsCachedHandleRef.current = false;
+
+        const slideHandle = renderSlide(presentation, slide, { mediaUrlCache });
+        const currentScale =
+          widthRef.current > 0
+            ? widthRef.current / presentationWidthRef.current
+            : 0;
+        if (currentScale > 0)
+          applySlideScale(slideHandle.element, currentScale);
+        element.appendChild(slideHandle.element);
+        slideHandleRef.current = slideHandle;
+        attachedRevisionRef.current = revision;
+        ownsCachedHandleRef.current = getIsThumbnailCached(
+          slideHandleCache,
+          slide.id,
+          slideHandle,
+          revision,
+        );
+        // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision-only: the IO effect above handles presentation and slide changes, and every visual edit bumps revision
+      }, [revision]);
+
+      return renderElement(
+        "div",
+        { render },
+        {
+          state: { slideId: itemContext.slideId, scale },
+          ref: [itemPreviewRef, forwardedRef],
+          props: [
+            {
+              "aria-hidden": "true",
+              "data-active": itemContext.isActive || undefined,
+              "data-pending": hasRenderedRef.current ? undefined : "",
+              inert: true,
+              style: {
+                width: "100%",
+                aspectRatio: `${presentationWidth} / ${presentationHeight}`,
+                overflow: "hidden",
+                pointerEvents: "none",
+                contain: "layout style paint",
+              },
+            },
+            thumbnailItemPreviewProps,
+          ],
         },
-        thumbnailItemPreviewProps,
-      ],
+      );
     },
-  );
-});
+  ),
+);
 
 export namespace ThumbnailItemPreview {
   export type State = ThumbnailItemPreviewState;
@@ -980,37 +1011,38 @@ export interface ThumbnailItemNumberProps extends PrimitiveProps<
   { isActive: boolean; displayIndex: number; slideId: string }
 > {}
 
-export const ThumbnailItemNumber = React.forwardRef<
-  HTMLSpanElement,
-  ThumbnailItemNumberProps
->(function ThumbnailItemNumber(
-  { children, render, ...thumbnailItemNumberProps },
-  forwardedRef,
-) {
-  const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);
+export const ThumbnailItemNumber = React.memo(
+  React.forwardRef<HTMLSpanElement, ThumbnailItemNumberProps>(
+    function ThumbnailItemNumber(
+      { children, render, ...thumbnailItemNumberProps },
+      forwardedRef,
+    ) {
+      const itemContext = useThumbnailItemContext(THUMBNAIL_ITEM_NUMBER_NAME);
 
-  return renderElement(
-    "span",
-    { render },
-    // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
-    {
-      state: {
-        isActive: itemContext.isActive,
-        displayIndex: itemContext.displayIndex,
-        slideId: itemContext.slideId,
-      },
-      ref: forwardedRef,
-      props: [
+      return renderElement(
+        "span",
+        { render },
+        // oxlint-disable-next-line react/refs -- renderElement attaches the ref without reading it
         {
-          "data-active": itemContext.isActive || undefined,
-          style: { userSelect: "none" },
-          children: children ?? itemContext.displayIndex + 1,
+          state: {
+            isActive: itemContext.isActive,
+            displayIndex: itemContext.displayIndex,
+            slideId: itemContext.slideId,
+          },
+          ref: forwardedRef,
+          props: [
+            {
+              "data-active": itemContext.isActive || undefined,
+              style: { userSelect: "none" },
+              children: children ?? itemContext.displayIndex + 1,
+            },
+            thumbnailItemNumberProps,
+          ],
         },
-        thumbnailItemNumberProps,
-      ],
+      );
     },
-  );
-});
+  ),
+);
 
 export namespace ThumbnailItemNumber {
   export type Props = ThumbnailItemNumberProps;

@@ -1,10 +1,12 @@
+import * as React from "react";
+
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Presentation } from "../index";
 import { createStore } from "../store";
 import { FIXTURE_SLIDE_COUNT } from "./minimal-pptx";
-import { loadedStore, withStore } from "./test-utils";
+import { editableStore, loadedStore, withStore } from "./test-utils";
 
 describe("Presentation.ThumbnailList", () => {
   it("renders a listbox with one option per slide and navigates on click", async () => {
@@ -177,5 +179,58 @@ describe("Presentation.ThumbnailList", () => {
 
     act(() => screen.getByText("jump").click());
     expect(store.getActiveSlideIndex()).toBe(1);
+  });
+
+  it("re-renders only the previews a navigation or an edit touches", async () => {
+    const store = await editableStore();
+    const slides = store.getState().presentation!.slides;
+    const renders = new Map<string, number>();
+
+    function CountedPreview({
+      slideId,
+      ...props
+    }: React.ComponentProps<"div"> & { slideId?: string }) {
+      if (slideId) renders.set(slideId, (renders.get(slideId) ?? 0) + 1);
+      return <div {...props} />;
+    }
+    const previews = new Map(
+      slides.map((slide) => [
+        slide.id,
+        <CountedPreview key={slide.id} slideId={slide.id} />,
+      ]),
+    );
+
+    withStore(
+      store,
+      <Presentation.ThumbnailList>
+        {({ slides: listed }) =>
+          listed.map((slide) => (
+            <Presentation.ThumbnailItem key={slide.id} slideId={slide.id}>
+              <Presentation.ThumbnailItemPreview
+                render={previews.get(slide.id)}
+              />
+            </Presentation.ThumbnailItem>
+          ))
+        }
+      </Presentation.ThumbnailList>,
+    );
+
+    renders.clear();
+    act(() => store.goToIndex(2));
+    expect([...renders.keys()].sort()).toEqual(
+      [slides[0].id, slides[2].id].sort(),
+    );
+
+    renders.clear();
+    const node = slides[2].nodes[0];
+    await act(() =>
+      store.edit({
+        type: "setNodeTransform",
+        slideId: slides[2].id,
+        nodeId: node.id,
+        position: { x: node.position.x + 10, y: node.position.y },
+      }),
+    );
+    expect([...renders.keys()]).toEqual([slides[2].id]);
   });
 });

@@ -44,6 +44,19 @@ describe("mergeRefs", () => {
     expect(objectRef.current).toBe(node);
     expect(callback).toHaveBeenCalledWith(node);
   });
+
+  it("returns the same callback for the same refs", () => {
+    const objectRef = React.createRef<HTMLDivElement>();
+    const callback = vi.fn();
+
+    expect(mergeRefs(objectRef, callback)).toBe(
+      mergeRefs(objectRef, null, callback),
+    );
+    expect(mergeRefs(objectRef, callback)).not.toBe(
+      mergeRefs(callback, objectRef),
+    );
+    expect(mergeRefs(objectRef, callback)).not.toBe(mergeRefs(objectRef));
+  });
 });
 
 describe("renderElement", () => {
@@ -169,6 +182,37 @@ describe("renderElement", () => {
     const node = screen.getByRole("button");
     expect(paramRef.current).toBe(node);
     expect(renderRef.current).toBe(node);
+  });
+
+  it("keeps refs attached across re-renders", () => {
+    const objectRef = React.createRef<HTMLDivElement>();
+    const merged = vi.fn();
+    const lone = vi.fn();
+
+    function Parts({ label }: { label: string }) {
+      return (
+        <>
+          {renderElement(
+            "div",
+            {},
+            { state: {}, ref: [objectRef, merged], props: { children: label } },
+          )}
+          {renderElement(
+            "span",
+            {},
+            { state: {}, ref: lone, props: { children: label } },
+          )}
+        </>
+      );
+    }
+
+    const { rerender } = render(<Parts label="a" />);
+    rerender(<Parts label="b" />);
+
+    expect(screen.getAllByText("b")).toHaveLength(2);
+    expect(merged).toHaveBeenCalledTimes(1);
+    expect(lone).toHaveBeenCalledTimes(1);
+    expect(objectRef.current?.textContent).toBe("b");
   });
 
   it("warns when a function render looks like a component", () => {

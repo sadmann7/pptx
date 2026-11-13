@@ -25,11 +25,10 @@ import {
 
 import {
   RootContext,
-  usePresentation,
-  useSlide,
+  useActiveSlide,
   useSlideRevision,
   useStoreContext,
-  useZoom,
+  useStoreSelector,
 } from "../context";
 import { useLatestRef } from "../hooks";
 import type { PrimitiveProps } from "../render";
@@ -394,9 +393,10 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
     forwardedRef,
   ) {
     const store = useStoreContext(SELECTION_NAME);
-    const { presentation } = usePresentation();
-    const { slide, slideId } = useSlide();
-    const { zoom } = useZoom();
+    const presentation = useStoreSelector(store, (s) => s.presentation, null);
+    const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
+    const slide = useActiveSlide(store);
+    const zoom = useStoreSelector(store, (s) => s.zoom, 1);
 
     const rootRef = React.useRef<HTMLDivElement>(null);
     const rootContext = React.useContext(RootContext);
@@ -4097,8 +4097,8 @@ export const Selection = React.forwardRef<HTMLDivElement, SelectionProps>(
     forwardedRef,
   ) {
     const store = useStoreContext(SELECTION_NAME);
-    const { presentation } = usePresentation();
-    const { slideId } = useSlide();
+    const presentation = useStoreSelector(store, (s) => s.presentation, null);
+    const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
     const rootRef = React.useContext(RootContext);
 
     const overlayRef = React.useRef<HTMLDivElement | null>(null);
