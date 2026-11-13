@@ -5,3 +5,14 @@ export function GitHubIcon(props: React.ComponentProps<"svg">) {
     </svg>
   );
 }
+
+export function LogoMark(props: React.ComponentProps<"svg">) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path
+        fillRule="evenodd"
+        d="M4.5 5h15a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-15a2.5 2.5 0 0 1-2.5-2.5v-9a2.5 2.5 0 0 1 2.5-2.5z m1 3.5h13v7h-13z m3 2h4a1 1 0 0 1 1 1v0a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v0a1 1 0 0 1 1-1z"
+      />
+    </svg>
+  );
+}
