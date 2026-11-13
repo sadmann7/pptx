@@ -232,7 +232,7 @@ function Hero() {
             href="/docs"
             className={cn(
               buttonVariants({ size: "lg" }),
-              "h-9 rounded-md px-3.5 font-semibold",
+              "rounded-md px-3.5 font-semibold",
             )}
           >
             Get started
@@ -242,7 +242,7 @@ function Hero() {
             href="/docs/components"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
-              "h-9 rounded-md bg-card px-3.5 dark:border-border dark:bg-card",
+              "rounded-md px-3.5",
             )}
           >
             <LayoutGrid className="size-3.75" />
