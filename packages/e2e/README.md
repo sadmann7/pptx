@@ -50,7 +50,7 @@ where decoding is a header strip. Point it at a real deck instead with
 `FONT_PERF_DECK=decks/whatever.pptx`, which measures the deck as it is.
 
 The docs editor is profiled with `pnpm profile:editor` against a production
-docs build; see `editor-perf-notes.md` at the repo root for the setup. `pnpm a11y`
+docs build; see the header of `scripts/profile.ts` for the setup. `pnpm a11y`
 runs axe over the docs playground and editing page against a docs dev server.
 
 `pnpm tsx scripts/scan-fonts.mts` prints what each deck's font parts are, what

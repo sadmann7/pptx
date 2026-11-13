@@ -2,12 +2,14 @@
  * Records editor performance on the docs playground (/pg). Run against a
  * production build on a real display (headed):
  *
- *   pnpm -F docs build && pnpm -F docs start -p 3003
+ *   PROFILE=1 pnpm -F docs build && pnpm -F docs start -p 3003
  *   pnpm bench-deck            # once: recordings/perf/decks/bench-300.pptx
  *   pnpm profile:editor <label> [scenario]
+ *   pnpm perf:trace recordings/perf/<label>/<scenario>.json
  *
  * Writes a Chrome trace per scenario to recordings/perf/<label>/ and prints
- * frame stats. Compare only runs made back to back.
+ * frame stats. `PROFILE=1` keeps source maps, so `perf:trace` names functions.
+ * Compare only runs made back to back.
  *
  * Env: BASE_URL (default http://localhost:3003), DECK, EXTRA_CSS (stylesheet to
  * inject), STRIP_CSS (regex of selectors to delete), CPU_THROTTLE (e.g. 4).

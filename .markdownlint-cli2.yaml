@@ -3,3 +3,4 @@ ignores:
   - ".changeset/**"
   - "**/NOTICE"
   - "**/LICENSES/**"
+  - "notes/**"

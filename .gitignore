@@ -71,3 +71,6 @@ temp
 
 # Fumadocs
 .source
+
+# Local notes
+/notes/
