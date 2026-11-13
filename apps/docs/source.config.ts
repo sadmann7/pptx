@@ -1,12 +1,13 @@
 import { metaSchema, pageSchema } from "fumadocs-core/source/schema";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
-
-import { remarkChangelog } from "./src/lib/remark-changelog";
+import { z } from "zod";
 
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
-    schema: pageSchema,
+    schema: pageSchema.extend({
+      date: z.coerce.string().optional(),
+    }),
     postprocess: {
       includeProcessedMarkdown: true,
     },
@@ -17,7 +18,5 @@ export const docs = defineDocs({
 });
 
 export default defineConfig({
-  mdxOptions: {
-    remarkPlugins: (plugins) => [remarkChangelog, ...plugins],
-  },
+  mdxOptions: {},
 });

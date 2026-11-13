@@ -1,0 +1,32 @@
+---
+title: 0.5.0 - Controls
+description: Presentation.Controls for editor UI outside the slide, and data-presentation-* attributes.
+date: 2026-11-13
+---
+
+### Controls
+
+`Presentation.Controls` wraps editor UI outside the slide, such as a toolbar. Pressing it keeps the selection and text editing, and so does pressing the popovers and menus it renders.
+
+```tsx
+<Presentation.Controls>
+  <FormattingToolbar />
+</Presentation.Controls>
+```
+
+[Read the docs](/docs/components#controls)
+
+### Renamed attributes
+
+The React primitives now write `data-presentation-*` attributes, matching the `--presentation-*` CSS variables:
+
+- `data-pptx-keep-selection` is now `data-presentation-controls`, and `KEEP_SELECTION_ATTRIBUTE` is now `CONTROLS_ATTRIBUTE`.
+- Overlay parts carry `data-presentation-selection-box`, `data-presentation-resize-handle`, `data-presentation-rotate-handle`, `data-presentation-snap-guide`, and `data-presentation-marquee`.
+- The viewer's slide wrappers carry `data-pptx-slide-index` instead of `data-slide-index`.
+
+### Fixes
+
+- Drags end where the pointer is released, even before the last moves render.
+- Keys typed over selected table cells while the table re-renders are no longer lost.
+- Pressing a shape no longer scrolls the page when the editor is partly off screen.
+- Unmounting a viewer frees picture URLs and removes the deck's embedded fonts from `document.fonts`.

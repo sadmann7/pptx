@@ -1,0 +1,30 @@
+---
+title: 0.3.0 - Editing Toolbar
+description: Build a formatting toolbar with useSelection, and edit slides the way PowerPoint does.
+date: 2026-11-05
+---
+
+### Formatting toolbar
+
+`useSelection` reads the selection and its text formatting, formats text and paragraphs, and inserts, duplicates, deletes, and reorders text boxes and shapes. Draw tools (`startDrawing`) place a shape where the slide is clicked or dragged, and `anchor` positions a floating toolbar over the selection.
+
+[Read the docs](/docs/editing#formatting-toolbar)
+
+### PowerPoint-style editing
+
+- Snapping with guides (`snapping`, `snapThreshold`, Alt to place freely), rotation, and resizing rotated shapes.
+- Copy and paste, arrange and duplicate shortcuts, and Tab between shapes with screen reader announcements.
+- A click selects a text box; click again, double-click, or type to edit it.
+- The overlay is composable from `SelectionBox`, `ResizeHandle`, `RotateHandle`, `SnapGuide`, and `Marquee`.
+
+### Edit operations
+
+The core adds `setTextStyle`, `setParagraphStyle`, `setOutline`, `addSlide`, `setSlideBackground`, `addTextBox`, `addShape`, `addImage`, `duplicateNode`, `reorderNode`, and `pasteNodes`. `getPresentationFonts()` and `getPresetShapePath()` feed font and shape pickers.
+
+[Read the docs](/docs/editing#programmatic-edits)
+
+### Fixes
+
+- Themes nested in another folder load, instead of rendering theme colors black.
+- The thumbnail list keeps at most 50 rendered miniatures, so memory stays flat on long decks.
+- Edits, undo, and redo run one at a time, and `undo()` returns a promise like `redo()`.

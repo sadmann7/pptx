@@ -7,6 +7,6 @@
     "components",
     "editing",
     "store",
-    "changelog"
+    "...changelog"
   ]
 }
