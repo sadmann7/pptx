@@ -15,6 +15,7 @@ import {
   ArrowRight,
   CaseSensitive,
   ChartColumn,
+  LayoutGrid,
   Move,
   Shapes,
   Table,
@@ -247,7 +248,7 @@ function CtaButtons() {
         href="/docs"
         className={cn(
           buttonVariants({ size: "lg" }),
-          "h-10 rounded-md px-4 font-semibold",
+          "h-9 rounded-md px-3.5 font-semibold",
         )}
       >
         Get started
@@ -257,9 +258,10 @@ function CtaButtons() {
         href="/docs/components"
         className={cn(
           buttonVariants({ variant: "outline", size: "lg" }),
-          "h-10 rounded-md bg-card px-4 dark:border-border dark:bg-card",
+          "h-9 rounded-md bg-card px-3.5 dark:border-border dark:bg-card",
         )}
       >
+        <LayoutGrid className="size-3.75" />
         View components
       </Link>
     </>
