@@ -274,7 +274,7 @@ async function RoundTrip() {
   return (
     <Section className="grid items-center gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-30">
       <div className="flex flex-col gap-6">
-        <SectionHeading eyebrow="Lossless save">
+        <SectionHeading label="Lossless save">
           Edit one slide.
           <br />
           Save the same file.
@@ -312,7 +312,7 @@ async function getDeckParts(): Promise<DeckPart[]> {
 function Features() {
   return (
     <Section className="flex flex-col gap-8 md:gap-16">
-      <SectionHeading eyebrow="Everything a deck needs">
+      <SectionHeading label="Everything a deck needs">
         Renders like PowerPoint.
         <br />
         Edits like PowerPoint.
@@ -403,7 +403,7 @@ async function ComposableApi() {
         ))}
       </Tabs>
       <div className="flex flex-col gap-6 max-lg:order-first">
-        <SectionHeading eyebrow="Composable API">
+        <SectionHeading label="Composable API">
           Compose your editor.
         </SectionHeading>
         <p className="text-[17px]/[26px] text-muted-foreground">
@@ -430,7 +430,7 @@ async function ComposableApi() {
 function Coverage() {
   return (
     <Section className="flex flex-col gap-8 md:gap-16">
-      <SectionHeading eyebrow="OOXML coverage">
+      <SectionHeading label="OOXML coverage">
         Measured against
         <br />
         ECMA-376.
@@ -503,9 +503,7 @@ function Architecture() {
   return (
     <Section className="flex flex-col gap-8 md:items-center md:gap-16">
       <div className="flex flex-col gap-3.5 md:items-center md:gap-6 md:text-center">
-        <SectionHeading eyebrow="Architecture">
-          React is optional.
-        </SectionHeading>
+        <SectionHeading label="Architecture">React is optional.</SectionHeading>
         <p className="max-w-160 text-[17px]/[26px] text-balance text-muted-foreground">
           The engine runs on its own. React adds the components.
         </p>
@@ -643,16 +641,16 @@ function Section({
 }
 
 function SectionHeading({
-  eyebrow,
+  label,
   children,
 }: {
-  eyebrow: string;
+  label: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3.5 md:gap-5">
       <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-        {eyebrow}
+        {label}
       </p>
       <h2 className="text-3xl font-semibold tracking-tight md:text-[44px]/[48px] md:tracking-[-1.4px]">
         {children}
