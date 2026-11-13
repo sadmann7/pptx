@@ -453,7 +453,6 @@ export const ThumbnailList = React.forwardRef<
   const slideOrder = hasDefaultItems
     ? presentation?.slides.map((slide) => slide.id).join("\u0000")
     : undefined;
-  // The same elements while the order holds, so an edit elsewhere re-renders no item.
   const defaultItems = React.useMemo(
     () =>
       hasDefaultItems

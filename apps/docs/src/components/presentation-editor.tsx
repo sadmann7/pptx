@@ -1452,7 +1452,6 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const { presentation } = usePresentation();
   const slideOrder =
     presentation?.slides.map((slide) => slide.id).join("\u0000") ?? "";
-  // The same array while the order holds, so an edit elsewhere re-renders no item.
   const slideIds = React.useMemo(
     () => (slideOrder ? slideOrder.split("\u0000") : []),
     [slideOrder],

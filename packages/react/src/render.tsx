@@ -84,8 +84,7 @@ interface MergedRefNode {
 
 const mergedRefs: MergedRefNode = {};
 
-// The same refs always merge into the same callback. React detaches and re-attaches a ref
-// whose identity changes, so a fresh callback per render would do that on every commit.
+// React re-attaches a ref whose identity changes, so the same refs share one callback.
 export function mergeRefs<T>(
   ...refs: (React.Ref<T> | null | undefined)[]
 ): React.RefCallback<T> {
@@ -203,7 +202,6 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
     elementRef as React.Ref<E> | null,
     ...paramRefs,
   ].filter((r) => r != null);
-  // A lone ref passes through untouched, so its identity is the caller's.
   if (refs.length === 1) outProps.ref = refs[0];
   else if (refs.length > 1) outProps.ref = mergeRefs(...refs);
 
