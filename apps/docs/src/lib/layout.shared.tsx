@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
+import { LogoMark } from "@/components/icons";
 import { GITHUB_URL, SITE_NAME } from "@/lib/site";
 
 export function baseOptions(): BaseLayoutProps {
@@ -14,8 +15,8 @@ export function baseOptions(): BaseLayoutProps {
 export function SiteLogo() {
   return (
     <>
-      <span className="flex size-5.5 items-center justify-center rounded-[5px] bg-primary">
-        <span className="h-2 w-3 rounded-[1.5px] border-[1.5px] border-primary-foreground" />
+      <span className="flex size-5.5 items-center justify-center rounded-[5px] bg-primary text-primary-foreground">
+        <LogoMark className="size-4" />
       </span>
       <span className="font-semibold tracking-tight">{SITE_NAME}</span>
     </>
