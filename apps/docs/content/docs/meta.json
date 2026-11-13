@@ -6,6 +6,7 @@
     "quick-start",
     "components",
     "editing",
-    "store"
+    "store",
+    "changelog"
   ]
 }
