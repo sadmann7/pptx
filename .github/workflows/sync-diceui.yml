@@ -40,7 +40,6 @@ jobs:
       - name: Open or refresh the PR
         if: steps.sync.outputs.changed == 'true'
         run: |
-          # A branch with commits from anyone but the bot has work on it.
           if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
             git fetch --quiet origin "$BRANCH"
             if git log "origin/main..origin/$BRANCH" --format=%ae | grep -qv "$BOT_EMAIL"; then
@@ -49,8 +48,6 @@ jobs:
             fi
           fi
 
-          # The registry serves what diceui.com last deployed, so this lists
-          # the diceui commits since the copies last changed here.
           since=$(git log -1 --format=%cI -- packages/ui/src/components/presentation.tsx packages/ui/src/components/presentation-zoom-select.tsx)
           for file in docs/registry/bases/base/ui/presentation.tsx docs/registry/bases/base/components/presentation-zoom-select.tsx; do
             gh api "repos/sadmann7/diceui/commits?path=$file&since=$since" \
