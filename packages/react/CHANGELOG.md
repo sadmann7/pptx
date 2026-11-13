@@ -1,5 +1,21 @@
 # @diceui/pptx
 
+## 0.5.0
+
+### Minor Changes
+
+- 4460e3b: Rename the attributes the React primitives write to `data-presentation-*`, matching the `--presentation-*` CSS variables. Toolbars and their popovers now mark themselves with `data-presentation-controls` (`CONTROLS_ATTRIBUTE`, formerly `KEEP_SELECTION_ATTRIBUTE`), and parts carry `data-presentation-selection-box`, `data-presentation-resize-handle`, `data-presentation-rotate-handle`, `data-presentation-snap-guide`, and `data-presentation-marquee`. The viewer's slide wrappers carry `data-pptx-slide-index` instead of `data-slide-index`.
+- 39ab536: Add `Presentation.Controls` for editor UI outside the slide. Pressing it keeps the selection and text editing, and so does pressing the popovers and menus it renders, without marking each one with `data-presentation-controls`.
+
+### Patch Changes
+
+- c16ca47: A move, resize, rotate, draw, or marquee drag now ends where the pointer is released, even when it's released before the last moves render. A cell range dragged while the table re-renders is kept, and Delete pressed on the selected cells right after a re-render clears them.
+- b1fabfd: Pressing a shape or starting a drawing no longer scrolls the page when the editor is partly off screen.
+- 3bcc36f: Keys typed over selected table cells while the table re-renders are no longer lost, and Ctrl/Cmd+A and Backspace pressed then act on the selected cells.
+- 46bfa12: Unmounting a viewer now frees the active slide's picture URLs and removes the deck's embedded fonts from `document.fonts`, including when it unmounts mid-load. `Presentation.Root` resets the store it creates, and `useCreatePresentationStore` resets its store when the calling component unmounts.
+- Updated dependencies [4460e3b]
+  - @diceui/pptx-core@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
