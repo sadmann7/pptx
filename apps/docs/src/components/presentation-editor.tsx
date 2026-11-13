@@ -17,7 +17,6 @@ import {
   getPresentationFonts,
   getPresetShapePath,
   getTableCellOrigin,
-  Presentation as PresentationPrimitive,
   useHistory,
   usePresentation,
   useSelection,
@@ -83,6 +82,7 @@ import { Popover, PopoverContent } from "@pptx/ui/components/popover";
 import {
   Presentation,
   PresentationContent,
+  PresentationControls,
   PresentationError,
   PresentationLoading,
   PresentationProvider,
@@ -866,7 +866,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
 
   return (
     <TooltipProvider delay={400}>
-      <PresentationPrimitive.Controls
+      <PresentationControls
         render={
           <Toolbar
             aria-label="Edit presentation"
@@ -1165,7 +1165,7 @@ function EditorToolbar({ store, onOpen }: EditorToolbarProps) {
             </>
           )}
         </div>
-      </PresentationPrimitive.Controls>
+      </PresentationControls>
     </TooltipProvider>
   );
 }
@@ -1763,7 +1763,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
   }
 
   return (
-    <PresentationPrimitive.Controls className="contents">
+    <PresentationControls className="contents">
       <Popover open={isOpen}>
         <PopoverContent
           anchor={anchor}
@@ -1852,7 +1852,7 @@ function FloatingToolbar({ store }: { store: PresentationStore }) {
           </TooltipProvider>
         </PopoverContent>
       </Popover>
-    </PresentationPrimitive.Controls>
+    </PresentationControls>
   );
 }
 
