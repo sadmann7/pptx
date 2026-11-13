@@ -1,5 +1,11 @@
 # @diceui/pptx-core
 
+## 0.4.2
+
+### Patch Changes
+
+- 2e5d162: Undoing an edit puts its parts back to how they were, so a deck undone to its original state saves those parts byte-for-byte instead of re-serializing them.
+
 ## 0.4.1
 
 ### Patch Changes

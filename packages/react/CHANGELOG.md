@@ -1,5 +1,14 @@
 # @diceui/pptx
 
+## 0.5.1
+
+### Patch Changes
+
+- 337de6e: Navigating or editing a long deck re-renders only the thumbnail previews it changes, and parts keep their refs attached across renders.
+- 9fc62b0: A paste, Delete, Ctrl/Cmd+A, or Escape pressed the moment text editing starts, such as right after inserting a table, is no longer dropped.
+- Updated dependencies [2e5d162]
+  - @diceui/pptx-core@0.4.2
+
 ## 0.5.0
 
 ### Minor Changes
