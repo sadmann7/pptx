@@ -786,3 +786,35 @@ describe("batch", () => {
     expect(shapeOn(pres, 0, "2").position).toEqual(before);
   });
 });
+
+describe("undo", () => {
+  it("saves an undone part byte-for-byte as it was opened", async () => {
+    const pres = await openEditable([textShape(2, "Original")]);
+    const slideId = pres.slides[0].id;
+    const sourcePackage = pres.sourcePackage!;
+    const opened = await sourcePackage.readBytes(slideId);
+
+    const first = await applyEdit(pres, {
+      type: "setTextRun",
+      slideId,
+      nodeId: "2",
+      paragraphIndex: 0,
+      runIndex: 0,
+      text: "First",
+    });
+    const second = await applyEdit(pres, {
+      type: "setNodeTransform",
+      slideId,
+      nodeId: "2",
+      position: { x: 10, y: 20 },
+    });
+
+    second.undo();
+    expect(sourcePackage.isDirty(slideId)).toBe(true);
+
+    first.undo();
+    expect(sourcePackage.isDirty(slideId)).toBe(false);
+    const zip = await JSZip.loadAsync(await writePptx(pres));
+    expect(await zip.file(slideId)?.async("uint8array")).toEqual(opened);
+  });
+});
