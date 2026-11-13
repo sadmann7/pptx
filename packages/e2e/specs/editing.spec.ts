@@ -1138,6 +1138,50 @@ test.describe("tables", () => {
     await page.mouse.up();
   });
 
+  test("pastes into a table cell in the commit that starts text editing", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Firefox drops clipboardData on scripted clipboard events",
+    );
+    const { overlay } = await open(page);
+    await page.evaluate(() => {
+      const root = document.querySelector("[data-presentation-selection]")!;
+      // Runs after the commit that enters text mode, before its effects.
+      new MutationObserver((_, observer) => {
+        if (root.getAttribute("data-mode") !== "text") return;
+        observer.disconnect();
+        const data = new DataTransfer();
+        data.setData("text/plain", "North\nSouth");
+        data.setData(
+          "text/html",
+          "<table><tr><td>North</td></tr><tr><td>South</td></tr></table>",
+        );
+        document.activeElement!.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: data,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }).observe(root, { attributes: true, attributeFilter: ["data-mode"] });
+    });
+    await page.getByTestId("insert-table").click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+    const nodeId = await page.evaluate(() => {
+      const nodes = window.__editStore!.getActiveSlide()!.nodes;
+      return nodes[nodes.length - 1].id;
+    });
+
+    await expect
+      .poll(async () =>
+        (await readTable(page, nodeId)).cells.map((row) => row[0].text),
+      )
+      .toEqual(["North", "South"]);
+  });
+
   test("pastes a spreadsheet column, copies the range, and clears it", async ({
     page,
     browserName,
