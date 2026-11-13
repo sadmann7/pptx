@@ -228,13 +228,13 @@ function Hero() {
           Composable React primitives for viewing and editing PowerPoint decks.
         </p>
         <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 fill-mode-[forwards] [animation-delay:0.3s] sm:flex sm:w-auto">
-          <Link href="/docs" className={buttonVariants({ size: "lg" })}>
+          <Link href="/docs" className={cn(buttonVariants({ size: "lg" }))}>
             Get started
             <ArrowRight data-icon="inline-end" />
           </Link>
           <Link
             href="/docs/components"
-            className={buttonVariants({ variant: "outline", size: "lg" })}
+            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
           >
             <LayoutGrid data-icon="inline-start" />
             View components
