@@ -479,6 +479,24 @@ export async function applyEdit(
   presentation: PresentationData,
   op: EditOperation,
 ): Promise<EditResult> {
+  const { sourcePackage } = presentation;
+  const dirtyPaths = sourcePackage?.getDirtyPaths();
+  const result = await applyOperation(presentation, op);
+  if (!sourcePackage || !dirtyPaths) return result;
+
+  return {
+    ...result,
+    undo: () => {
+      result.undo();
+      sourcePackage.restoreDirtyPaths(dirtyPaths);
+    },
+  };
+}
+
+async function applyOperation(
+  presentation: PresentationData,
+  op: EditOperation,
+): Promise<EditResult> {
   switch (op.type) {
     case "setTextRun":
       return applySetTextRun(presentation, op);

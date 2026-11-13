@@ -131,6 +131,17 @@ export class PptxPackage {
     return this.dirty.has(this.canonical(path));
   }
 
+  /** @internal */
+  getDirtyPaths(): Set<string> {
+    return new Set(this.dirty);
+  }
+
+  /** @internal */
+  restoreDirtyPaths(paths: Set<string>): void {
+    this.dirty.clear();
+    for (const path of paths) this.dirty.add(path);
+  }
+
   /** Replaces or adds a part's raw content, discarding its registered XML root and dirty flag. */
   setEntry(path: string, content: Uint8Array | string): void {
     const key = this.canonical(path);
