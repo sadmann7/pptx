@@ -192,6 +192,15 @@ function PresentationMarquee({
   );
 }
 
+function PresentationControls(props: PresentationPrimitive.Controls.Props) {
+  return (
+    <PresentationPrimitive.Controls
+      data-slot="presentation-controls"
+      {...props}
+    />
+  );
+}
+
 function PresentationLoading({
   className,
   children,
@@ -405,6 +414,7 @@ function withClassName<State>(
 export {
   Presentation,
   PresentationContent,
+  PresentationControls,
   PresentationError,
   PresentationLoading,
   PresentationMarquee,
