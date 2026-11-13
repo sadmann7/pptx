@@ -25,12 +25,12 @@ import Link from "next/link";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import type { DeckPart } from "@/components/landing-demo";
 import {
   DemoDeckEditor,
   DemoDeckParts,
   DemoDeckProvider,
 } from "@/components/landing-demo";
-import type { DeckPart } from "@/components/landing-demo";
 import { DEMO_DECK_PATH } from "@/lib/constants";
 import { DICEUI_URL, X_URL } from "@/lib/site";
 
@@ -212,7 +212,7 @@ function Hero() {
       <div className="flex max-w-4xl flex-col items-center gap-5 text-center md:gap-6">
         <Link
           href="/docs/editing"
-          className="flex animate-fade-up items-center gap-2 rounded-full border bg-card py-1 pr-3 pl-1 text-[13px] text-muted-foreground opacity-0 transition-colors [animation-fill-mode:forwards] hover:text-foreground"
+          className="flex animate-fade-up items-center gap-2 rounded-full border bg-card py-1 pr-3 pl-1 text-[13px] text-muted-foreground opacity-0 transition-colors fill-mode-[forwards] hover:text-foreground"
         >
           <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
             New
@@ -221,20 +221,20 @@ function Hero() {
           <span className="max-sm:hidden">New in 0.4: table editing</span>
           <ArrowRight className="size-3.5" />
         </Link>
-        <h1 className="animate-fade-up text-4xl font-semibold tracking-tight text-balance opacity-0 [animation-delay:0.1s] [animation-fill-mode:forwards] md:text-[68px]/[71px] md:tracking-[-2.6px]">
+        <h1 className="animate-fade-up text-4xl font-semibold tracking-tight text-balance opacity-0 fill-mode-[forwards] [animation-delay:0.1s] md:text-[68px]/[71px] md:tracking-[-2.6px]">
           Open, edit, and save .pptx without leaving the browser
         </h1>
-        <p className="max-w-[40rem] animate-fade-up text-lg text-balance text-muted-foreground opacity-0 [animation-delay:0.2s] [animation-fill-mode:forwards] md:text-[19px]/[29px]">
+        <p className="max-w-160 animate-fade-up text-lg text-balance text-muted-foreground opacity-0 fill-mode-[forwards] [animation-delay:0.2s] md:text-[19px]/[29px]">
           Composable React primitives for viewing and editing PowerPoint decks.
         </p>
-        <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 [animation-delay:0.3s] [animation-fill-mode:forwards] sm:flex sm:w-auto">
+        <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 fill-mode-[forwards] [animation-delay:0.3s] sm:flex sm:w-auto">
           <CtaButtons />
         </div>
       </div>
       <div className="flex w-full justify-center bg-[radial-gradient(ellipse_45%_40%_at_50%_55%,color-mix(in_srgb,var(--presentation-selection,#1a73e8)_8%,transparent),transparent)] md:py-0">
         <DemoDeckEditor
           defaultSelectedNodeName="mat-cover-title"
-          className="h-[22rem] w-full max-w-300 rounded-xl shadow-2xl shadow-black/40 md:h-[40.75rem]"
+          className="h-88 w-full max-w-300 rounded-xl shadow-2xl shadow-black/40 md:h-163"
         />
       </div>
     </section>
@@ -458,7 +458,7 @@ function Coverage() {
           ))}
         </dl>
         <div className="overflow-hidden rounded-xl border">
-          <div className="grid grid-cols-[15rem_minmax(0,1fr)_7.5rem] gap-6 border-b bg-card px-6 py-3 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase max-md:hidden">
+          <div className="grid grid-cols-[15rem_minmax(0,1fr)_7.5rem] gap-6 border-b bg-card px-6 py-3 font-mono text-[11px] tracking-widest text-muted-foreground uppercase max-md:hidden">
             <span>Area</span>
             <span>What renders</span>
             <span>Status</span>
@@ -506,7 +506,7 @@ function Architecture() {
         <SectionHeading eyebrow="Architecture">
           React is optional.
         </SectionHeading>
-        <p className="max-w-[40rem] text-[17px]/[26px] text-balance text-muted-foreground">
+        <p className="max-w-160 text-[17px]/[26px] text-balance text-muted-foreground">
           The engine runs on its own. React adds the components.
         </p>
       </div>
@@ -516,7 +516,7 @@ function Architecture() {
             key={item.label}
             className="flex flex-col rounded-xl border bg-background p-4 md:p-6"
           >
-            <p className="pb-4 font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+            <p className="pb-4 font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
               {item.label}
             </p>
             <Tier
@@ -651,7 +651,7 @@ function SectionHeading({
 }) {
   return (
     <div className="flex flex-col gap-3.5 md:gap-5">
-      <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">
+      <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
         {eyebrow}
       </p>
       <h2 className="text-3xl font-semibold tracking-tight md:text-[44px]/[48px] md:tracking-[-1.4px]">
