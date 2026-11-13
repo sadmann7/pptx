@@ -1,0 +1,21 @@
+---
+title: 0.4.0 - Table Editing
+description: Insert tables and edit their cells, rows, columns, and styles.
+date: 2026-11-06
+---
+
+### Tables
+
+`addTable` inserts a table. Click into a cell to edit it; Tab and Shift+Tab move between cells, and Tab on the last cell adds a row. Drag a border to resize a row or column, and drag across cells or Shift+click to select a range to format, merge, clear, or copy. Pasting tab-separated text fills cells.
+
+### Table operations
+
+- `insertTableRow`, `deleteTableRow`, `insertTableColumn`, and `deleteTableColumn` change rows and columns, and `setTableGrid` sizes them.
+- `mergeTableCells` and `splitTableCell` merge and split cells.
+- `setTableCellStyle` sets cell fill, borders, and vertical alignment.
+- `setTableOptions` toggles the header row, banded rows, and other table style parts.
+- The text operations take a `cell` to edit one table cell.
+
+`useSelection` adds `insertTable`, `cell`, `cellRange`, `changeTable`, and `setTableCellStyle`.
+
+[Read the docs](/docs/editing)

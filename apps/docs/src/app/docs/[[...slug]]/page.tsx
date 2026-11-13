@@ -10,6 +10,8 @@ import { notFound } from "next/navigation";
 
 import { DocActions } from "@/components/doc-actions";
 import { getMDXComponents } from "@/components/mdx";
+import { getChangelogToc } from "@/lib/changelog";
+import { DOCS_ROUTE } from "@/lib/constants";
 import { getPageImage, getPageMarkdownUrl, source } from "@/lib/source";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
@@ -19,9 +21,11 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
+  const toc =
+    page.url === `${DOCS_ROUTE}/changelog` ? getChangelogToc() : page.data.toc;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage toc={toc} full={page.data.full}>
       <div className="flex flex-col gap-1.5 pb-4">
         <div className="flex items-center gap-2">
           <DocsTitle className="flex-1">{page.data.title}</DocsTitle>

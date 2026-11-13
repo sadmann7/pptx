@@ -7,8 +7,15 @@ import {
 import { AutoTypeTable, type AutoTypeTableProps } from "fumadocs-typescript/ui";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
+import dynamic from "next/dynamic";
 
 import { PresentationEditingDemo } from "@/components/presentation-editing-demo";
+
+const Changelogs = dynamic(() =>
+  import("@/components/changelogs").then((mod) => ({
+    default: mod.Changelogs,
+  })),
+);
 
 const generator = createGenerator({
   cache: createFileSystemGeneratorCache(".next/fumadocs-typescript"),
@@ -27,6 +34,7 @@ export function getMDXComponents(components?: MDXComponents) {
     KbdGroup: (props: React.ComponentProps<typeof KbdGroup>) => (
       <KbdGroup {...props} className={cn("not-prose", props.className)} />
     ),
+    Changelogs: () => <Changelogs />,
     PresentationEditingDemo,
     ...components,
   } satisfies MDXComponents;

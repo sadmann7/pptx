@@ -26,7 +26,8 @@
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "sonner": "catalog:"
+    "sonner": "catalog:",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",

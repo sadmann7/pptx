@@ -1,0 +1,22 @@
+---
+title: 0.1.0 - Initial Release
+description: View and edit PowerPoint decks in the browser with @diceui/pptx and @diceui/pptx-core.
+date: 2026-09-01
+---
+
+pptx opens, renders, edits, and saves PowerPoint decks in the browser. It ships as two packages:
+
+- **`@diceui/pptx`**: composable React primitives under the `Presentation` namespace.
+- **`@diceui/pptx-core`**: the framework-agnostic engine that parses, renders, edits, and saves decks.
+
+```package-install
+@diceui/pptx
+```
+
+[Read the docs](/docs/quick-start)
+
+### Fixes
+
+- Text no longer disappears from a slide whose autofit pass runs while it's detached, such as a thumbnail scrolled out of view.
+- Importing the package from npm no longer fails with `Can't resolve './worker.ts'`.
+- Embedded fonts with CFF outlines now load, and uncompressed fonts skip the font worker.

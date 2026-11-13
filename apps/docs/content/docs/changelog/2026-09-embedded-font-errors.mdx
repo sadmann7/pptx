@@ -1,0 +1,20 @@
+---
+title: 0.2.0 - Embedded Font Errors
+description: Report embedded fonts that can't be used, and control focus when a thumbnail list mounts.
+date: 2026-09-09
+---
+
+### Embedded font errors
+
+`loadEmbeddedFonts` takes an `onError` option, so a font that can't be used is reported instead of silently falling back. Each report names the part, the typefaces left without it, and why it failed.
+
+### Thumbnail list focus
+
+`ThumbnailList` takes `initialFocus`. Loading a deck on mount no longer captures the first tab stop.
+
+[Read the docs](/docs/components#thumbnaillist)
+
+### Fixes
+
+- Embedded fonts load whatever extension their part uses, not only `.fntdata`.
+- Refs are no longer read or written during render, for React Compiler compatibility.
