@@ -4,9 +4,9 @@
     "index",
     "installation",
     "quick-start",
+    "...changelog",
     "components",
     "editing",
-    "store",
-    "...changelog"
+    "store"
   ]
 }
