@@ -228,7 +228,26 @@ function Hero() {
           Composable React primitives for viewing and editing PowerPoint decks.
         </p>
         <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 fill-mode-[forwards] [animation-delay:0.3s] sm:flex sm:w-auto">
-          <CtaButtons />
+          <Link
+            href="/docs"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "h-9 rounded-md px-3.5 font-semibold",
+            )}
+          >
+            Get started
+            <ArrowRight className="size-3.75" />
+          </Link>
+          <Link
+            href="/docs/components"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "h-9 rounded-md bg-card px-3.5 dark:border-border dark:bg-card",
+            )}
+          >
+            <LayoutGrid className="size-3.75" />
+            View components
+          </Link>
         </div>
       </div>
       <div className="flex w-full justify-center bg-[radial-gradient(ellipse_45%_40%_at_50%_55%,color-mix(in_srgb,var(--presentation-selection,#1a73e8)_8%,transparent),transparent)] md:py-0">
@@ -238,33 +257,6 @@ function Hero() {
         />
       </div>
     </section>
-  );
-}
-
-function CtaButtons() {
-  return (
-    <>
-      <Link
-        href="/docs"
-        className={cn(
-          buttonVariants({ size: "lg" }),
-          "h-9 rounded-md px-3.5 font-semibold",
-        )}
-      >
-        Get started
-        <ArrowRight className="size-3.75" />
-      </Link>
-      <Link
-        href="/docs/components"
-        className={cn(
-          buttonVariants({ variant: "outline", size: "lg" }),
-          "h-9 rounded-md bg-card px-3.5 dark:border-border dark:bg-card",
-        )}
-      >
-        <LayoutGrid className="size-3.75" />
-        View components
-      </Link>
-    </>
   );
 }
 
@@ -323,7 +315,9 @@ function Features() {
             key={feature.title}
             className="flex gap-3.5 bg-background p-4 sm:flex-col sm:gap-1.5 sm:p-7 sm:pb-7.5"
           >
-            <IconTile icon={feature.icon} />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
+              <feature.icon className="size-4" />
+            </span>
             <div className="flex flex-col gap-1 sm:mt-4 sm:gap-1.5">
               <h3 className="text-[15px] font-semibold tracking-[-0.2px] sm:text-[17px]">
                 {feature.title}
@@ -656,17 +650,5 @@ function SectionHeading({
         {children}
       </h2>
     </div>
-  );
-}
-
-function IconTile({
-  icon: Icon,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
-      <Icon className="size-4" />
-    </span>
   );
 }
