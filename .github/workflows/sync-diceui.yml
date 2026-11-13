@@ -1,9 +1,5 @@
 name: Sync diceui
 
-# Opens or refreshes a PR when the diceui registry's Presentation components
-# differ from the local copies. PRs opened with the workflow token don't
-# trigger other workflows, so Code check is dispatched on the branch.
-
 on:
   schedule:
     - cron: "0 6 * * 1"
