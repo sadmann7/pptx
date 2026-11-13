@@ -230,7 +230,7 @@ function Hero() {
         <div className="grid w-full animate-fade-up grid-cols-2 gap-3 pt-2 opacity-0 fill-mode-[forwards] [animation-delay:0.3s] sm:flex sm:w-auto">
           <Link
             href="/docs"
-            className={cn(buttonVariants({ size: "lg" }), "rounded-md px-3.5")}
+            className={cn(buttonVariants({ size: "lg" }), "px-3.5")}
           >
             Get started
             <ArrowRight className="size-3.75" />
@@ -239,7 +239,7 @@ function Hero() {
             href="/docs/components"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
-              "rounded-md px-3.5",
+              "px-3.5",
             )}
           >
             <LayoutGrid className="size-3.75" />
