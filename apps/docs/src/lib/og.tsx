@@ -38,9 +38,9 @@ export function OgImage({ title, description }: OgImageProps) {
       }}
     >
       <div tw="absolute top-[150px] left-[688px] flex h-[420px] w-[512px]">
-        <SlideCard x={128} y={0} opacity={0.35} />
-        <SlideCard x={64} y={48} opacity={0.6} />
-        <SlideCard x={0} y={96} opacity={1} front />
+        <SlideCard x={128} y={0} fill="#121212" />
+        <SlideCard x={64} y={48} fill="#151515" />
+        <SlideCard x={0} y={96} fill="#171717" front />
       </div>
       <div tw="flex w-full items-center justify-between">
         <div tw="flex items-center">
@@ -90,18 +90,18 @@ export function OgImage({ title, description }: OgImageProps) {
 interface SlideCardProps {
   x: number;
   y: number;
-  opacity: number;
+  fill: string;
   front?: boolean;
 }
 
-function SlideCard({ x, y, opacity, front }: SlideCardProps) {
+function SlideCard({ x, y, fill, front }: SlideCardProps) {
   return (
     <div
-      tw="absolute flex h-[270px] w-[480px] rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#171717]"
+      tw="absolute flex h-[270px] w-[480px] rounded-xl border border-[rgba(255,255,255,0.2)]"
       style={{
         left: x,
         top: y,
-        opacity,
+        backgroundColor: fill,
         ...(front && { boxShadow: "0 24px 64px rgba(0, 0, 0, 0.6)" }),
       }}
     >
