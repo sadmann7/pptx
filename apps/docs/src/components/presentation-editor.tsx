@@ -1450,7 +1450,12 @@ interface SortableThumbnailListProps {
 
 function SortableThumbnailList({ store }: SortableThumbnailListProps) {
   const { presentation } = usePresentation();
-  const slideIds = presentation?.slides.map((slide) => slide.id) ?? [];
+  const slideOrder =
+    presentation?.slides.map((slide) => slide.id).join("\u0000") ?? "";
+  const slideIds = React.useMemo(
+    () => (slideOrder ? slideOrder.split("\u0000") : []),
+    [slideOrder],
+  );
   const actions = useSlideActions(store);
   const [menuSlideId, setMenuSlideId] = React.useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -1597,49 +1602,55 @@ function focusThumbnail(slideId: string) {
 
 function useSlideActions(store: PresentationStore): SlideActions {
   const { presentation } = usePresentation();
-  const slides = presentation?.slides ?? [];
+  const canRemove = (presentation?.slides.length ?? 0) > 1;
 
-  function indexOf(slideId: string) {
-    return slides.findIndex((slide) => slide.id === slideId);
-  }
+  return React.useMemo(() => {
+    function getSlideCount() {
+      return store.getState().presentation?.slides.length ?? 0;
+    }
 
-  function targetIndex(slideId: string, to: SlideMove) {
-    if (to === "up") return indexOf(slideId) - 1;
-    if (to === "down") return indexOf(slideId) + 1;
-    return to === "start" ? 0 : slides.length - 1;
-  }
+    function targetIndex(slideId: string, to: SlideMove) {
+      if (to === "up") return store.getSlideIndex(slideId) - 1;
+      if (to === "down") return store.getSlideIndex(slideId) + 1;
+      return to === "start" ? 0 : getSlideCount() - 1;
+    }
 
-  async function goToCreated(edit: Promise<{ createdSlideId?: string }>) {
-    const { createdSlideId } = await edit;
-    if (!createdSlideId) return;
-    store.goTo(createdSlideId);
-    focusThumbnail(createdSlideId);
-  }
+    async function goToCreated(edit: Promise<{ createdSlideId?: string }>) {
+      const { createdSlideId } = await edit;
+      if (!createdSlideId) return;
+      store.goTo(createdSlideId);
+      focusThumbnail(createdSlideId);
+    }
 
-  return {
-    add: (afterSlideId) =>
-      goToCreated(store.edit({ type: "addSlide", afterSlideId })),
-    duplicate: (slideId) =>
-      goToCreated(store.edit({ type: "duplicateSlide", slideId })),
-    async remove(slideId) {
-      await store.edit({ type: "deleteSlide", slideId });
-      const activeSlideId = store.getActiveSlide()?.id;
-      if (activeSlideId) focusThumbnail(activeSlideId);
-    },
-    async move(slideId, to) {
-      await store.edit({
-        type: "moveSlide",
-        slideId,
-        toIndex: targetIndex(slideId, to),
-      });
-      focusThumbnail(slideId);
-    },
-    canMove(slideId, to) {
-      const index = targetIndex(slideId, to);
-      return index >= 0 && index < slides.length && index !== indexOf(slideId);
-    },
-    canRemove: slides.length > 1,
-  };
+    return {
+      add: (afterSlideId) =>
+        goToCreated(store.edit({ type: "addSlide", afterSlideId })),
+      duplicate: (slideId) =>
+        goToCreated(store.edit({ type: "duplicateSlide", slideId })),
+      async remove(slideId) {
+        await store.edit({ type: "deleteSlide", slideId });
+        const activeSlideId = store.getActiveSlide()?.id;
+        if (activeSlideId) focusThumbnail(activeSlideId);
+      },
+      async move(slideId, to) {
+        await store.edit({
+          type: "moveSlide",
+          slideId,
+          toIndex: targetIndex(slideId, to),
+        });
+        focusThumbnail(slideId);
+      },
+      canMove(slideId, to) {
+        const index = targetIndex(slideId, to);
+        return (
+          index >= 0 &&
+          index < getSlideCount() &&
+          index !== store.getSlideIndex(slideId)
+        );
+      },
+      canRemove,
+    };
+  }, [store, canRemove]);
 }
 
 function onThumbnailKeyDown(
@@ -2035,7 +2046,7 @@ interface SortableThumbnailItemProps {
   isMenuOpen: boolean;
 }
 
-function SortableThumbnailItem({
+const SortableThumbnailItem = React.memo(function SortableThumbnailItem({
   slideId,
   actions,
   isMenuOpen,
@@ -2077,4 +2088,4 @@ function SortableThumbnailItem({
       <PresentationThumbnailItemPreview />
     </PresentationThumbnailItem>
   );
-}
+});

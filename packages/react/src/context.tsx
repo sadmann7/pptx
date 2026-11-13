@@ -132,6 +132,14 @@ export function useSlideIndex(store: Store, slideId: string): number {
   );
 }
 
+export function useActiveSlide(store: Store): SlideData | null {
+  return React.useSyncExternalStore(
+    store.subscribe,
+    store.getActiveSlide,
+    () => null,
+  );
+}
+
 export interface UsePresentationResult {
   /** Parsed presentation data, or `null` before the first successful load. */
   presentation: PresentationData | null;

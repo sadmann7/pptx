@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { useStoreContext, useStoreEvent, useZoom } from "./context";
+import { useStoreContext, useStoreEvent, useStoreSelector } from "./context";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 import type { AutoFitPadding, ZoomChangeEvent } from "./store";
@@ -101,7 +101,7 @@ export const Viewport = React.forwardRef<HTMLDivElement, ViewportProps>(
     const viewportRef = React.useRef<HTMLDivElement>(null);
 
     const store = useStoreContext("PresentationViewport");
-    const { zoom } = useZoom();
+    const zoom = useStoreSelector(store, (s) => s.zoom, 1);
 
     useStoreEvent(store, "zoomChange", onZoomChange);
 

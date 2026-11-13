@@ -1,6 +1,7 @@
 import * as React from "react";
 
-import { usePresentation } from "./context";
+import { DEFAULT_STORE_STATE } from "./constant";
+import { useStoreContext, useStoreSelector } from "./context";
 import type { PrimitiveProps } from "./render";
 import { renderElement } from "./render";
 
@@ -28,7 +29,17 @@ export interface LoadingProps extends Omit<
 
 export const Loading = React.forwardRef<HTMLDivElement, LoadingProps>(
   function Loading({ children, render, ...loadingProps }, forwardedRef) {
-    const { status, progress } = usePresentation();
+    const store = useStoreContext("Presentation.Loading");
+    const status = useStoreSelector(
+      store,
+      (s) => s.status,
+      DEFAULT_STORE_STATE.status,
+    );
+    const progress = useStoreSelector(
+      store,
+      (s) => s.progress,
+      DEFAULT_STORE_STATE.progress,
+    );
 
     if (status !== "loading") return null;
 

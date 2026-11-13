@@ -13,7 +13,12 @@ import type {
   TextStyle,
 } from "@diceui/pptx-core";
 
-import { useSlide, useSlideRevision, useStoreContext } from "../context";
+import {
+  useActiveSlide,
+  useSlideRevision,
+  useStoreContext,
+  useStoreSelector,
+} from "../context";
 import type { Store } from "../store";
 import type { SelectionState } from "./selection";
 import type { ActiveTextStyle } from "./text-range";
@@ -328,7 +333,8 @@ export function useSelection(): UseSelectionResult {
     channel.getSnapshot,
     () => IDLE_SNAPSHOT,
   );
-  const { slide, slideId } = useSlide();
+  const slideId = useStoreSelector(store, (s) => s.activeSlideId, null);
+  const slide = useActiveSlide(store);
   // Edits mutate nodes in place; the revision is what tells the hook to re-read them.
   const revision = useSlideRevision(store, slideId);
 

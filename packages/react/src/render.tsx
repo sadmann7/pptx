@@ -38,13 +38,15 @@ export type PrimitiveProps<
 
 // Follows Base UI's `mergeProps`: `b` wins, except class names join, styles merge and handlers chain.
 export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
-  const result: AnyProps = { ...a };
-  for (const key of Object.keys(b)) {
-    const av = a[key];
-    const bv = b[key];
+  return assignProps({ ...a }, b);
+}
+
+function assignProps(target: AnyProps, source: AnyProps): AnyProps {
+  for (const key of Object.keys(source)) {
+    const av = target[key];
+    const bv = source[key];
     if (key === "className") {
-      const joined = [av, bv].filter(Boolean).join(" ");
-      result[key] = joined || undefined;
+      target[key] = joinClassNames(av, bv);
     } else if (
       key === "style" &&
       av != null &&
@@ -52,37 +54,61 @@ export function mergeProps(a: AnyProps, b: AnyProps): AnyProps {
       typeof av === "object" &&
       typeof bv === "object"
     ) {
-      result[key] = { ...(av as object), ...(bv as object) };
+      target[key] = { ...(av as object), ...(bv as object) };
     } else if (
-      key.startsWith("on") &&
       typeof av === "function" &&
-      typeof bv === "function"
+      typeof bv === "function" &&
+      key.startsWith("on")
     ) {
       const fa = av as (...args: unknown[]) => void;
       const fb = bv as (...args: unknown[]) => void;
-      result[key] = (...args: unknown[]) => {
+      target[key] = (...args: unknown[]) => {
         fa(...args);
         fb(...args);
       };
     } else {
-      result[key] = bv;
+      target[key] = bv;
     }
   }
-  return result;
+  return target;
 }
 
+function joinClassNames(a: unknown, b: unknown): unknown {
+  return [a, b].filter(Boolean).join(" ") || undefined;
+}
+
+interface MergedRefNode {
+  merged?: React.RefCallback<unknown>;
+  next?: WeakMap<object, MergedRefNode>;
+}
+
+const mergedRefs: MergedRefNode = {};
+
+// React re-attaches a ref whose identity changes, so the same refs share one callback.
 export function mergeRefs<T>(
   ...refs: (React.Ref<T> | null | undefined)[]
 ): React.RefCallback<T> {
-  return (value) => {
+  let node = mergedRefs;
+  for (const ref of refs) {
+    if (ref == null) continue;
+    node.next ??= new WeakMap();
+    let child = node.next.get(ref);
+    if (!child) {
+      child = {};
+      node.next.set(ref, child);
+    }
+    node = child;
+  }
+  node.merged ??= (value) => {
     for (const ref of refs) {
       if (typeof ref === "function") {
-        ref(value);
+        ref(value as T);
       } else if (ref != null) {
-        (ref as React.RefObject<T | null>).current = value;
+        (ref as React.RefObject<unknown>).current = value;
       }
     }
   };
+  return node.merged as React.RefCallback<T>;
 }
 
 export type StatefulPrimitiveProps<Tag extends React.ElementType, State> = Omit<
@@ -151,16 +177,17 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
       ? componentProps.style(state)
       : componentProps.style;
 
-  const outProps = Array.isArray(props)
-    ? props.reduce<AnyProps>(
-        (acc, p) => (p ? mergeProps(acc, p as AnyProps) : acc),
-        {},
-      )
-    : { ...(props as AnyProps | undefined) };
+  const outProps: AnyProps = {};
+  if (Array.isArray(props)) {
+    for (const part of props) {
+      if (part) assignProps(outProps, part as AnyProps);
+    }
+  } else if (props) {
+    Object.assign(outProps, props);
+  }
 
   if (className !== undefined) {
-    outProps.className =
-      [outProps.className, className].filter(Boolean).join(" ") || undefined;
+    outProps.className = joinClassNames(outProps.className, className);
   }
   if (style !== undefined) {
     outProps.style = { ...(outProps.style as object | undefined), ...style };
@@ -170,17 +197,13 @@ function composeRenderProps<Tag extends IntrinsicTag, S, E extends Element>(
     ? getElementRef(render)
     : null;
   const paramRefs = Array.isArray(ref) ? ref : [ref];
-  if (
-    outProps.ref != null ||
-    elementRef != null ||
-    paramRefs.some((r) => r != null)
-  ) {
-    outProps.ref = mergeRefs(
-      outProps.ref as React.Ref<E> | undefined,
-      elementRef as React.Ref<E> | null,
-      ...paramRefs,
-    );
-  }
+  const refs = [
+    outProps.ref as React.Ref<E> | undefined,
+    elementRef as React.Ref<E> | null,
+    ...paramRefs,
+  ].filter((r) => r != null);
+  if (refs.length === 1) outProps.ref = refs[0];
+  else if (refs.length > 1) outProps.ref = mergeRefs(...refs);
 
   return outProps;
 }
