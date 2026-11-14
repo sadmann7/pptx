@@ -7,6 +7,8 @@ import { expect, test, type Page } from "@playwright/test";
 // macOS moves to the line's edges with Cmd+arrows; Home and End do nothing there.
 const LINE_START = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
 const LINE_END = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
+const DUPLICATE_KEY = process.platform === "darwin" ? "Alt" : "Control";
+const FREE_PLACE_KEY = process.platform === "darwin" ? "Meta" : "Alt";
 
 function readRuns(page: Page) {
   return page.evaluate(() => {
@@ -220,7 +222,7 @@ test.describe("snapping", () => {
   async function dragNearCenter(
     page: Page,
     offset: number,
-    modifiers: "Alt"[] = [],
+    modifiers: string[] = [],
   ) {
     const { x, centeredX } = await readGeometry(page);
     const box = (await page.locator('[data-pptx-node-id="2"]').boundingBox())!;
@@ -262,10 +264,10 @@ test.describe("snapping", () => {
       .toBeLessThan(0.01);
   });
 
-  test("places freely with Alt held", async ({ page }) => {
+  test("places freely with Alt held, or Cmd on macOS", async ({ page }) => {
     await open(page);
     const { x: before } = await readGeometry(page);
-    const drag = await dragNearCenter(page, 3, ["Alt"]);
+    const drag = await dragNearCenter(page, 3, [FREE_PLACE_KEY]);
 
     await expect(page.locator("[data-presentation-snap-guide]")).toHaveCount(0);
     await drag.release();
@@ -420,12 +422,12 @@ test.describe("resizing", () => {
     await page.mouse.down();
     // One task, so React can't render between the moves and the release.
     await page.evaluate(
-      ({ x, y }) => {
+      ({ x, y, freePlace }) => {
         const root = document.querySelector("[data-presentation-selection]")!;
         const init = {
           bubbles: true,
           clientX: x,
-          altKey: true,
+          [freePlace]: true,
           pointerId: 1,
           pointerType: "mouse",
           isPrimary: true,
@@ -443,7 +445,7 @@ test.describe("resizing", () => {
           new PointerEvent("pointerup", { ...init, clientY: y + 30 }),
         );
       },
-      { x, y },
+      { x, y, freePlace: FREE_PLACE_KEY === "Meta" ? "metaKey" : "altKey" },
     );
 
     await expect.poll(readHeight).toBeCloseTo(before + 30, 0);
@@ -707,6 +709,132 @@ test.describe("clipboard", () => {
 
     await page.keyboard.press("ControlOrMeta+z");
     await expect.poll(count).toBe(1);
+  });
+});
+
+test.describe("duplicating", () => {
+  function readNodes(page: Page) {
+    return page.evaluate(() =>
+      window.__editStore!.getActiveSlide()!.nodes.map((node) => ({
+        id: node.id,
+        ...node.position,
+      })),
+    );
+  }
+
+  function countShapeElements(page: Page) {
+    return page
+      .locator('[data-pptx-node-id="2"]')
+      .evaluate((shape) => shape.parentElement!.childElementCount);
+  }
+
+  async function getCenter(page: Page, nodeId: string) {
+    const box = (await page
+      .locator(`[data-pptx-node-id="${nodeId}"]`)
+      .boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+
+  test("duplicates a shape dragged with Ctrl held, or Option on macOS, in one undo step", async ({
+    page,
+  }) => {
+    const { overlay } = await open(page);
+    const [original] = await readNodes(page);
+    const { x, y } = await getCenter(page, "2");
+
+    await page.keyboard.down(DUPLICATE_KEY);
+    await page.mouse.click(x, y);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+    expect(await readNodes(page)).toHaveLength(1);
+
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 40, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.up(DUPLICATE_KEY);
+
+    await expect.poll(async () => (await readNodes(page)).length).toBe(2);
+    const [kept, copy] = await readNodes(page);
+    expect(kept).toEqual(original);
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.x).toBeCloseTo(original.x);
+    expect(copy.y).toBeGreaterThan(original.y + 30);
+    await expect(overlay).toHaveAttribute("data-mode", "selected");
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(() => readNodes(page)).toEqual([original]);
+  });
+
+  test("moves instead when the key is released before the drop", async ({
+    page,
+  }) => {
+    await open(page);
+    const [original] = await readNodes(page);
+    const elements = await countShapeElements(page);
+    const { x, y } = await getCenter(page, "2");
+
+    await page.keyboard.down(DUPLICATE_KEY);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 20, { steps: 3 });
+    await page.keyboard.up(DUPLICATE_KEY);
+    await page.mouse.move(x, y + 40, { steps: 3 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await readNodes(page))[0].y)
+      .toBeGreaterThan(original.y + 30);
+    expect(await readNodes(page)).toHaveLength(1);
+    expect(await countShapeElements(page)).toBe(elements);
+  });
+
+  test("drops no copy when Escape ends the drag", async ({ page }) => {
+    const { overlay } = await open(page);
+    const elements = await countShapeElements(page);
+    const { x, y } = await getCenter(page, "2");
+
+    await page.keyboard.down(DUPLICATE_KEY);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 40, { steps: 5 });
+    expect(await countShapeElements(page)).toBe(elements + 1);
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveAttribute("data-mode", "idle");
+    await page.mouse.up();
+    await page.keyboard.up(DUPLICATE_KEY);
+
+    expect(await countShapeElements(page)).toBe(elements);
+    expect(await readNodes(page)).toHaveLength(1);
+  });
+
+  test("duplicates another shape dragged from text editing", async ({
+    page,
+  }) => {
+    const { overlay, shape } = await open(page);
+    await page.evaluate(async () => {
+      const store = window.__editStore!;
+      await store.edit({
+        type: "duplicateNode",
+        slideId: store.getActiveSlide()!.id,
+        nodeId: "2",
+        offset: { x: 0, y: 120 },
+      });
+    });
+    const [, other] = await readNodes(page);
+    await shape.click();
+    await shape.click();
+    await expect(overlay).toHaveAttribute("data-mode", "text");
+
+    const { x, y } = await getCenter(page, other.id);
+    await page.keyboard.down(DUPLICATE_KEY);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 60, y, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.up(DUPLICATE_KEY);
+
+    await expect.poll(async () => (await readNodes(page)).length).toBe(3);
+    expect((await readNodes(page))[1]).toEqual(other);
   });
 });
 
