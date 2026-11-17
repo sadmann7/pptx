@@ -1,6 +1,7 @@
 export * as Presentation from "./primitives";
 
 export type { ErrorProps, ErrorState } from "./error";
+export type { LayoutPreviewProps, LayoutPreviewState } from "./layout-preview";
 export type { LoadingProps, LoadingState } from "./loading";
 export type { RootProps, RootState } from "./root";
 export type { ControlsProps } from "./selection/controls";
@@ -116,11 +117,14 @@ export type {
   PasteNodesOperation,
   PresentationData,
   PresentationFonts,
+  PresentationLayout,
+  PresentationLayoutGroup,
   ReorderNodeOperation,
   SetNodeTransformOperation,
   SetOutlineOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
+  SetSlideLayoutOperation,
   SetSolidFillOperation,
   SetTableGridOperation,
   SetTextBodyOperation,
@@ -137,6 +141,8 @@ export type {
 
 export {
   copyNodes,
+  getLayoutGroups,
+  getLayouts,
   getPresentationFonts,
   getPresetShapePath,
   getTableCellOrigin,

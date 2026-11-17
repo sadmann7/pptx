@@ -178,6 +178,15 @@ export function buildPresentation(
         );
         masterToTheme.set(masterPath, themePath);
       }
+      masterData.layoutIds = masterRoot
+        .child("sldLayoutIdLst")
+        .children("sldLayoutId")
+        .flatMap((sldLayoutId) => {
+          const rel = masterRels.get(sldLayoutId.attr("r:id") ?? "");
+          return rel
+            ? [resolveRelTarget(basePath(masterPath), rel.target)]
+            : [];
+        });
     }
     masters.set(masterPath, masterData);
   }

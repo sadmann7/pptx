@@ -1,6 +1,7 @@
 ﻿import type { ECharts } from "echarts";
 
 import type { PdfjsConfig } from "../media/pdf";
+import { createLayoutSlide } from "../model/layout-slide";
 import { BaseNodeData } from "../model/nodes/base";
 import { ChartNodeData } from "../model/nodes/chart";
 import { GroupNodeData } from "../model/nodes/group";
@@ -325,6 +326,18 @@ export function renderThumbnail(
       dispose();
     },
   };
+}
+
+/** Renders how a new slide built from a layout looks, with the prompts of its empty placeholders. */
+export function renderLayout(
+  presentation: PresentationData,
+  layoutId: string,
+  options?: Omit<SlideRendererOptions, "placeholderPrompts">,
+): SlideHandle {
+  return renderSlide(presentation, createLayoutSlide(presentation, layoutId), {
+    ...options,
+    placeholderPrompts: true,
+  });
 }
 
 /** Renders a slide, with its layout and master shapes, into an HTML element. */

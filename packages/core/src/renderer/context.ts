@@ -43,7 +43,8 @@ export function createRenderContext(
   chartInstances?: Set<ECharts>,
   pdfjs?: PdfjsConfig,
 ): RenderContext {
-  const layoutPath = presentation.slideToLayout.get(slide.index) || "";
+  const layoutPath =
+    presentation.slideToLayout.get(slide.index) || slide.layoutIndex || "";
   const masterPath = presentation.layoutToMaster.get(layoutPath) || "";
   const themePath = presentation.masterToTheme.get(masterPath) || "";
 

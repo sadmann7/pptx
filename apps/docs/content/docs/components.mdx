@@ -301,6 +301,28 @@ The list navigates on focus, so this triggers for keyboard roving as well as cli
 
 <AutoTypeTable path="types/presentation.ts" name="ThumbnailItemNumberProps" />
 
+## LayoutPreview
+
+Renders one of the deck's layouts with its placeholder prompts, for a layout picker. The preview renders once it scrolls into view and scales to the element's width.
+
+```tsx
+<div className="grid grid-cols-3 gap-2">
+  {getLayouts(presentation).map((layout) => (
+    <button
+      key={layout.id}
+      onClick={() =>
+        store.edit({ type: "setSlideLayout", slideId, layoutId: layout.id })
+      }
+    >
+      <Presentation.LayoutPreview layoutId={layout.id} />
+      {layout.name}
+    </button>
+  ))}
+</div>
+```
+
+<AutoTypeTable path="types/presentation.ts" name="LayoutPreviewProps" />
+
 ## Loading
 
 Renders its children only while the presentation is in the `"loading"` state.

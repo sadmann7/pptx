@@ -8,6 +8,8 @@ export interface CustomPptxOptions {
   masterBgXml?: string;
   layoutClrMapOvrXml?: string;
   layoutShapesXml?: string;
+  // Layouts after the default one, saved as slideLayout2.xml onward.
+  extraLayouts?: { name: string; shapesXml: string }[];
   // Defaults to "Calibri Light".
   majorLatin?: string;
   // Defaults to "Calibri".
@@ -24,11 +26,16 @@ const DEFAULT_CLR_MAP =
 
 const DEFAULT_MASTER_BG = `<p:bg><p:bgPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
 
-function contentTypesFor(slideCount: number): string {
+function contentTypesFor(slideCount: number, layoutCount: number): string {
   const slideOverrides = Array.from(
     { length: slideCount },
     (_, i) =>
       `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
+  ).join("\n");
+  const layoutOverrides = Array.from(
+    { length: layoutCount },
+    (_, i) =>
+      `<Override PartName="/ppt/slideLayouts/slideLayout${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`,
   ).join("\n");
   return (
     XML_DECL +
@@ -39,7 +46,7 @@ function contentTypesFor(slideCount: number): string {
 <Default Extension="fntdata" ContentType="application/x-fontdata"/>
 <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
 <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+${layoutOverrides}
 ${slideOverrides}
 <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
 </Types>`
@@ -151,30 +158,50 @@ ${bg}
 </p:spTree>
 </p:cSld>
 <p:clrMap ${clrMap}/>
-<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+<p:sldLayoutIdLst>${layoutRIds(options)
+      .map((rId, i) => `<p:sldLayoutId id="${2147483649 + i}" r:id="${rId}"/>`)
+      .join("")}</p:sldLayoutIdLst>
 </p:sldMaster>`
   );
 }
 
-const slideMasterRels =
-  XML_DECL +
-  `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
-</Relationships>`;
+// The theme takes rId2, so extra layouts start at rId3.
+function layoutRIds(options: CustomPptxOptions): string[] {
+  return ["rId1", ...(options.extraLayouts ?? []).map((_, i) => `rId${i + 3}`)];
+}
 
-function slideLayoutFor(options: CustomPptxOptions): string {
+function slideMasterRelsFor(options: CustomPptxOptions): string {
+  const layoutRels = layoutRIds(options)
+    .map(
+      (rId, i) =>
+        `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${i + 1}.xml"/>`,
+    )
+    .join("\n");
+  return (
+    XML_DECL +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${layoutRels}
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`
+  );
+}
+
+function slideLayoutFor(
+  options: CustomPptxOptions,
+  name = "Blank",
+  shapesXml = options.layoutShapesXml ?? "",
+): string {
   const clrMapOvr =
     options.layoutClrMapOvrXml ??
     `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>`;
   return (
     XML_DECL +
     `<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank">
-<p:cSld name="Blank">
+<p:cSld name="${name}">
 <p:spTree>
 <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
 <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
-${options.layoutShapesXml ?? ""}
+${shapesXml}
 </p:spTree>
 </p:cSld>
 ${clrMapOvr}
@@ -219,7 +246,8 @@ export async function buildCustomPptx(
   const zip = new JSZip();
   zip.file(
     "[Content_Types].xml",
-    options.contentTypesXml ?? contentTypesFor(slides.length),
+    options.contentTypesXml ??
+      contentTypesFor(slides.length, 1 + (options.extraLayouts?.length ?? 0)),
   );
   zip.file("_rels/.rels", rootRels);
   zip.file("ppt/presentation.xml", presentationFor(slides.length));
@@ -229,9 +257,22 @@ export async function buildCustomPptx(
   );
   zip.file("ppt/theme/theme1.xml", themeFor(options));
   zip.file("ppt/slideMasters/slideMaster1.xml", slideMasterFor(options));
-  zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", slideMasterRels);
+  zip.file(
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+    slideMasterRelsFor(options),
+  );
   zip.file("ppt/slideLayouts/slideLayout1.xml", slideLayoutFor(options));
   zip.file("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slideLayoutRels);
+  for (const [i, layout] of (options.extraLayouts ?? []).entries()) {
+    zip.file(
+      `ppt/slideLayouts/slideLayout${i + 2}.xml`,
+      slideLayoutFor(options, layout.name, layout.shapesXml),
+    );
+    zip.file(
+      `ppt/slideLayouts/_rels/slideLayout${i + 2}.xml.rels`,
+      slideLayoutRels,
+    );
+  }
 
   for (let i = 0; i < slides.length; i++) {
     zip.file(`ppt/slides/slide${i + 1}.xml`, slideFor(slides[i]));

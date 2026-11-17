@@ -53,6 +53,7 @@ export type {
   SetOutlineOperation,
   SetParagraphStyleOperation,
   SetSlideBackgroundOperation,
+  SetSlideLayoutOperation,
   SetSolidFillOperation,
   SetTableGridOperation,
   SetTextBodyOperation,
@@ -87,6 +88,11 @@ export type { LayoutData } from "./model/layout";
 export { getPresetShapePath } from "./geometry/preset";
 export { getPresentationFonts } from "./model/presentation-fonts";
 export type { PresentationFonts } from "./model/presentation-fonts";
+export { getLayoutGroups, getLayouts } from "./model/presentation-layouts";
+export type {
+  PresentationLayout,
+  PresentationLayoutGroup,
+} from "./model/presentation-layouts";
 
 export { serializePresentation } from "./model/serialize";
 export type {
@@ -111,7 +117,7 @@ export type {
 
 export type { PdfjsConfig, PdfjsOptions } from "./media/pdf";
 export { PPTX_ATTRS, PPTX_DATASET } from "./renderer/dom-attributes";
-export { renderSlide, renderThumbnail } from "./renderer/slide";
+export { renderLayout, renderSlide, renderThumbnail } from "./renderer/slide";
 export type {
   SlideHandle,
   SlideRendererOptions,

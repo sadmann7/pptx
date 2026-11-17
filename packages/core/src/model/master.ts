@@ -15,6 +15,8 @@ export interface MasterData {
   placeholderEntries?: PlaceholderEntry[];
   spTree: SafeXmlNode;
   rels: Map<string, import("../ooxml/rel").RelEntry>;
+  // Layout part paths in `p:sldLayoutIdLst` order, the order PowerPoint lists them in.
+  layoutIds?: string[];
 }
 
 function isPlaceholder(node: SafeXmlNode): boolean {

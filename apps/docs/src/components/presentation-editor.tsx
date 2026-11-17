@@ -5,6 +5,7 @@ import * as React from "react";
 import type {
   NodeOrder,
   ParagraphAlign,
+  PresentationLayout,
   PresentationStore,
   TableCellAddress,
   TableCellVerticalAlign,
@@ -14,6 +15,7 @@ import type {
   UseSelectionResult,
 } from "@diceui/pptx";
 import {
+  getLayoutGroups,
   getPresentationFonts,
   getPresetShapePath,
   getTableCellOrigin,
@@ -52,6 +54,9 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -84,6 +89,7 @@ import {
   PresentationContent,
   PresentationControls,
   PresentationError,
+  PresentationLayoutPreview,
   PresentationLoading,
   PresentationProvider,
   PresentationSelection,
@@ -138,6 +144,7 @@ import {
   ImageIcon,
   ItalicIcon,
   LayersIcon,
+  LayoutTemplateIcon,
   MinusIcon,
   PaintBucketIcon,
   PencilLineIcon,
@@ -1584,6 +1591,7 @@ interface SlideActions {
   duplicate: (slideId: string) => Promise<void>;
   remove: (slideId: string) => Promise<void>;
   move: (slideId: string, to: SlideMove) => Promise<void>;
+  setLayout: (slideId: string, layoutId: string) => Promise<void>;
   canMove: (slideId: string, to: SlideMove) => boolean;
   canRemove: boolean;
 }
@@ -1639,6 +1647,9 @@ function useSlideActions(store: PresentationStore): SlideActions {
           toIndex: targetIndex(slideId, to),
         });
         focusThumbnail(slideId);
+      },
+      async setLayout(slideId, layoutId) {
+        await store.edit({ type: "setSlideLayout", slideId, layoutId });
       },
       canMove(slideId, to) {
         const index = targetIndex(slideId, to);
@@ -1714,6 +1725,20 @@ function SlideMenuContent({
             <CopyPlusIcon />
             Duplicate slide
           </ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <LayoutTemplateIcon />
+              Layout
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent aria-label="Layout" className="w-104 p-2">
+              <SlideLayoutGrid
+                slideId={slideId}
+                onSelect={(layoutId) =>
+                  run(() => actions.setLayout(slideId, layoutId))
+                }
+              />
+            </ContextMenuSubContent>
+          </ContextMenuSub>
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"
@@ -1726,6 +1751,66 @@ function SlideMenuContent({
         </>
       )}
     </ContextMenuContent>
+  );
+}
+
+interface SlideLayoutGridProps {
+  slideId: string;
+  onSelect: (layoutId: string) => void;
+}
+
+function SlideLayoutGrid({ slideId, onSelect }: SlideLayoutGridProps) {
+  const { presentation } = usePresentation();
+  if (!presentation) return null;
+
+  const currentLayoutId = presentation.slides.find(
+    (slide) => slide.id === slideId,
+  )?.layoutIndex;
+
+  return getLayoutGroups(presentation).map((group) => (
+    <ContextMenuRadioGroup
+      key={group.id}
+      value={currentLayoutId}
+      className="not-first:mt-2"
+    >
+      <ContextMenuLabel>{group.name ?? "Layouts"}</ContextMenuLabel>
+      <div className="grid grid-cols-3 gap-1">
+        {group.layouts.map((layout) => (
+          <SlideLayoutItem
+            key={layout.id}
+            layout={layout}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </ContextMenuRadioGroup>
+  ));
+}
+
+interface SlideLayoutItemProps {
+  layout: PresentationLayout;
+  onSelect: (layoutId: string) => void;
+}
+
+function SlideLayoutItem({ layout, onSelect }: SlideLayoutItemProps) {
+  return (
+    <ContextMenuRadioItem
+      value={layout.id}
+      label={layout.name}
+      closeOnClick
+      title={layout.name}
+      // The item's icon sizing would otherwise shrink the preview's shape SVGs.
+      className="group/layout flex-col items-stretch gap-1 p-1.5 *:first:top-auto *:first:bottom-1.5 [&_[data-presentation-layout-preview]_svg:not([class*='size-'])]:size-auto"
+      onClick={() => onSelect(layout.id)}
+    >
+      <PresentationLayoutPreview
+        layoutId={layout.id}
+        className="ring-1 ring-border group-data-checked/layout:ring-2 group-data-checked/layout:ring-primary"
+      />
+      <span className="line-clamp-2 pr-5 text-xs leading-tight">
+        {layout.name}
+      </span>
+    </ContextMenuRadioItem>
   );
 }
 
