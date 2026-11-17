@@ -1,5 +1,16 @@
 # @diceui/pptx-core
 
+## 0.5.0
+
+### Minor Changes
+
+- ed5b39d: Switch a slide to another layout with the `setSlideLayout` edit, list a deck's layouts with `getLayouts` and `getLayoutGroups`, and preview them with `renderLayout` and `Presentation.LayoutPreview`.
+
+### Patch Changes
+
+- 2fa5348: Render a placeholder with its layout's fill, outline, and shape when it has none of its own, and show the prompt of the layout placeholder it shares an index with.
+- 2e5d162: Undoing an edit puts its parts back to how they were, so a deck undone to its original state saves those parts byte-for-byte instead of re-serializing them.
+
 ## 0.4.1
 
 ### Patch Changes

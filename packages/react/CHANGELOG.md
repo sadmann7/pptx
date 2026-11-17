@@ -1,5 +1,21 @@
 # @diceui/pptx
 
+## 0.6.0
+
+### Minor Changes
+
+- 79e83f7: Dragging a shape with Ctrl held, or Option on macOS, drops a copy and leaves the original in place, as in PowerPoint. On macOS, Cmd now places a shape freely instead of Option.
+- ed5b39d: Switch a slide to another layout with the `setSlideLayout` edit, list a deck's layouts with `getLayouts` and `getLayoutGroups`, and preview them with `renderLayout` and `Presentation.LayoutPreview`.
+
+### Patch Changes
+
+- 337de6e: Navigating or editing a long deck re-renders only the thumbnail previews it changes, and parts keep their refs attached across renders.
+- 9fc62b0: A paste, Delete, Ctrl/Cmd+A, or Escape pressed the moment text editing starts, such as right after inserting a table, is no longer dropped.
+- Updated dependencies [2fa5348]
+- Updated dependencies [ed5b39d]
+- Updated dependencies [2e5d162]
+  - @diceui/pptx-core@0.5.0
+
 ## 0.5.0
 
 ### Minor Changes
