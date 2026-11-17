@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPresentation } from "../../model/presentation";
+import { emuToPx } from "../../ooxml/unit";
 import { readPptx } from "../../ooxml/zip";
 import { renderSlide } from "../../renderer/slide";
 import { buildCustomPptx } from "../fixtures/fixture-extras";
@@ -123,5 +124,31 @@ describe("placeholder template lookup", () => {
         (prompt) => prompt.textContent,
       ),
     ).toEqual(["Add text"]);
+  });
+
+  it("takes position and fill from the same layout placeholder", async () => {
+    const buffer = await buildCustomPptx({
+      slides: [placeholder(4, '<p:ph type="body" idx="2"/>', "<p:spPr/>")],
+      layoutShapesXml:
+        placeholder(
+          2,
+          '<p:ph type="body" idx="1"/>',
+          `<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="1828800"/></a:xfrm><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></p:spPr>`,
+        ) +
+        placeholder(
+          3,
+          '<p:ph type="pic" idx="2"/>',
+          `<p:spPr>${BOX}${SOLID_FILL}</p:spPr>`,
+        ),
+    });
+    const presentation = buildPresentation(await readPptx(buffer));
+    const [node] = presentation.slides[0].nodes;
+
+    const { element } = renderSlide(presentation, presentation.slides[0]);
+
+    expect(node.position.x).toBe(emuToPx(4373880));
+    expect(element.querySelector("svg path")?.getAttribute("fill")).toMatch(
+      /00ff00|0, 255, 0/i,
+    );
   });
 });

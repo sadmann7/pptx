@@ -548,6 +548,22 @@ function findMatchingLayoutPlaceholder(
   return best;
 }
 
+// PowerPoint links a slide placeholder to its layout one by idx. The slide's
+// type can be inherited from the master and so match a different placeholder.
+function findLayoutPlaceholder(
+  layout: LayoutData,
+  type?: string,
+  idx?: number,
+): PlaceholderEntry | undefined {
+  const sameIdx =
+    idx === undefined
+      ? undefined
+      : layout.placeholders.find((entry) => getPhInfo(entry.node).idx === idx);
+  return (
+    sameIdx ?? findMatchingLayoutPlaceholder(layout.placeholders, type, idx)
+  );
+}
+
 function getMasterPlaceholderEntries(master: MasterData): PlaceholderEntry[] {
   return (
     master.placeholderEntries ?? master.placeholders.map((node) => ({ node }))
@@ -569,23 +585,9 @@ export function findPlaceholderTemplates(
   layout: LayoutData | undefined,
   master: MasterData | undefined,
 ): { layout?: SafeXmlNode; master?: SafeXmlNode } {
-  // PowerPoint links a slide placeholder to its layout one by idx. The slide's
-  // type can be inherited from the master and so match a different placeholder.
-  const sameIdx =
-    placeholder.idx === undefined
-      ? undefined
-      : layout?.placeholders.find(
-          (entry) => getPhInfo(entry.node).idx === placeholder.idx,
-        );
-  const layoutMatch =
-    sameIdx ??
-    (layout
-      ? findMatchingLayoutPlaceholder(
-          layout.placeholders,
-          placeholder.type,
-          placeholder.idx,
-        )
-      : undefined);
+  const layoutMatch = layout
+    ? findLayoutPlaceholder(layout, placeholder.type, placeholder.idx)
+    : undefined;
   const masterMatch = master
     ? findMatchingLayoutPlaceholder(
         getMasterPlaceholderEntries(master),
@@ -719,11 +721,7 @@ export function resolveNodePlaceholderInheritance(
   const positionLooksDefault = node.position.y < 5; // Near the top counts as unset.
 
   if (layout) {
-    const layoutMatch = findMatchingLayoutPlaceholder(
-      layout.placeholders,
-      type,
-      idx,
-    );
+    const layoutMatch = findLayoutPlaceholder(layout, type, idx);
     if (layoutMatch) {
       inheritPlaceholderType(node.placeholder, layoutMatch.node);
 

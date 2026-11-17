@@ -1448,7 +1448,13 @@ export function renderShape(
   wrapper.style.left = `${node.position.x}px`;
   wrapper.style.top = `${node.position.y}px`;
   wrapper.style.width = `${node.size.w}px`;
-  const presetKey = node.presetGeometry?.toLowerCase() ?? "";
+  const inherited = resolveInheritedPlaceholderStyle(node, ctx);
+  const presetGeometry = node.presetGeometry ?? inherited?.presetGeometry;
+  const fill = node.fill ?? inherited?.fill;
+  const line = node.line ?? inherited?.line;
+  const fillCtx = inherited?.fillCtx ?? ctx;
+
+  const presetKey = presetGeometry?.toLowerCase() ?? "";
   const outlineOnlyPresets = new Set(["arc"]);
   const presetIsLine =
     !!presetKey &&
@@ -1491,12 +1497,6 @@ export function renderShape(
   const styleNode = node.source.child("style");
   const lnRef = styleNode.exists() ? styleNode.child("lnRef") : undefined;
   const fillRef = styleNode.exists() ? styleNode.child("fillRef") : undefined;
-
-  const inherited = resolveInheritedPlaceholderStyle(node, ctx);
-  const presetGeometry = node.presetGeometry ?? inherited?.presetGeometry;
-  const fill = node.fill ?? inherited?.fill;
-  const line = node.line ?? inherited?.line;
-  const fillCtx = inherited?.fillCtx ?? ctx;
 
   let pathD = "";
   let multiPaths: PresetSubPath[] | null = null;
@@ -1639,8 +1639,7 @@ export function renderShape(
     gradientStroke = null;
   }
   // SmartArt circularArrow is fill-only, whatever the diagram XML says.
-  const isCircularArrow =
-    node.presetGeometry?.toLowerCase() === "circulararrow";
+  const isCircularArrow = presetGeometry?.toLowerCase() === "circulararrow";
   if (isCircularArrow) {
     strokeColor = "none";
     strokeWidth = 0;
@@ -1742,7 +1741,7 @@ export function renderShape(
       mainDefs = defs;
       mainPath = path;
       mainSvgBounds = { w: svgW, h: svgH };
-      const presetLower = node.presetGeometry?.toLowerCase();
+      const presetLower = presetGeometry?.toLowerCase();
       if (
         presetLower === "curveduparrow" ||
         presetLower === "curveddownarrow"
@@ -2224,7 +2223,7 @@ export function renderShape(
 
       if (multiPaths && multiPaths.length > 1) {
         const mainPathFill = path.getAttribute("fill") ?? "";
-        const presetLower = node.presetGeometry?.toLowerCase() ?? "";
+        const presetLower = presetGeometry?.toLowerCase() ?? "";
         const shadingBaseFill =
           mainPathFill && !mainPathFill.startsWith("url(")
             ? mainPathFill
@@ -2381,7 +2380,7 @@ export function renderShape(
           ) {
             extraPath.setAttribute("stroke", strokeColor);
             const isBorderCalloutLeader =
-              node.presetGeometry?.toLowerCase() === "bordercallout1" &&
+              presetGeometry?.toLowerCase() === "bordercallout1" &&
               sp.fill === "none";
             const scaledStrokeWidth =
               sp.strokeWidthScale &&
@@ -2492,12 +2491,8 @@ export function renderShape(
       }
 
       // Multi-path action buttons already draw the icon in their darken sub-paths.
-      if (node.presetGeometry && !multiPaths) {
-        const iconD = getActionButtonIconPath(
-          node.presetGeometry,
-          pathW,
-          pathH,
-        );
+      if (presetGeometry && !multiPaths) {
+        const iconD = getActionButtonIconPath(presetGeometry, pathW, pathH);
         if (iconD) {
           const iconPath = document.createElementNS(svgNs, "path");
           iconPath.setAttribute("d", iconD);
@@ -3106,7 +3101,7 @@ export function renderShape(
         let spreadBasisW = shapeW;
         let spreadBasisH = shapeH;
         if (isLineLike || shapeW <= 1 || shapeH <= 1) {
-          const lineWEmu = node.line?.numAttr("w") ?? 12700;
+          const lineWEmu = line?.numAttr("w") ?? 12700;
           const lineThickness = Math.max(1, emuToPx(lineWEmu));
           spreadBasisW = lineThickness;
           spreadBasisH = lineThickness;
