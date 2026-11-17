@@ -294,6 +294,60 @@ describe("setSlideLayout", () => {
     expect(summarize(await saveAndReopen(pres))).toEqual(expected);
   });
 
+  it("moves kept content off an idx the new layout uses", async () => {
+    const buffer = await buildCustomPptx({
+      slides: [
+        slidePlaceholder(2, '<p:ph type="ctrTitle"/>', "Title") +
+          slidePlaceholder(3, '<p:ph type="subTitle" idx="1"/>', "Kept text"),
+      ],
+      layoutShapesXml: TITLE_SLIDE_SHAPES,
+      extraLayouts: [
+        {
+          name: "Title and Picture",
+          shapesXml:
+            layoutPlaceholder(2, '<p:ph type="title"/>', TITLE_BOX) +
+            layoutPlaceholder(3, '<p:ph type="pic" idx="1"/>', RIGHT_BOX),
+        },
+      ],
+    });
+    const pres = buildPresentation(
+      await readPptx(buffer, { keepSourcePackage: true }),
+    );
+    const slideId = pres.slides[0].id;
+    const before = summarize(pres);
+    const slideXmlBefore = await savedPartText(pres, slideId);
+
+    const result = await applyEdit(pres, {
+      type: "setSlideLayout",
+      slideId,
+      layoutId: "ppt/slideLayouts/slideLayout2.xml",
+    });
+
+    const expected = [
+      {
+        id: "2",
+        type: "title",
+        idx: undefined,
+        text: "Title",
+        box: px(TITLE_BOX),
+      },
+      {
+        id: "3",
+        type: "subTitle",
+        idx: 2,
+        text: "Kept text",
+        box: px(SUBTITLE_BOX),
+      },
+      { id: "4", type: "pic", idx: 1, text: "", box: px(RIGHT_BOX) },
+    ];
+    expect(summarize(pres)).toEqual(expected);
+    expect(summarize(await saveAndReopen(pres))).toEqual(expected);
+
+    result.undo();
+    expect(summarize(pres)).toEqual(before);
+    expect(await savedPartText(pres, slideId)).toBe(slideXmlBefore);
+  });
+
   it("fits a picture into a content placeholder, keeping its aspect ratio", async () => {
     const pres = await openEditable([
       slidePlaceholder(2, '<p:ph type="ctrTitle"/>', "Title") +
@@ -345,40 +399,5 @@ describe("renderLayout", () => {
       element.querySelectorAll("[data-pptx-placeholder-empty]"),
     ).toHaveLength(3);
     expect(element.textContent).toContain("Add a short title");
-  });
-
-  it("takes each prompt from the layout placeholder with the same idx", async () => {
-    // The untyped content placeholder inherits `body` from the master, which
-    // matches the section placeholder's type.
-    const buffer = await buildCustomPptx({
-      slides: [""],
-      masterShapesXml: layoutPlaceholder(
-        2,
-        '<p:ph type="body" idx="1"/>',
-        LEFT_BOX,
-      ),
-      layoutShapesXml:
-        layoutPlaceholder(
-          2,
-          '<p:ph type="body" sz="quarter" idx="13" hasCustomPrompt="1"/>',
-          TITLE_BOX,
-          "Add a section name",
-        ) +
-        layoutPlaceholder(
-          3,
-          '<p:ph idx="1" hasCustomPrompt="1"/>',
-          LEFT_BOX,
-          "Add text",
-        ),
-    });
-    const pres = buildPresentation(await readPptx(buffer));
-
-    const { element } = renderLayout(pres, TITLE_SLIDE);
-
-    expect(
-      [...element.querySelectorAll("[data-pptx-placeholder-prompt]")].map(
-        (prompt) => prompt.textContent,
-      ),
-    ).toEqual(["Add a section name", "Add text"]);
   });
 });

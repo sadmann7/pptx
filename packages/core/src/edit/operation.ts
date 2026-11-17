@@ -3863,6 +3863,12 @@ async function applySetSlideLayout(
   });
   const placeholders = slide.nodes.filter((node) => node.placeholder);
   const matches = matchLayoutSlots(placeholders, slots);
+  let freeIdx =
+    Math.max(
+      0,
+      ...slots.map((slot) => slot.idx ?? 0),
+      ...placeholders.map((node) => node.placeholder?.idx ?? 0),
+    ) + 1;
 
   const undos = [await setLayoutRelationship(pres, slide, op.layoutId)];
   for (const node of placeholders) {
@@ -3898,6 +3904,15 @@ async function applySetSlideLayout(
     ) {
       undos.push(detachElement(element));
     } else {
+      // A kept placeholder sharing an idx with one of the new layout's would
+      // inherit that placeholder's styles and prompt.
+      const ph = placeholderElement(new SafeXmlNode(element));
+      const idx = node.placeholder?.idx ?? 0;
+      if (ph && slots.some((slot) => (slot.idx ?? 0) === idx)) {
+        const phCopy = ph.cloneNode(true) as Element;
+        phCopy.setAttribute("idx", String(freeIdx++));
+        undos.push(replaceElement(ph, phCopy));
+      }
       // Content with nowhere to go stays where it is, so it needs its own xfrm.
       undos.push(
         applySetNodeTransform(pres, {

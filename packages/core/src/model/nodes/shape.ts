@@ -135,7 +135,7 @@ const FILL_TYPES = [
   "noFill",
 ] as const;
 
-export function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
+function findFill(spPr: SafeXmlNode): SafeXmlNode | undefined {
   for (const fillType of FILL_TYPES) {
     const fill = spPr.child(fillType);
     if (fill.exists()) return fill;
