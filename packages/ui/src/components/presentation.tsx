@@ -263,7 +263,7 @@ function PresentationLayoutPreview({
     <PresentationPrimitive.LayoutPreview
       data-slot="presentation-layout-preview"
       className={cn(
-        "w-full overflow-hidden rounded-sm bg-white data-pending:bg-muted",
+        "w-full overflow-hidden rounded-md data-pending:bg-muted",
         className,
       )}
       {...props}
