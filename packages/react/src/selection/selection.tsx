@@ -104,6 +104,23 @@ function isMultiSelectEvent(event: React.PointerEvent): boolean {
   return event.shiftKey || event.ctrlKey || event.metaKey;
 }
 
+type ModifierEvent = Pick<PointerEvent, "altKey" | "ctrlKey" | "metaKey">;
+
+function getIsMac(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad/.test(navigator.platform)
+  );
+}
+
+function isDuplicateDragEvent(event: ModifierEvent): boolean {
+  return getIsMac() ? event.altKey : event.ctrlKey;
+}
+
+function isFreePlaceEvent(event: ModifierEvent): boolean {
+  return getIsMac() ? event.metaKey : event.altKey;
+}
+
 function getIsNativeUndoTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -177,6 +194,7 @@ export type InternalState =
       wasSelected?: boolean;
       // Set only for Shift/Ctrl presses, where a click toggles the shape.
       clickIds?: string[];
+      duplicate?: boolean;
       guides?: SnapGuideData[];
     }
   | {
@@ -356,7 +374,7 @@ export interface SelectionProps extends PrimitiveProps<"div", SelectionState> {
   /**
    * Whether moving and resizing snap to the slide's edges and center and to
    * other shapes' edges and centers, with guides showing what lined up. Hold
-   * Alt (Option) while dragging to place freely.
+   * Alt, or Cmd on macOS, while dragging to place freely.
    *
    * @default true
    */
@@ -2633,6 +2651,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
           hitNodeId !== currentState.nodeId &&
           event.button === 0 &&
           !event.shiftKey &&
+          !isDuplicateDragEvent(event) &&
           getIsCellPressRef.current(hitNodeId)
         ) {
           event.preventDefault();
@@ -3092,6 +3111,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
         !event.shiftKey &&
         !event.ctrlKey &&
         !event.metaKey &&
+        !isDuplicateDragEvent(event) &&
         getIsCellPress(nodeId)
       ) {
         event.preventDefault();
@@ -3120,9 +3140,12 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
         return;
       }
 
-      // PowerPoint reserves Ctrl+drag for duplicating, which isn't supported, so
-      // Ctrl/Cmd+click toggles on press and never becomes a move.
-      if (event.ctrlKey || event.metaKey) {
+      const duplicate = isDuplicateDragEvent(event);
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !duplicate &&
+        !isFreePlaceEvent(event)
+      ) {
         const nextIds = toggleSelection(selectedIds, nodeId);
         setState(
           nextIds.length > 0
@@ -3132,9 +3155,9 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
         return;
       }
 
-      // Shift starts as a move too: Shift+click toggles but Shift+drag moves along
-      // one axis, and only pointer-up can tell them apart.
-      const additive = event.shiftKey;
+      // Modified clicks toggle, but Shift+drag moves along one axis and Ctrl+drag
+      // duplicates, and only pointer-up can tell them apart.
+      const additive = event.shiftKey || event.ctrlKey || event.metaKey;
       setState({
         mode: "move",
         nodeIds: additive
@@ -3280,6 +3303,38 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       });
     }
 
+    const dragCopiesRef = React.useRef<Map<string, HTMLElement>>(new Map());
+
+    function getDragCopy(nodeId: string): HTMLElement | null {
+      const existing = dragCopiesRef.current.get(nodeId);
+      if (existing?.isConnected) return existing;
+      const shapeElement = getShapeElement(nodeId);
+      if (!shapeElement) return null;
+      const copy = shapeElement.cloneNode(true) as HTMLElement;
+      for (const element of [copy, ...copy.querySelectorAll("*")]) {
+        element.removeAttribute(PPTX_ATTRS.nodeId);
+      }
+      const canvases = shapeElement.querySelectorAll("canvas");
+      copy.querySelectorAll("canvas").forEach((canvas, index) => {
+        const source = canvases[index];
+        if (source?.width && source.height) {
+          canvas.getContext("2d")?.drawImage(source, 0, 0);
+        }
+      });
+      shapeElement.after(copy);
+      dragCopiesRef.current.set(nodeId, copy);
+      return copy;
+    }
+
+    function removeDragCopies(): void {
+      for (const copy of dragCopiesRef.current.values()) copy.remove();
+      dragCopiesRef.current.clear();
+    }
+
+    React.useLayoutEffect(() => {
+      if (state.mode !== "move") removeDragCopies();
+    }, [state.mode]);
+
     function getSnapTargets(draggedIds: string[]): Rect[] {
       const targets: Rect[] = [
         { x: 0, y: 0, w: presentation!.width, h: presentation!.height },
@@ -3340,8 +3395,8 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
       if (drag.mode !== "move" && drag.mode !== "resize") return;
       const dx = (event.clientX - drag.startX) / zoom;
       const dy = (event.clientY - drag.startY) / zoom;
-      // Alt places freely, as in PowerPoint. The threshold is in screen pixels.
-      const isSnapping = snapping && !event.altKey;
+      // The threshold is in screen pixels.
+      const isSnapping = snapping && !isFreePlaceEvent(event);
       const threshold = snapThreshold / zoom;
 
       if (drag.mode === "move") {
@@ -3349,6 +3404,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
           drag.moved ||
           Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >
             DRAG_THRESHOLD;
+        const duplicate = moved && isDuplicateDragEvent(event);
         // Pointer-up commits the constrained and snapped deltas without re-deriving them.
         const delta = constrainMove(dx, dy, event.shiftKey);
         const bounds = getUnionRect(selectedNodes.map(getNodeBounds));
@@ -3358,7 +3414,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
                 bounds,
                 delta.x,
                 delta.y,
-                getSnapTargets(drag.nodeIds),
+                getSnapTargets(duplicate ? [] : drag.nodeIds),
                 threshold,
                 {
                   // An axis Shift locked stays put rather than snapping off it.
@@ -3368,8 +3424,14 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
               )
             : { dx: delta.x, dy: delta.y, guides: [] };
         if (moved) {
+          if (!duplicate) removeDragCopies();
           for (const node of selectedNodes) {
-            const shapeElement = getShapeElement(node.id);
+            let shapeElement = getShapeElement(node.id);
+            if (duplicate && shapeElement) {
+              shapeElement.style.left = `${node.position.x}px`;
+              shapeElement.style.top = `${node.position.y}px`;
+              shapeElement = getDragCopy(node.id);
+            }
             if (shapeElement) {
               shapeElement.style.left = `${node.position.x + next.dx}px`;
               shapeElement.style.top = `${node.position.y + next.dy}px`;
@@ -3381,6 +3443,7 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
           dx: next.dx,
           dy: next.dy,
           moved,
+          duplicate,
           guides: next.guides,
         });
       } else {
@@ -3480,10 +3543,44 @@ const SelectionImpl = React.forwardRef<HTMLDivElement, SelectionProps>(
             : { mode: "idle" },
         );
       } else if (drag.mode === "move") {
-        const { nodeIds, primaryId, dx, dy, moved, clickIds, wasSelected } =
-          drag;
+        const {
+          nodeIds,
+          primaryId,
+          dx,
+          dy,
+          moved,
+          clickIds,
+          wasSelected,
+          duplicate,
+        } = drag;
 
-        if (moved && selectedNodes.length > 0) {
+        if (moved && duplicate && selectedNodes.length > 0) {
+          const operations = selectedNodes.map((node) => ({
+            type: "duplicateNode" as const,
+            slideId: slideId!,
+            nodeId: node.id,
+            offset: { x: dx, y: dy },
+          }));
+          setState({ mode: "selected", nodeIds });
+          const copies = [...dragCopiesRef.current.values()];
+          dragCopiesRef.current.clear();
+          commitEdit(
+            () =>
+              store.edit(
+                operations.length === 1
+                  ? operations[0]
+                  : { type: "batch", operations },
+              ),
+            () => {
+              for (const copy of copies) copy.remove();
+            },
+            (result) => {
+              if (result.createdNodeIds?.length) {
+                setState({ mode: "selected", nodeIds: result.createdNodeIds });
+              }
+            },
+          );
+        } else if (moved && selectedNodes.length > 0) {
           const movingNodes = selectedNodes;
           setState({ mode: "selected", nodeIds });
           commitEdit(
