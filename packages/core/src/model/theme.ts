@@ -8,6 +8,8 @@ export interface ThemeFontInfo {
 }
 
 export interface ThemeData {
+  /** The theme's display name, like "Office Theme". */
+  name?: string;
   colorScheme: Map<string, string>;
   majorFont: ThemeFontInfo;
   minorFont: ThemeFontInfo;
@@ -99,6 +101,7 @@ export function parseTheme(root: SafeXmlNode): ThemeData {
   const effectStyles: SafeXmlNode[] = effectStyleLst.allChildren();
 
   return {
+    name: root.attr("name") || undefined,
     colorScheme,
     majorFont,
     minorFont,

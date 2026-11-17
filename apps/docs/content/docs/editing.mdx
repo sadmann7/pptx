@@ -212,6 +212,9 @@ const { createdSlideId } = await store.edit({
   afterSlideId: slideId,
 });
 
+// Switch a slide to another layout, moving its content into the new placeholders
+await store.edit({ type: "setSlideLayout", slideId, layoutId });
+
 // Set or clear (`null`) a slide's own background
 await store.edit({ type: "setSlideBackground", slideId, color: "#f8fafc" });
 
@@ -276,6 +279,8 @@ await targetStore.edit({
 In `setTextStyle`, `null` clears a value so it inherits from the layout, and a range's `end` is exclusive. Edits that create nodes return their ids in `createdNodeIds`.
 
 `presentation.layouts` lists each layout and its `name` for a "new slide from layout" picker.
+
+For a "Layout" picker like PowerPoint's, `getLayouts(presentation)` lists the layouts in the deck's order, and `getLayoutGroups(presentation)` splits them into groups at the section divider layouts some templates add. Render each one with [`Presentation.LayoutPreview`](/docs/components#layoutpreview). `setSlideLayout` moves each placeholder into one of the new layout's with the same type and index, then the same type, and a picture, table, or chart into a content placeholder. Content with no match stays where it was, and empty placeholders with no match are removed.
 
 ## Formatting toolbar
 

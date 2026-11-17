@@ -255,6 +255,22 @@ function PresentationThumbnailItemPreview({
   );
 }
 
+function PresentationLayoutPreview({
+  className,
+  ...props
+}: PresentationPrimitive.LayoutPreview.Props) {
+  return (
+    <PresentationPrimitive.LayoutPreview
+      data-slot="presentation-layout-preview"
+      className={cn(
+        "w-full overflow-hidden rounded-sm bg-white data-pending:bg-muted",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function PresentationThumbnailItemNumber({
   className,
   ...props
@@ -416,6 +432,7 @@ export {
   PresentationContent,
   PresentationControls,
   PresentationError,
+  PresentationLayoutPreview,
   PresentationLoading,
   PresentationMarquee,
   PresentationProvider,

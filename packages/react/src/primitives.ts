@@ -1,5 +1,6 @@
 export { Provider } from "./context";
 export { Error } from "./error";
+export { LayoutPreview } from "./layout-preview";
 export { Loading } from "./loading";
 export { Root } from "./root";
 export { Controls } from "./selection/controls";

@@ -88,6 +88,11 @@ export type ThumbnailItemNumberProps = IndieProps<
   SpanProps
 >;
 
+export type LayoutPreviewProps = IndieProps<
+  PresentationPrimitive.LayoutPreview.Props,
+  DivProps
+>;
+
 export type LoadingProps = IndieProps<
   PresentationPrimitive.Loading.Props,
   DivProps

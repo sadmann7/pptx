@@ -178,6 +178,15 @@ export function buildPresentation(
         );
         masterToTheme.set(masterPath, themePath);
       }
+      masterData.layoutIds = masterRoot
+        .child("sldLayoutIdLst")
+        .children("sldLayoutId")
+        .flatMap((sldLayoutId) => {
+          const rel = masterRels.get(sldLayoutId.attr("r:id") ?? "");
+          return rel
+            ? [resolveRelTarget(basePath(masterPath), rel.target)]
+            : [];
+        });
     }
     masters.set(masterPath, masterData);
   }
@@ -560,14 +569,32 @@ export function findPlaceholderTemplateNode(
   layout: LayoutData | undefined,
   master: MasterData | undefined,
 ): SafeXmlNode | undefined {
-  const layoutMatch = layout
-    ? findMatchingLayoutPlaceholder(
-        layout.placeholders,
-        placeholder.type,
-        placeholder.idx,
-      )
-    : undefined;
-  if (layoutMatch) return layoutMatch.node;
+  const templates = findPlaceholderTemplates(placeholder, layout, master);
+  return templates.layout ?? templates.master;
+}
+
+export function findPlaceholderTemplates(
+  placeholder: PlaceholderInfo,
+  layout: LayoutData | undefined,
+  master: MasterData | undefined,
+): { layout?: SafeXmlNode; master?: SafeXmlNode } {
+  // PowerPoint links a slide placeholder to its layout one by idx. The slide's
+  // type can be inherited from the master and so match a different placeholder.
+  const sameIdx =
+    placeholder.idx === undefined
+      ? undefined
+      : layout?.placeholders.find(
+          (entry) => getPhInfo(entry.node).idx === placeholder.idx,
+        );
+  const layoutMatch =
+    sameIdx ??
+    (layout
+      ? findMatchingLayoutPlaceholder(
+          layout.placeholders,
+          placeholder.type,
+          placeholder.idx,
+        )
+      : undefined);
   const masterMatch = master
     ? findMatchingLayoutPlaceholder(
         getMasterPlaceholderEntries(master),
@@ -575,7 +602,7 @@ export function findPlaceholderTemplateNode(
         placeholder.idx,
       )
     : undefined;
-  return masterMatch?.node;
+  return { layout: layoutMatch?.node, master: masterMatch?.node };
 }
 
 function resolvePlaceholderInheritance(pres: PresentationData): void {

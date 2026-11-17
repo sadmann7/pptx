@@ -1,4 +1,11 @@
-﻿import type { NodePosition, NodeSize } from "../model/nodes/base";
+﻿import type { LayoutData } from "../model/layout";
+import {
+  buildSlideFromLayout,
+  createPlaceholderFromLayout,
+  SKIPPED_PLACEHOLDER_TYPES,
+} from "../model/layout-slide";
+import type { MasterData } from "../model/master";
+import type { BaseNodeData, NodePosition, NodeSize } from "../model/nodes/base";
 import type { GroupNodeData } from "../model/nodes/group";
 import { parseRenderableChild } from "../model/nodes/parser";
 import type { PictureNodeData } from "../model/nodes/picture";
@@ -12,7 +19,9 @@ import { parseParagraph } from "../model/nodes/shape";
 import type { TableNodeData } from "../model/nodes/table";
 import {
   materializeSlide,
+  normalizePlaceholderType,
   PresentationData,
+  resolveNodePlaceholderInheritance,
   resolveSlideNodePlaceholders,
 } from "../model/presentation";
 import { parseSlide, SlideData, SlideNode } from "../model/slide";
@@ -210,6 +219,17 @@ export interface AddSlideOperation {
   layoutId?: string;
   /** Insert after this slide. Defaults to the end of the deck. */
   afterSlideId?: string;
+}
+
+/**
+ * Switch a slide to another layout the way PowerPoint's Layout menu does, moving each
+ * placeholder's content into the matching placeholder of the new layout.
+ */
+export interface SetSlideLayoutOperation {
+  type: "setSlideLayout";
+  slideId: string;
+  /** The layout's part path, a key of `presentation.layouts`. */
+  layoutId: string;
 }
 
 /** Set a slide's own background, or clear it to inherit the layout's. */
@@ -436,6 +456,7 @@ export type EditOperation =
   | SetTextStyleOperation
   | SetParagraphStyleOperation
   | AddSlideOperation
+  | SetSlideLayoutOperation
   | SetSlideBackgroundOperation
   | DuplicateNodeOperation
   | ReorderNodeOperation
@@ -520,6 +541,8 @@ async function applyOperation(
       return applySetParagraphStyle(presentation, op);
     case "addSlide":
       return applyAddSlide(presentation, op);
+    case "setSlideLayout":
+      return applySetSlideLayout(presentation, op);
     case "setSlideBackground":
       return applySetSlideBackground(presentation, op);
     case "duplicateNode":
@@ -3580,79 +3603,6 @@ async function insertSlidePart(
 
 const SLIDE_LAYOUT_REL_TYPE =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout";
-// PowerPoint leaves header and footer placeholders off a new slide.
-const SKIPPED_PLACEHOLDER_TYPES = new Set(["dt", "ftr", "sldNum", "hdr"]);
-
-const EMPTY_SLIDE_XML =
-  `<p:sld xmlns:a="${A_NS}" xmlns:r="${R_NS}" xmlns:p="${P_NS}">` +
-  "<p:cSld><p:spTree>" +
-  '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
-  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
-  "</p:spTree></p:cSld>" +
-  "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>" +
-  "</p:sld>";
-
-// Placeholder copies carry only the `p:ph` reference, so position, size, and
-// text styles keep inheriting from the layout.
-function buildSlideFromLayout(layoutSpTree: SafeXmlNode): string {
-  const root = parseXml(EMPTY_SLIDE_XML);
-  const rootElement = requireElement(root, "slide root");
-  const doc = rootElement.ownerDocument;
-  const spTree = requireElement(root.child("cSld").child("spTree"), "spTree");
-
-  const el = (
-    qualifiedName: string,
-    attrs: Record<string, string> = {},
-    ...children: Node[]
-  ) => {
-    const element = doc.createElementNS(
-      qualifiedName.startsWith("a:") ? A_NS : P_NS,
-      qualifiedName,
-    );
-    for (const [name, value] of Object.entries(attrs))
-      element.setAttribute(name, value);
-    for (const child of children) element.appendChild(child);
-    return element;
-  };
-
-  let nextId = 2;
-  for (const sp of layoutSpTree.children("sp")) {
-    const nvSpPr = sp.child("nvSpPr");
-    const ph = nvSpPr.child("nvPr").child("ph");
-    const phElement = ph.element;
-    if (!phElement || SKIPPED_PLACEHOLDER_TYPES.has(ph.attr("type") ?? ""))
-      continue;
-
-    const phCopy = doc.importNode(phElement, true) as Element;
-    phCopy.removeAttribute("hasCustomPrompt");
-    const id = nextId++;
-    const name = nvSpPr.child("cNvPr").attr("name") ?? `Placeholder ${id - 1}`;
-
-    spTree.appendChild(
-      el(
-        "p:sp",
-        {},
-        el(
-          "p:nvSpPr",
-          {},
-          el("p:cNvPr", { id: String(id), name }),
-          el("p:cNvSpPr", {}, el("a:spLocks", { noGrp: "1" })),
-          el("p:nvPr", {}, phCopy),
-        ),
-        el("p:spPr"),
-        el(
-          "p:txBody",
-          {},
-          el("a:bodyPr"),
-          el("a:lstStyle"),
-          el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
-        ),
-      ),
-    );
-  }
-
-  return serializePartText(rootElement, "");
-}
 
 async function applyAddSlide(
   pres: PresentationData,
@@ -3687,6 +3637,315 @@ async function applyAddSlide(
       : (sldIdElements(ctx).at(-1) ?? null),
     index: anchor ? pres.slides.indexOf(anchor) + 1 : pres.slides.length,
   });
+}
+
+interface LayoutSlot {
+  sp: SafeXmlNode;
+  ph: Element;
+  type?: string;
+  idx?: number;
+  kind: string;
+  taken: boolean;
+}
+
+const PLACEHOLDER_WRAPPERS = [
+  "nvSpPr",
+  "nvPicPr",
+  "nvGraphicFramePr",
+  "nvCxnSpPr",
+];
+
+function placeholderElement(shape: SafeXmlNode): Element | null {
+  for (const wrapper of PLACEHOLDER_WRAPPERS) {
+    const ph = shape.child(wrapper).child("nvPr").child("ph").element;
+    if (ph) return ph;
+  }
+  return null;
+}
+
+// `obj`, the type of a placeholder that names none, holds text like `body`.
+function placeholderKind(type: string | undefined): string {
+  return normalizePlaceholderType(type ?? "obj") ?? "body";
+}
+
+function isContentSlot(slot: LayoutSlot): boolean {
+  return slot.type === undefined || slot.type === "obj";
+}
+
+// Pictures, tables, and charts only fit a placeholder of their own type or a content one.
+function canHold(slot: LayoutSlot, node: SlideNode): boolean {
+  return (
+    node.nodeType === "shape" ||
+    isContentSlot(slot) ||
+    slot.type === node.placeholder?.type
+  );
+}
+
+// One placeholder per slot, best match first: same kind and idx, same kind,
+// then a content slot for a picture, table, or chart.
+function matchLayoutSlots(
+  nodes: SlideNode[],
+  slots: LayoutSlot[],
+): Map<SlideNode, LayoutSlot> {
+  const sameKind = (node: SlideNode, slot: LayoutSlot) =>
+    slot.kind === placeholderKind(node.placeholder?.type);
+  const passes = [
+    (node: SlideNode, slot: LayoutSlot) =>
+      sameKind(node, slot) && (slot.idx ?? 0) === (node.placeholder?.idx ?? 0),
+    sameKind,
+    (node: SlideNode, slot: LayoutSlot) =>
+      node.nodeType !== "shape" && isContentSlot(slot),
+  ];
+
+  const matches = new Map<SlideNode, LayoutSlot>();
+  for (const pass of passes) {
+    for (const node of nodes) {
+      if (matches.has(node)) continue;
+      const slot = slots.find(
+        (candidate) =>
+          !candidate.taken && canHold(candidate, node) && pass(node, candidate),
+      );
+      if (!slot) continue;
+      slot.taken = true;
+      matches.set(node, slot);
+    }
+  }
+  return matches;
+}
+
+function hasVisibleText(node: SlideNode): boolean {
+  const textBody = (node as ShapeNodeData).textBody;
+  return (
+    textBody?.paragraphs.some((paragraph) =>
+      paragraph.runs.some((run) => run.text?.trim()),
+    ) ?? false
+  );
+}
+
+function layoutSlotBox(
+  slot: LayoutSlot,
+  layout: LayoutData,
+  master: MasterData | undefined,
+): { position: NodePosition; size: NodeSize } | undefined {
+  const box: BaseNodeData = {
+    id: "",
+    name: "",
+    nodeType: "unknown",
+    position: { x: 0, y: 0 },
+    size: { w: 0, h: 0 },
+    rotation: 0,
+    flipH: false,
+    flipV: false,
+    placeholder: { type: slot.type, idx: slot.idx },
+    source: SafeXmlNode.EMPTY,
+  };
+  resolveNodePlaceholderInheritance(box, layout, master);
+  return box.size.w > 0 && box.size.h > 0 ? box : undefined;
+}
+
+// A picture keeps its aspect ratio, centered in the box; a table or chart keeps
+// its size, since resizing would rescale its grid.
+function fitIntoBox(
+  node: SlideNode,
+  box: { position: NodePosition; size: NodeSize },
+): { position: NodePosition; size?: NodeSize } {
+  if (node.nodeType !== "picture") return { position: box.position };
+  const scale = Math.min(box.size.w / node.size.w, box.size.h / node.size.h);
+  if (!Number.isFinite(scale) || scale <= 0) return box;
+  const size = { w: node.size.w * scale, h: node.size.h * scale };
+  return {
+    position: {
+      x: box.position.x + (box.size.w - size.w) / 2,
+      y: box.position.y + (box.size.h - size.h) / 2,
+    },
+    size,
+  };
+}
+
+function detachElement(element: Element): () => void {
+  const parent = element.parentElement;
+  const ref = element.nextElementSibling;
+  removeChild(element);
+  return () => {
+    if (parent) insertChild(parent, element, ref);
+  };
+}
+
+function replaceElement(element: Element, replacement: Element): () => void {
+  const parent = element.parentElement;
+  if (!parent) return () => {};
+  insertChild(parent, replacement, element);
+  removeChild(element);
+  return () => {
+    insertChild(parent, element, replacement);
+    removeChild(replacement);
+  };
+}
+
+async function setLayoutRelationship(
+  pres: PresentationData,
+  slide: SlideData,
+  layoutId: string,
+): Promise<() => void> {
+  const sourcePackage = requirePkg(pres);
+  const relsPath = relsPathFor(slide.id);
+  const existingText = await sourcePackage.readText(relsPath);
+  const relsText =
+    existingText ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="${RELS_NS}"/>`;
+  const relsRootElement = requireElement(parseXml(relsText), "slide rels root");
+  // Slides live in ppt/slides/, so the layout target is relative to it.
+  const target = `../${layoutId.replace(/^ppt\//, "")}`;
+
+  let relElement = Array.from(relsRootElement.children).find((child) =>
+    child.getAttribute("Type")?.endsWith("/slideLayout"),
+  );
+  if (!relElement) {
+    relElement = relsRootElement.ownerDocument.createElementNS(
+      RELS_NS,
+      "Relationship",
+    );
+    relElement.setAttribute("Id", nextRelId(slide.rels));
+    relElement.setAttribute("Type", SLIDE_LAYOUT_REL_TYPE);
+    insertChild(relsRootElement, relElement, null);
+  }
+  relElement.setAttribute("Target", target);
+  sourcePackage.setEntry(
+    relsPath,
+    serializePartText(relsRootElement, relsText),
+  );
+
+  const rId = relElement.getAttribute("Id") ?? "";
+  const prevEntry = slide.rels.get(rId);
+  slide.rels.set(rId, {
+    type: relElement.getAttribute("Type") ?? SLIDE_LAYOUT_REL_TYPE,
+    target,
+  });
+
+  return () => {
+    if (prevEntry) slide.rels.set(rId, prevEntry);
+    else slide.rels.delete(rId);
+    if (existingText === undefined) sourcePackage.deleteEntry(relsPath);
+    else sourcePackage.setEntry(relsPath, existingText);
+  };
+}
+
+async function applySetSlideLayout(
+  pres: PresentationData,
+  op: SetSlideLayoutOperation,
+): Promise<EditResult> {
+  const sourcePackage = requirePkg(pres);
+  const slide = findSlide(pres, op.slideId);
+  const layout = pres.layouts.get(op.layoutId);
+  if (!layout) {
+    throw new Error(`applyEdit: unknown slide layout "${op.layoutId}".`);
+  }
+  materializeSlide(pres, slide);
+  const spTree = requireSpTree(pres, slide);
+  const doc = spTree.ownerDocument;
+  const master = pres.masters.get(pres.layoutToMaster.get(op.layoutId) ?? "");
+
+  const slots = layout.placeholders.flatMap(({ node }): LayoutSlot[] => {
+    const ph = placeholderElement(node);
+    if (!ph) return [];
+    const type = ph.getAttribute("type") ?? undefined;
+    const idx = ph.getAttribute("idx");
+    return [
+      {
+        sp: node,
+        ph,
+        type,
+        idx: idx === null ? undefined : Number(idx),
+        kind: placeholderKind(type),
+        taken: false,
+      },
+    ];
+  });
+  const placeholders = slide.nodes.filter((node) => node.placeholder);
+  const matches = matchLayoutSlots(placeholders, slots);
+
+  const undos = [await setLayoutRelationship(pres, slide, op.layoutId)];
+  for (const node of placeholders) {
+    const element = topLevelElement(node);
+    const slot = matches.get(node);
+    if (slot) {
+      const ph = placeholderElement(new SafeXmlNode(element));
+      const phCopy = doc.importNode(slot.ph, true) as Element;
+      phCopy.removeAttribute("hasCustomPrompt");
+      if (ph) undos.push(replaceElement(ph, phCopy));
+
+      if (node.nodeType === "shape") {
+        // Without its own xfrm, the shape inherits the new placeholder's geometry.
+        const spPr = childNamed(element, "spPr");
+        const xfrm = spPr && childNamed(spPr, "xfrm");
+        if (xfrm) undos.push(detachElement(xfrm));
+      } else {
+        const box = layoutSlotBox(slot, layout, master);
+        if (box) {
+          undos.push(
+            applySetNodeTransform(pres, {
+              type: "setNodeTransform",
+              slideId: slide.id,
+              nodeId: node.id,
+              ...fitIntoBox(node, box),
+            }).undo,
+          );
+        }
+      }
+    } else if (
+      SKIPPED_PLACEHOLDER_TYPES.has(node.placeholder?.type ?? "") ||
+      (node.nodeType === "shape" && !hasVisibleText(node))
+    ) {
+      undos.push(detachElement(element));
+    } else {
+      // Content with nowhere to go stays where it is, so it needs its own xfrm.
+      undos.push(
+        applySetNodeTransform(pres, {
+          type: "setNodeTransform",
+          slideId: slide.id,
+          nodeId: node.id,
+        }).undo,
+      );
+    }
+  }
+
+  const extLst = childNamed(spTree, "extLst");
+  let nextId = nextShapeId(spTree);
+  for (const slot of slots) {
+    if (slot.taken || slot.sp.localName !== "sp") continue;
+    if (SKIPPED_PLACEHOLDER_TYPES.has(slot.type ?? "")) continue;
+    const sp = createPlaceholderFromLayout(doc, slot.sp, nextId);
+    if (!sp) continue;
+    nextId++;
+    insertChild(spTree, sp, extLst);
+    undos.push(() => removeChild(sp));
+  }
+
+  const prevNodes = slide.nodes;
+  const prevLayoutId = slide.layoutIndex;
+  slide.layoutIndex = op.layoutId;
+  reindexSlides(pres);
+  slide.nodes = new SafeXmlNode(spTree).allChildren().flatMap((child) => {
+    const node = parseRenderableChild(child, {
+      rels: slide.rels,
+      partPath: slide.id,
+      diagramDrawings: pres.diagramDrawings,
+    });
+    return node ? [node] : [];
+  });
+  resolveSlideNodePlaceholders(pres, slide, slide.nodes);
+  sourcePackage.markDirty(slide.id);
+
+  return {
+    affectedSlideIds: [slide.id],
+    undo: () => {
+      for (let i = undos.length - 1; i >= 0; i--) undos[i]();
+      slide.nodes = prevNodes;
+      slide.layoutIndex = prevLayoutId;
+      reindexSlides(pres);
+      sourcePackage.markDirty(slide.id);
+    },
+  };
 }
 
 function applySetSlideBackground(
