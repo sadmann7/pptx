@@ -11,14 +11,18 @@ import {
   getOrCreateBlobUrl,
 } from "../media/resolve";
 import {
+  findFill,
   LineEndInfo,
   parseTextBody,
   ShapeNodeData,
   TextBody,
 } from "../model/nodes/shape";
-import { findPlaceholderTemplateNode } from "../model/presentation";
+import {
+  findPlaceholderTemplateNode,
+  findPlaceholderTemplates,
+} from "../model/presentation";
 import { parseOoxmlBool } from "../ooxml/boolean";
-import { isExternalTargetMode } from "../ooxml/rel";
+import { isExternalTargetMode, type RelEntry } from "../ooxml/rel";
 import { emuToPx } from "../ooxml/unit";
 import { SafeXmlNode } from "../ooxml/xml";
 import { applyTint, hexToRgb, rgbToHex } from "../utils/color";
@@ -1371,6 +1375,70 @@ function resolvePresetGeometry(
   return { pathD, multiPaths };
 }
 
+interface InheritedPlaceholderStyle {
+  presetGeometry?: string;
+  fill?: SafeXmlNode;
+  line?: SafeXmlNode;
+  // The template's spPr with a context for its part, so a blipFill resolves against that part's rels.
+  fillSpPr?: SafeXmlNode;
+  fillCtx?: RenderContext;
+}
+
+// Like PowerPoint, a placeholder without its own fill, outline or geometry shows its layout or master placeholder's.
+function resolveInheritedPlaceholderStyle(
+  node: ShapeNodeData,
+  ctx: RenderContext,
+): InheritedPlaceholderStyle | undefined {
+  if (!node.placeholder) return undefined;
+  const templates = findPlaceholderTemplates(
+    node.placeholder,
+    ctx.layout,
+    ctx.master,
+  );
+  const sources: { spPr: SafeXmlNode; rels: Map<string, RelEntry> }[] = [];
+  if (templates.layout)
+    sources.push({
+      spPr: templates.layout.child("spPr"),
+      rels: ctx.layout.rels,
+    });
+  if (templates.master)
+    sources.push({
+      spPr: templates.master.child("spPr"),
+      rels: ctx.master.rels,
+    });
+  if (sources.length === 0) return undefined;
+
+  const fillSource = node.fill
+    ? undefined
+    : sources.find((source) => findFill(source.spPr));
+  const fill = fillSource ? findFill(fillSource.spPr) : undefined;
+  const line = node.line
+    ? undefined
+    : sources
+        .map((source) => source.spPr.child("ln"))
+        .find((ln) => ln.exists());
+
+  const hasGeometry = node.presetGeometry || node.customGeometry;
+  const paints = node.fill || node.line || fill || line;
+  const presetGeometry =
+    hasGeometry || !paints
+      ? undefined
+      : (sources
+          .map((source) => source.spPr.child("prstGeom").attr("prst"))
+          .find(Boolean) ?? "rect");
+
+  return {
+    presetGeometry,
+    fill,
+    line,
+    fillSpPr: fillSource?.spPr,
+    fillCtx: fillSource && {
+      ...ctx,
+      slide: { ...ctx.slide, rels: fillSource.rels },
+    },
+  };
+}
+
 export function renderShape(
   node: ShapeNodeData,
   ctx: RenderContext,
@@ -1380,7 +1448,13 @@ export function renderShape(
   wrapper.style.left = `${node.position.x}px`;
   wrapper.style.top = `${node.position.y}px`;
   wrapper.style.width = `${node.size.w}px`;
-  const presetKey = node.presetGeometry?.toLowerCase() ?? "";
+  const inherited = resolveInheritedPlaceholderStyle(node, ctx);
+  const presetGeometry = node.presetGeometry ?? inherited?.presetGeometry;
+  const fill = node.fill ?? inherited?.fill;
+  const line = node.line ?? inherited?.line;
+  const fillCtx = inherited?.fillCtx ?? ctx;
+
+  const presetKey = presetGeometry?.toLowerCase() ?? "";
   const outlineOnlyPresets = new Set(["arc"]);
   const presetIsLine =
     !!presetKey &&
@@ -1426,9 +1500,9 @@ export function renderShape(
 
   let pathD = "";
   let multiPaths: PresetSubPath[] | null = null;
-  if (node.presetGeometry) {
+  if (presetGeometry) {
     // A connector's `line` runs corner to corner, not along the horizontal midline.
-    let effectivePreset = node.presetGeometry;
+    let effectivePreset = presetGeometry;
     if (isConnectorShape && effectivePreset === "line") {
       effectivePreset = "straightConnector1";
     }
@@ -1451,7 +1525,7 @@ export function renderShape(
   if (
     !pathD &&
     isLineLike &&
-    (node.line?.exists() ||
+    (line?.exists() ||
       (lnRef?.exists() &&
         (lnRef.numAttr("idx") ?? 0) > 0 &&
         (ctx.theme.lineStyles?.length ?? 0) >= (lnRef.numAttr("idx") ?? 0)))
@@ -1468,25 +1542,26 @@ export function renderShape(
   }
 
   const spPr = node.source.child("spPr");
+  const fillSpPr = inherited?.fillSpPr ?? spPr;
   let fillCss = "";
-  let gradientFillData = node.fill ? resolveGradientFill(spPr, ctx) : null;
-  if (node.fill && node.fill.exists()) {
-    if (node.fill.localName === "solidFill") {
-      const colorChild = node.fill.child("srgbClr").exists()
-        ? node.fill.child("srgbClr")
-        : node.fill.child("schemeClr").exists()
-          ? node.fill.child("schemeClr")
-          : node.fill.child("scrgbClr").exists()
-            ? node.fill.child("scrgbClr")
-            : node.fill.child("sysClr").exists()
-              ? node.fill.child("sysClr")
+  let gradientFillData = fill ? resolveGradientFill(fillSpPr, ctx) : null;
+  if (fill && fill.exists()) {
+    if (fill.localName === "solidFill") {
+      const colorChild = fill.child("srgbClr").exists()
+        ? fill.child("srgbClr")
+        : fill.child("schemeClr").exists()
+          ? fill.child("schemeClr")
+          : fill.child("scrgbClr").exists()
+            ? fill.child("scrgbClr")
+            : fill.child("sysClr").exists()
+              ? fill.child("sysClr")
               : undefined;
       if (colorChild?.exists()) fillCss = resolveColorToCss(colorChild, ctx);
     }
-    if (!fillCss) fillCss = resolveFill(spPr, ctx);
+    if (!fillCss) fillCss = resolveFill(fillSpPr, ctx);
   }
   if (!fillCss) {
-    const solidFill = spPr.child("solidFill");
+    const solidFill = fillSpPr.child("solidFill");
     if (solidFill.exists()) {
       const colorChild = solidFill.child("srgbClr").exists()
         ? solidFill.child("srgbClr")
@@ -1526,8 +1601,8 @@ export function renderShape(
   let gradientStroke: ReturnType<typeof resolveGradientStroke> = null;
 
   // An explicit <a:ln>, including <a:noFill/>, wins over the theme line from lnRef.
-  const lineIsNoFill = node.line && node.line.child("noFill").exists();
-  const hasExplicitLine = node.line && !lineIsNoFill;
+  const lineIsNoFill = line && line.child("noFill").exists();
+  const hasExplicitLine = line && !lineIsNoFill;
   const themeLineFromLnRef =
     !hasExplicitLine &&
     !lineIsNoFill &&
@@ -1536,7 +1611,7 @@ export function renderShape(
     (ctx.theme.lineStyles?.length ?? 0) >= (lnRef.numAttr("idx") ?? 0)
       ? ctx.theme.lineStyles![(lnRef.numAttr("idx") ?? 1) - 1]
       : undefined;
-  let effectiveLine = hasExplicitLine ? node.line! : themeLineFromLnRef;
+  let effectiveLine = hasExplicitLine ? line : themeLineFromLnRef;
   if (lineIsNoFill) effectiveLine = undefined;
 
   if (effectiveLine?.exists()) {
@@ -1564,8 +1639,7 @@ export function renderShape(
     gradientStroke = null;
   }
   // SmartArt circularArrow is fill-only, whatever the diagram XML says.
-  const isCircularArrow =
-    node.presetGeometry?.toLowerCase() === "circulararrow";
+  const isCircularArrow = presetGeometry?.toLowerCase() === "circulararrow";
   if (isCircularArrow) {
     strokeColor = "none";
     strokeWidth = 0;
@@ -1604,9 +1678,9 @@ export function renderShape(
     svg.style.top = "0";
     svg.style.overflow = "visible";
 
-    const blipFill = spPr.child("blipFill");
+    const blipFill = fillSpPr.child("blipFill");
     const blipUrl = blipFill.exists()
-      ? resolveShapeBlipUrl(blipFill, ctx)
+      ? resolveShapeBlipUrl(blipFill, fillCtx)
       : null;
 
     if (blipUrl) {
@@ -1667,7 +1741,7 @@ export function renderShape(
       mainDefs = defs;
       mainPath = path;
       mainSvgBounds = { w: svgW, h: svgH };
-      const presetLower = node.presetGeometry?.toLowerCase();
+      const presetLower = presetGeometry?.toLowerCase();
       if (
         presetLower === "curveduparrow" ||
         presetLower === "curveddownarrow"
@@ -1682,7 +1756,7 @@ export function renderShape(
       }
 
       if (fillCss) {
-        const pattFill = spPr.child("pattFill");
+        const pattFill = fillSpPr.child("pattFill");
         const patternFillId = pattFill.exists()
           ? appendSvgPatternFill(svgNs, defs, pattFill, ctx)
           : null;
@@ -1907,8 +1981,8 @@ export function renderShape(
               }
             }
           }
-          if (!fallbackFill && node.fill?.exists()) {
-            for (const child of node.fill.allChildren()) {
+          if (!fallbackFill && fill?.exists()) {
+            for (const child of fill.allChildren()) {
               if (colorTags.includes(child.localName)) {
                 fallbackFill = resolveColorToCss(child, ctx);
                 break;
@@ -2126,7 +2200,7 @@ export function renderShape(
       svg.appendChild(path);
 
       if (blipFill.exists() && ctx.presentation.mediaResolver) {
-        const task = resolveShapeBlipUrlAsync(blipFill, ctx)
+        const task = resolveShapeBlipUrlAsync(blipFill, fillCtx)
           .then((lazyBlipUrl) => {
             if (!lazyBlipUrl) return;
             appendShapeBlipImage(
@@ -2149,7 +2223,7 @@ export function renderShape(
 
       if (multiPaths && multiPaths.length > 1) {
         const mainPathFill = path.getAttribute("fill") ?? "";
-        const presetLower = node.presetGeometry?.toLowerCase() ?? "";
+        const presetLower = presetGeometry?.toLowerCase() ?? "";
         const shadingBaseFill =
           mainPathFill && !mainPathFill.startsWith("url(")
             ? mainPathFill
@@ -2306,7 +2380,7 @@ export function renderShape(
           ) {
             extraPath.setAttribute("stroke", strokeColor);
             const isBorderCalloutLeader =
-              node.presetGeometry?.toLowerCase() === "bordercallout1" &&
+              presetGeometry?.toLowerCase() === "bordercallout1" &&
               sp.fill === "none";
             const scaledStrokeWidth =
               sp.strokeWidthScale &&
@@ -2417,12 +2491,8 @@ export function renderShape(
       }
 
       // Multi-path action buttons already draw the icon in their darken sub-paths.
-      if (node.presetGeometry && !multiPaths) {
-        const iconD = getActionButtonIconPath(
-          node.presetGeometry,
-          pathW,
-          pathH,
-        );
+      if (presetGeometry && !multiPaths) {
+        const iconD = getActionButtonIconPath(presetGeometry, pathW, pathH);
         if (iconD) {
           const iconPath = document.createElementNS(svgNs, "path");
           iconPath.setAttribute("d", iconD);
@@ -3031,7 +3101,7 @@ export function renderShape(
         let spreadBasisW = shapeW;
         let spreadBasisH = shapeH;
         if (isLineLike || shapeW <= 1 || shapeH <= 1) {
-          const lineWEmu = node.line?.numAttr("w") ?? 12700;
+          const lineWEmu = line?.numAttr("w") ?? 12700;
           const lineThickness = Math.max(1, emuToPx(lineWEmu));
           spreadBasisW = lineThickness;
           spreadBasisH = lineThickness;

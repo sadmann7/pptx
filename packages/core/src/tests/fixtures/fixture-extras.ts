@@ -6,6 +6,7 @@ export interface CustomPptxOptions {
   slides?: string[];
   masterClrMapAttrs?: string;
   masterBgXml?: string;
+  masterShapesXml?: string;
   layoutClrMapOvrXml?: string;
   layoutShapesXml?: string;
   // Layouts after the default one, saved as slideLayout2.xml onward.
@@ -155,6 +156,7 @@ ${bg}
 <p:spTree>
 <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
 <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${options.masterShapesXml ?? ""}
 </p:spTree>
 </p:cSld>
 <p:clrMap ${clrMap}/>
