@@ -1,0 +1,31 @@
+name: Bug report
+description: Create a bug report to help us improve
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of the bug, as well as what you expected to happen when encountering it.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How to reproduce
+      description: A step-by-step description of how to reproduce the bug.
+      placeholder: |
+        1. Open '...'
+        2. Click on '....'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Deck or reproduction
+      description: Attach a .pptx file that shows the problem, or link to a minimal reproduction. If a report is vague and does not have one, it will be closed without warning.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional information
+      description: Add any other information related to the bug here, such as how PowerPoint shows the same slide, and screenshots if applicable.
