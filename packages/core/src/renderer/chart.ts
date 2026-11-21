@@ -2820,6 +2820,17 @@ export function parseChartXml(
   };
 }
 
+let echartsModule: Promise<typeof import("./chart/echarts")> | undefined;
+
+// ECharts is loaded on demand, so decks without charts never download it.
+export function loadECharts(): Promise<typeof import("./chart/echarts")> {
+  echartsModule ??= import("./chart/echarts").catch((error: unknown) => {
+    echartsModule = undefined;
+    throw error;
+  });
+  return echartsModule;
+}
+
 export function renderChart(
   node: ChartNodeData,
   ctx: RenderContext,
@@ -2913,10 +2924,8 @@ export function renderChart(
   });
 
   const chartReady = new Promise<void>((resolve) => {
-    // ECharts is loaded on the first chart, so decks without charts never
-    // download it.
     const finishInit = (): void => {
-      import("./chart/echarts")
+      loadECharts()
         .then(({ init }) => {
           if (disposed) return;
           initChart(init, chartDiv, option, chartSet, ctx.cleanups);
