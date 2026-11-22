@@ -223,9 +223,6 @@ export interface ThumbnailRendererOptions {
   mediaUrlCache?: Map<string, string>;
 }
 
-// Starts the ECharts download as soon as a deck with charts renders, so it is
-// ready before a chart slide is shown. A failed prefetch is retried, and
-// reported, by the chart that needs it.
 function prefetchCharts(presentation: PresentationData): void {
   if (presentation.charts?.size) loadECharts().catch(() => {});
 }
