@@ -30,7 +30,7 @@ function waitForSlide(
     // still waiting on ECharts holds the capture.
     const chartLoading = Array.from(
       host?.querySelectorAll<HTMLElement>("[data-pptx-chart-pending]") ?? [],
-    ).some((el) => el.offsetWidth > 0 && el.offsetHeight > 0);
+    ).some((element) => element.offsetWidth > 0 && element.offsetHeight > 0);
     const settled =
       slide?.firstElementChild &&
       !chartLoading &&

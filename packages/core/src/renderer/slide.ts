@@ -224,7 +224,10 @@ export interface ThumbnailRendererOptions {
 }
 
 function prefetchCharts(presentation: PresentationData): void {
-  if (presentation.charts?.size) loadECharts().catch(() => {});
+  if (!presentation.charts?.size) return;
+  loadECharts().catch(() => {
+    // The chart that needs ECharts retries the load and reports a failure.
+  });
 }
 
 /** Renders a slide like `renderSlide()` but skips autofit, ECharts, and EMF decoding, which are invisible at thumbnail size. */
