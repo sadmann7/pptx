@@ -2822,7 +2822,6 @@ export function parseChartXml(
 
 let echartsModule: Promise<typeof import("./chart/echarts")> | undefined;
 
-// ECharts is loaded on demand, so decks without charts never download it.
 export function loadECharts(): Promise<typeof import("./chart/echarts")> {
   echartsModule ??= import("./chart/echarts").catch((error: unknown) => {
     echartsModule = undefined;
@@ -2872,9 +2871,9 @@ export function renderChart(
   chartDiv.style.minWidth = "0";
   chartDiv.style.minHeight = "0";
   chartDiv.style.overflow = "hidden";
-  // ECharts can only be initialised once the div is attached and measurable, so
-  // a chart is always at least a frame behind the rest of the slide. This marks
-  // the gap for anything that needs to know the slide is not finished drawing.
+  // ECharts is initialised only once the div is measurable and the ECharts chunk
+  // has loaded, so a chart can lag the rest of the slide. This marks the gap for
+  // anything that needs to know the slide is not finished drawing.
   chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
