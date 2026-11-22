@@ -244,8 +244,8 @@ function renderSvgGradientBackground(
   container.style.background = "";
   container
     .querySelectorAll('svg[data-pptx-background-gradient="true"]')
-    .forEach((el) => {
-      el.remove();
+    .forEach((element) => {
+      element.remove();
     });
   container.insertBefore(svg, container.firstChild);
 }
@@ -503,8 +503,8 @@ function applyBlipBackgroundLayer(
   container.style.backgroundImage = "";
   container
     .querySelectorAll('[data-pptx-background-image="true"]')
-    .forEach((el) => {
-      el.remove();
+    .forEach((element) => {
+      element.remove();
     });
 
   const layer = document.createElement("div");

@@ -194,17 +194,17 @@ function SlideImpl({
 
       if (canPatch) {
         const elements = new Map<string, HTMLElement>();
-        for (const el of container.querySelectorAll<HTMLElement>(
+        for (const element of container.querySelectorAll<HTMLElement>(
           `[${PPTX_ATTRS.nodeId}]`,
         )) {
-          const id = el.getAttribute(PPTX_ATTRS.nodeId);
-          if (id !== null && !elements.has(id)) elements.set(id, el);
+          const id = element.getAttribute(PPTX_ATTRS.nodeId);
+          if (id !== null && !elements.has(id)) elements.set(id, element);
         }
         for (const node of slide.nodes) {
-          const el = elements.get(node.id);
-          if (el) {
-            el.style.left = `${node.position.x}px`;
-            el.style.top = `${node.position.y}px`;
+          const element = elements.get(node.id);
+          if (element) {
+            element.style.left = `${node.position.x}px`;
+            element.style.top = `${node.position.y}px`;
           }
         }
         nodeSnapshotRef.current = buildNodeSnapshot(slide);

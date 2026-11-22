@@ -946,7 +946,9 @@ export function createStore(): Store {
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
     const run = editQueue.then(task, task);
-    editQueue = run.catch(() => {});
+    editQueue = run.catch(() => {
+      // A failed edit rejects its own caller; the queue only needs to keep going.
+    });
     return run;
   }
 

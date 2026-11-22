@@ -73,9 +73,9 @@ function parseDlblBoolOptional(
   dLbl: SafeXmlNode,
   childName: string,
 ): boolean | undefined {
-  const el = dLbl.child(childName);
-  if (!el.exists()) return undefined;
-  return parseOoxmlBoolElement(el);
+  const element = dLbl.child(childName);
+  if (!element.exists()) return undefined;
+  return parseOoxmlBoolElement(element);
 }
 
 function parseDataLabelBoxStyle(

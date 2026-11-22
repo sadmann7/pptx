@@ -200,13 +200,14 @@ function renderPlaceholderPrompt(
   wrapper.appendChild(container);
 }
 
-function appendTransform(el: HTMLElement, transform: string): void {
-  el.style.transform = `${el.style.transform || ""} ${transform}`.trim();
+function appendTransform(element: HTMLElement, transform: string): void {
+  element.style.transform =
+    `${element.style.transform || ""} ${transform}`.trim();
 }
 
-function appendCssFilter(el: HTMLElement, filter: string): void {
-  const current = el.style.filter.trim();
-  el.style.filter = current ? `${current} ${filter}` : filter;
+function appendCssFilter(element: HTMLElement, filter: string): void {
+  const current = element.style.filter.trim();
+  element.style.filter = current ? `${current} ${filter}` : filter;
 }
 
 function flipPoint(
@@ -310,13 +311,13 @@ function resolveGlowFilter(
 }
 
 function applyGlowFilter(
-  el: HTMLElement,
+  element: HTMLElement,
   glow: SafeXmlNode,
   ctx: RenderContext,
 ): void {
   const filter = resolveGlowFilter(glow, ctx);
   if (!filter) return;
-  appendCssFilter(el, filter);
+  appendCssFilter(element, filter);
 }
 
 function expandCssLengthForScale(length: string, scale: number): string {
@@ -336,18 +337,18 @@ function expandCssLengthForScale(length: string, scale: number): string {
 }
 
 function applyVerticalTextFlow(
-  el: HTMLElement,
+  element: HTMLElement,
   anchor: string | null | undefined,
   upright = false,
   writingMode: "vertical-rl" | "vertical-lr" = "vertical-rl",
 ): void {
-  el.style.writingMode = writingMode;
-  el.style.justifyContent = "center";
-  el.style.alignItems =
+  element.style.writingMode = writingMode;
+  element.style.justifyContent = "center";
+  element.style.alignItems =
     anchor === "b" ? "flex-end" : anchor === "ctr" ? "center" : "flex-start";
   if (upright) {
-    el.style.textOrientation = "upright";
-    el.style.whiteSpace = "normal";
+    element.style.textOrientation = "upright";
+    element.style.whiteSpace = "normal";
   }
 }
 
@@ -3044,7 +3045,9 @@ export function renderShape(
         if (document.fonts?.status === "loading" && document.fonts.ready) {
           void document.fonts.ready
             .then(() => scheduleDynamicAutofit())
-            .catch(() => undefined);
+            .catch(() => {
+              // Autofit already ran with the fallback fonts, so there is nothing to redo.
+            });
         }
       }
     }

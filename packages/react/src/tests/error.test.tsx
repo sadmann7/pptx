@@ -10,7 +10,9 @@ import { loadedStore, withStore } from "./test-utils";
 describe("Presentation.Error", () => {
   it("renders the error via render function after a failed load", async () => {
     const store = createStore();
-    await store.load(new ArrayBuffer(8)).catch(() => undefined);
+    await store.load(new ArrayBuffer(8)).catch(() => {
+      // The failure is read back through Presentation.Error.
+    });
 
     withStore(
       store,

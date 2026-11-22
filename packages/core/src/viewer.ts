@@ -844,7 +844,10 @@ export class PptxViewer extends EventTarget {
   private async queueRender(): Promise<void> {
     const renderGeneration = ++this.renderGeneration;
     this.renderChain = this.renderChain
-      .catch(() => undefined)
+      .catch(() => {
+        // A failed render already rejected its caller; the chain only needs to
+        // keep going.
+      })
       .then(async () => {
         if (this.isRenderStale(renderGeneration)) return;
         this.emitRenderStart();

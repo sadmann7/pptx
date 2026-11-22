@@ -94,10 +94,10 @@ describe("renderElement", () => {
         { state: {}, props: { "data-slot": "default", role: "region" } },
       ),
     );
-    const el = screen.getByRole("region");
-    expect(el.tagName).toBe("SECTION");
-    expect(el.getAttribute("data-slot")).toBe("custom");
-    expect(el.textContent).toBe("replaced");
+    const element = screen.getByRole("region");
+    expect(element.tagName).toBe("SECTION");
+    expect(element.getAttribute("data-slot")).toBe("custom");
+    expect(element.textContent).toBe("replaced");
   });
 
   it("composes className and style from componentProps on top of params", () => {
@@ -115,10 +115,10 @@ describe("renderElement", () => {
         },
       ),
     );
-    const el = screen.getByText("x");
-    expect(el.className).toBe("internal user");
-    expect(el.style.color).toBe("blue");
-    expect(el.style.margin).toBe("4px");
+    const element = screen.getByText("x");
+    expect(element.className).toBe("internal user");
+    expect(element.style.color).toBe("blue");
+    expect(element.style.margin).toBe("4px");
   });
 
   it("skips undefined entries when merging a props array", () => {

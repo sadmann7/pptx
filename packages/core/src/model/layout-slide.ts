@@ -31,7 +31,7 @@ export function createPlaceholderFromLayout(
   const phElement = nvSpPr.child("nvPr").child("ph").element;
   if (!phElement) return null;
 
-  const el = (
+  const createElement = (
     qualifiedName: string,
     attrs: Record<string, string> = {},
     ...children: Node[]
@@ -50,23 +50,31 @@ export function createPlaceholderFromLayout(
   phCopy.removeAttribute("hasCustomPrompt");
   const name = nvSpPr.child("cNvPr").attr("name") ?? `Placeholder ${id - 1}`;
 
-  return el(
+  return createElement(
     "p:sp",
     {},
-    el(
+    createElement(
       "p:nvSpPr",
       {},
-      el("p:cNvPr", { id: String(id), name }),
-      el("p:cNvSpPr", {}, el("a:spLocks", { noGrp: "1" })),
-      el("p:nvPr", {}, phCopy),
+      createElement("p:cNvPr", { id: String(id), name }),
+      createElement(
+        "p:cNvSpPr",
+        {},
+        createElement("a:spLocks", { noGrp: "1" }),
+      ),
+      createElement("p:nvPr", {}, phCopy),
     ),
-    el("p:spPr"),
-    el(
+    createElement("p:spPr"),
+    createElement(
       "p:txBody",
       {},
-      el("a:bodyPr"),
-      el("a:lstStyle"),
-      el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
+      createElement("a:bodyPr"),
+      createElement("a:lstStyle"),
+      createElement(
+        "a:p",
+        {},
+        createElement("a:endParaRPr", { lang: "en-US" }),
+      ),
     ),
   );
 }

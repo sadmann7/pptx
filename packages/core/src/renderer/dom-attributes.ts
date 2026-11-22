@@ -25,7 +25,7 @@ export const PPTX_ATTRS = {
 
 /**
  * `element.dataset` keys corresponding to {@link PPTX_ATTRS} (camelCase per
- * the HTML dataset API), for reads like `el.dataset[PPTX_DATASET.run]`.
+ * the HTML dataset API), for reads like `element.dataset[PPTX_DATASET.run]`.
  */
 export const PPTX_DATASET = {
   nodeId: "pptxNodeId",
