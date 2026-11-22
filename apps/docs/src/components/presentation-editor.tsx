@@ -298,8 +298,6 @@ export function PresentationEditor({
 }: PresentationEditorProps) {
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  // Only a deck the user picked takes focus, so the deck a page loads on mount
-  // leaves the tab position alone.
   const openedFileRef = React.useRef(false);
 
   const takeOpenedFileFocus = React.useCallback(() => {
