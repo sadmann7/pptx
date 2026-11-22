@@ -26,8 +26,15 @@ function waitForSlide(
     else steadyFrames = 0;
     pendingCount = nextPending;
 
+    // Hidden charts stay pending until they get a box, so only a visible chart
+    // still waiting on ECharts holds the capture.
+    const chartLoading = Array.from(
+      host?.querySelectorAll<HTMLElement>("[data-pptx-chart-pending]") ?? [],
+    ).some((el) => el.offsetWidth > 0 && el.offsetHeight > 0);
     const settled =
-      slide?.firstElementChild && steadyFrames >= THUMBNAIL_SETTLE_FRAMES;
+      slide?.firstElementChild &&
+      !chartLoading &&
+      steadyFrames >= THUMBNAIL_SETTLE_FRAMES;
     if (settled || framesLeft <= 0) {
       raf = requestAnimationFrame(() => {
         if (!stopped) onReady();
