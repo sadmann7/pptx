@@ -3045,7 +3045,9 @@ export function renderShape(
         if (document.fonts?.status === "loading" && document.fonts.ready) {
           void document.fonts.ready
             .then(() => scheduleDynamicAutofit())
-            .catch(() => undefined);
+            .catch(() => {
+              // Autofit already ran with the fallback fonts, so there is nothing to redo.
+            });
         }
       }
     }

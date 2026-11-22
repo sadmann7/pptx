@@ -93,7 +93,10 @@ function DataToggle({
         if (!cancelled)
           return store.load(blob, { defaultSlideIndex: 0, readOnly: false });
       })
-      .catch(() => {});
+      .catch(() => {
+        // Load failures show through the store's error state, and a failed
+        // fetch keeps the current deck.
+      });
     return () => {
       cancelled = true;
     };
