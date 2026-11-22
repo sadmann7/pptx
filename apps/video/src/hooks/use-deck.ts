@@ -26,8 +26,6 @@ function waitForSlide(
     else steadyFrames = 0;
     pendingCount = nextPending;
 
-    // Hidden charts stay pending until they get a box, so only a visible chart
-    // still waiting on ECharts holds the capture.
     const chartLoading = Array.from(
       host?.querySelectorAll<HTMLElement>("[data-pptx-chart-pending]") ?? [],
     ).some((element) => element.offsetWidth > 0 && element.offsetHeight > 0);

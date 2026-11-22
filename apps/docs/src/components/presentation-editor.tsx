@@ -298,14 +298,23 @@ export function PresentationEditor({
 }: PresentationEditorProps) {
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const openedFileRef = React.useRef(false);
+
+  const takeOpenedFileFocus = React.useCallback(() => {
+    const opened = openedFileRef.current;
+    openedFileRef.current = false;
+    return opened;
+  }, []);
 
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    openedFileRef.current = true;
     try {
       await store.load(file, { defaultSlideIndex: 0, readOnly: false });
     } catch {
+      openedFileRef.current = false;
       // `load()` already wrote the failure to `store.error`, which the editor shows.
     }
   }
@@ -335,7 +344,10 @@ export function PresentationEditor({
           />
         )}
         <Presentation className="min-h-0 flex-1">
-          <SortableThumbnailList store={store} />
+          <SortableThumbnailList
+            store={store}
+            initialFocus={takeOpenedFileFocus}
+          />
           <PresentationContent>
             <PresentationLoading />
             <PresentationError />
@@ -1453,9 +1465,13 @@ function AlignMenu({
 
 interface SortableThumbnailListProps {
   store: PresentationStore;
+  initialFocus?: () => boolean;
 }
 
-function SortableThumbnailList({ store }: SortableThumbnailListProps) {
+function SortableThumbnailList({
+  store,
+  initialFocus,
+}: SortableThumbnailListProps) {
   const { presentation } = usePresentation();
   const slideOrder =
     presentation?.slides.map((slide) => slide.id).join("\u0000") ?? "";
@@ -1521,7 +1537,7 @@ function SortableThumbnailList({ store }: SortableThumbnailListProps) {
         items={orderedIds}
         strategy={verticalListSortingStrategy}
       >
-        <PresentationThumbnailList className="p-2">
+        <PresentationThumbnailList className="p-2" initialFocus={initialFocus}>
           {() => (
             <>
               {orderedIds.map((slideId) => (
