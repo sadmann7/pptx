@@ -2871,9 +2871,6 @@ export function renderChart(
   chartDiv.style.minWidth = "0";
   chartDiv.style.minHeight = "0";
   chartDiv.style.overflow = "hidden";
-  // ECharts is initialised only once the div is measurable and the ECharts chunk
-  // has loaded, so a chart can lag the rest of the slide. This marks the gap for
-  // anything that needs to know the slide is not finished drawing.
   chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
