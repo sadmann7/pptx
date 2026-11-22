@@ -1,38 +1,4 @@
 ﻿import type * as echarts from "echarts";
-import {
-  BarChart,
-  CandlestickChart,
-  CustomChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-  ScatterChart,
-} from "echarts/charts";
-import {
-  GraphicComponent,
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-} from "echarts/components";
-import { graphic, init, use as registerCharts } from "echarts/core";
-import { CanvasRenderer } from "echarts/renderers";
-
-registerCharts([
-  BarChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-  ScatterChart,
-  CandlestickChart,
-  CustomChart,
-  GraphicComponent,
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-  CanvasRenderer,
-]);
 
 import { ChartNodeData } from "../model/nodes/chart";
 import { SafeXmlNode } from "../ooxml/xml";
@@ -493,24 +459,31 @@ function adjustFilledRadarStopColor(
   return rgbToHex(adjusted.r, adjusted.g, adjusted.b);
 }
 
-function buildFilledRadarAreaColor(hex: string): graphic.LinearGradient {
-  return new graphic.LinearGradient(0, 0, 0, 1, [
-    {
-      offset: 0,
-      color: adjustFilledRadarStopColor(hex, {
-        saturationScale: 1.95,
-        lightnessOffset: 0.217,
-      }),
-    },
-    {
-      offset: 1,
-      color: adjustFilledRadarStopColor(hex, {
-        hueOffset: -5,
-        saturationScale: 1.7,
-        lightnessOffset: -0.128,
-      }),
-    },
-  ]);
+function buildFilledRadarAreaColor(hex: string): echarts.LinearGradientObject {
+  return {
+    type: "linear",
+    x: 0,
+    y: 0,
+    x2: 0,
+    y2: 1,
+    colorStops: [
+      {
+        offset: 0,
+        color: adjustFilledRadarStopColor(hex, {
+          saturationScale: 1.95,
+          lightnessOffset: 0.217,
+        }),
+      },
+      {
+        offset: 1,
+        color: adjustFilledRadarStopColor(hex, {
+          hueOffset: -5,
+          saturationScale: 1.7,
+          lightnessOffset: -0.128,
+        }),
+      },
+    ],
+  };
 }
 
 function collectSeriesValues(
@@ -2847,6 +2820,16 @@ export function parseChartXml(
   };
 }
 
+let echartsModule: Promise<typeof import("./chart/echarts")> | undefined;
+
+export function loadECharts(): Promise<typeof import("./chart/echarts")> {
+  echartsModule ??= import("./chart/echarts").catch((error: unknown) => {
+    echartsModule = undefined;
+    throw error;
+  });
+  return echartsModule;
+}
+
 export function renderChart(
   node: ChartNodeData,
   ctx: RenderContext,
@@ -2888,9 +2871,9 @@ export function renderChart(
   chartDiv.style.minWidth = "0";
   chartDiv.style.minHeight = "0";
   chartDiv.style.overflow = "hidden";
-  // ECharts can only be initialised once the div is attached and measurable, so
-  // a chart is always at least a frame behind the rest of the slide. This marks
-  // the gap for anything that needs to know the slide is not finished drawing.
+  // ECharts is initialised only once the div is measurable and the ECharts chunk
+  // has loaded, so a chart can lag the rest of the slide. This marks the gap for
+  // anything that needs to know the slide is not finished drawing.
   chartDiv.dataset.pptxChartPending = "";
   wrapper.appendChild(chartDiv);
 
@@ -2934,12 +2917,23 @@ export function renderChart(
   }
 
   const chartSet = ctx.chartInstances;
+  let disposed = false;
+  ctx.cleanups?.push(() => {
+    disposed = true;
+  });
 
   const chartReady = new Promise<void>((resolve) => {
     const finishInit = (): void => {
-      initChart(chartDiv, option, chartSet, ctx.cleanups);
-      delete chartDiv.dataset.pptxChartPending;
-      resolve();
+      loadECharts()
+        .then(({ init }) => {
+          if (disposed) return;
+          initChart(init, chartDiv, option, chartSet, ctx.cleanups);
+        })
+        .catch((error: unknown) => showChartError(chartDiv, error))
+        .finally(() => {
+          delete chartDiv.dataset.pptxChartPending;
+          resolve();
+        });
     };
 
     // Only a container that is in the document and has a box can be measured,
@@ -2978,6 +2972,7 @@ export function renderChart(
 }
 
 function initChart(
+  init: typeof echarts.init,
   container: HTMLElement,
   option: echarts.EChartsOption,
   chartInstances?: Set<echarts.ECharts>,
@@ -3000,12 +2995,16 @@ function initChart(
     ro.observe(container);
     cleanups?.push(() => ro.disconnect());
   } catch (error) {
-    console.warn("Failed to initialize ECharts:", error);
-    container.style.display = "flex";
-    container.style.alignItems = "center";
-    container.style.justifyContent = "center";
-    container.style.color = "#999";
-    container.style.fontSize = "12px";
-    container.textContent = "Chart render error";
+    showChartError(container, error);
   }
+}
+
+function showChartError(container: HTMLElement, error: unknown): void {
+  console.warn("Failed to initialize ECharts:", error);
+  container.style.display = "flex";
+  container.style.alignItems = "center";
+  container.style.justifyContent = "center";
+  container.style.color = "#999";
+  container.style.fontSize = "12px";
+  container.textContent = "Chart render error";
 }

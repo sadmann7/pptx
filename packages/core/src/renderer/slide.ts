@@ -14,7 +14,7 @@ import { SlideData } from "../model/slide";
 import type { RelEntry } from "../ooxml/rel";
 import { SafeXmlNode } from "../ooxml/xml";
 import { renderBackground } from "./background";
-import { renderChart } from "./chart";
+import { loadECharts, renderChart } from "./chart";
 import { createRenderContext, RenderContext } from "./context";
 import { PPTX_ATTRS } from "./dom-attributes";
 import { renderGroup } from "./group";
@@ -223,6 +223,10 @@ export interface ThumbnailRendererOptions {
   mediaUrlCache?: Map<string, string>;
 }
 
+function prefetchCharts(presentation: PresentationData): void {
+  if (presentation.charts?.size) loadECharts().catch(() => {});
+}
+
 /** Renders a slide like `renderSlide()` but skips autofit, ECharts, and EMF decoding, which are invisible at thumbnail size. */
 export function renderThumbnail(
   presentation: PresentationData,
@@ -230,6 +234,7 @@ export function renderThumbnail(
   options?: ThumbnailRendererOptions,
 ): SlideHandle {
   materializeSlide(presentation, slide);
+  prefetchCharts(presentation);
 
   const isSharedCache = !!options?.mediaUrlCache;
 
@@ -347,6 +352,7 @@ export function renderSlide(
   options?: SlideRendererOptions,
 ): SlideHandle {
   materializeSlide(presentation, slide);
+  prefetchCharts(presentation);
 
   const isSharedCache = !!options?.mediaUrlCache;
   const chartInstances = options?.chartInstances ?? new Set<ECharts>();

@@ -1,4 +1,4 @@
-import { graphic } from "echarts/core";
+import type { LinearGradientObject } from "echarts";
 
 import { ptToPx } from "../../ooxml/unit";
 import { SafeXmlNode } from "../../ooxml/xml";
@@ -48,7 +48,7 @@ function resolveGradientStop(
 export function extractSeriesColor(
   ser: SafeXmlNode,
   ctx: RenderContext,
-): string | graphic.LinearGradient | undefined {
+): string | LinearGradientObject | undefined {
   const spPr = ser.child("spPr");
   if (!spPr.exists()) return undefined;
 
@@ -113,7 +113,7 @@ export function extractChartLineStyle(
 function buildEChartsGradient(
   gradFill: SafeXmlNode,
   ctx: RenderContext,
-): graphic.LinearGradient | undefined {
+): LinearGradientObject | undefined {
   const gsLst = gradFill.child("gsLst");
   if (!gsLst.exists()) return undefined;
 
@@ -145,7 +145,14 @@ function buildEChartsGradient(
   const x1 = 0.5 + 0.5 * Math.cos(rad);
   const y1 = 0.5 + 0.5 * Math.sin(rad);
 
-  return new graphic.LinearGradient(x0, y0, x1, y1, stops);
+  return {
+    type: "linear",
+    x: x0,
+    y: y0,
+    x2: x1,
+    y2: y1,
+    colorStops: stops,
+  };
 }
 
 export function extractDataPointStyles(
