@@ -15,8 +15,8 @@ import {
 import { getPredefinedTableStyle, NO_STYLE_TABLE_GRID } from "./table-style";
 import { renderTextBody } from "./text";
 
-function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
-  clearCssFillBackground(el);
+function applyCssFillBackground(element: HTMLElement, fillCss: string): void {
+  clearCssFillBackground(element);
 
   if (fillCss.includes("gradient") && fillCss.includes(" 0 0 / ")) {
     const bgMatch = fillCss.match(
@@ -26,10 +26,10 @@ function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
       const imageLayers = fillCss
         .slice(0, bgMatch.index)
         .replace(/\s+0 0\s*\/\s*8px 8px/g, "");
-      el.style.backgroundImage = imageLayers;
-      el.style.backgroundSize = "8px 8px";
-      el.style.backgroundRepeat = "repeat";
-      el.style.backgroundColor = bgMatch[1];
+      element.style.backgroundImage = imageLayers;
+      element.style.backgroundSize = "8px 8px";
+      element.style.backgroundRepeat = "repeat";
+      element.style.backgroundColor = bgMatch[1];
       return;
     }
   }
@@ -39,18 +39,18 @@ function applyCssFillBackground(el: HTMLElement, fillCss: string): void {
     fillCss.startsWith("url(") ||
     fillCss.includes("repeating-")
   ) {
-    el.style.background = fillCss;
+    element.style.background = fillCss;
   } else {
-    el.style.backgroundColor = fillCss;
+    element.style.backgroundColor = fillCss;
   }
 }
 
-function clearCssFillBackground(el: HTMLElement): void {
-  el.style.background = "";
-  el.style.backgroundColor = "";
-  el.style.backgroundImage = "";
-  el.style.backgroundRepeat = "";
-  el.style.backgroundSize = "";
+function clearCssFillBackground(element: HTMLElement): void {
+  element.style.background = "";
+  element.style.backgroundColor = "";
+  element.style.backgroundImage = "";
+  element.style.backgroundRepeat = "";
+  element.style.backgroundSize = "";
 }
 
 // The `def` attribute on `a:tblStyleLst` only seeds newly inserted tables, so it

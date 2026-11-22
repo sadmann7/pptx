@@ -2270,25 +2270,28 @@ function elementBuilder(doc: Document): ElementBuilder {
 }
 
 function xfrm(
-  el: ElementBuilder,
+  element: ElementBuilder,
   position: NodePosition,
   size: NodeSize,
 ): Element {
-  return el(
+  return element(
     "a:xfrm",
     {},
-    el("a:off", {
+    element("a:off", {
       x: String(pxToEmu(position.x)),
       y: String(pxToEmu(position.y)),
     }),
-    el("a:ext", { cx: String(pxToEmu(size.w)), cy: String(pxToEmu(size.h)) }),
+    element("a:ext", {
+      cx: String(pxToEmu(size.w)),
+      cy: String(pxToEmu(size.h)),
+    }),
   );
 }
 
 function insertNewShape(
   pres: PresentationData,
   slideId: string,
-  build: (el: ElementBuilder, id: number) => Element,
+  build: (element: ElementBuilder, id: number) => Element,
 ): EditResult {
   const sourcePackage = requirePkg(pres);
   const slide = findSlide(pres, slideId);
@@ -2325,39 +2328,48 @@ function applyAddTextBox(
 ): EditResult {
   const size = op.size ?? { w: pres.width / 3, h: TEXT_BOX_HEIGHT };
   const position = op.position ?? centered(pres, size);
-  return insertNewShape(pres, op.slideId, (el, id) => {
+  return insertNewShape(pres, op.slideId, (element, id) => {
     const paragraph = op.text
-      ? el(
+      ? element(
           "a:p",
           {},
-          el("a:r", {}, el("a:rPr", { lang: "en-US" }), el("a:t")),
-          el("a:endParaRPr", { lang: "en-US" }),
+          element(
+            "a:r",
+            {},
+            element("a:rPr", { lang: "en-US" }),
+            element("a:t"),
+          ),
+          element("a:endParaRPr", { lang: "en-US" }),
         )
-      : el("a:p", {}, el("a:endParaRPr", { lang: "en-US" }));
+      : element("a:p", {}, element("a:endParaRPr", { lang: "en-US" }));
     const text = paragraph.getElementsByTagNameNS(A_NS, "t")[0];
     if (text) text.textContent = op.text ?? "";
-    return el(
+    return element(
       "p:sp",
       {},
-      el(
+      element(
         "p:nvSpPr",
         {},
-        el("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
-        el("p:cNvSpPr", { txBox: "1" }),
-        el("p:nvPr"),
+        element("p:cNvPr", { id: String(id), name: `TextBox ${id - 1}` }),
+        element("p:cNvSpPr", { txBox: "1" }),
+        element("p:nvPr"),
       ),
-      el(
+      element(
         "p:spPr",
         {},
-        xfrm(el, position, size),
-        el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
-        el("a:noFill"),
+        xfrm(element, position, size),
+        element("a:prstGeom", { prst: "rect" }, element("a:avLst")),
+        element("a:noFill"),
       ),
-      el(
+      element(
         "p:txBody",
         {},
-        el("a:bodyPr", { wrap: "square", rtlCol: "0" }, el("a:spAutoFit")),
-        el("a:lstStyle"),
+        element(
+          "a:bodyPr",
+          { wrap: "square", rtlCol: "0" },
+          element("a:spAutoFit"),
+        ),
+        element("a:lstStyle"),
         paragraph,
       ),
     );
@@ -2379,49 +2391,61 @@ function applyAddShape(
   const size = op.size ?? { w: side, h: side };
   const position = op.position ?? centered(pres, size);
   const name = op.geometry.charAt(0).toUpperCase() + op.geometry.slice(1);
-  return insertNewShape(pres, op.slideId, (el, id) =>
-    el(
+  return insertNewShape(pres, op.slideId, (element, id) =>
+    element(
       "p:sp",
       {},
-      el(
+      element(
         "p:nvSpPr",
         {},
-        el("p:cNvPr", { id: String(id), name: `${name} ${id - 1}` }),
-        el("p:cNvSpPr"),
-        el("p:nvPr"),
+        element("p:cNvPr", { id: String(id), name: `${name} ${id - 1}` }),
+        element("p:cNvSpPr"),
+        element("p:nvPr"),
       ),
-      el(
+      element(
         "p:spPr",
         {},
-        xfrm(el, position, size),
-        el("a:prstGeom", { prst: op.geometry }, el("a:avLst")),
+        xfrm(element, position, size),
+        element("a:prstGeom", { prst: op.geometry }, element("a:avLst")),
       ),
-      el(
+      element(
         "p:style",
         {},
-        el(
+        element(
           "a:lnRef",
           { idx: "2" },
-          el(
+          element(
             "a:schemeClr",
             { val: "accent1" },
-            el("a:shade", { val: "50000" }),
+            element("a:shade", { val: "50000" }),
           ),
         ),
-        el("a:fillRef", { idx: "1" }, el("a:schemeClr", { val: "accent1" })),
-        el("a:effectRef", { idx: "0" }, el("a:schemeClr", { val: "accent1" })),
-        el("a:fontRef", { idx: "minor" }, el("a:schemeClr", { val: "lt1" })),
+        element(
+          "a:fillRef",
+          { idx: "1" },
+          element("a:schemeClr", { val: "accent1" }),
+        ),
+        element(
+          "a:effectRef",
+          { idx: "0" },
+          element("a:schemeClr", { val: "accent1" }),
+        ),
+        element(
+          "a:fontRef",
+          { idx: "minor" },
+          element("a:schemeClr", { val: "lt1" }),
+        ),
       ),
-      el(
+      element(
         "p:txBody",
         {},
-        el("a:bodyPr", { rtlCol: "0", anchor: "ctr" }),
-        el("a:lstStyle"),
-        el(
+        element("a:bodyPr", { rtlCol: "0", anchor: "ctr" }),
+        element("a:lstStyle"),
+        element(
           "a:p",
           {},
-          el("a:pPr", { algn: "ctr" }),
-          el("a:endParaRPr", { lang: "en-US" }),
+          element("a:pPr", { algn: "ctr" }),
+          element("a:endParaRPr", { lang: "en-US" }),
         ),
       ),
     ),
@@ -2453,67 +2477,67 @@ function applyAddTable(
   const columnWidth = String(pxToEmu(size.w / op.columns));
   const rowHeight = String(pxToEmu(size.h / op.rows));
 
-  return insertNewShape(pres, op.slideId, (el, id) => {
+  return insertNewShape(pres, op.slideId, (element, id) => {
     const cell = () =>
-      el(
+      element(
         "a:tc",
         {},
-        el(
+        element(
           "a:txBody",
           {},
-          el("a:bodyPr"),
-          el("a:lstStyle"),
-          el("a:p", {}, el("a:endParaRPr", { lang: "en-US" })),
+          element("a:bodyPr"),
+          element("a:lstStyle"),
+          element("a:p", {}, element("a:endParaRPr", { lang: "en-US" })),
         ),
-        el("a:tcPr"),
+        element("a:tcPr"),
       );
-    const tableStyleId = el("a:tableStyleId");
+    const tableStyleId = element("a:tableStyleId");
     tableStyleId.textContent = styleId;
-    return el(
+    return element(
       "p:graphicFrame",
       {},
-      el(
+      element(
         "p:nvGraphicFramePr",
         {},
-        el("p:cNvPr", { id: String(id), name: `Table ${id - 1}` }),
-        el(
+        element("p:cNvPr", { id: String(id), name: `Table ${id - 1}` }),
+        element(
           "p:cNvGraphicFramePr",
           {},
-          el("a:graphicFrameLocks", { noGrp: "1" }),
+          element("a:graphicFrameLocks", { noGrp: "1" }),
         ),
-        el("p:nvPr"),
+        element("p:nvPr"),
       ),
-      el(
+      element(
         "p:xfrm",
         {},
-        el("a:off", {
+        element("a:off", {
           x: String(pxToEmu(position.x)),
           y: String(pxToEmu(position.y)),
         }),
-        el("a:ext", {
+        element("a:ext", {
           cx: String(pxToEmu(size.w)),
           cy: String(pxToEmu(size.h)),
         }),
       ),
-      el(
+      element(
         "a:graphic",
         {},
-        el(
+        element(
           "a:graphicData",
           { uri: TABLE_URI },
-          el(
+          element(
             "a:tbl",
             {},
-            el("a:tblPr", { firstRow: "1", bandRow: "1" }, tableStyleId),
-            el(
+            element("a:tblPr", { firstRow: "1", bandRow: "1" }, tableStyleId),
+            element(
               "a:tblGrid",
               {},
               ...Array.from({ length: op.columns }, () =>
-                el("a:gridCol", { w: columnWidth }),
+                element("a:gridCol", { w: columnWidth }),
               ),
             ),
             ...Array.from({ length: op.rows }, () =>
-              el(
+              element(
                 "a:tr",
                 { h: rowHeight },
                 ...Array.from({ length: op.columns }, cell),
@@ -3260,7 +3284,7 @@ async function applyAddImage(
 
   const id = nextShapeId(spTree);
   const name = op.name ?? `Picture ${id - 1}`;
-  const el = (
+  const createElement = (
     qualifiedName: string,
     attrs: Record<string, string> = {},
     ...children: Node[]
@@ -3274,35 +3298,44 @@ async function applyAddImage(
     for (const child of children) element.appendChild(child);
     return element;
   };
-  const blip = el("a:blip");
+  const blip = createElement("a:blip");
   blip.setAttributeNS(R_NS, "r:embed", rId);
-  const pic = el(
+  const pic = createElement(
     "p:pic",
     {},
-    el(
+    createElement(
       "p:nvPicPr",
       {},
-      el("p:cNvPr", { id: String(id), name, descr: name }),
-      el("p:cNvPicPr", {}, el("a:picLocks", { noChangeAspect: "1" })),
-      el("p:nvPr"),
+      createElement("p:cNvPr", { id: String(id), name, descr: name }),
+      createElement(
+        "p:cNvPicPr",
+        {},
+        createElement("a:picLocks", { noChangeAspect: "1" }),
+      ),
+      createElement("p:nvPr"),
     ),
-    el("p:blipFill", {}, blip, el("a:stretch", {}, el("a:fillRect"))),
-    el(
+    createElement(
+      "p:blipFill",
+      {},
+      blip,
+      createElement("a:stretch", {}, createElement("a:fillRect")),
+    ),
+    createElement(
       "p:spPr",
       {},
-      el(
+      createElement(
         "a:xfrm",
         {},
-        el("a:off", {
+        createElement("a:off", {
           x: String(pxToEmu(position.x)),
           y: String(pxToEmu(position.y)),
         }),
-        el("a:ext", {
+        createElement("a:ext", {
           cx: String(pxToEmu(size.w)),
           cy: String(pxToEmu(size.h)),
         }),
       ),
-      el("a:prstGeom", { prst: "rect" }, el("a:avLst")),
+      createElement("a:prstGeom", { prst: "rect" }, createElement("a:avLst")),
     ),
   );
   // extLst, when present, has to stay the last child of spTree.

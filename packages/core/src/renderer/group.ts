@@ -323,8 +323,8 @@ export function renderGroup(
         }
       }
 
-      const el = renderNode(childNode, childCtx);
-      wrapper.appendChild(el);
+      const element = renderNode(childNode, childCtx);
+      wrapper.appendChild(element);
     } catch {
       const errDiv = document.createElement("div");
       errDiv.style.position = "absolute";

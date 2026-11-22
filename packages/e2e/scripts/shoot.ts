@@ -55,11 +55,11 @@ for (const selector of args.lists.select) {
     (sel) =>
       // Everything stays inline: named functions do not survive the transpiler's
       // rewrite when the body is serialized into the page.
-      [...document.querySelectorAll(sel)].map((el) => {
-        const rect = el.getBoundingClientRect();
-        const style = getComputedStyle(el);
+      [...document.querySelectorAll(sel)].map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
         return {
-          text: (el.textContent ?? "").trim().slice(0, 16),
+          text: (element.textContent ?? "").trim().slice(0, 16),
           x: Math.round(rect.x * 100) / 100,
           y: Math.round(rect.y * 100) / 100,
           right: Math.round(rect.right * 100) / 100,

@@ -17,29 +17,29 @@ let sharedSerializer: XMLSerializer | undefined;
 
 export function insertChild(
   parent: Element,
-  el: Element,
+  element: Element,
   ref: Element | null,
 ): void {
-  parent.insertBefore(el, ref);
+  parent.insertBefore(element, ref);
   invalidateChildIndex(parent);
 }
 
-export function removeChild(el: Element): Element | null {
-  const parent = el.parentElement;
-  el.remove();
+export function removeChild(element: Element): Element | null {
+  const parent = element.parentElement;
+  element.remove();
   if (parent) invalidateChildIndex(parent);
   return parent;
 }
 
 export function setOrRemoveAttr(
-  el: Element,
+  element: Element,
   name: string,
   value: string | undefined,
 ): void {
   if (value === undefined) {
-    el.removeAttribute(name);
+    element.removeAttribute(name);
   } else {
-    el.setAttribute(name, value);
+    element.setAttribute(name, value);
   }
 }
 

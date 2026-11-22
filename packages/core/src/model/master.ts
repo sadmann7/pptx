@@ -156,9 +156,9 @@ function extractPlaceholderEntriesRecursive(
 
 function parseAllAttributes(node: SafeXmlNode): Map<string, string> {
   const result = new Map<string, string>();
-  const el = node.element;
-  if (!el) return result;
-  const attrs = el.attributes;
+  const element = node.element;
+  if (!element) return result;
+  const attrs = element.attributes;
   for (let i = 0; i < attrs.length; i++) {
     const attr = attrs[i];
     result.set(attr.localName, attr.value);

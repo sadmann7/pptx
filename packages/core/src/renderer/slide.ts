@@ -70,38 +70,38 @@ function renderNode(node: BaseNodeData, ctx: RenderContext): HTMLElement {
     case "chart":
       return renderChart(node as ChartNodeData, ctx);
     default: {
-      const el = document.createElement("div");
-      el.style.position = "absolute";
-      el.style.left = `${node.position.x}px`;
-      el.style.top = `${node.position.y}px`;
-      el.style.width = `${node.size.w}px`;
-      el.style.height = `${node.size.h}px`;
-      return el;
+      const element = document.createElement("div");
+      element.style.position = "absolute";
+      element.style.left = `${node.position.x}px`;
+      element.style.top = `${node.position.y}px`;
+      element.style.width = `${node.size.w}px`;
+      element.style.height = `${node.size.h}px`;
+      return element;
     }
   }
 }
 
 function createErrorPlaceholder(node: BaseNodeData): HTMLElement {
-  const el = document.createElement("div");
-  el.style.position = "absolute";
-  el.style.left = `${node.position.x}px`;
-  el.style.top = `${node.position.y}px`;
-  el.style.width = `${node.size.w}px`;
-  el.style.height = `${node.size.h}px`;
-  el.style.border = "2px dashed #ff4444";
-  el.style.backgroundColor = "rgba(255,68,68,0.08)";
-  el.style.display = "flex";
-  el.style.alignItems = "center";
-  el.style.justifyContent = "center";
-  el.style.color = "#cc0000";
-  el.style.fontSize = "11px";
-  el.style.fontFamily = "monospace";
-  el.style.overflow = "hidden";
-  el.style.boxSizing = "border-box";
-  el.style.padding = "4px";
-  el.textContent = `Render Error`;
-  el.title = `Failed to render node: ${node.id} (${node.name})`;
-  return el;
+  const element = document.createElement("div");
+  element.style.position = "absolute";
+  element.style.left = `${node.position.x}px`;
+  element.style.top = `${node.position.y}px`;
+  element.style.width = `${node.size.w}px`;
+  element.style.height = `${node.size.h}px`;
+  element.style.border = "2px dashed #ff4444";
+  element.style.backgroundColor = "rgba(255,68,68,0.08)";
+  element.style.display = "flex";
+  element.style.alignItems = "center";
+  element.style.justifyContent = "center";
+  element.style.color = "#cc0000";
+  element.style.fontSize = "11px";
+  element.style.fontFamily = "monospace";
+  element.style.overflow = "hidden";
+  element.style.boxSizing = "border-box";
+  element.style.padding = "4px";
+  element.textContent = `Render Error`;
+  element.title = `Failed to render node: ${node.id} (${node.name})`;
+  return element;
 }
 
 interface TemplateShapeCacheEntry {
@@ -413,8 +413,8 @@ export function renderSlide(
       );
       for (const node of masterShapes) {
         try {
-          const el = renderNode(node, masterCtx);
-          container.appendChild(el);
+          const element = renderNode(node, masterCtx);
+          container.appendChild(element);
         } catch {
           // Master shape errors are non-fatal.
         }
@@ -436,8 +436,8 @@ export function renderSlide(
       );
       for (const node of layoutShapes) {
         try {
-          const el = renderNode(node, layoutCtx);
-          container.appendChild(el);
+          const element = renderNode(node, layoutCtx);
+          container.appendChild(element);
         } catch {
           // Layout shape errors are non-fatal.
         }
@@ -446,10 +446,10 @@ export function renderSlide(
 
     for (const node of slide.nodes) {
       try {
-        const el = renderNode(node, ctx);
+        const element = renderNode(node, ctx);
         // Master and layout shapes are not editable, so only slide nodes are stamped.
-        el.setAttribute(PPTX_ATTRS.nodeId, node.id);
-        container.appendChild(el);
+        element.setAttribute(PPTX_ATTRS.nodeId, node.id);
+        container.appendChild(element);
       } catch (error) {
         options?.onNodeError?.(node.id, error);
         const placeholder = createErrorPlaceholder(node);

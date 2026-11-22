@@ -114,7 +114,7 @@ interface ThumbnailRovingContextValue {
   subscribeTabStop: (callback: () => void) => () => void;
   getEffectiveTabStopId: () => string | null;
   onItemFocus: (slideId: string) => void;
-  onItemRegister: (slideId: string, el: HTMLButtonElement) => void;
+  onItemRegister: (slideId: string, element: HTMLButtonElement) => void;
   onItemUnregister: (slideId: string) => void;
   itemsRef: React.RefObject<Map<string, HTMLButtonElement>>;
   loop: boolean;

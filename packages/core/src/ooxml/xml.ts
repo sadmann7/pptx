@@ -5,22 +5,22 @@ const childIndexCache = new WeakMap<Element, Map<string, Element[]>>();
 const queriedOnce = new WeakSet<Element>();
 
 // Attribute and text mutations don't affect the index.
-export function invalidateChildIndex(el: Element): void {
-  childIndexCache.delete(el);
-  queriedOnce.delete(el);
+export function invalidateChildIndex(element: Element): void {
+  childIndexCache.delete(element);
+  queriedOnce.delete(element);
 }
 
-function getChildIndex(el: Element): Map<string, Element[]> | undefined {
-  let index = childIndexCache.get(el);
+function getChildIndex(element: Element): Map<string, Element[]> | undefined {
+  let index = childIndexCache.get(element);
   if (index !== undefined) return index;
 
-  if (!queriedOnce.has(el)) {
-    queriedOnce.add(el);
+  if (!queriedOnce.has(element)) {
+    queriedOnce.add(element);
     return undefined;
   }
 
   index = new Map();
-  const children = el.children;
+  const children = element.children;
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
     const bucket = index.get(child.localName);
@@ -30,15 +30,15 @@ function getChildIndex(el: Element): Map<string, Element[]> | undefined {
       bucket.push(child);
     }
   }
-  childIndexCache.set(el, index);
+  childIndexCache.set(element, index);
   return index;
 }
 
 export class SafeXmlNode {
-  private readonly el: Element | null;
+  readonly element: Element | null;
 
-  constructor(el: Element | null) {
-    this.el = el;
+  constructor(element: Element | null) {
+    this.element = element;
   }
 
   // Every miss shares this instance, since SafeXmlNode is immutable and most
@@ -47,8 +47,8 @@ export class SafeXmlNode {
 
   // An unprefixed name matches any attribute with that local name.
   attr(name: string): string | undefined {
-    if (!this.el) return undefined;
-    const direct = this.el.getAttribute(name);
+    if (!this.element) return undefined;
+    const direct = this.element.getAttribute(name);
     if (direct !== null) return direct;
 
     const colonIndex = name.indexOf(":");
@@ -58,8 +58,8 @@ export class SafeXmlNode {
         ? this.resolveAttributeNamespace(name.slice(0, colonIndex))
         : undefined;
 
-    for (let i = 0; i < this.el.attributes.length; i++) {
-      const attr = this.el.attributes[i];
+    for (let i = 0; i < this.element.attributes.length; i++) {
+      const attr = this.element.attributes[i];
       if (attr.localName !== localName) continue;
       if (colonIndex < 0) return attr.value;
       if (
@@ -77,7 +77,7 @@ export class SafeXmlNode {
   private resolveAttributeNamespace(prefix: string): string | undefined {
     // Optional call: not all DOM implementations (e.g. happy-dom) provide it.
     return (
-      this.el?.lookupNamespaceURI?.(prefix) ??
+      this.element?.lookupNamespaceURI?.(prefix) ??
       (prefix === "r"
         ? "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
         : undefined)
@@ -94,15 +94,15 @@ export class SafeXmlNode {
   // Matches by localName in any namespace and returns an empty node on a miss,
   // so chains never throw.
   child(localName: string): SafeXmlNode {
-    if (!this.el) return SafeXmlNode.EMPTY;
-    const index = getChildIndex(this.el);
+    if (!this.element) return SafeXmlNode.EMPTY;
+    const index = getChildIndex(this.element);
     if (index !== undefined) {
       const match = index.get(localName);
       return match === undefined
         ? SafeXmlNode.EMPTY
         : new SafeXmlNode(match[0]);
     }
-    const children = this.el.children;
+    const children = this.element.children;
     for (let i = 0; i < children.length; i++) {
       if (children[i].localName === localName) {
         return new SafeXmlNode(children[i]);
@@ -112,17 +112,17 @@ export class SafeXmlNode {
   }
 
   children(localName?: string): SafeXmlNode[] {
-    if (!this.el) return [];
+    if (!this.element) return [];
     if (localName !== undefined) {
-      const index = getChildIndex(this.el);
+      const index = getChildIndex(this.element);
       if (index !== undefined) {
         const match = index.get(localName);
         return match === undefined
           ? []
-          : match.map((el) => new SafeXmlNode(el));
+          : match.map((element) => new SafeXmlNode(element));
       }
     }
-    const children = this.el.children;
+    const children = this.element.children;
     const result: SafeXmlNode[] = [];
     for (let i = 0; i < children.length; i++) {
       if (localName === undefined || children[i].localName === localName) {
@@ -133,12 +133,12 @@ export class SafeXmlNode {
   }
 
   text(): string {
-    if (!this.el) return "";
-    return this.el.textContent ?? "";
+    if (!this.element) return "";
+    return this.element.textContent ?? "";
   }
 
   exists(): boolean {
-    return this.el !== null;
+    return this.element !== null;
   }
 
   allChildren(): SafeXmlNode[] {
@@ -146,11 +146,7 @@ export class SafeXmlNode {
   }
 
   get localName(): string {
-    return this.el?.localName ?? "";
-  }
-
-  get element(): Element | null {
-    return this.el;
+    return this.element?.localName ?? "";
   }
 }
 
