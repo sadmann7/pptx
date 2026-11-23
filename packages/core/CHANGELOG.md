@@ -1,5 +1,11 @@
 # @diceui/pptx-core
 
+## 0.5.1
+
+### Patch Changes
+
+- 1723337: ECharts loads in the background once a deck with charts renders, so decks without charts no longer download it.
+
 ## 0.5.0
 
 ### Minor Changes
