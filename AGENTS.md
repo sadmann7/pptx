@@ -15,6 +15,9 @@ Default to no comment. Write one only for a constraint, an external quirk, or an
 ## Verifying changes
 
 - Every bug fix comes with a test that fails without it.
+- Tests and fixtures live in `src/tests/` inside each package, never next to the source.
+- Unit tests run in Vitest with happy-dom. Test dependencies come from the pnpm catalog as `catalog:` in each package's `devDependencies`, never the root `package.json`.
+- No mocks for the parser or renderer: build in-memory decks with the `minimal-pptx.ts` builders, run them through `parseZip`, `buildPresentation` and `renderSlide`, and assert on the real output.
 - Interaction behavior (pointer, focus, keyboard, clipboard, menus) is tested in a real browser in `packages/e2e/specs`, not in happy-dom. Don't mock browser APIs like `elementsFromPoint` or `getClientRects` to make a unit test pass.
 - Unit tests in `packages/react` cover state and pure logic. Core edits are tested on real decks: apply, save, reopen, undo.
 - No sleeps in tests. Wait on app state: `data-mode`, the store, or the focused element.
